@@ -1,0 +1,350 @@
+"""Run calculations for LNCI16 benchmark."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from ase import Atoms
+from ase.calculators.calculator import Calculator
+from ase.io import read, write
+from ase import units
+import mlipx
+from mlipx.abc import NodeWithCalculator
+from tqdm import tqdm
+import zntrack
+
+from mlip_testing.calcs.models.models import MODELS
+from mlip_testing.calcs.utils.utils import chdir, get_benchmark_data
+
+# Local directory to store output data
+OUT_PATH = Path(__file__).parent / "outputs"
+
+# Constants
+KCAL_PER_MOL_TO_EV = units.kcal / units.mol
+EV_TO_KCAL_PER_MOL = 1.0 / KCAL_PER_MOL_TO_EV
+
+# Reference energies and charges from LNCI16 dataset
+LNCI16_REFERENCE_ENERGIES = {
+    "BpocBenz": -6.81,
+    "BpocMeOH": -6.19,
+    "BNTube": -14.32,
+    "GramA": -36.30,
+    "DHComplex": -57.57,
+    "DNA": -363.30,
+    "SH3": -25.65,
+    "TYK2": -72.31,
+    "FXa": -70.73,
+    "2xHB238": -74.92,
+    "FullGraph": -74.13,
+    "DithBrCap": -45.63,
+    "BrCap": -21.12,
+    "MolMus": -62.58,
+    "Rotax": -55.89,
+    "Nylon": -566.23,
+}
+
+LNCI16_CHARGES = {
+    "BpocBenz": 0,
+    "BpocMeOH": 0,
+    "BNTube": 0,
+    "GramA": 0,
+    "DHComplex": 0,
+    "DNA": 0,
+    "SH3": 0,
+    "TYK2": +1,
+    "FXa": -2,
+    "2xHB238": 0,
+    "FullGraph": 0,
+    "DithBrCap": 0,
+    "BrCap": 0,
+    "MolMus": 0,
+    "Rotax": 0,
+    "Nylon": 0,
+}
+
+
+class LNCI16Benchmark(zntrack.Node):
+    """
+    Benchmark model for LNCI16 dataset.
+
+    Evaluates interaction energies for large non-covalent complexes.
+    16 host-guest systems including proteins, DNA, and supramolecular assemblies.
+
+    Each system consists of complex, host, and guest structures.
+    Computes interaction energy = E(complex) - E(host) - E(guest)
+    """
+
+    model: NodeWithCalculator = zntrack.deps()
+    model_name: str = zntrack.params()
+
+    @staticmethod
+    def read_turbomole_xyz(filepath: Path) -> Atoms:
+        """
+        Read Turbomole format xyz file.
+
+        Parameters
+        ----------
+        filepath : Path
+            Path to the xyz file.
+
+        Returns
+        -------
+        Atoms
+            ASE Atoms object.
+        """
+        return read(filepath, format="xyz")
+
+    @staticmethod
+    def read_charge_file(filepath: Path) -> float:
+        """
+        Read charge from .CHRG file.
+
+        Parameters
+        ----------
+        filepath : Path
+            Path to the charge file.
+
+        Returns
+        -------
+        float
+            Charge value, 0.0 if file doesn't exist.
+        """
+
+        try:
+            with open(filepath) as f:
+                charge_str = f.read().strip()
+                charge = int(float(charge_str))
+            return charge
+        except (FileNotFoundError, OSError):
+            return 0.0
+        except (ValueError, TypeError):
+            return 0.0
+
+    @staticmethod
+    def load_lnci16_system(system_name: str, base_dir: Path) -> dict[str, Atoms]:
+        """
+        Load complex, host, and guest structures for a LNCI16 system.
+
+        Parameters
+        ----------
+        system_name : str
+            Name of the LNCI16 system.
+        base_dir : Path
+            Base directory containing system data.
+
+        Returns
+        -------
+        dict[str, Atoms]
+            Dictionary with 'complex', 'host', and 'guest' Atoms objects.
+        """
+        system_dir = base_dir / system_name
+        if not system_dir.exists():
+            raise FileNotFoundError(f"System directory not found: {system_dir}")
+
+        # Load structures
+        complex_atoms = LNCI16Benchmark.read_turbomole_xyz(
+            system_dir / "complex" / "struc.xyz"
+        )
+        host_atoms = LNCI16Benchmark.read_turbomole_xyz(
+            system_dir / "host" / "struc.xyz"
+        )
+        guest_atoms = LNCI16Benchmark.read_turbomole_xyz(
+            system_dir / "guest" / "struc.xyz"
+        )
+
+        # Read charges
+        complex_charge = LNCI16Benchmark.read_charge_file(
+            system_dir / "complex" / ".CHRG"
+        )
+        host_charge = LNCI16Benchmark.read_charge_file(system_dir / "host" / ".CHRG")
+        guest_charge = LNCI16Benchmark.read_charge_file(system_dir / "guest" / ".CHRG")
+
+        # Set charges and system info in atoms
+        complex_atoms.info.update({"charge": complex_charge, "system": system_name})
+        host_atoms.info.update({"charge": host_charge, "system": system_name})
+        guest_atoms.info.update({"charge": guest_charge, "system": system_name})
+
+        return {
+            "complex": complex_atoms,
+            "host": host_atoms,
+            "guest": guest_atoms,
+        }
+
+    @staticmethod
+    def interaction_energy(frags: dict[str, Atoms], calc: Calculator) -> float:
+        """
+        Calculate interaction energy from fragments.
+
+        Parameters
+        ----------
+        frags : dict[str, Atoms]
+            Dictionary containing 'complex', 'host', and 'guest' fragments.
+        calc : Calculator
+            ASE calculator for energy calculations.
+
+        Returns
+        -------
+        float
+            Interaction energy in eV.
+        """
+        frags["complex"].calc = calc
+        e_complex = frags["complex"].get_potential_energy()
+        frags["host"].calc = calc
+        e_host = frags["host"].get_potential_energy()
+        frags["guest"].calc = calc
+        e_guest = frags["guest"].get_potential_energy()
+        return e_complex - e_host - e_guest
+
+    @staticmethod
+    def benchmark_lnci16(
+        calc: Calculator, model_name: str, base_dir: Path
+    ) -> list[Atoms]:
+        """
+        Benchmark LNCI16 dataset.
+
+        Parameters
+        ----------
+        calc : Calculator
+            ASE calculator for energy calculations.
+        model_name : str
+            Name of the model being benchmarked.
+        base_dir : Path
+            Base directory containing LNCI16 data.
+
+        Returns
+        -------
+        list[Atoms]
+            List of complex structures.
+        """
+        print(f"Benchmarking LNCI16 with {model_name}...")
+
+        # Check if calculator supports charges
+        supports_charges = any(
+            hasattr(calc, attr) for attr in ["set_charge", "charge", "total_charge_key"]
+        )
+        if supports_charges:
+            print(f"  Calculator {model_name} supports charge handling")
+        else:
+            print(f"  Calculator {model_name} may not support charge handling")
+
+        complex_atoms_list = []
+
+        for system_name in tqdm(LNCI16_REFERENCE_ENERGIES.keys(), desc="LNCI16"):
+            try:
+                # Load system structures
+                frags = LNCI16Benchmark.load_lnci16_system(system_name, base_dir)
+                complex_atoms = frags["complex"]
+                host_atoms = frags["host"]
+                guest_atoms = frags["guest"]
+
+                # Log charge information for charged systems
+                if complex_atoms.info["charge"] != 0:
+                    print(
+                        f"  Processing charged system {system_name} "
+                        f"(charge = {complex_atoms.info['charge']:+.0f})"
+                    )
+
+                # Compute interaction energy
+                e_int_model = LNCI16Benchmark.interaction_energy(frags, calc)
+
+                # Reference energy in kcal/mol, convert to eV
+                e_int_ref_kcal = LNCI16_REFERENCE_ENERGIES[system_name]
+                e_int_ref_ev = e_int_ref_kcal * KCAL_PER_MOL_TO_EV
+
+                # Calculate errors
+                error_ev = e_int_model - e_int_ref_ev
+                error_kcal = error_ev * EV_TO_KCAL_PER_MOL
+
+                # Store additional info in complex atoms
+                complex_atoms.info["model"] = model_name
+                complex_atoms.info["E_int_model_kcal"] = e_int_model * EV_TO_KCAL_PER_MOL
+                complex_atoms.info["E_int_ref_kcal"] = e_int_ref_kcal
+                complex_atoms.info["error_kcal"] = error_kcal
+                complex_atoms.info["system"] = system_name
+                complex_atoms.info["charged"] = complex_atoms.info["charge"] != 0
+                complex_atoms.info["complex_charge"] = complex_atoms.info["charge"]
+                complex_atoms.info["host_charge"] = host_atoms.info["charge"]
+                complex_atoms.info["guest_charge"] = guest_atoms.info["charge"]
+
+                complex_atoms_list.append(complex_atoms)
+                # print(
+                #     f"  {system_name}: E_int = {e_int_model:.6f} eV "
+                #     f"(ref: {e_int_ref_ev:.6f} eV, error: {error_kcal:.2f} kcal/mol)"
+                # )
+            except Exception as e:
+                print(f"Error processing {system_name}: {e}")
+                continue
+
+        return complex_atoms_list
+
+    def run(self):
+        """Run LNCI16 benchmark calculations."""
+        calc = self.model.get_calculator()
+
+        # Get benchmark data
+        base_dir = (
+            get_benchmark_data("LNCI16_data.zip") / "LNCI16_data/benchmark-LNCI16-main"
+        )
+
+        # Run benchmark
+        complex_atoms = self.benchmark_lnci16(
+            calc, self.model_name, base_dir
+        )
+
+        # Write output structures
+        write_dir = OUT_PATH / self.model_name
+        write_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save individual complex atoms files for each system
+        for i, atoms in enumerate(complex_atoms):
+            # Temp fix: Clear calculator to avoid array broadcasting issues
+            atoms_copy = atoms.copy()
+            atoms_copy.calc = None
+            
+            # Write each system to its own file
+            system_file = write_dir / f"{i}.xyz"
+            write(system_file, atoms_copy, format="extxyz")
+
+        # Calculate and save MAE if we have results
+        if complex_atoms:
+            errors = [atoms.info["error_kcal"] for atoms in complex_atoms]
+            mae = sum(abs(error) for error in errors) / len(errors)
+            mae_data = {"MAE_kcal": float(mae)}
+
+            with open(write_dir / "mae_results.json", "w") as f:
+                json.dump(mae_data, f, indent=2)
+
+            print(f"MAE for {self.model_name} on LNCI16: {mae:.2f} kcal/mol")
+
+
+def build_project(repro: bool = False) -> None:
+    """
+    Build mlipx project.
+
+    Parameters
+    ----------
+    repro
+        Whether to call dvc repro -f after building.
+    """
+    project = mlipx.Project()
+    benchmark_node_dict = {}
+
+    for model_name, model in MODELS.items():
+        with project.group(model_name):
+            benchmark = LNCI16Benchmark(
+                model=model,
+                model_name=model_name,
+            )
+            benchmark_node_dict[model_name] = benchmark
+
+    if repro:
+        with chdir(Path(__file__).parent):
+            project.repro(build=True, force=True)
+    else:
+        project.build()
+
+
+def test_lnci16():
+    """Run LNCI16 benchmark via pytest."""
+    build_project(repro=True)

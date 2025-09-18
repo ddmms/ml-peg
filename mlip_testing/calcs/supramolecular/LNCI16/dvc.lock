@@ -1,0 +1,22 @@
+schema: '2.0'
+stages:
+  mace_mp_0b3_LNCI16Benchmark:
+    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name 
+      mace_mp_0b3_LNCI16Benchmark
+    params:
+      params.yaml:
+        mace_mp_0b3_LNCI16Benchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              model: medium-0b3
+            module: mace.calculators
+            spec:
+          model_name: mace_mp_0b3
+    outs:
+    - path: nodes/mace_mp_0b3/LNCI16Benchmark/node-meta.json
+      hash: md5
+      md5: 814d73a7ecb246aeb84b63390a5d9edc
+      size: 689
