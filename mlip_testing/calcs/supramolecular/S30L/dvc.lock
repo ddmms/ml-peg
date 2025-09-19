@@ -1,0 +1,40 @@
+schema: '2.0'
+stages:
+  mace_omat_0_S30LBenchmark:
+    cmd: zntrack run calc_S30L.S30LBenchmark --name mace_omat_0_S30LBenchmark
+    params:
+      params.yaml:
+        mace_omat_0_S30LBenchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              model: medium-omat-0
+            module: mace.calculators
+            spec:
+          model_name: mace_omat_0
+    outs:
+    - path: nodes/mace_omat_0/S30LBenchmark/node-meta.json
+      hash: md5
+      md5: d1b83029561d48ffb69c223d48dd7b2d
+      size: 683
+  mace_mp_0b3_S30LBenchmark:
+    cmd: zntrack run calc_S30L.S30LBenchmark --name mace_mp_0b3_S30LBenchmark
+    params:
+      params.yaml:
+        mace_mp_0b3_S30LBenchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              model: medium-0b3
+            module: mace.calculators
+            spec:
+          model_name: mace_mp_0b3
+    outs:
+    - path: nodes/mace_mp_0b3/S30LBenchmark/node-meta.json
+      hash: md5
+      md5: ae9bdc07f8c2238d389562e4173351ad
+      size: 680
