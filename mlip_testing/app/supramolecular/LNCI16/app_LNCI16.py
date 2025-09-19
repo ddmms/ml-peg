@@ -20,24 +20,21 @@ BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
 
-
-
 class LNCI16App(BaseApp):
     """LNCI16 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        
         scatter = read_plot(
-            DATA_PATH / "figure_interaction_energies.json", id=f"{BENCHMARK_NAME}-figure"
+            DATA_PATH / "figure_interaction_energies.json",
+            id=f"{BENCHMARK_NAME}-figure",
         )
-        structs_dir = DATA_PATH / list(MODELS.keys())[0]
+
         # Assets dir will be parent directory - individual files for each system
         structs = [
             f"assets/supramolecular/LNCI16/{list(MODELS.keys())[0]}/{i}.xyz"
             for i in range(16)  # LNCI16 has 16 systems
         ]
-
 
         plot_from_table_column(
             table_id=self.table_id,

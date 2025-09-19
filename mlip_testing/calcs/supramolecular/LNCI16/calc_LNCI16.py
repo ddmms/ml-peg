@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ase import Atoms
+from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
-from ase import units
 import mlipx
 from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
@@ -110,12 +109,10 @@ class LNCI16Benchmark(zntrack.Node):
         float
             Charge value, 0.0 if file doesn't exist.
         """
-
         try:
             with open(filepath) as f:
                 charge_str = f.read().strip()
-                charge = int(float(charge_str))
-            return charge
+                return int(float(charge_str))
         except (FileNotFoundError, OSError):
             return 0.0
         except (ValueError, TypeError):
@@ -258,7 +255,9 @@ class LNCI16Benchmark(zntrack.Node):
 
                 # Store additional info in complex atoms
                 complex_atoms.info["model"] = model_name
-                complex_atoms.info["E_int_model_kcal"] = e_int_model * EV_TO_KCAL_PER_MOL
+                complex_atoms.info["E_int_model_kcal"] = (
+                    e_int_model * EV_TO_KCAL_PER_MOL
+                )
                 complex_atoms.info["E_int_ref_kcal"] = e_int_ref_kcal
                 complex_atoms.info["error_kcal"] = error_kcal
                 complex_atoms.info["system"] = system_name
@@ -288,9 +287,7 @@ class LNCI16Benchmark(zntrack.Node):
         )
 
         # Run benchmark
-        complex_atoms = self.benchmark_lnci16(
-            calc, self.model_name, base_dir
-        )
+        complex_atoms = self.benchmark_lnci16(calc, self.model_name, base_dir)
 
         # Write output structures
         write_dir = OUT_PATH / self.model_name
@@ -301,7 +298,7 @@ class LNCI16Benchmark(zntrack.Node):
             # Temp fix: Clear calculator to avoid array broadcasting issues
             atoms_copy = atoms.copy()
             atoms_copy.calc = None
-            
+
             # Write each system to its own file
             system_file = write_dir / f"{i}.xyz"
             write(system_file, atoms_copy, format="extxyz")

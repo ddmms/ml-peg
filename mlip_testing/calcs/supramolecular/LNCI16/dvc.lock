@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   mace_mp_0b3_LNCI16Benchmark:
-    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name 
+    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name
       mace_mp_0b3_LNCI16Benchmark
     params:
       params.yaml:
