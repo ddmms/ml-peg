@@ -41,4 +41,4 @@ Input structures:
 Reference data:
 
 * Same as input data
-* $\omega$B97X-3c level of theory: a composite range-separated hybrid DFT method with a refitted D4 dispersion correction
+* :math:`{\omega}`B97X-3c level of theory: a composite range-separated hybrid DFT method with a refitted D4 dispersion correction
