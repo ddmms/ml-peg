@@ -1,0 +1,61 @@
+schema: '2.0'
+stages:
+  mace_matpes_r2scan_PLA15Benchmark:
+    cmd: zntrack run calc_PLA15.PLA15Benchmark --name
+      mace_matpes_r2scan_PLA15Benchmark
+    params:
+      params.yaml:
+        mace_matpes_r2scan_PLA15Benchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              head: matpes_pbe
+              model: mace-matpes-r2scan-0
+            module: mace.calculators
+            spec:
+          model_name: mace_matpes_r2scan
+    outs:
+    - path: nodes/mace_matpes_r2scan/PLA15Benchmark/node-meta.json
+      hash: md5
+      md5: e7cbd2747fe698844caae0430c291dea
+      size: 750
+  mace_mp_0a_PLA15Benchmark:
+    cmd: zntrack run calc_PLA15.PLA15Benchmark --name mace_mp_0a_PLA15Benchmark
+    params:
+      params.yaml:
+        mace_mp_0a_PLA15Benchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              model: medium
+            module: mace.calculators
+            spec:
+          model_name: mace_mp_0a
+    outs:
+    - path: nodes/mace_mp_0a/PLA15Benchmark/node-meta.json
+      hash: md5
+      md5: 18271adf5648d016336e255f8990789b
+      size: 677
+  mace_omat_0_PLA15Benchmark:
+    cmd: zntrack run calc_PLA15.PLA15Benchmark --name mace_omat_0_PLA15Benchmark
+    params:
+      params.yaml:
+        mace_omat_0_PLA15Benchmark:
+          model:
+            _cls: mlipx.nodes.generic_ase.GenericASECalculator
+            class_name: mace_mp
+            device: auto
+            kwargs:
+              model: medium-omat-0
+            module: mace.calculators
+            spec:
+          model_name: mace_omat_0
+    outs:
+    - path: nodes/mace_omat_0/PLA15Benchmark/node-meta.json
+      hash: md5
+      md5: 6d756d4dc178f45efc57f03fc8ff9438
+      size: 686
