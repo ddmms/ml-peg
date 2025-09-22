@@ -267,10 +267,6 @@ class LNCI16Benchmark(zntrack.Node):
                 complex_atoms.info["guest_charge"] = guest_atoms.info["charge"]
 
                 complex_atoms_list.append(complex_atoms)
-                # print(
-                #     f"  {system_name}: E_int = {e_int_model:.6f} eV "
-                #     f"(ref: {e_int_ref_ev:.6f} eV, error: {error_kcal:.2f} kcal/mol)"
-                # )
             except Exception as e:
                 print(f"Error processing {system_name}: {e}")
                 continue
