@@ -153,7 +153,7 @@ def interaction_energies() -> dict[str, list]:
 @pytest.fixture
 def s30l_mae(interaction_energies) -> dict[str, float]:
     """
-    Get mean absolute error for interaction energies.
+    Get mean absolute error for interaction energies (overall).
 
     Parameters
     ----------
@@ -177,14 +177,84 @@ def s30l_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def s30l_charged_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for charged systems only.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for charged systems.
+    """
+    # Get charges for filtering
+    charges = get_charges()
+    charged_indices = [i for i, charge in enumerate(charges) if charge != 0]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and charged_indices:
+            ref_charged = [interaction_energies["ref"][i] for i in charged_indices]
+            pred_charged = [
+                interaction_energies[model_name][i] for i in charged_indices
+            ]
+            results[model_name] = mae(ref_charged, pred_charged)
+        else:
+            results[model_name] = float("nan")
+    return results
+
+
+@pytest.fixture
+def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for neutral systems only.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for neutral systems.
+    """
+    # Get charges for filtering
+    charges = get_charges()
+    neutral_indices = [i for i, charge in enumerate(charges) if charge == 0]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and neutral_indices:
+            ref_neutral = [interaction_energies["ref"][i] for i in neutral_indices]
+            pred_neutral = [
+                interaction_energies[model_name][i] for i in neutral_indices
+            ]
+            results[model_name] = mae(ref_neutral, pred_neutral)
+        else:
+            results[model_name] = float("nan")
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "s30l_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
         "MAE": "Mean Absolute Error for all systems (kcal/mol)",
+        "Charged MAE": "Mean Absolute Error for charged systems (kcal/mol)",
+        "Neutral MAE": "Mean Absolute Error for neutral systems (kcal/mol)",
     },
 )
-def metrics(s30l_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    s30l_mae: dict[str, float],
+    s30l_charged_mae: dict[str, float],
+    s30l_neutral_mae: dict[str, float],
+) -> dict[str, dict]:
     """
     Get all S30L metrics.
 
@@ -192,6 +262,10 @@ def metrics(s30l_mae: dict[str, float]) -> dict[str, dict]:
     ----------
     s30l_mae
         Mean absolute errors for all systems.
+    s30l_charged_mae
+        Mean absolute errors for charged systems.
+    s30l_neutral_mae
+        Mean absolute errors for neutral systems.
 
     Returns
     -------
@@ -200,6 +274,8 @@ def metrics(s30l_mae: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAE": s30l_mae,
+        "Charged MAE": s30l_charged_mae,
+        "Neutral MAE": s30l_neutral_mae,
     }
 
 
