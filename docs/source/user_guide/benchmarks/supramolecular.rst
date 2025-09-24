@@ -51,7 +51,7 @@ Reference data:
   method with a refitted D4 dispersion correction.
 
 PLA15
-======
+=====
 
 Summary
 -------
