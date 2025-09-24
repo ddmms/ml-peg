@@ -7,14 +7,14 @@ from pathlib import Path
 from dash import Dash
 from dash.html import Div
 
-from mlip_testing.app import APP_ROOT
-from mlip_testing.app.base_app import BaseApp
-from mlip_testing.app.utils.build_callbacks import (
+from ml_peg.app import APP_ROOT
+from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
 )
-from mlip_testing.app.utils.load import read_plot
-from mlip_testing.calcs.models.models import MODELS
+from ml_peg.app.utils.load import read_plot
+from ml_peg.calcs.models.models import MODELS
 
 BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"

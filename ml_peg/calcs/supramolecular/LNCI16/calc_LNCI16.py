@@ -12,8 +12,8 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from mlip_testing.calcs.models.models import MODELS
-from mlip_testing.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.models.models import MODELS
+from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
 
 # Local directory to store output data
 OUT_PATH = Path(__file__).parent / "outputs"
