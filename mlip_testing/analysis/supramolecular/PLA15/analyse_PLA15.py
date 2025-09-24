@@ -136,6 +136,80 @@ def get_ligand_atom_counts() -> list[int]:
     return []
 
 
+def get_protein_charges() -> list[int]:
+    """
+    Get protein fragment charges for PLA15.
+
+    Returns
+    -------
+    list[int]
+        List of protein charges from structure files.
+    """
+    from ase.io import read
+
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                protein_charges = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    protein_charges.append(atoms.info.get("protein_charge", 0))
+                return protein_charges
+    return []
+
+
+def get_ligand_charges() -> list[int]:
+    """
+    Get ligand charges for PLA15.
+
+    Returns
+    -------
+    list[int]
+        List of ligand charges from structure files.
+    """
+    from ase.io import read
+
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                ligand_charges = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    ligand_charges.append(atoms.info.get("ligand_charge", 0))
+                return ligand_charges
+    return []
+
+
+def get_interaction_types() -> list[str]:
+    """
+    Get interaction types for PLA15.
+
+    Returns
+    -------
+    list[str]
+        List of interaction types from structure files.
+    """
+    from ase.io import read
+
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                interaction_types = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    interaction_types.append(
+                        atoms.info.get("interaction_type", "unknown")
+                    )
+                return interaction_types
+    return []
+
+
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_interaction_energies.json",
@@ -147,7 +221,10 @@ def get_ligand_atom_counts() -> list[int]:
         "Complex Atoms": get_atom_counts(),
         "Protein Atoms": get_protein_atom_counts(),
         "Ligand Atoms": get_ligand_atom_counts(),
-        "Charge": get_charges(),
+        "Total Charge": get_charges(),
+        "Protein Charge": get_protein_charges(),
+        "Ligand Charge": get_ligand_charges(),
+        "Interaction Type": get_interaction_types(),
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -206,9 +283,38 @@ def interaction_energies() -> dict[str, list]:
 
 
 @pytest.fixture
+def pla15_r2(interaction_energies) -> dict[str, float]:
+    """
+    Get Pearson's r² for interaction energies.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of Pearson's r² values for all models.
+    """
+    from scipy.stats import pearsonr
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name]:
+            r, _ = pearsonr(
+                interaction_energies["ref"], interaction_energies[model_name]
+            )
+            results[model_name] = r**2
+        else:
+            results[model_name] = 0.0
+    return results
+
+
+@pytest.fixture
 def pla15_mae(interaction_energies) -> dict[str, float]:
     """
-    Get mean absolute error for interaction energies.
+    Get mean absolute error for interaction energies (overall).
 
     Parameters
     ----------
@@ -232,14 +338,92 @@ def pla15_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def pla15_ion_ion_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for ion-ion interactions.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for ion-ion systems.
+    """
+    # Get interaction types for filtering
+    interaction_types = get_interaction_types()
+    ion_ion_indices = [
+        i for i, itype in enumerate(interaction_types) if itype == "ion-ion"
+    ]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and ion_ion_indices:
+            ref_ion_ion = [interaction_energies["ref"][i] for i in ion_ion_indices]
+            pred_ion_ion = [
+                interaction_energies[model_name][i] for i in ion_ion_indices
+            ]
+            results[model_name] = mae(ref_ion_ion, pred_ion_ion)
+        else:
+            results[model_name] = float("nan")
+    return results
+
+
+@pytest.fixture
+def pla15_ion_neutral_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for ion-neutral interactions.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for ion-neutral systems.
+    """
+    # Get interaction types for filtering
+    interaction_types = get_interaction_types()
+    ion_neutral_indices = [
+        i for i, itype in enumerate(interaction_types) if itype == "ion-neutral"
+    ]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and ion_neutral_indices:
+            ref_ion_neutral = [
+                interaction_energies["ref"][i] for i in ion_neutral_indices
+            ]
+            pred_ion_neutral = [
+                interaction_energies[model_name][i] for i in ion_neutral_indices
+            ]
+            results[model_name] = mae(ref_ion_neutral, pred_ion_neutral)
+        else:
+            results[model_name] = float("nan")
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "pla15_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
         "MAE": "Mean Absolute Error for all systems (kcal/mol)",
+        "R²": "Pearson's r² (squared correlation coefficient)",
+        "Ion-Ion MAE": "MAE for ion-ion interactions (kcal/mol)",
+        "Ion-Neutral MAE": "MAE for ion-neutral interactions (kcal/mol)",
     },
 )
-def metrics(pla15_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    pla15_mae: dict[str, float],
+    pla15_r2: dict[str, float],
+    pla15_ion_ion_mae: dict[str, float],
+    pla15_ion_neutral_mae: dict[str, float],
+) -> dict[str, dict]:
     """
     Get all PLA15 metrics.
 
@@ -247,6 +431,12 @@ def metrics(pla15_mae: dict[str, float]) -> dict[str, dict]:
     ----------
     pla15_mae
         Mean absolute errors for all systems.
+    pla15_r2
+        R² values for all systems.
+    pla15_ion_ion_mae
+        Mean absolute errors for ion-ion interactions.
+    pla15_ion_neutral_mae
+        Mean absolute errors for ion-neutral interactions.
 
     Returns
     -------
@@ -255,6 +445,9 @@ def metrics(pla15_mae: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAE": pla15_mae,
+        "R²": pla15_r2,
+        "Ion-Ion MAE": pla15_ion_ion_mae,
+        "Ion-Neutral MAE": pla15_ion_neutral_mae,
     }
 
 
