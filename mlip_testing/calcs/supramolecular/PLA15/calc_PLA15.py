@@ -353,6 +353,19 @@ class PLA15Benchmark(zntrack.Node):
                 ]
                 complex_atoms.info["ligand_charge"] = fragments["ligand"].info["charge"]
 
+                # Classify interaction type based on fragment charges
+                protein_charge = fragments["protein"].info["charge"]
+                ligand_charge = fragments["ligand"].info["charge"]
+
+                if protein_charge != 0 and ligand_charge != 0:
+                    interaction_type = "ion-ion"
+                elif protein_charge != 0 or ligand_charge != 0:
+                    interaction_type = "ion-neutral"
+                else:
+                    interaction_type = "neutral-neutral"
+
+                complex_atoms.info["interaction_type"] = interaction_type
+
                 complex_atoms_list.append(complex_atoms)
 
                 # print(
