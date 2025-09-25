@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ase import Atoms, units
@@ -78,23 +77,6 @@ class LNCI16Benchmark(zntrack.Node):
     model_name: str = zntrack.params()
 
     @staticmethod
-    def read_turbomole_xyz(filepath: Path) -> Atoms:
-        """
-        Read Turbomole format xyz file.
-
-        Parameters
-        ----------
-        filepath : Path
-            Path to the xyz file.
-
-        Returns
-        -------
-        Atoms
-            ASE Atoms object.
-        """
-        return read(filepath, format="xyz")
-
-    @staticmethod
     def read_charge_file(filepath: Path) -> float:
         """
         Read charge from .CHRG file.
@@ -140,15 +122,9 @@ class LNCI16Benchmark(zntrack.Node):
             raise FileNotFoundError(f"System directory not found: {system_dir}")
 
         # Load structures
-        complex_atoms = LNCI16Benchmark.read_turbomole_xyz(
-            system_dir / "complex" / "struc.xyz"
-        )
-        host_atoms = LNCI16Benchmark.read_turbomole_xyz(
-            system_dir / "host" / "struc.xyz"
-        )
-        guest_atoms = LNCI16Benchmark.read_turbomole_xyz(
-            system_dir / "guest" / "struc.xyz"
-        )
+        complex_atoms = read(system_dir / "complex" / "struc.xyz", format="xyz")
+        host_atoms = read(system_dir / "host" / "struc.xyz", format="xyz")
+        guest_atoms = read(system_dir / "guest" / "struc.xyz", format="xyz")
 
         # Read charges
         complex_charge = LNCI16Benchmark.read_charge_file(
@@ -185,12 +161,17 @@ class LNCI16Benchmark(zntrack.Node):
         float
             Interaction energy in eV.
         """
-        frags["complex"].calc = calc
-        e_complex = frags["complex"].get_potential_energy()
-        frags["host"].calc = calc
-        e_host = frags["host"].get_potential_energy()
-        frags["guest"].calc = calc
-        e_guest = frags["guest"].get_potential_energy()
+        # Use copies to avoid potential caching issues between fragments
+        complex_copy = frags["complex"].copy()
+        host_copy = frags["host"].copy()
+        guest_copy = frags["guest"].copy()
+
+        complex_copy.calc = calc
+        e_complex = complex_copy.get_potential_energy()
+        host_copy.calc = calc
+        e_host = host_copy.get_potential_energy()
+        guest_copy.calc = calc
+        e_guest = guest_copy.get_potential_energy()
         return e_complex - e_host - e_guest
 
     @staticmethod
@@ -298,17 +279,6 @@ class LNCI16Benchmark(zntrack.Node):
             # Write each system to its own file
             system_file = write_dir / f"{i}.xyz"
             write(system_file, atoms_copy, format="extxyz")
-
-        # Calculate and save MAE if we have results
-        if complex_atoms:
-            errors = [atoms.info["error_kcal"] for atoms in complex_atoms]
-            mae = sum(abs(error) for error in errors) / len(errors)
-            mae_data = {"MAE_kcal": float(mae)}
-
-            with open(write_dir / "mae_results.json", "w") as f:
-                json.dump(mae_data, f, indent=2)
-
-            print(f"MAE for {self.model_name} on LNCI16: {mae:.2f} kcal/mol")
 
 
 def build_project(repro: bool = False) -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import pytest
 
 from mlip_testing.analysis.utils.decorators import build_table, plot_parity
@@ -22,15 +21,21 @@ def get_system_names() -> list[str]:
     Returns
     -------
     list[str]
-        List of system names from the first available model results.
+        List of system names from structure files.
     """
+    from ase.io import read
+
     system_names = []
     for model_name in MODELS:
-        results_file = CALC_PATH / model_name / "lnci16_results.csv"
-        if results_file.exists():
-            df = pd.read_csv(results_file)
-            if not df.empty:
-                system_names = df["system"].tolist()
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    system_names.append(
+                        atoms.info.get("system", f"system_{xyz_file.stem}")
+                    )
                 break
     return system_names
 
@@ -42,14 +47,20 @@ def get_atom_counts() -> list[int]:
     Returns
     -------
     list[int]
-        List of complex atom counts from the first available model results.
+        List of complex atom counts from structure files.
     """
+    from ase.io import read
+
     for model_name in MODELS:
-        results_file = CALC_PATH / model_name / "lnci16_results.csv"
-        if results_file.exists():
-            df = pd.read_csv(results_file)
-            if not df.empty:
-                return df["complex_atoms"].tolist()
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                atom_counts = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    atom_counts.append(len(atoms))
+                return atom_counts
     return []
 
 
@@ -60,14 +71,20 @@ def get_charges() -> list[int]:
     Returns
     -------
     list[int]
-        List of complex charges from the first available model results.
+        List of complex charges from structure files.
     """
+    from ase.io import read
+
     for model_name in MODELS:
-        results_file = CALC_PATH / model_name / "lnci16_results.csv"
-        if results_file.exists():
-            df = pd.read_csv(results_file)
-            if not df.empty:
-                return df["complex_charge"].tolist()
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                charges = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    charges.append(atoms.info.get("complex_charge", 0))
+                return charges
     return []
 
 
@@ -80,12 +97,19 @@ def get_is_charged() -> list[bool]:
     list[bool]
         List of boolean values indicating if systems are charged.
     """
+    from ase.io import read
+
     for model_name in MODELS:
-        results_file = CALC_PATH / model_name / "lnci16_results.csv"
-        if results_file.exists():
-            df = pd.read_csv(results_file)
-            if not df.empty:
-                return df["is_charged"].tolist()
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                is_charged = []
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    charge = atoms.info.get("complex_charge", 0)
+                    is_charged.append(charge != 0)
+                return is_charged
     return []
 
 
@@ -111,27 +135,37 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted interaction energies.
     """
+    from ase.io import read
+
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
     for model_name in MODELS:
-        results_file = CALC_PATH / model_name / "lnci16_results.csv"
+        model_dir = CALC_PATH / model_name
 
-        if not results_file.exists():
+        if not model_dir.exists():
             results[model_name] = []
             continue
 
-        df = pd.read_csv(results_file)
-        if df.empty:
+        xyz_files = sorted(model_dir.glob("*.xyz"))
+        if not xyz_files:
             results[model_name] = []
             continue
 
-        # Store predicted energies
-        results[model_name] = df["E_int_model_kcal"].tolist()
+        model_energies = []
+        ref_energies = []
+
+        for xyz_file in xyz_files:
+            atoms = read(xyz_file)
+            model_energies.append(atoms.info["E_int_model_kcal"])
+            if not ref_stored:
+                ref_energies.append(atoms.info["E_int_ref_kcal"])
+
+        results[model_name] = model_energies
 
         # Store reference energies (only once)
         if not ref_stored:
-            results["ref"] = df["E_int_ref_kcal"].tolist()
+            results["ref"] = ref_energies
             ref_stored = True
 
         # Copy individual structure files to app data directory
@@ -139,14 +173,10 @@ def interaction_energies() -> dict[str, list]:
         structs_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy individual structure files
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            import shutil
+        import shutil
 
-            for i in range(16):  # LNCI16 has 16 systems
-                struct_file = model_dir / f"{i}.xyz"
-                if struct_file.exists():
-                    shutil.copy(struct_file, structs_dir / f"{i}.xyz")
+        for i, xyz_file in enumerate(xyz_files):
+            shutil.copy(xyz_file, structs_dir / f"{i}.xyz")
 
     return results
 
