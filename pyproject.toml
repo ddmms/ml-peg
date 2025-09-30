@@ -29,6 +29,7 @@ dependencies = [
     "kaleido>=1.0.0",
     "mlipx<0.2,>=0.1.5",
     "scikit-learn>=1.7.1",
+    "typer<1.0.0,>=0.19.1",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +50,9 @@ mace = [
 orb = [
     "orb-models == 0.5.5; sys_platform != 'win32' and python_version < '3.13'",
 ]
+
+[project.scripts]
+ml_peg = "ml_peg.cli.cli:app"
 
 [project.urls]
 Repository = "https://github.com/ddmms/ml-peg/"
