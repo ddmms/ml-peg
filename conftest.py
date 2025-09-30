@@ -17,6 +17,12 @@ def pytest_addoption(parser):
         default=False,
         help="Run slow benchmarks",
     )
+    parser.addoption(
+        "--models",
+        action="store",
+        default="all",
+        help="MLIPs, in comma-separated list. Default: 'all'.",
+    )
 
 
 def pytest_configure(config):
@@ -33,3 +39,9 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+@pytest.fixture
+def models(request):
+    """Get models option."""
+    return request.config.getoption("--models")
