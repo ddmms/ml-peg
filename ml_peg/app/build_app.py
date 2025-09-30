@@ -259,7 +259,7 @@ def build_tabs(
         return Div([layouts[tab]])
 
 
-def build_full_app(full_app: Dash) -> None:
+def build_full_app(full_app: Dash, category: str = "*") -> None:
     """
     Build full app layout and register callbacks.
 
@@ -267,9 +267,11 @@ def build_full_app(full_app: Dash) -> None:
     ----------
     full_app
         Full application with all sub-apps.
+    category
+        Category to build app for. Default is `*`, corresponding to all categories.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_layouts, all_tables = get_all_tests()
+    all_layouts, all_tables = get_all_tests(category=category)
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
