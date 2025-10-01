@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from dash import Dash
 from dash.html import Div
 import numpy as np
@@ -12,7 +14,14 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
 )
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_components import (
+    build_metric_weight_components,
+    build_threshold_inputs_under_table,
+)
+from ml_peg.app.utils.load import (
+    get_metric_columns_from_json,
+    read_plot,
+)
 from ml_peg.calcs.models.models import MODELS
 
 BENCHMARK_NAME = "OC157"
@@ -54,6 +63,8 @@ class OC157App(BaseApp):
             mode="traj",
         )
 
+        # Inline threshold/weight components register their own callbacks
+
 
 def get_app() -> OC157App:
     """
@@ -64,17 +75,59 @@ def get_app() -> OC157App:
     OC157App
         Benchmark layout and callback registration.
     """
+    # Load normalization ranges from the normalized table JSON
+    normalized_table_path = DATA_PATH / "oc157_normalized_metrics_table.json"
+    normalization_ranges = {}
+
+    try:
+        with open(normalized_table_path) as f:
+            normalized_table_data = json.load(f)
+            normalization_ranges = normalized_table_data.get("normalization_ranges", {})
+    except FileNotFoundError:
+        print(
+            f"Warning: {normalized_table_path} not found. Using empty normalization ranges."
+        )
+
+    # Get metric order from JSON; let results table size responsively
+    metric_columns = get_metric_columns_from_json(
+        DATA_PATH / "oc157_normalized_metrics_table.json"
+    )
+
+    # Embedded controls: handled directly inside the table, so omit external rows
+
+    # Build controls table component
+    threshold_inputs = build_threshold_inputs_under_table(
+        table_columns=metric_columns,
+        normalization_ranges=normalization_ranges,
+        table_id=f"{BENCHMARK_NAME}-table",
+        column_widths=None,
+        use_overlay=True,
+        enable_weight_overlay=True,
+    )
+    metric_weight_inputs = build_metric_weight_components(
+        header="Metric weights",
+        metrics=metric_columns,
+        table_id=f"{BENCHMARK_NAME}-table",
+        register_table_callbacks=False,
+        column_widths=None,
+        use_overlay=True,
+    )
+
     return OC157App(
         name=BENCHMARK_NAME,
         description=(
             "Performance in predicting relative energies between 3 structures for 157 "
-            "molecule-surface combinations."
+            "molecule-surface combinations. Use the normalized table below for advanced scoring."
         ),
-        table_path=DATA_PATH / "oc157_metrics_table.json",
+        table_path=DATA_PATH
+        / "oc157_normalized_metrics_table.json",  # Use normalized table
         extra_components=[
+            threshold_inputs,
+            metric_weight_inputs,
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        column_widths=None,  # let results table size responsively
     )
 
 

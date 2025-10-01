@@ -165,10 +165,21 @@ def get_table_style(
             raise ValueError(f"Column '{col}' not found in data.")
 
     for col in cols:
-        min_value = min([row[col] for row in data])
-        max_value = max([row[col] for row in data])
+        # Consider only numeric values to avoid control rows
+        numeric_vals = []
+        for row in data:
+            val = row.get(col)
+            if isinstance(val, (int, float)) and not np.isnan(val):
+                numeric_vals.append(val)
+        if not numeric_vals:
+            continue
+        min_value = min(numeric_vals)
+        max_value = max(numeric_vals)
 
-        for val in [row[col] for row in data]:
+        for row in data:
+            val = row.get(col)
+            if not isinstance(val, (int, float)) or np.isnan(val):
+                continue
             style_data_conditional.append(
                 {
                     "if": {"filter_query": f"{{{col}}} = {val}", "column_id": col},
@@ -178,3 +189,100 @@ def get_table_style(
             )
 
     return style_data_conditional
+
+
+def normalize_metric(value: float, x_threshold: float, y_threshold: float) -> float:
+    """
+    Normalize a metric value to [0, 1] with X mapped to 1 and Y mapped to 0.
+
+    Works regardless of whether X > Y or X < Y. Values beyond the thresholds are
+    clipped (≤ Y => 0, ≥ X => 1 after orientation is accounted for).
+
+    Parameters
+    ----------
+    value
+        The metric value to normalize.
+    x_threshold
+        Threshold that maps to score 1.0.
+    y_threshold
+        Threshold that maps to score 0.0.
+
+    Returns
+    -------
+    float
+        Normalized score between 0 and 1.
+    """
+    if value is None or x_threshold is None or y_threshold is None:
+        return 0.0
+
+    try:
+        # Handle NaNs robustly
+        if np.isnan([value, x_threshold, y_threshold]).any():
+            return 0.0
+    except Exception:
+        pass
+
+    if x_threshold == y_threshold:
+        return 1.0 if value == x_threshold else 0.0
+
+    # Linear map: Y -> 0, X -> 1
+    t = (value - y_threshold) / (x_threshold - y_threshold)
+    # Clip to [0, 1]
+    if t < 0.0:
+        return 0.0
+    if t > 1.0:
+        return 1.0
+    return float(t)
+
+
+def calc_normalized_scores(
+    metrics_data: list[dict],
+    normalization_ranges: dict[str, tuple[float, float]],
+    weights: dict[str, float] | None = None,
+) -> list[dict]:
+    """
+    Calculate normalized scores for each model and add to table data.
+
+    Each metric is normalized to 0-1 scale then averaged to get final score.
+
+    Parameters
+    ----------
+    metrics_data
+        Rows data containing model name and metric values.
+    normalization_ranges
+        Dictionary mapping metric names to (X, Y) threshold tuples.
+
+    Returns
+    -------
+    list[dict]
+        Rows of data with normalized score for each model added.
+    """
+    for row in metrics_data:
+        normalized_scores = []
+        weights_list = []
+
+        for key, value in row.items():
+            if (
+                key not in ("MLIP", "Score", "Rank", "id")
+                and key in normalization_ranges
+            ):
+                x_threshold, y_threshold = normalization_ranges[key]
+                normalized_score = normalize_metric(value, x_threshold, y_threshold)
+                normalized_scores.append(normalized_score)
+                if weights and key in weights:
+                    weights_list.append(weights.get(key, 1.0))
+                else:
+                    weights_list.append(1.0)
+
+        # Average the normalized scores (higher is better)
+        if normalized_scores:
+            try:
+                row["Score"] = float(
+                    np.average(normalized_scores, weights=weights_list)
+                )
+            except Exception:
+                row["Score"] = float(np.mean(normalized_scores))
+        else:
+            row["Score"] = 0.0
+
+    return metrics_data

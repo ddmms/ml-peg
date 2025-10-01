@@ -2,10 +2,25 @@
 
 from __future__ import annotations
 
-from dash import Input, Output, State, callback, ctx
+from dash import (
+    ClientsideFunction,
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    html,
+)
 from dash.exceptions import PreventUpdate
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
+from ml_peg.analysis.utils.utils import (
+    calc_ranks,
+    calc_scores,
+    get_table_style,
+    normalize_metric,
+)
 
 
 def register_summary_table_callbacks() -> None:
@@ -229,3 +244,450 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
             Weights to set slider value and text input value.
         """
         return stored_weights[column], stored_weights[column]
+
+
+def register_metric_weight_box_callbacks(
+    input_id: str, table_id: str, metric: str
+) -> None:
+    """
+    Register callbacks for metric weight text boxes (no slider).
+
+    Parameters
+    ----------
+    input_id
+        ID for the numeric input box.
+    table_id
+        ID for table. Also used to identify reset button and weight store.
+    metric
+        Metric name corresponding to input.
+    """
+    default_weight = 1.0
+
+    @callback(
+        Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
+        Input(input_id, "value"),
+        Input(f"{table_id}-reset-button", "n_clicks"),
+        State(f"{table_id}-weight-store", "data"),
+        prevent_initial_call=True,
+    )
+    def store_weight_value(
+        input_weight: float, n_clicks: int, stored_weights: dict[str, float]
+    ):
+        trigger_id = ctx.triggered_id
+        if trigger_id == input_id:
+            if input_weight is None:
+                raise PreventUpdate
+            stored_weights[metric] = input_weight
+        elif trigger_id == f"{table_id}-reset-button":
+            stored_weights.update((key, default_weight) for key in stored_weights)
+            stored_weights[metric] = default_weight
+        else:
+            raise PreventUpdate
+        return stored_weights
+
+    @callback(
+        Output(input_id, "value"),
+        Input(f"{table_id}-weight-store", "data"),
+        Input("all-tabs", "value"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def sync_weight_input(stored_weights: dict[str, float] | None, _tabs_value: str):
+        """Sync the numeric input value from the store (e.g., after Reset)."""
+        if not stored_weights:
+            raise PreventUpdate
+        return stored_weights.get(metric, default_weight)
+
+
+def register_normalization_callbacks(
+    table_id: str,
+    metrics: list[str],
+    default_ranges: dict[str, tuple[float, float]] | None = None,
+    input_suffix: str = "threshold",
+) -> None:
+    """
+    Register callbacks for normalization threshold controls.
+
+    Parameters
+    ----------
+    table_id
+        ID for table to update.
+    metrics
+        List of metric names that have normalization thresholds.
+    """
+    # Per-metric store callbacks (simpler and reliable)
+    for metric in metrics:
+
+        @callback(
+            Output(f"{table_id}-normalization-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-{metric}-good-{input_suffix}", "value"),
+            Input(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
+            State(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def store_threshold_values(
+            good_val, bad_val, n_clicks, stored_ranges, metric=metric
+        ):
+            """Update normalization ranges store for one metric or reset all."""
+            trigger_id = ctx.triggered_id
+            if stored_ranges is None:
+                stored_ranges = (default_ranges or {}).copy()
+
+            if trigger_id == f"{table_id}-reset-thresholds-button":
+                return default_ranges or stored_ranges
+
+            # Ensure key exists
+            cur_x, cur_y = stored_ranges.get(metric, (0.0, 1.0))
+
+            if trigger_id == f"{table_id}-{metric}-good-{input_suffix}":
+                if good_val is None:
+                    raise PreventUpdate
+                stored_ranges[metric] = (good_val, cur_y)
+            elif trigger_id == f"{table_id}-{metric}-bad-{input_suffix}":
+                if bad_val is None:
+                    raise PreventUpdate
+                stored_ranges[metric] = (cur_x, bad_val)
+            else:
+                raise PreventUpdate
+
+            return stored_ranges
+
+    # Simple callback to toggle display between raw and normalized values (no score calculation)
+    @callback(
+        Output(f"{table_id}", "data"),
+        Output(f"{table_id}", "style_data_conditional"),
+        Input(f"{table_id}-normalized-toggle", "value"),
+        State(f"{table_id}-raw-data-store", "data"),
+        State(f"{table_id}-normalization-store", "data"),
+        prevent_initial_call=True,
+    )
+    def toggle_normalized_display(
+        show_normalized: list[str] | None,
+        raw_data: list[dict],
+        normalization_ranges: dict[str, tuple[float, float]] | None,
+    ) -> tuple[list[dict], list[dict]]:
+        """Toggle between showing raw and normalized metric values (display only)."""
+        if not raw_data:
+            raise PreventUpdate
+
+        show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
+        if show_norm_flag and normalization_ranges:
+            # Show normalized values
+            display_rows = []
+            for row in raw_data:
+                new_row = row.copy()
+                for metric, (x_t, y_t) in normalization_ranges.items():
+                    if metric in row:
+                        new_row[metric] = normalize_metric(row[metric], x_t, y_t)
+                display_rows.append(new_row)
+        else:
+            # Show raw values
+            display_rows = [row.copy() for row in raw_data]
+
+        style = get_table_style(display_rows)
+        return display_rows, style
+
+    # Register individual threshold input sync callbacks
+    for metric in metrics:
+
+        @callback(
+            [
+                Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
+                Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            ],
+            Input(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def sync_threshold_inputs(normalization_ranges, metric=metric):
+            """Sync threshold input values with stored ranges."""
+            if normalization_ranges and metric in normalization_ranges:
+                good_val, bad_val = normalization_ranges[metric]
+                return good_val, bad_val
+            return 0.0, 1.0
+
+
+def register_control_table_width_sync(
+    results_table_id: str, controls_table_id: str
+) -> None:
+    """
+    Keep the controls table column widths aligned with the results table by
+    measuring header widths and applying them to the controls table.
+    """
+    clientside_callback(
+        ClientsideFunction(namespace="mlip", function_name="apply_widths_to_control"),
+        [
+            Output(controls_table_id, "style_cell_conditional"),
+            Output(controls_table_id, "style_table"),
+        ],
+        [
+            Input(results_table_id, "columns"),
+            Input(results_table_id, "data_timestamp"),
+        ],
+        [
+            State(controls_table_id, "columns"),
+            State(results_table_id, "id"),
+            State(controls_table_id, "id"),
+        ],
+    )
+
+
+def register_overlay_callbacks(
+    table_id: str, metrics: list[str], enable_weight_overlay: bool = False
+) -> None:
+    """Place overlay Good/Bad inputs at the visual centers of metric columns.
+
+    If enable_weight_overlay is True, also render per-metric weight inputs as overlays.
+    """
+    # 1) Measure centers clientside and write to centers store
+    clientside_callback(
+        ClientsideFunction(namespace="mlip", function_name="measure_col_centers"),
+        Output(f"{table_id}-centers-store", "data"),
+        [
+            Input(table_id, "columns"),
+            Input(table_id, "data_timestamp"),
+        ],
+        [
+            State(f"{table_id}-metrics-store", "data"),
+            State(table_id, "id"),
+            State(f"{table_id}-thresholds-overlay", "id"),
+        ],
+    )
+
+    # 2) Render threshold overlay inputs positioned using centers
+    @callback(
+        Output(f"{table_id}-thresholds-overlay", "children"),
+        Input(f"{table_id}-centers-store", "data"),
+        Input(f"{table_id}-normalization-store", "data"),
+        prevent_initial_call=True,
+    )
+    def render_threshold_overlay(centers: dict | None, norm_store: dict | None):
+        if not centers:
+            raise PreventUpdate
+
+        # Extract grid dimensions for proper centering
+        grid_height = centers.get("__gridHeight", 0)
+        overlay_offset_top = centers.get("__overlayOffsetTop", 0)
+
+        # print(f"DEBUG: grid_height={grid_height}, overlay_offset_top={overlay_offset_top}")
+
+        # Calculate the center position relative to the grid container
+        if grid_height > 0:
+            # Calculate correct offset to reach grid center
+            grid_center_from_top = grid_height / 2  # Center position from grid top
+            distance_to_move_up = (
+                overlay_offset_top - grid_center_from_top
+            )  # How far to move up from overlay
+            center_offset_px = -distance_to_move_up
+            # print(f"DEBUG: grid_center_from_top={grid_center_from_top}, distance_to_move_up={distance_to_move_up}, center_offset_px={center_offset_px}")
+
+            top_percent = f"{center_offset_px}px"
+            # print(f"DEBUG: final top_percent={top_percent}")
+        else:
+            # Fallback: position above overlay anchor
+            top_percent = "-30px"
+            print(f"DEBUG: Using fallback top_percent={top_percent}")
+
+        children = []
+        for m in metrics:
+            lp = centers.get(m)
+            if lp is None:
+                continue
+            good_def, bad_def = 0.0, 1.0
+            if norm_store and m in norm_store:
+                good_def, bad_def = norm_store[m]
+            grp = html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label(
+                                "Good:",
+                                style={
+                                    "fontSize": "11px",
+                                    "width": "40px",
+                                    "textAlign": "right",
+                                    "marginRight": "4px",
+                                    "color": "lightseagreen",
+                                },
+                            ),
+                            dcc.Input(
+                                id=f"{table_id}-{m}-good-overlay",
+                                type="number",
+                                step=0.001,
+                                value=good_def,
+                                style={"width": "64px", "fontSize": "11px"},
+                            ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "alignItems": "center",
+                            "marginBottom": "2px",
+                        },
+                    ),
+                    html.Div(
+                        [
+                            html.Label(
+                                "Bad:",
+                                style={
+                                    "fontSize": "11px",
+                                    "width": "40px",
+                                    "textAlign": "right",
+                                    "marginRight": "4px",
+                                    "color": "#dc3545",
+                                },
+                            ),
+                            dcc.Input(
+                                id=f"{table_id}-{m}-bad-overlay",
+                                type="number",
+                                step=0.001,
+                                value=bad_def,
+                                style={"width": "64px", "fontSize": "11px"},
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center"},
+                    ),
+                ],
+                style={
+                    "position": "absolute",
+                    "left": f"{lp}%",
+                    "transform": "translate(-50%, -50%)",
+                    "top": top_percent,  # Dynamically calculated center position
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "alignItems": "flex-end",  # Align input boxes to the right edge of container
+                    "width": "108px",  # Fixed container width so centering is predictable
+                    "pointerEvents": "auto",
+                },
+            )
+            children.append(grp)
+        return children
+
+    # 3) Render weight overlay inputs positioned using centers (optional)
+    if enable_weight_overlay:
+
+        @callback(
+            Output(f"{table_id}-weights-overlay", "children"),
+            Input(f"{table_id}-centers-store", "data"),
+            Input(f"{table_id}-weight-store", "data"),
+            prevent_initial_call=True,
+        )
+        def render_weight_overlay(centers: dict | None, weight_store: dict | None):
+            if not centers:
+                raise PreventUpdate
+
+            # Extract grid dimensions for proper centering (same calculation as thresholds)
+            grid_height = centers.get("__gridHeight", 0)
+            overlay_offset_top = centers.get("__overlayOffsetTop", 0)
+
+            # print(f"WEIGHT DEBUG: grid_height={grid_height}, overlay_offset_top={overlay_offset_top}")
+
+            # Calculate the center position relative to the grid container
+            if grid_height > 0:
+                # Calculate correct offset to reach grid center
+                grid_center_from_top = grid_height / 2  # Center position from grid top
+                distance_to_move_up = (
+                    overlay_offset_top - grid_center_from_top
+                )  # How far to move up from overlay
+                # Adjust for single weight box vs stacked threshold boxes
+                # Weight box needs additional offset to be truly centered
+                weight_adjustment = 11  # Same as thresholds to start
+                center_offset_px = -distance_to_move_up + weight_adjustment
+                top_percent = f"{center_offset_px}px"
+                # print(f"WEIGHT DEBUG: distance_to_move_up={distance_to_move_up}, center_offset_px={center_offset_px}, top_percent={top_percent}")
+            else:
+                # Fallback: position above overlay anchor
+                top_percent = "-30px"
+                print(f"WEIGHT DEBUG: Using fallback top_percent={top_percent}")
+
+            children = []
+            for m in metrics:
+                lp = centers.get(m)
+                if lp is None:
+                    continue
+                w_def = 1.0
+                if weight_store and m in weight_store:
+                    w_def = weight_store[m]
+                grp = html.Div(
+                    [
+                        html.Div(
+                            [
+                                dcc.Input(
+                                    id=f"{table_id}-{m}-w-overlay",
+                                    type="number",
+                                    step=0.01,
+                                    value=w_def,
+                                    style={"width": "64px", "fontSize": "11px"},
+                                ),
+                            ],
+                            style={
+                                "display": "flex",
+                                "alignItems": "center",
+                                "justifyContent": "center",
+                            },
+                        ),
+                    ],
+                    style={
+                        "position": "absolute",
+                        "left": f"{lp}%",
+                        "transform": "translate(-50%, -50%)",
+                        "top": top_percent,  # Dynamically calculated center position
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "alignItems": "flex-end",
+                        "width": "108px",
+                        "pointerEvents": "auto",
+                    },
+                )
+                children.append(grp)
+            return children
+
+        # 3b) Reset all weights to defaults when Reset is pressed (overlay mode)
+        @callback(
+            Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-reset-button", "n_clicks"),
+            State(f"{table_id}-weight-store", "data"),
+            prevent_initial_call=True,
+        )
+        def reset_weights_overlay(n_clicks, w_store):
+            if not n_clicks:
+                raise PreventUpdate
+            # Reset all existing keys to 1.0
+            if not w_store:
+                return dict.fromkeys(metrics, 1.0)
+            return dict.fromkeys(w_store.keys(), 1.0)
+
+    # 4) Write overlay inputs back to normalization store
+    for m in metrics:
+
+        @callback(
+            Output(f"{table_id}-normalization-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-{m}-good-overlay", "value"),
+            Input(f"{table_id}-{m}-bad-overlay", "value"),
+            State(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def sync_norm_store(good_val, bad_val, store, metric=m):
+            if store is None:
+                store = {}
+            if good_val is None and bad_val is None:
+                raise PreventUpdate
+            cur_good, cur_bad = store.get(metric, (0.0, 1.0))
+            new_good = cur_good if good_val is None else good_val
+            new_bad = cur_bad if bad_val is None else bad_val
+            store[metric] = (new_good, new_bad)
+            return store
+
+        if enable_weight_overlay:
+
+            @callback(
+                Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
+                Input(f"{table_id}-{m}-w-overlay", "value"),
+                State(f"{table_id}-weight-store", "data"),
+                prevent_initial_call=True,
+            )
+            def sync_weight_overlay(w_val, w_store, metric=m):
+                if w_store is None:
+                    w_store = {}
+                if w_val is None:
+                    raise PreventUpdate
+                w_store[metric] = w_val
+                return w_store

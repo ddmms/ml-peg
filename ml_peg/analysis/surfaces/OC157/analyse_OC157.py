@@ -6,7 +6,11 @@ from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_normalized_table,
+    build_table,
+    plot_parity,
+)
 from ml_peg.analysis.utils.utils import mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -206,7 +210,44 @@ def metrics(
     }
 
 
-def test_oc157(metrics: dict[str, dict]) -> None:
+@pytest.fixture
+@build_normalized_table(
+    filename=OUT_PATH / "oc157_normalized_metrics_table.json",
+    metric_tooltips={
+        "Model": "Name of the model",
+        "MAE": "Mean Absolute Error (meV)",
+        "Ranking Error": "Error in ranking stability across triplets",
+    },
+    normalization_ranges={
+        "MAE": (0, 1.0),  # X=0 (best), Y=1 (worst)
+        "Ranking Error": (0.0, 1.0),  # X=0.0 (best), Y=1.0 (worst)
+    },
+)
+def normalized_metrics(
+    oc157_mae: dict[str, float], ranking_error: dict[str, float]
+) -> dict[str, dict]:
+    """
+    Get all OC157 metrics with normalization.
+
+    Parameters
+    ----------
+    oc157_mae
+        Mean absolute errors for all models.
+    ranking_error
+        Ranking errors for all models.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return {
+        "MAE": oc157_mae,
+        "Ranking Error": ranking_error,
+    }
+
+
+def test_oc157(metrics: dict[str, dict], normalized_metrics: dict[str, dict]) -> None:
     """
     Run OC157 test.
 
@@ -214,5 +255,7 @@ def test_oc157(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All OC157 metrics.
+    normalized_metrics
+        All OC157 normalized metrics.
     """
     return

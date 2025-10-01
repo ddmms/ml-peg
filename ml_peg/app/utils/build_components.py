@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dash.dash_table import DataTable
+from dash.dcc import Checklist, Slider, Store
 from dash.dcc import Input as DCC_Input
-from dash.dcc import Slider, Store
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Div, Label
 
 from ml_peg.app.utils.register_callbacks import (
+    register_metric_weight_box_callbacks,
+    register_normalization_callbacks,
+    register_overlay_callbacks,
     register_summary_table_callbacks,
     register_tab_table_callbacks,
     register_weight_callbacks,
@@ -134,10 +137,180 @@ def build_weight_components(
     return Div(layout)
 
 
+def build_metric_weight_components(
+    header: str,
+    metrics: list[str],
+    table_id: str,
+    register_table_callbacks: bool = False,
+    column_widths: dict[str, int] | None = None,
+    use_overlay: bool = False,
+) -> Div:
+    """
+    Build metric-level weight sliders/inputs for a single benchmark table.
+
+    Unlike category/summary weighting, this does not register table-level
+    recompute callbacks (to avoid conflict with normalization callbacks).
+    It only creates the store and per-metric sync callbacks.
+
+    Parameters
+    ----------
+    header
+        Header for above sliders.
+    metrics
+        Metric column names to create weights for.
+    table_id
+        ID for the benchmark table.
+
+    Returns
+    -------
+    Div
+        Div containing header, weight sliders, inputs and reset.
+    """
+    # Grid layout similar to threshold inputs
+    total_cols = 1 + len(metrics) + 2  # MLIP + metrics + Score + Rank
+    if column_widths:
+        parts = [f"{column_widths.get('MLIP')}px"]
+        for metric in metrics:
+            parts.append(f"{column_widths.get(metric)}px")
+        parts.append(f"{column_widths.get('Score')}px")
+        parts.append(f"{column_widths.get('Rank')}px")
+        grid_template = " ".join(parts)
+    else:
+        grid_template = f"repeat({total_cols}, minmax(0, 1fr))"
+
+    container_style = {
+        "display": "grid",
+        "gridTemplateColumns": grid_template,
+        "alignItems": "start",
+        "columnGap": "6px",
+        "rowGap": "0px",
+        "marginTop": "6px",
+        "padding": "8px 10px",
+        "backgroundColor": "#f8f9fa",
+        "border": "1px solid #dee2e6",
+        "borderRadius": "5px",
+    }
+
+    cells: list[Div] = []
+
+    # Column 1: header + reset
+    cells.append(
+        Div(
+            [
+                Div(
+                    header,
+                    style={
+                        "fontWeight": "bold",
+                        "fontSize": "13px",
+                        "padding": "2px 4px",
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                Button(
+                    "Reset",
+                    id=f"{table_id}-reset-button",
+                    n_clicks=0,
+                    style={
+                        "fontSize": "11px",
+                        "padding": "4px 8px",
+                        "marginTop": "4px",
+                        "backgroundColor": "#6c757d",
+                        "color": "white",
+                        "border": "none",
+                        "borderRadius": "3px",
+                        "width": "fit-content",
+                    },
+                ),
+                # Overlay anchor for weights when use_overlay=True
+                Div(
+                    id=f"{table_id}-weights-overlay",
+                    style={
+                        "position": "relative",
+                        "height": "0px",
+                        "width": "100%",
+                        "marginTop": "1px",
+                    }
+                    if use_overlay
+                    else {"display": "none"},
+                ),
+            ],
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "alignItems": "flex-start",
+                "justifyContent": "center",
+                "padding": "1px 2px",
+                "position": "relative",  # allow overlay to fill this cell
+            },
+        )
+    )
+
+    # Columns: metric weight inputs
+    input_ids = []
+    for metric in metrics:
+        input_id = f"{table_id}-{metric}-weight-input"
+        input_ids.append(input_id)
+        if not use_overlay:
+            cells.append(
+                Div(
+                    [
+                        Div(""),
+                        DCC_Input(
+                            id=input_id,
+                            type="number",
+                            value=1.0,
+                            step=0.01,
+                            style={
+                                "width": "64px",
+                                "fontSize": "11px",
+                                "padding": "2px 4px",
+                                "border": "1px solid #6c757d",
+                                "borderRadius": "3px",
+                            },
+                        ),
+                    ],
+                    style={
+                        "display": "grid",
+                        "gridTemplateColumns": "40px 64px",
+                        "columnGap": "3px",
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                    },
+                )
+            )
+
+    # Trailing placeholders for Score and Rank
+    cells.append(Div(""))
+    cells.append(Div(""))
+
+    # Store for weights
+    store = Store(
+        id=f"{table_id}-weight-store",
+        storage_type="session",
+        data=dict.fromkeys(metrics, 1.0),
+    )
+
+    # Register callbacks for metric weight inputs
+    if not use_overlay:
+        for metric, input_id in zip(metrics, input_ids, strict=True):
+            register_metric_weight_box_callbacks(
+                input_id=input_id, table_id=table_id, metric=metric
+            )
+
+    # Optionally register table recompute callbacks (for non-normalized tables)
+    if register_table_callbacks:
+        register_tab_table_callbacks(table_id=table_id)
+
+    return Div(
+        [Div(cells, id=f"{table_id}-weights-grid", style=container_style), store]
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
     table: DataTable,
+    under_table_components: list[Component] | None = None,
     extra_components: list[Component] | None = None,
 ) -> Div:
     """
@@ -165,14 +338,461 @@ def build_test_layout(
         Div(table),
     ]
 
+    if under_table_components:
+        layout_contents.extend(under_table_components)
+
+    # Raw data store for possible toggles/overlays
     layout_contents.append(
-        Store(
-            id="summary-table-scores-store",
-            storage_type="session",
-        ),
+        Store(id=f"{table.id}-raw-data-store", storage_type="memory", data=table.data)
     )
 
     if extra_components:
         layout_contents.extend(extra_components)
 
     return Div(layout_contents)
+
+
+def build_threshold_input(
+    metric_name: str, x_default: float, y_default: float, table_id: str
+) -> Div:
+    """
+    Build threshold input boxes for metric normalization.
+
+    Parameters
+    ----------
+    metric_name
+        Name of the metric.
+    x_default
+        Default value for X threshold (upper bound).
+    y_default
+        Default value for Y threshold (lower bound).
+    table_id
+        ID for associated table.
+
+    Returns
+    -------
+    Div
+        Div containing X and Y threshold inputs.
+    """
+    return Div(
+        [
+            Label(f"{metric_name}:", style={"fontWeight": "bold"}),
+            Div(
+                [
+                    Div(
+                        [
+                            Label("Good:", style={"fontSize": "12px"}),
+                            DCC_Input(
+                                id=f"{table_id}-{metric_name}-good-threshold",
+                                type="number",
+                                value=x_default,
+                                step=0.001,
+                                style={"width": "80px", "marginLeft": "5px"},
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center"},
+                    ),
+                    Div(
+                        [
+                            Label("Bad:", style={"fontSize": "12px"}),
+                            DCC_Input(
+                                id=f"{table_id}-{metric_name}-bad-threshold",
+                                type="number",
+                                value=y_default,
+                                step=0.001,
+                                style={"width": "80px", "marginLeft": "5px"},
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center"},
+                    ),
+                ],
+                style={"display": "flex", "gap": "10px"},
+            ),
+        ],
+        style={"marginBottom": "10px", "padding": "5px", "border": "1px solid #ddd"},
+    )
+
+
+def build_threshold_inputs_under_table(
+    table_columns: list[str],
+    normalization_ranges: dict[str, tuple[float, float]],
+    table_id: str,
+    column_widths: dict[str, int] | None = None,
+    use_overlay: bool = False,
+    enable_weight_overlay: bool = False,
+) -> Div:
+    """
+    Build a single inline row of Good/Bad threshold inputs aligned to the table columns.
+
+    This is generic across benchmarks: it renders one cell per table column in the
+    same order: "MLIP", metric columns, then optional "Score" and "Rank" columns.
+
+    Parameters
+    ----------
+    table_columns
+        Ordered list of metric column names as they appear in the table
+        (exclude "MLIP", "Score", "Rank").
+    normalization_ranges
+        Dictionary mapping metric names to (X, Y) threshold tuples.
+    table_id
+        ID for the associated table.
+
+    Returns
+    -------
+    Div
+        Div containing threshold inputs aligned under table columns.
+    """
+    # Grid layout to align cells with table columns.
+    # First column (MLIP) is wider to match typical model-name width, metrics flex equally,
+    # trailing Score/Rank are compact.
+    total_cols = 1 + len(table_columns) + 2  # MLIP + metrics + Score + Rank
+    if column_widths:
+        # Build explicit grid using the provided widths to match the DataTable
+        parts = [f"{column_widths.get('MLIP')}px"]
+        for metric in table_columns:
+            parts.append(f"{column_widths.get(metric)}px")
+        parts.append(f"{column_widths.get('Score')}px")
+        parts.append(f"{column_widths.get('Rank')}px")
+        grid_template = " ".join(parts)
+    else:
+        # Flexible grid; actual widths will be synced via clientside callback
+        grid_template = f"repeat({total_cols}, minmax(0, 1fr))"
+    container_style = {
+        "display": "grid",
+        "gridTemplateColumns": grid_template,
+        "alignItems": "start",
+        "columnGap": "6px",
+        "rowGap": "0px",
+        "marginTop": "10px",
+        "padding": "4px 8px",
+        "backgroundColor": "#f8f9fa",
+        "border": "1px solid #dee2e6",
+        "borderRadius": "5px",
+    }
+
+    cells: list[Div] = []
+
+    # Column 1: header cell under MLIP with inline Reset button
+    cells.append(
+        Div(
+            [
+                Div(
+                    "Thresholds",
+                    style={
+                        "fontWeight": "bold",
+                        "fontSize": "13px",
+                        "padding": "2px 4px",
+                        "whiteSpace": "nowrap",
+                    },
+                ),
+                Button(
+                    "Reset",
+                    id=f"{table_id}-reset-thresholds-button",
+                    n_clicks=0,
+                    style={
+                        "fontSize": "11px",
+                        "padding": "4px 8px",
+                        "marginTop": "4px",
+                        "backgroundColor": "#6c757d",
+                        "color": "white",
+                        "border": "none",
+                        "borderRadius": "3px",
+                        "width": "fit-content",
+                    },
+                ),
+                # Toggle to view normalized metric values in the table
+                Checklist(
+                    id=f"{table_id}-normalized-toggle",
+                    options=[{"label": "Show normalized values", "value": "norm"}],
+                    value=[],
+                    style={"marginTop": "6px", "fontSize": "11px"},
+                    inputStyle={"marginRight": "6px"},
+                    labelStyle={"display": "inline-flex", "alignItems": "center"},
+                ),
+                # Overlay anchor lives here when use_overlay=True
+                Div(
+                    id=f"{table_id}-thresholds-overlay",
+                    style={
+                        "position": "relative",
+                        "height": "0px",
+                        "width": "100%",
+                        "marginTop": "1px",
+                    }
+                    if use_overlay
+                    else {"display": "none"},
+                ),
+            ],
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "alignItems": "flex-start",
+                "justifyContent": "center",
+                "padding": "1px 2px",
+            },
+        )
+    )
+
+    # Columns 2..n: metric cells with Good/Bad inputs (label column fixed width)
+    for metric in table_columns:
+        x_val, y_val = normalization_ranges.get(metric, (None, None))
+        # Provide sensible fallbacks if not present
+        if x_val is None or y_val is None:
+            x_val, y_val = 0.0, 1.0
+
+        if not use_overlay:
+            cells.append(
+                Div(
+                    [
+                        Div(
+                            [
+                                Label(
+                                    "Good:",
+                                    style={
+                                        "fontSize": "11px",
+                                        "color": "lightseagreen",
+                                        "textAlign": "right",
+                                    },
+                                ),
+                                DCC_Input(
+                                    id=f"{table_id}-{metric}-good-threshold",
+                                    type="number",
+                                    value=x_val,
+                                    step=0.001,
+                                    style={
+                                        "width": "64px",
+                                        "fontSize": "11px",
+                                        "padding": "2px 4px",
+                                        "border": "1px solid lightseagreen",
+                                        "borderRadius": "3px",
+                                    },
+                                ),
+                            ],
+                            style={
+                                "display": "grid",
+                                "gridTemplateColumns": "40px 64px",
+                                "columnGap": "3px",
+                                "alignItems": "center",
+                                "justifyContent": "center",
+                                "marginBottom": "2px",
+                            },
+                        ),
+                        Div(
+                            [
+                                Label(
+                                    "Bad:",
+                                    style={
+                                        "fontSize": "11px",
+                                        "color": "#dc3545",
+                                        "textAlign": "right",
+                                    },
+                                ),
+                                DCC_Input(
+                                    id=f"{table_id}-{metric}-bad-threshold",
+                                    type="number",
+                                    value=y_val,
+                                    step=0.001,
+                                    style={
+                                        "width": "64px",
+                                        "fontSize": "11px",
+                                        "padding": "2px 4px",
+                                        "border": "1px solid #dc3545",
+                                        "borderRadius": "3px",
+                                    },
+                                ),
+                            ],
+                            style={
+                                "display": "grid",
+                                "gridTemplateColumns": "40px 64px",
+                                "columnGap": "3px",
+                                "alignItems": "center",
+                                "justifyContent": "center",
+                            },
+                        ),
+                    ],
+                    style={
+                        "textAlign": "center",
+                        "padding": "2px 0",
+                        "minWidth": "100px",
+                    },
+                )
+            )
+
+    # Trailing placeholder cells for Score and Rank columns
+    cells.append(Div(""))
+    cells.append(Div(""))
+
+    store = Store(
+        id=f"{table_id}-normalization-store",
+        storage_type="session",
+        data=normalization_ranges,
+    )
+
+    # Register callbacks for these metrics, pass defaults for reset
+    input_suffix = "overlay" if use_overlay else "threshold"
+    register_normalization_callbacks(
+        table_id, table_columns, normalization_ranges, input_suffix
+    )
+
+    # Score sync callbacks will be implemented later
+
+    if use_overlay:
+        metrics_store = Store(
+            id=f"{table_id}-metrics-store", storage_type="memory", data=table_columns
+        )
+        centers_store = Store(id=f"{table_id}-centers-store", storage_type="memory")
+        register_overlay_callbacks(
+            table_id=table_id,
+            metrics=table_columns,
+            enable_weight_overlay=enable_weight_overlay,
+        )
+        return Div(
+            [
+                Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
+                store,
+                metrics_store,
+                centers_store,
+            ]
+        )
+
+    return Div(
+        [
+            Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
+            store,
+        ]
+    )
+
+
+def build_normalization_components(
+    metrics: list[str],
+    normalization_ranges: dict[str, tuple[float, float]],
+    table_id: str,
+) -> Div:
+    """
+    Build normalization threshold components for all metrics.
+
+    DEPRECATED: Use build_table_with_threshold_rows instead for inline editing.
+
+    Parameters
+    ----------
+    metrics
+        List of metric names.
+    normalization_ranges
+        Dictionary mapping metric names to (X, Y) threshold tuples.
+    table_id
+        ID for associated table.
+
+    Returns
+    -------
+    Div
+        Div containing all threshold inputs and controls.
+    """
+    layout = [
+        Br(),
+        H3("Metric Normalization Thresholds"),
+        Div(
+            "Adjust X (score=1) and Y (score=0) thresholds for each metric. "
+            "Values between X and Y are normalized linearly.",
+            style={"marginBottom": "15px", "fontStyle": "italic"},
+        ),
+    ]
+
+    for metric in metrics:
+        if metric in normalization_ranges:
+            x_default, y_default = normalization_ranges[metric]
+            layout.append(build_threshold_input(metric, x_default, y_default, table_id))
+
+    layout.extend(
+        [
+            Button(
+                "Reset Thresholds",
+                id=f"{table_id}-reset-thresholds-button",
+                n_clicks=0,
+                style={"marginTop": "20px"},
+            ),
+            Store(
+                id=f"{table_id}-normalization-store",
+                storage_type="session",
+                data=normalization_ranges,
+            ),
+        ]
+    )
+
+    # Register normalization callbacks
+    register_normalization_callbacks(table_id, metrics, normalization_ranges)
+
+    return Div(layout)
+
+
+def _controls_table_common(columns, data, table_id_suffix: str) -> DataTable:
+    style_header_conditional = [
+        {"if": {"column_id": "Score"}, "color": "rgba(0,0,0,0)"},
+        {"if": {"column_id": "Rank"}, "color": "rgba(0,0,0,0)"},
+    ]
+    style_cell_conditional = [
+        {"if": {"column_id": "Score"}, "color": "rgba(0,0,0,0)"},
+        {"if": {"column_id": "Rank"}, "color": "rgba(0,0,0,0)"},
+    ]
+    return DataTable(
+        id=table_id_suffix,
+        data=data,
+        columns=columns,
+        editable=True,
+        sort_action="none",
+        style_table={"overflowX": "auto"},
+        fill_width=False,
+        style_header_conditional=style_header_conditional,
+        style_cell_conditional=style_cell_conditional,
+    )
+
+
+def build_thresholds_table(
+    table_id: str,
+    metrics: list[str],
+    normalization_ranges: dict[str, tuple[float, float]] | None = None,
+) -> DataTable:
+    """Build a separate thresholds table with Good/Bad rows (no weights)."""
+    thresholds_id = f"{table_id}-thresholds"
+    norm = normalization_ranges or {}
+    good_row = {m: norm.get(m, (0.0, 1.0))[0] for m in metrics}
+    bad_row = {m: norm.get(m, (0.0, 1.0))[1] for m in metrics}
+
+    data = [
+        {
+            "MLIP": "Good",
+            "id": "__controls_good__",
+            **good_row,
+            "Score": "",
+            "Rank": "",
+        },
+        {"MLIP": "Bad", "id": "__controls_bad__", **bad_row, "Score": "", "Rank": ""},
+    ]
+    columns = (
+        [{"name": "", "id": "MLIP"}]
+        + [{"name": m, "id": m} for m in metrics]
+        + [{"name": "Score", "id": "Score"}, {"name": "Rank", "id": "Rank"}]
+    )
+    return _controls_table_common(columns, data, thresholds_id)
+
+
+def build_weights_table(
+    table_id: str,
+    metrics: list[str],
+) -> DataTable:
+    """Build a separate weights table with a single Weights row."""
+    weights_id = f"{table_id}-weights"
+    weights_row = dict.fromkeys(metrics, 1.0)
+    data = [
+        {
+            "MLIP": "Weights",
+            "id": "__controls_weights__",
+            **weights_row,
+            "Score": "",
+            "Rank": "",
+        },
+    ]
+    columns = (
+        [{"name": "", "id": "MLIP"}]
+        + [{"name": m, "id": m} for m in metrics]
+        + [{"name": "Score", "id": "Score"}, {"name": "Rank", "id": "Rank"}]
+    )
+    return _controls_table_common(columns, data, weights_id)
