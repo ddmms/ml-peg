@@ -134,9 +134,16 @@ class LNCI16Benchmark(zntrack.Node):
         guest_charge = LNCI16Benchmark.read_charge_file(system_dir / "guest" / ".CHRG")
 
         # Set charges and system info in atoms
-        complex_atoms.info.update({"charge": complex_charge, "system": system_name})
-        host_atoms.info.update({"charge": host_charge, "system": system_name})
-        guest_atoms.info.update({"charge": guest_charge, "system": system_name})
+        # orb requires spin as well as charge
+        complex_atoms.info.update(
+            {"charge": complex_charge, "system": system_name, "spin": 1}
+        )
+        host_atoms.info.update(
+            {"charge": host_charge, "system": system_name, "spin": 1}
+        )
+        guest_atoms.info.update(
+            {"charge": guest_charge, "system": system_name, "spin": 1}
+        )
 
         return {
             "complex": complex_atoms,
