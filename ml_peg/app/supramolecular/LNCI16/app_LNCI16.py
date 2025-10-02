@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash
 from dash.html import Div
 
@@ -16,7 +14,7 @@ from ml_peg.app.utils.build_callbacks import (
 from ml_peg.app.utils.load import read_plot
 from ml_peg.calcs.models.models import MODELS
 
-BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
+BENCHMARK_NAME = "LNCI16"
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
 
@@ -61,7 +59,6 @@ def get_app() -> LNCI16App:
     """
     return LNCI16App(
         name=BENCHMARK_NAME,
-        title="LNCI16",
         description=(
             "Performance in predicting interaction energies for 16 "
             "large non-covalent complexes including proteins, DNA, "
