@@ -1,8 +1,0 @@
-stages:
-  mace_mp_0b3_LNCI16Benchmark:
-    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name mace_mp_0b3_LNCI16Benchmark
-    metrics:
-    - nodes/mace_mp_0b3/LNCI16Benchmark/node-meta.json:
-        cache: true
-    params:
-    - mace_mp_0b3_LNCI16Benchmark
