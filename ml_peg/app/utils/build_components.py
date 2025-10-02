@@ -207,3 +207,57 @@ def build_test_layout(
         layout_contents.extend(extra_components)
 
     return Div(layout_contents)
+
+
+def build_metric_weight_components(
+    table: DataTable, header: str = "Metric weights"
+) -> Div:
+    """
+    Build metric-weight sliders and inputs for a benchmark table.
+
+    Parameters
+    ----------
+    table
+        Benchmark results DataTable.
+    header
+        Header label shown above the sliders. Default is "Metric weights".
+
+    Returns
+    -------
+    Div
+        Div containing sliders, inputs, reset button and weight store.
+    """
+    # Identify metric columns (exclude reserved columns)
+    reserved = {"MLIP", "Score", "Rank", "id"}
+    metric_columns = [
+        col["id"] for col in table.columns if col.get("id") not in reserved
+    ]
+
+    if not metric_columns:
+        return Div()
+
+    # Use table id to generate unique input ids
+    def _safe(col: str) -> str:
+        """
+        Make a safe suffix by replacing spaces with hyphens.
+
+        Parameters
+        ----------
+        col
+            Column name to sanitise.
+
+        Returns
+        -------
+        str
+            Sanitised column suffix.
+        """
+        return col.replace(" ", "-")
+
+    input_ids = [f"{table.id}-{_safe(col)}" for col in metric_columns]
+
+    return build_weight_components(
+        header=header,
+        columns=metric_columns,
+        input_ids=input_ids,
+        table_id=table.id,
+    )

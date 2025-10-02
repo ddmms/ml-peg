@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from dash import Dash
 from dash.html import Div
 
@@ -13,7 +11,6 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
 )
-from ml_peg.app.utils.build_components import build_weight_components
 from ml_peg.app.utils.load import read_plot
 from ml_peg.calcs.models.models import MODELS
 
@@ -63,22 +60,6 @@ def get_app() -> ElementalSlabOxygenAdsorptionApp:
     ElementalSlabOxygenAdsorptionApp
         Benchmark layout and callback registration.
     """
-    # Build metric weight components (sliders + inputs) for metrics
-    with open(DATA_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json") as f:
-        table_json = json.load(f)
-    metric_columns = [
-        c["id"]
-        for c in table_json["columns"]
-        if c["id"] not in ("MLIP", "Score", "Rank", "id")
-    ]
-
-    metric_weights = build_weight_components(
-        header="Metric weights",
-        columns=metric_columns,
-        input_ids=[f"{BENCHMARK_NAME}-{c.replace(' ', '-')}" for c in metric_columns],
-        table_id=f"{BENCHMARK_NAME}-table",
-    )
-
     return ElementalSlabOxygenAdsorptionApp(
         name=BENCHMARK_NAME,
         description=(
@@ -88,7 +69,6 @@ def get_app() -> ElementalSlabOxygenAdsorptionApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
         extra_components=[
-            metric_weights,
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
