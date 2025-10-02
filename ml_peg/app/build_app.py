@@ -14,6 +14,9 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_weight_components
+from ml_peg.app.utils.register_callbacks import (
+    register_benchmark_to_category_callback,
+)
 
 
 def get_all_tests(
@@ -138,6 +141,21 @@ def build_category(
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
         )
+
+        # Wire child test tables to update this category summary table
+        for test_name, benchmark_table in all_tables[category].items():
+            try:
+                register_benchmark_to_category_callback(
+                    benchmark_table_id=benchmark_table.id,
+                    category_table_id=f"{category_title}-summary-table",
+                    benchmark_column=test_name,
+                )
+            except Exception as err:
+                msg = (
+                    f"Unable to wire benchmark table '{test_name}' to category "
+                    f"'{category_title}'. Full error:\n{err}"
+                )
+                warnings.warn(msg, stacklevel=2)
 
     return category_layouts, category_tables
 

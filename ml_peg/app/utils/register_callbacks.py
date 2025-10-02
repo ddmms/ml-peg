@@ -102,13 +102,11 @@ def register_tab_table_callbacks(table_id) -> None:
 
     @callback(
         Output("summary-table-scores-store", "data", allow_duplicate=True),
-        Input(f"{table_id}-weight-store", "data"),
-        State(table_id, "data"),
+        Input(table_id, "data"),
         State("summary-table-scores-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_scores_store(
-        stored_weights: dict[str, float],
         table_data: list[dict],
         scores_data: dict[str, dict[str, float]],
     ) -> dict[str, dict[str, float]]:
@@ -117,8 +115,6 @@ def register_tab_table_callbacks(table_id) -> None:
 
         Parameters
         ----------
-        stored_weights
-            Stored weight values for `table_id`.
         table_data
             Data from `table_id` to be updated.
         scores_data
@@ -129,6 +125,10 @@ def register_tab_table_callbacks(table_id) -> None:
         dict[str, dict[str, float]]
             List of scoress indexed by table_id.
         """
+        # Only category summary tables should write to the global store
+        if not table_id.endswith("-summary-table"):
+            return scores_data
+
         if not scores_data:
             scores_data = {}
         # Update scores store. Category table IDs are of form [category]-summary-table
@@ -136,6 +136,73 @@ def register_tab_table_callbacks(table_id) -> None:
             row["MLIP"]: row["Score"] for row in table_data
         }
         return scores_data
+
+
+def register_benchmark_to_category_callback(
+    benchmark_table_id: str, category_table_id: str, benchmark_column: str
+) -> None:
+    """
+    Propagate a benchmark table's Score into its category summary table column.
+
+    Parameters
+    ----------
+    benchmark_table_id
+        ID of the benchmark test table (e.g., "OC157-table").
+    category_table_id
+        ID of the category summary table (e.g., "Surfaces-summary-table").
+    benchmark_column
+        Column name in the category summary table corresponding to the benchmark.
+    """
+
+    @callback(
+        Output(category_table_id, "data", allow_duplicate=True),
+        Output(category_table_id, "style_data_conditional", allow_duplicate=True),
+        Input(benchmark_table_id, "data"),
+        State(category_table_id, "data"),
+        State(f"{category_table_id}-weight-store", "data"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def update_category_from_benchmark(
+        benchmark_data: list[dict],
+        category_data: list[dict],
+        category_weights: dict[str, float] | None,
+    ) -> list[dict]:
+        """
+        Update category summary from a benchmark table.
+
+        Parameters
+        ----------
+        benchmark_data
+            Rows from the benchmark table containing per-MLIP scores.
+        category_data
+            Current rows for the category summary table.
+        category_weights
+            Weight mapping for category columns used to recompute Score.
+
+        Returns
+        -------
+        list[dict]
+            Updated category table data and style tuple.
+        """
+        if not benchmark_data or not category_data:
+            raise PreventUpdate
+
+        # Map MLIP -> Score from benchmark table
+        benchmark_scores = {row["MLIP"]: row.get("Score") for row in benchmark_data}
+
+        # Inject into the appropriate column for each MLIP
+        for row in category_data:
+            mlip = row["MLIP"]
+            if mlip in benchmark_scores and benchmark_scores[mlip] is not None:
+                row[benchmark_column] = benchmark_scores[mlip]
+
+        # Recompute category Score and Rank using its existing weights
+        weights = category_weights if category_weights else {}
+        category_data = calc_scores(category_data, weights)
+        category_data = calc_ranks(category_data)
+        style = get_table_style(category_data)
+
+        return category_data, style
 
 
 def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None:
