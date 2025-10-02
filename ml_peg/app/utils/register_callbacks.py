@@ -73,11 +73,12 @@ def register_tab_table_callbacks(table_id) -> None:
         Output(table_id, "data"),
         Output(table_id, "style_data_conditional"),
         Input(f"{table_id}-weight-store", "data"),
+        Input("all-tabs", "value"),
         State(table_id, "data"),
-        prevent_initial_call=True,
+        prevent_initial_call="initial_duplicate",
     )
     def update_table_scores(
-        stored_weights: dict[str, float], table_data: list[dict]
+        stored_weights: dict[str, float], tabs_value: str, table_data: list[dict]
     ) -> list[dict]:
         """
         Update scores table score and rankings when data store updates.
@@ -86,6 +87,8 @@ def register_tab_table_callbacks(table_id) -> None:
         ----------
         stored_weights
             Stored weight values for `table_id`.
+        tabs_value
+            Selected tab value (unused; triggers recompute on tab change).
         table_data
             Data from `table_id` to be updated.
 
@@ -157,12 +160,16 @@ def register_benchmark_to_category_callback(
     @callback(
         Output(category_table_id, "data", allow_duplicate=True),
         Output(category_table_id, "style_data_conditional", allow_duplicate=True),
-        Input(benchmark_table_id, "data"),
+        Input(f"{benchmark_table_id}-weight-store", "data"),
+        Input("all-tabs", "value"),
+        State(benchmark_table_id, "data"),
         State(category_table_id, "data"),
         State(f"{category_table_id}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_category_from_benchmark(
+        benchmark_weights: dict[str, float] | None,
+        tabs_value: str,
         benchmark_data: list[dict],
         category_data: list[dict],
         category_weights: dict[str, float] | None,
@@ -172,8 +179,12 @@ def register_benchmark_to_category_callback(
 
         Parameters
         ----------
+        benchmark_weights
+            Metric weight mapping for the benchmark table.
+        tabs_value
+            Selected tab value (unused; triggers recompute on tab switch).
         benchmark_data
-            Rows from the benchmark table containing per-MLIP scores.
+            Rows from the benchmark table containing metric columns and Score.
         category_data
             Current rows for the category summary table.
         category_weights
@@ -184,11 +195,14 @@ def register_benchmark_to_category_callback(
         list[dict]
             Updated category table data and style tuple.
         """
-        if not benchmark_data or not category_data:
+        # Only handle metric-weight updates; ignore tab-change mounts/renders
+        if ctx.triggered_id != f"{benchmark_table_id}-weight-store":
             raise PreventUpdate
 
-        # Map MLIP -> Score from benchmark table
-        benchmark_scores = {row["MLIP"]: row.get("Score") for row in benchmark_data}
+        # Compute MLIP -> Score using latest metric weights for deterministic update
+        b_weights = benchmark_weights if benchmark_weights else {}
+        recomputed = calc_scores([row.copy() for row in benchmark_data], b_weights)
+        benchmark_scores = {row["MLIP"]: row.get("Score") for row in recomputed}
 
         # Inject into the appropriate column for each MLIP
         for row in category_data:
