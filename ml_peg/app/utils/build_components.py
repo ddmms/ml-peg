@@ -196,6 +196,11 @@ def build_test_layout(
 
     layout_contents.append(Div(table))
 
+    # Add metric-weight controls for every benchmark table
+    metric_weights = build_metric_weight_components(table)
+    if metric_weights:
+        layout_contents.append(metric_weights)
+
     layout_contents.append(
         Store(
             id="summary-table-scores-store",
@@ -213,7 +218,10 @@ def build_metric_weight_components(
     table: DataTable, header: str = "Metric weights"
 ) -> Div:
     """
-    Build metric-weight sliders and inputs for a benchmark table.
+    Discover metric columns and render weight controls and callbacks.
+
+    Uses `build_weight_components` to create sliders, inputs, a reset button,
+    and a weight store tied to the supplied `DataTable`.
 
     Parameters
     ----------
@@ -236,24 +244,7 @@ def build_metric_weight_components(
     if not metric_columns:
         return Div()
 
-    # Use table id to generate unique input ids
-    def _safe(col: str) -> str:
-        """
-        Make a safe suffix by replacing spaces with hyphens.
-
-        Parameters
-        ----------
-        col
-            Column name to sanitise.
-
-        Returns
-        -------
-        str
-            Sanitised column suffix.
-        """
-        return col.replace(" ", "-")
-
-    input_ids = [f"{table.id}-{_safe(col)}" for col in metric_columns]
+    input_ids = [f"{table.id}-{col}" for col in metric_columns]
 
     return build_weight_components(
         header=header,
