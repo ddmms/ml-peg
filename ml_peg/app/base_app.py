@@ -8,10 +8,7 @@ from pathlib import Path
 from dash.development.base_component import Component
 from dash.html import Div
 
-from ml_peg.app.utils.build_components import (
-    build_metric_weight_components,
-    build_test_layout,
-)
+from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
 
 
@@ -77,18 +74,13 @@ class BaseApp(ABC):
             Div component with list all components for app.
         """
         # Define all components/placeholders
-        # Auto-append metric-weight controls for this benchmark table
-        metric_weights = build_metric_weight_components(self.table)
-        extra_components = [metric_weights]
-        if self.extra_components:
-            extra_components.extend(self.extra_components)
-
+        # Metric-weight controls defined inside build_test_layout for all benchmarks
         return build_test_layout(
             name=self.name,
             description=self.description,
             docs_url=self.docs_url,
             table=self.table,
-            extra_components=extra_components,
+            extra_components=self.extra_components,
         )
 
     @abstractmethod
