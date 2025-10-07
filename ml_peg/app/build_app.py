@@ -117,13 +117,13 @@ def build_category(
             category_title = category
             category_descrip = ""
 
-        # Build summary table
+        # Build category summary table
         summary_table = build_summary_table(
             all_tables[category], table_id=f"{category_title}-summary-table"
         )
         category_tables[category_title] = summary_table
 
-        # Build weight components for summary table
+        # Build weight components for category summary table
         weight_components = build_weight_components(
             header="Benchmark weights",
             columns=list(all_tables[category].keys()),
