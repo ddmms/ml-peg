@@ -74,9 +74,15 @@ Current examples are implemented with two alternative approaches:
 
 a. Defining a script that iterates over models:
 
-For consistency, we use the same model inputs as expected by ``mlipx``,
-imported as ``MODELS``, which can then be used to obtain the model name
-and associated calculator.
+For consistency, we use similar model definitions as ``mlipx``. Models from
+``ml_peg/models/models.yml`` can be loaded using the
+``ml_peg.models.get_models.load_models`` function, while
+``ml_peg.models.models.current_models`` allows a subset of those to be used for
+calculations, including through a command-line input, ``--models``, to ``pytest``, or
+to ``ml_peg calc``.
+
+Details about model definitions and loading are described in more detail in
+:doc:`Adding models </developer_guide/add_models>`.
 
 Using ``pytest`` `parametrisation <https://docs.pytest.org/en/stable/example/parametrize.html>`_,
 the same calculation is run for each model name-model pair:
@@ -88,8 +94,10 @@ the same calculation is run for each model name-model pair:
 
 .. code-block:: python3
 
-    from ml_peg.calcs.models.models import MODELS
+    from ml_peg.models.get_models import load_models
+    from ml_peg.models.models import current_models
 
+    MODELS = load_models(current_models)
     DATA_PATH = Path(__file__).parent / "data"
     OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -310,6 +318,11 @@ be added as ``assets`` to be loaded into the app.
 Absolute paths to ``ml_peg/app`` and ``ml_peg/calcs`` can be imported for
 convenience.
 
+Similarly to running calculations, we use imports from ``ml_peg.models`` to get the
+model names that analysis will be run for. By default, this means all model names
+defined in ``ml_peg/models/models.yml`` will be used, but when using ``pytest`` or our
+CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
+
 .. note::
 
     Some imports are not included in the following example for simplicity.
@@ -321,8 +334,10 @@ convenience.
     from ml_peg.analysis.utils.utils import mae
     from ml_peg.app import APP_ROOT
     from ml_peg.calcs import CALCS_ROOT
-    from ml_peg.calcs.models.models import MODELS
+    from ml_peg.models.get_models import get_model_names
+    from ml_peg.models.models import current_models
 
+    MODELS = get_model_names(current_models)
     CALC_PATH = CALCS_ROOT / [category] / [benchmark_name] / "outputs"
     OUT_PATH = APP_ROOT / "data" / [category] / [benchmark_name]
 
