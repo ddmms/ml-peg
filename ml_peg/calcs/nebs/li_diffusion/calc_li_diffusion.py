@@ -10,7 +10,10 @@ from janus_core.calculations.geom_opt import GeomOpt
 from janus_core.calculations.neb import NEB
 import pytest
 
-from ml_peg.calcs.models.models import MODELS
+from ml_peg.models.get_models import load_models
+from ml_peg.models.models import current_models
+
+MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -46,8 +49,8 @@ def relaxed_structs() -> dict[str, Atoms]:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("mlip", MODELS)
-def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], mlip: str) -> None:
+@pytest.mark.parametrize("model_name", MODELS)
+def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> None:
     """
     Run calculations required for lithium diffusion along path B.
 
@@ -55,11 +58,9 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], mlip: str) -> None:
     ----------
     relaxed_structs
         Relaxed input structures, indexed by structure name and model name.
-    mlip
+    model_name
         Name of model to use.
     """
-    model_name = mlip
-
     NEB(
         init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
         final_struct=relaxed_structs[f"LiFePO4_end_b.cif-{model_name}"],
@@ -73,8 +74,8 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], mlip: str) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("mlip", MODELS)
-def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], mlip: str) -> None:
+@pytest.mark.parametrize("model_name", MODELS)
+def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> None:
     """
     Run calculations required for lithium diffusion along path C.
 
@@ -82,11 +83,9 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], mlip: str) -> None:
     ----------
     relaxed_structs
         Relaxed input structures, indexed by structure name and model name.
-    mlip
+    model_name
         Name of model to use.
     """
-    model_name = mlip
-
     NEB(
         init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
         final_struct=relaxed_structs[f"LiFePO4_end_c.cif-{model_name}"],
