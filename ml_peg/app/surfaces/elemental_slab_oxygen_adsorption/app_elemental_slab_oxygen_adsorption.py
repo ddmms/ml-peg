@@ -12,8 +12,10 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs.models.models import MODELS
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elemental Slab Oxygen Adsorption"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#elemental-slab-oxygen-adsorption"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
@@ -29,11 +31,11 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        structs_dir = DATA_PATH / list(MODELS.keys())[0]
+        structs_dir = DATA_PATH / MODELS[0]
 
         # Assets dir will be parent directory
         structs = [
-            f"assets/surfaces/elemental_slab_oxygen_adsorption/{list(MODELS.keys())[0]}/{struct_file.stem}.xyz"
+            f"assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

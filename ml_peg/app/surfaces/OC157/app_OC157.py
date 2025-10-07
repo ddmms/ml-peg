@@ -13,8 +13,10 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs.models.models import MODELS
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "OC157"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#oc157"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
@@ -29,13 +31,13 @@ class OC157App(BaseApp):
             DATA_PATH / "figure_rel_energies.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
-        structs_dir = DATA_PATH / list(MODELS.keys())[0]
+        structs_dir = DATA_PATH / MODELS[0]
 
         # Assets dir will be parent directory
         structs = list(
             np.repeat(
                 [
-                    f"assets/surfaces/OC157/{list(MODELS.keys())[0]}/{i}.xyz"
+                    f"assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
                     for i in range(len(list(structs_dir.glob("*.xyz"))))
                 ],
                 3,
