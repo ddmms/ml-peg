@@ -71,9 +71,7 @@ def build_slider(
 
 def build_weight_components(
     header: str,
-    columns: list[str],
-    input_ids: list[str],
-    table_id: str,
+    table: DataTable,
 ) -> Div:
     """
     Build weight sliders, text boxes and reset button.
@@ -82,12 +80,8 @@ def build_weight_components(
     ----------
     header
         Header for above sliders.
-    columns
-        Column headers to look up stored values, and label sliders and input boxes.
-    input_ids
-        ID prefixes for sliders and input boxes.
-    table_id
-        ID for table. Also used to identify reset button and weight store.
+    table
+        DataTable to build weight components for.
 
     Returns
     -------
@@ -95,6 +89,15 @@ def build_weight_components(
         Div containing header, weight sliders, text boxes and reset button.
     """
     layout = [Br(), Div(header), Br()]
+
+    # Identify metric columns (exclude reserved columns)
+    reserved = {"MLIP", "Score", "Rank", "id"}
+    columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
+
+    if not columns:
+        return Div()
+
+    input_ids = [f"{table.id}-{col}" for col in columns]
 
     for column, input_id in zip(columns, input_ids, strict=True):
         layout.append(
@@ -110,12 +113,12 @@ def build_weight_components(
         [
             Button(
                 "Reset Weights",
-                id=f"{table_id}-reset-button",
+                id=f"{table.id}-reset-button",
                 n_clicks=0,
                 style={"marginTop": "20px"},
             ),
             Store(
-                id=f"{table_id}-weight-store",
+                id=f"{table.id}-weight-store",
                 storage_type="session",
                 data=dict.fromkeys(columns, 1.0),
             ),
@@ -123,14 +126,14 @@ def build_weight_components(
     )
 
     # Callbacks to update table scores when table weight dicts change
-    if table_id != "summary-table":
-        register_tab_table_callbacks(table_id=table_id)
+    if table.id != "summary-table":
+        register_tab_table_callbacks(table_id=table.id)
     else:
         register_summary_table_callbacks()
 
     # Callbacks to sync sliders, text boxes, and stored table weights
     for column, input_id in zip(columns, input_ids, strict=True):
-        register_weight_callbacks(input_id=input_id, table_id=table_id, column=column)
+        register_weight_callbacks(input_id=input_id, table_id=table.id, column=column)
 
     return Div(layout)
 
@@ -197,7 +200,7 @@ def build_test_layout(
     layout_contents.append(Div(table))
 
     # Add metric-weight controls for every benchmark table
-    metric_weights = build_metric_weight_components(table)
+    metric_weights = build_weight_components(header="Metric weights", table=table)
     if metric_weights:
         layout_contents.append(metric_weights)
 
@@ -212,43 +215,3 @@ def build_test_layout(
         layout_contents.extend(extra_components)
 
     return Div(layout_contents)
-
-
-def build_metric_weight_components(
-    table: DataTable, header: str = "Metric weights"
-) -> Div:
-    """
-    Discover metric columns and render weight controls and callbacks.
-
-    Uses `build_weight_components` to create sliders, inputs, a reset button,
-    and a weight store tied to the supplied `DataTable`.
-
-    Parameters
-    ----------
-    table
-        Benchmark results DataTable.
-    header
-        Header label shown above the sliders. Default is "Metric weights".
-
-    Returns
-    -------
-    Div
-        Div containing sliders, inputs, reset button and weight store.
-    """
-    # Identify metric columns (exclude reserved columns)
-    reserved = {"MLIP", "Score", "Rank", "id"}
-    metric_columns = [
-        col["id"] for col in table.columns if col.get("id") not in reserved
-    ]
-
-    if not metric_columns:
-        return Div()
-
-    input_ids = [f"{table.id}-{col}" for col in metric_columns]
-
-    return build_weight_components(
-        header=header,
-        columns=metric_columns,
-        input_ids=input_ids,
-        table_id=table.id,
-    )

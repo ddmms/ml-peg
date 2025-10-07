@@ -126,9 +126,7 @@ def build_category(
         # Build weight components for category summary table
         weight_components = build_weight_components(
             header="Benchmark weights",
-            columns=list(all_tables[category].keys()),
-            input_ids=list(all_tables[category].keys()),
-            table_id=f"{category_title}-summary-table",
+            table=summary_table,
         )
 
         # Build full layout with summary table, weight controls, and test layouts
@@ -282,9 +280,7 @@ def build_full_app(full_app: Dash) -> None:
     summary_table = build_summary_table(category_tables)
     weight_components = build_weight_components(
         header="Benchmark weights",
-        columns=list(category_tables.keys()),
-        input_ids=list(category_tables.keys()),
-        table_id="summary-table",
+        table=summary_table,
     )
     # Build summary and category tabs
     build_tabs(full_app, category_layouts, summary_table, weight_components)
