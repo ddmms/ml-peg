@@ -16,12 +16,17 @@ app = Typer(
 
 
 @app.command(name="app", help="Run application")
-def run_dash_app(category: str = "*", port: int = 8050, debug: bool = True) -> None:
+def run_dash_app(
+    models: None | str = None, category: str = "*", port: int = 8050, debug: bool = True
+) -> None:
     """
     Run Dash application.
 
     Parameters
     ----------
+    models
+        Models to run calculations for, in comma-separated list. Default is `None`,
+        corresponding to all available models.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
     port
@@ -31,12 +36,12 @@ def run_dash_app(category: str = "*", port: int = 8050, debug: bool = True) -> N
     """
     from ml_peg.app.run_app import run_app
 
-    run_app(category=category, port=port, debug=debug)
+    run_app(models=models, category=category, port=port, debug=debug)
 
 
 @app.command(name="calc", help="Run calculations")
 def run_calcs(
-    models: str = "all",
+    models: None | str = None,
     category: str = "*",
     test: str = "*",
     run_slow: bool = True,
@@ -48,7 +53,7 @@ def run_calcs(
     Parameters
     ----------
     models
-        Models to run calculations for, in comma-separated list. Default is "all",
+        Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
     category
         Category to run calculations for. Default is `*`, corresponding to all
@@ -74,12 +79,18 @@ def run_calcs(
     if run_slow:
         options.extend(["--run-slow"])
 
+    if models:
+        options.extend(["--models", models])
+
     pytest.main(options)
 
 
 @app.command(name="analyse", help="Run calculations")
 def run_analysis(
-    models: str = "all", category: str = "*", test: str = "*", verbose: bool = True
+    models: None | str = None,
+    category: str = "*",
+    test: str = "*",
+    verbose: bool = True,
 ):
     """
     Run analysis through pytest.
@@ -87,7 +98,7 @@ def run_analysis(
     Parameters
     ----------
     models
-        Models to run analysis for, in comma-separated list. Default is "all",
+        Models to run analysis for, in comma-separated list. Default is `None`,
         corresponding to all available models.
     category
         Category to run analysis for. Default is `*`, corresponding to all categories.
@@ -106,6 +117,9 @@ def run_analysis(
 
     if verbose:
         options.extend(["-s", "-vvv"])
+
+    if models:
+        options.extend(["--models", models])
 
     pytest.main(options)
 
