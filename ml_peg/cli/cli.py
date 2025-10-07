@@ -17,7 +17,20 @@ app = Typer(
 
 @app.command(name="app", help="Run application")
 def run_dash_app(
-    models: None | str = None, category: str = "*", port: int = 8050, debug: bool = True
+    models: Annotated[
+        str | None,
+        Option(
+            help=(
+                "Comma-separated models to build interactivity for. Default is all "
+                "models."
+            )
+        ),
+    ] = None,
+    category: Annotated[
+        str, Option(help="Category to build app for. Default is all categories.")
+    ] = "*",
+    port: Annotated[str, Option(help="Port to run application on.")] = 8050,
+    debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
 ) -> None:
     """
     Run Dash application.
@@ -41,11 +54,24 @@ def run_dash_app(
 
 @app.command(name="calc", help="Run calculations")
 def run_calcs(
-    models: None | str = None,
-    category: str = "*",
-    test: str = "*",
-    run_slow: bool = True,
-    verbose: bool = True,
+    models: Annotated[
+        str | None,
+        Option(
+            help="Comma-separated models to run calculations on. Default is all models."
+        ),
+    ] = None,
+    category: Annotated[
+        str, Option(help="Category to run calculations for. Default is all categories.")
+    ] = "*",
+    test: Annotated[
+        str, Option(help="Test to run calculations for. Default is all tests.")
+    ] = "*",
+    run_slow: Annotated[
+        bool, Option(help="Whether to run calculations labelled slow.")
+    ] = True,
+    verbose: Annotated[
+        bool, Option(help="Whether to run pytest with verbose and stdout printed.")
+    ] = True,
 ) -> None:
     """
     Run calculations through pytest.
@@ -87,10 +113,21 @@ def run_calcs(
 
 @app.command(name="analyse", help="Run calculations")
 def run_analysis(
-    models: None | str = None,
-    category: str = "*",
-    test: str = "*",
-    verbose: bool = True,
+    models: Annotated[
+        str | None,
+        Option(
+            help="Comma-separated models to run analysis for. Default is all models."
+        ),
+    ] = None,
+    category: Annotated[
+        str, Option(help="Category to run analysis for. Default is all categories.")
+    ] = "*",
+    test: Annotated[
+        str, Option(help="Test to run analysis for. Default is all tests.")
+    ] = "*",
+    verbose: Annotated[
+        bool, Option(help="Whether to run pytest with verbose and stdout printed.")
+    ] = True,
 ):
     """
     Run analysis through pytest.
