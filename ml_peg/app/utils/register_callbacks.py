@@ -236,25 +236,21 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
     @callback(
         Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
-        Input(f"{input_id}-slider", "value"),
         Input(f"{input_id}-input", "value"),
         Input(f"{table_id}-reset-button", "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
     )
-    def store_slider_value(
-        slider_weight: float,
-        input_weight: float,
+    def store_input_value(
+        input_weight: float | None,
         n_clicks: int,
         stored_weights: dict[str, float],
     ) -> dict[str, float]:
         """
-        Store weight values from slider and text input.
+        Store weight values from the text input.
 
         Parameters
         ----------
-        slider_weight
-            Weight value from slider.
         input_weight
             Weight value from input box.
         n_clicks
@@ -265,20 +261,16 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
         Returns
         -------
         dict[str, float]
-            Stored weights for each slider.
+            Stored weights for each input box.
         """
         trigger_id = ctx.triggered_id
 
-        if trigger_id == f"{input_id}-slider":
-            stored_weights[column] = slider_weight
-        elif trigger_id == f"{input_id}-input":
-            if input_weight is not None:
-                stored_weights[column] = input_weight
-            else:
+        if trigger_id == f"{input_id}-input":
+            if input_weight is None:
                 raise PreventUpdate
+            stored_weights[column] = input_weight
         elif trigger_id == f"{table_id}-reset-button":
             stored_weights.update((key, default_weight) for key in stored_weights)
-            stored_weights[column] = default_weight
         else:
             raise PreventUpdate
 
@@ -286,16 +278,13 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
     @callback(
         Output(f"{input_id}-input", "value"),
-        Output(f"{input_id}-slider", "value"),
         Input(f"{table_id}-weight-store", "data"),
         Input("all-tabs", "value"),
         prevent_initial_call="initial_duplicate",
     )
-    def sync_slider_inputs(
-        stored_weights: dict[str, float], tabs_value: str
-    ) -> tuple[float, float]:
+    def sync_inputs(stored_weights: dict[str, float], tabs_value: str) -> float:
         """
-        Sync weight values between slider and text input via Store.
+        Sync weight values between the text input and Store.
 
         Parameters
         ----------
@@ -306,7 +295,7 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
         Returns
         -------
-        tuple[float, float]
-            Weights to set slider value and text input value.
+        float
+            Weight to set text input value.
         """
-        return stored_weights[column], stored_weights[column]
+        return stored_weights[column]

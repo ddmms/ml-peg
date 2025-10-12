@@ -287,7 +287,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     # Build overall summary table
     summary_table = build_summary_table(category_tables)
     weight_components = build_weight_components(
-        header="Benchmark weights",
+        header="Category weights",
         table=summary_table,
     )
     # Build summary and category tabs

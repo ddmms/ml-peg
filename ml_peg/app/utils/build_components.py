@@ -5,7 +5,7 @@ from __future__ import annotations
 from dash import html
 from dash.dash_table import DataTable
 from dash.dcc import Input as DCC_Input
-from dash.dcc import Slider, Store
+from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
@@ -16,56 +16,38 @@ from ml_peg.app.utils.register_callbacks import (
 )
 
 
-def build_slider(
-    label: str, slider_id: str, input_id: str, default_value: float | None
-) -> Div:
+def build_weight_input(input_id: str, default_value: float | None) -> Div:
     """
-    Build slider and input box.
+    Build numeric input for a metric weight.
 
     Parameters
     ----------
-    label
-        Slider label.
-    slider_id
-        ID for slider component.
     input_id
         ID for text box input component.
     default_value
-        Default value for slider/text box input.
+        Default value for the text box input.
 
     Returns
     -------
     Div
-        Slider and input text box.
+        Div wrapping the input box.
     """
     return Div(
-        [
-            Label(label),
-            Div(
-                [
-                    Div(
-                        Slider(
-                            id=slider_id,
-                            min=0,
-                            max=5,
-                            step=0.1,
-                            value=default_value,
-                            tooltip={"always_visible": False},
-                            marks=None,
-                        ),
-                        style={"flex": "1 1 80%"},
-                    ),
-                    DCC_Input(
-                        id=input_id,
-                        type="number",
-                        value=default_value,
-                        step=0.1,
-                        style={"width": "80px"},
-                    ),
-                ],
-                style={"display": "flex", "gap": "10px", "alignItems": "center"},
-            ),
-        ]
+        DCC_Input(
+            id=input_id,
+            type="number",
+            value=default_value,
+            step=0.1,
+            style={
+                "width": "80px",
+                "fontSize": "12px",
+                "padding": "2px 4px",
+                "border": "1px solid #6c757d",
+                "borderRadius": "3px",
+                "textAlign": "center",
+            },
+        ),
+        style={"display": "flex", "justifyContent": "center"},
     )
 
 
@@ -88,8 +70,6 @@ def build_weight_components(
     Div
         Div containing header, weight sliders, text boxes and reset button.
     """
-    layout = [Br(), Div(header), Br()]
-
     # Identify metric columns (exclude reserved columns)
     reserved = {"MLIP", "Score", "Rank", "id"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
@@ -99,31 +79,81 @@ def build_weight_components(
 
     input_ids = [f"{table.id}-{col}" for col in columns]
 
-    for column, input_id in zip(columns, input_ids, strict=True):
-        layout.append(
-            build_slider(
-                label=column,
-                slider_id=f"{input_id}-slider",
-                input_id=f"{input_id}-input",
-                default_value=None,  # Set by stored value/default
-            )
+    weight_inputs = [
+        build_weight_input(
+            input_id=f"{input_id}-input",
+            default_value=1.0,
         )
+        for input_id in input_ids
+    ]
 
-    layout.extend(
+    column_count = len(weight_inputs)
+    metric_columns_template = " ".join(["minmax(80px, 1fr)"] * column_count)
+    grid_template = f"minmax(140px, auto) {metric_columns_template}".strip()
+
+    container = Div(
         [
-            Button(
-                "Reset Weights",
-                id=f"{table.id}-reset-button",
-                n_clicks=0,
-                style={"marginTop": "20px"},
+            Div(
+                [
+                    Div(
+                        header,
+                        style={
+                            "fontWeight": "bold",
+                            "fontSize": "13px",
+                            "padding": "2px 4px",
+                            "color": "#212529",
+                            "whiteSpace": "nowrap",
+                        },
+                    ),
+                    Button(
+                        "Reset Weights",
+                        id=f"{table.id}-reset-button",
+                        n_clicks=0,
+                        style={
+                            "fontSize": "11px",
+                            "padding": "4px 8px",
+                            "marginTop": "6px",
+                            "backgroundColor": "#6c757d",
+                            "color": "white",
+                            "border": "none",
+                            "borderRadius": "3px",
+                            "width": "fit-content",
+                            "cursor": "pointer",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "alignItems": "flex-start",
+                    "gap": "4px",
+                },
             ),
-            Store(
-                id=f"{table.id}-weight-store",
-                storage_type="session",
-                data=dict.fromkeys(columns, 1.0),
-            ),
-        ]
+            *weight_inputs,
+        ],
+        style={
+            "display": "grid",
+            "gridTemplateColumns": grid_template,
+            "alignItems": "start",
+            "columnGap": "8px",
+            "rowGap": "4px",
+            "marginTop": "8px",
+            "padding": "10px 12px",
+            "backgroundColor": "#f8f9fa",
+            "border": "1px solid #dee2e6",
+            "borderRadius": "6px",
+        },
     )
+
+    layout = [
+        Br(),
+        container,
+        Store(
+            id=f"{table.id}-weight-store",
+            storage_type="session",
+            data=dict.fromkeys(columns, 1.0),
+        ),
+    ]
 
     # Callbacks to update table scores when table weight dicts change
     if table.id != "summary-table":
