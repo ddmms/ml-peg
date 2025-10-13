@@ -73,12 +73,16 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                 task_name=kwargs.get("task_name", "omat"),
                 device=cfg.get("device", "cpu"),
                 overrides=kwargs.get("overrides", {}),
+                add_d3=cfg.get("add_d3", False),
+                d3_kwargs=cfg.get("d3_kwargs", {}),
             )
         elif cfg["class_name"] == "OrbCalc":
             kwargs = cfg.get("kwargs", {})
             loaded_models[name] = OrbCalc(
                 name=kwargs["name"],
                 device=cfg.get("device", "cpu"),
+                add_d3=cfg.get("add_d3", False),
+                d3_kwargs=cfg.get("d3_kwargs", {}),
             )
         else:
             loaded_models[name] = GenericASECalc(
@@ -86,6 +90,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                 class_name=cfg["class_name"],
                 device=cfg.get("device", "auto"),
                 kwargs=cfg.get("kwargs", {}),
+                add_d3=cfg.get("add_d3", False),
+                d3_kwargs=cfg.get("d3_kwargs", {}),
             )
 
     return loaded_models
