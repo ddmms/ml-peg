@@ -36,7 +36,14 @@ def get_subset(
     if isinstance(models, str):
         models = models.split(",")
 
-    return {k: all_models[k] for k in models}
+    try:
+        return {model: all_models[model] for model in models}
+    except KeyError as err:
+        for model in models:
+            if model not in all_models:
+                raise ValueError(
+                    f"Model name '{model}' not recognised. Please check models.yml"
+                ) from err
 
 
 def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
