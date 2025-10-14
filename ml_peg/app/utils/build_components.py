@@ -266,7 +266,7 @@ def build_test_layout(
     layout_contents.append(Div(table))
 
     # Inline normalization thresholds when metadata is supplied
-    if normalization_ranges:
+    if normalization_ranges is not None:
         reserved = {"MLIP", "Score", "Rank", "id"}
         metric_columns = [
             col["id"] for col in table.columns if col.get("id") not in reserved
@@ -289,7 +289,7 @@ def build_test_layout(
     # Add metric-weight controls for every benchmark table
     metric_weights = build_metric_weight_components(
         table,
-        use_threshold_store=bool(normalization_ranges),
+        use_threshold_store=(normalization_ranges is not None),
     )
     if metric_weights:
         layout_contents.append(metric_weights)
