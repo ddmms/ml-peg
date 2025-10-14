@@ -173,10 +173,14 @@ def build_summary_table(
     """
     summary_data = {}
     for category_name, table in tables.items():
+        # Prepare rows for all current models
         if not summary_data:
-            summary_data = {row["MLIP"]: {} for row in table.data}
+            summary_data = {model: {} for model in MODELS}
+
         for row in table.data:
-            summary_data[row["MLIP"]][category_name] = row["Score"]
+            # Category tables may include models not to be included
+            if row["MLIP"] in summary_data:
+                summary_data[row["MLIP"]][category_name] = row["Score"]
 
     data = []
     for mlip in summary_data:

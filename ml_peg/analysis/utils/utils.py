@@ -73,10 +73,16 @@ def calc_scores(
         scores = []
         weights_list = []
         for key, value in row.items():
-            if key not in ("MLIP", "Score", "Rank", "id"):
+            # Value may be `None` if missing for a benchmark
+            if key not in ("MLIP", "Score", "Rank", "id") and value:
                 scores.append(value)
                 weights_list.append(weights.get(key, 1.0))
-        row["Score"] = np.average(scores, weights=weights_list)
+
+        # Ensure at least one score is being averaged
+        if scores:
+            row["Score"] = np.average(scores, weights=weights_list)
+        else:
+            row["Score"] = None
 
     return metrics_data
 
@@ -95,9 +101,15 @@ def calc_ranks(metrics_data: list[dict]) -> list[dict]:
     list[dict]
         Rows of data with rank for each model added.
     """
-    ranked_scores = rankdata([x["Score"] for x in metrics_data])
+    # If a score is None, set to NaN for ranking purposes, but do not rank
+    ranked_scores = rankdata(
+        [x["Score"] if x["Score"] else np.nan for x in metrics_data], nan_policy="omit"
+    )
     for i, row in enumerate(metrics_data):
-        row["Rank"] = int(ranked_scores[i])
+        if np.isnan(ranked_scores[i]):
+            row["Rank"] = None
+        else:
+            row["Rank"] = int(ranked_scores[i])
     return metrics_data
 
 
@@ -165,10 +177,11 @@ def get_table_style(
             raise ValueError(f"Column '{col}' not found in data.")
 
     for col in cols:
-        min_value = min([row[col] for row in data])
-        max_value = max([row[col] for row in data])
+        # Ensure that model is present in the row, and the score is not None
+        min_value = min([row[col] for row in data if col in row and row[col]])
+        max_value = max([row[col] for row in data if col in row and row[col]])
 
-        for val in [row[col] for row in data]:
+        for val in [row[col] for row in data if col in row and row[col]]:
             style_data_conditional.append(
                 {
                     "if": {"filter_query": f"{{{col}}} = {val}", "column_id": col},
