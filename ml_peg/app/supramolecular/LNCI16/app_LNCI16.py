@@ -12,8 +12,10 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs.models.models import MODELS
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "LNCI16"
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
@@ -30,7 +32,7 @@ class LNCI16App(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/LNCI16/{list(MODELS.keys())[0]}/{i}.xyz"
+            f"assets/supramolecular/LNCI16/{MODELS[0]}/{i}.xyz"
             for i in range(16)  # LNCI16 has 16 systems
         ]
 
