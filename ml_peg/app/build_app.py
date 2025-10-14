@@ -148,6 +148,9 @@ def build_category(
                 benchmark_table_id=benchmark_table.id,
                 category_table_id=f"{category_title}-summary-table",
                 benchmark_column=test_name,
+                use_threshold_store=bool(
+                    getattr(benchmark_table, "normalization_ranges", None)
+                ),
             )
 
     return category_layouts, category_tables

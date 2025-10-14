@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from dash import (
     ClientsideFunction,
     Input,
@@ -279,7 +281,10 @@ def register_tab_table_callbacks(
 
 
 def register_benchmark_to_category_callback(
-    benchmark_table_id: str, category_table_id: str, benchmark_column: str
+    benchmark_table_id: str,
+    category_table_id: str,
+    benchmark_column: str,
+    use_threshold_store: bool = False,
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
@@ -292,16 +297,31 @@ def register_benchmark_to_category_callback(
         ID of the category summary table (e.g., "Surfaces-summary-table").
     benchmark_column
         Column name in the category summary table corresponding to the benchmark.
+    use_threshold_store
+        Whether the benchmark table exposes a normalization store for metrics.
     """
+    inputs = [
+        Input(benchmark_table_id, "data"),
+        Input(f"{benchmark_table_id}-weight-store", "data"),
+        Input("all-tabs", "value"),
+    ]
+    states: list[Any] = [
+        State(category_table_id, "data"),
+        State(f"{category_table_id}-weight-store", "data"),
+    ]
+    if use_threshold_store:
+        states.extend(
+            [
+                State(f"{benchmark_table_id}-normalization-store", "data"),
+                State(f"{benchmark_table_id}-raw-data-store", "data"),
+            ]
+        )
 
     @callback(
         Output(category_table_id, "data", allow_duplicate=True),
         Output(category_table_id, "style_data_conditional", allow_duplicate=True),
-        Input(benchmark_table_id, "data"),
-        Input(f"{benchmark_table_id}-weight-store", "data"),
-        Input("all-tabs", "value"),
-        State(category_table_id, "data"),
-        State(f"{category_table_id}-weight-store", "data"),
+        *inputs,
+        *states,
         prevent_initial_call="initial_duplicate",
     )
     def update_category_from_benchmark(
@@ -310,6 +330,7 @@ def register_benchmark_to_category_callback(
         tabs_value: str,
         category_data: list[dict],
         category_weights: dict[str, float] | None,
+        *extra_state: Any,
     ) -> tuple[list[dict], list[dict]]:
         """
         Update category summary from a benchmark table.
@@ -326,6 +347,8 @@ def register_benchmark_to_category_callback(
             Existing category summary rows to update.
         category_weights
             Metric weights configured for the category summary.
+        *extra_state
+            Optional normalization store and raw data rows when available.
 
         Returns
         -------
@@ -340,18 +363,34 @@ def register_benchmark_to_category_callback(
 
         triggered = ctx.triggered_id
 
+        normalization_store = None
+        benchmark_raw_rows: list[dict] | None = None
+        if use_threshold_store and len(extra_state) >= 2:
+            normalization_store = extra_state[0]
+            benchmark_raw_rows = extra_state[1]
+
+        threshold_pairs = _coerce_threshold_map(normalization_store)
+
         if triggered == f"{benchmark_table_id}-weight-store":
             weights = _coerce_weights(benchmark_weights)
-            recomputed = calc_scores([row.copy() for row in benchmark_data], weights)
+            if threshold_pairs and benchmark_raw_rows:
+                recompute_rows = [row.copy() for row in benchmark_raw_rows]
+                recomputed = calc_normalized_scores(
+                    recompute_rows, threshold_pairs, weights
+                )
+            else:
+                source_rows = benchmark_data or benchmark_raw_rows or []
+                recomputed = calc_scores([row.copy() for row in source_rows], weights)
             benchmark_scores = {
                 row.get("MLIP"): row.get("Score")
                 for row in recomputed
                 if row.get("MLIP") is not None
             }
         else:
+            data_rows = benchmark_data or []
             benchmark_scores = {
                 row.get("MLIP"): row.get("Score")
-                for row in benchmark_data
+                for row in data_rows
                 if row.get("MLIP") is not None
             }
 
