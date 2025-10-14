@@ -74,7 +74,7 @@ def get_app() -> OC157App:
             "molecule-surface combinations."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "oc157_metrics_table.json",
+        table_path=DATA_PATH / "oc157_normalized_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),

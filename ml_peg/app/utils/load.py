@@ -12,7 +12,45 @@ from plotly.io import read_json
 from ml_peg.analysis.utils.utils import get_table_style
 
 
-def rebuild_table(filename: str | Path, id="table-1") -> DataTable:
+def _coerce_normalization_ranges(raw_ranges):
+    """
+    Convert a raw normalization mapping into ``(good, bad)`` float tuples.
+
+    Parameters
+    ----------
+    raw_ranges
+        Raw normalization structure read from disk.
+
+    Returns
+    -------
+    dict[str, tuple[float, float]] | None
+        Cleaned mapping or ``None`` when conversion fails.
+    """
+    if not isinstance(raw_ranges, dict):
+        return None
+    result: dict[str, tuple[float, float]] = {}
+    for metric, bounds in raw_ranges.items():
+        try:
+            if isinstance(bounds, dict):
+                good_val = float(bounds["good"])
+                bad_val = float(bounds["bad"])
+            elif isinstance(bounds, list | tuple) and len(bounds) == 2:
+                good_val = float(bounds[0])
+                bad_val = float(bounds[1])
+            else:
+                continue
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        result[metric] = (good_val, bad_val)
+    return result or None
+
+
+def rebuild_table(
+    filename: str | Path,
+    id="table-1",
+    column_widths: dict[str, int] | None = None,
+) -> DataTable:
     """
     Rebuild saved dash table.
 
@@ -22,6 +60,8 @@ def rebuild_table(filename: str | Path, id="table-1") -> DataTable:
         Name of json file with saved table data.
     id
         ID for table.
+    column_widths
+        Optional column width metadata currently unused but kept for parity.
 
     Returns
     -------
@@ -38,7 +78,7 @@ def rebuild_table(filename: str | Path, id="table-1") -> DataTable:
 
     style = get_table_style(data)
 
-    return DataTable(
+    table = DataTable(
         data=data,
         columns=columns,
         tooltip_header=tooltip_header,
@@ -49,6 +89,14 @@ def rebuild_table(filename: str | Path, id="table-1") -> DataTable:
         style_data_conditional=style,
         sort_action="native",
     )
+
+    normalization_ranges = _coerce_normalization_ranges(
+        table_json.get("normalization_ranges")
+    )
+    if normalization_ranges:
+        table.normalization_ranges = normalization_ranges
+
+    return table
 
 
 def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
@@ -68,3 +116,221 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
         Loaded plotly Graph.
     """
     return Graph(id=id, figure=read_json(filename))
+
+
+def infer_column_widths_from_json(
+    filename: str | Path,
+    char_px: int = 9,
+    padding_px: int = 50,
+    mlip_min: int = 250,
+    mlip_max: int = 400,
+    metric_min: int = 250,
+    metric_max: int = 400,
+    score_w: int = 150,
+    rank_w: int = 150,
+    min_total: int | None = None,
+    overrides: dict[str, int] | None = None,
+) -> tuple[dict[str, int], list[str]]:
+    """
+    Infer column widths from a saved table JSON snapshot.
+
+    Parameters
+    ----------
+    filename
+        Path to the serialized table JSON.
+    char_px
+        Pixel-per-character estimate for width calculations.
+    padding_px
+        Additional padding applied to every computed width.
+    mlip_min
+        Minimum pixel width permitted for the MLIP column.
+    mlip_max
+        Maximum pixel width permitted for the MLIP column.
+    metric_min
+        Lower bound on metric column widths.
+    metric_max
+        Upper bound on metric column widths.
+    score_w
+        Width assigned to the Score column.
+    rank_w
+        Width assigned to the Rank column.
+    min_total
+        Optional minimum total width across all columns.
+    overrides
+        Optional explicit column width overrides.
+
+    Returns
+    -------
+    tuple[dict[str, int], list[str]]
+        A mapping of column IDs to pixel widths and the ordered metric column list.
+    """
+    with open(filename) as f:
+        table_json = json.load(f)
+
+    data = table_json.get("data", [])
+    columns = [c.get("id") for c in table_json.get("columns", [])]
+
+    widths: dict[str, int] = {}
+
+    def px_for_len(n: int) -> int:
+        """
+        Convert a character length to pixels using heuristic padding.
+
+        Parameters
+        ----------
+        n
+            Number of characters.
+
+        Returns
+        -------
+        int
+            Estimated pixel width.
+        """
+        return int(n * char_px + padding_px)
+
+    # MLIP width from longest name/header
+    mlip_header_len = len("MLIP")
+    if data and "MLIP" in data[0]:
+        mlip_max_len = max(
+            mlip_header_len, max(len(str(row.get("MLIP", ""))) for row in data)
+        )
+        widths["MLIP"] = max(mlip_min, min(mlip_max, px_for_len(mlip_max_len)))
+    else:
+        widths["MLIP"] = mlip_min
+
+    # Metric widths and order
+    metric_order: list[str] = []
+    for col in columns:
+        if col in ("MLIP", "Score", "Rank", "id"):
+            continue
+        metric_order.append(col)
+
+        max_val_len = 0
+        for row in data:
+            val = row.get(col, "")
+            s = str(val)
+            max_val_len = max(max_val_len, len(s))
+
+        header_len = len(str(col or ""))
+        candidate = max(header_len, max_val_len)
+        est_px = px_for_len(candidate)
+        widths[col] = max(metric_min, min(metric_max, est_px))
+
+    # Score/Rank
+    widths["Score"] = score_w
+    widths["Rank"] = rank_w
+
+    # Optional total width target
+    if isinstance(min_total, int):
+        metric_cols_count = len(metric_order)
+        current_total = sum(
+            widths.get(c, 0) for c in ["MLIP", *metric_order, "Score", "Rank"]
+        )
+        if current_total < min_total and metric_cols_count >= 0:
+            deficit = min_total - current_total
+            add_mlip = int(deficit * 0.6)
+            add_each_metric = int(deficit * 0.4 / max(1, metric_cols_count))
+            widths["MLIP"] = min(mlip_max, widths["MLIP"] + add_mlip)
+            for col in metric_order:
+                widths[col] = min(metric_max, widths[col] + add_each_metric)
+
+    if overrides:
+        widths.update(overrides)
+
+    return widths, metric_order
+
+
+def get_metric_columns_from_json(filename: str | Path) -> list[str]:
+    """
+    Return ordered metric columns from a saved table JSON.
+
+    Parameters
+    ----------
+    filename
+        Path to the serialized table JSON.
+
+    Returns
+    -------
+    list[str]
+        Ordered list of metric column IDs (excluding MLIP/Score/Rank).
+    """
+    with open(filename) as f:
+        table_json = json.load(f)
+    cols = [c.get("id") for c in table_json.get("columns", [])]
+    return [c for c in cols if c not in ("MLIP", "Score", "Rank")]
+
+
+def build_ag_grid_from_table_json(
+    filename: str | Path,
+    grid_id: str,
+    column_size: str = "responsiveSizeToFit",
+):
+    """
+    Build a Dash AG Grid from a saved DataTable JSON (data/columns).
+
+    Parameters
+    ----------
+    filename
+        Path to the saved table JSON (with keys: data, columns, tooltip_header).
+    grid_id
+        Component id to assign to the AG Grid.
+    column_size
+        One of "sizeToFit" or "responsiveSizeToFit".
+
+    Returns
+    -------
+    Component
+        A dash_ag_grid.AgGrid component. If dash-ag-grid is not installed, raises a
+        helpful ImportError.
+    """
+    try:
+        import dash_ag_grid as dag  # type: ignore
+    except Exception as exc:  # pragma: no cover - runtime dependency
+        raise ImportError(
+            "dash-ag-grid is required for the AG Grid preview. "
+            "Install with `pip install dash-ag-grid`."
+        ) from exc
+
+    with open(filename) as f:
+        table_json = json.load(f)
+
+    data = table_json.get("data", [])
+    columns = table_json.get("columns", [])
+
+    # Preserve order and names from DataTable definition
+    column_defs = []
+    for col in columns:
+        # DataTable columns have {"name": header, "id": field}
+        field = col.get("id")
+        header = col.get("name")
+        if field is None:
+            continue
+        column_defs.append(
+            {
+                "field": field,
+                "headerName": header,
+                "sortable": True,
+                "filter": False,
+                "resizable": True,
+                # Keep editable False for preview to avoid confusion
+                "editable": False,
+            }
+        )
+
+    return dag.AgGrid(
+        id=grid_id,
+        rowData=data,
+        columnDefs=column_defs,
+        columnSize=column_size,
+        defaultColDef={
+            "resizable": True,
+            "sortable": True,
+            "filter": False,
+            "suppressHeaderMenuButton": True,
+        },
+        dashGridOptions={
+            "ensureDomOrder": True,
+            "suppressDragLeaveHidesColumns": True,
+        },
+        style={"width": "100%"},
+    )
