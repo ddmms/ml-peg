@@ -33,12 +33,19 @@ Data availability
 
 Input structures:
 
-* J. Gorges, B. Bädorf, A. Hansen, and S. Grimme, ‘LNCI16 - Efficient Computation of the Interaction Energies of Very Large Non-covalently Bound Complexes’, Synlett, vol. 34, no. 10, pp. 1135–1146, Jun. 2023, doi: 10.1055/s-0042-1753141.
-* Associated Github repository: https://github.com/grimme-lab/benchmark-LNCI16
-    * Warning: "Due to a mistake, the host and guest structures for systems TYK2 and FXa are relaxed. Therefore for these systems, the computed energies are association energies (i.e. including the relaxtion energy) and not as stated, interaction energies. Since this is the case for the reference and all evaluated methods, a comparison can still be made. If you want to compute the real interaction energies for TYK2 & FXa, please cut the host and guest structures out of the complex structures. The real :math:`{\omega}`B97X-3c reference interaction energies are:
-:math:`E(\text{TYK2})_{int} = -72.31 \ \text{kcal/mol}` and :math:`E(\text{FXa})_{int} = -70.73 \ \text{kcal/mol}`"
+* J. Gorges, B. Bädorf, A. Hansen, and S. Grimme, ‘LNCI16 - Efficient Computation of
+  the Interaction Energies of Very Large Non-covalently Bound Complexes’, Synlett, vol.
+  34, no. 10, pp. 1135–1146, Jun. 2023, doi: 10.1055/s-0042-1753141.
+
+* Associated GitHub repository: https://github.com/grimme-lab/benchmark-LNCI16
+
+.. note::
+
+    As described in the above repository, the originally released dataset contained
+    some incorrect values. We have used the corrected values for this benchmark.
 
 Reference data:
 
 * Same as input data
-* :math:`{\omega}`B97X-3c level of theory: a composite range-separated hybrid DFT method with a refitted D4 dispersion correction
+* :math:`{\omega}\text{B97X-3c}` level of theory: a composite range-separated hybrid DFT
+  method with a refitted D4 dispersion correction.
