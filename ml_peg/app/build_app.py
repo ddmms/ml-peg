@@ -14,9 +14,11 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_weight_components
-from ml_peg.app.utils.register_callbacks import (
-    register_benchmark_to_category_callback,
-)
+from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
+
+MODELS = get_model_names(current_models)
 
 
 def get_all_tests(

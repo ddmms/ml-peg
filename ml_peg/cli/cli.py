@@ -47,9 +47,14 @@ def run_dash_app(
     debug
         Whether to run with Dash debugging. Default is `True`.
     """
+    from ml_peg.models import models as ml_peg_models
+
+    # Overwrite current_models before it is imported elsewhere
+    ml_peg_models.current_models = models
+
     from ml_peg.app.run_app import run_app
 
-    run_app(models=models, category=category, port=port, debug=debug)
+    run_app(category=category, port=port, debug=debug)
 
 
 @app.command(name="calc", help="Run calculations")

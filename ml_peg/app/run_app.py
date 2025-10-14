@@ -13,7 +13,6 @@ DATA_PATH = Path(__file__).parent / "data"
 
 
 def run_app(
-    models: None | str | list = None,
     category: str = "*",
     port: int = 8050,
     debug: bool = False,
@@ -23,9 +22,6 @@ def run_app(
 
     Parameters
     ----------
-    models
-        Models to build interactive features for. Default is None, corresponding to all
-        current models.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
     port
@@ -33,10 +29,6 @@ def run_app(
     debug
         Whether to run with Dash debugging. Default is `True`.
     """
-    from ml_peg.models import models as ml_peg_models
-
-    ml_peg_models.current_models = models
-
     full_app = Dash(__name__, assets_folder=DATA_PATH)
     build_full_app(full_app, category=category)
 
