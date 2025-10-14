@@ -26,6 +26,8 @@ class BaseApp(ABC):
         Path to json file containing Dash table data for application metrics.
     extra_components
         List of other Dash components to add to app.
+    column_widths
+        Optional mapping of table column IDs to pixel widths for layout alignment.
     docs_url
         URL for online documentation. Default is None.
     """
@@ -36,6 +38,7 @@ class BaseApp(ABC):
         description: str,
         table_path: Path,
         extra_components: list[Component],
+        column_widths: dict[str, int] | None = None,
         docs_url: str | None = None,
     ):
         """
@@ -51,6 +54,8 @@ class BaseApp(ABC):
             Path to json file containing Dash table data for application metrics.
         extra_components
             List of other Dash components to add to app.
+        column_widths
+            Optional mapping of table column IDs to pixel widths for layout alignment.
         docs_url
             URL to online documentation. Default is None.
         """
@@ -58,10 +63,13 @@ class BaseApp(ABC):
         self.description = description
         self.table_path = table_path
         self.extra_components = extra_components
+        self.column_widths = column_widths
         self.docs_url = docs_url
 
         self.table_id = f"{self.name}-table"
-        self.table = rebuild_table(self.table_path, id=self.table_id)
+        self.table = rebuild_table(
+            self.table_path, id=self.table_id, column_widths=self.column_widths
+        )
         self.layout = self.build_layout()
 
     def build_layout(self) -> Div:
@@ -80,6 +88,8 @@ class BaseApp(ABC):
             description=self.description,
             docs_url=self.docs_url,
             table=self.table,
+            column_widths=self.column_widths,
+            normalization_ranges=getattr(self.table, "normalization_ranges", None),
             extra_components=self.extra_components,
         )
 
