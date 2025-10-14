@@ -1,0 +1,63 @@
+mace_mp_0a:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  kwargs:
+    model: "medium"
+
+mace_mp_0b3:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  kwargs:
+    model: "medium-0b3"
+
+mace_mpa_0:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  kwargs:
+    model: "medium-mpa-0"
+
+mace_omat_0:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  kwargs:
+    model: "medium-omat-0"
+
+mace_matpes_r2scan:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  kwargs:
+    model: "mace-matpes-r2scan-0"
+    head: "matpes_pbe"
+
+#uma_sm_omat:
+#  module: fairchem.core
+#  class_name: FAIRChemCalculator
+#  device: "cpu"
+#  kwargs:
+#    model_name: "uma-s-1"
+#    task_name: "omat"
+
+#mattersim_5M:
+#  module: mattersim.forcefield
+#  class_name: MatterSimCalculator
+#  device: "cpu"
+#  load_path: "mattersim-v1.0.0-5m"
+
+orb_v3_conservative_inf_omat__:
+  module: orb_models.forcefield
+  class_name: OrbCalc
+  device: "cpu"
+  kwargs:
+    name: "orb_v3_conservative_inf_omat"
+
+# GRACE-2L-OAM:
+#   module: tensorpotential.calculator
+#   class_name: TPCalculator
+#   device: "cpu"
+#   kwargs:
+#     model: "/Users/joehart/Desktop/0_Cambridge/0_MPhil_Scientific_Computing/MPhil_project/mlipx_testing/models/GRACE-2L-OAM_28Jan25"
