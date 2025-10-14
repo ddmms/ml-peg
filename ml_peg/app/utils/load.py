@@ -43,7 +43,7 @@ def _coerce_normalization_ranges(raw_ranges):
             continue
 
         result[metric] = (good_val, bad_val)
-    return result or None
+    return result
 
 
 def rebuild_table(
@@ -67,6 +67,11 @@ def rebuild_table(
     -------
     DataTable
         Loaded Dash DataTable.
+
+    Raises
+    ------
+    ValueError
+        If the table JSON omits required ``normalization_ranges`` metadata.
     """
     # Load JSON file
     with open(filename) as f:
@@ -93,8 +98,10 @@ def rebuild_table(
     normalization_ranges = _coerce_normalization_ranges(
         table_json.get("normalization_ranges")
     )
-    if normalization_ranges:
-        table.normalization_ranges = normalization_ranges
+    if normalization_ranges is None or not normalization_ranges:
+        raise ValueError(f"No normalization_ranges defined in table JSON: {filename}")
+
+    table.normalization_ranges = normalization_ranges
 
     return table
 

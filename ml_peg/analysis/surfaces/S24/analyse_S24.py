@@ -5,7 +5,11 @@ from __future__ import annotations
 from ase.io import read, write
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_normalized_table,
+    build_table,
+    plot_parity,
+)
 from ml_peg.analysis.utils.utils import mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -15,6 +19,10 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "S24" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "S24"
+
+S24_NORMALIZATION_RANGES = {
+    "MAE": (0.05, 0.5),
+}
 
 
 def compute_adsorption_energy(
@@ -155,6 +163,14 @@ def s24_mae(adsorption_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+@build_normalized_table(
+    filename=OUT_PATH / "s24_normalized_metrics_table.json",
+    metric_tooltips={
+        "Model": "Name of the model",
+        "MAE": "Mean Absolute Error (eV)",
+    },
+    normalization_ranges=S24_NORMALIZATION_RANGES,
+)
 @build_table(
     filename=OUT_PATH / "s24_metrics_table.json",
     metric_tooltips={

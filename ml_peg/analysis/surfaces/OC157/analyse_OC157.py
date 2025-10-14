@@ -6,7 +6,11 @@ from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_normalized_table,
+    build_table,
+    plot_parity,
+)
 from ml_peg.analysis.utils.utils import mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -176,6 +180,18 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
 
 
 @pytest.fixture
+@build_normalized_table(
+    filename=OUT_PATH / "oc157_normalized_metrics_table.json",
+    metric_tooltips={
+        "Model": "Name of the model",
+        "MAE": "Mean Absolute Error (meV)",
+        "Ranking Error": "Error in ranking stability across triplets",
+    },
+    normalization_ranges={
+        "MAE": (0.0, 1.0),
+        "Ranking Error": (0.0, 1.0),
+    },
+)
 @build_table(
     filename=OUT_PATH / "oc157_metrics_table.json",
     metric_tooltips={

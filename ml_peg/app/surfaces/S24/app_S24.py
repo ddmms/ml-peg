@@ -69,7 +69,7 @@ def get_app() -> S24App:
             "molecule-surface combinations."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "s24_metrics_table.json",
+        table_path=DATA_PATH / "s24_normalized_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
