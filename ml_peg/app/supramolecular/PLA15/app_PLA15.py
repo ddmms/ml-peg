@@ -6,14 +6,18 @@ from pathlib import Path
 
 from dash import Dash
 from dash.html import Div
-from mlip_testing.app import APP_ROOT
-from mlip_testing.app.base_app import BaseApp
-from mlip_testing.app.utils.build_callbacks import (
+
+from ml_peg.app import APP_ROOT
+from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
 )
-from mlip_testing.app.utils.load import read_plot
-from mlip_testing.calcs.models.models import MODELS
+from ml_peg.app.utils.load import read_plot
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
+
+MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
@@ -29,10 +33,10 @@ class PLA15App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        structs_dir = DATA_PATH / list(MODELS.keys())[0]
+        structs_dir = DATA_PATH / MODELS[0]
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/PLA15/{list(MODELS.keys())[0]}/{i}.xyz"
+            f"assets/supramolecular/PLA15/{MODELS[0]}/{i}.xyz"
             for i in range(len(list(structs_dir.glob("*.xyz"))))
         ]
 

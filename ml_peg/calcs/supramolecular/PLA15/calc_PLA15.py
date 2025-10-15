@@ -7,13 +7,17 @@ from pathlib import Path
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import write
-from mlip_testing.calcs.models.models import MODELS
-from mlip_testing.calcs.utils.utils import chdir, get_benchmark_data
 import mlipx
 from mlipx.abc import NodeWithCalculator
 import numpy as np
 from tqdm import tqdm
 import zntrack
+
+from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.models.get_models import load_models
+from ml_peg.models.models import current_models
+
+MODELS = load_models(current_models)
 
 # Local directory to store output data
 OUT_PATH = Path(__file__).parent / "outputs"
