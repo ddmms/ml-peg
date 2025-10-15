@@ -6,7 +6,6 @@ from pathlib import Path
 
 from dash import Dash
 from dash.html import Div
-
 from mlip_testing.app import APP_ROOT
 from mlip_testing.app.base_app import BaseApp
 from mlip_testing.app.utils.build_callbacks import (
