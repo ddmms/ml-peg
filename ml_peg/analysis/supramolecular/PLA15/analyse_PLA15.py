@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from mlip_testing.analysis.utils.decorators import build_table, plot_parity
-from mlip_testing.analysis.utils.utils import mae
-from mlip_testing.app import APP_ROOT
-from mlip_testing.calcs import CALCS_ROOT
-from mlip_testing.calcs.models.models import MODELS
 import pytest
+
+from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.utils import mae
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
+
+MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "supramolecular" / "PLA15" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
