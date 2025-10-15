@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash
 from dash.html import Div
 
@@ -19,7 +17,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
-BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
+BENCHMARK_NAME = "PLA15"
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
 
 
@@ -65,7 +63,6 @@ def get_app() -> PLA15App:
     """
     return PLA15App(
         name=BENCHMARK_NAME,
-        title="PLA15",
         description=(
             "Performance in predicting protein-ligand interaction energies for 15 "
             "complete active site complexes."
