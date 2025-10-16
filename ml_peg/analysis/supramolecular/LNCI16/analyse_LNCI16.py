@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -25,8 +26,6 @@ def get_system_names() -> list[str]:
     list[str]
         List of system names from structure files.
     """
-    from ase.io import read
-
     system_names = []
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -205,7 +204,7 @@ def lnci16_mae(interaction_energies) -> dict[str, float]:
                 interaction_energies["ref"], interaction_energies[model_name]
             )
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 

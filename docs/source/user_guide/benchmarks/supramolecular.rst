@@ -10,7 +10,7 @@ Summary
 
 Performance in predicting host-guest interaction energies for 16 large non-covalent
 complexes. These include proteins, DNA, and supramolecular assemblies ranging from 380
-up to 1988 atoms with diverse interaction motives. 14 complexes are neurtral, and two are
+up to 1988 atoms with diverse interaction motives. 14 complexes are neutral, and two are
 charged with charges +1 (TYK2) and -2 (FXa).
 
 Metrics

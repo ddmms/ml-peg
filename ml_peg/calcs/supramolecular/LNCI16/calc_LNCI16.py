@@ -219,48 +219,42 @@ class LNCI16Benchmark(zntrack.Node):
         complex_atoms_list = []
 
         for system_name in tqdm(LNCI16_REFERENCE_ENERGIES.keys(), desc="LNCI16"):
-            try:
-                # Load system structures
-                frags = LNCI16Benchmark.load_lnci16_system(system_name, base_dir)
-                complex_atoms = frags["complex"]
-                host_atoms = frags["host"]
-                guest_atoms = frags["guest"]
+            # Load system structures
+            frags = LNCI16Benchmark.load_lnci16_system(system_name, base_dir)
+            complex_atoms = frags["complex"]
+            host_atoms = frags["host"]
+            guest_atoms = frags["guest"]
 
-                # Log charge information for charged systems
-                if complex_atoms.info["charge"] != 0:
-                    print(
-                        f"  Processing charged system {system_name} "
-                        f"(charge = {complex_atoms.info['charge']:+.0f})"
-                    )
-
-                # Compute interaction energy
-                e_int_model = LNCI16Benchmark.interaction_energy(frags, calc)
-
-                # Reference energy in kcal/mol, convert to eV
-                e_int_ref_kcal = LNCI16_REFERENCE_ENERGIES[system_name]
-                e_int_ref_ev = e_int_ref_kcal * KCAL_PER_MOL_TO_EV
-
-                # Calculate errors
-                error_ev = e_int_model - e_int_ref_ev
-                error_kcal = error_ev * EV_TO_KCAL_PER_MOL
-
-                # Store additional info in complex atoms
-                complex_atoms.info["model"] = model_name
-                complex_atoms.info["E_int_model_kcal"] = (
-                    e_int_model * EV_TO_KCAL_PER_MOL
+            # Log charge information for charged systems
+            if complex_atoms.info["charge"] != 0:
+                print(
+                    f"  Processing charged system {system_name} "
+                    f"(charge = {complex_atoms.info['charge']:+.0f})"
                 )
-                complex_atoms.info["E_int_ref_kcal"] = e_int_ref_kcal
-                complex_atoms.info["error_kcal"] = error_kcal
-                complex_atoms.info["system"] = system_name
-                complex_atoms.info["charged"] = complex_atoms.info["charge"] != 0
-                complex_atoms.info["complex_charge"] = complex_atoms.info["charge"]
-                complex_atoms.info["host_charge"] = host_atoms.info["charge"]
-                complex_atoms.info["guest_charge"] = guest_atoms.info["charge"]
 
-                complex_atoms_list.append(complex_atoms)
-            except Exception as e:
-                print(f"Error processing {system_name}: {e}")
-                continue
+            # Compute interaction energy
+            e_int_model = LNCI16Benchmark.interaction_energy(frags, calc)
+
+            # Reference energy in kcal/mol, convert to eV
+            e_int_ref_kcal = LNCI16_REFERENCE_ENERGIES[system_name]
+            e_int_ref_ev = e_int_ref_kcal * KCAL_PER_MOL_TO_EV
+
+            # Calculate errors
+            error_ev = e_int_model - e_int_ref_ev
+            error_kcal = error_ev * EV_TO_KCAL_PER_MOL
+
+            # Store additional info in complex atoms
+            complex_atoms.info["model"] = model_name
+            complex_atoms.info["E_int_model_kcal"] = e_int_model * EV_TO_KCAL_PER_MOL
+            complex_atoms.info["E_int_ref_kcal"] = e_int_ref_kcal
+            complex_atoms.info["error_kcal"] = error_kcal
+            complex_atoms.info["system"] = system_name
+            complex_atoms.info["charged"] = complex_atoms.info["charge"] != 0
+            complex_atoms.info["complex_charge"] = complex_atoms.info["charge"]
+            complex_atoms.info["host_charge"] = host_atoms.info["charge"]
+            complex_atoms.info["guest_charge"] = guest_atoms.info["charge"]
+
+            complex_atoms_list.append(complex_atoms)
 
         return complex_atoms_list
 
