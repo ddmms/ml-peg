@@ -17,7 +17,100 @@ from ml_peg.app.utils.register_callbacks import (
 )
 
 
-def build_weight_input(input_id: str, default_value: float | None) -> Div:
+def _default_width(label: str, *, base: int = 120) -> int:
+    """
+    Return a heuristic width based on the column label.
+
+    Parameters
+    ----------
+    label : str
+        Column header used to estimate the width.
+    base : int, optional
+        Minimum pixel width that the heuristic will return.
+
+    Returns
+    -------
+    int
+        Estimated pixel width for the column.
+    """
+    approx = len(label) * 9 + 40
+    return max(base, approx)
+
+
+def _resolved_column_widths(
+    metrics: list[str],
+    column_widths: dict[str, int] | None,
+) -> dict[str, int]:
+    """
+    Build a complete width mapping for MLIP, metric, Score, and Rank columns.
+
+    Parameters
+    ----------
+    metrics : list[str]
+        Ordered metric column names to include in the grid.
+    column_widths : dict[str, int] or None
+        Optional explicit widths keyed by column name.
+
+    Returns
+    -------
+    dict[str, int]
+        Mapping from column names to resolved pixel widths.
+    """
+    resolved: dict[str, int] = {}
+    if column_widths:
+        for key, value in column_widths.items():
+            if isinstance(value, int | float):
+                resolved[key] = int(value)
+
+    resolved.setdefault("MLIP", resolved.get("MLIP", 150))
+    resolved.setdefault("Score", resolved.get("Score", 100))
+    resolved.setdefault("Rank", resolved.get("Rank", 100))
+
+    for metric in metrics:
+        if metric not in resolved:
+            resolved[metric] = _default_width(metric)
+
+    return resolved
+
+
+def _grid_template_from_widths(
+    resolved_widths: dict[str, int],
+    column_order: list[str],
+) -> str:
+    """
+    Compose a CSS grid template string from resolved column widths.
+
+    Parameters
+    ----------
+    resolved_widths : dict[str, int]
+        Mapping of column names to pixel widths.
+    column_order : list[str]
+        Ordered metric column names to render between the MLIP, Score, and Rank columns.
+
+    Returns
+    -------
+    str
+        CSS grid template definition using `minmax` tracks.
+    """
+    tracks: list[tuple[str, int]] = [("MLIP", resolved_widths["MLIP"])]
+    tracks.extend((col, resolved_widths[col]) for col in column_order)
+    tracks.append(("Score", resolved_widths["Score"]))
+    tracks.append(("Rank", resolved_widths["Rank"]))
+
+    template_parts: list[str] = []
+    for _, width in tracks:
+        min_px = max(width, 40)
+        weight = max(width / 10, 1)
+        template_parts.append(f"minmax({int(min_px)}px, {weight:.3f}fr)")
+    return " ".join(template_parts)
+
+
+def build_weight_input(
+    input_id: str,
+    default_value: float | None,
+    *,
+    cell_width: int | None = None,
+) -> Div:
     """
     Build numeric input for a metric weight.
 
@@ -27,12 +120,28 @@ def build_weight_input(input_id: str, default_value: float | None) -> Div:
         ID for text box input component.
     default_value
         Default value for the text box input.
+    cell_width
+        Optional width hint retained for signature compatibility; unused.
 
     Returns
     -------
     Div
         Div wrapping the input box.
     """
+    wrapper_style: dict[str, str] = {
+        "display": "flex",
+        "justifyContent": "center",
+        "boxSizing": "border-box",
+        "border": "1px solid black",
+    }
+    wrapper_style.update(
+        {
+            "width": "100%",
+            "minWidth": "0",
+            "maxWidth": "100%",
+        }
+    )
+
     return Div(
         DCC_Input(
             id=input_id,
@@ -48,7 +157,7 @@ def build_weight_input(input_id: str, default_value: float | None) -> Div:
                 "textAlign": "center",
             },
         ),
-        style={"display": "flex", "justifyContent": "center"},
+        style=wrapper_style,
     )
 
 
@@ -90,38 +199,16 @@ def build_weight_components(
 
     input_ids = [f"{table.id}-{col}" for col in columns]
 
+    resolved_widths = _resolved_column_widths(columns, column_widths)
+    grid_template = _grid_template_from_widths(resolved_widths, columns)
+
     weight_inputs = [
         build_weight_input(
             input_id=f"{input_id}-input",
             default_value=1.0,
         )
-        for input_id in input_ids
+        for _, input_id in zip(columns, input_ids, strict=True)
     ]
-
-    column_count = len(weight_inputs)
-    if column_widths:
-
-        def px_for_col(key: str, default: int) -> str:
-            value = column_widths.get(key)
-            if isinstance(value, int | float):
-                return f"{int(value)}px"
-            return f"{default}px"
-
-        parts: list[str] = [px_for_col("MLIP", 160)]
-        for col in columns:
-            parts.append(px_for_col(col, 100))
-        parts.append(px_for_col("Score", 100))
-        parts.append(px_for_col("Rank", 100))
-        grid_template = " ".join(parts)
-    else:
-        metric_columns_template = " ".join(["minmax(80px, 1fr)"] * column_count)
-        grid_parts = [
-            "minmax(140px, auto)",
-            metric_columns_template,
-            "minmax(80px, auto)",
-            "minmax(80px, auto)",
-        ]
-        grid_template = " ".join(grid_parts).strip()
 
     container = Div(
         [
@@ -135,6 +222,8 @@ def build_weight_components(
                             "padding": "2px 4px",
                             "color": "#212529",
                             "whiteSpace": "nowrap",
+                            "boxSizing": "border-box",
+                            "border": "1px solid black",
                         },
                     ),
                     Button(
@@ -159,23 +248,49 @@ def build_weight_components(
                     "flexDirection": "column",
                     "alignItems": "flex-start",
                     "gap": "4px",
+                    "boxSizing": "border-box",
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "border": "1px solid black",
                 },
             ),
             *weight_inputs,
-            Div(),
-            Div(),
+            Div(
+                "",
+                style={
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "boxSizing": "border-box",
+                    "border": "1px solid black",
+                },
+            ),
+            Div(
+                "",
+                style={
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "boxSizing": "border-box",
+                    "border": "1px solid black",
+                },
+            ),
         ],
         style={
             "display": "grid",
             "gridTemplateColumns": grid_template,
             "alignItems": "start",
-            "columnGap": "0px",  # No gap - columns align exactly with table
+            "columnGap": "0px",
             "rowGap": "4px",
             "marginTop": "8px",
             "padding": "10px 12px",
             "backgroundColor": "#f8f9fa",
-            "border": "1px solid #dee2e6",
+            "border": "1px solid black",
             "borderRadius": "6px",
+            "width": "100%",
+            "minWidth": "0",
+            "boxSizing": "border-box",
         },
     )
 
@@ -402,65 +517,45 @@ def build_threshold_inputs_under_table(
     """
     Build inline Good/Bad threshold inputs aligned to the table columns.
 
-    This is generic across benchmarks: it renders one cell per table column in the
-    same order: "MLIP", metric columns, then optional "Score" and "Rank" columns.
-
     Parameters
     ----------
-    table_columns
-        Ordered list of metric column names as they appear in the table
-        (exclude "MLIP", "Score", "Rank").
-    normalization_ranges
-        Dictionary mapping metric names to (X, Y) threshold tuples.
-    table_id
-        ID for the associated table.
-    column_widths
-        Optional mapping of column names to pixel widths to improve alignment.
+    table_columns : list[str]
+        Ordered metric column names in the table.
+    normalization_ranges : dict[str, tuple[float, float]]
+        Default (good, bad) threshold ranges keyed by metric column.
+    table_id : str
+        Identifier prefix for threshold inputs and related controls.
+    column_widths : dict[str, int] or None
+        Optional pixel widths used to align the grid with the table columns.
 
     Returns
     -------
     Div
-        Div containing threshold inputs aligned under table columns.
+        Container with threshold inputs and associated controls.
     """
-    # Grid layout to align cells with table columns. The first column (MLIP) is
-    # wider to match model-name width, metric columns flex equally, and trailing
-    # Score/Rank columns stay compact.
-    total_cols = 1 + len(table_columns) + 2  # MLIP + metrics + Score + Rank
-    if column_widths:
-        # Build explicit grid using the provided widths to match the DataTable
-        def px_for_col(key: str, default: int = 120) -> str:
-            value = column_widths.get(key)
-            if isinstance(value, int | float):
-                return f"{int(value)}px"
-            return f"{default}px"
+    resolved_widths = _resolved_column_widths(table_columns, column_widths)
+    grid_template = _grid_template_from_widths(resolved_widths, table_columns)
 
-        parts = [px_for_col("MLIP", 200)]
-        for metric in table_columns:
-            parts.append(px_for_col(metric))
-        parts.append(px_for_col("Score", 140))
-        parts.append(px_for_col("Rank", 120))
-        grid_template = " ".join(parts)
-    else:
-        # Flexible grid; actual widths will be synced via clientside callback
-        grid_template = f"repeat({total_cols}, minmax(0, 1fr))"
     container_style = {
         "display": "grid",
         "gridTemplateColumns": grid_template,
         "alignItems": "start",
         "justifyItems": "center",
-        "columnGap": "0px",  # No gap - columns align exactly with table
+        "columnGap": "0px",
         "rowGap": "0px",
         "marginTop": "10px",
         "padding": "4px 8px",
         "backgroundColor": "#f8f9fa",
-        "border": "1px solid #dee2e6",
+        "border": "1px solid black",
         "borderRadius": "5px",
+        "width": "100%",
+        "minWidth": "0",
+        "boxSizing": "border-box",
     }
 
     cells: list[Div] = []
     defaults: dict[str, tuple[float, float]] = {}
 
-    # Column 1: header cell under MLIP with inline Reset button
     cells.append(
         Div(
             [
@@ -471,6 +566,7 @@ def build_threshold_inputs_under_table(
                         "fontSize": "13px",
                         "padding": "2px 4px",
                         "whiteSpace": "nowrap",
+                        "boxSizing": "border-box",
                     },
                 ),
                 Button(
@@ -506,11 +602,14 @@ def build_threshold_inputs_under_table(
                 "padding": "1px 2px",
                 "justifySelf": "start",
                 "width": "100%",
+                "minWidth": "0",
+                "maxWidth": "100%",
+                "boxSizing": "border-box",
+                "border": "1px solid black",
             },
         )
     )
 
-    # Columns 2..n: metric cells with Good/Bad inputs (label column fixed width)
     for metric in table_columns:
         raw_bounds = normalization_ranges.get(metric, (None, None))
         try:
@@ -595,14 +694,28 @@ def build_threshold_inputs_under_table(
                     "alignItems": "center",
                     "justifyContent": "center",
                     "padding": "2px 0",
-                    "minWidth": "100px",
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "boxSizing": "border-box",
+                    "border": "1px solid black",
                 },
             )
         )
 
-    # Trailing placeholder cells for Score and Rank columns
-    cells.append(Div(""))
-    cells.append(Div(""))
+    for _ in ("Score", "Rank"):
+        cells.append(
+            Div(
+                "",
+                style={
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "boxSizing": "border-box",
+                    "border": "1px solid black",
+                },
+            )
+        )
 
     store = Store(
         id=f"{table_id}-normalization-store",
