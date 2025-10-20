@@ -20,6 +20,8 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "supramolecular" / "LNCI16" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
+LNCI16_NORMALIZATION_RANGES = {"MAE": (0.0, 100.0)}
+
 
 def get_system_names() -> list[str]:
     """
@@ -219,9 +221,7 @@ def lnci16_mae(interaction_energies) -> dict[str, float]:
         "Model": "Name of the model",
         "MAE": "Mean Absolute Error for all systems (kcal/mol)",
     },
-    normalization_ranges={
-        "MAE": (0.0, 100.0),
-    },
+    normalization_ranges=LNCI16_NORMALIZATION_RANGES,
 )
 @build_table(
     filename=OUT_PATH / "lnci16_metrics_table.json",

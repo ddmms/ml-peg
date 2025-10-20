@@ -21,6 +21,11 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "OC157" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
 
+OC157_NORMALIZATION_RANGES = {
+    "MAE": (0.0, 1.0),
+    "Ranking Error": (0.0, 1.0),
+}
+
 
 def get_relative_energies(energies: list) -> list:
     """
@@ -187,10 +192,7 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
         "MAE": "Mean Absolute Error (meV)",
         "Ranking Error": "Error in ranking stability across triplets",
     },
-    normalization_ranges={
-        "MAE": (0.0, 1.0),
-        "Ranking Error": (0.0, 1.0),
-    },
+    normalization_ranges=OC157_NORMALIZATION_RANGES,
 )
 @build_table(
     filename=OUT_PATH / "oc157_metrics_table.json",

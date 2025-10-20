@@ -20,9 +20,7 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "S24" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "S24"
 
-S24_NORMALIZATION_RANGES = {
-    "MAE": (0.05, 0.5),
-}
+S24_NORMALIZATION_RANGES = {"MAE": (0.05, 0.5)}
 
 
 def compute_adsorption_energy(
