@@ -11,7 +11,6 @@ from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
 from ml_peg.app.utils.register_callbacks import (
     register_normalization_callbacks,
-    register_overlay_callbacks,
     register_summary_table_callbacks,
     register_tab_table_callbacks,
     register_weight_callbacks,
@@ -101,11 +100,18 @@ def build_weight_components(
 
     column_count = len(weight_inputs)
     if column_widths:
-        parts: list[str] = [f"{column_widths.get('MLIP', 160)}px"]
+
+        def px_for_col(key: str, default: int) -> str:
+            value = column_widths.get(key)
+            if isinstance(value, int | float):
+                return f"{int(value)}px"
+            return f"{default}px"
+
+        parts: list[str] = [px_for_col("MLIP", 160)]
         for col in columns:
-            parts.append(f"{column_widths.get(col, 80)}px")
-        parts.append(f"{column_widths.get('Score', 80)}px")
-        parts.append(f"{column_widths.get('Rank', 80)}px")
+            parts.append(px_for_col(col, 100))
+        parts.append(px_for_col("Score", 100))
+        parts.append(px_for_col("Rank", 100))
         grid_template = " ".join(parts)
     else:
         metric_columns_template = " ".join(["minmax(80px, 1fr)"] * column_count)
@@ -293,6 +299,7 @@ def build_test_layout(
     metric_weights = build_metric_weight_components(
         table,
         use_threshold_store=(normalization_ranges is not None),
+        column_widths=column_widths,
     )
     if metric_weights:
         layout_contents.append(metric_weights)
@@ -417,7 +424,14 @@ def build_threshold_input(
                 style={"display": "flex", "gap": "10px"},
             ),
         ],
-        style={"marginBottom": "10px", "padding": "5px", "border": "1px solid #ddd"},
+        style={
+            "marginBottom": "10px",
+            "padding": "5px",
+            "border": "1px solid #ddd",
+            "marginLeft": "auto",
+            "marginRight": "auto",
+            "width": "fit-content",
+        },
     )
 
 
@@ -426,8 +440,6 @@ def build_threshold_inputs_under_table(
     normalization_ranges: dict[str, tuple[float, float]],
     table_id: str,
     column_widths: dict[str, int] | None = None,
-    use_overlay: bool = False,
-    enable_weight_overlay: bool = False,
 ) -> Div:
     """
     Build inline Good/Bad threshold inputs aligned to the table columns.
@@ -446,10 +458,6 @@ def build_threshold_inputs_under_table(
         ID for the associated table.
     column_widths
         Optional mapping of column names to pixel widths to improve alignment.
-    use_overlay
-        If True, render overlay inputs positioned on top of the table.
-    enable_weight_overlay
-        If True, include weight inputs in the overlay controls.
 
     Returns
     -------
@@ -462,11 +470,17 @@ def build_threshold_inputs_under_table(
     total_cols = 1 + len(table_columns) + 2  # MLIP + metrics + Score + Rank
     if column_widths:
         # Build explicit grid using the provided widths to match the DataTable
-        parts = [f"{column_widths.get('MLIP')}px"]
+        def px_for_col(key: str, default: int = 120) -> str:
+            value = column_widths.get(key)
+            if isinstance(value, int | float):
+                return f"{int(value)}px"
+            return f"{default}px"
+
+        parts = [px_for_col("MLIP", 200)]
         for metric in table_columns:
-            parts.append(f"{column_widths.get(metric)}px")
-        parts.append(f"{column_widths.get('Score')}px")
-        parts.append(f"{column_widths.get('Rank')}px")
+            parts.append(px_for_col(metric))
+        parts.append(px_for_col("Score", 140))
+        parts.append(px_for_col("Rank", 120))
         grid_template = " ".join(parts)
     else:
         # Flexible grid; actual widths will be synced via clientside callback
@@ -475,6 +489,7 @@ def build_threshold_inputs_under_table(
         "display": "grid",
         "gridTemplateColumns": grid_template,
         "alignItems": "start",
+        "justifyItems": "center",
         "columnGap": "6px",
         "rowGap": "0px",
         "marginTop": "10px",
@@ -524,18 +539,6 @@ def build_threshold_inputs_under_table(
                     inputStyle={"marginRight": "6px"},
                     labelStyle={"display": "inline-flex", "alignItems": "center"},
                 ),
-                # Overlay anchor lives here when use_overlay=True
-                Div(
-                    id=f"{table_id}-thresholds-overlay",
-                    style={
-                        "position": "relative",
-                        "height": "0px",
-                        "width": "100%",
-                        "marginTop": "1px",
-                    }
-                    if use_overlay
-                    else {"display": "none"},
-                ),
             ],
             style={
                 "display": "flex",
@@ -543,6 +546,8 @@ def build_threshold_inputs_under_table(
                 "alignItems": "flex-start",
                 "justifyContent": "center",
                 "padding": "1px 2px",
+                "justifySelf": "start",
+                "width": "100%",
             },
         )
     )
@@ -557,86 +562,85 @@ def build_threshold_inputs_under_table(
             x_val, y_val = 0.0, 1.0
         defaults[metric] = (x_val, y_val)
 
-        if not use_overlay:
-            cells.append(
-                Div(
-                    [
-                        Div(
-                            [
-                                Label(
-                                    "Good:",
-                                    style={
-                                        "fontSize": "11px",
-                                        "color": "lightseagreen",
-                                        "textAlign": "right",
-                                    },
-                                ),
-                                DCC_Input(
-                                    id=f"{table_id}-{metric}-good-threshold",
-                                    type="number",
-                                    value=x_val,
-                                    step=0.001,
-                                    style={
-                                        "width": "64px",
-                                        "fontSize": "11px",
-                                        "padding": "2px 4px",
-                                        "border": "1px solid lightseagreen",
-                                        "borderRadius": "3px",
-                                    },
-                                ),
-                            ],
-                            style={
-                                "display": "grid",
-                                "gridTemplateColumns": "40px 64px",
-                                "columnGap": "3px",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                                "marginBottom": "2px",
-                            },
-                        ),
-                        Div(
-                            [
-                                Label(
-                                    "Bad:",
-                                    style={
-                                        "fontSize": "11px",
-                                        "color": "#dc3545",
-                                        "textAlign": "right",
-                                    },
-                                ),
-                                DCC_Input(
-                                    id=f"{table_id}-{metric}-bad-threshold",
-                                    type="number",
-                                    value=y_val,
-                                    step=0.001,
-                                    style={
-                                        "width": "64px",
-                                        "fontSize": "11px",
-                                        "padding": "2px 4px",
-                                        "border": "1px solid #dc3545",
-                                        "borderRadius": "3px",
-                                    },
-                                ),
-                            ],
-                            style={
-                                "display": "grid",
-                                "gridTemplateColumns": "40px 64px",
-                                "columnGap": "3px",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                            },
-                        ),
-                    ],
-                    style={
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "alignItems": "center",
-                        "justifyContent": "center",
-                        "padding": "2px 0",
-                        "minWidth": "100px",
-                    },
-                )
+        cells.append(
+            Div(
+                [
+                    Div(
+                        [
+                            Label(
+                                "Good:",
+                                style={
+                                    "fontSize": "11px",
+                                    "color": "lightseagreen",
+                                    "textAlign": "right",
+                                },
+                            ),
+                            DCC_Input(
+                                id=f"{table_id}-{metric}-good-threshold",
+                                type="number",
+                                value=x_val,
+                                step=0.001,
+                                style={
+                                    "width": "64px",
+                                    "fontSize": "11px",
+                                    "padding": "2px 4px",
+                                    "border": "1px solid lightseagreen",
+                                    "borderRadius": "3px",
+                                },
+                            ),
+                        ],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "40px 64px",
+                            "columnGap": "3px",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                            "marginBottom": "2px",
+                        },
+                    ),
+                    Div(
+                        [
+                            Label(
+                                "Bad:",
+                                style={
+                                    "fontSize": "11px",
+                                    "color": "#dc3545",
+                                    "textAlign": "right",
+                                },
+                            ),
+                            DCC_Input(
+                                id=f"{table_id}-{metric}-bad-threshold",
+                                type="number",
+                                value=y_val,
+                                step=0.001,
+                                style={
+                                    "width": "64px",
+                                    "fontSize": "11px",
+                                    "padding": "2px 4px",
+                                    "border": "1px solid #dc3545",
+                                    "borderRadius": "3px",
+                                },
+                            ),
+                        ],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "40px 64px",
+                            "columnGap": "3px",
+                            "alignItems": "center",
+                            "justifyContent": "center",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "padding": "2px 0",
+                    "minWidth": "100px",
+                },
             )
+        )
 
     # Trailing placeholder cells for Score and Rank columns
     cells.append(Div(""))
@@ -649,35 +653,14 @@ def build_threshold_inputs_under_table(
     )
 
     # Register callbacks for these metrics, pass defaults for reset
-    input_suffix = "overlay" if use_overlay else "threshold"
     register_normalization_callbacks(
         table_id,
         table_columns,
         defaults,
-        input_suffix,
         register_toggle=False,
     )
 
     # Score sync callbacks will be implemented later
-
-    if use_overlay:
-        metrics_store = Store(
-            id=f"{table_id}-metrics-store", storage_type="memory", data=table_columns
-        )
-        centers_store = Store(id=f"{table_id}-centers-store", storage_type="memory")
-        register_overlay_callbacks(
-            table_id=table_id,
-            metrics=table_columns,
-            enable_weight_overlay=enable_weight_overlay,
-        )
-        return Div(
-            [
-                Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
-                store,
-                metrics_store,
-                centers_store,
-            ]
-        )
 
     return Div(
         [

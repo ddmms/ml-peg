@@ -9,7 +9,7 @@ from dash.development.base_component import Component
 from dash.html import Div
 
 from ml_peg.app.utils.build_components import build_test_layout
-from ml_peg.app.utils.load import rebuild_table
+from ml_peg.app.utils.load import infer_column_widths_from_json, rebuild_table
 
 
 class BaseApp(ABC):
@@ -63,6 +63,10 @@ class BaseApp(ABC):
         self.description = description
         self.table_path = table_path
         self.extra_components = extra_components
+        if column_widths is None:
+            inferred_widths, _ = infer_column_widths_from_json(self.table_path)
+            column_widths = inferred_widths
+
         self.column_widths = column_widths
         self.docs_url = docs_url
 

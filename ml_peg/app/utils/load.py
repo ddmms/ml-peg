@@ -83,6 +83,23 @@ def rebuild_table(
 
     style = get_table_style(data)
 
+    style_cell_conditional: list[dict[str, object]] = []
+    if column_widths:
+        for column_id, width in column_widths.items():
+            if width is None:
+                continue
+            col_width = f"{width}px"
+            alignment = "left" if column_id == "MLIP" else "center"
+            style_cell_conditional.append(
+                {
+                    "if": {"column_id": column_id},
+                    "width": col_width,
+                    "minWidth": col_width,
+                    "maxWidth": col_width,
+                    "textAlign": alignment,
+                }
+            )
+
     table = DataTable(
         data=data,
         columns=columns,
@@ -92,6 +109,7 @@ def rebuild_table(
         editable=True,
         id=id,
         style_data_conditional=style,
+        style_cell_conditional=style_cell_conditional,
         sort_action="native",
     )
 
