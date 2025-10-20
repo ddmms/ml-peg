@@ -130,6 +130,7 @@ def build_category(
         weight_components = build_weight_components(
             header="Benchmark weights",
             table=summary_table,
+            column_widths=getattr(summary_table, "column_widths", None),
         )
 
         # Build full layout with summary table, weight controls, and test layouts
@@ -216,7 +217,7 @@ def build_summary_table(
             }
         )
 
-    return DataTable(
+    table = DataTable(
         data=data,
         columns=columns,
         id=table_id,
@@ -227,6 +228,8 @@ def build_summary_table(
         persistence_type="session",
         persisted_props=["data"],
     )
+    table.column_widths = column_widths
+    return table
 
 
 def build_tabs(
@@ -315,6 +318,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
+        column_widths=getattr(summary_table, "column_widths", None),
     )
     # Build summary and category tabs
     build_tabs(full_app, category_layouts, summary_table, weight_components)

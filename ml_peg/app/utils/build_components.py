@@ -131,14 +131,16 @@ def build_weight_input(
     wrapper_style: dict[str, str] = {
         "display": "flex",
         "justifyContent": "center",
+        "alignItems": "center",
         "boxSizing": "border-box",
-        "border": "1px solid black",
+        "border": "1px solid transparent",
     }
     wrapper_style.update(
         {
             "width": "100%",
             "minWidth": "0",
             "maxWidth": "100%",
+            "height": "100%",
         }
     )
 
@@ -223,7 +225,7 @@ def build_weight_components(
                             "color": "#212529",
                             "whiteSpace": "nowrap",
                             "boxSizing": "border-box",
-                            "border": "1px solid black",
+                            "border": "1px solid transparent",
                         },
                     ),
                     Button(
@@ -252,7 +254,7 @@ def build_weight_components(
                     "width": "100%",
                     "minWidth": "0",
                     "maxWidth": "100%",
-                    "border": "1px solid black",
+                    "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
             *weight_inputs,
@@ -263,7 +265,7 @@ def build_weight_components(
                     "minWidth": "0",
                     "maxWidth": "100%",
                     "boxSizing": "border-box",
-                    "border": "1px solid black",
+                    "border": "1px solid transparent",
                 },
             ),
             Div(
@@ -273,7 +275,7 @@ def build_weight_components(
                     "minWidth": "0",
                     "maxWidth": "100%",
                     "boxSizing": "border-box",
-                    "border": "1px solid black",
+                    "border": "1px solid transparent",
                 },
             ),
         ],
@@ -286,7 +288,7 @@ def build_weight_components(
             "marginTop": "8px",
             "padding": "10px 12px",
             "backgroundColor": "#f8f9fa",
-            "border": "1px solid black",
+            "border": "1px solid #dee2e6",
             "borderRadius": "6px",
             "width": "100%",
             "minWidth": "0",
@@ -546,7 +548,7 @@ def build_threshold_inputs_under_table(
         "marginTop": "10px",
         "padding": "4px 8px",
         "backgroundColor": "#f8f9fa",
-        "border": "1px solid black",
+        "border": "1px solid #dee2e6",
         "borderRadius": "5px",
         "width": "100%",
         "minWidth": "0",
@@ -605,7 +607,7 @@ def build_threshold_inputs_under_table(
                 "minWidth": "0",
                 "maxWidth": "100%",
                 "boxSizing": "border-box",
-                "border": "1px solid black",
+                "border": "1px solid transparent",
             },
         )
     )
@@ -627,9 +629,11 @@ def build_threshold_inputs_under_table(
                             Label(
                                 "Good:",
                                 style={
-                                    "fontSize": "11px",
+                                    "fontSize": "13px",
                                     "color": "lightseagreen",
                                     "textAlign": "right",
+                                    "position": "absolute",
+                                    "right": "calc(50% + 45px)",
                                 },
                             ),
                             DCC_Input(
@@ -638,21 +642,22 @@ def build_threshold_inputs_under_table(
                                 value=x_val,
                                 step=0.001,
                                 style={
-                                    "width": "64px",
-                                    "fontSize": "11px",
+                                    "width": "80px",
+                                    "fontSize": "12px",
                                     "padding": "2px 4px",
                                     "border": "1px solid lightseagreen",
                                     "borderRadius": "3px",
+                                    "marginLeft": "auto",
+                                    "marginRight": "auto",
                                 },
                             ),
                         ],
                         style={
-                            "display": "grid",
-                            "gridTemplateColumns": "40px 64px",
-                            "columnGap": "3px",
-                            "alignItems": "center",
+                            "display": "flex",
                             "justifyContent": "center",
+                            "alignItems": "center",
                             "marginBottom": "2px",
+                            "position": "relative",
                         },
                     ),
                     Div(
@@ -660,9 +665,11 @@ def build_threshold_inputs_under_table(
                             Label(
                                 "Bad:",
                                 style={
-                                    "fontSize": "11px",
+                                    "fontSize": "13px",
                                     "color": "#dc3545",
                                     "textAlign": "right",
+                                    "position": "absolute",
+                                    "right": "calc(50% + 45px)",
                                 },
                             ),
                             DCC_Input(
@@ -671,20 +678,21 @@ def build_threshold_inputs_under_table(
                                 value=y_val,
                                 step=0.001,
                                 style={
-                                    "width": "64px",
-                                    "fontSize": "11px",
+                                    "width": "80px",
+                                    "fontSize": "12px",
                                     "padding": "2px 4px",
                                     "border": "1px solid #dc3545",
                                     "borderRadius": "3px",
+                                    "marginLeft": "auto",
+                                    "marginRight": "auto",
                                 },
                             ),
                         ],
                         style={
-                            "display": "grid",
-                            "gridTemplateColumns": "40px 64px",
-                            "columnGap": "3px",
-                            "alignItems": "center",
+                            "display": "flex",
                             "justifyContent": "center",
+                            "alignItems": "center",
+                            "position": "relative",
                         },
                     ),
                 ],
@@ -697,8 +705,9 @@ def build_threshold_inputs_under_table(
                     "width": "100%",
                     "minWidth": "0",
                     "maxWidth": "100%",
+                    "height": "100%",
                     "boxSizing": "border-box",
-                    "border": "1px solid black",
+                    "border": "1px solid transparent",
                 },
             )
         )
@@ -712,7 +721,7 @@ def build_threshold_inputs_under_table(
                     "minWidth": "0",
                     "maxWidth": "100%",
                     "boxSizing": "border-box",
-                    "border": "1px solid black",
+                    "border": "1px solid transparent",
                 },
             )
         )
