@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
-from ase.io import write
+from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
 import numpy as np
@@ -86,9 +86,9 @@ class PLA15Benchmark(zntrack.Node):
         return total_charge, qa, qb, selection_a, selection_b
 
     @staticmethod
-    def separate_protein_ligand_simple(pdb_path: Path):
+    def separate_protein_ligand_simple(pdb_path: Path) -> tuple[Atoms, Atoms, Atoms]:
         """
-        Separate protein and ligand based on residue names.
+        Separate protein and ligand based on residue names using ASE.
 
         Parameters
         ----------
@@ -97,70 +97,28 @@ class PLA15Benchmark(zntrack.Node):
 
         Returns
         -------
-        Tuple
+        Tuple[Atoms, Atoms, Atoms]
             All atoms, protein atoms, ligand atoms.
         """
-        import MDAnalysis as mda  # noqa: N813
+        # Read PDB file with ASE
+        all_atoms = read(str(pdb_path), format="proteindatabank")
 
-        # Load with MDAnalysis
-        u = mda.Universe(str(pdb_path))
+        # Get residue information from arrays if available
+        # PDB reader stores residue names in arrays.residuenames
+        residue_names = all_atoms.arrays["residuenames"]
 
-        # Simple separation: ligand = UNK residues, protein = everything else
-        protein_atoms = []
-        ligand_atoms = []
+        # Separate based on residue names
+        ligand_residues = {"UNK", "LIG", "MOL"}
+        ligand_mask = np.array(
+            [resname.strip().upper() in ligand_residues for resname in residue_names]
+        )
+        protein_mask = ~ligand_mask
 
-        for atom in u.atoms:
-            if atom.resname.strip().upper() in ["UNK", "LIG", "MOL"]:
-                ligand_atoms.append(atom)
-            else:
-                protein_atoms.append(atom)
+        # Create separate Atoms objects
+        protein_atoms = all_atoms[protein_mask] if protein_mask.any() else Atoms()
+        ligand_atoms = all_atoms[ligand_mask] if ligand_mask.any() else Atoms()
 
-        return u.atoms, protein_atoms, ligand_atoms
-
-    @staticmethod
-    def mda_atoms_to_ase(atom_list, charge: float, identifier: str) -> Atoms:
-        """
-        Convert MDAnalysis atoms to ASE Atoms object.
-
-        Parameters
-        ----------
-        atom_list
-            List of MDAnalysis atoms.
-        charge : float
-            Charge of the fragment.
-        identifier : str
-            Identifier for the structure.
-
-        Returns
-        -------
-        Atoms
-            ASE Atoms object.
-        """
-        if not atom_list:
-            atoms = Atoms()
-            atoms.info.update({"charge": charge, "identifier": identifier})
-            return atoms
-
-        symbols = []
-        positions = []
-
-        for atom in atom_list:
-            # Get element symbol
-            try:
-                elem = (atom.element or "").strip().title()
-            except (AttributeError, TypeError):
-                elem = ""
-
-            if not elem:
-                # Fallback: first letter of atom name
-                elem = "".join([c for c in atom.name if c.isalpha()])[:1].title() or "C"
-
-            symbols.append(elem)
-            positions.append(atom.position)
-
-        atoms = Atoms(symbols=symbols, positions=np.array(positions))
-        atoms.info.update({"charge": int(round(charge)), "identifier": identifier})
-        return atoms
+        return all_atoms, protein_atoms, ligand_atoms
 
     @staticmethod
     def process_pdb_file(pdb_path: Path) -> dict[str, Atoms]:
@@ -196,13 +154,21 @@ class PLA15Benchmark(zntrack.Node):
 
             base_id = pdb_path.stem
 
-            complex_atoms = PLA15Benchmark.mda_atoms_to_ase(
-                list(all_atoms), total_charge, base_id
+            # Add metadata to ASE Atoms objects
+            complex_atoms = all_atoms.copy()
+            complex_atoms.info.update(
+                {"charge": int(round(total_charge)), "identifier": base_id, "spin": 1}
             )
-            protein_frag = PLA15Benchmark.mda_atoms_to_ase(
-                protein_atoms, charge_a, base_id
+
+            protein_frag = protein_atoms.copy()
+            protein_frag.info.update(
+                {"charge": int(round(charge_a)), "identifier": base_id, "spin": 1}
             )
-            ligand = PLA15Benchmark.mda_atoms_to_ase(ligand_atoms, charge_b, base_id)
+
+            ligand = ligand_atoms.copy()
+            ligand.info.update(
+                {"charge": int(round(charge_b)), "identifier": base_id, "spin": 1}
+            )
 
             return {"complex": complex_atoms, "protein": protein_frag, "ligand": ligand}
 
