@@ -12,6 +12,53 @@ from plotly.io import read_json
 from ml_peg.analysis.utils.utils import get_table_style
 
 
+def calculate_column_widths(
+    columns: list[dict],
+    char_width: int = 9,
+    padding: int = 40,
+    min_metric_width: int = 140,
+) -> dict[str, int]:
+    """
+    Calculate column widths based on column titles with minimum width enforcement.
+
+    Parameters
+    ----------
+    columns
+        List of column dictionaries from DataTable (each has 'id' and 'name').
+    char_width
+        Approximate pixel width per character.
+    padding
+        Extra padding to add to calculated width.
+    min_metric_width
+        Minimum width for metric columns in pixels.
+
+    Returns
+    -------
+    dict[str, int]
+        Mapping of column IDs to pixel widths.
+    """
+    widths = {}
+
+    for col in columns:
+        col_id = col.get("id")
+        col_name = col.get("name", col_id)
+
+        # Fixed widths for static columns
+        if col_id == "MLIP":
+            widths[col_id] = 150
+        elif col_id == "Score":
+            widths[col_id] = 100
+        elif col_id == "Rank":
+            widths[col_id] = 100
+        else:
+            # Calculate width based on column title length
+            calculated_width = len(col_name) * char_width + padding
+            # Enforce minimum width
+            widths[col_id] = max(calculated_width, min_metric_width)
+
+    return widths
+
+
 def _coerce_normalization_ranges(raw_ranges):
     """
     Convert a raw normalization mapping into ``(good, bad)`` float tuples.
@@ -111,6 +158,9 @@ def rebuild_table(
         style_data_conditional=style,
         style_cell_conditional=style_cell_conditional,
         sort_action="native",
+        persistence=True,
+        persistence_type="session",
+        persisted_props=["data"],
     )
 
     normalization_ranges = _coerce_normalization_ranges(

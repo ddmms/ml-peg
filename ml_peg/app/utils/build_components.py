@@ -169,7 +169,7 @@ def build_weight_components(
             "display": "grid",
             "gridTemplateColumns": grid_template,
             "alignItems": "start",
-            "columnGap": "8px",
+            "columnGap": "0px",  # No gap - columns align exactly with table
             "rowGap": "4px",
             "marginTop": "8px",
             "padding": "10px 12px",
@@ -273,6 +273,13 @@ def build_test_layout(
     )
 
     layout_contents.append(Div(table))
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-computed-store",
+            storage_type="session",
+            data=table.data,
+        )
+    )
 
     # Inline normalization thresholds when metadata is supplied
     if normalization_ranges is not None:
@@ -283,7 +290,7 @@ def build_test_layout(
         layout_contents.append(
             Store(
                 id=f"{table.id}-raw-data-store",
-                storage_type="memory",
+                storage_type="session",
                 data=table.data,
             )
         )
@@ -441,7 +448,7 @@ def build_threshold_inputs_under_table(
         "gridTemplateColumns": grid_template,
         "alignItems": "start",
         "justifyItems": "center",
-        "columnGap": "6px",
+        "columnGap": "0px",  # No gap - columns align exactly with table
         "rowGap": "0px",
         "marginTop": "10px",
         "padding": "4px 8px",

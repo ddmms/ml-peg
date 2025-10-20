@@ -14,6 +14,7 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_weight_components
+from ml_peg.app.utils.load import calculate_column_widths
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -137,6 +138,11 @@ def build_category(
                 H1(category_title),
                 H3(category_descrip),
                 summary_table,
+                Store(
+                    id=f"{category_title}-summary-table-computed-store",
+                    storage_type="session",
+                    data=summary_table.data,
+                ),
                 weight_components,
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
@@ -148,9 +154,6 @@ def build_category(
                 benchmark_table_id=benchmark_table.id,
                 category_table_id=f"{category_title}-summary-table",
                 benchmark_column=test_name,
-                use_threshold_store=(
-                    getattr(benchmark_table, "normalization_ranges", None) is not None
-                ),
             )
 
     return category_layouts, category_tables
@@ -197,12 +200,32 @@ def build_summary_table(
 
     style = get_table_style(data)
 
+    # Calculate column widths based on column names
+    column_widths = calculate_column_widths(columns)
+    style_cell_conditional = []
+    for column_id, width in column_widths.items():
+        col_width = f"{width}px"
+        alignment = "left" if column_id == "MLIP" else "center"
+        style_cell_conditional.append(
+            {
+                "if": {"column_id": column_id},
+                "width": col_width,
+                "minWidth": col_width,
+                "maxWidth": col_width,
+                "textAlign": alignment,
+            }
+        )
+
     return DataTable(
         data=data,
         columns=columns,
         id=table_id,
         sort_action="native",
         style_data_conditional=style,
+        style_cell_conditional=style_cell_conditional,
+        persistence=True,
+        persistence_type="session",
+        persisted_props=["data"],
     )
 
 
