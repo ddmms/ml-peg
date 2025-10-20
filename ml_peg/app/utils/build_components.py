@@ -296,8 +296,9 @@ def build_test_layout(
         layout_contents.append(threshold_controls)
 
     # Add metric-weight controls for every benchmark table
-    metric_weights = build_metric_weight_components(
-        table,
+    metric_weights = build_weight_components(
+        header="Metric Weights",
+        table=table,
         use_threshold_store=(normalization_ranges is not None),
         column_widths=column_widths,
     )
@@ -315,56 +316,6 @@ def build_test_layout(
         layout_contents.extend(extra_components)
 
     return Div(layout_contents)
-
-
-def build_metric_weight_components(
-    table: DataTable,
-    header: str = "Metric weights",
-    column_widths: dict[str, int] | None = None,
-    use_threshold_store: bool = False,
-) -> Div:
-    """
-    Discover metric columns and render weight controls and callbacks.
-
-    Uses `build_weight_components` to create sliders, inputs, a reset button,
-    and a weight store tied to the supplied `DataTable`.
-
-    Parameters
-    ----------
-    table
-        Benchmark results DataTable.
-    header
-        Header label shown above the sliders. Default is "Metric weights".
-    column_widths
-        Optional mapping of column widths used for layout alignment (unused but
-        preserved for compatibility).
-    use_threshold_store
-        Whether this table also exposes per-metric normalization thresholds.
-
-    Returns
-    -------
-    Div
-        Div containing sliders, inputs, reset button and weight store.
-    """
-    # Identify metric columns (exclude reserved columns)
-    reserved = {"MLIP", "Score", "Rank", "id"}
-    metric_columns = [
-        col["id"] for col in table.columns if col.get("id") not in reserved
-    ]
-
-    if not metric_columns:
-        return Div()
-
-    input_ids = [f"{table.id}-{col}" for col in metric_columns]
-
-    return build_weight_components(
-        header=header,
-        columns=metric_columns,
-        input_ids=input_ids,
-        table_id=table.id,
-        use_threshold_store=use_threshold_store,
-        column_widths=column_widths,
-    )
 
 
 def build_threshold_input(
