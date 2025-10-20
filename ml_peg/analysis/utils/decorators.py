@@ -12,7 +12,49 @@ from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores
+from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, normalize_metric
+
+
+def calc_normalized_scores(
+    rows: list[dict[str, Any]],
+    normalization_thresholds: dict[str, tuple[float, float]],
+    normalizer: Callable[[float, float, float], float] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Normalize metric values row-by-row and compute composite scores.
+
+    Parameters
+    ----------
+    rows
+        Table rows containing metric values.
+    normalization_thresholds
+        Normalization thresholds keyed by metric name, where each value is
+        a (good_threshold, bad_threshold) tuple.
+    normalizer
+        Optional function to map (value, good, bad) -> normalized score.
+        If None, uses normalize_metric from utils.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Updated rows including normalized ``Score`` entries.
+    """
+    _normalizer = normalizer if normalizer is not None else normalize_metric
+
+    out = []
+    for row in rows:
+        norm_scores = []
+        for key, value in row.items():
+            if (
+                key not in ("MLIP", "Score", "Rank", "id")
+                and key in normalization_thresholds
+            ):
+                good_threshold, bad_threshold = normalization_thresholds[key]
+                norm_scores.append(_normalizer(value, good_threshold, bad_threshold))
+        row = row.copy()
+        row["Score"] = float(np.mean(norm_scores)) if norm_scores else 0.0
+        out.append(row)
+    return out
 
 
 def plot_parity(
@@ -474,46 +516,10 @@ def build_normalized_table(
                     else:
                         default_ranges[metric_name] = (0.0, 1.0)
 
-            # Apply normalization and calculate scores
-            # Calculate scores with provided or default normalizer
-            from ml_peg.analysis.utils import utils as _utils
-            from ml_peg.analysis.utils.utils import calc_ranks
-
-            if normalizer is None:
-                _normalizer = _utils.normalize_metric
-            else:
-                _normalizer = normalizer
-
-            # Local scorer using the chosen normalizer
-            def _calc_normalized_scores(rows, ranges):
-                """
-                Normalize metric values row-by-row and append composite scores.
-
-                Parameters
-                ----------
-                rows
-                    Table rows containing metric values.
-                ranges
-                    Normalization thresholds keyed by metric name.
-
-                Returns
-                -------
-                list[dict]
-                    Updated rows including normalized ``Score`` entries.
-                """
-                out = []
-                for row in rows:
-                    norm_scores = []
-                    for key, value in row.items():
-                        if key not in ("MLIP", "Score", "Rank", "id") and key in ranges:
-                            x_t, y_t = ranges[key]
-                            norm_scores.append(_normalizer(value, x_t, y_t))
-                    row = row.copy()
-                    row["Score"] = float(np.mean(norm_scores)) if norm_scores else 0.0
-                    out.append(row)
-                return out
-
-            metrics_data = _calc_normalized_scores(metrics_data, default_ranges)
+            # Apply normalization and calculate scores using the utility function
+            metrics_data = calc_normalized_scores(
+                metrics_data, default_ranges, normalizer=normalizer
+            )
             metrics_data = calc_ranks(metrics_data)
             metrics_columns += ("Score", "Rank")
 
