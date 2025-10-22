@@ -9,6 +9,7 @@ from typing import Any
 from ase import Atoms
 from ase.io import write
 import numpy as np
+from pandas import read_csv
 import pytest
 from tqdm import tqdm
 import yaml
@@ -49,8 +50,17 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     with open(data_dir / "GMTKN55.yaml") as file:
         structure_dict = yaml.safe_load(file)
 
+    with open(data_dir / "subsets.csv") as subsets_file:
+        subsets_info = read_csv(subsets_file, delimiter=",")
+
     for subset_name, subset in tqdm(structure_dict.items()):
         subset_name = subset_name.lower()
+
+        # Get category and weight from csv file
+        subsets_info["subset"] = subsets_info["subset"].str.lower()
+        row = subsets_info.loc[subsets_info["subset"] == subset_name]
+        category = row["category"].values[0]
+        excluded = row["excluded"].values[0]
 
         for system_name, system in subset.items():
             # sytem 1,2,3...
@@ -69,8 +79,10 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.info["subset_name"] = subset_name
                 atoms.info["system_name"] = system_name
                 atoms.info["species_name"] = species_name
-                atoms.info["ref_value"] = ref_value
+                atoms.info["category"] = category
                 atoms.info["weight"] = weight
+                atoms.info["excluded"] = excluded
+                atoms.info["ref_value"] = ref_value
                 atoms.info["count"] = species["Count"]
                 atoms.cell = None
                 atoms.pbc = False
