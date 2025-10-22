@@ -222,6 +222,53 @@ def download(
     print(f"Downloaded {filename}")
 
 
+@app.command(name="upload", help="Upload data to S3 bucket")
+def upload(
+    key: Annotated[str, Option(help="File to upload")],
+    filename: Annotated[str, Option(help="Filename to save download as")],
+    credentials: Annotated[str, Option(help="S3 credentials")],
+    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-test",
+    endpoint: Annotated[
+        str, Option(help="Endpoint URL")
+    ] = "https://s3.echo.stfc.ac.uk",
+):
+    """
+    Download data from S3 bucket.
+
+    Parameters
+    ----------
+    key
+        Name of file to create in S3 bucket.
+    filename
+        File to upload.
+    credentials
+        S3 credentials.
+    bucket
+        Name of S3 bucket to upload to. Default is "ml-peg-test".
+    endpoint
+        Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
+    """
+    import json
+
+    import boto3
+    from botocore.config import Config
+
+    with open(credentials) as credentials_file:
+        user_credentials = json.load(credentials_file)
+
+    s3 = boto3.client(
+        "s3",
+        config=Config(s3={"addressing_style": "path"}),
+        endpoint_url=endpoint,
+        aws_access_key_id=user_credentials["access_key"],
+        aws_secret_access_key=user_credentials["secret_key"],
+    )
+
+    s3.upload_file(Bucket=bucket, Filename=filename, Key=key)
+
+    print(f"Uploaded {filename}")
+
+
 @app.callback(invoke_without_command=True, help="")
 def print_version(
     version: Annotated[
