@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from ase import units
 from ase.io import read
-from ase.units import kcal, mol
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -17,6 +17,35 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular" / "GMTKN55" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 
+# Unit conversion
+EV_TO_KCAL_PER_MOL = units.mol / units.kcal
+
+
+def strucutre_info() -> dict[str, float | str]:
+    """
+    Get info from all stored structures.
+
+    Returns
+    -------
+    dict[str, float | str]
+        Dictionary with weights, subset name and category for all systems.
+    """
+    info = {"weights": [], "categories": [], "subsets": [], "systems": []}
+    for model_name in MODELS:
+        for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
+            for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
+                struct = read(system_path, index=0)
+                info["weights"].append(struct.info["weight"])
+                info["subsets"].append(struct.info["subset_name"])
+                info["categories"].append(struct.info["category"])
+                info["systems"].append(struct.info["system_name"])
+        # Only need to access info from one model
+        return info
+    return info
+
+
+INFO = strucutre_info()
+
 
 @pytest.fixture
 @plot_parity(
@@ -24,57 +53,122 @@ OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
     title="Relative energies",
     x_label="Predicted relative energy / kcal/mol",
     y_label="Reference relative energy / kcal/mol",
+    hoverdata={
+        "Subset": INFO["subsets"],
+        "Weight": INFO["weights"],
+        "Category": INFO["categories"],
+        "System": INFO["systems"],
+    },
 )
-def rel_energies():
+def rel_energies() -> dict[str, list[float]]:
     """
-    Calculate relative energies for all subsets, between each set of systems.
+    Calculate relative energies for all 1505 systems.
 
     Returns
     -------
-    dict[str, list]
+    dict[str, list[float]]
         Dictionary of all reference and predicted relative energies.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
     for model_name in MODELS:
-        for subset in [dir.name for dir in (CALC_PATH / model_name).glob("*")]:
-            for system_path in (CALC_PATH / model_name / subset).glob("*.xyz"):
+        for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
+            for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
                 structs = read(system_path, index=":")
-                comp_value = 0
-                for struct in structs:
-                    comp_value += (
-                        struct.get_potential_energy()
-                        * struct.info["count"]
-                        * mol
-                        / kcal
-                    )
-            if not ref_stored:
-                results["ref"].append(struct.info["ref_value"])
+                pred_rel_energy = 0
 
-            results[model_name].append(comp_value)
+                for struct in structs:
+                    # Count is defined to give the correct relative energy
+                    pred_rel_energy += (
+                        struct.get_potential_energy() * struct.info["count"]
+                    )
+
+                results[model_name].append(pred_rel_energy * EV_TO_KCAL_PER_MOL)
+
+                # Only store reference results from first model
+                # Shared by all structures in a system, so can use last structure
+                if not ref_stored:
+                    results["ref"].append(struct.info["ref_value"])
 
         ref_stored = True
     return results
 
 
 @pytest.fixture
-def rel_energy_mae(rel_energies):
+def all_errors(rel_energies: dict[str, list[float]]) -> dict[str, list[float]]:
     """
-    Calculate MAE for all models.
+    Calculate MAD for all models for all systems with respect to reference.
 
     Parameters
     ----------
     rel_energies
-        Relative errors for all models.
+        All reference and predicted relative energies, grouped by model.
 
     Returns
     -------
-    dict[str, dict]
-        Metric names and values for all models.
+    dict[str, list[float]]
+        Dictionary of relative MADs, grouped by model.
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(rel_energies["ref"], rel_energies[model_name])
+        results[model_name] = np.abs(
+            np.subtract(rel_energies[model_name], rel_energies["ref"])
+        )
+    return results
+
+
+@pytest.fixture
+def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, float]]:
+    """
+    Calculate MAD for all models, grouped by category.
+
+    Parameters
+    ----------
+    all_errors
+        Dictionary of relative MADs, grouped by model.
+
+    Returns
+    -------
+    dict[str, dict[str, list[float]]]
+        Nested dictionary of relative MADs, grouped by model and category.
+    """
+    results = {}
+
+    for model_name in MODELS:
+        results[model_name] = {}
+        for category in set(INFO["categories"]):
+            results[model_name][category] = np.mean(
+                [
+                    error
+                    for error, cat in zip(
+                        all_errors[model_name], INFO["categories"], strict=True
+                    )
+                    if cat == category
+                ]
+            )
+    return results
+
+
+@pytest.fixture
+def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
+    """
+    Calculate weighted mean absolute deviation for all models.
+
+    Parameters
+    ----------
+    all_errors
+        Dictionary of relative MADs, grouped by model.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Weighted mean absolute deviation for each model.
+    """
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = np.mean(
+            np.multiply(all_errors[model_name], INFO["weights"])
+        )
     return results
 
 
@@ -83,26 +177,34 @@ def rel_energy_mae(rel_energies):
     filename=OUT_PATH / "gmtkn55_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
-        "MAE": "Mean Absolute Error (kcal/mol)",
+        "WTMAD": "Weighted Mean Absolute Deviation (kcal/mol)",
     },
 )
-def metrics(rel_energy_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    category_errors: dict[str, dict[str, float]], weighted_error: dict[str, float]
+) -> dict[str, dict]:
     """
     Get all GMTKN55 metrics.
 
     Parameters
     ----------
-    rel_energy_mae
-        Mean absolute errors for all models.
+    category_errors
+        Relative errors for each models, grouped by categories.
+    weighted_error
+        Weighted relative error for each model.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "Relative Energy Error": rel_energy_mae,
-    }
+    metrics = {}
+    for category in category_errors[MODELS[0]]:
+        metrics[category] = {
+            model: category_errors[model][category] for model in MODELS
+        }
+
+    return metrics | {"WTMAD": weighted_error}
 
 
 def test_gmtkn55(metrics):
