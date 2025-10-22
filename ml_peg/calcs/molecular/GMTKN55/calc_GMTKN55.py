@@ -63,7 +63,7 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
         excluded = row["excluded"].values[0]
 
         for system_name, system in subset.items():
-            # sytem 1,2,3...
+            # system 1,2,3...
             system_structs = []
             ref_value = system["Energy"]
             weight = system["Weight"]
