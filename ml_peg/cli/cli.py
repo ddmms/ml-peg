@@ -116,7 +116,7 @@ def run_calcs(
     pytest.main(options)
 
 
-@app.command(name="analyse", help="Run calculations")
+@app.command(name="analyse", help="Run analysis")
 def run_analysis(
     models: Annotated[
         str | None,
