@@ -5,4 +5,4 @@ services:
       - 8050:8050
     working_dir: /app
     volumes:
-      - ./:/app
+      - ../ml_peg/app/data:/app/ml_peg/app/data
