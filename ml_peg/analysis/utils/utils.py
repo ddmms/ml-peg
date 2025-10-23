@@ -73,14 +73,20 @@ def calc_scores(
         scores = []
         weights_list = []
         for key, value in row.items():
-            # Value may be `None` if missing for a benchmark
-            if key not in ("MLIP", "Score", "Rank", "id") and value:
-                scores.append(value)
-                weights_list.append(weights.get(key, 1.0))
+            # Value may be ``None`` if missing for a benchmark
+            if key in {"MLIP", "Score", "Rank", "id"}:
+                continue
+            if value is None:
+                continue
+            scores.append(value)
+            weights_list.append(weights.get(key, 1.0))
 
         # Ensure at least one score is being averaged
         if scores:
-            row["Score"] = np.average(scores, weights=weights_list)
+            try:
+                row["Score"] = float(np.average(scores, weights=weights_list))
+            except ZeroDivisionError:
+                row["Score"] = float(np.mean(scores))
         else:
             row["Score"] = None
 
@@ -103,7 +109,8 @@ def calc_ranks(metrics_data: list[dict]) -> list[dict]:
     """
     # If a score is None, set to NaN for ranking purposes, but do not rank
     ranked_scores = rankdata(
-        [x["Score"] if x["Score"] else np.nan for x in metrics_data], nan_policy="omit"
+        [x["Score"] if x.get("Score") is not None else np.nan for x in metrics_data],
+        nan_policy="omit",
     )
     for i, row in enumerate(metrics_data):
         if np.isnan(ranked_scores[i]):
@@ -177,16 +184,39 @@ def get_table_style(
             raise ValueError(f"Column '{col}' not found in data.")
 
     for col in cols:
-        # Ensure that model is present in the row, and the score is not None
-        min_value = min([row[col] for row in data if col in row and row[col]])
-        max_value = max([row[col] for row in data if col in row and row[col]])
+        numeric_entries: list[tuple[object, float]] = []
+        for row in data:
+            if col not in row:
+                continue
+            raw_value = row[col]
+            if raw_value is None:
+                continue
+            try:
+                numeric_value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            numeric_entries.append((raw_value, numeric_value))
 
-        for val in [row[col] for row in data if col in row and row[col]]:
+        if not numeric_entries:
+            continue
+
+        numeric_values = [numeric for _, numeric in numeric_entries]
+        min_value = min(numeric_values)
+        max_value = max(numeric_values)
+
+        for raw_value, numeric_value in numeric_entries:
             style_data_conditional.append(
                 {
-                    "if": {"filter_query": f"{{{col}}} = {val}", "column_id": col},
-                    "backgroundColor": rgba_from_val(val, min_value, max_value, cmap),
-                    "color": "white" if val > (min_value + max_value) / 2 else "black",
+                    "if": {
+                        "filter_query": f"{{{col}}} = {raw_value}",
+                        "column_id": col,
+                    },
+                    "backgroundColor": rgba_from_val(
+                        numeric_value, min_value, max_value, cmap
+                    ),
+                    "color": "white"
+                    if numeric_value > (min_value + max_value) / 2
+                    else "black",
                 }
             )
 
