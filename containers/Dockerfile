@@ -46,4 +46,4 @@ USER nonroot
 WORKDIR /app
 
 # Run the application
-CMD ["ml_peg", "app"]
+CMD ["ml_peg", "app", "--no-debug"]
