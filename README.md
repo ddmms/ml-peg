@@ -21,6 +21,7 @@ Our original interactive analysis suite is currently hosted at: http://mlip-test
 ## Contents
 - [Getting started](#getting-started)
 - [Features](#features)
+- [Docker Images](#docker-images)
 - [Development](#development)
 - [License](#license)
 
@@ -45,10 +46,50 @@ To get all the latest changes, ML-PEG can be installed from GitHub:
 python3 -m pip install git+https://github.com/ddmms/ml-peg.git
 ```
 
+
 ## Features
 
 Coming soon!
 
+
+## Docker images
+
+A Docker image with the latest changes can be pulled from the GitHub container
+registry, following the command that can be found under this repository's
+[packages](https://github.com/ddmms/ml-peg/pkgs/container/ml-peg-app):
+
+> [!NOTE]
+> Currently, this repository only contains images for the linux/amd64 platform.
+> On MacOS with ARM silicon, this can often still be run by setting
+> `--platform linux/amd64` when using `docker run`.
+
+
+Alternatively, to build the container yourself, you can use the
+[Dockerfile](containers/Dockerfile) provided. From the `ml-peg` directory, run:
+
+```
+docker build -t ml-peg-app -f containers/Dockerfile .
+```
+
+
+Once built, you can mount your current application data and start the app by running:
+
+```
+docker run --volume ./ml_peg/app/data:/app/ml_peg/app/data  --publish 8050:8050 ml-peg-app
+```
+
+> [!TIP]
+> Ensure `ml_peg/app/data` is populated with results before running the container.
+
+
+Alternatively, you can use the [compose.yml](containers/compose.yml) file provided, via
+Docker Compose:
+
+```
+docker compose -f containers/compose.yml up -d
+```
+
+The app should now be accessible at http://localhost:8050.
 
 ## Development
 
