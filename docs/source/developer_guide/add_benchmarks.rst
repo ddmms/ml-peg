@@ -9,6 +9,11 @@ This guide will break down the process of adding a new benchmark into several st
 3. :ref:`analysis`
 4. :ref:`dash`
 
+Please ensure you use the appropriate issue and pull request templates when
+contributing a new benchmark. Full examples can be found by filtering by the
+`example benchmark addition <https://github.com/ddmms/ml-peg/issues?q=label%3A%22example%20benchmark%20addition%22>`_
+label.
+
 .. _metrics:
 
 Identifying metrics
