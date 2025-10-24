@@ -5,7 +5,77 @@ from __future__ import annotations
 from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
+from ml_peg.analysis.utils.utils import (
+    calc_normalized_scores,
+    calc_ranks,
+    calc_scores,
+    get_table_style,
+    normalize_metric,
+)
+
+
+def _coerce_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
+    """
+    Convert potentially non-numeric weight values into floats.
+
+    Parameters
+    ----------
+    raw_weights
+        Mapping from metric name to supplied weight.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary containing only numeric weight values.
+    """
+    if not raw_weights:
+        return {}
+    coerced: dict[str, float] = {}
+    for metric, value in raw_weights.items():
+        try:
+            coerced[metric] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return coerced
+
+
+def _coerce_threshold_map(
+    raw_thresholds: dict[str, dict[str, float] | list[float] | tuple[float, float]]
+    | None,
+) -> dict[str, tuple[float, float]]:
+    """
+    Convert raw threshold metadata into ``(good, bad)`` float tuples.
+
+    Parameters
+    ----------
+    raw_thresholds
+        Mapping supplied by Dash stores containing threshold info.
+
+    Returns
+    -------
+    dict[str, tuple[float, float]]
+        Cleaned threshold mapping keyed by metric name.
+    """
+    if not raw_thresholds:
+        return {}
+
+    cleaned: dict[str, tuple[float, float]] = {}
+    for metric, bounds in raw_thresholds.items():
+        try:
+            if isinstance(bounds, dict):
+                good_val = float(bounds["good"])
+                bad_val = float(bounds["bad"])
+            elif isinstance(bounds, list | tuple) and len(bounds) == 2:
+                good_val = float(bounds[0])
+                bad_val = float(bounds[1])
+            else:
+                continue
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        cleaned[metric] = (good_val, bad_val)
+
+    return cleaned
 
 
 def register_summary_table_callbacks() -> None:
@@ -59,7 +129,9 @@ def register_summary_table_callbacks() -> None:
         return summary_data, style
 
 
-def register_tab_table_callbacks(table_id) -> None:
+def register_tab_table_callbacks(
+    table_id: str, use_threshold_store: bool = False
+) -> None:
     """
     Register callback to update table scores/rankings when stored values change.
 
@@ -67,41 +139,171 @@ def register_tab_table_callbacks(table_id) -> None:
     ----------
     table_id
         ID for table to update.
+    use_threshold_store
+        If True, also watch the per-metric normalization store and recompute
+        scores using the configured thresholds. Only true for benchmark tables.
     """
 
-    @callback(
-        Output(table_id, "data"),
-        Output(table_id, "style_data_conditional"),
-        Input(f"{table_id}-weight-store", "data"),
-        Input("all-tabs", "value"),
-        State(table_id, "data"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def update_table_scores(
-        stored_weights: dict[str, float], tabs_value: str, table_data: list[dict]
+    def _calc_scored_rows(
+        raw_rows: list[dict],
+        weights: dict[str, float],
+        threshold_pairs: dict[str, tuple[float, float]] | None = None,
     ) -> list[dict]:
         """
-        Update scores table score and rankings when data store updates.
+        Return scored rows after applying weights and optional thresholds.
 
         Parameters
         ----------
-        stored_weights
-            Stored weight values for `table_id`.
-        tabs_value
-            Selected tab value (unused; triggers recompute on tab change).
-        table_data
-            Data from `table_id` to be updated.
+        raw_rows : list[dict]
+            Metric rows to be scored (each row mutated on a copy).
+        weights : dict[str, float]
+            Mapping of metric name to weight value.
+        threshold_pairs : dict[str, tuple[float, float]] | None, optional
+            Optional normalisation thresholds keyed by metric name.
 
         Returns
         -------
         list[dict]
-            Updated table data.
+            Rows with fresh ``Score`` and ``Rank`` entries.
         """
-        table_data = calc_scores(table_data, stored_weights)
-        table_data = calc_ranks(table_data)
-        style = get_table_style(table_data)
+        working = [row.copy() for row in raw_rows]
+        if threshold_pairs:
+            working = calc_normalized_scores(working, threshold_pairs, weights)
+        else:
+            working = calc_scores(working, weights)
+        return calc_ranks(working)
 
-        return table_data, style
+    def _materialize_display_rows(
+        raw_rows: list[dict],
+        scored_rows: list[dict],
+        threshold_pairs: dict[str, tuple[float, float]] | None,
+        toggle_value: list[str] | None,
+    ) -> list[dict]:
+        """
+        Build table display rows, normalising metrics when requested.
+
+        Parameters
+        ----------
+        raw_rows : list[dict]
+            Original raw metric values.
+        scored_rows : list[dict]
+            Rows produced by :func:`_calc_scored_rows`.
+        threshold_pairs : dict[str, tuple[float, float]] | None
+            Normalisation thresholds, or ``None`` for raw metrics.
+        toggle_value : list[str] | None
+            Current state of the “Show normalized values” toggle.
+
+        Returns
+        -------
+        list[dict]
+            Rows to render in the DataTable.
+        """
+        show_normalized = bool(toggle_value) and ("norm" in (toggle_value or []))
+        if not (show_normalized and threshold_pairs):
+            return [row.copy() for row in scored_rows]
+
+        score_map = {
+            row.get("MLIP"): row for row in scored_rows if row.get("MLIP") is not None
+        }
+        display_rows: list[dict] = []
+        for row in raw_rows:
+            display_row = row.copy()
+            mlip = display_row.get("MLIP")
+            for metric, (good, bad) in threshold_pairs.items():
+                if metric not in display_row:
+                    continue
+                try:
+                    metric_val = float(display_row[metric])
+                except (TypeError, ValueError):
+                    continue
+                display_row[metric] = normalize_metric(metric_val, good, bad)
+            if mlip in score_map:
+                display_row["Score"] = score_map[mlip].get("Score")
+                display_row["Rank"] = score_map[mlip].get("Rank")
+            display_rows.append(display_row)
+        return display_rows
+
+    if use_threshold_store:
+
+        @callback(
+            Output(table_id, "data", allow_duplicate=True),
+            Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-weight-store", "data"),
+            Input(f"{table_id}-normalization-store", "data"),
+            Input("all-tabs", "value"),
+            Input(f"{table_id}-normalized-toggle", "value"),
+            State(f"{table_id}-raw-data-store", "data"),
+            State(f"{table_id}-computed-store", "data"),
+            prevent_initial_call="initial_duplicate",
+        )
+        def update_table_scores_with_thresholds(
+            stored_weights: dict[str, float] | None,
+            threshold_store: dict | None,
+            _tabs_value: str,
+            toggle_value: list[str] | None,
+            raw_data: list[dict] | None,
+            computed_store: list[dict] | None,
+        ) -> tuple[list[dict], list[dict], list[dict]]:
+            if not raw_data:
+                raise PreventUpdate
+
+            threshold_pairs = _coerce_threshold_map(threshold_store)
+            weights = _coerce_weights(stored_weights)
+            trigger_id = ctx.triggered_id
+
+            if (
+                trigger_id in ("all-tabs", f"{table_id}-normalized-toggle")
+                and computed_store
+            ):
+                # Tab switches and toggle flips reuse the cached scored rows rather than
+                # recalculating scores, we only re-score when weights/thresholds change.
+                display_rows = _materialize_display_rows(
+                    raw_data, computed_store, threshold_pairs, toggle_value
+                )
+                style = get_table_style(display_rows)
+                return display_rows, style, computed_store
+
+            scored_rows = _calc_scored_rows(raw_data, weights, threshold_pairs)
+            display_rows = _materialize_display_rows(
+                raw_data, scored_rows, threshold_pairs, toggle_value
+            )
+            style = get_table_style(display_rows)
+            return display_rows, style, scored_rows
+
+    else:
+
+        @callback(
+            Output(table_id, "data", allow_duplicate=True),
+            Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-weight-store", "data"),
+            Input("all-tabs", "value"),
+            State(table_id, "data"),
+            State(f"{table_id}-computed-store", "data"),
+            prevent_initial_call="initial_duplicate",
+        )
+        def update_table_scores(
+            stored_weights: dict[str, float] | None,
+            _tabs_value: str,
+            table_data: list[dict] | None,
+            computed_store: list[dict] | None,
+        ) -> tuple[list[dict], list[dict], list[dict]]:
+            trigger_id = ctx.triggered_id
+
+            if trigger_id == "all-tabs" and computed_store:
+                # When returning to the tab we show the last scored rows instantly.
+                display_rows = [row.copy() for row in computed_store]
+                style = get_table_style(display_rows)
+                return display_rows, style, computed_store
+
+            if not table_data:
+                raise PreventUpdate
+
+            weights = _coerce_weights(stored_weights)
+            scored_rows = _calc_scored_rows(table_data, weights, None)
+            style = get_table_style(scored_rows)
+            return scored_rows, style, scored_rows
 
     @callback(
         Output("summary-table-scores-store", "data", allow_duplicate=True),
@@ -142,7 +344,10 @@ def register_tab_table_callbacks(table_id) -> None:
 
 
 def register_benchmark_to_category_callback(
-    benchmark_table_id: str, category_table_id: str, benchmark_column: str
+    benchmark_table_id: str,
+    category_table_id: str,
+    benchmark_column: str,
+    use_threshold_store: bool = False,
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
@@ -155,68 +360,83 @@ def register_benchmark_to_category_callback(
         ID of the category summary table (e.g., "Surfaces-summary-table").
     benchmark_column
         Column name in the category summary table corresponding to the benchmark.
+    use_threshold_store
+        Whether the benchmark table exposes a normalization store for metrics.
     """
+    _ = use_threshold_store  # cached rows handle normalization
+    # flag kept for compatibility with existing call sites
 
     @callback(
         Output(category_table_id, "data", allow_duplicate=True),
         Output(category_table_id, "style_data_conditional", allow_duplicate=True),
-        Input(f"{benchmark_table_id}-weight-store", "data"),
+        Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
+        Input(f"{benchmark_table_id}-computed-store", "data"),
         Input("all-tabs", "value"),
-        State(benchmark_table_id, "data"),
         State(category_table_id, "data"),
         State(f"{category_table_id}-weight-store", "data"),
+        State(f"{category_table_id}-computed-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_category_from_benchmark(
-        benchmark_weights: dict[str, float] | None,
-        tabs_value: str,
-        benchmark_data: list[dict],
-        category_data: list[dict],
+        benchmark_computed_store: list[dict] | None,
+        _tabs_value: str,
+        category_data: list[dict] | None,
         category_weights: dict[str, float] | None,
-    ) -> list[dict]:
+        category_computed_store: list[dict] | None,
+    ) -> tuple[list[dict], list[dict], list[dict]]:
         """
-        Update category summary from a benchmark table.
+        Update a category summary table from cached benchmark scores.
 
         Parameters
         ----------
-        benchmark_weights
-            Metric weight mapping for the benchmark table.
-        tabs_value
-            Selected tab value (unused; triggers recompute on tab switch).
-        benchmark_data
-            Rows from the benchmark table containing metric columns and Score.
+        benchmark_computed_store
+            Latest scored benchmark rows emitted by the benchmark table.
+        _tabs_value
+            Current tab identifier (unused, required to trigger on tab change).
         category_data
-            Current rows for the category summary table.
+            Existing category table rows shown to the user.
         category_weights
-            Weight mapping for category columns used to recompute Score.
+            Stored weights for the category summary metrics.
+        category_computed_store
+            Cached scored rows for the category summary.
 
         Returns
         -------
-        list[dict]
-            Updated category table data and style tuple.
+        tuple[list[dict], list[dict], list[dict]]
+            Updated table data, updated style, and refreshed cached rows.
         """
-        # Only handle metric-weight updates; ignore tab-change mounts/renders
-        if ctx.triggered_id != f"{benchmark_table_id}-weight-store":
+        if category_data is None:
             raise PreventUpdate
 
-        # Compute MLIP -> Score using latest metric weights for deterministic update
-        b_weights = benchmark_weights if benchmark_weights else {}
-        recomputed = calc_scores([row.copy() for row in benchmark_data], b_weights)
-        benchmark_scores = {row["MLIP"]: row.get("Score") for row in recomputed}
+        triggered = ctx.triggered_id
+        base_rows = category_computed_store or category_data
+        if triggered == "all-tabs":
+            if not base_rows:
+                raise PreventUpdate
+            display_rows = [row.copy() for row in base_rows]
+            style = get_table_style(display_rows)
+            return display_rows, style, display_rows
 
-        # Inject into the appropriate column for each MLIP
-        for row in category_data:
-            mlip = row["MLIP"]
-            if mlip in benchmark_scores and benchmark_scores[mlip] is not None:
+        if benchmark_computed_store is None:
+            raise PreventUpdate
+
+        benchmark_scores = {
+            row.get("MLIP"): row.get("Score")
+            for row in benchmark_computed_store
+            if row.get("MLIP") is not None and row.get("Score") is not None
+        }
+
+        working_rows = [row.copy() for row in base_rows]
+        for row in working_rows:
+            mlip = row.get("MLIP")
+            if mlip in benchmark_scores:
                 row[benchmark_column] = benchmark_scores[mlip]
 
-        # Recompute category Score and Rank using its existing weights
-        weights = category_weights if category_weights else {}
-        category_data = calc_scores(category_data, weights)
-        category_data = calc_ranks(category_data)
-        style = get_table_style(category_data)
-
-        return category_data, style
+        weights = _coerce_weights(category_weights)
+        scored_rows = calc_scores(working_rows, weights)
+        scored_rows = calc_ranks(scored_rows)
+        style = get_table_style(scored_rows)
+        return scored_rows, style, scored_rows
 
 
 def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None:
@@ -236,25 +456,21 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
     @callback(
         Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
-        Input(f"{input_id}-slider", "value"),
         Input(f"{input_id}-input", "value"),
         Input(f"{table_id}-reset-button", "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
     )
-    def store_slider_value(
-        slider_weight: float,
-        input_weight: float,
+    def store_input_value(
+        input_weight: float | None,
         n_clicks: int,
         stored_weights: dict[str, float],
     ) -> dict[str, float]:
         """
-        Store weight values from slider and text input.
+        Store weight values from the text input.
 
         Parameters
         ----------
-        slider_weight
-            Weight value from slider.
         input_weight
             Weight value from input box.
         n_clicks
@@ -265,20 +481,16 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
         Returns
         -------
         dict[str, float]
-            Stored weights for each slider.
+            Stored weights for each input box.
         """
         trigger_id = ctx.triggered_id
 
-        if trigger_id == f"{input_id}-slider":
-            stored_weights[column] = slider_weight
-        elif trigger_id == f"{input_id}-input":
-            if input_weight is not None:
-                stored_weights[column] = input_weight
-            else:
+        if trigger_id == f"{input_id}-input":
+            if input_weight is None:
                 raise PreventUpdate
+            stored_weights[column] = input_weight
         elif trigger_id == f"{table_id}-reset-button":
             stored_weights.update((key, default_weight) for key in stored_weights)
-            stored_weights[column] = default_weight
         else:
             raise PreventUpdate
 
@@ -286,16 +498,13 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
     @callback(
         Output(f"{input_id}-input", "value"),
-        Output(f"{input_id}-slider", "value"),
         Input(f"{table_id}-weight-store", "data"),
         Input("all-tabs", "value"),
         prevent_initial_call="initial_duplicate",
     )
-    def sync_slider_inputs(
-        stored_weights: dict[str, float], tabs_value: str
-    ) -> tuple[float, float]:
+    def sync_inputs(stored_weights: dict[str, float], tabs_value: str) -> float:
         """
-        Sync weight values between slider and text input via Store.
+        Sync weight values between the text input and Store.
 
         Parameters
         ----------
@@ -306,7 +515,139 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 
         Returns
         -------
-        tuple[float, float]
-            Weights to set slider value and text input value.
+        float
+            Weight to set text input value.
         """
-        return stored_weights[column], stored_weights[column]
+        return stored_weights[column]
+
+
+def register_normalization_callbacks(
+    table_id: str,
+    metrics: list[str],
+    default_ranges: dict[str, tuple[float, float]] | None = None,
+    register_toggle: bool = True,
+) -> None:
+    """
+    Register callbacks for normalization threshold controls.
+
+    Parameters
+    ----------
+    table_id
+        ID for table to update.
+    metrics
+        List of metric names that have normalization thresholds.
+    default_ranges
+        Optional default threshold mapping used for resets.
+    register_toggle
+        When True, register the raw/normalized display toggle callback.
+    """
+    input_suffix = "threshold"
+
+    if default_ranges:
+        default_ranges = {
+            metric: (float(bounds[0]), float(bounds[1]))
+            for metric, bounds in default_ranges.items()
+        }
+
+    # Per-metric store callbacks (simpler and reliable)
+    for metric in metrics:
+
+        @callback(
+            Output(f"{table_id}-normalization-store", "data", allow_duplicate=True),
+            Input(f"{table_id}-{metric}-good-{input_suffix}", "value"),
+            Input(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
+            State(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def store_threshold_values(
+            good_val, bad_val, n_clicks, stored_ranges, metric=metric
+        ):
+            """Update normalization ranges store for one metric or reset all."""
+            trigger_id = ctx.triggered_id
+            if stored_ranges is None:
+                stored_ranges = (default_ranges or {}).copy()
+
+            if trigger_id == f"{table_id}-reset-thresholds-button":
+                if default_ranges:
+                    return {
+                        key: (float(bounds[0]), float(bounds[1]))
+                        for key, bounds in default_ranges.items()
+                    }
+                return stored_ranges
+
+            # Ensure key exists
+            cur_x, cur_y = stored_ranges.get(metric, (0.0, 1.0))
+
+            if trigger_id == f"{table_id}-{metric}-good-{input_suffix}":
+                if good_val is None:
+                    raise PreventUpdate
+                stored_ranges[metric] = (float(good_val), float(cur_y))
+            elif trigger_id == f"{table_id}-{metric}-bad-{input_suffix}":
+                if bad_val is None:
+                    raise PreventUpdate
+                stored_ranges[metric] = (float(cur_x), float(bad_val))
+            else:
+                raise PreventUpdate
+
+            return stored_ranges
+
+    if register_toggle:
+        # Toggle display between raw and normalized values without recomputing scores
+        @callback(
+            Output(f"{table_id}", "data", allow_duplicate=True),
+            Output(f"{table_id}", "style_data_conditional", allow_duplicate=True),
+            Input(f"{table_id}-normalized-toggle", "value"),
+            State(f"{table_id}-raw-data-store", "data"),
+            State(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def toggle_normalized_display(
+            show_normalized: list[str] | None,
+            raw_data: list[dict],
+            normalization_ranges: dict[str, tuple[float, float]] | None,
+        ) -> tuple[list[dict], list[dict]]:
+            """Toggle between raw and normalized metric values for display only."""
+            if not raw_data:
+                raise PreventUpdate
+
+            show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
+            ranges = _coerce_threshold_map(normalization_ranges)
+
+            if show_norm_flag and ranges:
+                # Show normalized values
+                display_rows = []
+                for row in raw_data:
+                    new_row = row.copy()
+                    for metric, (x_t, y_t) in ranges.items():
+                        if metric in row:
+                            try:
+                                metric_val = float(row[metric])
+                            except (TypeError, ValueError):
+                                continue
+                            new_row[metric] = normalize_metric(metric_val, x_t, y_t)
+                    display_rows.append(new_row)
+            else:
+                # Show raw values
+                display_rows = [row.copy() for row in raw_data]
+
+            style = get_table_style(display_rows)
+            return display_rows, style
+
+    # Register individual threshold input sync callbacks
+    for metric in metrics:
+
+        @callback(
+            [
+                Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
+                Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            ],
+            Input(f"{table_id}-normalization-store", "data"),
+            prevent_initial_call=True,
+        )
+        def sync_threshold_inputs(normalization_ranges, metric=metric):
+            """Sync threshold input values with stored ranges."""
+            if normalization_ranges and metric in normalization_ranges:
+                good_val, bad_val = normalization_ranges[metric]
+                return good_val, bad_val
+            return 0.0, 1.0

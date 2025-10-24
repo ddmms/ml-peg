@@ -79,7 +79,7 @@ def get_app() -> LiDiffusionApp:
         name=BENCHMARK_NAME,
         description=("Performance in predicting energy barriers for Li diffision."),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "li_diffusion_metrics_table.json",
+        table_path=DATA_PATH / "li_diffusion_normalized_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),

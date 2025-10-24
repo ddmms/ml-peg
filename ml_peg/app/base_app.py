@@ -9,7 +9,7 @@ from dash.development.base_component import Component
 from dash.html import Div
 
 from ml_peg.app.utils.build_components import build_test_layout
-from ml_peg.app.utils.load import rebuild_table
+from ml_peg.app.utils.load import calculate_column_widths, rebuild_table
 
 
 class BaseApp(ABC):
@@ -26,6 +26,8 @@ class BaseApp(ABC):
         Path to json file containing Dash table data for application metrics.
     extra_components
         List of other Dash components to add to app.
+    column_widths
+        Optional mapping of table column IDs to pixel widths for layout alignment.
     docs_url
         URL for online documentation. Default is None.
     """
@@ -36,6 +38,7 @@ class BaseApp(ABC):
         description: str,
         table_path: Path,
         extra_components: list[Component],
+        column_widths: dict[str, int] | None = None,
         docs_url: str | None = None,
     ):
         """
@@ -51,6 +54,8 @@ class BaseApp(ABC):
             Path to json file containing Dash table data for application metrics.
         extra_components
             List of other Dash components to add to app.
+        column_widths
+            Optional mapping of table column IDs to pixel widths for layout alignment.
         docs_url
             URL to online documentation. Default is None.
         """
@@ -59,9 +64,21 @@ class BaseApp(ABC):
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
-
         self.table_id = f"{self.name}-table"
-        self.table = rebuild_table(self.table_path, id=self.table_id)
+
+        # Load table columns to calculate widths if not provided
+        if column_widths is None:
+            import json
+
+            with open(table_path) as f:
+                table_json = json.load(f)
+            columns = table_json.get("columns", [])
+            column_widths = calculate_column_widths(columns)
+
+        self.column_widths = column_widths
+        self.table = rebuild_table(
+            self.table_path, id=self.table_id, column_widths=self.column_widths
+        )
         self.layout = self.build_layout()
 
     def build_layout(self) -> Div:
@@ -80,6 +97,8 @@ class BaseApp(ABC):
             description=self.description,
             docs_url=self.docs_url,
             table=self.table,
+            column_widths=self.column_widths,
+            normalization_ranges=getattr(self.table, "normalization_ranges", None),
             extra_components=self.extra_components,
         )
 

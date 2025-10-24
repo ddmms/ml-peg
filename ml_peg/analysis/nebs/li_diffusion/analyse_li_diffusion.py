@@ -7,7 +7,11 @@ from typing import Literal
 from ase.io import read, write
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.decorators import (
+    build_normalized_table,
+    build_table,
+    plot_scatter,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -18,6 +22,10 @@ CALC_PATH = CALCS_ROOT / "nebs" / "li_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
 
 REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
+LI_DIFFUSION_NORMALIZATION_RANGES = {
+    "Path B error": (0.02, 0.4),
+    "Path C error": (0.1, 0.8),
+}
 
 
 def plot_nebs(model: str, path: Literal["b", "c"]) -> None:
@@ -113,6 +121,15 @@ def path_c_error() -> dict[str, float]:
 
 
 @pytest.fixture
+@build_normalized_table(
+    filename=OUT_PATH / "li_diffusion_normalized_metrics_table.json",
+    metric_tooltips={
+        "Model": "Name of the model",
+        "Path B error": "Energy Barrier error for path B (eV)",
+        "Path C error": "Energy Barrier error for path C (eV)",
+    },
+    normalization_ranges=LI_DIFFUSION_NORMALIZATION_RANGES,
+)
 @build_table(
     filename=OUT_PATH / "li_diffusion_metrics_table.json",
     metric_tooltips={
