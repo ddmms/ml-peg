@@ -337,9 +337,15 @@ def build_table(
 
             summary_tooltips = {
                 "MLIP": "Name of the model",
-                "Score": "Average of normalised metrics (higher is better)",
                 "Rank": "Model rank based on score (lower is better)",
             }
+            if normalize:
+                summary_tooltips["Score"] = (
+                    "Average of normalised metrics (higher is better)"
+                )
+            else:
+                summary_tooltips["Score"] = "Average of metrics"
+
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
             else:
