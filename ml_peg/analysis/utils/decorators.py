@@ -255,12 +255,12 @@ def build_table(
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
-    Build DataTable, including optional metric normalization capabilities.
+    Build DataTable, including optional metric normalisation.
 
-    If `normalize` is `True`, by default each metric is normalized to 0-1 scale where:
+    If `normalize` is `True`, by default each metric is normalised to 0-1 scale where:
     - Values <= Y get score 0
     - Values >= X get score 1
-    - Values between Y and X scale linearly
+    - Values between Y and X scale linearly, by default.
 
     Parameters
     ----------
@@ -270,13 +270,13 @@ def build_table(
         Tooltips for table metric headers. Defaults are set for "MLIP", "Score", and
         "Rank".
     normalize
-        Whether to apply normalization when calculating the score. Default is True.
+        Whether to apply normalisation when calculating the score. Default is True.
     thresholds
         Mapping of metric names to (X, Y) tuples where X is the upper threshold and
         Y is the lower threshold. Required if `normalize` is `True`.
     normalizer
-        Optional function to map (value, X, Y) -> normalized score. Default is
-        ml_peg.analysis.utils.utils.normalize_metric().
+        Optional function to map (value, X, Y) -> normalised score. Default is
+        ml_peg.analysis.utils.utils.normalize_metric.
 
     Returns
     -------
@@ -286,7 +286,7 @@ def build_table(
 
     def build_table_decorator(func: Callable) -> Callable:
         """
-        Decorate function to build normalized table.
+        Decorate function to build table.
 
         Parameters
         ----------
@@ -302,7 +302,7 @@ def build_table(
         @functools.wraps(func)
         def build_table_wrapper(*args, **kwargs) -> dict[str, Any]:
             """
-            Wrap function to build normalized table.
+            Wrap function to build table.
 
             Parameters
             ----------
@@ -337,7 +337,7 @@ def build_table(
 
             summary_tooltips = {
                 "MLIP": "Name of the model",
-                "Score": "Average of normalized metrics (higher is better)",
+                "Score": "Average of normalised metrics (higher is better)",
                 "Rank": "Model rank based on score (lower is better)",
             }
             if metric_tooltips:
@@ -345,7 +345,7 @@ def build_table(
             else:
                 tooltip_header = summary_tooltips
 
-            # Apply normalization and calculate scores using the utility function
+            # Calculate scores, including any normalisation
             if normalize:
                 metrics_data = calc_scores(
                     metrics_data=metrics_data,

@@ -59,7 +59,7 @@ def calc_scores(
     """
     Calculate (normalised) score for each model and add to table data.
 
-    If `thresholds` is not None, `normalizer` will be used to normalise the score.
+    If `thresholds` is not `None`, `normalizer` will be used to normalise the score.
 
     Parameters
     ----------
@@ -72,7 +72,7 @@ def calc_scores(
         a (good_threshold, bad_threshold) tuple.
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
-        If None, and thresholds are specified, uses `normalize_metric`.
+        If `None`, and thresholds are specified, uses `normalize_metric`.
 
     Returns
     -------
@@ -257,7 +257,7 @@ def normalize_metric(
     Parameters
     ----------
     value
-        The metric value to normalize.
+        The metric value to normalise.
     good_threshold
         Threshold that maps to score 1.0.
     bad_threshold
@@ -266,7 +266,7 @@ def normalize_metric(
     Returns
     -------
     float | None
-        Normalized score between 0 and 1, or `None` if normalization process
+        Normalized score between 0 and 1, or `None` if normalisation process
         raises an error.
     """
     if value is None or good_threshold is None or bad_threshold is None:
