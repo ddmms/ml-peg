@@ -17,6 +17,9 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "LNCI16"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#lnci16"
+)
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
 
@@ -66,6 +69,7 @@ def get_app() -> LNCI16App:
             "large non-covalent complexes including proteins, DNA, "
             "and supramolecular assemblies."
         ),
+        docs_url=DOCS_URL,
         table_path=DATA_PATH / "lnci16_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
