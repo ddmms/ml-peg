@@ -117,6 +117,8 @@ def calc_ranks(metrics_data: list[dict]) -> list[dict]:
     ----------
     metrics_data
         Rows data containing model name, metric values, and Score.
+        The "Score" column is used to calculate the rank, with the highest score ranked
+        1.
 
     Returns
     -------
@@ -127,12 +129,13 @@ def calc_ranks(metrics_data: list[dict]) -> list[dict]:
     ranked_scores = rankdata(
         [x["Score"] if x.get("Score") is not None else np.nan for x in metrics_data],
         nan_policy="omit",
+        method="max",
     )
     for i, row in enumerate(metrics_data):
         if np.isnan(ranked_scores[i]):
             row["Rank"] = None
         else:
-            row["Rank"] = int(ranked_scores[i])
+            row["Rank"] = len(ranked_scores) - int(ranked_scores[i]) + 1
     return metrics_data
 
 
