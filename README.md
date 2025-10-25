@@ -21,7 +21,7 @@ Our original interactive analysis suite is currently hosted at: http://mlip-test
 ## Contents
 - [Getting started](#getting-started)
 - [Features](#features)
-- [Docker Images](#docker-images)
+- [Docker/Podman images](#dockerpodman-images)
 - [Development](#development)
 - [License](#license)
 
@@ -52,11 +52,19 @@ python3 -m pip install git+https://github.com/ddmms/ml-peg.git
 Coming soon!
 
 
-## Docker images
+## Docker/Podman images
 
-A Docker image with the latest changes can be pulled from the GitHub container
-registry, following the command that can be found under this repository's
-[packages](https://github.com/ddmms/ml-peg/pkgs/container/ml-peg-app):
+You can use [Docker](https://www.docker.com) or [Podman](https://podman.io/) to build
+and/or run the ML-PEG app yourself.
+
+> [!TIP]
+> The commands below will assume you are using Docker. To use Podman, replace `docker`
+> with `podman`, e.g. `podman pull`, `podman build`, and `podman run`.
+
+A Docker image with the latest changes can be pulled from the
+GitHub container registry, following the command that can be found under this
+repository's [packages](https://github.com/ddmms/ml-peg/pkgs/container/ml-peg-app).
+
 
 > [!NOTE]
 > Currently, this repository only contains images for the linux/amd64 platform.
@@ -70,7 +78,6 @@ Alternatively, to build the container yourself, you can use the
 ```
 docker build -t ml-peg-app -f containers/Dockerfile .
 ```
-
 
 Once built, you can mount your current application data and start the app by running:
 

@@ -28,9 +28,19 @@ To get all the latest changes, ML-PEG can also be installed from GitHub:
 Running the application
 -----------------------
 
+You can use `Docker <https://www.docker.com>`_ or `Podman <https://podman.io/>`_ to
+build and/or run the ML-PEG app yourself.
+
+.. tip::
+
+    The commands below will assume you are using Docker. To use Podman, replace
+    ``docker`` with ``podman``, e.g. ``podman pull``, ``podman build``, and
+    ``podman run``.
+
+
 A Docker image with the latest changes can be pulled from the GitHub container
 registry, following the command that can be found under this repository's
-`packages <https://github.com/ddmms/ml-peg/pkgs/container/ml-peg-app>`_:
+`packages <https://github.com/ddmms/ml-peg/pkgs/container/ml-peg-app>`_.
 
 .. note::
 
