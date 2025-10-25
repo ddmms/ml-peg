@@ -605,14 +605,14 @@ def register_normalization_callbacks(
         def toggle_normalized_display(
             show_normalized: list[str] | None,
             raw_data: list[dict],
-            normalization_ranges: dict[str, tuple[float, float]] | None,
+            thresholds: dict[str, tuple[float, float]] | None,
         ) -> tuple[list[dict], list[dict]]:
             """Toggle between raw and normalized metric values for display only."""
             if not raw_data:
                 raise PreventUpdate
 
             show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
-            ranges = _coerce_threshold_map(normalization_ranges)
+            ranges = _coerce_threshold_map(thresholds)
 
             if show_norm_flag and ranges:
                 # Show normalized values
@@ -645,9 +645,9 @@ def register_normalization_callbacks(
             Input(f"{table_id}-normalization-store", "data"),
             prevent_initial_call=True,
         )
-        def sync_threshold_inputs(normalization_ranges, metric=metric):
+        def sync_threshold_inputs(thresholds, metric=metric):
             """Sync threshold input values with stored ranges."""
-            if normalization_ranges and metric in normalization_ranges:
-                good_val, bad_val = normalization_ranges[metric]
+            if thresholds and metric in thresholds:
+                good_val, bad_val = thresholds[metric]
                 return good_val, bad_val
             return 0.0, 1.0

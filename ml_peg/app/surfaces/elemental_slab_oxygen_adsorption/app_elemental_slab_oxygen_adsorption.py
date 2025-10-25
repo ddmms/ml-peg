@@ -69,8 +69,7 @@ def get_app() -> ElementalSlabOxygenAdsorptionApp:
             "on elemental slabs."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH
-        / "elemental_slab_oxygen_adsorption_normalized_metrics_table.json",
+        table_path=DATA_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),

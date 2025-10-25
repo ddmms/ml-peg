@@ -269,7 +269,7 @@ def normalize_metric(value: float, x_threshold: float, y_threshold: float) -> fl
 
 def calc_normalized_scores(
     metrics_data: list[dict],
-    normalization_ranges: dict[str, tuple[float, float]],
+    thresholds: dict[str, tuple[float, float]],
     weights: dict[str, float] | None = None,
 ) -> list[dict]:
     """
@@ -281,7 +281,7 @@ def calc_normalized_scores(
     ----------
     metrics_data
         Rows data containing model name and metric values.
-    normalization_ranges
+    thresholds
         Dictionary mapping metric names to (X, Y) threshold tuples.
     weights
         Optional mapping of metric names to weighting factors.
@@ -296,18 +296,11 @@ def calc_normalized_scores(
         weights_list = []
 
         for key, value in row.items():
-            if (
-                key not in ("MLIP", "Score", "Rank", "id")
-                and key in normalization_ranges
-            ):
+            if key not in ("MLIP", "Score", "Rank", "id") and key in thresholds:
                 try:
-                    x_threshold, y_threshold = normalization_ranges[key]
+                    x_threshold, y_threshold = thresholds[key]
                     x_threshold = float(x_threshold)
                     y_threshold = float(y_threshold)
-                except (TypeError, ValueError):
-                    continue
-
-                try:
                     metric_value = float(value)
                 except (TypeError, ValueError):
                     continue
@@ -331,7 +324,7 @@ def calc_normalized_scores(
                 row["Score"] = float(
                     np.average(normalized_scores, weights=weights_list)
                 )
-            except Exception:
+            except (TypeError, ValueError):
                 row["Score"] = float(np.mean(normalized_scores))
         else:
             row["Score"] = 0.0

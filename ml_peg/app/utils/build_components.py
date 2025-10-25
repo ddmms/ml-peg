@@ -328,7 +328,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    normalization_ranges: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, tuple[float, float]] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -348,7 +348,7 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
-    normalization_ranges
+    thresholds
         Optional normalization metadata (metric -> (good, bad)) supplied via the
         analysis pipeline. When provided, inline threshold controls are rendered
         automatically.
@@ -399,7 +399,7 @@ def build_test_layout(
     )
 
     # Inline normalization thresholds when metadata is supplied
-    if normalization_ranges is not None:
+    if thresholds is not None:
         reserved = {"MLIP", "Score", "Rank", "id"}
         metric_columns = [
             col["id"] for col in table.columns if col.get("id") not in reserved
@@ -413,7 +413,7 @@ def build_test_layout(
         )
         threshold_controls = build_threshold_inputs_under_table(
             table_columns=metric_columns,
-            normalization_ranges=normalization_ranges,
+            thresholds=thresholds,
             table_id=table.id,
             column_widths=column_widths,
         )
@@ -423,7 +423,7 @@ def build_test_layout(
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
-        use_threshold_store=(normalization_ranges is not None),
+        use_threshold_store=(thresholds is not None),
         column_widths=column_widths,
     )
     if metric_weights:
@@ -512,7 +512,7 @@ def build_threshold_input(
 
 def build_threshold_inputs_under_table(
     table_columns: list[str],
-    normalization_ranges: dict[str, tuple[float, float]],
+    thresholds: dict[str, tuple[float, float]],
     table_id: str,
     column_widths: dict[str, int] | None = None,
 ) -> Div:
@@ -523,7 +523,7 @@ def build_threshold_inputs_under_table(
     ----------
     table_columns : list[str]
         Ordered metric column names in the table.
-    normalization_ranges : dict[str, tuple[float, float]]
+    thresholds : dict[str, tuple[float, float]]
         Default (good, bad) threshold ranges keyed by metric column.
     table_id : str
         Identifier prefix for threshold inputs and related controls.
@@ -613,7 +613,7 @@ def build_threshold_inputs_under_table(
     )
 
     for metric in table_columns:
-        raw_bounds = normalization_ranges.get(metric, (None, None))
+        raw_bounds = thresholds.get(metric, (None, None))
         try:
             x_val = float(raw_bounds[0])
             y_val = float(raw_bounds[1])
@@ -752,7 +752,7 @@ def build_threshold_inputs_under_table(
 
 def build_normalization_components(
     metrics: list[str],
-    normalization_ranges: dict[str, tuple[float, float]],
+    thresholds: dict[str, tuple[float, float]],
     table_id: str,
 ) -> Div:
     """
@@ -764,7 +764,7 @@ def build_normalization_components(
     ----------
     metrics
         List of metric names.
-    normalization_ranges
+    thresholds
         Dictionary mapping metric names to (X, Y) threshold tuples.
     table_id
         ID for associated table.
@@ -785,8 +785,8 @@ def build_normalization_components(
     ]
 
     for metric in metrics:
-        if metric in normalization_ranges:
-            x_default, y_default = normalization_ranges[metric]
+        if metric in thresholds:
+            x_default, y_default = thresholds[metric]
             layout.append(build_threshold_input(metric, x_default, y_default, table_id))
 
     layout.extend(
@@ -800,12 +800,12 @@ def build_normalization_components(
             Store(
                 id=f"{table_id}-normalization-store",
                 storage_type="session",
-                data=normalization_ranges,
+                data=thresholds,
             ),
         ]
     )
 
     # Register normalization callbacks
-    register_normalization_callbacks(table_id, metrics, normalization_ranges)
+    register_normalization_callbacks(table_id, metrics, thresholds)
 
     return Div(layout)

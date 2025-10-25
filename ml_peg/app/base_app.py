@@ -98,7 +98,7 @@ class BaseApp(ABC):
             docs_url=self.docs_url,
             table=self.table,
             column_widths=self.column_widths,
-            normalization_ranges=getattr(self.table, "normalization_ranges", None),
+            thresholds=getattr(self.table, "thresholds", None),
             extra_components=self.extra_components,
         )
 

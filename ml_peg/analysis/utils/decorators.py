@@ -16,8 +16,8 @@ from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, normalize_metri
 
 
 def calc_normalized_scores(
-    rows: list[dict[str, Any]],
-    normalization_thresholds: dict[str, tuple[float, float]],
+    metrics_data: list[dict[str, Any]],
+    thresholds: dict[str, tuple[float, float]],
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict[str, Any]]:
     """
@@ -25,9 +25,9 @@ def calc_normalized_scores(
 
     Parameters
     ----------
-    rows
+    metrics_data
         Table rows containing metric values.
-    normalization_thresholds
+    thresholds
         Normalization thresholds keyed by metric name, where each value is
         a (good_threshold, bad_threshold) tuple.
     normalizer
@@ -42,14 +42,11 @@ def calc_normalized_scores(
     _normalizer = normalizer if normalizer is not None else normalize_metric
 
     out = []
-    for row in rows:
+    for row in metrics_data:
         norm_scores = []
         for key, value in row.items():
-            if (
-                key not in ("MLIP", "Score", "Rank", "id")
-                and key in normalization_thresholds
-            ):
-                good_threshold, bad_threshold = normalization_thresholds[key]
+            if key not in ("MLIP", "Score", "Rank", "id") and key in thresholds:
+                good_threshold, bad_threshold = thresholds[key]
                 norm_scores.append(_normalizer(value, good_threshold, bad_threshold))
         row = row.copy()
         row["Score"] = float(np.mean(norm_scores)) if norm_scores else 0.0
@@ -292,16 +289,33 @@ def plot_scatter(
 def build_table(
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
+    normalize: bool = True,
+    thresholds: dict[str, tuple[float, float]] | None = None,
+    normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
-    Build table MLIP results.
+    Build DataTable, including optional metric normalization capabilities.
+
+    If `normalize` is `True`, by default each metric is normalized to 0-1 scale where:
+    - Values <= Y get score 0
+    - Values >= X get score 1
+    - Values between Y and X scale linearly
 
     Parameters
     ----------
     filename
-        Filename to save table.
+        Filename to save table. Default is "table.json".
     metric_tooltips
-        Tooltips for table metric headers.
+        Tooltips for table metric headers. Defaults are set for "MLIP", "Score", and
+        "Rank".
+    normalize
+        Whether to apply normalization when calculating the score. Default is True.
+    thresholds
+        Mapping of metric names to (X, Y) tuples where X is the upper threshold and
+        Y is the lower threshold. Required if `normalize` is `True`.
+    normalizer
+        Optional function to map (value, X, Y) -> normalized score. Default is
+        ml_peg.analysis.utils.utils.normalize_metric().
 
     Returns
     -------
@@ -310,130 +324,6 @@ def build_table(
     """
 
     def build_table_decorator(func: Callable) -> Callable:
-        """
-        Decorate function to build table.
-
-        Parameters
-        ----------
-        func
-            Function being wrapped.
-
-        Returns
-        -------
-        Callable
-            Wrapped function.
-        """
-
-        @functools.wraps(func)
-        def build_table_wrapper(*args, **kwargs) -> dict[str, Any]:
-            """
-            Wrap function to build table.
-
-            Parameters
-            ----------
-            *args
-                Arguments to pass to the function being wrapped.
-            **kwargs
-                Key word arguments to pass to the function being wrapped.
-
-            Returns
-            -------
-            dict
-                Results dictionary.
-            """
-            results = func(*args, **kwargs)
-            # Form of results is
-            # results = {
-            #     metric_1: {mlip_1: value_1, mlip_2: value_2},
-            #     metric_2: {mlip_1: value_3, mlip_2: value_4},
-            # }
-
-            metrics_columns = ("MLIP",) + tuple(results.keys())
-            # Use MLIP keys from first (any) metric keys
-            mlips = next(iter(results.values())).keys()
-
-            metrics_data = []
-            for mlip in mlips:
-                metrics_data.append(
-                    {"MLIP": mlip}
-                    | {key: value[mlip] for key, value in results.items()}
-                    | {"id": mlip},
-                )
-
-            summary_tooltips = {
-                "MLIP": "Name of the model",
-                "Score": "Average of metrics (lower is better)",
-                "Rank": "Model rank based on score (lower is better)",
-            }
-            if metric_tooltips:
-                tooltip_header = metric_tooltips | summary_tooltips
-            else:
-                tooltip_header = summary_tooltips
-
-            metrics_data = calc_scores(metrics_data)
-            metrics_data = calc_ranks(metrics_data)
-            metrics_columns += ("Score", "Rank")
-
-            table = dash_table.DataTable(
-                metrics_data,
-                [{"name": i, "id": i} for i in metrics_columns if i != "id"],
-                id="metrics",
-                tooltip_header=tooltip_header,
-            )
-
-            # Save dict of table to be loaded
-            Path(filename).parent.mkdir(parents=True, exist_ok=True)
-            with open(filename, "w") as fp:
-                dump(
-                    {
-                        "data": table.data,
-                        "columns": table.columns,
-                        "tooltip_header": tooltip_header,
-                    },
-                    fp,
-                )
-
-            return results
-
-        return build_table_wrapper
-
-    return build_table_decorator
-
-
-def build_normalized_table(
-    filename: str = "normalized_table.json",
-    metric_tooltips: dict[str, str] | None = None,
-    normalization_ranges: dict[str, tuple[float, float]] | None = None,
-    normalizer: Callable[[float, float, float], float] | None = None,
-) -> Callable:
-    """
-    Build table with metric normalization capabilities.
-
-    Each metric gets normalized to 0-1 scale where:
-    - Values <= Y get score 0
-    - Values >= X get score 1
-    - Values between Y and X scale linearly
-
-    Parameters
-    ----------
-    filename
-        Filename to save table.
-    metric_tooltips
-        Tooltips for table metric headers.
-    normalization_ranges
-        Mapping of metric names to (X, Y) tuples where X is the upper threshold and
-        Y is the lower threshold.
-    normalizer
-        Optional function to map (value, X, Y) -> normalized score. If None, uses
-        ml_peg.analysis.utils.utils.normalize_metric. Allows easy swapping later.
-
-    Returns
-    -------
-    Callable
-        Decorator to wrap function.
-    """
-
-    def build_normalized_table_decorator(func: Callable) -> Callable:
         """
         Decorate function to build normalized table.
 
@@ -449,7 +339,7 @@ def build_normalized_table(
         """
 
         @functools.wraps(func)
-        def build_normalized_table_wrapper(*args, **kwargs) -> dict[str, Any]:
+        def build_table_wrapper(*args, **kwargs) -> dict[str, Any]:
             """
             Wrap function to build normalized table.
 
@@ -494,32 +384,16 @@ def build_normalized_table(
             else:
                 tooltip_header = summary_tooltips
 
-            # Set default normalization ranges if not provided
-            default_ranges = {}
-            if normalization_ranges:
-                default_ranges = normalization_ranges.copy()
-
-            # Create default ranges for any missing metrics
-            for metric_name in results.keys():
-                if metric_name not in default_ranges:
-                    # Default: assume lower is better, set reasonable defaults
-                    values = [
-                        results[metric_name][mlip]
-                        for mlip in mlips
-                        if not np.isnan(results[metric_name][mlip])
-                    ]
-                    if values:
-                        min_val, max_val = min(values), max(values)
-                        # X (upper threshold) = min value (best case)
-                        # Y (lower threshold) = max value (worst case)
-                        default_ranges[metric_name] = (min_val, max_val)
-                    else:
-                        default_ranges[metric_name] = (0.0, 1.0)
-
             # Apply normalization and calculate scores using the utility function
-            metrics_data = calc_normalized_scores(
-                metrics_data, default_ranges, normalizer=normalizer
-            )
+            if normalize:
+                metrics_data = calc_normalized_scores(
+                    metrics_data=metrics_data,
+                    thresholds=thresholds,
+                    normalizer=normalizer,
+                )
+            else:
+                metrics_data = calc_scores(metrics_data)
+
             metrics_data = calc_ranks(metrics_data)
             metrics_columns += ("Score", "Rank")
 
@@ -538,13 +412,13 @@ def build_normalized_table(
                         "data": table.data,
                         "columns": table.columns,
                         "tooltip_header": tooltip_header,
-                        "normalization_ranges": default_ranges,
+                        "thresholds": thresholds,
                     },
                     fp,
                 )
 
             return results
 
-        return build_normalized_table_wrapper
+        return build_table_wrapper
 
-    return build_normalized_table_decorator
+    return build_table_decorator

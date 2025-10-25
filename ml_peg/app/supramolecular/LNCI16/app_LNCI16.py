@@ -66,7 +66,7 @@ def get_app() -> LNCI16App:
             "large non-covalent complexes including proteins, DNA, "
             "and supramolecular assemblies."
         ),
-        table_path=DATA_PATH / "lnci16_normalized_metrics_table.json",
+        table_path=DATA_PATH / "lnci16_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),

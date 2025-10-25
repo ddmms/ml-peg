@@ -59,7 +59,7 @@ def calculate_column_widths(
     return widths
 
 
-def _coerce_normalization_ranges(raw_ranges):
+def _coerce_thresholds(raw_ranges):
     """
     Convert a raw normalization mapping into ``(good, bad)`` float tuples.
 
@@ -118,7 +118,7 @@ def rebuild_table(
     Raises
     ------
     ValueError
-        If the table JSON omits required ``normalization_ranges`` metadata.
+        If the table JSON omits required ``thresholds`` metadata.
     """
     # Load JSON file
     with open(filename) as f:
@@ -163,13 +163,11 @@ def rebuild_table(
         persisted_props=["data"],
     )
 
-    normalization_ranges = _coerce_normalization_ranges(
-        table_json.get("normalization_ranges")
-    )
-    if normalization_ranges is None or not normalization_ranges:
-        raise ValueError(f"No normalization_ranges defined in table JSON: {filename}")
+    thresholds = _coerce_thresholds(table_json.get("thresholds"))
+    if thresholds is None or not thresholds:
+        raise ValueError(f"No thresholds defined in table JSON: {filename}")
 
-    table.normalization_ranges = normalization_ranges
+    table.thresholds = thresholds
 
     return table
 
