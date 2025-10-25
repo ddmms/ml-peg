@@ -6,7 +6,6 @@ from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
 from ml_peg.analysis.utils.utils import (
-    calc_normalized_scores,
     calc_ranks,
     calc_scores,
     get_table_style,
@@ -167,10 +166,9 @@ def register_tab_table_callbacks(
             Rows with fresh ``Score`` and ``Rank`` entries.
         """
         working = [row.copy() for row in raw_rows]
-        if threshold_pairs:
-            working = calc_normalized_scores(working, threshold_pairs, weights)
-        else:
-            working = calc_scores(working, weights)
+        working = calc_scores(
+            metrics_data=working, thresholds=threshold_pairs, weights=weights
+        )
         return calc_ranks(working)
 
     def _materialize_display_rows(

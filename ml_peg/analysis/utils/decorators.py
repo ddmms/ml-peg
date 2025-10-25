@@ -12,46 +12,7 @@ from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, normalize_metric
-
-
-def calc_normalized_scores(
-    metrics_data: list[dict[str, Any]],
-    thresholds: dict[str, tuple[float, float]],
-    normalizer: Callable[[float, float, float], float] | None = None,
-) -> list[dict[str, Any]]:
-    """
-    Normalize metric values row-by-row and compute composite scores.
-
-    Parameters
-    ----------
-    metrics_data
-        Table rows containing metric values.
-    thresholds
-        Normalization thresholds keyed by metric name, where each value is
-        a (good_threshold, bad_threshold) tuple.
-    normalizer
-        Optional function to map (value, good, bad) -> normalized score.
-        If None, uses normalize_metric from utils.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Updated rows including normalized ``Score`` entries.
-    """
-    _normalizer = normalizer if normalizer is not None else normalize_metric
-
-    out = []
-    for row in metrics_data:
-        norm_scores = []
-        for key, value in row.items():
-            if key not in ("MLIP", "Score", "Rank", "id") and key in thresholds:
-                good_threshold, bad_threshold = thresholds[key]
-                norm_scores.append(_normalizer(value, good_threshold, bad_threshold))
-        row = row.copy()
-        row["Score"] = float(np.mean(norm_scores)) if norm_scores else 0.0
-        out.append(row)
-    return out
+from ml_peg.analysis.utils.utils import calc_ranks, calc_scores
 
 
 def plot_parity(
@@ -386,7 +347,7 @@ def build_table(
 
             # Apply normalization and calculate scores using the utility function
             if normalize:
-                metrics_data = calc_normalized_scores(
+                metrics_data = calc_scores(
                     metrics_data=metrics_data,
                     thresholds=thresholds,
                     normalizer=normalizer,

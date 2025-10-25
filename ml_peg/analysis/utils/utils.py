@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from matplotlib import cm
@@ -50,10 +51,15 @@ def rmse(ref: list, prediction: list) -> float:
 
 
 def calc_scores(
-    metrics_data: list[dict], weights: dict[str, float] | None = None
+    metrics_data: list[dict[str, Any]],
+    weights: dict[str, float] | None = None,
+    thresholds: dict[str, tuple[float, float]] | None = None,
+    normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict]:
     """
-    Calculate score for each model and add to table data.
+    Calculate (normalised) score for each model and add to table data.
+
+    If `thresholds` is not None, `normalizer` will be used to normalise the score.
 
     Parameters
     ----------
@@ -61,6 +67,12 @@ def calc_scores(
         Rows data containing model name and metric values.
     weights
         Weight for each metric. Default is 1.0 for each metric.
+    thresholds
+        Normalisation thresholds keyed by metric name, where each value is
+        a (good_threshold, bad_threshold) tuple.
+    normalizer
+        Optional function to map (value, good, bad) -> normalised score.
+        If None, and thresholds are specified, uses `normalize_metric`.
 
     Returns
     -------
@@ -68,25 +80,29 @@ def calc_scores(
         Rows of data with combined score for each model added.
     """
     weights = weights if weights else {}
+    if thresholds:
+        normalizer = normalizer if normalizer is not None else normalize_metric
 
     for row in metrics_data:
         scores = []
         weights_list = []
         for key, value in row.items():
             # Value may be ``None`` if missing for a benchmark
-            if key in {"MLIP", "Score", "Rank", "id"}:
-                continue
-            if value is None:
-                continue
-            scores.append(value)
-            weights_list.append(weights.get(key, 1.0))
+            if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
+                # If thresholds given, use to normalise
+                if thresholds is not None and key in thresholds:
+                    good_threshold, bad_threshold = thresholds[key]
+                    scores.append(normalizer(value, good_threshold, bad_threshold))
+                else:
+                    scores.append(value)
+                weights_list.append(weights.get(key, 1.0))
 
         # Ensure at least one score is being averaged
         if scores:
             try:
-                row["Score"] = float(np.average(scores, weights=weights_list))
+                row["Score"] = np.average(scores, weights=weights_list)
             except ZeroDivisionError:
-                row["Score"] = float(np.mean(scores))
+                row["Score"] = np.mean(scores)
         else:
             row["Score"] = None
 
@@ -223,48 +239,51 @@ def get_table_style(
     return style_data_conditional
 
 
-def normalize_metric(value: float, x_threshold: float, y_threshold: float) -> float:
+def normalize_metric(
+    value: float, good_threshold: float, bad_threshold: float
+) -> float | None:
     """
-    Normalize a metric value to [0, 1] with X mapped to 1 and Y mapped to 0.
+    Normalize a metric value to [0.0, 1.0].
 
-    Works regardless of whether X > Y or X < Y. Values beyond the thresholds are
-    clipped (≤ Y => 0, ≥ X => 1 after orientation is accounted for).
+    `good_threshold` is mapped to 1.0 and `bad_threshold` mapped to 0.0. Values beyond
+    these thresholds are clipped to 0.0 and 1.0.
+
+    Works regardless of whether `good_threshold` > `bad_threshold` or
+    `good_threshold` < `bad_threshold`.
 
     Parameters
     ----------
     value
         The metric value to normalize.
-    x_threshold
+    good_threshold
         Threshold that maps to score 1.0.
-    y_threshold
+    bad_threshold
         Threshold that maps to score 0.0.
 
     Returns
     -------
-    float
-        Normalized score between 0 and 1.
+    float | None
+        Normalized score between 0 and 1, or `None` if normalization process
+        raises an error.
     """
-    if value is None or x_threshold is None or y_threshold is None:
-        return 0.0
+    if value is None or good_threshold is None or bad_threshold is None:
+        return None
 
     try:
         # Handle NaNs robustly
-        if np.isnan([value, x_threshold, y_threshold]).any():
-            return 0.0
-    except Exception:
-        pass
+        if np.isnan([value, good_threshold, bad_threshold]).any():
+            return None
+    except TypeError:
+        return None
 
-    if x_threshold == y_threshold:
-        return 1.0 if value == x_threshold else 0.0
+    if good_threshold == bad_threshold:
+        return 1.0 if value == good_threshold else 0.0
 
     # Linear map: Y -> 0, X -> 1
-    t = (value - y_threshold) / (x_threshold - y_threshold)
+    t = (value - bad_threshold) / (good_threshold - bad_threshold)
+
     # Clip to [0, 1]
-    if t < 0.0:
-        return 0.0
-    if t > 1.0:
-        return 1.0
-    return float(t)
+    return max(min(1.0, float(t)), 0.0)
 
 
 def calc_normalized_scores(
@@ -298,15 +317,15 @@ def calc_normalized_scores(
         for key, value in row.items():
             if key not in ("MLIP", "Score", "Rank", "id") and key in thresholds:
                 try:
-                    x_threshold, y_threshold = thresholds[key]
-                    x_threshold = float(x_threshold)
-                    y_threshold = float(y_threshold)
+                    good_threshold, bad_threshold = thresholds[key]
+                    good_threshold = float(good_threshold)
+                    bad_threshold = float(bad_threshold)
                     metric_value = float(value)
                 except (TypeError, ValueError):
                     continue
 
                 normalized_score = normalize_metric(
-                    metric_value, x_threshold, y_threshold
+                    metric_value, good_threshold, bad_threshold
                 )
                 normalized_scores.append(normalized_score)
                 if weights and key in weights:
