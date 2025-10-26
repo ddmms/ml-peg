@@ -11,6 +11,7 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     normalize_metric,
 )
+from ml_peg.app.utils.load import clean_thresholds
 
 
 def _coerce_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
@@ -36,45 +37,6 @@ def _coerce_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return coerced
-
-
-def _coerce_threshold_map(
-    raw_thresholds: dict[str, dict[str, float] | list[float] | tuple[float, float]]
-    | None,
-) -> dict[str, tuple[float, float]]:
-    """
-    Convert raw threshold metadata into ``(good, bad)`` float tuples.
-
-    Parameters
-    ----------
-    raw_thresholds
-        Mapping supplied by Dash stores containing threshold info.
-
-    Returns
-    -------
-    dict[str, tuple[float, float]]
-        Cleaned threshold mapping keyed by metric name.
-    """
-    if not raw_thresholds:
-        return {}
-
-    cleaned: dict[str, tuple[float, float]] = {}
-    for metric, bounds in raw_thresholds.items():
-        try:
-            if isinstance(bounds, dict):
-                good_val = float(bounds["good"])
-                bad_val = float(bounds["bad"])
-            elif isinstance(bounds, list | tuple) and len(bounds) == 2:
-                good_val = float(bounds[0])
-                bad_val = float(bounds[1])
-            else:
-                continue
-        except (KeyError, TypeError, ValueError):
-            continue
-
-        cleaned[metric] = (good_val, bad_val)
-
-    return cleaned
 
 
 def register_summary_table_callbacks() -> None:
@@ -246,7 +208,7 @@ def register_tab_table_callbacks(
             if not raw_data:
                 raise PreventUpdate
 
-            threshold_pairs = _coerce_threshold_map(threshold_store)
+            threshold_pairs = clean_thresholds(threshold_store)
             weights = _coerce_weights(stored_weights)
             trigger_id = ctx.triggered_id
 
@@ -610,7 +572,7 @@ def register_normalization_callbacks(
                 raise PreventUpdate
 
             show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
-            ranges = _coerce_threshold_map(thresholds)
+            ranges = clean_thresholds(thresholds)
 
             if show_norm_flag and ranges:
                 # Show normalized values
