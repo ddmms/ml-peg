@@ -11,32 +11,7 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     normalize_metric,
 )
-from ml_peg.app.utils.load import clean_thresholds
-
-
-def _coerce_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
-    """
-    Convert potentially non-numeric weight values into floats.
-
-    Parameters
-    ----------
-    raw_weights
-        Mapping from metric name to supplied weight.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary containing only numeric weight values.
-    """
-    if not raw_weights:
-        return {}
-    coerced: dict[str, float] = {}
-    for metric, value in raw_weights.items():
-        try:
-            coerced[metric] = float(value)
-        except (TypeError, ValueError):
-            continue
-    return coerced
+from ml_peg.app.utils.utils import clean_thresholds, clean_weights
 
 
 def register_summary_table_callbacks() -> None:
@@ -209,7 +184,7 @@ def register_tab_table_callbacks(
                 raise PreventUpdate
 
             threshold_pairs = clean_thresholds(threshold_store)
-            weights = _coerce_weights(stored_weights)
+            weights = clean_weights(stored_weights)
             trigger_id = ctx.triggered_id
 
             if (
@@ -260,7 +235,7 @@ def register_tab_table_callbacks(
             if not table_data:
                 raise PreventUpdate
 
-            weights = _coerce_weights(stored_weights)
+            weights = clean_weights(stored_weights)
             scored_rows = _calc_scored_rows(table_data, weights, None)
             style = get_table_style(scored_rows)
             return scored_rows, style, scored_rows
@@ -392,7 +367,7 @@ def register_benchmark_to_category_callback(
             if mlip in benchmark_scores:
                 row[benchmark_column] = benchmark_scores[mlip]
 
-        weights = _coerce_weights(category_weights)
+        weights = clean_weights(category_weights)
         scored_rows = calc_scores(working_rows, weights)
         scored_rows = calc_ranks(scored_rows)
         style = get_table_style(scored_rows)

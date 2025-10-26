@@ -9,13 +9,13 @@ from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
-from ml_peg.app.utils.load import calculate_column_widths
 from ml_peg.app.utils.register_callbacks import (
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_tab_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.utils import calculate_column_widths
 
 
 def grid_template_from_widths(
