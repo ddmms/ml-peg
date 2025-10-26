@@ -202,7 +202,7 @@ def build_summary_table(
     style = get_table_style(data)
 
     # Calculate column widths based on column names
-    column_widths = calculate_column_widths(columns)
+    column_widths = calculate_column_widths(columns_headers)
     style_cell_conditional = []
     for column_id, width in column_widths.items():
         col_width = f"{width}px"

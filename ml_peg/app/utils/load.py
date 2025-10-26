@@ -13,7 +13,9 @@ from ml_peg.analysis.utils.utils import get_table_style
 
 
 def calculate_column_widths(
-    columns: list[dict],
+    columns: list[str],
+    widths: dict[str, float] | None = None,
+    *,
     char_width: int = 9,
     padding: int = 40,
     min_metric_width: int = 140,
@@ -24,7 +26,9 @@ def calculate_column_widths(
     Parameters
     ----------
     columns
-        List of column dictionaries from DataTable (each has 'id' and 'name').
+        List of column names from DataTable.
+    widths
+        Dictionary of column widths. Default is {}.
     char_width
         Approximate pixel width per character.
     padding
@@ -37,24 +41,18 @@ def calculate_column_widths(
     dict[str, int]
         Mapping of column IDs to pixel widths.
     """
-    widths = {}
+    widths = widths if widths else {}
+    # Fixed widths for static columns
+    widths.setdefault("MLIP", 150)
+    widths.setdefault("Score", 100)
+    widths.setdefault("Rank", 100)
 
     for col in columns:
-        col_id = col.get("id")
-        col_name = col.get("name", col_id)
-
-        # Fixed widths for static columns
-        if col_id == "MLIP":
-            widths[col_id] = 150
-        elif col_id == "Score":
-            widths[col_id] = 100
-        elif col_id == "Rank":
-            widths[col_id] = 100
-        else:
+        if col not in ("MLIP", "Score", "Rank"):
             # Calculate width based on column title length
-            calculated_width = len(col_name) * char_width + padding
+            calculated_width = len(col) * char_width + padding
             # Enforce minimum width
-            widths[col_id] = max(calculated_width, min_metric_width)
+            widths.setdefault(col, max(calculated_width, min_metric_width))
 
     return widths
 
@@ -130,7 +128,7 @@ def rebuild_table(
     tooltip_header = table_json["tooltip_header"]
 
     style = get_table_style(data)
-    column_widths = calculate_column_widths(columns)
+    column_widths = calculate_column_widths([cols["name"] for cols in columns])
 
     style_cell_conditional: list[dict[str, object]] = []
     for column_id, width in column_widths.items():

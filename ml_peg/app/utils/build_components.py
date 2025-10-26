@@ -9,68 +9,13 @@ from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
+from ml_peg.app.utils.load import calculate_column_widths
 from ml_peg.app.utils.register_callbacks import (
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_tab_table_callbacks,
     register_weight_callbacks,
 )
-
-
-def _default_width(label: str, *, base: int = 120) -> int:
-    """
-    Return a heuristic width based on the column label.
-
-    Parameters
-    ----------
-    label : str
-        Column header used to estimate the width.
-    base : int, optional
-        Minimum pixel width that the heuristic will return.
-
-    Returns
-    -------
-    int
-        Estimated pixel width for the column.
-    """
-    approx = len(label) * 9 + 40
-    return max(base, approx)
-
-
-def _resolved_column_widths(
-    metrics: list[str],
-    column_widths: dict[str, int] | None,
-) -> dict[str, int]:
-    """
-    Build a complete width mapping for MLIP, metric, Score, and Rank columns.
-
-    Parameters
-    ----------
-    metrics : list[str]
-        Ordered metric column names to include in the grid.
-    column_widths : dict[str, int] or None
-        Optional explicit widths keyed by column name.
-
-    Returns
-    -------
-    dict[str, int]
-        Mapping from column names to resolved pixel widths.
-    """
-    resolved: dict[str, int] = {}
-    if column_widths:
-        for key, value in column_widths.items():
-            if isinstance(value, int | float):
-                resolved[key] = int(value)
-
-    resolved.setdefault("MLIP", resolved.get("MLIP", 150))
-    resolved.setdefault("Score", resolved.get("Score", 100))
-    resolved.setdefault("Rank", resolved.get("Rank", 100))
-
-    for metric in metrics:
-        if metric not in resolved:
-            resolved[metric] = _default_width(metric)
-
-    return resolved
 
 
 def _grid_template_from_widths(
@@ -201,8 +146,8 @@ def build_weight_components(
 
     input_ids = [f"{table.id}-{col}" for col in columns]
 
-    resolved_widths = _resolved_column_widths(columns, column_widths)
-    grid_template = _grid_template_from_widths(resolved_widths, columns)
+    widths = calculate_column_widths(columns, column_widths)
+    grid_template = _grid_template_from_widths(widths, columns)
 
     weight_inputs = [
         build_weight_input(
@@ -535,8 +480,8 @@ def build_threshold_inputs_under_table(
     Div
         Container with threshold inputs and associated controls.
     """
-    resolved_widths = _resolved_column_widths(table_columns, column_widths)
-    grid_template = _grid_template_from_widths(resolved_widths, table_columns)
+    widths = calculate_column_widths(table_columns, column_widths)
+    grid_template = _grid_template_from_widths(widths, table_columns)
 
     container_style = {
         "display": "grid",
