@@ -1,0 +1,112 @@
+"""General utility functions for Dash application."""
+
+from __future__ import annotations
+
+
+def calculate_column_widths(
+    columns: list[str],
+    widths: dict[str, float] | None = None,
+    *,
+    char_width: int = 9,
+    padding: int = 40,
+    min_metric_width: int = 140,
+) -> dict[str, int]:
+    """
+    Calculate column widths based on column titles with minimum width enforcement.
+
+    Parameters
+    ----------
+    columns
+        List of column names from DataTable.
+    widths
+        Dictionary of column widths. Default is {}.
+    char_width
+        Approximate pixel width per character.
+    padding
+        Extra padding to add to calculated width.
+    min_metric_width
+        Minimum width for metric columns in pixels.
+
+    Returns
+    -------
+    dict[str, int]
+        Mapping of column IDs to pixel widths.
+    """
+    widths = widths if widths else {}
+    # Fixed widths for static columns
+    widths.setdefault("MLIP", 150)
+    widths.setdefault("Score", 100)
+    widths.setdefault("Rank", 100)
+
+    for col in columns:
+        if col not in ("MLIP", "Score", "Rank"):
+            # Calculate width based on column title length
+            calculated_width = len(col) * char_width + padding
+            # Enforce minimum width
+            widths.setdefault(col, max(calculated_width, min_metric_width))
+
+    return widths
+
+
+def clean_thresholds(
+    raw_thresholds: dict[str, dict[str, float]],
+) -> dict[str, tuple[float, float]] | None:
+    """
+    Convert a raw normalization mapping into ``(good, bad)`` float tuples.
+
+    Parameters
+    ----------
+    raw_thresholds
+        Raw normalization structure read from json file.
+
+    Returns
+    -------
+    dict[str, tuple[float, float]] | None
+        Cleaned mapping or ``None`` when conversion fails.
+    """
+    if not isinstance(raw_thresholds, dict):
+        return None
+
+    thresholds = {}
+
+    for metric, bounds in raw_thresholds.items():
+        try:
+            if isinstance(bounds, dict):
+                good_val = float(bounds["good"])
+                bad_val = float(bounds["bad"])
+            elif isinstance(bounds, list | tuple) and len(bounds) == 2:
+                good_val = float(bounds[0])
+                bad_val = float(bounds[1])
+            else:
+                continue
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        thresholds[metric] = (good_val, bad_val)
+    return thresholds
+
+
+def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
+    """
+    Convert potentially non-numeric weight values into floats.
+
+    Parameters
+    ----------
+    raw_weights
+        Mapping from metric name to supplied weight.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary containing only numeric weight values.
+    """
+    if not raw_weights:
+        return {}
+
+    weights: dict[str, float] = {}
+    for metric, value in raw_weights.items():
+        try:
+            weights[metric] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return weights
