@@ -13,10 +13,7 @@ from ml_peg.analysis.utils.utils import get_table_style
 from ml_peg.app.utils.utils import calculate_column_widths, clean_thresholds
 
 
-def rebuild_table(
-    filename: str | Path,
-    id: str,
-) -> DataTable:
+def rebuild_table(filename: str | Path, id: str) -> DataTable:
     """
     Rebuild saved dash table.
 
