@@ -166,7 +166,7 @@ def register_tab_table_callbacks(
             Output(table_id, "style_data_conditional", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
-            Input(f"{table_id}-normalization-store", "data"),
+            Input(f"{table_id}-thresholds-store", "data"),
             Input("all-tabs", "value"),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
@@ -490,11 +490,11 @@ def register_normalization_callbacks(
     for metric in metrics:
 
         @callback(
-            Output(f"{table_id}-normalization-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
             Input(f"{table_id}-{metric}-good-{input_suffix}", "value"),
             Input(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
             Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
-            State(f"{table_id}-normalization-store", "data"),
+            State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
         def store_threshold_values(
@@ -539,7 +539,7 @@ def register_normalization_callbacks(
             Output(f"{table_id}", "style_data_conditional", allow_duplicate=True),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
-            State(f"{table_id}-normalization-store", "data"),
+            State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
@@ -582,7 +582,7 @@ def register_normalization_callbacks(
                 Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
                 Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
             ],
-            Input(f"{table_id}-normalization-store", "data"),
+            Input(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
         def sync_threshold_inputs(thresholds, metric=metric):

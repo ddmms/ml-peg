@@ -601,7 +601,7 @@ def build_threshold_inputs(
         )
 
     store = Store(
-        id=f"{table_id}-normalization-store",
+        id=f"{table_id}-thresholds-store",
         storage_type="session",
         data=default_thresholds,
     )
