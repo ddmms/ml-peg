@@ -100,7 +100,6 @@ def clean_thresholds(
 def rebuild_table(
     filename: str | Path,
     id: str,
-    column_widths: dict[str, int] | None = None,
 ) -> DataTable:
     """
     Rebuild saved dash table.
@@ -111,8 +110,6 @@ def rebuild_table(
         Name of json file with saved table data.
     id
         ID for table.
-    column_widths
-        Optional column width metadata currently unused but kept for parity.
 
     Returns
     -------
@@ -133,23 +130,23 @@ def rebuild_table(
     tooltip_header = table_json["tooltip_header"]
 
     style = get_table_style(data)
+    column_widths = calculate_column_widths(columns)
 
     style_cell_conditional: list[dict[str, object]] = []
-    if column_widths:
-        for column_id, width in column_widths.items():
-            if width is None:
-                continue
-            col_width = f"{width}px"
-            alignment = "left" if column_id == "MLIP" else "center"
-            style_cell_conditional.append(
-                {
-                    "if": {"column_id": column_id},
-                    "width": col_width,
-                    "minWidth": col_width,
-                    "maxWidth": col_width,
-                    "textAlign": alignment,
-                }
-            )
+    for column_id, width in column_widths.items():
+        if width is None:
+            continue
+        col_width = f"{width}px"
+        alignment = "left" if column_id == "MLIP" else "center"
+        style_cell_conditional.append(
+            {
+                "if": {"column_id": column_id},
+                "width": col_width,
+                "minWidth": col_width,
+                "maxWidth": col_width,
+                "textAlign": alignment,
+            }
+        )
 
     table = DataTable(
         data=data,
