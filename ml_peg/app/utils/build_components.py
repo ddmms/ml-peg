@@ -617,8 +617,6 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    # Score sync callbacks will be implemented later
-
     return Div(
         [
             Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
