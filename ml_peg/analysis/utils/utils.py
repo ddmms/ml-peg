@@ -190,6 +190,7 @@ def get_table_style(
 
     style_data_conditional = []
 
+    # All columns other than MLIP and ID (not displayed) should be coloured
     if all_cols:
         cols = data[0].keys() - {"MLIP", "id"}
     elif col_names:
@@ -203,13 +204,12 @@ def get_table_style(
             raise ValueError(f"Column '{col}' not found in data.")
 
     for col in cols:
-        numeric_entries: list[tuple[object, float]] = []
+        numeric_entries: list[tuple[Any, float]] = []
         for row in data:
             if col not in row:
                 continue
             raw_value = row[col]
-            if raw_value is None:
-                continue
+            # Skip if unable to convert to float (e.g. `None`)
             try:
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):

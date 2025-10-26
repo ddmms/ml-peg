@@ -59,24 +59,28 @@ def calculate_column_widths(
     return widths
 
 
-def _coerce_thresholds(raw_ranges):
+def clean_thresholds(
+    raw_thresholds: dict[str, dict[str, float]],
+) -> dict[str, tuple[float, float]] | None:
     """
     Convert a raw normalization mapping into ``(good, bad)`` float tuples.
 
     Parameters
     ----------
-    raw_ranges
-        Raw normalization structure read from disk.
+    raw_thresholds
+        Raw normalization structure read from json file.
 
     Returns
     -------
     dict[str, tuple[float, float]] | None
         Cleaned mapping or ``None`` when conversion fails.
     """
-    if not isinstance(raw_ranges, dict):
+    if not isinstance(raw_thresholds, dict):
         return None
-    result: dict[str, tuple[float, float]] = {}
-    for metric, bounds in raw_ranges.items():
+
+    thresholds = {}
+
+    for metric, bounds in raw_thresholds.items():
         try:
             if isinstance(bounds, dict):
                 good_val = float(bounds["good"])
@@ -89,13 +93,13 @@ def _coerce_thresholds(raw_ranges):
         except (KeyError, TypeError, ValueError):
             continue
 
-        result[metric] = (good_val, bad_val)
-    return result
+        thresholds[metric] = (good_val, bad_val)
+    return thresholds
 
 
 def rebuild_table(
     filename: str | Path,
-    id="table-1",
+    id: str,
     column_widths: dict[str, int] | None = None,
 ) -> DataTable:
     """
@@ -163,7 +167,7 @@ def rebuild_table(
         persisted_props=["data"],
     )
 
-    thresholds = _coerce_thresholds(table_json.get("thresholds"))
+    thresholds = clean_thresholds(table_json.get("thresholds"))
     if thresholds is None or not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
 
