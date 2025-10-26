@@ -76,8 +76,9 @@ def register_tab_table_callbacks(
     table_id
         ID for table to update.
     use_threshold_store
-        If True, also watch the per-metric normalization store and recompute
-        scores using the configured thresholds. Only true for benchmark tables.
+        If `True`, also watch the per-metric normalization store and recompute
+        scores using the configured thresholds. This should only be used for benchmark
+        tables.
     """
 
     def _calc_scored_rows(
@@ -459,7 +460,7 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 def register_normalization_callbacks(
     table_id: str,
     metrics: list[str],
-    default_ranges: dict[str, tuple[float, float]] | None = None,
+    default_thresholds: dict[str, tuple[float, float]] | None = None,
     register_toggle: bool = True,
 ) -> None:
     """
@@ -471,17 +472,18 @@ def register_normalization_callbacks(
         ID for table to update.
     metrics
         List of metric names that have normalization thresholds.
-    default_ranges
-        Optional default threshold mapping used for resets.
+    default_thresholds
+        Default threshold mapping used for resets. Default is `None`.
     register_toggle
-        When True, register the raw/normalized display toggle callback.
+        Whether to register the raw/normalized display toggle callback. Default is
+        `True`.
     """
     input_suffix = "threshold"
 
-    if default_ranges:
-        default_ranges = {
+    if default_thresholds:
+        default_thresholds = {
             metric: (float(bounds[0]), float(bounds[1]))
-            for metric, bounds in default_ranges.items()
+            for metric, bounds in default_thresholds.items()
         }
 
     # Per-metric store callbacks (simpler and reliable)
@@ -496,36 +498,39 @@ def register_normalization_callbacks(
             prevent_initial_call=True,
         )
         def store_threshold_values(
-            good_val, bad_val, n_clicks, stored_ranges, metric=metric
+            good_val, bad_val, n_clicks, stored_thresholds, metric=metric
         ):
-            """Update normalization ranges store for one metric or reset all."""
+            """Update normalization thresholds store for one metric or reset all."""
             trigger_id = ctx.triggered_id
-            if stored_ranges is None:
-                stored_ranges = (default_ranges or {}).copy()
+            if stored_thresholds is None:
+                stored_thresholds = (default_thresholds or {}).copy()
 
+            # Reset to defaults is specified via reset button
             if trigger_id == f"{table_id}-reset-thresholds-button":
-                if default_ranges:
+                if default_thresholds:
                     return {
                         key: (float(bounds[0]), float(bounds[1]))
-                        for key, bounds in default_ranges.items()
+                        for key, bounds in default_thresholds.items()
                     }
-                return stored_ranges
+                return stored_thresholds
 
             # Ensure key exists
-            cur_x, cur_y = stored_ranges.get(metric, (0.0, 1.0))
+            good_threshhold, bad_threshold = stored_thresholds.get(metric, (None, None))
 
+            # Update thresholds from input boxes
             if trigger_id == f"{table_id}-{metric}-good-{input_suffix}":
-                if good_val is None:
+                if good_val is None or bad_threshold is None:
                     raise PreventUpdate
-                stored_ranges[metric] = (float(good_val), float(cur_y))
+                stored_thresholds[metric] = (float(good_val), float(bad_threshold))
+
             elif trigger_id == f"{table_id}-{metric}-bad-{input_suffix}":
-                if bad_val is None:
+                if bad_val is None or good_threshhold is None:
                     raise PreventUpdate
-                stored_ranges[metric] = (float(cur_x), float(bad_val))
+                stored_thresholds[metric] = (float(good_threshhold), float(bad_val))
             else:
                 raise PreventUpdate
 
-            return stored_ranges
+            return stored_thresholds
 
     if register_toggle:
         # Toggle display between raw and normalized values without recomputing scores
@@ -547,14 +552,14 @@ def register_normalization_callbacks(
                 raise PreventUpdate
 
             show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
-            ranges = clean_thresholds(thresholds)
+            thresholds = clean_thresholds(thresholds)
 
-            if show_norm_flag and ranges:
+            if show_norm_flag and thresholds:
                 # Show normalized values
                 display_rows = []
                 for row in raw_data:
                     new_row = row.copy()
-                    for metric, (x_t, y_t) in ranges.items():
+                    for metric, (x_t, y_t) in thresholds.items():
                         if metric in row:
                             try:
                                 metric_val = float(row[metric])
@@ -581,7 +586,7 @@ def register_normalization_callbacks(
             prevent_initial_call=True,
         )
         def sync_threshold_inputs(thresholds, metric=metric):
-            """Sync threshold input values with stored ranges."""
+            """Sync threshold input values with stored thresholds."""
             if thresholds and metric in thresholds:
                 good_val, bad_val = thresholds[metric]
                 return good_val, bad_val

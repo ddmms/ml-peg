@@ -433,7 +433,7 @@ def build_threshold_inputs(
     }
 
     cells: list[Div] = []
-    defaults: dict[str, tuple[float, float]] = {}
+    default_thresholds: dict[str, tuple[float, float]] = {}
 
     cells.append(
         Div(
@@ -491,12 +491,9 @@ def build_threshold_inputs(
 
     for metric in table_columns:
         raw_bounds = thresholds.get(metric, (None, None))
-        try:
-            x_val = float(raw_bounds[0])
-            y_val = float(raw_bounds[1])
-        except (TypeError, ValueError, IndexError):
-            x_val, y_val = 0.0, 1.0
-        defaults[metric] = (x_val, y_val)
+        x_val = float(raw_bounds[0])
+        y_val = float(raw_bounds[1])
+        default_thresholds[metric] = (x_val, y_val)
 
         cells.append(
             Div(
@@ -606,14 +603,14 @@ def build_threshold_inputs(
     store = Store(
         id=f"{table_id}-normalization-store",
         storage_type="session",
-        data=defaults,
+        data=default_thresholds,
     )
 
-    # Register callbacks for these metrics, pass defaults for reset
+    # Register callbacks for these metrics, pass default_thresholds for reset
     register_normalization_callbacks(
         table_id,
         table_columns,
-        defaults,
+        default_thresholds,
         register_toggle=False,
     )
 
