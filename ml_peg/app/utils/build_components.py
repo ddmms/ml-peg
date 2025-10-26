@@ -18,18 +18,18 @@ from ml_peg.app.utils.register_callbacks import (
 )
 
 
-def _grid_template_from_widths(
-    resolved_widths: dict[str, int],
+def grid_template_from_widths(
+    widths: dict[str, int],
     column_order: list[str],
 ) -> str:
     """
-    Compose a CSS grid template string from resolved column widths.
+    Compose a CSS grid template string from column widths.
 
     Parameters
     ----------
-    resolved_widths : dict[str, int]
+    widths
         Mapping of column names to pixel widths.
-    column_order : list[str]
+    column_order
         Ordered metric column names to render between the MLIP, Score, and Rank columns.
 
     Returns
@@ -37,10 +37,10 @@ def _grid_template_from_widths(
     str
         CSS grid template definition using `minmax` tracks.
     """
-    tracks: list[tuple[str, int]] = [("MLIP", resolved_widths["MLIP"])]
-    tracks.extend((col, resolved_widths[col]) for col in column_order)
-    tracks.append(("Score", resolved_widths["Score"]))
-    tracks.append(("Rank", resolved_widths["Rank"]))
+    tracks: list[tuple[str, int]] = [("MLIP", widths["MLIP"])]
+    tracks.extend((col, widths[col]) for col in column_order)
+    tracks.append(("Score", widths["Score"]))
+    tracks.append(("Rank", widths["Rank"]))
 
     template_parts: list[str] = []
     for _, width in tracks:
@@ -147,7 +147,7 @@ def build_weight_components(
     input_ids = [f"{table.id}-{col}" for col in columns]
 
     widths = calculate_column_widths(columns, column_widths)
-    grid_template = _grid_template_from_widths(widths, columns)
+    grid_template = grid_template_from_widths(widths, columns)
 
     weight_inputs = [
         build_weight_input(
@@ -356,7 +356,7 @@ def build_test_layout(
                 data=table.data,
             )
         )
-        threshold_controls = build_threshold_inputs_under_table(
+        threshold_controls = build_threshold_inputs(
             table_columns=metric_columns,
             thresholds=thresholds,
             table_id=table.id,
@@ -455,7 +455,7 @@ def build_threshold_input(
     )
 
 
-def build_threshold_inputs_under_table(
+def build_threshold_inputs(
     table_columns: list[str],
     thresholds: dict[str, tuple[float, float]],
     table_id: str,
@@ -481,7 +481,7 @@ def build_threshold_inputs_under_table(
         Container with threshold inputs and associated controls.
     """
     widths = calculate_column_widths(table_columns, column_widths)
-    grid_template = _grid_template_from_widths(widths, table_columns)
+    grid_template = grid_template_from_widths(widths, table_columns)
 
     container_style = {
         "display": "grid",
