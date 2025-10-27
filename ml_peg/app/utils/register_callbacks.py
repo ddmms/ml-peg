@@ -547,7 +547,7 @@ def register_normalization_callbacks(
             raw_data: list[dict],
             thresholds: dict[str, tuple[float, float]] | None,
         ) -> tuple[list[dict], list[dict]]:
-            """Toggle between raw and normalized metric values for display only."""
+            """Toggle between raw and normalised metric values for display only."""
             if not raw_data:
                 raise PreventUpdate
 
@@ -555,7 +555,7 @@ def register_normalization_callbacks(
             thresholds = clean_thresholds(thresholds)
 
             if show_norm_flag and thresholds:
-                # Show normalized values
+                # Show normalied values
                 display_rows = []
                 for row in raw_data:
                     new_row = row.copy()
@@ -578,10 +578,8 @@ def register_normalization_callbacks(
     for metric in metrics:
 
         @callback(
-            [
-                Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
-                Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
-            ],
+            Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
+            Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
@@ -590,4 +588,4 @@ def register_normalization_callbacks(
             if thresholds and metric in thresholds:
                 good_val, bad_val = thresholds[metric]
                 return good_val, bad_val
-            return 0.0, 1.0
+            raise PreventUpdate
