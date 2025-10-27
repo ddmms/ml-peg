@@ -11,7 +11,7 @@ from dash.dcc import Store, Tab, Tabs
 from dash.html import H1, H3, Div
 from yaml import safe_load
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores, get_table_style
+from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_weight_components
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
@@ -193,7 +193,7 @@ def build_summary_table(
     for mlip in summary_data:
         data.append({"MLIP": mlip} | summary_data[mlip])
 
-    data = calc_scores(data)
+    data = calc_table_scores(data)
     data = calc_ranks(data)
 
     columns_headers = ("MLIP",) + tuple(tables.keys()) + ("Score", "Rank")

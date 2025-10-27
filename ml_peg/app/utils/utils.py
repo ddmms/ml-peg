@@ -110,3 +110,35 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def get_scores(
+    raw_rows: list[dict],
+    scored_rows: list[dict],
+    threshold_pairs: dict[str, tuple[float, float]] | None,
+    toggle_value: list[str] | None,
+) -> list[dict]:
+    """
+    Build table rows, with either unitful or unitless scores as requested.
+
+    Parameters
+    ----------
+    raw_rows
+        Unitful metric values.
+    scored_rows
+        Rows with calculated unitless scores.
+    threshold_pairs
+        Normalisation thresholds, or ``None`` for raw metrics.
+    toggle_value
+        Current state of the “Show normalized values” toggle.
+
+    Returns
+    -------
+    list[dict]
+        Rows to render in the DataTable.
+    """
+    show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
+    if not (show_normalized and threshold_pairs):
+        return raw_rows
+
+    return scored_rows

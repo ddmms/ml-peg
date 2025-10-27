@@ -12,7 +12,7 @@ from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_scores
+from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores
 
 
 def plot_parity(
@@ -353,13 +353,13 @@ def build_table(
 
             # Calculate scores, including any normalisation
             if normalize:
-                metrics_data = calc_scores(
+                metrics_data = calc_table_scores(
                     metrics_data=metrics_data,
                     thresholds=thresholds,
                     normalizer=normalizer,
                 )
             else:
-                metrics_data = calc_scores(metrics_data)
+                metrics_data = calc_table_scores(metrics_data)
 
             metrics_data = calc_ranks(metrics_data)
             metrics_columns += ("Score", "Rank")

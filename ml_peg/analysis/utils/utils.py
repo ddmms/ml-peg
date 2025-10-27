@@ -52,7 +52,48 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
-def calc_scores(
+def calc_metric_scores(
+    metrics_data: list[dict[str, Any]],
+    thresholds: dict[str, tuple[float, float]] | None = None,
+    normalizer: Callable[[float, float, float], float] | None = None,
+) -> list[dict[str, float]]:
+    """
+    Calculate all normalised scores.
+
+    Parameters
+    ----------
+    metrics_data
+        Rows data containing model name and metric values.
+    thresholds
+        Normalisation thresholds keyed by metric name, where each value is
+        a (good_threshold, bad_threshold) tuple.
+    normalizer
+        Optional function to map (value, good, bad) -> normalised score.
+        If `None`, and thresholds are specified, uses `normalize_metric`.
+
+    Returns
+    -------
+    list[dict[str, float]]
+        Rows data with metric scores in place of values.
+    """
+    normalizer = normalizer if normalizer is not None else normalize_metric
+
+    metrics_scores = [row.copy() for row in metrics_data]
+    for row in metrics_scores:
+        for key, value in row.items():
+            # Value may be ``None`` if missing for a benchmark
+            if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
+                # If thresholds given, use to normalise
+                if thresholds is not None and key in thresholds:
+                    good_threshold, bad_threshold = thresholds[key]
+                    row[key] = normalizer(value, good_threshold, bad_threshold)
+                else:
+                    row[key] = value
+
+    return metrics_scores
+
+
+def calc_table_scores(
     metrics_data: list[dict[str, Any]],
     weights: dict[str, float] | None = None,
     thresholds: dict[str, tuple[float, float]] | None = None,
@@ -82,31 +123,26 @@ def calc_scores(
         Rows of data with combined score for each model added.
     """
     weights = weights if weights else {}
-    if thresholds:
-        normalizer = normalizer if normalizer is not None else normalize_metric
 
-    for row in metrics_data:
-        scores = []
+    metrics_scores = calc_metric_scores(metrics_data, thresholds, normalizer)
+
+    for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
+        scores_list = []
         weights_list = []
-        for key, value in row.items():
+        for key, value in metrics_row.items():
             # Value may be ``None`` if missing for a benchmark
             if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
-                # If thresholds given, use to normalise
-                if thresholds is not None and key in thresholds:
-                    good_threshold, bad_threshold = thresholds[key]
-                    scores.append(normalizer(value, good_threshold, bad_threshold))
-                else:
-                    scores.append(value)
+                scores_list.append(scores_row[key])
                 weights_list.append(weights.get(key, 1.0))
 
         # Ensure at least one score is being averaged
-        if scores:
+        if scores_list:
             try:
-                row["Score"] = np.average(scores, weights=weights_list)
+                metrics_row["Score"] = np.average(scores_list, weights=weights_list)
             except ZeroDivisionError:
-                row["Score"] = np.mean(scores)
+                metrics_row["Score"] = np.mean(scores_list)
         else:
-            row["Score"] = None
+            metrics_row["Score"] = None
 
     return metrics_data
 
@@ -268,7 +304,7 @@ def update_score_rank_style(
         Updated table rows and style.
     """
     weights = clean_weights(weights)
-    data = calc_scores(data, weights, thresholds)
+    data = calc_table_scores(data, weights, thresholds)
     data = calc_ranks(data)
     style = get_table_style(data)
     return data, style

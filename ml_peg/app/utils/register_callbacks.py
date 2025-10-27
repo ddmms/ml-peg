@@ -6,11 +6,12 @@ from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
 from ml_peg.analysis.utils.utils import (
+    calc_metric_scores,
+    calc_table_scores,
     get_table_style,
-    normalize_metric,
     update_score_rank_style,
 )
-from ml_peg.app.utils.utils import clean_thresholds
+from ml_peg.app.utils.utils import clean_thresholds, get_scores
 
 
 def register_summary_table_callbacks() -> None:
@@ -32,7 +33,7 @@ def register_summary_table_callbacks() -> None:
         summary_data: list[dict],
     ) -> list[dict]:
         """
-        Update summary table when scores change.
+        Update summary table when scores/weights change, and sync on tab change.
 
         Parameters
         ----------
@@ -75,57 +76,6 @@ def register_tab_table_callbacks(
         scores using the configured thresholds. This should only be used for benchmark
         tables.
     """
-
-    def _materialize_display_rows(
-        raw_rows: list[dict],
-        scored_rows: list[dict],
-        threshold_pairs: dict[str, tuple[float, float]] | None,
-        toggle_value: list[str] | None,
-    ) -> list[dict]:
-        """
-        Build table display rows, normalising metrics when requested.
-
-        Parameters
-        ----------
-        raw_rows : list[dict]
-            Original raw metric values.
-        scored_rows : list[dict]
-            Rows produced by :func:`_calc_scored_rows`.
-        threshold_pairs : dict[str, tuple[float, float]] | None
-            Normalisation thresholds, or ``None`` for raw metrics.
-        toggle_value : list[str] | None
-            Current state of the “Show normalized values” toggle.
-
-        Returns
-        -------
-        list[dict]
-            Rows to render in the DataTable.
-        """
-        show_normalized = bool(toggle_value) and ("norm" in (toggle_value or []))
-        if not (show_normalized and threshold_pairs):
-            return [row.copy() for row in scored_rows]
-
-        score_map = {
-            row.get("MLIP"): row for row in scored_rows if row.get("MLIP") is not None
-        }
-        display_rows: list[dict] = []
-        for row in raw_rows:
-            display_row = row.copy()
-            mlip = display_row.get("MLIP")
-            for metric, (good, bad) in threshold_pairs.items():
-                if metric not in display_row:
-                    continue
-                try:
-                    metric_val = float(display_row[metric])
-                except (TypeError, ValueError):
-                    continue
-                display_row[metric] = normalize_metric(metric_val, good, bad)
-            if mlip in score_map:
-                display_row["Score"] = score_map[mlip].get("Score")
-                display_row["Rank"] = score_map[mlip].get("Rank")
-            display_rows.append(display_row)
-        return display_rows
-
     if use_threshold_store:
 
         @callback(
@@ -142,36 +92,59 @@ def register_tab_table_callbacks(
         )
         def update_table_scores_with_thresholds(
             stored_weights: dict[str, float] | None,
-            threshold_store: dict | None,
+            stored_threshold: dict | None,
             _tabs_value: str,
             toggle_value: list[str] | None,
-            raw_data: list[dict] | None,
-            computed_store: list[dict] | None,
+            stored_raw_data: list[dict] | None,
+            stored_computed_data: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
-            if not raw_data:
+            """
+            Update table when stored weights/threshold change, or tab is changed.
+
+            Parameters
+            ----------
+            stored_weights
+                Stored weights dictionary for table metrics.
+            stored_threshold
+                Stored thresholds dictionary for table metric thresholds.
+            _tabs_value
+                Current tab identifier (unused, required to trigger on tab change).
+            toggle_value
+                Value of toggle to show normalised values.
+            stored_raw_data
+                Table data.
+            stored_computed_data
+                Latest table rows emitted by the table.
+            """
+            if not stored_raw_data:
                 raise PreventUpdate
 
-            thresholds = clean_thresholds(threshold_store)
+            thresholds = clean_thresholds(stored_threshold)
             trigger_id = ctx.triggered_id
 
+            # Tab switches and toggle flips reuse the cached scored rows rather than
+            # recalculating scores, we only re-score when weights/thresholds change.
             if (
                 trigger_id in ("all-tabs", f"{table_id}-normalized-toggle")
-                and computed_store
+                and stored_computed_data
             ):
-                # Tab switches and toggle flips reuse the cached scored rows rather than
-                # recalculating scores, we only re-score when weights/thresholds change.
-                display_rows = _materialize_display_rows(
-                    raw_data, computed_store, thresholds, toggle_value
+                display_rows = get_scores(
+                    stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
                 style = get_table_style(display_rows)
-                return display_rows, style, computed_store
+                return display_rows, style, stored_computed_data
 
-            scored_rows, style = update_score_rank_style(
-                raw_data, stored_weights, thresholds
+            # Update overall table score for new weights and thresholds
+            metrics_data = calc_table_scores(
+                stored_raw_data, stored_weights, thresholds
             )
-            display_rows = _materialize_display_rows(
-                raw_data, scored_rows, thresholds, toggle_value
+            # Update stored scores per metric
+            scored_rows = calc_metric_scores(stored_raw_data, thresholds)
+            # Select between unitful and unitless data
+            display_rows = get_scores(
+                metrics_data, scored_rows, thresholds, toggle_value
             )
+            style = get_table_style(display_rows)
             return display_rows, style, scored_rows
 
     else:
@@ -196,9 +169,8 @@ def register_tab_table_callbacks(
 
             if trigger_id == "all-tabs" and computed_store:
                 # When returning to the tab we show the last scored rows instantly.
-                display_rows = [row.copy() for row in computed_store]
-                style = get_table_style(display_rows)
-                return display_rows, style, computed_store
+                style = get_table_style(computed_store)
+                return computed_store, style, computed_store
 
             if not table_data:
                 raise PreventUpdate
@@ -454,7 +426,7 @@ def register_normalization_callbacks(
             """Update normalization thresholds store for one metric or reset all."""
             trigger_id = ctx.triggered_id
             if stored_thresholds is None:
-                stored_thresholds = (default_thresholds or {}).copy()
+                stored_thresholds = default_thresholds or {}
 
             # Reset to defaults is specified via reset button
             if trigger_id == f"{table_id}-reset-thresholds-button":
@@ -502,26 +474,11 @@ def register_normalization_callbacks(
             if not raw_data:
                 raise PreventUpdate
 
-            show_norm_flag = bool(show_normalized) and ("norm" in show_normalized)
-            thresholds = clean_thresholds(thresholds)
-
-            if show_norm_flag and thresholds:
-                # Show normalied values
-                display_rows = []
-                for row in raw_data:
-                    new_row = row.copy()
-                    for metric, (x_t, y_t) in thresholds.items():
-                        if metric in row:
-                            try:
-                                metric_val = float(row[metric])
-                            except (TypeError, ValueError):
-                                continue
-                            new_row[metric] = normalize_metric(metric_val, x_t, y_t)
-                    display_rows.append(new_row)
-            else:
-                # Show raw values
-                display_rows = [row.copy() for row in raw_data]
-
+            # Get metric scores to display
+            scored_rows = calc_metric_scores(raw_data, thresholds)
+            display_rows = get_scores(
+                raw_data, scored_rows, thresholds, show_normalized
+            )
             style = get_table_style(display_rows)
             return display_rows, style
 
