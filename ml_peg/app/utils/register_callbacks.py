@@ -6,13 +6,11 @@ from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
 from ml_peg.analysis.utils.utils import (
-    calc_ranks,
-    calc_scores,
     get_table_style,
     normalize_metric,
     update_score_rank_style,
 )
-from ml_peg.app.utils.utils import clean_thresholds, clean_weights
+from ml_peg.app.utils.utils import clean_thresholds
 
 
 def register_summary_table_callbacks() -> None:
@@ -77,34 +75,6 @@ def register_tab_table_callbacks(
         scores using the configured thresholds. This should only be used for benchmark
         tables.
     """
-
-    def _calc_scored_rows(
-        raw_rows: list[dict],
-        weights: dict[str, float],
-        threshold_pairs: dict[str, tuple[float, float]] | None = None,
-    ) -> list[dict]:
-        """
-        Return scored rows after applying weights and optional thresholds.
-
-        Parameters
-        ----------
-        raw_rows : list[dict]
-            Metric rows to be scored (each row mutated on a copy).
-        weights : dict[str, float]
-            Mapping of metric name to weight value.
-        threshold_pairs : dict[str, tuple[float, float]] | None, optional
-            Optional normalisation thresholds keyed by metric name.
-
-        Returns
-        -------
-        list[dict]
-            Rows with fresh ``Score`` and ``Rank`` entries.
-        """
-        working = [row.copy() for row in raw_rows]
-        working = calc_scores(
-            metrics_data=working, thresholds=threshold_pairs, weights=weights
-        )
-        return calc_ranks(working)
 
     def _materialize_display_rows(
         raw_rows: list[dict],
@@ -181,8 +151,7 @@ def register_tab_table_callbacks(
             if not raw_data:
                 raise PreventUpdate
 
-            threshold_pairs = clean_thresholds(threshold_store)
-            weights = clean_weights(stored_weights)
+            thresholds = clean_thresholds(threshold_store)
             trigger_id = ctx.triggered_id
 
             if (
@@ -192,16 +161,17 @@ def register_tab_table_callbacks(
                 # Tab switches and toggle flips reuse the cached scored rows rather than
                 # recalculating scores, we only re-score when weights/thresholds change.
                 display_rows = _materialize_display_rows(
-                    raw_data, computed_store, threshold_pairs, toggle_value
+                    raw_data, computed_store, thresholds, toggle_value
                 )
                 style = get_table_style(display_rows)
                 return display_rows, style, computed_store
 
-            scored_rows = _calc_scored_rows(raw_data, weights, threshold_pairs)
-            display_rows = _materialize_display_rows(
-                raw_data, scored_rows, threshold_pairs, toggle_value
+            scored_rows, style = update_score_rank_style(
+                raw_data, stored_weights, thresholds
             )
-            style = get_table_style(display_rows)
+            display_rows = _materialize_display_rows(
+                raw_data, scored_rows, thresholds, toggle_value
+            )
             return display_rows, style, scored_rows
 
     else:
@@ -233,9 +203,7 @@ def register_tab_table_callbacks(
             if not table_data:
                 raise PreventUpdate
 
-            weights = clean_weights(stored_weights)
-            scored_rows = _calc_scored_rows(table_data, weights, None)
-            style = get_table_style(scored_rows)
+            scored_rows, style = update_score_rank_style(table_data, stored_weights)
             return scored_rows, style, scored_rows
 
     @callback(

@@ -245,7 +245,9 @@ def get_table_style(
 
 
 def update_score_rank_style(
-    data: list[dict[str, Any]], weights: dict[str, float] | None
+    data: list[dict[str, Any]],
+    weights: dict[str, float] | None = None,
+    thresholds: dict[str, tuple[float, float]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, float] | None]:
     """
     Update table scores, ranks, and table styles.
@@ -255,7 +257,10 @@ def update_score_rank_style(
     data
         Rows data containing model name and metric values.
     weights
-        Weight for each metric. Default is 1.0 for each metric.
+        Weight for each metric. Default is `None`.
+    thresholds
+        Normalisation thresholds keyed by metric name, where each value is
+        a (good_threshold, bad_threshold) tuple. Default is `None`.
 
     Returns
     -------
@@ -263,7 +268,7 @@ def update_score_rank_style(
         Updated table rows and style.
     """
     weights = clean_weights(weights)
-    data = calc_scores(data, weights)
+    data = calc_scores(data, weights, thresholds)
     data = calc_ranks(data)
     style = get_table_style(data)
     return data, style
