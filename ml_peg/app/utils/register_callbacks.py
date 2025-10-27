@@ -10,6 +10,7 @@ from ml_peg.analysis.utils.utils import (
     calc_scores,
     get_table_style,
     normalize_metric,
+    update_score_rank_style,
 )
 from ml_peg.app.utils.utils import clean_thresholds, clean_weights
 
@@ -58,11 +59,7 @@ def register_summary_table_callbacks() -> None:
                     row[tab] = values[row["MLIP"]]
 
         # Update table contents
-        summary_data = calc_scores(summary_data, stored_weights)
-        summary_data = calc_ranks(summary_data)
-        style = get_table_style(summary_data)
-
-        return summary_data, style
+        return update_score_rank_style(summary_data, stored_weights)
 
 
 def register_tab_table_callbacks(
@@ -341,19 +338,9 @@ def register_benchmark_to_category_callback(
         tuple[list[dict], list[dict], list[dict]]
             Updated table data, updated style, and refreshed cached rows.
         """
-        if category_data is None:
-            raise PreventUpdate
-
-        triggered = ctx.triggered_id
-        base_rows = category_computed_store or category_data
-        if triggered == "all-tabs":
-            if not base_rows:
-                raise PreventUpdate
-            display_rows = [row.copy() for row in base_rows]
-            style = get_table_style(display_rows)
-            return display_rows, style, display_rows
-
-        if benchmark_computed_store is None:
+        # Default to pre-computed category data to avoid multiple updates on tab change
+        category_rows = category_computed_store or category_data
+        if not category_rows:
             raise PreventUpdate
 
         benchmark_scores = {
@@ -362,17 +349,13 @@ def register_benchmark_to_category_callback(
             if row.get("MLIP") is not None and row.get("Score") is not None
         }
 
-        working_rows = [row.copy() for row in base_rows]
-        for row in working_rows:
+        for row in category_rows:
             mlip = row.get("MLIP")
             if mlip in benchmark_scores:
                 row[benchmark_column] = benchmark_scores[mlip]
 
-        weights = clean_weights(category_weights)
-        scored_rows = calc_scores(working_rows, weights)
-        scored_rows = calc_ranks(scored_rows)
-        style = get_table_style(scored_rows)
-        return scored_rows, style, scored_rows
+        category_rows, style = update_score_rank_style(category_rows, category_weights)
+        return category_rows, style, category_rows
 
 
 def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None:

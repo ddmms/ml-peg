@@ -11,6 +11,8 @@ import numpy as np
 from scipy.stats import rankdata
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+from ml_peg.app.utils.utils import clean_weights
+
 
 def mae(ref: list, prediction: list) -> float:
     """
@@ -240,6 +242,31 @@ def get_table_style(
             )
 
     return style_data_conditional
+
+
+def update_score_rank_style(
+    data: list[dict[str, Any]], weights: dict[str, float] | None
+) -> tuple[list[dict[str, Any]], dict[str, float] | None]:
+    """
+    Update table scores, ranks, and table styles.
+
+    Parameters
+    ----------
+    data
+        Rows data containing model name and metric values.
+    weights
+        Weight for each metric. Default is 1.0 for each metric.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], dict[str, float] | None]
+        Updated table rows and style.
+    """
+    weights = clean_weights(weights)
+    data = calc_scores(data, weights)
+    data = calc_ranks(data)
+    style = get_table_style(data)
+    return data, style
 
 
 def normalize_metric(
