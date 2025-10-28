@@ -26,6 +26,15 @@ DEFAULT_WEIGHTS = {
     "WTMAD": 1,
 }
 
+DEFAULT_THRESHOLDS = {
+    "Small systems": (0.0, 100.0),
+    "Large systems": (0.0, 100.0),
+    "Barrier heights": (0.0, 100.0),
+    "Intramolecular NCIs": (0.0, 100.0),
+    "Intermolecular NCIs": (0.0, 100.0),
+    "WTMAD": (0.0, 100.0),
+}
+
 # Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
@@ -231,6 +240,7 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
         "Intermolecular NCIs": "Mean Absolute Deviation (kcal/mol)",
         "WTMAD": "Weighted Mean Absolute Deviation (kcal/mol)",
     },
+    thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
