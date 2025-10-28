@@ -82,6 +82,7 @@ def register_tab_table_callbacks(
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
             Input("all-tabs", "value"),
@@ -97,7 +98,7 @@ def register_tab_table_callbacks(
             toggle_value: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict]]:
+        ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
             """
             Update table when stored weights/threshold change, or tab is changed.
 
@@ -132,7 +133,7 @@ def register_tab_table_callbacks(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
                 style = get_table_style(display_rows)
-                return display_rows, style, stored_computed_data
+                return display_rows, style, stored_computed_data, stored_raw_data
 
             # Update overall table score for new weights and thresholds
             metrics_data = calc_table_scores(
@@ -145,7 +146,7 @@ def register_tab_table_callbacks(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
             style = get_table_style(display_rows)
-            return display_rows, style, scored_rows
+            return display_rows, style, scored_rows, metrics_data
 
     else:
 
