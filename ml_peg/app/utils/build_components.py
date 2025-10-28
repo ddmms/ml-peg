@@ -20,11 +20,11 @@ from ml_peg.app.utils.register_callbacks import (
 from ml_peg.app.utils.utils import calculate_column_widths
 
 
-def _parse_threshold_entry(
+def _split_threshold_entry(
     bounds: Any,
 ) -> tuple[float | None, float | None, str | None]:
     """
-    Coerce a stored threshold entry into numeric bounds and a unit string.
+    Return numeric ``good``/``bad`` limits plus an optional unit string.
 
     Parameters
     ----------
@@ -534,7 +534,7 @@ def build_threshold_inputs(
     )
 
     for metric in table_columns:
-        good_val, bad_val, unit_label = _parse_threshold_entry(thresholds.get(metric))
+        good_val, bad_val, unit_label = _split_threshold_entry(thresholds.get(metric))
         default_thresholds[metric] = {
             "good": good_val,
             "bad": bad_val,
