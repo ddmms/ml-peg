@@ -30,7 +30,13 @@ def strucutre_info() -> dict[str, float | str]:
     dict[str, float | str]
         Dictionary with weights, subset name and category for all systems.
     """
-    info = {"weights": [], "categories": [], "subsets": [], "systems": []}
+    info = {
+        "weights": [],
+        "categories": [],
+        "subsets": [],
+        "systems": [],
+        "excluded": [],
+    }
     for model_name in MODELS:
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
@@ -39,6 +45,7 @@ def strucutre_info() -> dict[str, float | str]:
                 info["subsets"].append(struct.info["subset_name"])
                 info["categories"].append(struct.info["category"])
                 info["systems"].append(struct.info["system_name"])
+                info["excluded"].append(struct.info["excluded"])
         # Only need to access info from one model
         return info
     return info
@@ -58,6 +65,7 @@ INFO = strucutre_info()
         "Weight": INFO["weights"],
         "Category": INFO["categories"],
         "System": INFO["systems"],
+        "Excluded": INFO["excluded"],
     },
 )
 def rel_energies() -> dict[str, list[float]]:
@@ -139,11 +147,15 @@ def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, f
         for category in set(INFO["categories"]):
             results[model_name][category] = np.mean(
                 [
-                    error
-                    for error, cat in zip(
-                        all_errors[model_name], INFO["categories"], strict=True
+                    error * weight
+                    for error, weight, cat, excluded in zip(
+                        all_errors[model_name],
+                        INFO["weights"],
+                        INFO["categories"],
+                        INFO["excluded"],
+                        strict=True,
                     )
-                    if cat == category
+                    if cat == category and not excluded
                 ]
             )
     return results
@@ -167,7 +179,16 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         results[model_name] = np.mean(
-            np.multiply(all_errors[model_name], INFO["weights"])
+            [
+                error * weight
+                for error, weight, excluded in zip(
+                    all_errors[model_name],
+                    INFO["weights"],
+                    INFO["excluded"],
+                    strict=True,
+                )
+                if not excluded
+            ]
         )
     return results
 
