@@ -52,9 +52,38 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
+def _coerce_threshold_pair(bounds: Any) -> tuple[float, float] | None:
+    """
+    Extract numeric ``(good, bad)`` bounds from a threshold entry.
+
+    Parameters
+    ----------
+    bounds
+        Threshold definition provided as a tuple, list, or mapping with ``good`` and
+        ``bad`` entries.
+
+    Returns
+    -------
+    tuple[float, float] | None
+        Numeric ``(good, bad)`` pair or ``None`` when coercion fails.
+    """
+    if isinstance(bounds, dict):
+        good_val = bounds.get("good")
+        bad_val = bounds.get("bad")
+    elif isinstance(bounds, list | tuple) and len(bounds) == 2:
+        good_val, bad_val = bounds
+    else:
+        return None
+
+    try:
+        return float(good_val), float(bad_val)
+    except (TypeError, ValueError):
+        return None
+
+
 def calc_metric_scores(
     metrics_data: list[dict[str, Any]],
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, Any] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict[str, float]]:
     """
@@ -65,8 +94,9 @@ def calc_metric_scores(
     metrics_data
         Rows data containing model name and metric values.
     thresholds
-        Normalisation thresholds keyed by metric name, where each value is
-        a (good_threshold, bad_threshold) tuple.
+        Normalisation thresholds keyed by metric name. Each value may be either a
+        (good_threshold, bad_threshold) tuple/list or a mapping with ``good`` and
+        ``bad`` entries (optionally including a ``unit`` string).
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
@@ -85,8 +115,12 @@ def calc_metric_scores(
             if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
                 # If thresholds given, use to normalise
                 if thresholds is not None and key in thresholds:
-                    good_threshold, bad_threshold = thresholds[key]
-                    row[key] = normalizer(value, good_threshold, bad_threshold)
+                    bounds = _coerce_threshold_pair(thresholds[key])
+                    if bounds is not None:
+                        good_threshold, bad_threshold = bounds
+                        row[key] = normalizer(value, good_threshold, bad_threshold)
+                    else:
+                        row[key] = value
                 else:
                     row[key] = value
 
@@ -96,7 +130,7 @@ def calc_metric_scores(
 def calc_table_scores(
     metrics_data: list[dict[str, Any]],
     weights: dict[str, float] | None = None,
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, Any] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict]:
     """
@@ -111,8 +145,9 @@ def calc_table_scores(
     weights
         Weight for each metric. Default is 1.0 for each metric.
     thresholds
-        Normalisation thresholds keyed by metric name, where each value is
-        a (good_threshold, bad_threshold) tuple.
+        Normalisation thresholds keyed by metric name. Each value may be either a
+        numeric pair or a mapping with ``good``/``bad`` (and optional ``unit``)
+        entries.
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
@@ -310,7 +345,7 @@ def get_table_style(
 def update_score_rank_style(
     data: list[dict[str, Any]],
     weights: dict[str, float] | None = None,
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, float] | None]:
     """
     Update table scores, ranks, and table styles.
@@ -322,8 +357,8 @@ def update_score_rank_style(
     weights
         Weight for each metric. Default is `None`.
     thresholds
-        Normalisation thresholds keyed by metric name, where each value is
-        a (good_threshold, bad_threshold) tuple. Default is `None`.
+        Normalisation thresholds keyed by metric name. Each value may be a numeric
+        pair or a mapping with ``good``/``bad`` entries. Default is `None`.
 
     Returns
     -------

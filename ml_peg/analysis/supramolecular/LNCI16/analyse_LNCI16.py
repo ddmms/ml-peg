@@ -16,7 +16,9 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "supramolecular" / "LNCI16" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 
-LNCI16_THRESHOLDS = {"MAE": (0.0, 100.0)}
+LNCI16_THRESHOLDS = {
+    "MAE": {"good": 0.0, "bad": 100.0, "unit": "kcal/mol"},
+}
 
 
 def get_system_names() -> list[str]:
