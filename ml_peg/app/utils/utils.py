@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dash.dash_table.Format as TableFormat
+
 
 def calculate_column_widths(
     columns: list[str],
@@ -46,6 +48,63 @@ def calculate_column_widths(
             widths.setdefault(col, max(calculated_width, min_metric_width))
 
     return widths
+
+
+def is_numeric_column(rows: list[dict], column_id: str) -> bool:
+    """
+    Determine whether a column contains numeric values.
+
+    Parameters
+    ----------
+    rows
+        Table rows to inspect.
+    column_id
+        Column identifier to check.
+
+    Returns
+    -------
+    bool
+        ``True`` when any non-null entry is numeric, otherwise ``False``.
+    """
+    for row in rows:
+        value = row.get(column_id)
+        if value is None:
+            continue
+        if isinstance(value, int | float):
+            return True
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+        else:
+            return True
+    return False
+
+
+def sig_fig_format() -> TableFormat.Format:
+    """
+    Build a formatter that displays three significant figures.
+
+    Returns
+    -------
+    TableFormat.Format
+        Dash table format configured for three significant figures.
+    """
+    return TableFormat.Format(precision=3).scheme(
+        TableFormat.Scheme.decimal_or_exponent
+    )
+
+
+def rank_format() -> TableFormat.Format:
+    """
+    Build a formatter that displays integer ranks.
+
+    Returns
+    -------
+    TableFormat.Format
+        Dash table format configured for integer values.
+    """
+    return TableFormat.Format().scheme(TableFormat.Scheme.decimal_integer)
 
 
 def clean_thresholds(

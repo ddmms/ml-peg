@@ -15,7 +15,7 @@ from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores, get_table
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_weight_components
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
-from ml_peg.app.utils.utils import calculate_column_widths
+from ml_peg.app.utils.utils import calculate_column_widths, rank_format, sig_fig_format
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -197,7 +197,16 @@ def build_summary_table(
     data = calc_ranks(data)
 
     columns_headers = ("MLIP",) + tuple(tables.keys()) + ("Score", "Rank")
+
     columns = [{"name": headers, "id": headers} for headers in columns_headers]
+    for column in columns:
+        column_id = column["id"]
+        if column_id == "Rank":
+            column["type"] = "numeric"
+            column["format"] = rank_format()
+        elif column_id != "MLIP":
+            column["type"] = "numeric"
+            column["format"] = sig_fig_format()
 
     style = get_table_style(data)
 
