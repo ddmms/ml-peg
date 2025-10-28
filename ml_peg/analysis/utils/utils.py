@@ -52,9 +52,9 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
-def _coerce_threshold_pair(bounds: Any) -> tuple[float, float] | None:
+def _extract_threshold_bounds(bounds: Any) -> tuple[float, float] | None:
     """
-    Extract numeric ``(good, bad)`` bounds from a threshold entry.
+    Pull out the numeric ``(good, bad)`` limits for a metric.
 
     Parameters
     ----------
@@ -65,7 +65,7 @@ def _coerce_threshold_pair(bounds: Any) -> tuple[float, float] | None:
     Returns
     -------
     tuple[float, float] | None
-        Numeric ``(good, bad)`` pair or ``None`` when coercion fails.
+        Numeric ``(good, bad)`` pair or ``None`` when conversion fails.
     """
     if isinstance(bounds, dict):
         good_val = bounds.get("good")
@@ -115,7 +115,7 @@ def calc_metric_scores(
             if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
                 # If thresholds given, use to normalise
                 if thresholds is not None and key in thresholds:
-                    bounds = _coerce_threshold_pair(thresholds[key])
+                    bounds = _extract_threshold_bounds(thresholds[key])
                     if bounds is not None:
                         good_threshold, bad_threshold = bounds
                         row[key] = normalizer(value, good_threshold, bad_threshold)
