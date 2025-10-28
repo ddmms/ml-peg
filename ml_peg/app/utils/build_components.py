@@ -54,8 +54,6 @@ def grid_template_from_widths(
 def build_weight_input(
     input_id: str,
     default_value: float | None,
-    *,
-    cell_width: int | None = None,
 ) -> Div:
     """
     Build numeric input for a metric weight.
@@ -66,8 +64,6 @@ def build_weight_input(
         ID for text box input component.
     default_value
         Default value for the text box input.
-    cell_width
-        Optional width hint retained for signature compatibility; unused.
 
     Returns
     -------
@@ -112,6 +108,7 @@ def build_weight_input(
 def build_weight_components(
     header: str,
     table: DataTable,
+    weights: dict[str, float] | None = None,
     *,
     use_thresholds: bool = False,
     column_widths: dict[str, int] | None = None,
@@ -126,6 +123,9 @@ def build_weight_components(
         Header for above sliders.
     table
         DataTable to build weight components for.
+    weights
+        Optional weights for each metric, usually set during analysis. Default is
+        `None`, which sets all weights to 1.
     use_thresholds
         Whether this table also exposes normalization thresholds. When True,
         weight callbacks will reuse the raw-data store and normalization store to
@@ -154,15 +154,20 @@ def build_weight_components(
 
     input_ids = [f"{table.id}-{col}" for col in columns]
 
+    # Set default weights
+    weights = weights if weights else {}
+    for column in columns:
+        weights.setdefault(column, 1.0)
+
     widths = calculate_column_widths(columns, column_widths)
     grid_template = grid_template_from_widths(widths, columns)
 
     weight_inputs = [
         build_weight_input(
             input_id=f"{input_id}-input",
-            default_value=1.0,
+            default_value=weights[column],
         )
-        for _, input_id in zip(columns, input_ids, strict=True)
+        for column, input_id in zip(columns, input_ids, strict=True)
     ]
 
     container = Div(
@@ -255,7 +260,7 @@ def build_weight_components(
         Store(
             id=f"{table.id}-weight-store",
             storage_type="session",
-            data=dict.fromkeys(columns, 1.0),
+            data=weights,
         ),
     ]
 
@@ -269,7 +274,12 @@ def build_weight_components(
 
     # Callbacks to sync sliders, text boxes, and stored table weights
     for column, input_id in zip(columns, input_ids, strict=True):
-        register_weight_callbacks(input_id=input_id, table_id=table.id, column=column)
+        register_weight_callbacks(
+            input_id=input_id,
+            table_id=table.id,
+            column=column,
+            default_weights=getattr(table, "weights", None),
+        )
 
     return Div(layout)
 
@@ -282,6 +292,7 @@ def build_test_layout(
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
+    weights: dict[str, float] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -305,6 +316,9 @@ def build_test_layout(
         Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
         analysis pipeline. When provided, inline threshold controls are rendered
         automatically.
+    weights
+        Optional weights for each metric, usually set during analysis. Default is
+        `None`, which sets all weights to 1.
 
     Returns
     -------
@@ -383,6 +397,7 @@ def build_test_layout(
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
+        weights=weights,
         use_thresholds=True,
         column_widths=column_widths,
         thresholds=thresholds,
