@@ -17,6 +17,15 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular" / "GMTKN55" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 
+DEFAULT_WEIGHTS = {
+    "Small systems": 0,
+    "Large systems": 0,
+    "Barrier heights": 0,
+    "Intramolecular NCIs": 0,
+    "Intermolecular NCIs": 0,
+    "WTMAD": 1,
+}
+
 # Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
@@ -222,6 +231,7 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
         "Intermolecular NCIs": "Mean Absolute Deviation (kcal/mol)",
         "WTMAD": "Weighted Mean Absolute Deviation (kcal/mol)",
     },
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     category_errors: dict[str, dict[str, float]], weighted_error: dict[str, float]
