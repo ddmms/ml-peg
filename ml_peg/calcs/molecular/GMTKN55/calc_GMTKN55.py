@@ -44,6 +44,9 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     print(f"\nEvaluating with model: {model_name}")
     calc = model.get_calculator()
 
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
+
     # Download GMTKN55.yaml and subsets.csv
     data_dir = get_benchmark_data("GMTKN55.zip") / "GMTKN55"
 
@@ -84,6 +87,8 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.info["excluded"] = excluded
                 atoms.info["ref_value"] = ref_value
                 atoms.info["count"] = species["Count"]
+                atoms.info["uhf"] = species["UHF"]
+                atoms.info["Charge"] = species["Charge"]
                 atoms.cell = None
                 atoms.pbc = False
 
