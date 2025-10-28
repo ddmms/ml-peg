@@ -255,6 +255,7 @@ def build_table(
     metric_tooltips: dict[str, str] | None = None,
     normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
+    weights: dict[str, float] | None = None,
 ) -> Callable:
     """
     Build DataTable, including optional metric normalisation.
@@ -280,6 +281,9 @@ def build_table(
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
+        Tooltips for table metric headers.
+    weights
+        Default weights for metrics. Default is 1 for all metrics.
 
     Returns
     -------
@@ -349,7 +353,7 @@ def build_table(
             #     metric_2: {mlip_1: value_3, mlip_2: value_4},
             # }
 
-            metrics_columns = ("MLIP",) + tuple(results.keys())
+            metrics_columns = ("MLIP",) + tuple(results)
             # Use MLIP keys from first (any) metric keys
             mlips = next(iter(results.values())).keys()
 
@@ -390,6 +394,10 @@ def build_table(
             metrics_data = calc_ranks(metrics_data)
             metrics_columns += ("Score", "Rank")
 
+            metric_weights = weights if weights else {}
+            for column in results:
+                metric_weights.setdefault(column, 1)
+
             table = dash_table.DataTable(
                 metrics_data,
                 [{"name": i, "id": i} for i in metrics_columns if i != "id"],
@@ -406,6 +414,7 @@ def build_table(
                         "columns": table.columns,
                         "tooltip_header": tooltip_header,
                         "thresholds": thresholds,
+                        "weights": metric_weights,
                     },
                     fp,
                 )
