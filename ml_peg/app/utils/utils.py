@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import dash.dash_table.Format as TableFormat
 
 
@@ -108,10 +110,10 @@ def rank_format() -> TableFormat.Format:
 
 
 def clean_thresholds(
-    raw_thresholds: dict[str, dict[str, float]],
-) -> dict[str, tuple[float, float]] | None:
+    raw_thresholds: dict[str, Any] | None,
+) -> dict[str, dict[str, float | str | None]] | None:
     """
-    Convert a raw normalization mapping into ``(good, bad)`` float tuples.
+    Convert raw normalization mappings into ``good``/``bad`` bounds with units.
 
     Parameters
     ----------
@@ -120,8 +122,9 @@ def clean_thresholds(
 
     Returns
     -------
-    dict[str, tuple[float, float]] | None
-        Cleaned mapping or ``None`` when conversion fails.
+    dict[str, dict[str, float | str | None]] | None
+        Mapping containing float thresholds and optional unit strings, or ``None`` when
+        conversion fails.
     """
     if not isinstance(raw_thresholds, dict):
         return None
@@ -129,19 +132,26 @@ def clean_thresholds(
     thresholds = {}
 
     for metric, bounds in raw_thresholds.items():
+        good_val: float | None
+        bad_val: float | None
+        unit_val: str | None = None
         try:
             if isinstance(bounds, dict):
                 good_val = float(bounds["good"])
                 bad_val = float(bounds["bad"])
+                raw_unit = bounds.get("unit")
+                unit_val = str(raw_unit) if raw_unit not in (None, "") else None
             elif isinstance(bounds, list | tuple) and len(bounds) == 2:
                 good_val = float(bounds[0])
                 bad_val = float(bounds[1])
+            elif bounds is None:
+                continue
             else:
                 continue
         except (KeyError, TypeError, ValueError):
             continue
 
-        thresholds[metric] = (good_val, bad_val)
+        thresholds[metric] = {"good": good_val, "bad": bad_val, "unit": unit_val}
     return thresholds
 
 
@@ -174,7 +184,7 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
 def get_scores(
     raw_rows: list[dict],
     scored_rows: list[dict],
-    threshold_pairs: dict[str, tuple[float, float]] | None,
+    threshold_pairs: dict[str, dict[str, float | str | None]] | None,
     toggle_value: list[str] | None,
 ) -> list[dict]:
     """

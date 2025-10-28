@@ -251,7 +251,7 @@ def build_table(
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
     normalize: bool = True,
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, Any] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
@@ -272,8 +272,8 @@ def build_table(
     normalize
         Whether to apply normalisation when calculating the score. Default is True.
     thresholds
-        Mapping of metric names to (X, Y) tuples where X is the upper threshold and
-        Y is the lower threshold. Required if `normalize` is `True`.
+        Mapping of metric names to (X, Y) tuples or dictionaries containing ``good``,
+        ``bad``, and optional ``unit`` keys. Required if `normalize` is `True`.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.

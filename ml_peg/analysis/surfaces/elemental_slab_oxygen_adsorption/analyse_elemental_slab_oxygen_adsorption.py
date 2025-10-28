@@ -16,7 +16,9 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "elemental_slab_oxygen_adsorption" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
 
-ELEMENTAL_OXYGEN_THRESHOLDS = {"MAE": (0.1, 2.0)}
+ELEMENTAL_OXYGEN_THRESHOLDS = {
+    "MAE": {"good": 0.1, "bad": 2.0, "unit": "eV"},
+}
 
 
 def compute_adsorption_energy(

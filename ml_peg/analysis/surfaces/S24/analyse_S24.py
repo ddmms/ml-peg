@@ -16,7 +16,9 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "S24" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "S24"
 
-S24_THRESHOLDS = {"MAE": (0.05, 0.5)}
+S24_THRESHOLDS = {
+    "MAE": {"good": 0.05, "bad": 0.5, "unit": "eV"},
+}
 
 
 def compute_adsorption_energy(
