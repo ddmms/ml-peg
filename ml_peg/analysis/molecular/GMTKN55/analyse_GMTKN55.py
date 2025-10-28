@@ -198,6 +198,11 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
     filename=OUT_PATH / "gmtkn55_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
+        "Small systems": "Mean Absolute Deviation (kcal/mol)",
+        "Large systems": "Mean Absolute Deviation (kcal/mol)",
+        "Barrier heights": "Mean Absolute Deviation (kcal/mol)",
+        "Intramolecular NCIs": "Mean Absolute Deviation (kcal/mol)",
+        "Intermolecular NCIs": "Mean Absolute Deviation (kcal/mol)",
         "WTMAD": "Weighted Mean Absolute Deviation (kcal/mol)",
     },
 )
@@ -219,9 +224,19 @@ def metrics(
     dict[str, dict]
         Metric names and values for all models.
     """
+    category_abbrevs = {
+        "Basic properties and reaction energies for small systems": "Small systems",
+        "Reaction energies for large systems and isomerisation reactions": "Large "
+        "systems",
+        "Reaction barrier heights": "Barrier heights",
+        "Intramolecular noncovalent interactions": "Intramolecular NCIs",
+        "Intermolecular noncovalent interactions": "Intermolecular NCIs",
+        "All (WTMAD)": "All (WTMAD)",
+    }
+
     metrics = {}
     for category in category_errors[MODELS[0]]:
-        metrics[category] = {
+        metrics[category_abbrevs[category]] = {
             model: category_errors[model][category] for model in MODELS
         }
 
