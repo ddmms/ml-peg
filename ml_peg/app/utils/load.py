@@ -9,7 +9,7 @@ from dash.dash_table import DataTable
 from dash.dcc import Graph
 from plotly.io import read_json
 
-from ml_peg.analysis.utils.utils import get_table_style
+from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     calculate_column_widths,
     clean_thresholds,
@@ -59,7 +59,8 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
             column.setdefault("format", sig_fig_format())
     tooltip_header = table_json["tooltip_header"]
 
-    style = get_table_style(data)
+    scored_data = calc_metric_scores(data)
+    style = get_table_style(data, scored_data=scored_data)
     column_widths = calculate_column_widths([cols["name"] for cols in columns])
 
     style_cell_conditional: list[dict[str, object]] = []

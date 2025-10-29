@@ -179,6 +179,9 @@ def calc_ranks(metrics_data: list[dict]) -> list[dict]:
 
 def get_table_style(
     data: list[dict],
+    *,
+    scored_data: list[dict] | None = None,
+    normalized: bool = True,
     all_cols: bool = True,
     col_names: list[str] | str | None = None,
 ) -> list[dict[str, Any]]:
@@ -189,6 +192,11 @@ def get_table_style(
     ----------
     data
         Data from Dash table to be coloured.
+    scored_data
+        Data with metric values replaced with scores.
+    normalized
+        Whether metric/score columns have been normalized to between 0 and 1. Default is
+        `True`.
     all_cols
         Whether to colour all numerical columns.
     col_names
@@ -243,7 +251,7 @@ def get_table_style(
 
     for col in cols:
         numeric_entries: list[tuple[Any, float]] = []
-        for row in data:
+        for i, row in enumerate(data):
             if col not in row:
                 continue
             raw_value = row[col]
@@ -252,16 +260,35 @@ def get_table_style(
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):
                 continue
-            numeric_entries.append((raw_value, numeric_value))
+
+            # Get scored value, if is exists
+            try:
+                scored_value = float(scored_data[i][col])
+            except (TypeError, ValueError, IndexError):
+                scored_value = raw_value
+
+            numeric_entries.append((raw_value, numeric_value, scored_value))
 
         if not numeric_entries:
             continue
 
-        numeric_values = [numeric for _, numeric in numeric_entries]
-        min_value = min(numeric_values)
-        max_value = max(numeric_values)
+        numeric_values = [numeric for _, numeric, _ in numeric_entries]
 
-        for raw_value, numeric_value in numeric_entries:
+        # Use thresholds
+        if normalized:
+            if col != "Rank":
+                min_value, max_value = 1, 0
+            else:
+                min_value, max_value = 1, len(numeric_values)
+        else:
+            min_value = min(numeric_values)
+            max_value = max(numeric_values)
+
+        for raw_value, _, scored_value in numeric_entries:
+            # Determine direction of values
+            mid = (min_value + max_value) / 2
+            increasing = max_value >= min_value
+
             style_data_conditional.append(
                 {
                     "if": {
@@ -269,10 +296,10 @@ def get_table_style(
                         "column_id": col,
                     },
                     "backgroundColor": rgba_from_val(
-                        numeric_value, min_value, max_value, cmap
+                        scored_value, min_value, max_value, cmap
                     ),
                     "color": "white"
-                    if numeric_value > (min_value + max_value) / 2
+                    if (scored_value > mid if increasing else scored_value < mid)
                     else "black",
                 }
             )
@@ -306,7 +333,8 @@ def update_score_rank_style(
     weights = clean_weights(weights)
     data = calc_table_scores(data, weights, thresholds)
     data = calc_ranks(data)
-    style = get_table_style(data)
+    scored_data = calc_metric_scores(data, thresholds)
+    style = get_table_style(data, scored_data=scored_data)
     return data, style
 
 

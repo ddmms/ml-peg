@@ -61,8 +61,8 @@ def register_summary_table_callbacks() -> None:
         return update_score_rank_style(summary_data, stored_weights)
 
 
-def register_tab_table_callbacks(
-    table_id: str, use_threshold_store: bool = False
+def register_category_table_callbacks(
+    table_id: str, use_thresholds: bool = False
 ) -> None:
     """
     Register callback to update table scores/rankings when stored values change.
@@ -71,12 +71,13 @@ def register_tab_table_callbacks(
     ----------
     table_id
         ID for table to update.
-    use_threshold_store
+    use_thresholds
         If `True`, also watch the per-metric normalization store and recompute
         scores using the configured thresholds. This should only be used for benchmark
         tables.
     """
-    if use_threshold_store:
+    # Benchmark tables
+    if use_thresholds:
 
         @callback(
             Output(table_id, "data", allow_duplicate=True),
@@ -91,7 +92,7 @@ def register_tab_table_callbacks(
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
-        def update_table_scores_with_thresholds(
+        def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
             _tabs_value: str,
@@ -132,7 +133,8 @@ def register_tab_table_callbacks(
                 display_rows = get_scores(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
-                style = get_table_style(display_rows)
+                scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+                style = get_table_style(display_rows, scored_data=scored_rows)
                 return display_rows, style, stored_computed_data, stored_raw_data
 
             # Update overall table score for new weights and thresholds
@@ -145,7 +147,7 @@ def register_tab_table_callbacks(
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
-            style = get_table_style(display_rows)
+            style = get_table_style(display_rows, scored_data=scored_rows)
             return display_rows, style, scored_rows, metrics_data
 
     else:
@@ -480,7 +482,7 @@ def register_normalization_callbacks(
             display_rows = get_scores(
                 raw_data, scored_rows, thresholds, show_normalized
             )
-            style = get_table_style(display_rows)
+            style = get_table_style(display_rows, scored_data=scored_rows)
             return display_rows, style
 
     # Register individual threshold input sync callbacks
