@@ -110,7 +110,7 @@ def metrics(
     ghost_force: dict[str, float], hydrogen_force: dict[str, tuple[float, float]]
 ) -> dict[str, dict]:
     """
-    Get all Li diffusion metrics.
+    Get all ghost atom metrics.
 
     Parameters
     ----------
