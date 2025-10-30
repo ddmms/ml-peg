@@ -36,7 +36,7 @@ class GhostAtomsApp(BaseApp):
             table_id=self.table_id,
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
             column_to_struct=structs,
-            mode="traj",
+            mode="struct",
         )
 
 

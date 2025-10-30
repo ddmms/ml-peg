@@ -222,6 +222,5 @@ def struct_from_table(
                     )
                 )
 
-                return Div(column_to_struct[column_id])
             raise PreventUpdate
         raise ValueError("Invalid column_id")
