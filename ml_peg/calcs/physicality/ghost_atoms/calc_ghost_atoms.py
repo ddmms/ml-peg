@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 
 from ase import Atoms
@@ -145,9 +145,14 @@ def prepared_solute() -> dict[str, Atoms]:
 
     solutes = {}
     for model_name, calc in MODELS.items():
-        solute.calc = calc.get_calculator()
-        solute.get_forces()
-        solutes[model_name] = solute
+        solute = solute.copy()
+        try:
+            solute.calc = calc.get_calculator()
+            solute.get_forces()
+            solutes[model_name] = solute
+        # If a model fails, don't block other model tests
+        except (ModuleNotFoundError, RuntimeError):
+            continue
     return solutes
 
 
@@ -169,7 +174,7 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
     ghost_dist = 40.0  # place all Ne ≥ this many Angstrom from solute COM
 
     system_ghost = prepare_ghost_system(solute, ghost_num, ghost_dist)
-    system_ghost.calc = deepcopy(solute.calc)
+    system_ghost.calc = copy(solute.calc)
 
     system_ghost.get_forces()
 
@@ -207,7 +212,7 @@ def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
 
     for _ in range(rand_trials):
         system_rand_h = add_random_h(solute, rand_min_dist, rand_max_dist, rng)
-        system_rand_h.calc = deepcopy(solute.calc)
+        system_rand_h.calc = copy(solute.calc)
         system_rand_h.get_forces()
         rand_h_structures.append(system_rand_h)
 
