@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 
 from ase import Atoms
@@ -117,7 +117,7 @@ class OC157Benchmark(zntrack.Node):
             Calculator to use to evaluate structure energy.
         """
         for atoms in triplet:
-            atoms.calc = deepcopy(calc)
+            atoms.calc = copy(calc)
             atoms.get_potential_energy()
 
     def run(self):
