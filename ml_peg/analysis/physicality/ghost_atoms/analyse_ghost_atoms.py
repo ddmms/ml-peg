@@ -101,7 +101,7 @@ def hydrogen_force() -> dict[str, float]:
         "atoms (meV/Å))",
         "Random hydrogen mean ΔF": "Mean force difference on solute atoms due to "
         "random hydrogen atoms (meV/Å)",
-        "Random hydrogen std ΔF": "Standard deviation of force differnece on solute "
+        "Random hydrogen std ΔF": "Standard deviation of force difference on solute "
         "atoms due to random hydrogen atoms (meV/Å)",
     },
     thresholds=DEFAULT_THRESHOLDS,
