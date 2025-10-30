@@ -18,7 +18,7 @@ OUT_PATH = APP_ROOT / "data" / "physicality" / "ghost_atoms"
 
 DEFAULT_THRESHOLDS = {
     "Ghost atoms max ΔF": (0, 5.0),
-    "Random hydrogen max ΔF": (0, 5.0),
+    "Random hydrogen mean ΔF": (0, 5.0),
     "Random hydrogen std ΔF": (0.0, 5.0),
 }
 
@@ -99,8 +99,8 @@ def hydrogen_force() -> dict[str, float]:
         "Model": "Name of the model",
         "Ghost atoms max ΔF": "Maximum force difference on solute atoms due to ghost "
         "atoms (meV/Å))",
-        "Random hydrogen max ΔF": "Mean force difference on solute atoms due to random "
-        "hydrogen atoms (meV/Å)",
+        "Random hydrogen mean ΔF": "Mean force difference on solute atoms due to "
+        "random hydrogen atoms (meV/Å)",
         "Random hydrogen std ΔF": "Standard deviation of force differnece on solute "
         "atoms due to random hydrogen atoms (meV/Å)",
     },
