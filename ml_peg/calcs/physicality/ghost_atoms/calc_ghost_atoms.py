@@ -178,11 +178,6 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
 
     system_ghost.get_forces()
 
-    # # difference in forces on solute atoms only
-    # delta_f = np.linalg.norm(solute_forces - ghost_forces[:len(solute)], axis=1)
-    # max_delta_f = np.max(delta_f)
-    # system_ghost.info["max_delta_f"] = max_delta_f
-
     # Write output structures
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
