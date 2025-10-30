@@ -51,6 +51,10 @@ orb = [
     "orb-models == 0.5.5; sys_platform != 'win32' and python_version < '3.13'",
 ]
 
+uma = [
+    "fairchem-core == 2.10.0",
+]
+
 [project.scripts]
 ml_peg = "ml_peg.cli.cli:app"
 
@@ -162,6 +166,17 @@ default-groups = [
     "dev",
     "docs",
     "pre-commit",
+]
+
+conflicts = [
+    [
+      { extra = "uma" },
+      { extra = "mace" },
+    ],
+    [
+      { extra = "uma" },
+      { extra = "grace" },
+    ],
 ]
 
 constraint-dependencies = [
