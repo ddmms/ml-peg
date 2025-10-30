@@ -28,7 +28,7 @@ class GhostAtomsApp(BaseApp):
         assets_dir = f"assets/physicality/ghost_atoms/{MODELS[0]}"
         structs = {
             "Ghost atoms max ΔF": f"{assets_dir}/system_ghost.xyz",
-            "Random hydrogen max ΔF": f"{assets_dir}/system_random_H.xyz",
+            "Random hydrogen mean ΔF": f"{assets_dir}/system_random_H.xyz",
             "Random hydrogen std ΔF": f"{assets_dir}/system_random_H.xyz",
         }
 
