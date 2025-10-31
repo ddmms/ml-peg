@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from matplotlib import cm
@@ -10,8 +11,71 @@ from matplotlib.colors import Colormap
 import numpy as np
 from scipy.stats import rankdata
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from yaml import safe_load
 
 from ml_peg.app.utils.utils import clean_weights
+
+
+def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, str]]:
+    """
+    Load metric thresholds and tooltips from a YAML configuration file.
+
+    Parameters
+    ----------
+    config_path
+        Path to the YAML file containing metric definitions.
+
+    Returns
+    -------
+    tuple[dict[str, Any], dict[str, str]]
+        Mapping of metric thresholds and mapping of metric tooltips.
+    """
+    if not config_path.exists():
+        msg = f"Metrics configuration file not found: {config_path}"
+        raise FileNotFoundError(msg)
+
+    with config_path.open(encoding="utf8") as stream:
+        data = safe_load(stream) or {}
+
+    metrics_data = data.get("metrics", {}) or {}
+    if not isinstance(metrics_data, dict):
+        msg = "Expected 'metrics' section in metrics config to be a mapping."
+        raise TypeError(msg)
+    thresholds: dict[str, Any] = {}
+    tooltips: dict[str, str] = {}
+
+    for metric_name, metric_config in metrics_data.items():
+        if not isinstance(metric_config, dict):
+            msg = f"Metric configuration for '{metric_name}' must be a mapping."
+            raise TypeError(msg)
+
+        unit = metric_config.get("unit", metric_config.get("units"))
+        metric_threshold = {}
+        if "good" in metric_config:
+            metric_threshold["good"] = metric_config["good"]
+        if "bad" in metric_config:
+            metric_threshold["bad"] = metric_config["bad"]
+        if unit is not None:
+            metric_threshold["unit"] = unit
+
+        thresholds[metric_name] = metric_threshold
+
+        tooltip = metric_config.get("tooltip")
+        if tooltip is None or tooltip == "":
+            msg = (
+                f"Metric '{metric_name}' in '{config_path}' must define a non-empty "
+                "'tooltip' entry."
+            )
+            raise ValueError(msg)
+        tooltips[metric_name] = tooltip
+
+    extra_tooltips = data.get("extra_tooltips") or {}
+    if not isinstance(extra_tooltips, dict):
+        msg = "Expected 'extra_tooltips' to be a mapping if provided."
+        raise TypeError(msg)
+    tooltips.update({key: value for key, value in extra_tooltips.items() if value})
+
+    return thresholds, tooltips
 
 
 def mae(ref: list, prediction: list) -> float:

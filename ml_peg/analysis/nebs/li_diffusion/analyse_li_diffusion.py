@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -16,12 +18,12 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "nebs" / "li_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+LI_DIFFUSION_THRESHOLDS, LI_DIFFUSION_TOOLTIPS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
-LI_DIFFUSION_THRESHOLDS = {
-    "Path B error": {"good": 0.02, "bad": 0.4, "unit": "eV"},
-    "Path C error": {"good": 0.1, "bad": 0.8, "unit": "eV"},
-}
 
 
 def plot_nebs(model: str, path: Literal["b", "c"]) -> None:
@@ -119,11 +121,7 @@ def path_c_error() -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "li_diffusion_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "Path B error": "Energy Barrier error for path B (eV)",
-        "Path C error": "Energy Barrier error for path C (eV)",
-    },
+    metric_tooltips=LI_DIFFUSION_TOOLTIPS,
     thresholds=LI_DIFFUSION_THRESHOLDS,
 )
 def metrics(
