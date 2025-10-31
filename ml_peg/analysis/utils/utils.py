@@ -50,6 +50,7 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
             raise TypeError(msg)
 
         unit = metric_config.get("unit", metric_config.get("units"))
+        level = metric_config.get("level_of_theory", metric_config.get("level"))
         metric_threshold = {}
         if "good" in metric_config:
             metric_threshold["good"] = metric_config["good"]
@@ -57,6 +58,8 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
             metric_threshold["bad"] = metric_config["bad"]
         if unit is not None:
             metric_threshold["unit"] = unit
+        if level is not None:
+            metric_threshold["level_of_theory"] = level
 
         thresholds[metric_name] = metric_threshold
 
@@ -67,6 +70,8 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
                 "'tooltip' entry."
             )
             raise ValueError(msg)
+        if level:
+            tooltip = f"{tooltip} (Level of theory: {level})"
         tooltips[metric_name] = tooltip
 
     extra_tooltips = data.get("extra_tooltips") or {}
