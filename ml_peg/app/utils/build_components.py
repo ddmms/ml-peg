@@ -399,6 +399,13 @@ def build_test_layout(
                 data=table.data,
             )
         )
+        layout_contents.append(
+            Store(
+                id=f"{table.id}-raw-tooltip-store",
+                storage_type="session",
+                data=table.tooltip_header,
+            )
+        )
         threshold_controls = build_threshold_inputs(
             table_columns=metric_columns,
             thresholds=thresholds,

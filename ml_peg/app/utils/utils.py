@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import dash.dash_table.Format as TableFormat
@@ -297,9 +298,84 @@ def format_metric_columns(
                 column_copy["name"] = f"{base_label} [-]"
             else:
                 column_copy["name"] = f"{base_label} [{unit}]"
-        else:
-            column_copy["name"] = base_label
 
         updated_columns.append(column_copy)
 
     return updated_columns
+
+
+def _swap_tooltip_unit(text: str, unit: str, replacement: str) -> str:
+    """
+    Replace a unit substring within tooltip text with a new label.
+
+    Parameters
+    ----------
+    text
+        Original tooltip text.
+    unit
+        Unit string to replace.
+    replacement
+        Replacement string (e.g. "[-]").
+
+    Returns
+    -------
+    str
+        Tooltip string with updated unit descriptor.
+    """
+    if not text or not unit:
+        return text
+
+    pattern = re.compile(rf"\s*[\(\[]\s*{re.escape(unit)}\s*[\)\]]")
+    if pattern.search(text):
+        return pattern.sub(f" [{replacement}]", text, count=1)
+
+    # Fallback: append replacement in brackets
+    return f"{text} [{replacement}]"
+
+
+def format_tooltip_headers(
+    tooltip_header: dict[str, str] | None,
+    thresholds: dict[str, dict[str, float | str | None]] | None,
+    show_normalized: bool,
+) -> dict[str, str] | None:
+    """
+    Update tooltip headers to reflect unitless normalised values.
+
+    Parameters
+    ----------
+    tooltip_header
+        Original tooltip header mapping.
+    thresholds
+        Normalisation thresholds containing unit metadata.
+    show_normalized
+        Whether normalised values are currently displayed.
+
+    Returns
+    -------
+    dict[str, str] | None
+        Updated tooltip header mapping.
+    """
+    if tooltip_header is None:
+        return None
+
+    thresholds = thresholds or {}
+    reserved = {"MLIP", "Score", "Rank", "id"}
+
+    updated: dict[str, str] = {}
+    for key, text in tooltip_header.items():
+        if not isinstance(text, str) or key in reserved:
+            updated[key] = text
+            continue
+
+        unit = thresholds.get(key, {}).get("unit")
+        if not unit or unit in ("", "-"):
+            updated[key] = text
+            continue
+
+        base_text = _swap_tooltip_unit(text, unit, unit)
+        if show_normalized:
+            updated[key] = base_text.replace(f"[{unit}]", "[-]", 1)
+        else:
+            updated[key] = base_text
+
+    return updated

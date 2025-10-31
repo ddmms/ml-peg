@@ -17,6 +17,7 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.utils import (
     clean_thresholds,
     format_metric_columns,
+    format_tooltip_headers,
     get_scores,
 )
 
@@ -90,6 +91,7 @@ def register_category_table_callbacks(
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
             Output(table_id, "columns", allow_duplicate=True),
+            Output(table_id, "tooltip_header", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
@@ -98,6 +100,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
+            State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
         )
@@ -108,8 +111,16 @@ def register_category_table_callbacks(
             toggle_value: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
+            raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
+        ) -> tuple[
+            list[dict],
+            list[dict],
+            list[dict],
+            dict[str, str] | None,
+            list[dict],
+            list[dict],
+        ]:
             """
             Update table when stored weights/threshold change, or tab is changed.
 
@@ -149,10 +160,14 @@ def register_category_table_callbacks(
                 columns = format_metric_columns(
                     current_columns, thresholds, show_normalized
                 )
+                tooltips = format_tooltip_headers(
+                    raw_tooltips, thresholds, show_normalized
+                )
                 return (
                     display_rows,
                     style,
                     columns,
+                    tooltips,
                     stored_computed_data,
                     stored_raw_data,
                 )
@@ -171,7 +186,8 @@ def register_category_table_callbacks(
             columns = format_metric_columns(
                 current_columns, thresholds, show_normalized
             )
-            return display_rows, style, columns, scored_rows, metrics_data
+            tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
+            return display_rows, style, columns, tooltips, scored_rows, metrics_data
 
     else:
 
@@ -492,9 +508,11 @@ def register_normalization_callbacks(
             Output(f"{table_id}", "data", allow_duplicate=True),
             Output(f"{table_id}", "style_data_conditional", allow_duplicate=True),
             Output(f"{table_id}", "columns", allow_duplicate=True),
+            Output(f"{table_id}", "tooltip_header", allow_duplicate=True),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-thresholds-store", "data"),
+            State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
             prevent_initial_call=True,
         )
@@ -502,8 +520,9 @@ def register_normalization_callbacks(
             show_normalized: list[str] | None,
             raw_data: list[dict],
             thresholds: dict[str, Any] | None,
+            raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict]]:
+        ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
                 raise PreventUpdate
@@ -520,7 +539,10 @@ def register_normalization_callbacks(
             columns = format_metric_columns(
                 current_columns, cleaned_thresholds, normalized_active
             )
-            return display_rows, style, columns
+            tooltips = format_tooltip_headers(
+                raw_tooltips, cleaned_thresholds, normalized_active
+            )
+            return display_rows, style, columns, tooltips
 
     # Register individual threshold input sync callbacks
     for metric in metrics:
