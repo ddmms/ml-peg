@@ -70,8 +70,18 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
         }
         thresholds[metric_name] = metric_threshold
 
-        # Permit no tooltip
         tooltip = metric_config.get("tooltip")
+
+        if tooltip is None or tooltip == "":
+            msg = (
+                f"Metric '{metric_name}' in '{config_path}' must define a non-empty "
+                "'tooltip' entry."
+            )
+            raise ValueError(msg)
+
+        if level:
+            tooltip = f"{tooltip} (Level of theory: {level})"
+
         tooltips[metric_name] = tooltip
 
         weights[metric_name] = float(metric_config.get("weight", 1.0))

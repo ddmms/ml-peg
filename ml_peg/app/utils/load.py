@@ -131,6 +131,12 @@ def rebuild_table(
     table.thresholds = thresholds
     table.weights = weights
     table.description = description
+    table.model_levels_of_theory = table_json.get(
+        "model_levels_of_theory", table_json.get("model_levels")
+    )
+    table.metric_levels_of_theory = table_json.get(
+        "metric_levels_of_theory", table_json.get("metric_levels")
+    )
 
     return table
 

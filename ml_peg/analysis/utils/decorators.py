@@ -12,9 +12,11 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
+import yaml
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
+from ml_peg.models import MODELS_ROOT
 
 
 def plot_parity(
@@ -619,7 +621,7 @@ def build_table(
 
             metrics_columns = ("MLIP",) + tuple(results)
             # Use MLIP keys from first (any) metric keys
-            mlips = next(iter(results.values())).keys()
+            mlips = tuple(next(iter(results.values())).keys())
 
             metrics_data = []
             for mlip in mlips:
@@ -665,6 +667,36 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
+            with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+                all_models = yaml.safe_load(model_file) or {}
+            model_levels = {
+                mlip: (all_models.get(mlip, {}) or {}).get("level_of_theory")
+                for mlip in mlips
+            }
+            metric_levels = {}
+            if thresholds:
+                for metric_name in results:
+                    metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
+                        "level_of_theory"
+                    )
+                    metric_level = metric_levels[metric_name]
+                    if metric_level and metric_name in tooltip_header:
+                        mismatched = []
+                        for mlip in mlips:
+                            model_level = model_levels.get(mlip)
+                            if model_level and model_level != metric_level:
+                                mismatched.append((mlip, model_level))
+                        if mismatched:
+                            mismatch_str = ", ".join(
+                                f"{mlip} ({level})" if level else mlip
+                                for mlip, level in mismatched
+                            )
+                            tooltip_header[metric_name] = (
+                                f"{tooltip_header[metric_name]} "
+                                f"Mismatch: benchmark {metric_level}; "
+                                f"models at {mismatch_str}"
+                            )
+
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
@@ -675,6 +707,8 @@ def build_table(
                         "tooltip_header": tooltip_header,
                         "thresholds": thresholds,
                         "weights": metric_weights,
+                        "model_levels_of_theory": model_levels,
+                        "metric_levels_of_theory": metric_levels,
                     },
                     fp,
                 )
