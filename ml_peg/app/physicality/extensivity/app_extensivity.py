@@ -49,7 +49,8 @@ def get_app() -> ExtensivityApp:
     """
     return ExtensivityApp(
         name=BENCHMARK_NAME,
-        description="Force sensitivity for extensivity and randomly place hydrogens.",
+        description="Extensivity of slab energies, comparing two isolated slabs to the "
+        "two slabs with a large separation.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "extensivity_metrics_table.json",
         extra_components=[
