@@ -14,7 +14,11 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     update_score_rank_style,
 )
-from ml_peg.app.utils.utils import clean_thresholds, get_scores
+from ml_peg.app.utils.utils import (
+    clean_thresholds,
+    format_metric_columns,
+    get_scores,
+)
 
 
 def register_summary_table_callbacks() -> None:
@@ -85,6 +89,7 @@ def register_category_table_callbacks(
         @callback(
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(table_id, "columns", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
@@ -93,6 +98,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
+            State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
         )
         def update_benchmark_table_scores(
@@ -102,7 +108,8 @@ def register_category_table_callbacks(
             toggle_value: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+            current_columns: list[dict] | None,
+        ) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
             """
             Update table when stored weights/threshold change, or tab is changed.
 
@@ -121,10 +128,11 @@ def register_category_table_callbacks(
             stored_computed_data
                 Latest table rows emitted by the table.
             """
-            if not stored_raw_data:
+            if not stored_raw_data or current_columns is None:
                 raise PreventUpdate
 
             thresholds = clean_thresholds(stored_threshold)
+            show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
 
             # Tab switches and toggle flips reuse the cached scored rows rather than
@@ -138,7 +146,16 @@ def register_category_table_callbacks(
                 )
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
                 style = get_table_style(display_rows, scored_data=scored_rows)
-                return display_rows, style, stored_computed_data, stored_raw_data
+                columns = format_metric_columns(
+                    current_columns, thresholds, show_normalized
+                )
+                return (
+                    display_rows,
+                    style,
+                    columns,
+                    stored_computed_data,
+                    stored_raw_data,
+                )
 
             # Update overall table score for new weights and thresholds
             metrics_data = calc_table_scores(
@@ -151,7 +168,10 @@ def register_category_table_callbacks(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
             style = get_table_style(display_rows, scored_data=scored_rows)
-            return display_rows, style, scored_rows, metrics_data
+            columns = format_metric_columns(
+                current_columns, thresholds, show_normalized
+            )
+            return display_rows, style, columns, scored_rows, metrics_data
 
     else:
 
@@ -471,21 +491,25 @@ def register_normalization_callbacks(
         @callback(
             Output(f"{table_id}", "data", allow_duplicate=True),
             Output(f"{table_id}", "style_data_conditional", allow_duplicate=True),
+            Output(f"{table_id}", "columns", allow_duplicate=True),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-thresholds-store", "data"),
+            State(f"{table_id}", "columns"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
             raw_data: list[dict],
             thresholds: dict[str, Any] | None,
-        ) -> tuple[list[dict], list[dict]]:
+            current_columns: list[dict] | None,
+        ) -> tuple[list[dict], list[dict], list[dict]]:
             """Toggle between raw and normalised metric values for display only."""
-            if not raw_data:
+            if not raw_data or current_columns is None:
                 raise PreventUpdate
 
             cleaned_thresholds = clean_thresholds(thresholds)
+            normalized_active = bool(show_normalized) and show_normalized[0] == "norm"
 
             # Get metric scores to display
             scored_rows = calc_metric_scores(raw_data, cleaned_thresholds)
@@ -493,7 +517,10 @@ def register_normalization_callbacks(
                 raw_data, scored_rows, cleaned_thresholds, show_normalized
             )
             style = get_table_style(display_rows, scored_data=scored_rows)
-            return display_rows, style
+            columns = format_metric_columns(
+                current_columns, cleaned_thresholds, normalized_active
+            )
+            return display_rows, style, columns
 
     # Register individual threshold input sync callbacks
     for metric in metrics:

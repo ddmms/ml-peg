@@ -211,3 +211,95 @@ def get_scores(
         return raw_rows
 
     return scored_rows
+
+
+def _base_column_label(column: dict[str, Any]) -> str:
+    """
+    Extract the base metric label from a column definition.
+
+    Parameters
+    ----------
+    column
+        Dash DataTable column definition.
+
+    Returns
+    -------
+    str
+        Base label without unit suffix. Falls back to column ID when the name is
+        unavailable.
+    """
+    name = column.get("name")
+    if isinstance(name, str):
+        return name.split(" [", 1)[0]
+
+    column_id = column.get("id")
+    if isinstance(column_id, str):
+        return column_id
+
+    if name is not None:
+        return str(name)
+    if column_id is not None:
+        return str(column_id)
+    return ""
+
+
+def format_metric_columns(
+    columns: list[dict[str, Any]] | None,
+    thresholds: dict[str, dict[str, float | str | None]] | None,
+    show_normalized: bool,
+) -> list[dict[str, Any]] | None:
+    """
+    Generate updated column labels based on unit metadata and toggle state.
+
+    Parameters
+    ----------
+    columns
+        Current DataTable columns configuration.
+    thresholds
+        Normalisation thresholds keyed by metric name including optional units.
+    show_normalized
+        Whether the table is displaying normalized (unitless) values.
+
+    Returns
+    -------
+    list[dict[str, Any]] | None
+        Updated column definitions with unit-aware labels. Returns `None` when
+        `columns` is `None`.
+    """
+    if columns is None:
+        return None
+
+    thresholds = thresholds or {}
+    reserved = {"MLIP", "Score", "Rank", "id"}
+    updated_columns: list[dict[str, Any]] = []
+
+    for column in columns:
+        if not isinstance(column, dict):
+            updated_columns.append(column)
+            continue
+
+        column_copy = column.copy()
+        column_id = column_copy.get("id")
+
+        if (
+            not isinstance(column_id, str)
+            or column_id in reserved
+            or column_id not in thresholds
+        ):
+            updated_columns.append(column_copy)
+            continue
+
+        base_label = _base_column_label(column_copy)
+        unit = thresholds[column_id].get("unit")
+
+        if unit:
+            if show_normalized:
+                column_copy["name"] = f"{base_label} [-]"
+            else:
+                column_copy["name"] = f"{base_label} [{unit}]"
+        else:
+            column_copy["name"] = base_label
+
+        updated_columns.append(column_copy)
+
+    return updated_columns
