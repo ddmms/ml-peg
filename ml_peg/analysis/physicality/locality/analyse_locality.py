@@ -1,4 +1,4 @@
-"""Analyse ghost atoms benchmark."""
+"""Analyse locality benchmark."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "physicality" / "ghost_atoms" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "physicality" / "ghost_atoms"
+CALC_PATH = CALCS_ROOT / "physicality" / "locality" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "physicality" / "locality"
 
 DEFAULT_THRESHOLDS = {
     "Ghost atoms max ΔF": (0, 5.0),
@@ -94,7 +94,7 @@ def hydrogen_force() -> dict[str, float]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "ghost_atoms_metrics_table.json",
+    filename=OUT_PATH / "locality_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
         "Ghost atoms max ΔF": "Maximum force difference on solute atoms due to ghost "
@@ -110,7 +110,7 @@ def metrics(
     ghost_force: dict[str, float], hydrogen_force: dict[str, tuple[float, float]]
 ) -> dict[str, dict]:
     """
-    Get all ghost atom metrics.
+    Get all locality metrics.
 
     Parameters
     ----------
@@ -137,13 +137,13 @@ def metrics(
     }
 
 
-def test_ghost_atoms(metrics: dict[str, dict]) -> None:
+def test_locality(metrics: dict[str, dict]) -> None:
     """
-    Run ghost atoms analysis.
+    Run locality analysis.
 
     Parameters
     ----------
     metrics
-        All ghost atoms metrics.
+        All locality metrics.
     """
     return

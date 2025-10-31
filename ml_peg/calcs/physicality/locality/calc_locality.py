@@ -1,4 +1,4 @@
-"""Run calculations for ghost atoms test."""
+"""Run calculations for locality benchmark."""
 
 from __future__ import annotations
 
@@ -187,12 +187,12 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
 @pytest.mark.parametrize("model_name", MODELS)
 def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
     """
-    Run test adding random Hydrogens to solute.
+    Run test adding random hydrogens to solute.
 
     Parameters
     ----------
     prepared_solute
-        Solute structure to add ghost atoms to for each model.
+        Solute structure to add hydrogens to for each model.
     model_name
         Name of model use and model to get calculator.
     """
