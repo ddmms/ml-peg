@@ -39,7 +39,7 @@ def energy_difference() -> dict[str, float]:
         energy_2 = slab_2.get_potential_energy()
         energy_combined = combined.get_potential_energy()
 
-        results[model_name] = 1000 * (energy_combined - (energy_1 + energy_2))
+        results[model_name] = 1000 * abs(energy_combined - (energy_1 + energy_2))
 
         # Write structures in order as glob is unsorted
         structs_dir = OUT_PATH / model_name
