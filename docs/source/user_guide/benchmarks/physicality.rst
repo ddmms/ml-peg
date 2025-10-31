@@ -43,3 +43,34 @@ Data availability
 -----------------
 
 None required.
+
+
+Extensivity
+===========
+
+Summary
+-------
+
+Performance in respecting extensivity, by measuring differences in energy between
+isolated systems, and the same systems combined, but significantly separated.
+
+Metrics
+-------
+
+1. Absolute energy difference between isolated and combined slabs
+
+The energy of two isolated slabs is calculated, and the energy of the combined system,
+with the two slabs separated by 100 Å is calculated. The absolute energy difference
+between the sum of the isolated slabs and that of the combined system is calculated.
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take less than a minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+None required.
