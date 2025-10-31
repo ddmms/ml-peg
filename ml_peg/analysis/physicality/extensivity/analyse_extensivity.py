@@ -28,7 +28,7 @@ def energy_difference() -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Dictionary of energy differences for all models.
+        Dictionary of absolute energy differences for all models.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
@@ -54,7 +54,8 @@ def energy_difference() -> dict[str, float]:
     filename=OUT_PATH / "extensivity_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
-        "ΔE": "Energy difference (meV)",
+        "ΔE": "Absolute energy difference between isolated and combined slab systems "
+        "(meV)",
     },
     thresholds=DEFAULT_THRESHOLDS,
 )
@@ -65,7 +66,7 @@ def metrics(energy_difference: dict[str, float]) -> dict[str, dict]:
     Parameters
     ----------
     energy_difference
-        Dictionary of energy differences for all models.
+        Dictionary of absolute energy differences for all models.
 
     Returns
     -------
