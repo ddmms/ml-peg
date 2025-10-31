@@ -88,6 +88,17 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
             loaded_models[name] = OrbCalc(
                 name=kwargs["name"],
                 device=cfg.get("device", "cpu"),
+                default_dtype=cfg.get("default_dtype", "float32"),
+                add_d3=cfg.get("add_d3", False),
+                d3_kwargs=cfg.get("d3_kwargs", {}),
+            )
+        elif cfg["class_name"] == "mace_mp":
+            loaded_models[name] = GenericASECalc(
+                module=cfg["module"],
+                class_name=cfg["class_name"],
+                device=cfg.get("device", "auto"),
+                default_dtype=cfg.get("default_dtype", "float32"),
+                kwargs=cfg.get("kwargs", {}),
                 add_d3=cfg.get("add_d3", False),
                 d3_kwargs=cfg.get("d3_kwargs", {}),
             )
