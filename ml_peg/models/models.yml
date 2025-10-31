@@ -59,7 +59,7 @@ orb_v3_conservative_inf_omat__:
   module: orb_models.forcefield
   class_name: OrbCalc
   device: "cpu"
-  default_dtype: float32
+  default_dtype: float32-high
   kwargs:
     name: "orb_v3_conservative_inf_omat"
 
