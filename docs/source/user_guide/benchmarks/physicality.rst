@@ -2,8 +2,8 @@
 Physicality
 ===========
 
-Ghost Atoms
-===========
+Locality
+========
 
 Summary
 -------
