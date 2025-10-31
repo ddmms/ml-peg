@@ -159,3 +159,68 @@ def struct_from_scatter(
                 },
             )
         )
+
+
+def struct_from_table(
+    table_id: str,
+    struct_id: str,
+    column_to_struct: dict[str, str],
+    mode: Literal["struct", "traj"] = "struct",
+) -> None:
+    """
+    Attach callback to show a structure when a table is clicked.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being clicked.
+    struct_id
+        ID for Dash plot placeholder Div where structures will be visualised.
+    column_to_struct
+        Dictionary of structure filenames indexed by table column.
+    mode
+        Whether to display a single structure ("struct"), or trajectory from an initial
+        image ("traj"). Default is "struct".
+    """
+
+    @callback(
+        Output(struct_id, "children", allow_duplicate=True),
+        Input(table_id, "active_cell"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_struct(active_cell):
+        """
+        Register callback to show structure when a table is clicked.
+
+        Parameters
+        ----------
+        active_cell
+            Clicked cell in Dash table.
+
+        Returns
+        -------
+        Div
+            Visualised structure on plot click.
+        """
+        if not active_cell:
+            return Div("Click on a metric to view the structure.")
+
+        column_id = active_cell.get("column_id", None)
+        if column_id:
+            if column_id in column_to_struct:
+                struct = column_to_struct[column_id]
+
+                return Div(
+                    Iframe(
+                        srcDoc=generate_weas_html(struct, mode),
+                        style={
+                            "height": "550px",
+                            "width": "100%",
+                            "border": "1px solid #ddd",
+                            "borderRadius": "5px",
+                        },
+                    )
+                )
+
+            raise PreventUpdate
+        raise ValueError("Invalid column_id")
