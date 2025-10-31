@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -15,10 +17,8 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "supramolecular" / "LNCI16" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
-
-LNCI16_THRESHOLDS = {
-    "MAE": {"good": 0.0, "bad": 100.0, "unit": "kcal/mol"},
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+LNCI16_THRESHOLDS, LNCI16_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_system_names() -> list[str]:
@@ -215,10 +215,7 @@ def lnci16_mae(interaction_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "lnci16_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error for all systems (kcal/mol)",
-    },
+    metric_tooltips=LNCI16_TOOLTIPS,
     thresholds=LNCI16_THRESHOLDS,
 )
 def metrics(lnci16_mae: dict[str, float]) -> dict[str, dict]:

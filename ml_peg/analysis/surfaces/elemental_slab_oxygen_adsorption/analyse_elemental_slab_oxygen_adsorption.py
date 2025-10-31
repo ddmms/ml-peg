@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -15,10 +17,10 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "elemental_slab_oxygen_adsorption" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
-
-ELEMENTAL_OXYGEN_THRESHOLDS = {
-    "MAE": {"good": 0.1, "bad": 2.0, "unit": "eV"},
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+ELEMENTAL_OXYGEN_THRESHOLDS, ELEMENTAL_OXYGEN_TOOLTIPS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 
 def compute_adsorption_energy(
@@ -143,10 +145,7 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error (eV)",
-    },
+    metric_tooltips=ELEMENTAL_OXYGEN_TOOLTIPS,
     thresholds=ELEMENTAL_OXYGEN_THRESHOLDS,
 )
 def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:

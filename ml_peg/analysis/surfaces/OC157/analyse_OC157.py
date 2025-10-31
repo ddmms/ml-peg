@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -16,11 +18,8 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "OC157" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
-
-OC157_THRESHOLDS = {
-    "MAE": {"good": 0.0, "bad": 1.0, "unit": "meV"},
-    "Ranking Error": {"good": 0.0, "bad": 1.0, "unit": None},
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+OC157_THRESHOLDS, OC157_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_relative_energies(energies: list) -> list:
@@ -183,11 +182,7 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "oc157_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error (meV)",
-        "Ranking Error": "Error in ranking stability across triplets",
-    },
+    metric_tooltips=OC157_TOOLTIPS,
     thresholds=OC157_THRESHOLDS,
 )
 def metrics(
