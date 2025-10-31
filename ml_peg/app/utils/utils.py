@@ -130,10 +130,18 @@ def clean_thresholds(
     thresholds: Thresholds = {}
 
     for metric, bounds in raw_thresholds.items():
+        good_val: float | None
+        bad_val: float | None
+        unit_val: str | None = None
+        level_val: str | None = None
         try:
-            good_val = float(bounds["good"])
-            bad_val = float(bounds["bad"])
-            unit_val = str(bounds["unit"]).strip()
+            if isinstance(bounds, dict):
+                good_val = float(bounds["good"])
+                bad_val = float(bounds["bad"])
+                raw_unit = bounds.get("unit")
+                unit_val = str(raw_unit) if raw_unit not in (None, "") else None
+                raw_level = bounds.get("level_of_theory", bounds.get("level"))
+                level_val = str(raw_level) if raw_level not in (None, "") else None
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError(
                 f"Threshold entries must include 'good', 'bad', and 'unit': {bounds}"
@@ -141,9 +149,17 @@ def clean_thresholds(
         if not unit_val:
             raise ValueError(f"Unit must be a non-empty string for metric '{metric}'.")
 
-        thresholds[metric] = {"good": good_val, "bad": bad_val, "unit": unit_val}
-    if not thresholds:
-        raise ValueError("No valid thresholds were defined.")
+        entry: dict[str, float | str | None] = {
+            "good": good_val,
+            "bad": bad_val,
+            "unit": unit_val,
+        }
+
+        if level_val:
+            entry["level_of_theory"] = level_val
+
+        thresholds[metric] = entry
+
     return thresholds
 
 
