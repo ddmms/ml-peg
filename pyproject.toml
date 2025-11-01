@@ -36,6 +36,9 @@ dependencies = [
 chgnet = [
     "chgnet == 0.4.0",
 ]
+d3 = [
+    "torch-dftd==0.4.0",
+]
 dpa3 = [
     "deepmd-kit == 3.1.0",
 ]
@@ -44,7 +47,6 @@ grace = [
 ]
 mace = [
     "mace-torch==0.3.14",
-    "torch-dftd==0.4.0",
 ]
 
 orb = [
