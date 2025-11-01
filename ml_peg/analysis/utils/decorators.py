@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
+from copy import deepcopy
 import functools
 from json import dump
 from pathlib import Path
@@ -631,13 +632,17 @@ def build_table(
                     | {"id": mlip},
                 )
 
-            summary_tooltips = {"MLIP": "Name of the model"}
+            summary_tooltips = {
+                "MLIP": "Model identifier\nHover for configuration details.",
+            }
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Average of normalised metrics (higher is better)"
+                    "Composite score across metrics\nHigher is better (normalized)."
                 )
             else:
-                summary_tooltips["Score"] = "Average of metrics"
+                summary_tooltips["Score"] = (
+                    "Composite score across metrics\nHigher is better."
+                )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -669,10 +674,14 @@ def build_table(
 
             with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
                 all_models = yaml.safe_load(model_file) or {}
-            model_levels = {
-                mlip: (all_models.get(mlip, {}) or {}).get("level_of_theory")
-                for mlip in mlips
-            }
+            model_levels: dict[str, str | None] = {}
+            model_configs: dict[str, Any] = {}
+            for mlip in mlips:
+                cfg = deepcopy(all_models.get(mlip) or {})
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                model_configs[mlip] = cfg
+                model_levels[mlip] = cfg.get("level_of_theory")
             metric_levels = {}
             if thresholds:
                 for metric_name in results:
@@ -691,10 +700,15 @@ def build_table(
                                 f"{mlip} ({level})" if level else mlip
                                 for mlip, level in mismatched
                             )
-                            tooltip_header[metric_name] = (
-                                f"{tooltip_header[metric_name]} "
-                                f"Mismatch: benchmark {metric_level}; "
-                                f"models at {mismatch_str}"
+                            tooltip_header[metric_name] = "\n".join(
+                                [
+                                    str(tooltip_header[metric_name]).rstrip(),
+                                    (
+                                        "Mismatch detected:\n"
+                                        f"  Benchmark level: {metric_level}\n"
+                                        f"  Models at: {mismatch_str}"
+                                    ),
+                                ]
                             )
 
             # Save dict of table to be loaded
@@ -709,6 +723,7 @@ def build_table(
                         "weights": metric_weights,
                         "model_levels_of_theory": model_levels,
                         "metric_levels_of_theory": metric_levels,
+                        "model_configs": model_configs,
                     },
                     fp,
                 )

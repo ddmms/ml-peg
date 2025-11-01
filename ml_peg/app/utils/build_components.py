@@ -478,6 +478,17 @@ def build_test_layout(
             data=table.data,
         )
     )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-levels-store",
+            storage_type="session",
+            data={
+                "model": getattr(table, "model_levels_of_theory", {}),
+                "metric": getattr(table, "metric_levels_of_theory", {}),
+                "config": getattr(table, "model_configs", {}),
+            },
+        )
+    )
 
     # Inline normalization thresholds when metadata is supplied
     if thresholds is not None:

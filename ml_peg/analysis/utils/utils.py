@@ -79,10 +79,12 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             )
             raise ValueError(msg)
 
-        if level:
-            tooltip = f"{tooltip} (Level of theory: {level})"
+        tooltip_lines = [tooltip.strip()]
 
-        tooltips[metric_name] = tooltip
+        if level:
+            tooltip_lines.append(f"Level of theory: {level}")
+
+        tooltips[metric_name] = "\n".join(tooltip_lines)
 
         weights[metric_name] = float(metric_config.get("weight", 1.0))
 

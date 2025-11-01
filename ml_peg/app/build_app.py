@@ -15,7 +15,12 @@ from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_footer, build_weight_components
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
-from ml_peg.app.utils.utils import calculate_column_widths, sig_fig_format
+from ml_peg.app.utils.utils import (
+    build_level_of_theory_warnings,
+    calculate_column_widths,
+    load_model_registry_configs,
+    sig_fig_format,
+)
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -146,6 +151,15 @@ def build_category(
                     storage_type="session",
                     data=summary_table.data,
                 ),
+                Store(
+                    id=f"{category_title}-summary-table-levels-store",
+                    storage_type="session",
+                    data={
+                        "model": getattr(summary_table, "model_levels_of_theory", {}),
+                        "metric": getattr(summary_table, "metric_levels_of_theory", {}),
+                        "config": getattr(summary_table, "model_configs", {}),
+                    },
+                ),
                 weight_components,
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
@@ -215,6 +229,23 @@ def build_summary_table(
             column["format"] = sig_fig_format()
 
     style = get_table_style(data)
+    registry_configs = load_model_registry_configs()
+    row_models: list[str] = []
+    for row in data:
+        mlip = row.get("MLIP")
+        if isinstance(mlip, str) and mlip not in row_models:
+            row_models.append(mlip)
+    model_configs = {mlip: (registry_configs.get(mlip) or {}) for mlip in row_models}
+    model_levels = {
+        mlip: (model_configs[mlip].get("level_of_theory")) for mlip in row_models
+    }
+    warning_styles, tooltip_rows = build_level_of_theory_warnings(
+        data,
+        model_levels,
+        {},
+        model_configs,
+    )
+    style_with_warnings = style + warning_styles
 
     # Calculate column widths based on column names
     column_widths = calculate_column_widths(columns_headers)
@@ -239,8 +270,11 @@ def build_summary_table(
         columns=columns,
         id=table_id,
         sort_action="native",
-        style_data_conditional=style,
+        style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        tooltip_data=tooltip_rows,
+        tooltip_delay=100,
+        tooltip_duration=None,
         persistence=True,
         persistence_type="session",
         persisted_props=["data"],
@@ -248,6 +282,9 @@ def build_summary_table(
     )
     table.column_widths = column_widths
     table.description = description
+    table.model_levels_of_theory = model_levels
+    table.metric_levels_of_theory = {}
+    table.model_configs = model_configs
     return table
 
 
@@ -312,6 +349,19 @@ def build_tabs(
                 [
                     H1("Benchmarks Summary"),
                     summary_table,
+                    Store(
+                        id="summary-table-levels-store",
+                        storage_type="session",
+                        data={
+                            "model": getattr(
+                                summary_table, "model_levels_of_theory", {}
+                            ),
+                            "metric": getattr(
+                                summary_table, "metric_levels_of_theory", {}
+                            ),
+                            "config": getattr(summary_table, "model_configs", {}),
+                        },
+                    ),
                     weight_components,
                     Store(
                         id="summary-table-scores-store",
