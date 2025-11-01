@@ -9,3 +9,4 @@ Benchmarks
     nebs
     supramolecular
     physicality
+    molecular_crystal
