@@ -336,7 +336,6 @@ def build_level_of_theory_warnings(
         module = config.get("module")
         class_name = config.get("class_name")
         device = config.get("device")
-        args = config.get("args")
         kwargs = config.get("kwargs")
         other_keys = {
             key: value
@@ -366,25 +365,20 @@ def build_level_of_theory_warnings(
         if device:
             overview_lines.append(f"- **Device:** `{device}`")
 
-        if isinstance(args, list | tuple):
-            if args:
-                args_lines = [f"- `{_stringify(arg)}`" for arg in args]
-            else:
-                args_lines = ["- (none)"]
-        elif args is None:
-            args_lines = ["- (none)"]
-        else:
-            args_lines = [f"- `{_stringify(args)}`"]
-
-        if isinstance(kwargs, Mapping) and kwargs:
-            kwargs_lines = [
-                f"- `{key}`: `{_stringify(value)}`"
-                for key, value in sorted(kwargs.items())
+        kwarg_items: list[tuple[str, Any]] = []
+        if isinstance(kwargs, Mapping):
+            kwarg_items = [
+                (key, value) for key, value in kwargs.items() if value not in (None, "")
             ]
-        elif kwargs in (None, {}):
-            kwargs_lines = ["- (none)"]
+        elif kwargs not in (None, {}):
+            kwarg_items = [("value", kwargs)]
+
+        if kwarg_items:
+            overview_lines.append("- **Kwargs:**")
+            for key, value in sorted(kwarg_items):
+                overview_lines.append(f"  - `{key}`: `{_stringify(value)}`")
         else:
-            kwargs_lines = [f"- `{_stringify(kwargs)}`"]
+            overview_lines.append("- **Kwargs:** (none)")
 
         other_lines: list[str] = []
         if other_keys:
@@ -398,6 +392,7 @@ def build_level_of_theory_warnings(
             if model_level is None or model_level != metric_level:
                 mismatch_metrics.append((metric_name, metric_level))
 
+        align_lines: list[str] = []
         if mismatch_metrics:
             align_lines = [
                 "- [!] Mismatch detected between model and benchmark levels.",
@@ -407,19 +402,15 @@ def build_level_of_theory_warnings(
             for metric_name, metric_level in mismatch_metrics:
                 level_repr = _stringify(metric_level) if metric_level else "n/a"
                 align_lines.append(f"  - {metric_name}: `{level_repr}`")
-        else:
-            if metric_levels:
-                align_lines = ["- All benchmark metrics match the model level."]
-            else:
-                align_lines = ["- No benchmark level metadata available."]
+        elif metric_levels:
+            align_lines = ["- All benchmark metrics match the model level."]
 
         tooltip_sections: list[str] = []
         tooltip_sections.extend(_section("Model Overview", overview_lines))
-        tooltip_sections.extend(_section("Arguments", args_lines))
-        tooltip_sections.extend(_section("Keyword Arguments", kwargs_lines))
         if other_lines:
             tooltip_sections.extend(_section("Additional Settings", other_lines))
-        tooltip_sections.extend(_section("Benchmark Alignment", align_lines))
+        if align_lines:
+            tooltip_sections.extend(_section("Benchmark Alignment", align_lines))
 
         while tooltip_sections and tooltip_sections[-1] == "":
             tooltip_sections.pop()
@@ -558,7 +549,7 @@ def format_tooltip_headers(
     tooltip_header: dict[str, str] | None,
     thresholds: Thresholds | None,
     show_normalized: bool,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """
     Update tooltip headers to reflect unitless normalised values.
 
@@ -582,22 +573,39 @@ def format_tooltip_headers(
     thresholds = thresholds or {}
     reserved = {"MLIP", "Score", "id"}
 
-    updated: dict[str, str] = {}
-    for key, text in tooltip_header.items():
-        if not isinstance(text, str) or key in reserved:
-            updated[key] = text
+    updated: dict[str, Any] = {}
+    for key, entry in tooltip_header.items():
+        if key in reserved:
+            updated[key] = entry
+            continue
+
+        text_val: str | None = None
+
+        if isinstance(entry, dict):
+            raw_value = entry.get("value")
+            if isinstance(raw_value, str):
+                text_val = raw_value
+        elif isinstance(entry, str):
+            text_val = entry
+
+        if text_val is None:
+            updated[key] = entry
             continue
 
         unit = thresholds.get(key, {}).get("unit")
-        if not unit or unit in ("", "-"):
-            updated[key] = text
-            continue
+        if unit and unit not in ("", "-"):
+            base_text = _swap_tooltip_unit(text_val, unit, unit)
+            if show_normalized:
+                text_val = base_text.replace(f"[{unit}]", "[-]", 1)
+            else:
+                text_val = base_text
 
-        base_text = _swap_tooltip_unit(text, unit, unit)
-        if show_normalized:
-            updated[key] = base_text.replace(f"[{unit}]", "[-]", 1)
+        if isinstance(entry, dict):
+            new_entry = entry.copy()
+            new_entry["value"] = text_val
+            updated[key] = new_entry
         else:
-            updated[key] = base_text
+            updated[key] = text_val
 
     return updated
 
