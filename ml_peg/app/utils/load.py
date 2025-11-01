@@ -11,6 +11,7 @@ from plotly.io import read_json
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
+    build_level_of_theory_warnings,
     calculate_column_widths,
     clean_thresholds,
     is_numeric_column,
@@ -88,6 +89,17 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
     column_widths = calculate_column_widths(width_labels)
+    model_levels = table_json.get(
+        "model_levels_of_theory", table_json.get("model_levels") or {}
+    )
+    metric_levels = table_json.get(
+        "metric_levels_of_theory", table_json.get("metric_levels") or {}
+    )
+    model_configs = table_json.get("model_configs") or {}
+    warning_styles, tooltip_rows = build_level_of_theory_warnings(
+        data, model_levels, metric_levels, model_configs
+    )
+    style_with_warnings = style + warning_styles
 
     style_cell_conditional: list[dict[str, object]] = []
     for column_id, width in column_widths.items():
@@ -113,7 +125,7 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         tooltip_duration=None,
         editable=True,
         id=id,
-        style_data_conditional=style,
+        style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
         sort_action="native",
         persistence=True,
@@ -122,12 +134,10 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
     )
 
     table.thresholds = thresholds
-    table.model_levels_of_theory = table_json.get(
-        "model_levels_of_theory", table_json.get("model_levels")
-    )
-    table.metric_levels_of_theory = table_json.get(
-        "metric_levels_of_theory", table_json.get("metric_levels")
-    )
+    table.model_levels_of_theory = model_levels
+    table.metric_levels_of_theory = metric_levels
+    table.model_configs = model_configs
+    table.tooltip_data = tooltip_rows
 
     return table
 
