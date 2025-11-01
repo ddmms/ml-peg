@@ -80,12 +80,12 @@ def lattice_energies() -> dict[str, list]:
         for xyz_file in xyz_files:
             structs = read(xyz_file, index=":")
 
-            sol_energy = structs[0].get_potential_energy()
-            nmol = structs[0].info["nmol"]
+            solid_energy = structs[0].get_potential_energy()
+            num_molecules = structs[0].info["num_molecules"]
             system = structs[0].info["system"]
-            mol_energy = structs[1].get_potential_energy()
+            molecule_energy = structs[1].get_potential_energy()
 
-            lattice_energy = sol_energy / nmol - mol_energy
+            lattice_energy = (solid_energy / num_molecules) - molecule_energy
             results[model_name].append(lattice_energy * EV_TO_KJ_PER_MOL)
 
             # Copy individual structure files to app data directory

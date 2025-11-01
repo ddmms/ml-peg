@@ -47,30 +47,30 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         systems = f.read().splitlines()
 
     for system in systems:
-        mol_path = lattice_energy_dir / system / "POSCAR_molecule"
-        sol_path = lattice_energy_dir / system / "POSCAR_solid"
+        molecule_path = lattice_energy_dir / system / "POSCAR_molecule"
+        solid_path = lattice_energy_dir / system / "POSCAR_solid"
         ref_path = lattice_energy_dir / system / "lattice_energy_DMC"
-        nmol_path = lattice_energy_dir / system / "nmol"
+        num_molecules_path = lattice_energy_dir / system / "nmol"
 
-        mol = read(mol_path, index=0, format="vasp")
-        mol.calc = calc
-        mol.get_potential_energy()
+        molecule = read(molecule_path, index=0, format="vasp")
+        molecule.calc = calc
+        molecule.get_potential_energy()
 
-        sol = read(sol_path, index=0, format="vasp")
-        sol.calc = copy(calc)
-        sol.get_potential_energy()
+        solid = read(solid_path, index=0, format="vasp")
+        solid.calc = copy(calc)
+        solid.get_potential_energy()
 
         ref = np.loadtxt(ref_path)[0]
-        nmol = np.loadtxt(nmol_path)
+        num_molecules = np.loadtxt(num_molecules_path)
 
-        sol.info["ref"] = ref
-        sol.info["nmol"] = nmol
-        sol.info["system"] = system
-        mol.info["ref"] = ref
-        mol.info["nmol"] = nmol
-        mol.info["system"] = system
+        solid.info["ref"] = ref
+        solid.info["num_molecules"] = num_molecules
+        solid.info["system"] = system
+        molecule.info["ref"] = ref
+        molecule.info["num_molecules"] = num_molecules
+        molecule.info["system"] = system
 
         # Write output structures
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir / f"{system}.xyz", [sol, mol])
+        write(write_dir / f"{system}.xyz", [solid, molecule])
