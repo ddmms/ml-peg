@@ -34,12 +34,12 @@ mace_matpes_r2scan:
     model: "mace-matpes-r2scan-0"
     head: "matpes_pbe"
 
-#uma_sm_omat:
+# uma_sm_omat:
 #  module: fairchem.core
 #  class_name: FAIRChemCalculator
 #  device: "cpu"
 #  kwargs:
-#    model_name: "uma-s-1"
+#    model_name: "uma-s-1p1"
 #    task_name: "omat"
 
 #mattersim_5M:
