@@ -63,6 +63,7 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
             "good": metric_config["good"],
             "bad": metric_config["bad"],
             "unit": threshold_unit,
+            "level_of_theory": level_of_theory,
         }
 
         thresholds[metric_name] = metric_threshold
@@ -74,10 +75,15 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
                 "'tooltip' entry."
             )
             raise ValueError(msg)
-        tooltip_lines = [tooltip.strip()]
+
+        tooltip_text = tooltip.strip()
         if level_of_theory:
-            tooltip_lines.append(f"Level of theory: {level_of_theory}")
-        tooltips[metric_name] = "\n".join(tooltip_lines)
+            tooltip_text = f"{tooltip_text}\nLevel of theory: {level_of_theory}"
+        markdown_value = tooltip_text.replace("\n", "  \n")
+        tooltips[metric_name] = {
+            "value": markdown_value,
+            "type": "markdown",
+        }
 
     return thresholds, tooltips
 
