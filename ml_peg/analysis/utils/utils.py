@@ -62,11 +62,13 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             unit_value = str(metric_config["unit"]).strip()
         else:
             unit_value = "-"
+        level_of_theory = metric_config["level_of_theory"]
 
         metric_threshold: ThresholdEntry = {
             "good": good_value,
             "bad": bad_value,
             "unit": unit_value,
+            "level_of_theory": level_of_theory,
         }
         thresholds[metric_name] = metric_threshold
 
@@ -79,12 +81,14 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             )
             raise ValueError(msg)
 
-        tooltip_lines = [tooltip.strip()]
-
-        if level:
-            tooltip_lines.append(f"Level of theory: {level}")
-
-        tooltips[metric_name] = "\n".join(tooltip_lines)
+        tooltip_text = tooltip.strip()
+        if level_of_theory:
+            tooltip_text = f"{tooltip_text}\nLevel of theory: {level_of_theory}"
+        markdown_value = tooltip_text.replace("\n", "  \n")
+        tooltips[metric_name] = {
+            "value": markdown_value,
+            "type": "markdown",
+        }
 
         weights[metric_name] = float(metric_config.get("weight", 1.0))
 

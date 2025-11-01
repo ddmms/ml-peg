@@ -632,16 +632,15 @@ def build_table(
                     | {"id": mlip},
                 )
 
-            summary_tooltips = {
-                "MLIP": "Model identifier\nHover for configuration details.",
-            }
+            summary_tooltips = {"MLIP": "Name of the model"}
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Composite score across metrics\nHigher is better (normalized)."
+                    "Composite score across metrics, "
+                    "Higher is better (normalized 0 to 1)."
                 )
             else:
                 summary_tooltips["Score"] = (
-                    "Composite score across metrics\nHigher is better."
+                    "Composite score across metrics, higher is better."
                 )
 
             if metric_tooltips:
@@ -690,26 +689,9 @@ def build_table(
                     )
                     metric_level = metric_levels[metric_name]
                     if metric_level and metric_name in tooltip_header:
-                        mismatched = []
-                        for mlip in mlips:
-                            model_level = model_levels.get(mlip)
-                            if model_level and model_level != metric_level:
-                                mismatched.append((mlip, model_level))
-                        if mismatched:
-                            mismatch_str = ", ".join(
-                                f"{mlip} ({level})" if level else mlip
-                                for mlip, level in mismatched
-                            )
-                            tooltip_header[metric_name] = "\n".join(
-                                [
-                                    str(tooltip_header[metric_name]).rstrip(),
-                                    (
-                                        "Mismatch detected:\n"
-                                        f"  Benchmark level: {metric_level}\n"
-                                        f"  Models at: {mismatch_str}"
-                                    ),
-                                ]
-                            )
+                        # Column tooltip remains concise; mismatch details are
+                        # conveyed via row-level warnings.
+                        pass
 
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
