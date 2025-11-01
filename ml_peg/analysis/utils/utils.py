@@ -70,9 +70,10 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
                 "'tooltip' entry."
             )
             raise ValueError(msg)
+        tooltip_lines = [tooltip.strip()]
         if level:
-            tooltip = f"{tooltip} (Level of theory: {level})"
-        tooltips[metric_name] = tooltip
+            tooltip_lines.append(f"Level of theory: {level}")
+        tooltips[metric_name] = "\n".join(tooltip_lines)
 
     extra_tooltips = data.get("extra_tooltips") or {}
     if not isinstance(extra_tooltips, dict):
