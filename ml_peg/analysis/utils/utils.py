@@ -38,9 +38,6 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
         data = safe_load(stream) or {}
 
     metrics_data = data.get("metrics", {}) or {}
-    if not isinstance(metrics_data, dict):
-        msg = "Expected 'metrics' section in metrics config to be a mapping."
-        raise TypeError(msg)
     thresholds: dict[str, Any] = {}
     tooltips: dict[str, str] = {}
 
@@ -49,14 +46,22 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
             msg = f"Metric configuration for '{metric_name}' must be a mapping."
             raise TypeError(msg)
 
-        unit = metric_config.get("unit", metric_config.get("units"))
-        metric_threshold = {}
-        if "good" in metric_config:
-            metric_threshold["good"] = metric_config["good"]
-        if "bad" in metric_config:
-            metric_threshold["bad"] = metric_config["bad"]
-        if unit is not None:
-            metric_threshold["unit"] = unit
+        required_threshold_keys = {"good", "bad", "unit"}
+        missing_threshold_keys = required_threshold_keys - metric_config.keys()
+        if missing_threshold_keys:
+            missing_keys = ", ".join(sorted(missing_threshold_keys))
+            msg = (
+                f"Metric '{metric_name}' in '{config_path}' is missing required "
+                f"threshold entries: {missing_keys}. Include 'unit' even when its "
+                "value should be None."
+            )
+            raise KeyError(msg)
+
+        metric_threshold = {
+            "good": metric_config["good"],
+            "bad": metric_config["bad"],
+            "unit": metric_config["unit"],
+        }
 
         thresholds[metric_name] = metric_threshold
 
@@ -68,12 +73,6 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
             )
             raise ValueError(msg)
         tooltips[metric_name] = tooltip
-
-    extra_tooltips = data.get("extra_tooltips") or {}
-    if not isinstance(extra_tooltips, dict):
-        msg = "Expected 'extra_tooltips' to be a mapping if provided."
-        raise TypeError(msg)
-    tooltips.update({key: value for key, value in extra_tooltips.items() if value})
 
     return thresholds, tooltips
 
@@ -116,38 +115,9 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
-def _extract_threshold_bounds(bounds: Any) -> tuple[float, float] | None:
-    """
-    Pull out the numeric ``(good, bad)`` limits for a metric.
-
-    Parameters
-    ----------
-    bounds
-        Threshold definition provided as a tuple, list, or mapping with ``good`` and
-        ``bad`` entries.
-
-    Returns
-    -------
-    tuple[float, float] | None
-        Numeric ``(good, bad)`` pair or ``None`` when conversion fails.
-    """
-    if isinstance(bounds, dict):
-        good_val = bounds.get("good")
-        bad_val = bounds.get("bad")
-    elif isinstance(bounds, list | tuple) and len(bounds) == 2:
-        good_val, bad_val = bounds
-    else:
-        return None
-
-    try:
-        return float(good_val), float(bad_val)
-    except (TypeError, ValueError):
-        return None
-
-
 def calc_metric_scores(
     metrics_data: list[dict[str, Any]],
-    thresholds: dict[str, Any] | None = None,
+    thresholds: dict[str, dict[str, Any]] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict[str, float]]:
     """
@@ -158,9 +128,8 @@ def calc_metric_scores(
     metrics_data
         Rows data containing model name and metric values.
     thresholds
-        Normalisation thresholds keyed by metric name. Each value may be either a
-        (good_threshold, bad_threshold) tuple/list or a mapping with ``good`` and
-        ``bad`` entries (optionally including a ``unit`` string).
+        Normalisation thresholds keyed by metric name. Each value must be a mapping
+        containing ``good`` and ``bad`` entries (optionally including a ``unit``).
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
@@ -177,16 +146,22 @@ def calc_metric_scores(
         for key, value in row.items():
             # Value may be ``None`` if missing for a benchmark
             if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
-                # If thresholds given, use to normalise
-                if thresholds is not None and key in thresholds:
-                    bounds = _extract_threshold_bounds(thresholds[key])
-                    if bounds is not None:
-                        good_threshold, bad_threshold = bounds
-                        row[key] = normalizer(value, good_threshold, bad_threshold)
-                    else:
-                        row[key] = value
-                else:
+                if thresholds is None or key not in thresholds:
                     row[key] = value
+                    continue
+
+                entry = thresholds[key]
+                if not isinstance(entry, dict):
+                    row[key] = value
+                    continue
+                try:
+                    good_threshold = float(entry["good"])
+                    bad_threshold = float(entry["bad"])
+                except (KeyError, TypeError, ValueError):
+                    row[key] = value
+                    continue
+
+                row[key] = normalizer(value, good_threshold, bad_threshold)
 
     return metrics_scores
 
@@ -194,7 +169,7 @@ def calc_metric_scores(
 def calc_table_scores(
     metrics_data: list[dict[str, Any]],
     weights: dict[str, float] | None = None,
-    thresholds: dict[str, Any] | None = None,
+    thresholds: dict[str, dict[str, Any]] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> list[dict]:
     """
@@ -209,9 +184,8 @@ def calc_table_scores(
     weights
         Weight for each metric. Default is 1.0 for each metric.
     thresholds
-        Normalisation thresholds keyed by metric name. Each value may be either a
-        numeric pair or a mapping with ``good``/``bad`` (and optional ``unit``)
-        entries.
+        Normalisation thresholds keyed by metric name. Each value must be a mapping
+        with ``good`` and ``bad`` entries (optionally ``unit``).
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
