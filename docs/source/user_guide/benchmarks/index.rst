@@ -8,3 +8,4 @@ Benchmarks
     surfaces
     nebs
     supramolecular
+    molecular_crystal
