@@ -632,7 +632,9 @@ def build_table(
                     | {"id": mlip},
                 )
 
-            summary_tooltips = {"MLIP": "Name of the model"}
+            summary_tooltips = {
+                "MLIP": "Model identifier\nHover for configuration details.",
+            }
             if normalize:
                 summary_tooltips["Score"] = (
                     "Composite score across metrics, "
@@ -681,6 +683,14 @@ def build_table(
                     cfg = {}
                 model_configs[mlip] = cfg
                 model_levels[mlip] = cfg.get("level_of_theory")
+            model_levels: dict[str, str | None] = {}
+            model_configs: dict[str, Any] = {}
+            for mlip in mlips:
+                cfg = deepcopy(all_models.get(mlip) or {})
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                model_configs[mlip] = cfg
+                model_levels[mlip] = cfg.get("level_of_theory")
             metric_levels = {}
             if thresholds:
                 for metric_name in results:
@@ -689,9 +699,26 @@ def build_table(
                     )
                     metric_level = metric_levels[metric_name]
                     if metric_level and metric_name in tooltip_header:
-                        # Column tooltip remains concise; mismatch details are
-                        # conveyed via row-level warnings.
-                        pass
+                        mismatched = []
+                        for mlip in mlips:
+                            model_level = model_levels.get(mlip)
+                            if model_level and model_level != metric_level:
+                                mismatched.append((mlip, model_level))
+                        if mismatched:
+                            mismatch_str = ", ".join(
+                                f"{mlip} ({level})" if level else mlip
+                                for mlip, level in mismatched
+                            )
+                            tooltip_header[metric_name] = "\n".join(
+                                [
+                                    str(tooltip_header[metric_name]).rstrip(),
+                                    (
+                                        "Mismatch detected:\n"
+                                        f"  Benchmark level: {metric_level}\n"
+                                        f"  Models at: {mismatch_str}"
+                                    ),
+                                ]
+                            )
 
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -705,6 +732,7 @@ def build_table(
                         "weights": metric_weights,
                         "model_levels_of_theory": model_levels,
                         "metric_levels_of_theory": metric_levels,
+                        "model_configs": model_configs,
                         "model_configs": model_configs,
                     },
                     fp,
