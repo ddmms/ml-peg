@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import deepcopy
 import functools
 from json import dump
 from pathlib import Path
@@ -11,8 +12,10 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
+import yaml
 
 from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores
+from ml_peg.models import MODELS_ROOT
 
 
 def plot_parity(
@@ -251,7 +254,7 @@ def build_table(
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
     normalize: bool = True,
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: dict[str, dict[str, Any]] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
@@ -272,8 +275,9 @@ def build_table(
     normalize
         Whether to apply normalisation when calculating the score. Default is True.
     thresholds
-        Mapping of metric names to (X, Y) tuples where X is the upper threshold and
-        Y is the lower threshold. Required if `normalize` is `True`.
+        Mapping of metric names to dictionaries containing ``good``, ``bad``, and a
+        ``unit`` entry (the unit value may explicitly be ``None``). All metrics must be
+        covered so downstream rendering is consistent.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -283,6 +287,10 @@ def build_table(
     Callable
         Decorator to wrap function.
     """
+    if thresholds is None:
+        raise ValueError(
+            "build_table requires 'thresholds' to be supplied for every metric."
+        )
 
     def build_table_decorator(func: Callable) -> Callable:
         """
@@ -317,6 +325,29 @@ def build_table(
                 Results dictionary.
             """
             results = func(*args, **kwargs)
+
+            missing_metrics = set(results.keys()) - set(thresholds.keys())
+            if missing_metrics:
+                raise KeyError(
+                    "Missing threshold entries for metrics: "
+                    f"{', '.join(sorted(missing_metrics))}"
+                )
+            for metric_name, threshold_info in thresholds.items():
+                if metric_name not in results:
+                    continue
+                if not isinstance(threshold_info, dict):
+                    raise TypeError(
+                        "Thresholds for metric "
+                        f"'{metric_name}' must be provided as a mapping containing "
+                        "'good', 'bad', and 'unit' entries."
+                    )
+                for required_key in ("good", "bad", "unit"):
+                    if required_key not in threshold_info:
+                        raise KeyError(
+                            f"Threshold definition for '{metric_name}' is missing "
+                            f"the '{required_key}' entry. Include the key even when "
+                            "its value should be None."
+                        )
             # Form of results is
             # results = {
             #     metric_1: {mlip_1: value_1, mlip_2: value_2},
@@ -325,7 +356,7 @@ def build_table(
 
             metrics_columns = ("MLIP",) + tuple(results.keys())
             # Use MLIP keys from first (any) metric keys
-            mlips = next(iter(results.values())).keys()
+            mlips = tuple(next(iter(results.values())).keys())
 
             metrics_data = []
             for mlip in mlips:
@@ -337,14 +368,17 @@ def build_table(
 
             summary_tooltips = {
                 "MLIP": "Name of the model",
-                "Rank": "Model rank based on score (lower is better)",
+                "Rank": "Rank within this benchmark, Lower is better.",
             }
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Average of normalised metrics (higher is better)"
+                    "Composite score across metrics, "
+                    "Higher is better (normalized 0 to 1)."
                 )
             else:
-                summary_tooltips["Score"] = "Average of metrics"
+                summary_tooltips["Score"] = (
+                    "Composite score across metrics, higher is better."
+                )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -371,6 +405,28 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
+            with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+                all_models = yaml.safe_load(model_file) or {}
+            model_levels: dict[str, str | None] = {}
+            model_configs: dict[str, Any] = {}
+            for mlip in mlips:
+                cfg = deepcopy(all_models.get(mlip) or {})
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                model_configs[mlip] = cfg
+                model_levels[mlip] = cfg.get("level_of_theory")
+            metric_levels = {}
+            if thresholds:
+                for metric_name in results:
+                    metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
+                        "level_of_theory"
+                    )
+                    metric_level = metric_levels[metric_name]
+                    if metric_level and metric_name in tooltip_header:
+                        # Column tooltip remains concise; mismatch details are
+                        # conveyed via row-level warnings.
+                        pass
+
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
@@ -380,6 +436,9 @@ def build_table(
                         "columns": table.columns,
                         "tooltip_header": tooltip_header,
                         "thresholds": thresholds,
+                        "model_levels_of_theory": model_levels,
+                        "metric_levels_of_theory": metric_levels,
+                        "model_configs": model_configs,
                     },
                     fp,
                 )

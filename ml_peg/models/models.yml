@@ -2,6 +2,7 @@ mace_mp_0a:
   module: mace.calculators
   class_name: mace_mp
   device: "auto"
+  level_of_theory: PBE
   kwargs:
     model: "medium"
 
@@ -9,6 +10,7 @@ mace_mp_0b3:
   module: mace.calculators
   class_name: mace_mp
   device: "auto"
+  level_of_theory: PBE
   kwargs:
     model: "medium-0b3"
 
@@ -16,6 +18,7 @@ mace_mpa_0:
   module: mace.calculators
   class_name: mace_mp
   device: "auto"
+  level_of_theory: PBE
   kwargs:
     model: "medium-mpa-0"
 
@@ -23,6 +26,7 @@ mace_omat_0:
   module: mace.calculators
   class_name: mace_mp
   device: "auto"
+  level_of_theory: PBE
   kwargs:
     model: "medium-omat-0"
 
@@ -30,6 +34,7 @@ mace_matpes_r2scan:
   module: mace.calculators
   class_name: mace_mp
   device: "auto"
+  level_of_theory: PBE
   kwargs:
     model: "mace-matpes-r2scan-0"
     head: "matpes_pbe"
@@ -52,6 +57,7 @@ orb_v3_conservative_inf_omat__:
   module: orb_models.forcefield
   class_name: OrbCalc
   device: "cpu"
+  level_of_theory: PBE
   kwargs:
     name: "orb_v3_conservative_inf_omat"
 
