@@ -34,9 +34,10 @@ class X23App(BaseApp):
         )
 
         # Assets dir will be parent directory - individual files for each system
+        structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"assets/molecular_crystal/X23/{MODELS[0]}/{i}.xyz"
-            for i in range(16)  # LNCI16 has 16 systems
+            f"assets/molecular_crystal/X23/{MODELS[0]}/{struct_file.stem}.xyz"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
         plot_from_table_column(
