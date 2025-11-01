@@ -37,6 +37,9 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
+
     # download X23 dataset
     lattice_energy_dir = get_benchmark_data("lattice_energy.zip") / "lattice_energy"
 
