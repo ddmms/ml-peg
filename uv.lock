@@ -4604,6 +4604,9 @@ dependencies = [
 chgnet = [
     { name = "chgnet" },
 ]
+d3 = [
+    { name = "torch-dftd" },
+]
 dpa3 = [
     { name = "deepmd-kit" },
 ]
@@ -4612,7 +4615,6 @@ grace = [
 ]
 mace = [
     { name = "mace-torch" },
-    { name = "torch-dftd" },
 ]
 orb = [
     { name = "orb-models", marker = "(python_full_version < '3.13' and sys_platform != 'win32') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (sys_platform == 'win32' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
@@ -4662,10 +4664,10 @@ requires-dist = [
     { name = "orb-models", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'orb'", specifier = "==0.5.5" },
     { name = "scikit-learn", specifier = ">=1.7.1" },
     { name = "tensorpotential", marker = "python_full_version < '3.13' and extra == 'grace'", specifier = "==0.5.1" },
-    { name = "torch-dftd", marker = "extra == 'mace'", specifier = "==0.4.0" },
+    { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "typer", specifier = ">=0.19.1,<1.0.0" },
 ]
-provides-extras = ["chgnet", "dpa3", "grace", "mace", "orb", "uma"]
+provides-extras = ["chgnet", "d3", "dpa3", "grace", "mace", "orb", "uma"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -9259,15 +9261,14 @@ wheels = [
 
 [[package]]
 name = "torch-dftd"
-version = "0.4.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ase" },
     { name = "pymatgen" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/85/621efe37ec0501c8521475e50133f8b7e2e77f445c7ed13867d7b8532f3e/torch-dftd-0.4.0.tar.gz", hash = "sha256:964c1e90bda7ff22723e03bb3bf0f9c1f6149944d464752278a5915ba2c0c3c1", size = 681788, upload-time = "2023-11-24T07:21:20.227Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/a6/2be9171b54ff80c1ca1a624672392071989b7a2dbeb04c0085c0e4ac74e7/torch_dftd-0.4.0-py3-none-any.whl", hash = "sha256:74c6e9a37db94ed844f6e40548e0fc7883c3f30acb1176ccc82129eddaa8a7ac", size = 681441, upload-time = "2023-11-24T07:21:17.441Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/9c/bcd2080f8903193355eac9d6824d3372df2f6e875706f4f4219fc8f9ba8d/torch_dftd-0.5.1-py3-none-any.whl", hash = "sha256:4ab2333132a3502568106b338988ad5a88fb7328a5c1a0f87eaebc50b7cc337e", size = 681741, upload-time = "2024-11-22T00:41:32.853Z" },
 ]
 
 [[package]]
