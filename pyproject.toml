@@ -94,6 +94,10 @@ pre-commit = [
     "ruff<1.0.0,>=0.9.3",
 ]
 
+prod = [
+    "gunicorn>=23",
+]
+
 [build-system]
 requires = ["uv_build"]
 build-backend = "uv_build"
