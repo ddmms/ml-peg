@@ -11,7 +11,7 @@
 *.cif
 *.xyz
 *.extxyz
-*.yml
+.yml
 *.yaml
 !dvc.yaml
 *.pdf
