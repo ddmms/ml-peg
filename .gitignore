@@ -38,3 +38,4 @@ dist/
 pip-wheel-metadata/
 __pycache__/
 ml_peg/app/data/
+certs/
