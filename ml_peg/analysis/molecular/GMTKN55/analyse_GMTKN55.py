@@ -58,20 +58,23 @@ def strucutre_info() -> dict[str, float | str]:
         "subsets": [],
         "systems": [],
         "excluded": [],
-        "charges": [],
-        "uhfs": [],
     }
     for model_name in MODELS:
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
-                struct = read(system_path, index=0)
-                info["weights"].append(struct.info["weight"])
-                info["subsets"].append(struct.info["subset_name"])
-                info["categories"].append(struct.info["category"])
-                info["systems"].append(struct.info["system_name"])
-                info["excluded"].append(struct.info["excluded"])
-                info["charges"].append(struct.info["Charge"])
-                info["uhfs"].append(struct.info["uhf"])
+                structs = read(system_path, index=":")
+                info["weights"].append(structs[0].info["weight"])
+                info["subsets"].append(structs[0].info["subset_name"])
+                info["systems"].append(structs[0].info["system_name"])
+                info["categories"].append(structs[0].info["category"])
+                info["excluded"].append(
+                    any(
+                        struct.info["excluded"]
+                        or struct.info["Charge"] not in ALLOWED_CHARGES
+                        or struct.info["uhf"] not in ALLOWED_UHFS
+                        for struct in structs
+                    )
+                )
         # Only need to access info from one model
         return info
     return info
@@ -174,19 +177,14 @@ def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, f
             results[model_name][category] = np.mean(
                 [
                     error * weight
-                    for error, weight, cat, excluded, charge, multiplicity in zip(
+                    for error, weight, cat, excluded in zip(
                         all_errors[model_name],
                         INFO["weights"],
                         INFO["categories"],
                         INFO["excluded"],
-                        INFO["charges"],
-                        INFO["uhfs"],
                         strict=True,
                     )
-                    if cat == category
-                    and not excluded
-                    and charge in ALLOWED_CHARGES
-                    and multiplicity in ALLOWED_UHFS
+                    if cat == category and not excluded
                 ]
             )
     return results
@@ -212,17 +210,13 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
         results[model_name] = np.mean(
             [
                 error * weight
-                for error, weight, excluded, charge, multiplicity in zip(
+                for error, weight, excluded in zip(
                     all_errors[model_name],
                     INFO["weights"],
                     INFO["excluded"],
-                    INFO["charges"],
-                    INFO["uhfs"],
                     strict=True,
                 )
                 if not excluded
-                and charge in ALLOWED_CHARGES
-                and multiplicity in ALLOWED_UHFS
             ]
         )
     return results
