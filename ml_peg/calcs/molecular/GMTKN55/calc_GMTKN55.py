@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +29,6 @@ BENCHMARK_DATA_DOWNLOAD_URL = (
 )
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     """
@@ -92,7 +91,7 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.cell = None
                 atoms.pbc = False
 
-                atoms.calc = deepcopy(calc)
+                atoms.calc = copy(calc)
                 atoms.get_potential_energy()
 
                 system_structs.append(atoms)
