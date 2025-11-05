@@ -22,14 +22,14 @@ def download_s3_data(
     bucket: str = "ml-peg-data",
     endpoint: str = "https://s3.echo.stfc.ac.uk",
     force: bool = False,
-) -> None:
+) -> Path:
     """
     Download data from an S3 bucket.
 
     Parameters
     ----------
     key
-        Name of file in S3 bucket to download.
+        Name of file in S3 bucket to download to cache directory.
     filename
         Name of file to save download as locally.
     bucket
@@ -38,17 +38,23 @@ def download_s3_data(
         Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
     force
         Whether to ignored cached download. Default is False.
+
+    Returns
+    -------
+    Path
+        Path to directory containing extracted data.
     """
     local_path = Path(BENCHMARK_DATA_DIR) / filename
 
     # Download file if not already cached or if force is True
     if force or not local_path.exists():
-        print(f"[download] Downloading {endpoint}/{bucket}/{filename}")
-        # Write download file and extract if necessary
+        print(f"[download] Downloading {endpoint}/{bucket}/{key}")
         download(key=key, filename=local_path, bucket=bucket, endpoint=endpoint)
-        extract_zip(local_path)
     else:
         print(f"[cache] Found cached file: {local_path.name}")
+
+    # Extract contents if necessary and return path
+    return extract_zip(local_path)
 
 
 def download_github_data(filename: str, github_uri: str, force: bool = False) -> Path:
@@ -60,7 +66,7 @@ def download_github_data(filename: str, github_uri: str, force: bool = False) ->
     Parameters
     ----------
     filename
-        Name of benchmark data file.
+        Name of benchmark data file to download to cache directory.
     github_uri
         Name of GitHub URI to download data from.
     force
@@ -69,7 +75,7 @@ def download_github_data(filename: str, github_uri: str, force: bool = False) ->
     Returns
     -------
     Path
-        Path to extracted data.
+        Path to directory containing extracted data.
     """
     uri = f"{github_uri}/{filename}"
     local_path = Path(BENCHMARK_DATA_DIR) / filename
@@ -82,16 +88,17 @@ def download_github_data(filename: str, github_uri: str, force: bool = False) ->
         response.raise_for_status()
         local_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write contents and extract if necessary
         with open(local_path, "wb") as f_out:
             f_out.write(response.content)
-        extract_zip(local_path)
 
     else:
         print(f"[cache] Found cached file: {local_path.name}")
 
+    # Extract contents if necessary and return path
+    return extract_zip(local_path)
 
-def extract_zip(filename: Path) -> None:
+
+def extract_zip(filename: Path) -> Path:
     """
     Attempt to extract a zip file.
 
@@ -99,6 +106,11 @@ def extract_zip(filename: Path) -> None:
     ----------
     filename
         Name of potential zip file to extract.
+
+    Returns
+    -------
+    Path
+        Parent directory of unziped file.
     """
     # If it's a zip, try to extract it
     if filename.suffix == ".zip":
@@ -108,6 +120,7 @@ def extract_zip(filename: Path) -> None:
                 zip_ref.extractall(extract_dir)
         except (ValueError, RuntimeError, zipfile.BadZipFile) as err:
             raise ValueError(f"Unable to unzip file: {filename}") from err
+    return extract_dir
 
 
 @contextlib.contextmanager
