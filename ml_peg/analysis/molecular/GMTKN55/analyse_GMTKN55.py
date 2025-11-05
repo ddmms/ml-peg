@@ -5,6 +5,7 @@ from __future__ import annotations
 from ase import units
 from ase.io import read
 import numpy as np
+from numpy.typing import NDArray
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -40,41 +41,44 @@ EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
 # Discard some structures for error calculations
 ALLOWED_CHARGES = (0,)
-ALLOWED_UHFS = (0,)
+ALLOWED_MULTIPLICITY = (1,)
 
 
-def strucutre_info() -> dict[str, float | str]:
+def strucutre_info() -> dict[str, dict[str, float] | NDArray]:
     """
     Get info from all stored structures.
 
     Returns
     -------
-    dict[str, float | str]
+    dict[str, dict[str, float] | NDArray]
         Dictionary with weights, subset name and category for all systems.
     """
     info = {
-        "weights": [],
         "categories": [],
         "subsets": [],
         "systems": [],
         "excluded": [],
+        "weights": {},
     }
     for model_name in MODELS:
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
                 structs = read(system_path, index=":")
-                info["weights"].append(structs[0].info["weight"])
-                info["subsets"].append(structs[0].info["subset_name"])
+                info["subsets"].append(subset)
                 info["systems"].append(structs[0].info["system_name"])
                 info["categories"].append(structs[0].info["category"])
+                info["weights"][subset] = structs[0].info["weight"]
                 info["excluded"].append(
                     any(
-                        struct.info["excluded"]
-                        or struct.info["Charge"] not in ALLOWED_CHARGES
-                        or struct.info["uhf"] not in ALLOWED_UHFS
+                        struct.info["charge"] not in ALLOWED_CHARGES
+                        or struct.info["spin"] not in ALLOWED_MULTIPLICITY
                         for struct in structs
                     )
                 )
+        # Convert to numpy arrays for filtering
+        info["subsets"] = np.array(info["subsets"])
+        info["categories"] = np.array(info["categories"])
+        info["excluded"] = np.array(info["excluded"])
         # Only need to access info from one model
         return info
     return info
@@ -91,7 +95,6 @@ INFO = strucutre_info()
     y_label="Reference relative energy / kcal/mol",
     hoverdata={
         "Subset": INFO["subsets"],
-        "Weight": INFO["weights"],
         "Category": INFO["categories"],
         "System": INFO["systems"],
         "Excluded": INFO["excluded"],
@@ -146,54 +149,18 @@ def all_errors(rel_energies: dict[str, list[float]]) -> dict[str, list[float]]:
     dict[str, list[float]]
         Dictionary of relative MADs, grouped by model.
     """
-    results = {}
+    errors = {}
     for model_name in MODELS:
-        results[model_name] = np.abs(
+        errors[model_name] = np.abs(
             np.subtract(rel_energies[model_name], rel_energies["ref"])
         )
-    return results
+    return errors
 
 
 @pytest.fixture
-def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, float]]:
+def subset_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, float]]:
     """
-    Calculate MAD for all models, grouped by category.
-
-    Parameters
-    ----------
-    all_errors
-        Dictionary of relative MADs, grouped by model.
-
-    Returns
-    -------
-    dict[str, dict[str, list[float]]]
-        Nested dictionary of relative MADs, grouped by model and category.
-    """
-    results = {}
-
-    for model_name in MODELS:
-        results[model_name] = {}
-        for category in set(INFO["categories"]):
-            results[model_name][category] = np.mean(
-                [
-                    error * weight
-                    for error, weight, cat, excluded in zip(
-                        all_errors[model_name],
-                        INFO["weights"],
-                        INFO["categories"],
-                        INFO["excluded"],
-                        strict=True,
-                    )
-                    if cat == category and not excluded
-                ]
-            )
-    return results
-
-
-@pytest.fixture
-def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
-    """
-    Calculate weighted mean absolute deviation for all models.
+    Calculate mean error for each subset for all models.
 
     Parameters
     ----------
@@ -203,22 +170,103 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
     Returns
     -------
     dict[str, dict[str, float]]
+        Mean error for all models, grouped by category.
+    """
+    results = {}
+
+    for model_name in MODELS:
+        results[model_name] = {}
+
+        # Filter excluded systems from subsets
+        errors = all_errors[model_name][np.logical_not(INFO["excluded"])]
+        subsets = INFO["subsets"][np.logical_not(INFO["excluded"])]
+
+        for subset in set(subsets):
+            results[model_name][subset] = np.mean(errors[subsets == subset])
+
+    return results
+
+
+@pytest.fixture
+def category_errors(
+    subset_errors: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
+    """
+    Calculate MAD for all models, grouped by category.
+
+    Parameters
+    ----------
+    subset_errors
+        Nested dictionary of mean MADs, grouped by model and subset.
+
+    Returns
+    -------
+    dict[str, dict[str, list[float]]]
+        Nested dictionary of weighted mean MADs, grouped by model and category.
+    """
+    results = {}
+
+    for model_name in MODELS:
+        results[model_name] = {}
+
+        all_subsets = INFO["subsets"]
+        all_categories = INFO["categories"]
+        all_weights = INFO["weights"]
+
+        for category in set(all_categories):
+            subsets = all_subsets[all_categories == category]
+            errors = [
+                subset_errors[model_name][str(subset)]
+                for subset in np.unique(subsets)
+                if subset in subset_errors[model_name]
+            ]
+
+            weights = [
+                all_weights[subset]
+                for subset in np.unique(subsets)
+                if subset in subset_errors[model_name]
+            ]
+
+            results[model_name][category] = np.average(errors, weights=weights)
+
+    return results
+
+
+@pytest.fixture
+def weighted_error(subset_errors: dict[str, list[float]]) -> dict[str, float]:
+    """
+    Calculate weighted mean absolute deviation for all models.
+
+    Parameters
+    ----------
+    subset_errors
+        Nested dictionary of mean MADs, grouped by model and subset.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
         Weighted mean absolute deviation for each model.
     """
     results = {}
+
     for model_name in MODELS:
-        results[model_name] = np.mean(
-            [
-                error * weight
-                for error, weight, excluded in zip(
-                    all_errors[model_name],
-                    INFO["weights"],
-                    INFO["excluded"],
-                    strict=True,
-                )
-                if not excluded
-            ]
-        )
+        results[model_name] = {}
+
+        subsets = INFO["subsets"]
+        all_weights = INFO["weights"]
+
+        errors = [
+            subset_errors[model_name][str(subset)]
+            for subset in np.unique(subsets)
+            if subset in subset_errors[model_name]
+        ]
+        weights = [
+            all_weights[subset]
+            for subset in np.unique(subsets)
+            if subset in subset_errors[model_name]
+        ]
+        results[model_name] = np.average(errors, weights=weights)
+
     return results
 
 
