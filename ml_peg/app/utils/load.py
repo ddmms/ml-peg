@@ -47,7 +47,7 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
     data = table_json["data"]
     columns = table_json["columns"]
     thresholds = clean_thresholds(table_json.get("thresholds"))
-    if thresholds is None or not thresholds:
+    if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
 
     width_labels: list[str] = []
