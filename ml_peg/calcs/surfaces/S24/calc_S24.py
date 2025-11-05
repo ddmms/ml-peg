@@ -13,7 +13,7 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -78,7 +78,10 @@ class S24Benchmark(zntrack.Node):
     def run(self):
         """Run S24 energy calculations."""
         calc = self.model.get_calculator()
-        data = get_benchmark_data("s24.zip") / "s24/s24_data.extxyz"
+        data = (
+            download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
+            / "s24/s24_data.extxyz"
+        )
         atoms_list = read(data, ":")
 
         for i in tqdm(

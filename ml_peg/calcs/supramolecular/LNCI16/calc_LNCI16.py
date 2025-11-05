@@ -12,7 +12,7 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -263,12 +263,15 @@ class LNCI16Benchmark(zntrack.Node):
         calc = self.model.get_calculator()
 
         # Get benchmark data
-        base_dir = (
-            get_benchmark_data("LNCI16_data.zip") / "LNCI16_data/benchmark-LNCI16-main"
+        data_dir = (
+            download_s3_data(
+                filename="LNCI16.zip", key="inputs/supramolecular/LNCI16/LNCI16.zip"
+            )
+            / "LNCI16_data/benchmark-LNCI16-main"
         )
 
         # Run benchmark
-        complex_atoms = self.benchmark_lnci16(calc, self.model_name, base_dir)
+        complex_atoms = self.benchmark_lnci16(calc, self.model_name, data_dir)
 
         # Write output structures
         write_dir = OUT_PATH / self.model_name
