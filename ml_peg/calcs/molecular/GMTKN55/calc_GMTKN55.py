@@ -86,8 +86,8 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.info["excluded"] = excluded
                 atoms.info["ref_value"] = ref_value
                 atoms.info["count"] = species["Count"]
-                atoms.info["uhf"] = species["UHF"]
-                atoms.info["Charge"] = species["Charge"]
+                atoms.info["spin"] = species["UHF"] + 1
+                atoms.info["charge"] = species["Charge"]
                 atoms.cell = None
                 atoms.pbc = False
 
