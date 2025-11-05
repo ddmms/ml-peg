@@ -244,8 +244,6 @@ def upload(
         credentials=credentials,
         acl=acl,
     )
-    print(f"Downloaded {filename}")
-
     print(f"Uploaded {filename}")
 
 
