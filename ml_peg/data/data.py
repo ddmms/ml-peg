@@ -52,9 +52,10 @@ def download(
             aws_secret_access_key=user_credentials["secret_key"],
         )
 
-    s3.download_file(Bucket=bucket, Filename=filename, Key=key)
+    # Ensure path exists before download
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Downloaded {filename}")
+    s3.download_file(Bucket=bucket, Filename=filename, Key=key)
 
 
 def upload(
@@ -95,5 +96,3 @@ def upload(
     )
 
     s3.upload_file(Bucket=bucket, Filename=filename, Key=key, ExtraArgs={"ACL": acl})
-
-    print(f"Uploaded {filename}")
