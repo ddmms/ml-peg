@@ -1,0 +1,19 @@
+services:
+  app:
+    image: ml-peg-prod
+    ports:
+      - 8050:8050
+    working_dir: /app
+    volumes:
+      - ../ml_peg/app/data:/app/ml_peg/app/data
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
