@@ -170,7 +170,7 @@ def run_analysis(
 def download(
     key: Annotated[str, Option(help="File to download")],
     filename: Annotated[str, Option(help="Filename to save download as")],
-    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-test",
+    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-data",
     endpoint: Annotated[
         str, Option(help="Endpoint URL")
     ] = "https://s3.echo.stfc.ac.uk",
@@ -186,39 +186,22 @@ def download(
     filename
         Name of file to save download as locally.
     bucket
-        Name of S3 bucket. Default is "ml-peg-test".
+        Name of S3 bucket. Default is "ml-peg-data".
     endpoint
         Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
     credentials
         S3 credentials. Default is `None`, which will only allow downloading public
         data.
     """
-    import json
+    from ml_peg.data.data import download as download_data
 
-    import boto3
-    from botocore import UNSIGNED
-    from botocore.config import Config
-
-    if credentials is None:
-        s3 = boto3.client(
-            "s3",
-            config=Config(signature_version=UNSIGNED, s3={"addressing_style": "path"}),
-            endpoint_url=endpoint,
-        )
-    else:
-        with open(credentials) as credentials_file:
-            user_credentials = json.load(credentials_file)
-
-        s3 = boto3.client(
-            "s3",
-            config=Config(s3={"addressing_style": "path"}),
-            endpoint_url=endpoint,
-            aws_access_key_id=user_credentials["access_key"],
-            aws_secret_access_key=user_credentials["secret_key"],
-        )
-
-    s3.download_file(Bucket=bucket, Filename=filename, Key=key)
-
+    download_data(
+        key=key,
+        filename=filename,
+        bucket=bucket,
+        endpoint=endpoint,
+        credentials=credentials,
+    )
     print(f"Downloaded {filename}")
 
 
@@ -227,13 +210,14 @@ def upload(
     key: Annotated[str, Option(help="File to upload")],
     filename: Annotated[str, Option(help="Filename to save download as")],
     credentials: Annotated[str, Option(help="S3 credentials")],
-    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-test",
+    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-data",
     endpoint: Annotated[
         str, Option(help="Endpoint URL")
     ] = "https://s3.echo.stfc.ac.uk",
+    acl: Annotated[str, Option(help="Access control list")] = "public-read",
 ):
     """
-    Download data from S3 bucket.
+    Upload data from S3 bucket.
 
     Parameters
     ----------
@@ -244,27 +228,23 @@ def upload(
     credentials
         S3 credentials.
     bucket
-        Name of S3 bucket to upload to. Default is "ml-peg-test".
+        Name of S3 bucket to upload to. Default is "ml-peg-data".
     endpoint
         Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
+    acl
+        Access control list. Default is "public-read".
     """
-    import json
+    from ml_peg.data.data import upload as upload_data
 
-    import boto3
-    from botocore.config import Config
-
-    with open(credentials) as credentials_file:
-        user_credentials = json.load(credentials_file)
-
-    s3 = boto3.client(
-        "s3",
-        config=Config(s3={"addressing_style": "path"}),
-        endpoint_url=endpoint,
-        aws_access_key_id=user_credentials["access_key"],
-        aws_secret_access_key=user_credentials["secret_key"],
+    upload_data(
+        key=key,
+        filename=filename,
+        bucket=bucket,
+        endpoint=endpoint,
+        credentials=credentials,
+        acl=acl,
     )
-
-    s3.upload_file(Bucket=bucket, Filename=filename, Key=key)
+    print(f"Downloaded {filename}")
 
     print(f"Uploaded {filename}")
 
