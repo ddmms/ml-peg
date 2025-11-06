@@ -29,32 +29,6 @@ DISTANCE_MIN_FALLBACK = 0.5
 DISTANCE_MAX_FALLBACK = 6.0
 
 
-def _is_uma_omol_calc(calc_obj) -> bool:
-    """
-    Return whether the calculator corresponds to the UMA oMOL task.
-
-    Parameters
-    ----------
-    calc_obj
-        Calculator instance obtained from the model.
-
-    Returns
-    -------
-    bool
-        ``True`` when the calculator is the UMA oMOL predictor, else ``False``.
-    """
-    try:
-        module_name = getattr(calc_obj.__class__, "__module__", "").lower()
-        if "fairchem" not in module_name:
-            return False
-        task = getattr(calc_obj, "task_name", None)
-        if task is None and hasattr(calc_obj, "predictor"):
-            task = getattr(calc_obj.predictor, "task_name", None)
-        return task == "omol"
-    except Exception:
-        return False
-
-
 def _vdw_radius(element: str) -> float:
     """
     Return the van der Waals radius (Å) for an element.
@@ -172,8 +146,7 @@ class DiatomicsBenchmark(zntrack.Node):
                     [element1, element2],
                     positions=[(0.0, 0.0, 0.0), (0.0, 0.0, float(distance))],
                 )
-                if _is_uma_omol_calc(calc):
-                    atoms.info.setdefault("spin", 1)
+                atoms.info.setdefault("spin", 1)
 
                 atoms.calc = calc
                 energy = float(atoms.get_potential_energy())
