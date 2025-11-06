@@ -49,6 +49,9 @@ mace = [
     "mace-torch==0.3.14",
 ]
 
+mattersim = [
+    "mattersim==1.2.0",
+]
 orb = [
     "orb-models == 0.5.5; sys_platform != 'win32' and python_version < '3.13'",
 ]
@@ -181,6 +184,14 @@ conflicts = [
     ],
     [
       { extra = "uma" },
+      { extra = "grace" },
+    ],
+    [
+      { extra = "mattersim" },
+      { extra = "mace" },
+    ],
+    [
+      { extra = "mattersim" },
       { extra = "grace" },
     ],
 ]
