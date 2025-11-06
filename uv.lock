@@ -2900,16 +2900,16 @@ wheels = [
 
 [[package]]
 name = "google-auth"
-version = "2.42.1"
+version = "2.43.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
     { name = "pyasn1-modules" },
     { name = "rsa" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/6b/22a77135757c3a7854c9f008ffed6bf4e8851616d77faf13147e9ab5aae6/google_auth-2.42.1.tar.gz", hash = "sha256:30178b7a21aa50bffbdc1ffcb34ff770a2f65c712170ecd5446c4bef4dc2b94e", size = 295541, upload-time = "2025-10-30T16:42:19.381Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/ef/66d14cf0e01b08d2d51ffc3c20410c4e134a1548fc246a6081eae585a4fe/google_auth-2.43.0.tar.gz", hash = "sha256:88228eee5fc21b62a1b5fe773ca15e67778cb07dc8363adcb4a8827b52d81483", size = 296359, upload-time = "2025-11-06T00:13:36.587Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/05/adeb6c495aec4f9d93f9e2fc29eeef6e14d452bba11d15bdb874ce1d5b10/google_auth-2.42.1-py2.py3-none-any.whl", hash = "sha256:eb73d71c91fc95dbd221a2eb87477c278a355e7367a35c0d84e6b0e5f9b4ad11", size = 222550, upload-time = "2025-10-30T16:42:17.878Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/d1/385110a9ae86d91cc14c5282c61fe9f4dc41c0b9f7d423c6ad77038c4448/google_auth-2.43.0-py2.py3-none-any.whl", hash = "sha256:af628ba6fa493f75c7e9dbe9373d148ca9f4399b5ea29976519e0a3848eddd16", size = 223114, upload-time = "2025-11-06T00:13:35.209Z" },
 ]
 
 [[package]]
@@ -3301,7 +3301,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "1.1.1"
+version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -3315,9 +3315,9 @@ dependencies = [
     { name = "typer-slim" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/b6/6be9110ec96e0afe5b0506ce3f991b025f8da55ec6b9fd9417b1c008cc6f/huggingface_hub-1.1.1.tar.gz", hash = "sha256:7224cb359baac8390bd8a5dc5e228ea5073caf0f0b7d467bfa0d943d47d6d396", size = 606233, upload-time = "2025-11-05T16:41:37.776Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/63/eeea214a6b456d8e91ac2ea73ebb83da3af9aa64716dfb6e28dd9b2e6223/huggingface_hub-1.1.2.tar.gz", hash = "sha256:7bdafc432dc12fa1f15211bdfa689a02531d2a47a3cc0d74935f5726cdbcab8e", size = 606173, upload-time = "2025-11-06T10:04:38.398Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/d5/a5faa9beaeb308db0cd3f34ed5a9a51bbf2c0431337770a40676d5cb61e3/huggingface_hub-1.1.1-py3-none-any.whl", hash = "sha256:85421e7e68bdf016b4dd199288beb7464fde84e5e7aed598a541ec8e3de7090b", size = 514938, upload-time = "2025-11-05T16:41:35.58Z" },
+    { url = "https://files.pythonhosted.org/packages/33/21/e15d90fd09b56938502a0348d566f1915f9789c5bb6c00c1402dc7259b6e/huggingface_hub-1.1.2-py3-none-any.whl", hash = "sha256:dfcfa84a043466fac60573c3e4af475490a7b0d7375b22e3817706d6659f61f7", size = 514955, upload-time = "2025-11-06T10:04:36.674Z" },
 ]
 
 [[package]]
@@ -5097,6 +5097,7 @@ name = "ml-peg"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "boto3" },
     { name = "dash" },
     { name = "janus-core" },
     { name = "kaleido" },
@@ -5164,6 +5165,7 @@ prod = [
 
 [package.metadata]
 requires-dist = [
+    { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
     { name = "dash", specifier = ">=3.1.1" },
     { name = "deepmd-kit", marker = "extra == 'dpa3'", specifier = "==3.1.0" },
