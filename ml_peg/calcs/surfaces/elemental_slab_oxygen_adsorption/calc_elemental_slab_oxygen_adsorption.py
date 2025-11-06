@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 
 from ase import Atoms
@@ -97,7 +97,9 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
             Calculator to use to evaluate structure energy.
         """
         for atoms in atoms_list:
-            atoms.calc = deepcopy(calc)
+            atoms.calc = copy(calc)
+            if len(atoms) == 1:
+                atoms.pbc = False
             atoms.get_potential_energy()
 
     def run(self):
