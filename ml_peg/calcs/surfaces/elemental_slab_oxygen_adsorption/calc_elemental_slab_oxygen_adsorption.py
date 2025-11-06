@@ -13,7 +13,7 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -105,10 +105,15 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
     def run(self):
         """Run oxygen adsorption energy calculations."""
         calc = self.model.get_calculator()
+        # Get benchmark data
         data_dir = (
-            get_benchmark_data("elemental_slab_oxygen_adsorption_pbe.zip")
-            / "elemental_slab_oxygen_adsorption_pbe/"
+            download_s3_data(
+                filename="elemental_slab_oxygen_adsorption.zip",
+                key="inputs/surfaces/elemental_slab_oxygen_adsorption/elemental_slab_oxygen_adsorption.zip",
+            )
+            / "elemental_slab_oxygen_adsorption_pbe"
         )
+
         triplets_list = [read(xyz_path, ":") for xyz_path in data_dir.glob("*.xyz")]
 
         for triplet in tqdm(

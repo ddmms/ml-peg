@@ -116,7 +116,7 @@ def run_calcs(
     pytest.main(options)
 
 
-@app.command(name="analyse", help="Run calculations")
+@app.command(name="analyse", help="Run analysis")
 def run_analysis(
     models: Annotated[
         str | None,
@@ -164,6 +164,87 @@ def run_analysis(
         options.extend(["--models", models])
 
     pytest.main(options)
+
+
+@app.command(name="download", help="Download data from S3 bucket")
+def download(
+    key: Annotated[str, Option(help="File to download")],
+    filename: Annotated[str, Option(help="Filename to save download as")],
+    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-data",
+    endpoint: Annotated[
+        str, Option(help="Endpoint URL")
+    ] = "https://s3.echo.stfc.ac.uk",
+    credentials: Annotated[str | None, Option(help="S3 credentials")] = None,
+):
+    """
+    Download data from S3 bucket.
+
+    Parameters
+    ----------
+    key
+        Name of file in S3 bucket to download.
+    filename
+        Name of file to save download as locally.
+    bucket
+        Name of S3 bucket. Default is "ml-peg-data".
+    endpoint
+        Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
+    credentials
+        S3 credentials. Default is `None`, which will only allow downloading public
+        data.
+    """
+    from ml_peg.data.data import download as download_data
+
+    download_data(
+        key=key,
+        filename=filename,
+        bucket=bucket,
+        endpoint=endpoint,
+        credentials=credentials,
+    )
+    print(f"Downloaded {filename}")
+
+
+@app.command(name="upload", help="Upload data to S3 bucket")
+def upload(
+    key: Annotated[str, Option(help="File to upload")],
+    filename: Annotated[str, Option(help="Filename to save download as")],
+    credentials: Annotated[str, Option(help="S3 credentials")],
+    bucket: Annotated[str, Option(help="Name of S3 bucket")] = "ml-peg-data",
+    endpoint: Annotated[
+        str, Option(help="Endpoint URL")
+    ] = "https://s3.echo.stfc.ac.uk",
+    acl: Annotated[str, Option(help="Access control list")] = "public-read",
+):
+    """
+    Upload data from S3 bucket.
+
+    Parameters
+    ----------
+    key
+        Name of file to create in S3 bucket.
+    filename
+        File to upload.
+    credentials
+        S3 credentials.
+    bucket
+        Name of S3 bucket to upload to. Default is "ml-peg-data".
+    endpoint
+        Endpoint URL. Default is "https://s3.echo.stfc.ac.uk".
+    acl
+        Access control list. Default is "public-read".
+    """
+    from ml_peg.data.data import upload as upload_data
+
+    upload_data(
+        key=key,
+        filename=filename,
+        bucket=bucket,
+        endpoint=endpoint,
+        credentials=credentials,
+        acl=acl,
+    )
+    print(f"Uploaded {filename}")
 
 
 @app.callback(invoke_without_command=True, help="")

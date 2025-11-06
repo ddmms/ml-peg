@@ -24,6 +24,7 @@ classifiers = [
 readme = "README.md"
 
 dependencies = [
+    "boto3<2,>=1.40.49",
     "dash>=3.1.1",
     "janus-core<1.0.0,>=0.8.2",
     "kaleido>=1.0.0",

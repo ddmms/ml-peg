@@ -85,6 +85,14 @@ docker run --volume ./ml_peg/app/data:/app/ml_peg/app/data  --publish 8050:8050 
 
 > [!TIP]
 > Ensure `ml_peg/app/data` is populated with results before running the container.
+>
+> A compressed zip file containing the current live data can be found at
+> http://s3.echo.stfc.ac.uk/ml-peg-data/app/data/data.tar.gz.
+>
+> This may also be downloaded through the command line using
+> ```
+> ml_peg download --key app/data/data.tar.gz  --filename data.tar.gz
+> ```
 
 
 Alternatively, you can use the [compose.yml](containers/compose.yml) file provided, via
