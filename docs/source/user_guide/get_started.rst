@@ -68,6 +68,13 @@ Once built, you can mount your current application data and start the app by run
 
     Ensure ``ml_peg/app/data`` is populated with results before running the container.
 
+    A compressed zip file containing the current live data can be found at
+    http://s3.echo.stfc.ac.uk/ml-peg-data/app/data/data.tar.gz.
+
+    This may also be downloaded through the command line using::
+
+        ml_peg download --key app/data/data.tar.gz  --filename data.tar.gz
+
 
 Alternatively, you can use the
 `compose.yml <https://github.com/ddmms/ml-peg/blob/main/containers/compose.yml>`_
