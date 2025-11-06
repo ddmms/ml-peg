@@ -63,6 +63,8 @@ class SumCalc:
 class GenericASECalc(SumCalc, MlipxGenericASECalc):
     """Data class for generic ASE calculators."""
 
+    default_dtype: str | None = None
+
     def get_calculator(self, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
@@ -77,6 +79,9 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        if self.default_dtype is not None:
+            kwargs["default_dtype"] = self.default_dtype
+
         calc = MlipxGenericASECalc.get_calculator(self, **kwargs)
 
         if self.add_d3:
@@ -92,6 +97,7 @@ class OrbCalc(SumCalc):
 
     name: str
     device: Device | None = None
+    default_dtype: str = "float32-high"
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, **kwargs) -> Calculator:
@@ -120,13 +126,19 @@ class OrbCalc(SumCalc):
 
         method = getattr(pretrained, self.name)
         if self.device is None:
-            orbff = method(**self.kwargs)
+            orbff = method(precision=self.default_dtype, **self.kwargs)
             calc = ORBCalculator(orbff, **self.kwargs)
         elif self.device == Device.AUTO:
-            orbff = method(device=Device.resolve_auto(), **self.kwargs)
+            orbff = method(
+                device=Device.resolve_auto(),
+                precision=self.default_dtype,
+                **self.kwargs,
+            )
             calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
         else:
-            orbff = method(device=self.device, **self.kwargs)
+            orbff = method(
+                device=self.device, precision=self.default_dtype, **self.kwargs
+            )
             calc = ORBCalculator(orbff, device=self.device, **self.kwargs)
 
         if self.add_d3:
@@ -160,6 +172,7 @@ class FairChemCalc(SumCalc):
     model_name: str
     task_name: str
     device: Device | str = "cpu"
+    default_dtype: str = "float32"
     overrides: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self) -> Calculator:
