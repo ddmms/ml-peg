@@ -1,12 +1,11 @@
 # ML-PEG
 
 [![Build Status][ci-badge]][ci-link]
-[![Coverage Status][cov-badge]][cov-link]
 [![Docs status][docs-badge]][docs-link]
 [![License][license-badge]][license-link]
 [![DOI][doi-badge]][doi-link]
 
-ML potential usability and performance guide
+[ML potential usability and performance guide](https://ml-peg.stfc.ac.uk)
 
 > [!NOTE]
 > Migration in progress! The live benchmarks are currently run and analysed using
@@ -15,8 +14,7 @@ ML potential usability and performance guide
 >
 > New benchmarks are expected to be added following the format defined in this
 > repository, and work is ongoing to migrate all existing benchmarks to this format.
-
-Our original interactive analysis suite is currently hosted at: http://mlip-testing.stfc.ac.uk:8050
+> Our original interactive analysis suite is currently hosted at: http://mlip-testing.stfc.ac.uk:8050
 
 ## Contents
 - [Getting started](#getting-started)
