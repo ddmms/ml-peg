@@ -58,7 +58,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             )
 
         unit_value = str(metric_config["unit"]).strip()
-        level_of_theory = metric_config["level_of_theory"]
+        level_of_theory = metric_config.get("level_of_theory")
 
         metric_threshold: ThresholdEntry = {
             "good": good_value,
@@ -66,6 +66,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             "unit": unit_value,
             "level_of_theory": level_of_theory,
         }
+
         thresholds[metric_name] = metric_threshold
 
         tooltip = metric_config.get("tooltip")
