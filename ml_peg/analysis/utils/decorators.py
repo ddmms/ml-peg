@@ -16,6 +16,138 @@ import plotly.graph_objects as go
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
 
+PERIODIC_TABLE_POSITIONS: dict[str, tuple[int, int]] = {
+    # First row
+    "H": (0, 0),
+    "He": (0, 17),
+    # Second row
+    "Li": (1, 0),
+    "Be": (1, 1),
+    "B": (1, 12),
+    "C": (1, 13),
+    "N": (1, 14),
+    "O": (1, 15),
+    "F": (1, 16),
+    "Ne": (1, 17),
+    # Third row
+    "Na": (2, 0),
+    "Mg": (2, 1),
+    "Al": (2, 12),
+    "Si": (2, 13),
+    "P": (2, 14),
+    "S": (2, 15),
+    "Cl": (2, 16),
+    "Ar": (2, 17),
+    # Fourth row
+    "K": (3, 0),
+    "Ca": (3, 1),
+    "Sc": (3, 2),
+    "Ti": (3, 3),
+    "V": (3, 4),
+    "Cr": (3, 5),
+    "Mn": (3, 6),
+    "Fe": (3, 7),
+    "Co": (3, 8),
+    "Ni": (3, 9),
+    "Cu": (3, 10),
+    "Zn": (3, 11),
+    "Ga": (3, 12),
+    "Ge": (3, 13),
+    "As": (3, 14),
+    "Se": (3, 15),
+    "Br": (3, 16),
+    "Kr": (3, 17),
+    # Fifth row
+    "Rb": (4, 0),
+    "Sr": (4, 1),
+    "Y": (4, 2),
+    "Zr": (4, 3),
+    "Nb": (4, 4),
+    "Mo": (4, 5),
+    "Tc": (4, 6),
+    "Ru": (4, 7),
+    "Rh": (4, 8),
+    "Pd": (4, 9),
+    "Ag": (4, 10),
+    "Cd": (4, 11),
+    "In": (4, 12),
+    "Sn": (4, 13),
+    "Sb": (4, 14),
+    "Te": (4, 15),
+    "I": (4, 16),
+    "Xe": (4, 17),
+    # Sixth row
+    "Cs": (5, 0),
+    "Ba": (5, 1),
+    "La": (8, 3),
+    "Hf": (5, 3),
+    "Ta": (5, 4),
+    "W": (5, 5),
+    "Re": (5, 6),
+    "Os": (5, 7),
+    "Ir": (5, 8),
+    "Pt": (5, 9),
+    "Au": (5, 10),
+    "Hg": (5, 11),
+    "Tl": (5, 12),
+    "Pb": (5, 13),
+    "Bi": (5, 14),
+    "Po": (5, 15),
+    "At": (5, 16),
+    "Rn": (5, 17),
+    # Seventh row
+    "Fr": (6, 0),
+    "Ra": (6, 1),
+    "Ac": (9, 3),
+    "Rf": (6, 3),
+    "Db": (6, 4),
+    "Sg": (6, 5),
+    "Bh": (6, 6),
+    "Hs": (6, 7),
+    "Mt": (6, 8),
+    "Ds": (6, 9),
+    "Rg": (6, 10),
+    "Cn": (6, 11),
+    "Nh": (6, 12),
+    "Fl": (6, 13),
+    "Mc": (6, 14),
+    "Lv": (6, 15),
+    "Ts": (6, 16),
+    "Og": (6, 17),
+    # Lanthanides (row 8)
+    "Ce": (8, 4),
+    "Pr": (8, 5),
+    "Nd": (8, 6),
+    "Pm": (8, 7),
+    "Sm": (8, 8),
+    "Eu": (8, 9),
+    "Gd": (8, 10),
+    "Tb": (8, 11),
+    "Dy": (8, 12),
+    "Ho": (8, 13),
+    "Er": (8, 14),
+    "Tm": (8, 15),
+    "Yb": (8, 16),
+    "Lu": (8, 17),
+    # Actinides (row 9)
+    "Th": (9, 4),
+    "Pa": (9, 5),
+    "U": (9, 6),
+    "Np": (9, 7),
+    "Pu": (9, 8),
+    "Am": (9, 9),
+    "Cm": (9, 10),
+    "Bk": (9, 11),
+    "Cf": (9, 12),
+    "Es": (9, 13),
+    "Fm": (9, 14),
+    "Md": (9, 15),
+    "No": (9, 16),
+    "Lr": (9, 17),
+}
+PERIODIC_TABLE_ROWS = 10
+PERIODIC_TABLE_COLS = 18
+
 
 def plot_parity(
     title: str | None = None,
@@ -511,6 +643,152 @@ def plot_density_scatter(
         return plot_density_wrapper
 
     return plot_density_decorator
+
+
+def plot_periodic_table(
+    title: str | None = None,
+    colorbar_title: str | None = None,
+    hoverdata: dict[str, dict[str, Any]] | None = None,
+    filename: str = "periodic_table.json",
+    colorscale: str = "Viridis",
+) -> Callable:
+    """
+    Plot a periodic-table heatmap for element-wise metrics.
+
+    Parameters
+    ----------
+    title
+        Plot title.
+    colorbar_title
+        Label for the colour bar.
+    hoverdata
+        Optional mapping of hover labels to element-wise values.
+    filename
+        Output filename for the JSON figure.
+    colorscale
+        Plotly colourscale name. Default is ``"Viridis"``.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function returning element-value mappings.
+    """
+
+    def plot_periodic_table_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to produce periodic-table heatmap.
+
+        Parameters
+        ----------
+        func
+            Function returning mapping of element symbols to numeric values.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_periodic_table_wrapper(*args, **kwargs) -> dict[str, float]:
+            """
+            Wrap function to render periodic-table figure.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict[str, float]
+                Element-value mapping returned by ``func``.
+            """
+            values = func(*args, **kwargs)
+
+            grid = np.full((PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS), np.nan)
+            hover_grid = np.full_like(grid, "", dtype=object)
+            text_grid = np.full_like(grid, "", dtype=object)
+
+            for element, value in values.items():
+                position = PERIODIC_TABLE_POSITIONS.get(element)
+                if position is None:
+                    continue
+                row, col = position
+                grid[row, col] = value
+
+                hover_parts = [f"{element}"]
+                if value is not None and not np.isnan(value):
+                    hover_parts.append(f"Value: {value:.4g}")
+
+                if hoverdata:
+                    for label, mapping in hoverdata.items():
+                        extra = mapping.get(element)
+                        if extra is None:
+                            continue
+                        hover_parts.append(f"{label}: {extra}")
+
+                hover_grid[row, col] = "<br>".join(hover_parts)
+                text_grid[row, col] = element
+
+            fig = go.Figure(
+                data=go.Heatmap(
+                    z=grid,
+                    x=np.arange(PERIODIC_TABLE_COLS),
+                    y=np.arange(PERIODIC_TABLE_ROWS),
+                    text=hover_grid,
+                    hovertemplate="%{text}<extra></extra>",
+                    colorscale=colorscale,
+                    colorbar={"title": colorbar_title},
+                    showscale=True,
+                )
+            )
+
+            # Overlay element symbols
+            xs, ys, labels = [], [], []
+            for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+                xs.append(col)
+                ys.append(row)
+                labels.append(text_grid[row, col] or element)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="text",
+                    text=labels,
+                    textfont={"size": 12, "color": "black"},
+                    hoverinfo="skip",
+                )
+            )
+
+            fig.update_layout(
+                title={"text": title},
+                xaxis={
+                    "visible": False,
+                    "range": [-0.5, PERIODIC_TABLE_COLS - 0.5],
+                    "fixedrange": True,
+                },
+                yaxis={
+                    "visible": False,
+                    "autorange": "reversed",
+                    "range": [-0.5, PERIODIC_TABLE_ROWS - 0.5],
+                    "fixedrange": True,
+                },
+                margin={"l": 10, "r": 10, "t": 40, "b": 10},
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+            return values
+
+        return plot_periodic_table_wrapper
+
+    return plot_periodic_table_decorator
 
 
 def build_table(
