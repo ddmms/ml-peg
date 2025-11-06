@@ -11,9 +11,28 @@ from ml_peg.app.build_app import build_full_app
 
 DATA_PATH = Path(__file__).parent / "data"
 
+
+def _build_full_app(app: Dash, category: str):
+    """
+    Build full app layout and callbacks.
+
+    Parameters
+    ----------
+    app
+        Dash application.
+    category
+        Category to build application for.
+    """
+    build_full_app(app, category)
+
+
 # Make server accessible for gunicorn
 app = Dash(__name__, assets_folder=DATA_PATH)
-build_full_app(app)
+
+# Only build app when in production, otherwise run_app's layout is missing
+if bool(os.environ.get("ML_PEG_PROD", False)):
+    _build_full_app(app, "*")
+
 server = app.server
 
 
@@ -34,11 +53,10 @@ def run_app(
     debug
         Whether to run with Dash debugging. Default is `True`.
     """
-    full_app = Dash(__name__, assets_folder=DATA_PATH)
-    build_full_app(full_app, category=category)
+    _build_full_app(app, category=category)
 
     print(f"Starting Dash app on port {port}...")
-    full_app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port, debug=debug)
 
 
 if __name__ == "__main__":
