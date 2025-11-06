@@ -27,7 +27,7 @@ following can be used:
 
 .. code-block:: python
 
-    from ml_peg.data.data import download_github_data
+    from ml_peg.calcs.utils.utils import download_github_data
 
     data_dir = download_github_data(
         filename="LNCI16_data.zip",
@@ -66,7 +66,7 @@ this data:
 
 .. code-block:: python
 
-    from ml_peg.data.data import download_github_data
+    from ml_peg.calcs.utils.utils import download_github_data
 
     data_dir = download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
 
@@ -74,3 +74,17 @@ this data:
 Similarly to ``download_github_data``, this function automatically tries to unzip
 zipped files, and returns the ``Path`` to the cache directory that the file is
 downloaded to.
+
+
+Application
+-----------
+
+As discussed in the :doc:`user guide </user_guide/get_started>`,
+a compressed zip file containing all of the data required to run the live version of
+the application is available to download from https://s3.echo.stfc.ac.uk/ml-peg-data.
+
+When new benchmarks are added, this should be updated:
+
+.. code-block:: bash
+
+    ml_peg upload --key app/data/data.tar.gz  --filename data.tar.gz --credentials credentials.json
