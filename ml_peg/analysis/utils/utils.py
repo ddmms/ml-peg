@@ -15,8 +15,12 @@ from yaml import safe_load
 
 from ml_peg.app.utils.utils import clean_weights
 
+ThresholdEntry = dict[str, float | str | None]
+Thresholds = dict[str, ThresholdEntry]
+MetricRow = dict[str, float | int | str | None]
 
-def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, str]]:
+
+def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
     """
     Load metric thresholds and tooltips from a YAML configuration file.
 
@@ -27,7 +31,7 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
 
     Returns
     -------
-    tuple[dict[str, Any], dict[str, str]]
+    tuple[Thresholds, dict[str, str]]
         Mapping of metric thresholds and mapping of metric tooltips.
     """
     if not config_path.exists():
@@ -35,43 +39,27 @@ def load_metrics_config(config_path: Path) -> tuple[dict[str, Any], dict[str, st
         raise FileNotFoundError(msg)
 
     with config_path.open(encoding="utf8") as stream:
-        data = safe_load(stream) or {}
+        data = safe_load(stream)
 
-    metrics_data = data.get("metrics", {}) or {}
-    thresholds: dict[str, Any] = {}
+    metrics_data = data.get("metrics", {})
+    thresholds: Thresholds = {}
     tooltips: dict[str, str] = {}
 
     for metric_name, metric_config in metrics_data.items():
-        if not isinstance(metric_config, dict):
-            msg = f"Metric configuration for '{metric_name}' must be a mapping."
-            raise TypeError(msg)
+        good_value = float(metric_config["good"])
+        bad_value = float(metric_config["bad"])
 
-        required_threshold_keys = {"good", "bad", "unit"}
-        missing_threshold_keys = required_threshold_keys - metric_config.keys()
-        if missing_threshold_keys:
-            missing_keys = ", ".join(sorted(missing_threshold_keys))
-            msg = (
-                f"Metric '{metric_name}' in '{config_path}' is missing required "
-                f"threshold entries: {missing_keys}. Include 'unit' even when its "
-                "value should be None."
-            )
-            raise KeyError(msg)
+        raw_unit = metric_config["unit"]
+        unit_value = str(raw_unit) if raw_unit not in (None, "") else None
 
-        metric_threshold = {
-            "good": metric_config["good"],
-            "bad": metric_config["bad"],
-            "unit": metric_config["unit"],
+        metric_threshold: ThresholdEntry = {
+            "good": good_value,
+            "bad": bad_value,
+            "unit": unit_value,
         }
-
         thresholds[metric_name] = metric_threshold
 
         tooltip = metric_config.get("tooltip")
-        if tooltip is None or tooltip == "":
-            msg = (
-                f"Metric '{metric_name}' in '{config_path}' must define a non-empty "
-                "'tooltip' entry."
-            )
-            raise ValueError(msg)
         tooltips[metric_name] = tooltip
 
     return thresholds, tooltips

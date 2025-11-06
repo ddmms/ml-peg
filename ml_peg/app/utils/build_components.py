@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from dash import html
 from dash.dash_table import DataTable
 from dash.dcc import Checklist, Store
@@ -11,6 +9,7 @@ from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
+from ml_peg.analysis.utils.utils import ThresholdEntry, Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_normalization_callbacks,
@@ -21,8 +20,8 @@ from ml_peg.app.utils.utils import calculate_column_widths
 
 
 def _split_threshold_entry(
-    bounds: Any,
-) -> tuple[float | None, float | None, str | None]:
+    bounds: ThresholdEntry | None,
+) -> tuple[float, float, str | None]:
     """
     Return numeric ``good``/``bad`` limits plus an optional unit string.
 
@@ -36,28 +35,9 @@ def _split_threshold_entry(
     tuple[float | None, float | None, str | None]
         ``(good, bad, unit)`` values where unit may be ``None``.
     """
-    if isinstance(bounds, dict):
-        good_val = bounds.get("good")
-        bad_val = bounds.get("bad")
-        unit = bounds.get("unit")
-    elif isinstance(bounds, list | tuple) and len(bounds) == 2:
-        good_val, bad_val = bounds
-        unit = None
-    else:
-        good_val = bad_val = unit = None
-
-    try:
-        good_float = float(good_val) if good_val is not None else None
-    except (TypeError, ValueError):
-        good_float = None
-
-    try:
-        bad_float = float(bad_val) if bad_val is not None else None
-    except (TypeError, ValueError):
-        bad_float = None
-
-    unit_str = str(unit) if unit not in (None, "") else None
-    return good_float, bad_float, unit_str
+    if not bounds:
+        raise KeyError("Threshold definition is required for each metric.")
+    return bounds["good"], bounds["bad"], bounds["unit"]
 
 
 def grid_template_from_widths(
@@ -156,6 +136,7 @@ def build_weight_components(
     *,
     use_thresholds: bool = False,
     column_widths: dict[str, int] | None = None,
+    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build weight sliders, text boxes and reset button.
@@ -173,12 +154,18 @@ def build_weight_components(
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
+    thresholds
+        Threshold metadata used when ``use_thresholds`` is ``True``.
 
     Returns
     -------
     Div
         Div containing header, weight sliders, text boxes and reset button.
     """
+    if use_thresholds and thresholds is None:
+        raise ValueError(
+            "Threshold metadata must be provided when use_thresholds=True."
+        )
     # Identify metric columns (exclude reserved columns)
     reserved = {"MLIP", "Score", "Rank", "id"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
@@ -315,7 +302,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    thresholds: dict[str, Any] | None = None,
+    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -418,8 +405,9 @@ def build_test_layout(
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
-        use_thresholds=True,
+        use_thresholds=thresholds is not None,
         column_widths=column_widths,
+        thresholds=thresholds,
     )
     if metric_weights:
         layout_contents.append(metric_weights)
@@ -439,7 +427,7 @@ def build_test_layout(
 
 def build_threshold_inputs(
     table_columns: list[str],
-    thresholds: dict[str, Any],
+    thresholds: Thresholds,
     table_id: str,
     column_widths: dict[str, int] | None = None,
 ) -> Div:
@@ -450,9 +438,8 @@ def build_threshold_inputs(
     ----------
     table_columns : list[str]
         Ordered metric column names in the table.
-    thresholds : dict[str, Any]
-        Default (good, bad) threshold ranges keyed by metric column, optionally with
-        unit metadata.
+    thresholds : Thresholds
+        Default (good, bad) threshold ranges keyed by metric column.
     table_id : str
         Identifier prefix for threshold inputs and related controls.
     column_widths : dict[str, int] or None
@@ -484,7 +471,7 @@ def build_threshold_inputs(
     }
 
     cells: list[Div] = []
-    default_thresholds: dict[str, dict[str, float | str | None]] = {}
+    default_thresholds: Thresholds = {}
 
     cells.append(
         Div(
