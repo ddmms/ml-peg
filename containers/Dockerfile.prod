@@ -45,5 +45,7 @@ USER nonroot
 # Use `/app` as the working directory
 WORKDIR /app
 
+ENV ML_PEG_PROD=1
+
 # Run Gunicorn serving Dash's Flask server
 CMD ["gunicorn", "-b", "0.0.0.0:8050", "ml_peg.app.run_app:server"]
