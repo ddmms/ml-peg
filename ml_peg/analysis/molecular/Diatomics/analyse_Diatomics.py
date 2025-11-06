@@ -25,14 +25,14 @@ DIATOMICS_THRESHOLDS = {
     "Tortuosity": (1.0, 5.0),
     "Energy minima": (1.0, 5.0),
     "Energy inflections": (1.0, 5.0),
-    "Spearman's coeff. (E: repulsion)": (-1.0, 1.0),
-    "Spearman's coeff. (F: descending)": (-1.0, 1.0),
-    "Spearman's coeff. (E: attraction)": (1.0, -1.0),
-    "Spearman's coeff. (F: ascending)": (1.0, -1.0),
+    "Spearman's coefficient (E: repulsion)": (-1.0, 1.0),
+    "Spearman's coefficient (F: descending)": (-1.0, 1.0),
+    "Spearman's coefficient (E: attraction)": (1.0, -1.0),
+    "Spearman's coefficient (F: ascending)": (1.0, -1.0),
 }
 
 
-def _load_model_data(model_name: str) -> pd.DataFrame:
+def load_model_data(model_name: str) -> pd.DataFrame:
     """
     Load diatomic curve data for a model.
 
@@ -52,7 +52,7 @@ def _load_model_data(model_name: str) -> pd.DataFrame:
     return pd.read_csv(csv_path)
 
 
-def _prepare_pair_series(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def prepare_pair_series(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Sort and align energy/force series for a diatomic pair.
 
@@ -85,7 +85,7 @@ def _prepare_pair_series(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.n
     return rs, es_shifted, fs
 
 
-def _count_sign_changes(array: np.ndarray, tol: float) -> int:
+def count_sign_changes(array: np.ndarray, tol: float) -> int:
     """
     Count sign changes in a sequence while ignoring small magnitudes.
 
@@ -111,7 +111,7 @@ def _count_sign_changes(array: np.ndarray, tol: float) -> int:
     return int(np.count_nonzero(mask & valid))
 
 
-def _compute_pair_metrics(
+def compute_pair_metrics(
     df_pair: pd.DataFrame,
 ) -> tuple[dict[str, float], float] | tuple[None, None]:
     """
@@ -127,7 +127,7 @@ def _compute_pair_metrics(
     tuple[dict[str, float], float] | tuple[None, None]
         Dictionary of metrics and the homonuclear well depth (if applicable).
     """
-    rs, es, fs = _prepare_pair_series(df_pair)
+    rs, es, fs = prepare_pair_series(df_pair)
     if rs.size < 3:
         return None, None
 
@@ -138,7 +138,7 @@ def _compute_pair_metrics(
     if es.size >= 3:
         minima = int(np.sum(np.diff(np.sign(np.diff(es))) > 0))
 
-    inflections = _count_sign_changes(d2e_dr2, tol=0.5)
+    inflections = count_sign_changes(d2e_dr2, tol=0.5)
 
     rounded_fs = fs.copy()
     rounded_fs[np.abs(rounded_fs) < 1e-2] = 0.0
@@ -220,10 +220,10 @@ def _compute_pair_metrics(
         "Tortuosity": tortuosity,
         "Energy minima": float(minima),
         "Energy inflections": float(inflections),
-        "Spearman's coeff. (E: repulsion)": float(spearman_repulsion),
-        "Spearman's coeff. (F: descending)": float(spearman_force_desc),
-        "Spearman's coeff. (E: attraction)": float(spearman_attraction),
-        "Spearman's coeff. (F: ascending)": float(spearman_force_asc),
+        "Spearman's coefficient (E: repulsion)": float(spearman_repulsion),
+        "Spearman's coefficient (F: descending)": float(spearman_force_desc),
+        "Spearman's coefficient (E: attraction)": float(spearman_attraction),
+        "Spearman's coefficient (F: ascending)": float(spearman_force_asc),
         "Energy diff flips": float(ediff_flip_times),
         "Energy jump": float(ejump),
         "Force jump": float(fjump),
@@ -233,7 +233,7 @@ def _compute_pair_metrics(
     return metrics, well_depth
 
 
-def _aggregate_model_metrics(
+def aggregate_model_metrics(
     df: pd.DataFrame,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
@@ -256,7 +256,7 @@ def _aggregate_model_metrics(
     well_depths: dict[str, float] = {}
 
     for pair, df_pair in df.groupby("pair"):
-        metrics, well_depth = _compute_pair_metrics(df_pair)
+        metrics, well_depth = compute_pair_metrics(df_pair)
         if metrics is None:
             continue
         pair_metrics.append(metrics)
@@ -276,7 +276,7 @@ def _aggregate_model_metrics(
     return aggregated, well_depths
 
 
-def _score_diatomics(
+def score_diatomics(
     metrics_df: pd.DataFrame, normalise_to_model: str | None
 ) -> pd.DataFrame:
     """
@@ -299,10 +299,10 @@ def _score_diatomics(
         "Tortuosity": 1.0,
         "Energy minima": 1.0,
         "Energy inflections": 1.0,
-        "Spearman's coeff. (E: repulsion)": -1.0,
-        "Spearman's coeff. (F: descending)": -1.0,
-        "Spearman's coeff. (E: attraction)": 1.0,
-        "Spearman's coeff. (F: ascending)": 1.0,
+        "Spearman's coefficient (E: repulsion)": -1.0,
+        "Spearman's coefficient (F: descending)": -1.0,
+        "Spearman's coefficient (E: attraction)": 1.0,
+        "Spearman's coefficient (F: ascending)": 1.0,
     }
 
     metrics_df["Score"] = 0.0
@@ -326,7 +326,7 @@ def _score_diatomics(
     return metrics_df
 
 
-def _write_curve_data(model_name: str, df: pd.DataFrame) -> None:
+def write_curve_data(model_name: str, df: pd.DataFrame) -> None:
     """
     Persist per-pair curve data for application callbacks.
 
@@ -353,7 +353,7 @@ def _write_curve_data(model_name: str, df: pd.DataFrame) -> None:
             json.dump(payload, fh)
 
 
-def _write_periodic_table_figures(
+def write_periodic_table_figures(
     model_name: str, well_depths: dict[str, float]
 ) -> None:
     """
@@ -373,7 +373,7 @@ def _write_periodic_table_figures(
         filename=str(PERIODIC_TABLE_PATH / f"{model_name}.json"),
         colorscale="Viridis",
     )
-    def _generate(values: dict[str, float]) -> dict[str, float]:
+    def generate_plot(values: dict[str, float]) -> dict[str, float]:
         """
         Identity helper to leverage the periodic-table decorator.
 
@@ -389,10 +389,10 @@ def _write_periodic_table_figures(
         """
         return values
 
-    _generate(well_depths)
+    generate_plot(well_depths)
 
 
-def _collect_metrics(
+def collect_metrics(
     normalise_to_model: str | None = None,
 ) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
@@ -416,30 +416,103 @@ def _collect_metrics(
     PERIODIC_TABLE_PATH.mkdir(parents=True, exist_ok=True)
 
     for model_name in MODELS:
-        df = _load_model_data(model_name)
+        df = load_model_data(model_name)
         if df.empty:
             continue
 
-        metrics, well_depths = _aggregate_model_metrics(df)
+        metrics, well_depths = aggregate_model_metrics(df)
         if not metrics:
             continue
 
         row = {"Model": model_name} | metrics
         rows.append(row)
 
-        _write_curve_data(model_name, df)
-        _write_periodic_table_figures(model_name, well_depths)
+        write_curve_data(model_name, df)
+        write_periodic_table_figures(model_name, well_depths)
         model_well_depths[model_name] = well_depths
 
     if not rows:
         return pd.DataFrame(), model_well_depths
 
     metrics_df = pd.DataFrame(rows)
-    metrics_df = _score_diatomics(metrics_df, normalise_to_model)
+    metrics_df = score_diatomics(metrics_df, normalise_to_model)
     metrics_df = metrics_df.reindex(
         columns=["Model"] + list(DIATOMICS_THRESHOLDS.keys()) + ["Score", "Rank"]
     )
     return metrics_df, model_well_depths
+
+
+@pytest.fixture
+def diatomics_collection(
+    request: pytest.FixtureRequest,
+) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+    """
+    Collect diatomics metrics and well depths across all models.
+
+    Parameters
+    ----------
+    request
+        Pytest fixture request used to access optional parametrisation, namely
+        the ``normalise_to_model`` override.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, dict[str, dict[str, float]]]
+        Aggregated metrics dataframe and mapping of homonuclear well depths.
+    """
+    normalise_to_model: str | None = None
+    if hasattr(request, "param"):
+        param = request.param
+        if isinstance(param, dict):
+            normalise_to_model = param.get("normalise_to_model")
+        else:
+            normalise_to_model = param
+    return collect_metrics(normalise_to_model)
+
+
+@pytest.fixture
+def diatomics_metrics_dataframe(
+    diatomics_collection: tuple[pd.DataFrame, dict[str, dict[str, float]]],
+) -> pd.DataFrame:
+    """
+    Provide the aggregated diatomics metrics dataframe.
+
+    Parameters
+    ----------
+    diatomics_collection
+        Tuple of metrics dataframe and well depths produced by ``collect_metrics``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated diatomics metrics indexed by model.
+    """
+    metrics_df, _ = diatomics_collection
+    return metrics_df
+
+
+@pytest.fixture
+def diatomics_well_depths(
+    diatomics_collection: tuple[pd.DataFrame, dict[str, dict[str, float]]],
+) -> dict[str, dict[str, float]]:
+    """
+    Provide homonuclear well-depth metadata and persist it for downstream use.
+
+    Parameters
+    ----------
+    diatomics_collection
+        Tuple produced by ``collect_metrics`` containing metrics and well depths.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Mapping of model name to per-element well depths.
+    """
+    _, well_depths = diatomics_collection
+    if well_depths:
+        with (OUT_PATH / "well_depths.json").open("w", encoding="utf8") as fh:
+            json.dump(well_depths, fh, indent=2)
+    return well_depths
 
 
 @pytest.fixture
@@ -451,16 +524,16 @@ def _collect_metrics(
         "Tortuosity": "Energy curve tortuosity (lower is smoother)",
         "Energy minima": "Average number of energy minima per pair",
         "Energy inflections": "Average number of energy inflection points per pair",
-        "Spearman's coeff. (E: repulsion)": (
+        "Spearman's coefficient (E: repulsion)": (
             "Spearman correlation for energy in repulsive regime (ideal -1)"
         ),
-        "Spearman's coeff. (F: descending)": (
+        "Spearman's coefficient (F: descending)": (
             "Spearman correlation for force in descending regime (ideal -1)"
         ),
-        "Spearman's coeff. (E: attraction)": (
+        "Spearman's coefficient (E: attraction)": (
             "Spearman correlation for energy in attractive regime (ideal +1)"
         ),
-        "Spearman's coeff. (F: ascending)": (
+        "Spearman's coefficient (F: ascending)": (
             "Spearman correlation for force in ascending regime (ideal +1)"
         ),
         "Score": "Aggregate deviation from physical targets (lower is better)",
@@ -468,27 +541,28 @@ def _collect_metrics(
     },
     thresholds=DIATOMICS_THRESHOLDS,
 )
-def metrics(normalise_to_model: str | None = None) -> dict[str, dict]:
+def metrics(
+    diatomics_metrics_dataframe: pd.DataFrame,
+    diatomics_well_depths: dict[str, dict[str, float]],
+) -> dict[str, dict]:
     """
     Compute diatomics metrics for all models.
 
     Parameters
     ----------
-    normalise_to_model
-        Optional reference model for score normalisation.
+    diatomics_metrics_dataframe
+        Aggregated per-model metrics produced by ``collect_metrics``.
+    diatomics_well_depths
+        Mapping of homonuclear well depths persisted for cross-analysis usage.
 
     Returns
     -------
     dict[str, dict]
         Mapping of metric names to per-model results.
     """
-    metrics_df, model_well_depths = _collect_metrics(normalise_to_model)
-    if metrics_df.empty:
-        return {}
+    metrics_df = diatomics_metrics_dataframe
 
-    # Persist well depths for cross-analysis use.
-    with (OUT_PATH / "well_depths.json").open("w", encoding="utf8") as fh:
-        json.dump(model_well_depths, fh, indent=2)
+    # _ = diatomics_well_depths
 
     metrics_dict: dict[str, dict[str, float]] = {}
     for column in metrics_df.columns:
