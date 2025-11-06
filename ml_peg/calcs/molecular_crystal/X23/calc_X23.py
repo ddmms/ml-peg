@@ -11,7 +11,7 @@ from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import get_benchmark_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -41,7 +41,13 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     # download X23 dataset
-    lattice_energy_dir = get_benchmark_data("lattice_energy.zip") / "lattice_energy"
+    lattice_energy_dir = (
+        download_s3_data(
+            key="inputs/molecular_crystal/X23/X23.zip",
+            filename="lattice_energy.zip",
+        )
+        / "lattice_energy"
+    )
 
     with open(lattice_energy_dir / "list") as f:
         systems = f.read().splitlines()
