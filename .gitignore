@@ -24,6 +24,7 @@
 *.svg
 *.xz
 *.txt
+*.csv
 ~*
 *~
 .project
