@@ -1,8 +1,11 @@
 Welcome to ML-PEG's documentation!
 ========================================
 
-ML-PEG provides tools to perform and analyse calculations using machine learnt interatomic potentials (MLIPs),
-as well as facilitating training and fine-tuning of MLIPs.
+ML-PEG is an ML potential usability and performance guide.
+
+We host a `live instance <https://ml-peg.stfc.ac.uk>`_ of ML-PEG, with the latest
+models and benchmarks, as well as providing tools to develop your own benchmarks. These
+may be contributed back to ML-PEG, or you can host your own version of the application.
 
 .. toctree::
    :maxdepth: 2
