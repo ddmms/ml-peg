@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 import itertools
+import json
 from pathlib import Path
 
 from ase import Atoms
-from ase.data import atomic_numbers, chemical_symbols, covalent_radii, vdw_alvarez
+from ase.data import chemical_symbols
 from ase.io import write
 from mlipx.utils import freeze_copy_atoms
 import numpy as np
 import pandas as pd
 import pytest
+from tqdm import tqdm
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -22,107 +24,34 @@ MODELS = load_models(current_models)
 # Local directory for calculator outputs
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# Benchmark configuration
+# Benchmark configuration (matches historical benchmark settings)
 ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-INCLUDE_HETERONUCLEAR = True
-DISTANCE_MODE = "covalent-radius"
-MIN_DISTANCE = 0.8
+INCLUDE_HETERONUCLEAR = False
+MIN_DISTANCE = 0.18
 MAX_DISTANCE = 6.0
-N_POINTS = 200
-
-# Distance fallbacks (Å)
-DISTANCE_MIN_FALLBACK = 0.5
-
-
-def _is_uma_omol_calc(calc_obj) -> bool:
-    """
-    Return whether the calculator corresponds to the UMA oMOL task.
-
-    Parameters
-    ----------
-    calc_obj
-        Calculator instance obtained from the model.
-
-    Returns
-    -------
-    bool
-        ``True`` when the calculator is the UMA oMOL predictor, else ``False``.
-    """
-    try:
-        module_name = getattr(calc_obj.__class__, "__module__", "").lower()
-        if "fairchem" not in module_name:
-            return False
-        task = getattr(calc_obj, "task_name", None)
-        if task is None and hasattr(calc_obj, "predictor"):
-            task = getattr(calc_obj.predictor, "task_name", None)
-        return task == "omol"
-    except Exception:
-        return False
-
-
-def _vdw_radius(element: str) -> float:
-    """
-    Return the van der Waals radius (Å) for an element.
-
-    Parameters
-    ----------
-    element
-        Chemical symbol.
-
-    Returns
-    -------
-    float
-        Van der Waals radius in Ångström, with a conservative fallback.
-    """
-    z = atomic_numbers[element]
-    if z < len(vdw_alvarez.vdw_radii):
-        value = vdw_alvarez.vdw_radii[z]
-        if not np.isnan(value):
-            return float(value)
-    return 2.0  # conservative fallback
+N_POINTS = 100
 
 
 def _distance_grid(
-    element1: str,
-    element2: str,
-    mode: str,
     min_distance: float,
     max_distance: float,
     n_points: int,
 ) -> np.ndarray:
     """
-    Return distance grid for a diatomic pair.
+    Return a uniformly spaced distance grid for a diatomic pair.
 
     Parameters
     ----------
-    element1, element2
-        Chemical symbols of the atoms forming the diatomic.
-    mode
-        Distance sampling mode. ``"covalent-radius"`` uses element radii, any
-        other value falls back to an evenly spaced grid between ``min_distance``
-        and ``max_distance``.
     min_distance, max_distance
-        Bounds of the distance grid when ``mode`` is not ``"covalent-radius"``.
+        Bounds of the distance grid.
     n_points
-        Number of points for the uniform grid fallback.
+        Number of points in the grid.
 
     Returns
     -------
     np.ndarray
         Monotonic array of bond lengths in Ångström.
     """
-    if mode == "covalent-radius":
-        cov1 = covalent_radii[atomic_numbers[element1]]
-        cov2 = covalent_radii[atomic_numbers[element2]]
-        rmin = 0.9 * float(cov1 + cov2) / 2.0
-
-        rvdw = 0.5 * (_vdw_radius(element1) + _vdw_radius(element2))
-        rmax = max(rmin + 0.5, 3.1 * rvdw)
-        rmin = max(DISTANCE_MIN_FALLBACK, rmin)
-        step = 0.01
-        n_samples = max(int(np.ceil((rmax - rmin) / step)), 2)
-        return np.linspace(rmin, rmax, n_samples, dtype=float)
-
     return np.linspace(min_distance, max_distance, n_points, dtype=float)
 
 
@@ -131,6 +60,9 @@ def _generate_pairs(
 ) -> Iterable[tuple[str, str]]:
     """
     Yield element pairs for the benchmark.
+
+    Homonuclear combinations are yielded first to mirror the historical
+    calculation order before any heteronuclear pairs.
 
     Parameters
     ----------
@@ -145,8 +77,8 @@ def _generate_pairs(
         Element pairs.
     """
     sorted_elements = sorted(set(elements))
-    for element in sorted_elements:
-        yield element, element
+    homonuclear = [(element, element) for element in sorted_elements]
+    yield from homonuclear
     if include_hetero:
         yield from itertools.combinations(sorted_elements, 2)
 
@@ -205,66 +137,94 @@ def run_diatomics(model_name: str, model) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
 
     records: list[dict[str, float]] = []
+    supported_pairs: set[str] = set()
+    supported_elements: set[str] = set()
+    failed_pairs: dict[str, str] = {}
 
-    for element1, element2 in _generate_pairs(ELEMENTS, INCLUDE_HETERONUCLEAR):
-        distances = _distance_grid(
-            element1,
-            element2,
-            DISTANCE_MODE,
-            MIN_DISTANCE,
-            MAX_DISTANCE,
-            N_POINTS,
-        )
+    pairs = list(_generate_pairs(ELEMENTS, INCLUDE_HETERONUCLEAR))
 
+    for element1, element2 in tqdm(pairs, desc=f"{model_name} diatomics", unit="pair"):
         pair_label = f"{element1}-{element2}"
+        try:
+            distances = _distance_grid(
+                MIN_DISTANCE,
+                MAX_DISTANCE,
+                N_POINTS,
+            )
+        except Exception as exc:
+            failed_pairs[pair_label] = f"distance grid failed: {exc}"
+            print(f"[{model_name}] Skipping {pair_label}: {exc}")
+            continue
+
         structures: list[Atoms] = []
 
-        for distance in distances:
-            atoms = Atoms(
-                [element1, element2],
-                positions=[(0.0, 0.0, 0.0), (0.0, 0.0, float(distance))],
-            )
-            if _is_uma_omol_calc(calc):
-                atoms.info.setdefault("spin", 1)
+        try:
+            for distance in distances:
+                atoms = Atoms(
+                    [element1, element2],
+                    positions=[(0.0, 0.0, 0.0), (0.0, 0.0, float(distance))],
+                )
 
-            atoms.calc = calc
-            energy = float(atoms.get_potential_energy())
-            forces = atoms.get_forces()
+                atoms.calc = calc
+                energy = float(atoms.get_potential_energy())
+                forces = atoms.get_forces()
 
-            bond_vector = atoms.positions[1] - atoms.positions[0]
-            force_parallel = _project_force(forces, bond_vector)
+                bond_vector = atoms.positions[1] - atoms.positions[0]
+                force_parallel = _project_force(forces, bond_vector)
 
-            atoms_copy = freeze_copy_atoms(atoms)
-            atoms_copy.calc = None
-            atoms_copy.info.update(
-                {
-                    "pair": pair_label,
-                    "distance": float(distance),
-                    "energy": energy,
-                    "force_parallel": force_parallel,
-                    "model": model_name,
-                }
-            )
-            atoms_copy.arrays["forces"] = forces
-            structures.append(atoms_copy)
+                atoms_copy = freeze_copy_atoms(atoms)
+                atoms_copy.calc = None
+                atoms_copy.info.update(
+                    {
+                        "pair": pair_label,
+                        "distance": float(distance),
+                        "energy": energy,
+                        "force_parallel": force_parallel,
+                        "model": model_name,
+                    }
+                )
+                atoms_copy.arrays["forces"] = forces
+                structures.append(atoms_copy)
 
-            records.append(
-                {
-                    "pair": pair_label,
-                    "element_1": element1,
-                    "element_2": element2,
-                    "distance": float(distance),
-                    "energy": energy,
-                    "force_parallel": force_parallel,
-                }
-            )
+                records.append(
+                    {
+                        "pair": pair_label,
+                        "element_1": element1,
+                        "element_2": element2,
+                        "distance": float(distance),
+                        "energy": energy,
+                        "force_parallel": force_parallel,
+                    }
+                )
+        except Exception as exc:
+            failed_pairs[pair_label] = str(exc)
+            print(f"[{model_name}] Skipping {pair_label}: {exc}")
+            continue
 
-        if structures:
-            write(write_dir / f"{pair_label}.xyz", structures, format="extxyz")
+        if not structures:
+            failed_pairs.setdefault(pair_label, "no trajectory generated")
+            continue
+
+        write(write_dir / f"{pair_label}.xyz", structures, format="extxyz")
+        supported_pairs.add(pair_label)
+        supported_elements.update({element1, element2})
 
     if records:
         df = pd.DataFrame.from_records(records)
         df.to_csv(write_dir / "diatomics.csv", index=False)
+
+    metadata = {
+        "supported_pairs": sorted(supported_pairs),
+        "supported_elements": sorted(supported_elements),
+        "failed_pairs": failed_pairs,
+        "config": {
+            "include_heteronuclear": INCLUDE_HETERONUCLEAR,
+            "min_distance": MIN_DISTANCE,
+            "max_distance": MAX_DISTANCE,
+            "n_points": N_POINTS,
+        },
+    }
+    (write_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
 
 @pytest.mark.slow
