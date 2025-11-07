@@ -44,7 +44,7 @@ ALLOWED_CHARGES = (0,)
 ALLOWED_MULTIPLICITY = (1,)
 
 
-def strucutre_info() -> dict[str, list | NDArray]:
+def structure_info() -> dict[str, dict[str, float] | list | NDArray]:
     """
     Get info from all stored structures.
 
@@ -57,35 +57,41 @@ def strucutre_info() -> dict[str, list | NDArray]:
         "categories": [],
         "subsets": [],
         "systems": [],
-        "weights": [],
         "excluded": [],
+        "weights": {},
+        "counts": {},
     }
     for model_name in MODELS:
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
+            count = 0
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
+                count += 1
                 structs = read(system_path, index=":")
+                info["subsets"].append(subset)
+
                 info["categories"].append(structs[0].info["category"])
-                info["subsets"].append(structs[0].info["subset_name"])
                 info["systems"].append(structs[0].info["system_name"])
-                info["weights"].append(structs[0].info["weight"])
                 info["excluded"].append(
                     any(
-                        struct.info["charge"] not in ALLOWED_CHARGES
+                        struct.info["excluded"]
+                        or struct.info["charge"] not in ALLOWED_CHARGES
                         or struct.info["spin"] not in ALLOWED_MULTIPLICITY
                         for struct in structs
                     )
                 )
+            info["weights"][subset] = structs[0].info["weight"]
+            info["counts"][subset] = count
+
         # Convert to numpy arrays for filtering
         info["categories"] = np.array(info["categories"])
         info["subsets"] = np.array(info["subsets"])
-        info["weights"] = np.array(info["weights"])
         info["excluded"] = np.array(info["excluded"])
         # Only need to access info from one model
         return info
     return info
 
 
-INFO = strucutre_info()
+INFO = structure_info()
 
 
 @pytest.fixture
@@ -171,7 +177,7 @@ def subset_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, flo
     Returns
     -------
     dict[str, dict[str, float]]
-        Mean error for all models, grouped by category.
+        Mean error for all models, grouped by subset.
     """
     results = {}
 
@@ -189,14 +195,16 @@ def subset_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, flo
 
 
 @pytest.fixture
-def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, float]]:
+def category_errors(
+    subset_errors: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
     """
     Calculate MAD for all models, grouped by category.
 
     Parameters
     ----------
-    all_errors
-        Dictionary of relative MADs, grouped by model.
+    subset_errors
+        Nested dictionary of mean errors, grouped by model and subset.
 
     Returns
     -------
@@ -209,30 +217,43 @@ def category_errors(all_errors: dict[str, list[float]]) -> dict[str, dict[str, f
         results[model_name] = {}
 
         all_categories = INFO["categories"]
+        all_subsets = INFO["subsets"]
         all_weights = INFO["weights"]
+        all_counts = INFO["counts"]
         excluded = INFO["excluded"]
 
-        errors = all_errors[model_name][np.logical_not(excluded)]
-        weights = all_weights[np.logical_not(excluded)]
+        # Filter excluded systems
         categories = all_categories[np.logical_not(excluded)]
 
         for category in set(categories):
-            results[model_name][category] = np.average(
-                errors[categories == category], weights=weights[categories == category]
+            # Filter non-excluded subsets in current category
+            subsets = all_subsets[np.logical_not(excluded)][categories == category]
+
+            # Get error for each subset
+            errors = [
+                subset_errors[model_name][subset] for subset in np.unique(subsets)
+            ]
+
+            # Get weight and count for each subset
+            weights = np.array([all_weights[subset] for subset in np.unique(subsets)])
+            counts = np.array([all_counts[subset] for subset in np.unique(subsets)])
+
+            results[model_name][category] = np.sum(errors * weights * counts) / np.sum(
+                counts
             )
 
     return results
 
 
 @pytest.fixture
-def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
+def weighted_error(subset_errors: dict[str, dict[str, float]]) -> dict[str, float]:
     """
     Calculate weighted mean absolute deviation for all models.
 
     Parameters
     ----------
-    all_errors
-        Dictionary of relative MADs, grouped by model.
+    subset_errors
+        Nested dictionary of mean errors, grouped by model and subset.
 
     Returns
     -------
@@ -244,12 +265,22 @@ def weighted_error(all_errors: dict[str, list[float]]) -> dict[str, float]:
     for model_name in MODELS:
         results[model_name] = {}
 
+        all_subsets = INFO["subsets"]
         all_weights = INFO["weights"]
+        all_counts = INFO["counts"]
         excluded = INFO["excluded"]
 
-        errors = all_errors[model_name][np.logical_not(excluded)]
-        weights = all_weights[np.logical_not(excluded)]
-        results[model_name] = np.average(errors, weights=weights)
+        # Filter all non-excluded subsets
+        subsets = all_subsets[np.logical_not(excluded)]
+
+        # Get error for each subset
+        errors = [subset_errors[model_name][subset] for subset in np.unique(subsets)]
+
+        # Get weight and count for each subset
+        weights = np.array([all_weights[subset] for subset in np.unique(subsets)])
+        counts = np.array([all_counts[subset] for subset in np.unique(subsets)])
+
+        results[model_name] = np.sum(errors * weights * counts) / np.sum(counts)
 
     return results
 
