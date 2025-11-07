@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -53,8 +54,6 @@ def get_atom_counts() -> list[int]:
     list[int]
         List of complex atom counts from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -77,8 +76,6 @@ def get_charges() -> list[int]:
     list[int]
         List of complex charges from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -113,8 +110,6 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted interaction energies.
     """
-    from ase.io import read
-
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
@@ -181,7 +176,7 @@ def s30l_mae(interaction_energies) -> dict[str, float]:
                 interaction_energies["ref"], interaction_energies[model_name]
             )
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
@@ -213,7 +208,7 @@ def s30l_charged_mae(interaction_energies) -> dict[str, float]:
             ]
             results[model_name] = mae(ref_charged, pred_charged)
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
@@ -245,7 +240,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
             ]
             results[model_name] = mae(ref_neutral, pred_neutral)
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
