@@ -227,16 +227,18 @@ def category_errors(
 
         for category in set(categories):
             # Filter non-excluded subsets in current category
-            subsets = all_subsets[np.logical_not(excluded)][categories == category]
+            filtered_subsets = np.unique(
+                all_subsets[np.logical_not(excluded)][categories == category]
+            )
+
+            # Get number of systems in each subset
+            counts = np.array([all_counts[subset] for subset in filtered_subsets])
 
             # Get error for each subset
-            errors = [
-                subset_errors[model_name][subset] for subset in np.unique(subsets)
-            ]
+            errors = [subset_errors[model_name][subset] for subset in filtered_subsets]
 
             # Get weight and count for each subset
-            weights = np.array([all_weights[subset] for subset in np.unique(subsets)])
-            counts = np.array([all_counts[subset] for subset in np.unique(subsets)])
+            weights = np.array([all_weights[subset] for subset in filtered_subsets])
 
             results[model_name][category] = np.sum(errors * weights * counts) / np.sum(
                 counts
@@ -271,14 +273,14 @@ def weighted_error(subset_errors: dict[str, dict[str, float]]) -> dict[str, floa
         excluded = INFO["excluded"]
 
         # Filter all non-excluded subsets
-        subsets = all_subsets[np.logical_not(excluded)]
+        filtered_subsets = np.unique(all_subsets[np.logical_not(excluded)])
 
         # Get error for each subset
-        errors = [subset_errors[model_name][subset] for subset in np.unique(subsets)]
+        errors = [subset_errors[model_name][subset] for subset in filtered_subsets]
 
         # Get weight and count for each subset
-        weights = np.array([all_weights[subset] for subset in np.unique(subsets)])
-        counts = np.array([all_counts[subset] for subset in np.unique(subsets)])
+        weights = np.array([all_weights[subset] for subset in filtered_subsets])
+        counts = np.array([all_counts[subset] for subset in filtered_subsets])
 
         results[model_name] = np.sum(errors * weights * counts) / np.sum(counts)
 
