@@ -17,9 +17,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "DMC-ICE13 Lattice Energies"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#dmc-ice13"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#dmc-ice13"
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "DMC_ICE13"
 
 
