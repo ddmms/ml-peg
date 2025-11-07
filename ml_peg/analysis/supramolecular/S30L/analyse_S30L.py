@@ -4,14 +4,23 @@ from __future__ import annotations
 
 import pytest
 
-from mlip_testing.analysis.utils.decorators import build_table, plot_parity
-from mlip_testing.analysis.utils.utils import mae
-from mlip_testing.app import APP_ROOT
-from mlip_testing.calcs import CALCS_ROOT
-from mlip_testing.calcs.models.models import MODELS
+from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.utils import mae
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
+
+MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "supramolecular" / "S30L" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
+
+DEFAULT_THRESHOLDS = {
+    "MAE": (0.0, 100.0),
+    "Charged MAE": (0.0, 100.0),
+    "Neutral MAE": (0.0, 100.0),
+}
 
 
 def get_system_indices() -> list[int]:
@@ -249,6 +258,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
         "Charged MAE": "Mean Absolute Error for charged systems (kcal/mol)",
         "Neutral MAE": "Mean Absolute Error for neutral systems (kcal/mol)",
     },
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
     s30l_mae: dict[str, float],
