@@ -2,21 +2,25 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash
 from dash.html import Div
 
-from mlip_testing.app import APP_ROOT
-from mlip_testing.app.base_app import BaseApp
-from mlip_testing.app.utils.build_callbacks import (
+from ml_peg.app import APP_ROOT
+from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
 )
-from mlip_testing.app.utils.load import read_plot
-from mlip_testing.calcs.models.models import MODELS
+from ml_peg.app.utils.load import read_plot
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
-BENCHMARK_NAME = Path(__file__).name.removeprefix("app_").removesuffix(".py")
+MODELS = get_model_names(current_models)
+
+BENCHMARK_NAME = "S30L"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#s30l"
+)
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
 
 
@@ -32,7 +36,7 @@ class S30LApp(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/S30L/{list(MODELS.keys())[0]}/{i}.xyz"
+            f"assets/supramolecular/S30L/{MODELS[0]}/{i}.xyz"
             for i in range(30)  # S30L has 30 systems
         ]
 
@@ -61,11 +65,11 @@ def get_app() -> S30LApp:
     """
     return S30LApp(
         name=BENCHMARK_NAME,
-        title="S30L",
         description=(
             "Performance in predicting interaction energies for 30 "
             "host-guest supramolecular complexes."
         ),
+        docs_url=DOCS_URL,
         table_path=DATA_PATH / "s30l_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
