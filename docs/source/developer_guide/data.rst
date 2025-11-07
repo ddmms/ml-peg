@@ -66,7 +66,7 @@ this data:
 
 .. code-block:: python
 
-    from ml_peg.calcs.utils.utils import download_github_data
+    from ml_peg.calcs.utils.utils import download_s3_data
 
     data_dir = download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
 
