@@ -10,7 +10,7 @@ from typing import Any
 from ase.io import read, write
 import pytest
 
-from ml_peg.calcs.utils.utils import get_benchmark_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -37,7 +37,13 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     # Download data
-    data_dir = get_benchmark_data("dmc-ice13-main.zip") / "dmc-ice13-main/INPUT/VASP"
+    data_dir = (
+        download_s3_data(
+            key="inputs/molecular_crystal/DMC_ICE13/DMC_ICE13.zip",
+            filename="DMC_ICE13.zip",
+        )
+        / "dmc-ice13-main/INPUT/VASP"
+    )
 
     with open(data_dir / "../../ice_polymorph_ref_PBE_D3.json", encoding="utf8") as f:
         ice_ref = json.load(f)
