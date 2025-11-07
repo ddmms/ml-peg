@@ -1,8 +1,0 @@
-stages:
-  mace_mp_0b3_S30LBenchmark:
-    cmd: zntrack run calc_S30L.S30LBenchmark --name mace_mp_0b3_S30LBenchmark
-    metrics:
-    - nodes/mace_mp_0b3/S30LBenchmark/node-meta.json:
-        cache: true
-    params:
-    - mace_mp_0b3_S30LBenchmark
