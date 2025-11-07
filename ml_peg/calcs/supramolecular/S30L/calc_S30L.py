@@ -13,8 +13,11 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from mlip_testing.calcs.models.models import MODELS
-from mlip_testing.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models.get_models import load_models
+from ml_peg.models.models import current_models
+
+MODELS = load_models(current_models)
 
 # Local directory to store output data
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -61,8 +64,7 @@ class S30LBenchmark(zntrack.Node):
                     )
         return 0.0
 
-    @staticmethod
-    def read_atoms(folder: Path, ident: str) -> Atoms:
+    def read_atoms(self, folder: Path, ident: str) -> Atoms:
         """
         Read Turbomole format structure from folder.
 
@@ -85,12 +87,11 @@ class S30LBenchmark(zntrack.Node):
             raise FileNotFoundError(f"No coord file in {folder}")
         atoms = read(coord, format="turbomole")
         atoms.info.update(
-            {"identifier": ident, "charge": int(S30LBenchmark.read_charge(folder))}
+            {"identifier": ident, "charge": int(self.read_charge(folder))}
         )
         return atoms
 
-    @staticmethod
-    def load_complex(index: int, root: Path) -> dict[str, Atoms]:
+    def load_complex(self, index: int, root: Path) -> dict[str, Atoms]:
         """
         Load host, guest, and complex structures for a S30L system.
 
@@ -110,9 +111,9 @@ class S30LBenchmark(zntrack.Node):
         if not base.exists():
             raise FileNotFoundError(base)
         return {
-            "host": S30LBenchmark.read_atoms(base / "A", f"{index}_host"),
-            "guest": S30LBenchmark.read_atoms(base / "B", f"{index}_guest"),
-            "complex": S30LBenchmark.read_atoms(base / "AB", f"{index}_complex"),
+            "host": self.read_atoms(base / "A", f"{index}_host"),
+            "guest": self.read_atoms(base / "B", f"{index}_guest"),
+            "complex": self.read_atoms(base / "AB", f"{index}_complex"),
         }
 
     @staticmethod
@@ -164,9 +165,8 @@ class S30LBenchmark(zntrack.Node):
             refs[idx + 1] = kcal * KCAL_PER_MOL_TO_EV
         return refs
 
-    @staticmethod
     def benchmark_s30l(
-        calc: Calculator, model_name: str, base_dir: Path
+        self, calc: Calculator, model_name: str, base_dir: Path
     ) -> list[Atoms]:
         """
         Benchmark S30L dataset.
@@ -188,20 +188,20 @@ class S30LBenchmark(zntrack.Node):
         print(f"Benchmarking S30L with {model_name}...")
 
         ref_file = base_dir / "references_s30.txt"
-        refs = S30LBenchmark.parse_references(ref_file)
+        refs = self.parse_references(ref_file)
 
         complex_atoms_list = []
 
         for idx in tqdm(range(1, 31), desc="S30L"):
             try:
                 # Load system structures
-                fragments = S30LBenchmark.load_complex(idx, base_dir)
+                fragments = self.load_complex(idx, base_dir)
                 complex_atoms = fragments["complex"]
                 host_atoms = fragments["host"]
                 guest_atoms = fragments["guest"]
 
                 # Compute interaction energy
-                e_int_model = S30LBenchmark.interaction_energy(fragments, calc)
+                e_int_model = self.interaction_energy(fragments, calc)
 
                 # Reference energy in eV
                 e_int_ref = refs[idx]
@@ -238,8 +238,16 @@ class S30LBenchmark(zntrack.Node):
         """Run S30L benchmark calculations."""
         calc = self.model.get_calculator()
 
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
+
         # Get benchmark data
-        base_dir = get_benchmark_data("S30L.zip") / "S30L/s30l_test_set"
+        base_dir = (
+            download_s3_data(
+                filename="S30L.zip", key="inputs/supramolecular/S30L/S30L.zip"
+            )
+            / "S30L/s30l_test_set"
+        )
 
         # Run benchmark
         complex_atoms = self.benchmark_s30l(calc, self.model_name, base_dir)
