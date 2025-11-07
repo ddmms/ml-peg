@@ -14,7 +14,7 @@ import pytest
 from tqdm import tqdm
 import yaml
 
-from ml_peg.calcs.utils.utils import get_benchmark_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -47,7 +47,12 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     # Download GMTKN55.yaml and subsets.csv
-    data_dir = get_benchmark_data("GMTKN55.zip") / "GMTKN55"
+    data_dir = (
+        download_s3_data(
+            key="inputs/molecular/GMTKN55/GMTKN55.zip", filename="GMTKN55.zip"
+        )
+        / "GMTKN55"
+    )
 
     with open(data_dir / "GMTKN55.yaml") as file:
         structure_dict = yaml.safe_load(file)
