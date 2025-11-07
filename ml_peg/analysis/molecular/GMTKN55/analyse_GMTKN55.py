@@ -28,12 +28,12 @@ DEFAULT_WEIGHTS = {
 }
 
 DEFAULT_THRESHOLDS = {
-    "Small systems": (0.0, 100.0),
-    "Large systems": (0.0, 100.0),
-    "Barrier heights": (0.0, 100.0),
-    "Intramolecular NCIs": (0.0, 100.0),
-    "Intermolecular NCIs": (0.0, 100.0),
-    "WTMAD": (0.0, 100.0),
+    "Small systems": (0.5, 50.0),
+    "Large systems": (0.5, 50.0),
+    "Barrier heights": (0.5, 50.0),
+    "Intramolecular NCIs": (0.5, 50.0),
+    "Intermolecular NCIs": (0.5, 50.0),
+    "WTMAD": (0.5, 50.0),
 }
 
 # Unit conversion
