@@ -9,7 +9,7 @@ from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
-from ml_peg.analysis.utils.utils import ThresholdEntry, Thresholds
+from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_normalization_callbacks,
@@ -17,27 +17,6 @@ from ml_peg.app.utils.register_callbacks import (
     register_weight_callbacks,
 )
 from ml_peg.app.utils.utils import calculate_column_widths
-
-
-def _split_threshold_entry(
-    bounds: ThresholdEntry | None,
-) -> tuple[float, float, str | None]:
-    """
-    Return numeric ``good``/``bad`` limits plus an optional unit string.
-
-    Parameters
-    ----------
-    bounds
-        Raw threshold data which may be a tuple, list, or dictionary.
-
-    Returns
-    -------
-    tuple[float | None, float | None, str | None]
-        ``(good, bad, unit)`` values where unit may be ``None``.
-    """
-    if not bounds:
-        raise KeyError("Threshold definition is required for each metric.")
-    return bounds["good"], bounds["bad"], bounds["unit"]
 
 
 def grid_template_from_widths(
@@ -405,7 +384,7 @@ def build_test_layout(
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
-        use_thresholds=thresholds is not None,
+        use_thresholds=True,
         column_widths=column_widths,
         thresholds=thresholds,
     )
@@ -528,7 +507,8 @@ def build_threshold_inputs(
     )
 
     for metric in table_columns:
-        good_val, bad_val, unit_label = _split_threshold_entry(thresholds.get(metric))
+        bounds = thresholds.get(metric)
+        good_val, bad_val, unit_label = bounds["good"], bounds["bad"], bounds["unit"]
         default_thresholds[metric] = {
             "good": good_val,
             "bad": bad_val,

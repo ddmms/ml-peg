@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
-import re
-from typing import Any
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import TypedDict
 
 import dash.dash_table.Format as TableFormat
+
+
+class ThresholdEntry(TypedDict):
+    """Structure describing the normalization thresholds for a metric."""
+
+    good: float
+    bad: float
+    unit: str
+
+
+Thresholds = dict[str, ThresholdEntry]
 
 
 def calculate_column_widths(
@@ -111,8 +122,8 @@ def rank_format() -> TableFormat.Format:
 
 
 def clean_thresholds(
-    raw_thresholds: dict[str, Any] | None,
-) -> dict[str, dict[str, float | str | None]] | None:
+    raw_thresholds: Mapping[str, Mapping[str, object]] | None,
+) -> Thresholds:
     """
     Convert raw normalization mappings into ``good``/``bad`` bounds with units.
 
@@ -123,36 +134,29 @@ def clean_thresholds(
 
     Returns
     -------
-    dict[str, dict[str, float | str | None]] | None
-        Mapping containing float thresholds and optional unit strings, or ``None`` when
-        conversion fails.
+    Thresholds
+        Mapping containing float thresholds and unit strings.
     """
-    if not isinstance(raw_thresholds, dict):
-        return None
+    if raw_thresholds is None:
+        raise TypeError("Threshold metadata must be provided as a dictionary.")
 
-    thresholds = {}
+    thresholds: Thresholds = {}
 
     for metric, bounds in raw_thresholds.items():
-        good_val: float | None
-        bad_val: float | None
-        unit_val: str | None = None
         try:
-            if isinstance(bounds, dict):
-                good_val = float(bounds["good"])
-                bad_val = float(bounds["bad"])
-                raw_unit = bounds.get("unit")
-                unit_val = str(raw_unit) if raw_unit not in (None, "") else None
-            elif isinstance(bounds, list | tuple) and len(bounds) == 2:
-                good_val = float(bounds[0])
-                bad_val = float(bounds[1])
-            elif bounds is None:
-                continue
-            else:
-                continue
-        except (KeyError, TypeError, ValueError):
-            continue
+            good_val = float(bounds["good"])
+            bad_val = float(bounds["bad"])
+            unit_val = str(bounds["unit"]).strip()
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Threshold entries must include 'good', 'bad', and 'unit': {bounds}"
+            ) from exc
+        if not unit_val:
+            raise ValueError(f"Unit must be a non-empty string for metric '{metric}'.")
 
         thresholds[metric] = {"good": good_val, "bad": bad_val, "unit": unit_val}
+    if not thresholds:
+        raise ValueError("No valid thresholds were defined.")
     return thresholds
 
 
@@ -185,7 +189,7 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
 def get_scores(
     raw_rows: list[dict],
     scored_rows: list[dict],
-    threshold_pairs: dict[str, dict[str, float | str | None]] | None,
+    threshold_pairs: Thresholds | None,
     toggle_value: list[str] | None,
 ) -> list[dict]:
     """
@@ -214,7 +218,7 @@ def get_scores(
     return scored_rows
 
 
-def _base_column_label(column: dict[str, Any]) -> str:
+def base_column_label(column: Mapping[str, object]) -> str:
     """
     Extract the base metric label from a column definition.
 
@@ -237,18 +241,14 @@ def _base_column_label(column: dict[str, Any]) -> str:
     if isinstance(column_id, str):
         return column_id
 
-    if name is not None:
-        return str(name)
-    if column_id is not None:
-        return str(column_id)
-    return ""
+    raise TypeError("Column definitions must include a string 'name' or 'id' value.")
 
 
 def format_metric_columns(
-    columns: list[dict[str, Any]] | None,
-    thresholds: dict[str, dict[str, float | str | None]] | None,
+    columns: Sequence[Mapping[str, object]] | None,
+    thresholds: Thresholds | None,
     show_normalized: bool,
-) -> list[dict[str, Any]] | None:
+) -> list[dict[str, object]] | None:
     """
     Generate updated column labels based on unit metadata and toggle state.
 
@@ -263,7 +263,7 @@ def format_metric_columns(
 
     Returns
     -------
-    list[dict[str, Any]] | None
+    list[dict[str, object]] | None
         Updated column definitions with unit-aware labels. Returns `None` when
         `columns` is `None`.
     """
@@ -272,14 +272,10 @@ def format_metric_columns(
 
     thresholds = thresholds or {}
     reserved = {"MLIP", "Score", "Rank", "id"}
-    updated_columns: list[dict[str, Any]] = []
+    updated_columns: list[dict[str, object]] = []
 
     for column in columns:
-        if not isinstance(column, dict):
-            updated_columns.append(column)
-            continue
-
-        column_copy = column.copy()
+        column_copy: MutableMapping[str, object] = dict(column)
         column_id = column_copy.get("id")
 
         if (
@@ -290,7 +286,7 @@ def format_metric_columns(
             updated_columns.append(column_copy)
             continue
 
-        base_label = _base_column_label(column_copy)
+        base_label = base_column_label(column)
         unit = thresholds[column_id].get("unit")
 
         if unit:
@@ -325,17 +321,14 @@ def _swap_tooltip_unit(text: str, unit: str, replacement: str) -> str:
     if not text or not unit:
         return text
 
-    pattern = re.compile(rf"\s*[\(\[]\s*{re.escape(unit)}\s*[\)\]]")
-    if pattern.search(text):
-        return pattern.sub(f" [{replacement}]", text, count=1)
-
-    # Fallback: append replacement in brackets
-    return f"{text} [{replacement}]"
+    # find pattern like " [unit]" at end of string
+    base = text.split(" [", 1)[0]
+    return f"{base} [{replacement}]"
 
 
 def format_tooltip_headers(
     tooltip_header: dict[str, str] | None,
-    thresholds: dict[str, dict[str, float | str | None]] | None,
+    thresholds: Thresholds | None,
     show_normalized: bool,
 ) -> dict[str, str] | None:
     """
