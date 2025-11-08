@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import json
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
+from ml_peg.analysis.utils.decorators import (
+    PERIODIC_TABLE_COLS,
+    PERIODIC_TABLE_POSITIONS,
+    PERIODIC_TABLE_ROWS,
+    build_table,
+    render_periodic_table_grid,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -22,13 +29,10 @@ PERIODIC_TABLE_PATH = OUT_PATH / "periodic_tables"
 
 DIATOMICS_THRESHOLDS = {
     "Force flips": (1.0, 5.0),
-    "Tortuosity": (1.0, 5.0),
     "Energy minima": (1.0, 5.0),
     "Energy inflections": (1.0, 5.0),
-    "Spearman's coefficient (E: repulsion)": (-1.0, 1.0),
-    "Spearman's coefficient (F: descending)": (-1.0, 1.0),
-    "Spearman's coefficient (E: attraction)": (1.0, -1.0),
-    "Spearman's coefficient (F: ascending)": (1.0, -1.0),
+    "ρ(E, repulsion)": (-1.0, 1.0),
+    "ρ(E, attraction)": (1.0, -1.0),
 }
 
 
@@ -146,51 +150,15 @@ def compute_pair_metrics(
     mask = fs_sign != 0
     f_flip = int(np.sum(np.diff(fs_sign[mask]) != 0)) if mask.any() else 0
 
-    fdiff = np.diff(fs)
-    fdiff[np.abs(fdiff) < 1e-3] = 0.0
-    fdiff_sign = np.sign(fdiff)
-    mask = fdiff_sign != 0
-    fjump = 0.0
-    if mask.any():
-        diff = fdiff[mask]
-        diff_sign = fdiff_sign[mask]
-        flips = np.diff(diff_sign) != 0
-        if flips.any():
-            fjump = float(
-                np.abs(diff[:-1][flips]).sum() + np.abs(diff[1:][flips]).sum()
-            )
-
-    ediff = np.diff(es)
-    ediff[np.abs(ediff) < 1e-3] = 0.0
-    ediff_sign = np.sign(ediff)
-    mask = ediff_sign != 0
-    ejump = 0.0
-    ediff_flip_times = 0
-    if mask.any():
-        diff = ediff[mask]
-        diff_sign = ediff_sign[mask]
-        flips = np.diff(diff_sign) != 0
-        ediff_flip_times = int(np.sum(flips))
-        if flips.any():
-            ejump = float(
-                np.abs(diff[:-1][flips]).sum() + np.abs(diff[1:][flips]).sum()
-            )
-
-    conservation_deviation = float(np.mean(np.abs(fs + de_dr)))
-    energy_total_variation = float(np.sum(np.abs(np.diff(es))))
-
     well_depth = float(es.min())
 
     spearman_repulsion = np.nan
     spearman_attraction = np.nan
-    spearman_force_desc = np.nan
-    spearman_force_asc = np.nan
 
     try:
         from scipy import stats
 
         imine = int(np.argmin(es))
-        iminf = int(np.argmin(fs))
         if rs[imine:].size > 1:
             spearman_repulsion = float(
                 stats.spearmanr(rs[imine:], es[imine:]).statistic
@@ -199,36 +167,15 @@ def compute_pair_metrics(
             spearman_attraction = float(
                 stats.spearmanr(rs[:imine], es[:imine]).statistic
             )
-        if rs[iminf:].size > 1:
-            spearman_force_desc = float(
-                stats.spearmanr(rs[iminf:], fs[iminf:]).statistic
-            )
-        if rs[:iminf].size > 1:
-            spearman_force_asc = float(
-                stats.spearmanr(rs[:iminf], fs[:iminf]).statistic
-            )
     except Exception:
         pass
 
-    tortuosity = 0.0
-    denominator = abs(es[0] - es.min()) + (es[-1] - es.min())
-    if denominator > 0:
-        tortuosity = float(energy_total_variation / denominator)
-
     metrics = {
         "Force flips": float(f_flip),
-        "Tortuosity": tortuosity,
         "Energy minima": float(minima),
         "Energy inflections": float(inflections),
-        "Spearman's coefficient (E: repulsion)": float(spearman_repulsion),
-        "Spearman's coefficient (F: descending)": float(spearman_force_desc),
-        "Spearman's coefficient (E: attraction)": float(spearman_attraction),
-        "Spearman's coefficient (F: ascending)": float(spearman_force_asc),
-        "Energy diff flips": float(ediff_flip_times),
-        "Energy jump": float(ejump),
-        "Force jump": float(fjump),
-        "Conservation deviation": float(conservation_deviation),
-        "Energy total variation": float(energy_total_variation),
+        "ρ(E, repulsion)": float(spearman_repulsion),
+        "ρ(E, attraction)": float(spearman_attraction),
     }
     return metrics, well_depth
 
@@ -296,13 +243,10 @@ def score_diatomics(
     """
     ideal_targets = {
         "Force flips": 1.0,
-        "Tortuosity": 1.0,
         "Energy minima": 1.0,
         "Energy inflections": 1.0,
-        "Spearman's coefficient (E: repulsion)": -1.0,
-        "Spearman's coefficient (F: descending)": -1.0,
-        "Spearman's coefficient (E: attraction)": 1.0,
-        "Spearman's coefficient (F: ascending)": 1.0,
+        "ρ(E, repulsion)": -1.0,
+        "ρ(E, attraction)": 1.0,
     }
 
     metrics_df["Score"] = 0.0
@@ -353,43 +297,195 @@ def write_curve_data(model_name: str, df: pd.DataFrame) -> None:
             json.dump(payload, fh)
 
 
-def write_periodic_table_figures(
-    model_name: str, well_depths: dict[str, float]
+def write_periodic_table_assets(
+    model_name: str,
+    df: pd.DataFrame,
+    well_depths: dict[str, float],
 ) -> None:
     """
-    Create periodic-table figure JSON for a model.
+    Create periodic-table overview and element-focused plots for app consumption.
 
     Parameters
     ----------
     model_name
         Name of the model being processed.
+    df
+        Dataframe containing curve samples for the model.
     well_depths
         Mapping of element symbol to homonuclear well depth.
     """
+    if df.empty:
+        return
 
-    @plot_periodic_table(
-        title=f"{model_name} homonuclear well depths",
-        colorbar_title="Well depth / eV",
-        filename=str(PERIODIC_TABLE_PATH / f"{model_name}.json"),
-        colorscale="Viridis",
-    )
-    def generate_plot(values: dict[str, float]) -> dict[str, float]:
+    model_dir = PERIODIC_TABLE_PATH / model_name
+    elements_dir = model_dir / "elements"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+
+    def _plot_overview(ax, element: str) -> bool:
         """
-        Identity helper to leverage the periodic-table decorator.
+        Render the homonuclear curve for a single element into ``ax``.
 
         Parameters
         ----------
-        values
-            Mapping of element symbol to well depth.
+        ax
+            Matplotlib axes to draw on.
+        element
+            Chemical symbol identifying the homonuclear pair.
 
         Returns
         -------
-        dict[str, float]
-            The unchanged mapping of element well depths.
+        bool
+            ``True`` if the element had data and was plotted, else ``False``.
         """
-        return values
+        pair_label = f"{element}-{element}"
+        pair_df = (
+            df[df["pair"] == pair_label]
+            .sort_values("distance")
+            .drop_duplicates("distance")
+        )
+        if pair_df.empty:
+            return False
 
-    generate_plot(well_depths)
+        x = pair_df["distance"].to_numpy()
+        y = pair_df["energy"].to_numpy()
+        y_shifted = y - y[-1]
+
+        ax.plot(x, y_shifted, linewidth=1, color="tab:blue", zorder=1)
+        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
+        ax.set_facecolor("white")
+        ax.set_xlim(0.0, 6.0)
+        ax.set_ylim(-20.0, 20.0)
+        ax.set_xticks([0, 2, 4, 6])
+        ax.set_yticks([-20, -10, 0, 10, 20])
+        ax.tick_params(labelsize=7, length=2, pad=1)
+
+        depth = well_depths.get(element)
+        label = f"{element}\n{depth:.2f} eV" if depth is not None else element
+        ax.text(
+            0.02,
+            0.95,
+            label,
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8,
+            fontweight="bold",
+        )
+        return True
+
+    render_periodic_table_grid(
+        title=f"Homonuclear diatomic curves: {model_name}",
+        filename_stem=model_dir / "overview",
+        plot_cell=_plot_overview,
+        figsize=(36, 20),
+        formats=("svg",),
+        suptitle_kwargs={"fontsize": 28, "fontweight": "bold"},
+    )
+
+    manifest: dict[str, dict[str, str] | str] = {
+        "overview": "overview.svg",
+        "elements": {},
+    }
+
+    available_elements = sorted(
+        e
+        for e in (set(df["element_1"].tolist()) | set(df["element_2"].tolist()))
+        if isinstance(e, str) and e
+    )
+    for element in available_elements:
+        rel_path = f"elements/{element}.png"
+        output_path = elements_dir / f"{element}.png"
+        if _render_element_focus(df, element, output_path):
+            manifest["elements"][element] = rel_path
+
+    manifest_path = model_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2))
+
+
+def _render_element_focus(df: pd.DataFrame, selected_element: str, output_path) -> bool:
+    """
+    Render heteronuclear overview for a selected element.
+
+    Parameters
+    ----------
+    df
+        Dataframe containing pair data.
+    selected_element
+        Element to highlight in the periodic table.
+    output_path
+        File path to save the PNG figure.
+
+    Returns
+    -------
+    bool
+        ``True`` if any data was rendered for the element.
+    """
+    pair_groups: dict[str, pd.DataFrame] = {}
+    for pair, df_pair in df.groupby("pair"):
+        try:
+            element1, element2 = pair.split("-")
+        except ValueError:
+            continue
+        if selected_element not in {element1, element2}:
+            continue
+        other = element2 if element1 == selected_element else element1
+        pair_groups[other] = df_pair.sort_values("distance").drop_duplicates("distance")
+
+    if not pair_groups:
+        return False
+
+    fig, axes = plt.subplots(
+        PERIODIC_TABLE_ROWS,
+        PERIODIC_TABLE_COLS,
+        figsize=(30, 15),
+        constrained_layout=True,
+    )
+    axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
+    for ax in axes.ravel():
+        ax.axis("off")
+
+    has_data = False
+    for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+        pair_df = pair_groups.get(element)
+        if pair_df is None:
+            continue
+        x = pair_df["distance"].to_numpy()
+        y = pair_df["energy"].to_numpy()
+        shifted = y - y[-1]
+
+        ax = axes[row, col]
+        ax.axis("on")
+        ax.set_facecolor("white")
+        ax.plot(x, shifted, linewidth=1, color="tab:blue", zorder=1)
+        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
+        ax.set_xlim(0.0, 6.0)
+        ax.set_ylim(-20.0, 20.0)
+        ax.set_xticks([0, 2, 4, 6])
+        ax.set_yticks([-20, -10, 0, 10, 20])
+        ax.tick_params(labelsize=7, length=2, pad=1)
+        ax.set_title(
+            f"{selected_element}-{element}, shift: {float(y[-1]):.4f}",
+            fontsize=8,
+        )
+        if element == selected_element:
+            for spine in ax.spines.values():
+                spine.set_edgecolor("crimson")
+                spine.set_linewidth(2)
+        has_data = True
+
+    if not has_data:
+        plt.close(fig)
+        return False
+
+    fig.suptitle(
+        f"Diatomics involving {selected_element}",
+        fontsize=22,
+        fontweight="bold",
+    )
+    fig.savefig(output_path, format="png", dpi=200)
+    plt.close(fig)
+    return True
 
 
 def collect_metrics(
@@ -428,7 +524,7 @@ def collect_metrics(
         rows.append(row)
 
         write_curve_data(model_name, df)
-        write_periodic_table_figures(model_name, well_depths)
+        write_periodic_table_assets(model_name, df, well_depths)
         model_well_depths[model_name] = well_depths
 
     if not rows:
@@ -521,20 +617,13 @@ def diatomics_well_depths(
     metric_tooltips={
         "Model": "Name of the model",
         "Force flips": "Mean count of force-direction changes per pair (ideal 1)",
-        "Tortuosity": "Energy curve tortuosity (lower is smoother)",
         "Energy minima": "Average number of energy minima per pair",
         "Energy inflections": "Average number of energy inflection points per pair",
-        "Spearman's coefficient (E: repulsion)": (
+        "ρ(E, repulsion)": (
             "Spearman correlation for energy in repulsive regime (ideal -1)"
         ),
-        "Spearman's coefficient (F: descending)": (
-            "Spearman correlation for force in descending regime (ideal -1)"
-        ),
-        "Spearman's coefficient (E: attraction)": (
+        "ρ(E, attraction)": (
             "Spearman correlation for energy in attractive regime (ideal +1)"
-        ),
-        "Spearman's coefficient (F: ascending)": (
-            "Spearman correlation for force in ascending regime (ideal +1)"
         ),
         "Score": "Aggregate deviation from physical targets (lower is better)",
         "Rank": "Model ranking based on score (lower is better)",

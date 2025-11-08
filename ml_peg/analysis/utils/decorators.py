@@ -791,6 +791,79 @@ def plot_periodic_table(
     return plot_periodic_table_decorator
 
 
+def render_periodic_table_grid(
+    title: str,
+    filename_stem: str | Path,
+    plot_cell: Callable[[Any, str], bool],
+    *,
+    figsize: tuple[float, float] | None = None,
+    formats: tuple[str, ...] = ("svg", "pdf"),
+    rows: int = PERIODIC_TABLE_ROWS,
+    cols: int = PERIODIC_TABLE_COLS,
+    suptitle_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """
+    Render a periodic-table grid where each element's subplot is custom drawn.
+
+    Parameters
+    ----------
+    title
+        Figure title displayed above the grid.
+    filename_stem
+        Base path for the output files (without extension).
+    plot_cell
+        Callable receiving ``(axis, element)``; should draw the subplot and
+        return ``True`` when content was rendered.
+    figsize
+        Optional Matplotlib figure size. Defaults to a size proportional to the
+        table geometry.
+    formats
+        Iterable of file extensions to emit (``"svg"``, ``"pdf"``, etc.).
+    rows, cols
+        Grid dimensions. Defaults to the standard periodic table layout.
+    suptitle_kwargs
+        Extra keyword arguments forwarded to ``fig.suptitle``.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=figsize or (cols * 1.5, rows * 1.2),
+        constrained_layout=True,
+    )
+    axes = axes.reshape(rows, cols)
+
+    for r in range(rows):
+        for c in range(cols):
+            axes[r, c].axis("off")
+
+    for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+        ax = axes[row, col]
+        rendered = False
+        try:
+            ax.axis("on")
+            rendered = bool(plot_cell(ax, element))
+        except Exception:
+            rendered = False
+        if not rendered:
+            ax.axis("off")
+
+    for r in range(rows):
+        for c in range(cols):
+            ax = axes[r, c]
+            if ax.get_visible() and not ax.has_data():
+                ax.axis("off")
+
+    fig.suptitle(title, **(suptitle_kwargs or {}))
+
+    base_path = Path(filename_stem)
+    base_path.parent.mkdir(parents=True, exist_ok=True)
+    for fmt in formats:
+        fig.savefig(base_path.with_suffix(f".{fmt}"), format=fmt)
+    plt.close(fig)
+
+
 def build_table(
     *,
     thresholds: Thresholds,
