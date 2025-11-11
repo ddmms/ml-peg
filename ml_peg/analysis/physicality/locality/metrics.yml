@@ -1,0 +1,19 @@
+metrics:
+  Ghost atoms max ΔF:
+    good: 0.0
+    bad: 5.0
+    unit: meV/Å
+    tooltip: "aximum force difference on solute atoms due to ghost atoms"
+    level_of_theory: null
+  Random hydrogen mean ΔF:
+    good: 0.0
+    bad: 5.0
+    unit: meV/Å
+    tooltip: "Mean force difference on solute atoms due to random hydrogen atoms"
+    level_of_theory: null
+  Random hydrogen std ΔF:
+    good: 0.0
+    bad: 5.0
+    unit: meV/Å
+    tooltip: "Standard deviation of force difference on solute atoms due to random hydrogen atoms"
+    level_of_theory: null
