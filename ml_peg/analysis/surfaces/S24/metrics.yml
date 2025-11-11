@@ -3,5 +3,5 @@ metrics:
     good: 0.05
     bad: 0.5
     unit: eV
-    tooltip: Mean Absolute Error (eV)
+    tooltip: Mean Absolute Error
     level_of_theory: PBE

@@ -18,10 +18,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "nebs" / "li_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-LI_DIFFUSION_THRESHOLDS, LI_DIFFUSION_TOOLTIPS = load_metrics_config(
-    METRICS_CONFIG_PATH
-)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
 
@@ -121,8 +120,8 @@ def path_c_error() -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "li_diffusion_metrics_table.json",
-    metric_tooltips=LI_DIFFUSION_TOOLTIPS,
-    thresholds=LI_DIFFUSION_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
     path_b_error: dict[str, float], path_c_error: dict[str, float]

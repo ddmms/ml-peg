@@ -3,7 +3,7 @@ metrics:
     good: 0.0
     bad: 1.0
     unit: meV
-    tooltip: Mean Absolute Error (meV)
+    tooltip: Mean Absolute Error
     level_of_theory: PBE
   Ranking Error:
     good: 0.0

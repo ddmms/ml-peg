@@ -17,10 +17,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "elemental_slab_oxygen_adsorption" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-ELEMENTAL_OXYGEN_THRESHOLDS, ELEMENTAL_OXYGEN_TOOLTIPS = load_metrics_config(
-    METRICS_CONFIG_PATH
-)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def compute_adsorption_energy(
@@ -145,8 +144,8 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
-    metric_tooltips=ELEMENTAL_OXYGEN_TOOLTIPS,
-    thresholds=ELEMENTAL_OXYGEN_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
     """

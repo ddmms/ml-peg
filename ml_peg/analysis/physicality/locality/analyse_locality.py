@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -16,11 +19,8 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "locality" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "locality"
 
-DEFAULT_THRESHOLDS = {
-    "Ghost atoms max ΔF": (0, 5.0),
-    "Random hydrogen mean ΔF": (0, 5.0),
-    "Random hydrogen std ΔF": (0.0, 5.0),
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 @pytest.fixture
@@ -95,15 +95,7 @@ def hydrogen_force() -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "locality_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "Ghost atoms max ΔF": "Maximum force difference on solute atoms due to ghost "
-        "atoms (meV/Å))",
-        "Random hydrogen mean ΔF": "Mean force difference on solute atoms due to "
-        "random hydrogen atoms (meV/Å)",
-        "Random hydrogen std ΔF": "Standard deviation of force difference on solute "
-        "atoms due to random hydrogen atoms (meV/Å)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(

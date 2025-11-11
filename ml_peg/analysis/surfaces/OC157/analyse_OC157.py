@@ -18,8 +18,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "OC157" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-OC157_THRESHOLDS, OC157_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_relative_energies(energies: list) -> list:
@@ -182,8 +183,8 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "oc157_metrics_table.json",
-    metric_tooltips=OC157_TOOLTIPS,
-    thresholds=OC157_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
     oc157_mae: dict[str, float], ranking_error: dict[str, float]

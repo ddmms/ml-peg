@@ -17,8 +17,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "S24" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "S24"
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-S24_THRESHOLDS, S24_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def compute_adsorption_energy(
@@ -161,8 +162,8 @@ def s24_mae(adsorption_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "s24_metrics_table.json",
-    metric_tooltips=S24_TOOLTIPS,
-    thresholds=S24_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(s24_mae: dict[str, float]) -> dict[str, dict]:
     """

@@ -18,7 +18,7 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "supramolecular" / "LNCI16" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "LNCI16"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-LNCI16_THRESHOLDS, LNCI16_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_system_names() -> list[str]:
@@ -215,8 +215,8 @@ def lnci16_mae(interaction_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "lnci16_metrics_table.json",
-    metric_tooltips=LNCI16_TOOLTIPS,
-    thresholds=LNCI16_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(lnci16_mae: dict[str, float]) -> dict[str, dict]:
     """
