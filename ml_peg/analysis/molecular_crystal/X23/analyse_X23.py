@@ -19,15 +19,11 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
 
-
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
-
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
-
-DEFAULT_THRESHOLDS = {"MAE": (0.0, 100.0)}
 
 
 def get_system_names() -> list[str]:
