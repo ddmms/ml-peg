@@ -59,10 +59,13 @@ def structure_info() -> dict[str, dict[str, float] | list | NDArray]:
         "systems": [],
         "excluded": [],
         "weights": {},
+        "counts": {},
     }
     for model_name in MODELS:
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
+            count = 0
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
+                count += 1
                 structs = read(system_path, index=":")
                 info["subsets"].append(subset)
 
@@ -77,6 +80,7 @@ def structure_info() -> dict[str, dict[str, float] | list | NDArray]:
                     )
                 )
             info["weights"][subset] = structs[0].info["weight"]
+            info["counts"][subset] = count
 
         # Convert to numpy arrays for filtering
         info["categories"] = np.array(info["categories"])
@@ -215,20 +219,25 @@ def category_errors(
         all_categories = INFO["categories"]
         all_subsets = INFO["subsets"]
         all_weights = INFO["weights"]
+        all_counts = INFO["counts"]
         excluded = INFO["excluded"]
 
         # Filter excluded systems
         categories = all_categories[np.logical_not(excluded)]
 
         for category in set(categories):
-            # Filter non-excluded subsets in current category and count systems
-            filtered_subsets, counts = np.unique(
-                all_subsets[np.logical_not(excluded)][categories == category],
-                return_counts=True,
+            # Filter non-excluded subsets in current category
+            filtered_subsets = np.unique(
+                all_subsets[np.logical_not(excluded)][categories == category]
             )
 
-            # Get error and weight for each subset
+            # Get number of systems in each subset
+            counts = np.array([all_counts[subset] for subset in filtered_subsets])
+
+            # Get error for each subset
             errors = [subset_errors[model_name][subset] for subset in filtered_subsets]
+
+            # Get weight and count for each subset
             weights = np.array([all_weights[subset] for subset in filtered_subsets])
 
             results[model_name][category] = np.sum(errors * weights * counts) / np.sum(
@@ -260,16 +269,18 @@ def weighted_error(subset_errors: dict[str, dict[str, float]]) -> dict[str, floa
 
         all_subsets = INFO["subsets"]
         all_weights = INFO["weights"]
+        all_counts = INFO["counts"]
         excluded = INFO["excluded"]
 
-        # Filter all non-excluded subsets and count systems
-        filtered_subsets, counts = np.unique(
-            all_subsets[np.logical_not(excluded)], return_counts=True
-        )
+        # Filter all non-excluded subsets
+        filtered_subsets = np.unique(all_subsets[np.logical_not(excluded)])
 
-        # Get error and weight for each subset
+        # Get error for each subset
         errors = [subset_errors[model_name][subset] for subset in filtered_subsets]
+
+        # Get weight and count for each subset
         weights = np.array([all_weights[subset] for subset in filtered_subsets])
+        counts = np.array([all_counts[subset] for subset in filtered_subsets])
 
         results[model_name] = np.sum(errors * weights * counts) / np.sum(counts)
 
