@@ -13,6 +13,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores
+from ml_peg.app.utils.utils import Thresholds
 
 
 def plot_parity(
@@ -248,10 +249,11 @@ def plot_scatter(
 
 
 def build_table(
+    *,
+    thresholds: Thresholds,
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
     normalize: bool = True,
-    thresholds: dict[str, tuple[float, float]] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
@@ -264,6 +266,10 @@ def build_table(
 
     Parameters
     ----------
+    thresholds
+        Mapping of metric names to dictionaries containing ``good``, ``bad``, and a
+        ``unit`` entry (the unit value may explicitly be ``None``). All metrics must be
+        covered so downstream rendering is consistent.
     filename
         Filename to save table. Default is "table.json".
     metric_tooltips
@@ -271,9 +277,6 @@ def build_table(
         "Rank".
     normalize
         Whether to apply normalisation when calculating the score. Default is True.
-    thresholds
-        Mapping of metric names to (X, Y) tuples where X is the upper threshold and
-        Y is the lower threshold. Required if `normalize` is `True`.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -317,6 +320,29 @@ def build_table(
                 Results dictionary.
             """
             results = func(*args, **kwargs)
+
+            missing_metrics = results.keys() - thresholds.keys()
+            if missing_metrics:
+                raise KeyError(
+                    "Missing threshold entries for metrics: "
+                    f"{', '.join(sorted(missing_metrics))}"
+                )
+            for metric_name, threshold_info in thresholds.items():
+                if metric_name not in results:
+                    continue
+                if not isinstance(threshold_info, dict):
+                    raise TypeError(
+                        "Thresholds for metric "
+                        f"'{metric_name}' must be provided as a mapping containing "
+                        "'good', 'bad', and 'unit' entries."
+                    )
+                for required_key in ("good", "bad", "unit"):
+                    if required_key not in threshold_info:
+                        raise KeyError(
+                            f"Threshold definition for '{metric_name}' is missing "
+                            f"the '{required_key}' entry. Include the key even when "
+                            "its value should be None."
+                        )
             # Form of results is
             # results = {
             #     metric_1: {mlip_1: value_1, mlip_2: value_2},

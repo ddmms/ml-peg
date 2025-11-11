@@ -46,9 +46,22 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
 
     data = table_json["data"]
     columns = table_json["columns"]
+    thresholds = clean_thresholds(table_json.get("thresholds"))
+    if not thresholds:
+        raise ValueError(f"No thresholds defined in table JSON: {filename}")
+
+    width_labels: list[str] = []
 
     for column in columns:
         column_id = column.get("id")
+        column_name = column.get("name", column_id)
+        label_source = column_id if column_id is not None else column_name
+        if not isinstance(label_source, str):
+            raise TypeError(
+                "Column identifiers must be strings. "
+                f"Encountered {label_source!r} in {filename}."
+            )
+        width_labels.append(label_source)
         if column_id is None:
             continue
         if column_id == "Rank":
@@ -57,11 +70,24 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         elif column.get("type") == "numeric" or is_numeric_column(data, column_id):
             column["type"] = "numeric"
             column.setdefault("format", sig_fig_format())
+        if column_name is not None and not isinstance(column_name, str):
+            raise TypeError(
+                "Column display names must be strings. "
+                f"Encountered {column_name!r} in {filename}."
+            )
+        base_name = column_name
+
+        # Append unit labels to display names when available
+        if base_name and column_id in thresholds:
+            unit_val = thresholds[column_id].get("unit")
+            if unit_val and f"[{unit_val}]" not in base_name:
+                column["name"] = f"{base_name} [{unit_val}]"
+
     tooltip_header = table_json["tooltip_header"]
 
-    scored_data = calc_metric_scores(data)
+    scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
-    column_widths = calculate_column_widths([cols["name"] for cols in columns])
+    column_widths = calculate_column_widths(width_labels)
 
     style_cell_conditional: list[dict[str, object]] = []
     for column_id, width in column_widths.items():
@@ -94,10 +120,6 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         persistence_type="session",
         persisted_props=["data"],
     )
-
-    thresholds = clean_thresholds(table_json.get("thresholds"))
-    if thresholds is None or not thresholds:
-        raise ValueError(f"No thresholds defined in table JSON: {filename}")
 
     table.thresholds = thresholds
 

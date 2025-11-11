@@ -1,0 +1,7 @@
+metrics:
+  ΔE:
+    good: 0.0
+    bad: 10.0
+    unit: meV
+    tooltip: "Absolute energy difference between isolated and combined slab systems"
+    level_of_theory: null

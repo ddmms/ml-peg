@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from typing import Any
+
 from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
@@ -11,7 +14,13 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     update_score_rank_style,
 )
-from ml_peg.app.utils.utils import clean_thresholds, get_scores
+from ml_peg.app.utils.utils import (
+    Thresholds,
+    clean_thresholds,
+    format_metric_columns,
+    format_tooltip_headers,
+    get_scores,
+)
 
 
 def register_summary_table_callbacks() -> None:
@@ -82,6 +91,8 @@ def register_category_table_callbacks(
         @callback(
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(table_id, "columns", allow_duplicate=True),
+            Output(table_id, "tooltip_header", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
@@ -90,6 +101,8 @@ def register_category_table_callbacks(
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
+            State(f"{table_id}-raw-tooltip-store", "data"),
+            State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
         )
         def update_benchmark_table_scores(
@@ -99,7 +112,16 @@ def register_category_table_callbacks(
             toggle_value: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+            raw_tooltips: dict[str, str] | None,
+            current_columns: list[dict] | None,
+        ) -> tuple[
+            list[dict],
+            list[dict],
+            list[dict],
+            dict[str, str] | None,
+            list[dict],
+            list[dict],
+        ]:
             """
             Update table when stored weights/threshold change, or tab is changed.
 
@@ -118,10 +140,11 @@ def register_category_table_callbacks(
             stored_computed_data
                 Latest table rows emitted by the table.
             """
-            if not stored_raw_data:
+            if not stored_raw_data or current_columns is None:
                 raise PreventUpdate
 
             thresholds = clean_thresholds(stored_threshold)
+            show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
 
             # Tab switches and toggle flips reuse the cached scored rows rather than
@@ -135,7 +158,20 @@ def register_category_table_callbacks(
                 )
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
                 style = get_table_style(display_rows, scored_data=scored_rows)
-                return display_rows, style, stored_computed_data, stored_raw_data
+                columns = format_metric_columns(
+                    current_columns, thresholds, show_normalized
+                )
+                tooltips = format_tooltip_headers(
+                    raw_tooltips, thresholds, show_normalized
+                )
+                return (
+                    display_rows,
+                    style,
+                    columns,
+                    tooltips,
+                    stored_computed_data,
+                    stored_raw_data,
+                )
 
             # Update overall table score for new weights and thresholds
             metrics_data = calc_table_scores(
@@ -148,7 +184,11 @@ def register_category_table_callbacks(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
             style = get_table_style(display_rows, scored_data=scored_rows)
-            return display_rows, style, scored_rows, metrics_data
+            columns = format_metric_columns(
+                current_columns, thresholds, show_normalized
+            )
+            tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
+            return display_rows, style, columns, tooltips, scored_rows, metrics_data
 
     else:
 
@@ -386,7 +426,7 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 def register_normalization_callbacks(
     table_id: str,
     metrics: list[str],
-    default_thresholds: dict[str, tuple[float, float]] | None = None,
+    default_thresholds: Thresholds,
     register_toggle: bool = True,
 ) -> None:
     """
@@ -399,26 +439,20 @@ def register_normalization_callbacks(
     metrics
         List of metric names that have normalization thresholds.
     default_thresholds
-        Default threshold mapping used for resets. Default is `None`.
+        Default threshold mapping used for resets.
     register_toggle
         Whether to register the raw/normalized display toggle callback. Default is
         `True`.
     """
-    input_suffix = "threshold"
-
-    if default_thresholds:
-        default_thresholds = {
-            metric: (float(bounds[0]), float(bounds[1]))
-            for metric, bounds in default_thresholds.items()
-        }
+    cleaned_defaults = clean_thresholds(default_thresholds)
 
     # Per-metric store callbacks (simpler and reliable)
     for metric in metrics:
 
         @callback(
             Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
-            Input(f"{table_id}-{metric}-good-{input_suffix}", "value"),
-            Input(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Input(f"{table_id}-{metric}-good-threshold", "value"),
+            Input(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
             State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
@@ -428,75 +462,100 @@ def register_normalization_callbacks(
         ):
             """Update normalization thresholds store for one metric or reset all."""
             trigger_id = ctx.triggered_id
-            if stored_thresholds is None:
-                stored_thresholds = default_thresholds or {}
+            cleaned_store = clean_thresholds(stored_thresholds) or {}
 
             # Reset to defaults is specified via reset button
             if trigger_id == f"{table_id}-reset-thresholds-button":
-                if default_thresholds:
-                    return {
-                        key: (float(bounds[0]), float(bounds[1]))
-                        for key, bounds in default_thresholds.items()
-                    }
-                return stored_thresholds
+                if cleaned_defaults:
+                    return deepcopy(cleaned_defaults)
+                return cleaned_store
 
             # Ensure key exists
-            good_threshhold, bad_threshold = stored_thresholds.get(metric, (None, None))
+            if metric not in cleaned_store:
+                cleaned_store[metric] = {
+                    "good": None,
+                    "bad": None,
+                    "unit": (
+                        cleaned_defaults.get(metric, {}).get("unit")
+                        if cleaned_defaults
+                        else None
+                    ),
+                }
+
+            entry = cleaned_store[metric]
+            good_threshold = entry.get("good")
+            bad_threshold = entry.get("bad")
 
             # Update thresholds from input boxes
-            if trigger_id == f"{table_id}-{metric}-good-{input_suffix}":
+            if trigger_id == f"{table_id}-{metric}-good-threshold":
                 if good_val is None or bad_threshold is None:
                     raise PreventUpdate
-                stored_thresholds[metric] = (float(good_val), float(bad_threshold))
+                entry["good"] = float(good_val)
 
-            elif trigger_id == f"{table_id}-{metric}-bad-{input_suffix}":
-                if bad_val is None or good_threshhold is None:
+            elif trigger_id == f"{table_id}-{metric}-bad-threshold":
+                if bad_val is None or good_threshold is None:
                     raise PreventUpdate
-                stored_thresholds[metric] = (float(good_threshhold), float(bad_val))
+                entry["bad"] = float(bad_val)
             else:
                 raise PreventUpdate
 
-            return stored_thresholds
+            return cleaned_store
 
     if register_toggle:
         # Toggle display between raw and normalized values without recomputing scores
         @callback(
             Output(f"{table_id}", "data", allow_duplicate=True),
             Output(f"{table_id}", "style_data_conditional", allow_duplicate=True),
+            Output(f"{table_id}", "columns", allow_duplicate=True),
+            Output(f"{table_id}", "tooltip_header", allow_duplicate=True),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-thresholds-store", "data"),
+            State(f"{table_id}-raw-tooltip-store", "data"),
+            State(f"{table_id}", "columns"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
             raw_data: list[dict],
-            thresholds: dict[str, tuple[float, float]] | None,
-        ) -> tuple[list[dict], list[dict]]:
+            thresholds: dict[str, Any] | None,
+            raw_tooltips: dict[str, str] | None,
+            current_columns: list[dict] | None,
+        ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
-            if not raw_data:
+            if not raw_data or current_columns is None:
                 raise PreventUpdate
 
+            cleaned_thresholds = clean_thresholds(thresholds)
+            normalized_active = bool(show_normalized) and show_normalized[0] == "norm"
+
             # Get metric scores to display
-            scored_rows = calc_metric_scores(raw_data, thresholds)
+            scored_rows = calc_metric_scores(raw_data, cleaned_thresholds)
             display_rows = get_scores(
-                raw_data, scored_rows, thresholds, show_normalized
+                raw_data, scored_rows, cleaned_thresholds, show_normalized
             )
             style = get_table_style(display_rows, scored_data=scored_rows)
-            return display_rows, style
+            columns = format_metric_columns(
+                current_columns, cleaned_thresholds, normalized_active
+            )
+            tooltips = format_tooltip_headers(
+                raw_tooltips, cleaned_thresholds, normalized_active
+            )
+            return display_rows, style, columns, tooltips
 
     # Register individual threshold input sync callbacks
     for metric in metrics:
 
         @callback(
-            Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
-            Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Output(f"{table_id}-{metric}-good-threshold", "value"),
+            Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
         def sync_threshold_inputs(thresholds, metric=metric):
             """Sync threshold input values with stored thresholds."""
-            if thresholds and metric in thresholds:
-                good_val, bad_val = thresholds[metric]
-                return good_val, bad_val
+            cleaned_thresholds = clean_thresholds(thresholds)
+            if cleaned_thresholds and metric in cleaned_thresholds:
+                entry = cleaned_thresholds[metric]
+                return entry.get("good"), entry.get("bad")
             raise PreventUpdate

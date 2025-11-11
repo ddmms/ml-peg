@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -16,9 +18,8 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "DMC_ICE13" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "DMC_ICE13"
 
-# Unit conversion
-
-DEFAULT_THRESHOLDS = {"MAE": (0.0, 100.0)}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_polymorph_names() -> list[str]:
@@ -130,10 +131,7 @@ def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "dmc_ice13_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error for all polymorphs (meV)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(dmc_ice13_errors: dict[str, float]) -> dict[str, dict]:

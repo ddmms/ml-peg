@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -15,9 +18,8 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "extensivity" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
 
-DEFAULT_THRESHOLDS = {
-    "ΔE": (0, 10.0),
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 @pytest.fixture
@@ -52,11 +54,7 @@ def energy_difference() -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "extensivity_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "ΔE": "Absolute energy difference between isolated and combined slab systems "
-        "(meV)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(energy_difference: dict[str, float]) -> dict[str, dict]:

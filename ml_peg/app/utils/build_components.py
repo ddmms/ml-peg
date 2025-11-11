@@ -9,6 +9,7 @@ from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 
+from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_normalization_callbacks,
@@ -114,6 +115,7 @@ def build_weight_components(
     *,
     use_thresholds: bool = False,
     column_widths: dict[str, int] | None = None,
+    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build weight sliders, text boxes and reset button.
@@ -131,12 +133,18 @@ def build_weight_components(
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
+    thresholds
+        Threshold metadata used when ``use_thresholds`` is ``True``.
 
     Returns
     -------
     Div
         Div containing header, weight sliders, text boxes and reset button.
     """
+    if use_thresholds and thresholds is None:
+        raise ValueError(
+            "Threshold metadata must be provided when use_thresholds=True."
+        )
     # Identify metric columns (exclude reserved columns)
     reserved = {"MLIP", "Score", "Rank", "id"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
@@ -273,7 +281,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    thresholds: dict[str, tuple[float, float]] | None = None,
+    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -294,7 +302,7 @@ def build_test_layout(
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
     thresholds
-        Optional normalization metadata (metric -> (good, bad)) supplied via the
+        Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
         analysis pipeline. When provided, inline threshold controls are rendered
         automatically.
 
@@ -356,6 +364,13 @@ def build_test_layout(
                 data=table.data,
             )
         )
+        layout_contents.append(
+            Store(
+                id=f"{table.id}-raw-tooltip-store",
+                storage_type="session",
+                data=table.tooltip_header,
+            )
+        )
         threshold_controls = build_threshold_inputs(
             table_columns=metric_columns,
             thresholds=thresholds,
@@ -370,6 +385,7 @@ def build_test_layout(
         table=table,
         use_thresholds=True,
         column_widths=column_widths,
+        thresholds=thresholds,
     )
     if metric_weights:
         layout_contents.append(metric_weights)
@@ -389,7 +405,7 @@ def build_test_layout(
 
 def build_threshold_inputs(
     table_columns: list[str],
-    thresholds: dict[str, tuple[float, float]],
+    thresholds: Thresholds,
     table_id: str,
     column_widths: dict[str, int] | None = None,
 ) -> Div:
@@ -400,7 +416,7 @@ def build_threshold_inputs(
     ----------
     table_columns : list[str]
         Ordered metric column names in the table.
-    thresholds : dict[str, tuple[float, float]]
+    thresholds : Thresholds
         Default (good, bad) threshold ranges keyed by metric column.
     table_id : str
         Identifier prefix for threshold inputs and related controls.
@@ -433,7 +449,7 @@ def build_threshold_inputs(
     }
 
     cells: list[Div] = []
-    default_thresholds: dict[str, tuple[float, float]] = {}
+    default_thresholds: Thresholds = {}
 
     cells.append(
         Div(
@@ -490,83 +506,129 @@ def build_threshold_inputs(
     )
 
     for metric in table_columns:
-        raw_bounds = thresholds.get(metric, (None, None))
-        x_val = float(raw_bounds[0])
-        y_val = float(raw_bounds[1])
-        default_thresholds[metric] = (x_val, y_val)
+        bounds = thresholds.get(metric)
+        good_val, bad_val, unit_label = bounds["good"], bounds["bad"], bounds["unit"]
+        default_thresholds[metric] = {
+            "good": good_val,
+            "bad": bad_val,
+            "unit": unit_label,
+        }
+
+        good_children = [
+            Label(
+                "Good:",
+                style={
+                    "fontSize": "13px",
+                    "color": "lightseagreen",
+                    "textAlign": "right",
+                    "position": "absolute",
+                    "right": "calc(50% + 52px)",
+                },
+            ),
+            DCC_Input(
+                id=f"{table_id}-{metric}-good-threshold",
+                type="number",
+                value=good_val,
+                step=0.001,
+                style={
+                    "width": "80px",
+                    "fontSize": "12px",
+                    "padding": "2px 4px",
+                    "border": "1px solid lightseagreen",
+                    "borderRadius": "3px",
+                    "margin": "0 auto",
+                    "display": "block",
+                },
+            ),
+        ]
+        if unit_label:
+            good_children.append(
+                html.Span(
+                    f"[{unit_label}]",
+                    style={
+                        "fontSize": "12px",
+                        "color": "#6c757d",
+                        "position": "absolute",
+                        "left": "calc(50% + 52px)",
+                        "top": "50%",
+                        "transform": "translateY(-50%)",
+                        "whiteSpace": "nowrap",
+                    },
+                )
+            )
+
+        bad_children = [
+            Label(
+                "Bad:",
+                style={
+                    "fontSize": "13px",
+                    "color": "#dc3545",
+                    "textAlign": "right",
+                    "position": "absolute",
+                    "right": "calc(50% + 52px)",
+                    "top": "50%",
+                    "transform": "translateY(-50%)",
+                    "whiteSpace": "nowrap",
+                },
+            ),
+            DCC_Input(
+                id=f"{table_id}-{metric}-bad-threshold",
+                type="number",
+                value=bad_val,
+                step=0.001,
+                style={
+                    "width": "80px",
+                    "fontSize": "12px",
+                    "padding": "2px 4px",
+                    "border": "1px solid #dc3545",
+                    "borderRadius": "3px",
+                    "margin": "0 auto",
+                    "display": "block",
+                },
+            ),
+        ]
+        if unit_label:
+            bad_children.append(
+                html.Span(
+                    f"[{unit_label}]",
+                    style={
+                        "fontSize": "12px",
+                        "color": "#6c757d",
+                        "position": "absolute",
+                        "left": "calc(50% + 52px)",
+                        "top": "50%",
+                        "transform": "translateY(-50%)",
+                        "whiteSpace": "nowrap",
+                    },
+                )
+            )
 
         cells.append(
             Div(
                 [
                     Div(
-                        [
-                            Label(
-                                "Good:",
-                                style={
-                                    "fontSize": "13px",
-                                    "color": "lightseagreen",
-                                    "textAlign": "right",
-                                    "position": "absolute",
-                                    "right": "calc(50% + 45px)",
-                                },
-                            ),
-                            DCC_Input(
-                                id=f"{table_id}-{metric}-good-threshold",
-                                type="number",
-                                value=x_val,
-                                step=0.001,
-                                style={
-                                    "width": "80px",
-                                    "fontSize": "12px",
-                                    "padding": "2px 4px",
-                                    "border": "1px solid lightseagreen",
-                                    "borderRadius": "3px",
-                                    "marginLeft": "auto",
-                                    "marginRight": "auto",
-                                },
-                            ),
-                        ],
+                        good_children,
                         style={
+                            "position": "relative",
+                            "width": "100%",
+                            "padding": "4px 32px",
+                            "boxSizing": "border-box",
                             "display": "flex",
                             "justifyContent": "center",
                             "alignItems": "center",
-                            "marginBottom": "2px",
-                            "position": "relative",
+                            "marginBottom": "4px",
                         },
                     ),
                     Div(
-                        [
-                            Label(
-                                "Bad:",
-                                style={
-                                    "fontSize": "13px",
-                                    "color": "#dc3545",
-                                    "textAlign": "right",
-                                    "position": "absolute",
-                                    "right": "calc(50% + 45px)",
-                                },
-                            ),
-                            DCC_Input(
-                                id=f"{table_id}-{metric}-bad-threshold",
-                                type="number",
-                                value=y_val,
-                                step=0.001,
-                                style={
-                                    "width": "80px",
-                                    "fontSize": "12px",
-                                    "padding": "2px 4px",
-                                    "border": "1px solid #dc3545",
-                                    "borderRadius": "3px",
-                                    "marginLeft": "auto",
-                                    "marginRight": "auto",
-                                },
-                            ),
-                        ],
+                        bad_children,
                         style={
+                            "position": "relative",
+                            "width": "100%",
+                            "padding": "4px 32px",
+                            "boxSizing": "border-box",
                             "display": "flex",
                             "justifyContent": "center",
                             "alignItems": "center",
-                            "position": "relative",
                         },
                     ),
                 ],

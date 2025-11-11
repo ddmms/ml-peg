@@ -1,0 +1,7 @@
+metrics:
+  MAE:
+    good: 0.0
+    bad: 100.0
+    unit: meV
+    tooltip: "Mean Absolute Error for all polymorphs"
+    level_of_theory: PBE
