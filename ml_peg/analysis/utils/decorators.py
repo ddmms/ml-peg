@@ -13,6 +13,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores
+from ml_peg.app.utils.utils import Thresholds
 
 
 def plot_parity(
@@ -248,10 +249,11 @@ def plot_scatter(
 
 
 def build_table(
+    *,
+    thresholds: Thresholds,
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
     normalize: bool = True,
-    thresholds: dict[str, dict[str, Any]] | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
 ) -> Callable:
     """
@@ -264,6 +266,10 @@ def build_table(
 
     Parameters
     ----------
+    thresholds
+        Mapping of metric names to dictionaries containing ``good``, ``bad``, and a
+        ``unit`` entry (the unit value may explicitly be ``None``). All metrics must be
+        covered so downstream rendering is consistent.
     filename
         Filename to save table. Default is "table.json".
     metric_tooltips
@@ -271,10 +277,6 @@ def build_table(
         "Rank".
     normalize
         Whether to apply normalisation when calculating the score. Default is True.
-    thresholds
-        Mapping of metric names to dictionaries containing ``good``, ``bad``, and a
-        ``unit`` entry (the unit value may explicitly be ``None``). All metrics must be
-        covered so downstream rendering is consistent.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -284,10 +286,6 @@ def build_table(
     Callable
         Decorator to wrap function.
     """
-    if thresholds is None:
-        raise ValueError(
-            "build_table requires 'thresholds' to be supplied for every metric."
-        )
 
     def build_table_decorator(func: Callable) -> Callable:
         """
