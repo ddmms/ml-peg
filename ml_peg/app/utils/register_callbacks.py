@@ -15,6 +15,7 @@ from ml_peg.analysis.utils.utils import (
     update_score_rank_style,
 )
 from ml_peg.app.utils.utils import (
+    Thresholds,
     clean_thresholds,
     format_metric_columns,
     format_tooltip_headers,
@@ -425,7 +426,7 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
 def register_normalization_callbacks(
     table_id: str,
     metrics: list[str],
-    default_thresholds: dict[str, Any] | None = None,
+    default_thresholds: Thresholds,
     register_toggle: bool = True,
 ) -> None:
     """
@@ -438,13 +439,11 @@ def register_normalization_callbacks(
     metrics
         List of metric names that have normalization thresholds.
     default_thresholds
-        Default threshold mapping used for resets. Default is `None`.
+        Default threshold mapping used for resets.
     register_toggle
         Whether to register the raw/normalized display toggle callback. Default is
         `True`.
     """
-    input_suffix = "threshold"
-
     cleaned_defaults = clean_thresholds(default_thresholds)
 
     # Per-metric store callbacks (simpler and reliable)
@@ -452,8 +451,8 @@ def register_normalization_callbacks(
 
         @callback(
             Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
-            Input(f"{table_id}-{metric}-good-{input_suffix}", "value"),
-            Input(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Input(f"{table_id}-{metric}-good-threshold", "value"),
+            Input(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
             State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
@@ -488,12 +487,12 @@ def register_normalization_callbacks(
             bad_threshold = entry.get("bad")
 
             # Update thresholds from input boxes
-            if trigger_id == f"{table_id}-{metric}-good-{input_suffix}":
+            if trigger_id == f"{table_id}-{metric}-good-threshold":
                 if good_val is None or bad_threshold is None:
                     raise PreventUpdate
                 entry["good"] = float(good_val)
 
-            elif trigger_id == f"{table_id}-{metric}-bad-{input_suffix}":
+            elif trigger_id == f"{table_id}-{metric}-bad-threshold":
                 if bad_val is None or good_threshold is None:
                     raise PreventUpdate
                 entry["bad"] = float(bad_val)
@@ -548,8 +547,8 @@ def register_normalization_callbacks(
     for metric in metrics:
 
         @callback(
-            Output(f"{table_id}-{metric}-good-{input_suffix}", "value"),
-            Output(f"{table_id}-{metric}-bad-{input_suffix}", "value"),
+            Output(f"{table_id}-{metric}-good-threshold", "value"),
+            Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
         )
