@@ -321,7 +321,7 @@ def build_table(
             """
             results = func(*args, **kwargs)
 
-            missing_metrics = set(results.keys()) - set(thresholds.keys())
+            missing_metrics = results.keys() - thresholds.keys()
             if missing_metrics:
                 raise KeyError(
                     "Missing threshold entries for metrics: "

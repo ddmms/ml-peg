@@ -66,6 +66,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
         }
         thresholds[metric_name] = metric_threshold
 
+        # Permit no tooltip
         tooltip = metric_config.get("tooltip")
         tooltips[metric_name] = tooltip
 
@@ -124,7 +125,7 @@ def calc_metric_scores(
         Rows data containing model name and metric values.
     thresholds
         Normalisation thresholds keyed by metric name. Each value must be a mapping
-        containing ``good``, ``bad``, and ``unit`` entries.
+        containing ``good``, ``bad``, and ``unit`` entries. Default is `None`.
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
@@ -171,7 +172,7 @@ def calc_table_scores(
         Weight for each metric. Default is 1.0 for each metric.
     thresholds
         Normalisation thresholds keyed by metric name. Each value must be a mapping
-        with ``good``, ``bad``, and ``unit`` entries.
+        with ``good``, ``bad``, and ``unit`` entries. Defauls is `None`.
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
@@ -381,8 +382,8 @@ def update_score_rank_style(
     weights
         Weight for each metric. Default is `None`.
     thresholds
-        Normalisation thresholds keyed by metric name. Each value may be a numeric
-        pair or a mapping with ``good``/``bad`` entries. Default is `None`.
+        Normalisation thresholds keyed by metric name. Each value must be a mapping
+        with ``good``, ``bad``, and ``unit`` entries. Default is `None`.
 
     Returns
     -------

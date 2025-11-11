@@ -302,9 +302,8 @@ def build_test_layout(
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
     thresholds
-        Optional normalization metadata (metric -> (good, bad)) supplied via the
-        analysis pipeline. Entries may also include a ``unit`` string. When provided,
-        inline threshold controls are rendered
+        Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
+        analysis pipeline. When provided, inline threshold controls are rendered
         automatically.
 
     Returns

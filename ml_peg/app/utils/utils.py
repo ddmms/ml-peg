@@ -189,7 +189,7 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
 def get_scores(
     raw_rows: list[dict],
     scored_rows: list[dict],
-    threshold_pairs: Thresholds | None,
+    thresholds: Thresholds | None,
     toggle_value: list[str] | None,
 ) -> list[dict]:
     """
@@ -201,7 +201,7 @@ def get_scores(
         Unitful metric values.
     scored_rows
         Rows with calculated unitless scores.
-    threshold_pairs
+    thresholds
         Normalisation thresholds, or ``None`` for raw metrics.
     toggle_value
         Current state of the “Show normalized values” toggle.
@@ -212,7 +212,7 @@ def get_scores(
         Rows to render in the DataTable.
     """
     show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
-    if not (show_normalized and threshold_pairs):
+    if not (show_normalized and thresholds):
         return raw_rows
 
     return scored_rows
@@ -257,7 +257,7 @@ def format_metric_columns(
     columns
         Current DataTable columns configuration.
     thresholds
-        Normalisation thresholds keyed by metric name including optional units.
+        Normalisation thresholds keys by metric name.
     show_normalized
         Whether the table is displaying normalized (unitless) values.
 
