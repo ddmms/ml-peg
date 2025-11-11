@@ -38,7 +38,7 @@ mace-matpes-r2scan:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
-  level_of_theory: PBE
+  level_of_theory: r2SCAN
   kwargs:
     model: "mace-matpes-r2scan-0"
     head: "matpes_pbe"
