@@ -309,13 +309,12 @@ def metrics(
         "Reaction barrier heights": "Barrier heights",
         "Intramolecular noncovalent interactions": "Intramolecular NCIs",
         "Intermolecular noncovalent interactions": "Intermolecular NCIs",
-        "All (WTMAD)": "All (WTMAD)",
     }
 
     metrics = {}
-    for category in category_errors[MODELS[0]]:
-        metrics[category_abbrevs[category]] = {
-            model: category_errors[model][category] for model in MODELS
+    for full_category, short_category in category_abbrevs.items():
+        metrics[short_category] = {
+            model: category_errors[model][full_category] for model in MODELS
         }
 
     return metrics | {"WTMAD": weighted_error}
