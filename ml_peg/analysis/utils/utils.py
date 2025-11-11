@@ -35,7 +35,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
     Returns
     -------
     tuple[Thresholds, dict[str, str]]
-        Mapping of metric thresholds and mapping of metric tooltips.
+        Mapping of metric thresholds, tooltips, and weights.
     """
     if not config_path.exists():
         msg = f"Metrics configuration file not found: {config_path}"
@@ -47,6 +47,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
     metrics_data = data.get("metrics", {})
     thresholds: Thresholds = {}
     tooltips: dict[str, str] = {}
+    weights: dict[str, float] = {}
 
     for metric_name, metric_config in metrics_data.items():
         good_value = float(metric_config["good"])
@@ -70,7 +71,9 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
         tooltip = metric_config.get("tooltip")
         tooltips[metric_name] = tooltip
 
-    return thresholds, tooltips
+        weights[metric_name] = float(metric_config.get("weight", 1.0))
+
+    return thresholds, tooltips, weights
 
 
 def mae(ref: list, prediction: list) -> float:

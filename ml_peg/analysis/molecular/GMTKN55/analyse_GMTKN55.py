@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ase import units
 from ase.io import read
 import numpy as np
@@ -9,6 +11,7 @@ from numpy.typing import NDArray
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -18,23 +21,10 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular" / "GMTKN55" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 
-DEFAULT_WEIGHTS = {
-    "Small systems": 0,
-    "Large systems": 0,
-    "Barrier heights": 0,
-    "Intramolecular NCIs": 0,
-    "Intermolecular NCIs": 0,
-    "WTMAD": 1,
-}
-
-DEFAULT_THRESHOLDS = {
-    "Small systems": (0.5, 50.0),
-    "Large systems": (0.5, 50.0),
-    "Barrier heights": (0.5, 50.0),
-    "Intramolecular NCIs": (0.5, 50.0),
-    "Intermolecular NCIs": (0.5, 50.0),
-    "WTMAD": (0.5, 50.0),
-}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 # Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
@@ -290,15 +280,7 @@ def weighted_error(subset_errors: dict[str, dict[str, float]]) -> dict[str, floa
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "gmtkn55_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "Small systems": "Weighted Mean Absolute Deviation (kcal/mol)",
-        "Large systems": "Weighted Mean Absolute Deviation (kcal/mol)",
-        "Barrier heights": "Weighted Mean Absolute Deviation (kcal/mol)",
-        "Intramolecular NCIs": "Weighted Mean Absolute Deviation (kcal/mol)",
-        "Intermolecular NCIs": "Weighted Mean Absolute Deviation (kcal/mol)",
-        "WTMAD": "Total Weighted Mean Absolute Deviation (kcal/mol)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
