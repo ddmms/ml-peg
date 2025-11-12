@@ -37,7 +37,14 @@ class GMTKN55App(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"WTMAD": scatter, "Ranking Error": scatter},
+            column_to_plot={
+                "Small systems": scatter,
+                "Large systems": scatter,
+                "Barrier heights": scatter,
+                "Intramolecular NCIs": scatter,
+                "Intermolecular NCIs": scatter,
+                "WTMAD": scatter,
+            },
         )
 
         struct_from_scatter(
