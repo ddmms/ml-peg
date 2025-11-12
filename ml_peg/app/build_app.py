@@ -266,7 +266,7 @@ def build_tabs(
     ]
 
     tabs_layout = [
-        H1("MLIP benchmarking"),
+        H1("ML-PEG"),
         Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
         Div(id="tabs-content"),
     ]
