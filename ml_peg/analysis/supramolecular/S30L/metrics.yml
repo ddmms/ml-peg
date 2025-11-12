@@ -16,7 +16,7 @@ metrics:
   Neutral MAE:
     good: 0.0
     bad: 100.0
-    unit: eV
+    unit: kcal/mol
     tooltip: Mean Absolute Error for neutral systems
     level_of_theory: Experimental
     weight: 0
