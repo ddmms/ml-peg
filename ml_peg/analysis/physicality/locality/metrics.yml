@@ -3,7 +3,7 @@ metrics:
     good: 0.0
     bad: 5.0
     unit: meV/Å
-    tooltip: "aximum force difference on solute atoms due to ghost atoms"
+    tooltip: "Maximum force difference on solute atoms due to ghost atoms"
     level_of_theory: null
   Random hydrogen mean ΔF:
     good: 0.0
