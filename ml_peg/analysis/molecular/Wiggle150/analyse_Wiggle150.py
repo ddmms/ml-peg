@@ -40,14 +40,15 @@ def _sorted_xyz_files(model_dir: Path) -> list[Path]:
     return sorted(model_dir.glob("*.xyz"), key=lambda path: int(path.stem))
 
 
-def _extract_metadata() -> tuple[list[str], list[str]]:
+def _extract_metadata() -> dict[str, list[str]]:
     """
     Return structure identifiers and molecule labels from the first model output.
 
     Returns
     -------
-    tuple[list[str], list[str]]
-        Ordered structure identifiers and molecule labels.
+    dict[str, list[str]]
+        Ordered structure identifiers and molecule labels keyed by ``"structures"``
+        and ``"molecules"``.
     """
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -63,34 +64,11 @@ def _extract_metadata() -> tuple[list[str], list[str]]:
             atoms = read(xyz_file)
             structures.append(atoms.info.get("structure", xyz_file.stem))
             molecules.append(atoms.info.get("molecule", ""))
-        return structures, molecules
-    return [], []
+        return {"structures": structures, "molecules": molecules}
+    return {"structures": [], "molecules": []}
 
 
-def get_structure_names() -> list[str]:
-    """
-    Return ordered structure identifiers for Wiggle150.
-
-    Returns
-    -------
-    list[str]
-        Structure identifiers sorted consistently with analysis outputs.
-    """
-    structures, _ = _extract_metadata()
-    return structures
-
-
-def get_molecule_labels() -> list[str]:
-    """
-    Return molecule labels corresponding to Wiggle150 structures.
-
-    Returns
-    -------
-    list[str]
-        Molecule identifiers aligned with the structure order.
-    """
-    _, molecules = _extract_metadata()
-    return molecules
+METADATA = _extract_metadata()
 
 
 @pytest.fixture
@@ -100,8 +78,8 @@ def get_molecule_labels() -> list[str]:
     x_label="Predicted relative energy / kcal/mol",
     y_label="Reference relative energy / kcal/mol",
     hoverdata={
-        "Structure": get_structure_names(),
-        "Molecule": get_molecule_labels(),
+        "Structure": METADATA["structures"],
+        "Molecule": METADATA["molecules"],
     },
 )
 def relative_energies() -> dict[str, list[float]]:
