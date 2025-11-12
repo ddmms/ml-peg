@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 import functools
+import json
 from json import dump
 from pathlib import Path
 from typing import Any
 
 from dash import dash_table
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
@@ -862,6 +864,412 @@ def render_periodic_table_grid(
     for fmt in formats:
         fig.savefig(base_path.with_suffix(f".{fmt}"), format=fmt)
     plt.close(fig)
+
+
+def periodic_curve_gallery(
+    *,
+    curve_dir: Path,
+    periodic_dir: Path,
+    overview_title: str,
+    overview_formats: tuple[str, ...] = ("svg",),
+    overview_figsize: tuple[float, float] | None = (36, 20),
+    overview_suptitle: dict[str, Any] | None = None,
+    focus_title_template: str | None = "Diatomics involving {element}",
+    focus_formats: tuple[str, ...] = ("png",),
+    focus_figsize: tuple[float, float] = (30, 15),
+    focus_dpi: int = 200,
+    pair_column: str = "pair",
+    element1_column: str = "element_1",
+    element2_column: str = "element_2",
+    distance_column: str = "distance",
+    energy_column: str = "energy",
+    pair_separator: str = "-",
+    series_columns: dict[str, str] | None = None,
+    scalar_columns: dict[str, str] | None = None,
+    x_ticks: tuple[float, ...] = (0.0, 2.0, 4.0, 6.0),
+    y_ticks: tuple[float, ...] = (-20.0, -10.0, 0.0, 10.0, 20.0),
+    x_range: tuple[float, float] = (0.0, 6.0),
+    y_range: tuple[float, float] = (-20.0, 20.0),
+) -> Callable:
+    """
+    Decorate a fixture that returns per-model curve data to persist gallery assets.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory where per-pair JSON payloads will be written per model.
+    periodic_dir
+        Directory where periodic-table overviews and per-element figures are stored.
+    overview_title
+        Format string used for the overview title (receives ``model`` keyword).
+    overview_formats
+        File formats to emit for overview figure.
+    overview_figsize
+        Matplotlib figsize for the overview grid.
+    overview_suptitle
+        Additional kwargs passed to ``fig.suptitle`` for overview.
+    focus_title_template
+        Format string for per-element focus plots (receives ``element`` and ``model``).
+        Set to ``None`` to disable focus figures.
+    focus_formats
+        File formats for per-element focus plots.
+    focus_figsize
+        Matplotlib figsize for focus plots.
+    focus_dpi
+        DPI for per-element focus images.
+    pair_column, element1_column, element2_column, distance_column, energy_column
+        Column names describing the curve data.
+    pair_separator
+        Separator used between elements within the ``pair`` column.
+    series_columns
+        Mapping of payload keys to column names whose values should be serialised
+        as sequences.
+    scalar_columns
+        Mapping of payload keys to column names serialised as scalars.
+    x_ticks, y_ticks
+        Tick locations for the plots.
+    x_range, y_range
+        Axis limits for the plots.
+
+    Returns
+    -------
+    Callable
+        Decorator that wraps a callable returning model/dataframe mappings and
+        emits the associated gallery assets.
+    """
+    curve_dir = Path(curve_dir)
+    periodic_dir = Path(periodic_dir)
+
+    default_series = {"distance": distance_column, "energy": energy_column}
+    if series_columns:
+        default_series.update(series_columns)
+
+    default_scalars = {"element_1": element1_column, "element_2": element2_column}
+    if scalar_columns:
+        default_scalars.update(scalar_columns)
+
+    def _sorted_pair(frame: pd.DataFrame) -> pd.DataFrame:
+        """
+        Return distance-sorted samples with duplicate distances removed.
+
+        Parameters
+        ----------
+        frame
+            Dataframe containing at least the ``distance`` column.
+
+        Returns
+        -------
+        pd.DataFrame
+            Frame sorted by distance with only unique distance entries.
+        """
+        return frame.sort_values(distance_column).drop_duplicates(distance_column)
+
+    def _plot_curve(ax, pair_frame: pd.DataFrame) -> bool:
+        """
+        Plot a distance-energy curve on the supplied axes.
+
+        Parameters
+        ----------
+        ax
+            Matplotlib axes the curve is plotted onto.
+        pair_frame
+            Dataframe containing the curve samples.
+
+        Returns
+        -------
+        bool
+            ``True`` when data was plotted, otherwise ``False``.
+        """
+        if pair_frame.empty or energy_column not in pair_frame:
+            return False
+        ordered = _sorted_pair(pair_frame)
+        if ordered.empty:
+            return False
+        x = ordered[distance_column].to_numpy()
+        y = ordered[energy_column].to_numpy()
+        if x.size == 0:
+            return False
+        shift = y[-1]
+        y_shifted = y - shift
+        ax.plot(x, y_shifted, linewidth=1, color="tab:blue", zorder=1)
+        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
+        ax.set_facecolor("white")
+        ax.set_xlim(*x_range)
+        ax.set_ylim(*y_range)
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+        ax.tick_params(labelsize=7, length=2, pad=1)
+        return True
+
+    def _write_curve_payloads(model_name: str, frame: pd.DataFrame) -> None:
+        """
+        Serialise per-pair JSON payloads for the Dash callbacks.
+
+        Parameters
+        ----------
+        model_name
+            Name of the model associated with ``frame``.
+        frame
+            Dataframe containing all pair samples for the model.
+        """
+        model_curve_dir = curve_dir / model_name
+        model_curve_dir.mkdir(parents=True, exist_ok=True)
+        for pair, group in frame.groupby(pair_column):
+            ordered = _sorted_pair(group)
+            payload: dict[str, Any] = {"pair": str(pair)}
+            for key, column in default_scalars.items():
+                if column in ordered:
+                    payload[key] = ordered[column].iloc[0]
+            for key, column in default_series.items():
+                if column in ordered:
+                    payload[key] = ordered[column].tolist()
+            with (model_curve_dir / f"{pair}.json").open("w", encoding="utf8") as fh:
+                json.dump(payload, fh)
+
+    def _render_overview(model_name: str, frame: pd.DataFrame) -> bool:
+        """
+        Render the homonuclear overview grid for ``model_name``.
+
+        Parameters
+        ----------
+        model_name
+            Name of the model whose overview is drawn.
+        frame
+            Dataframe containing all pair data for the model.
+
+        Returns
+        -------
+        bool
+            ``True`` when at least one curve was plotted.
+        """
+
+        def plot_cell(ax, element: str) -> bool:
+            """
+            Plot a single homonuclear curve in the periodic-table grid.
+
+            Parameters
+            ----------
+            ax
+                Matplotlib axes for the subplot.
+            element
+                Chemical symbol identifying the homonuclear pair.
+
+            Returns
+            -------
+            bool
+                ``True`` if data existed for the element.
+            """
+            pair_label = f"{element}{pair_separator}{element}"
+            pair_frame = frame[frame[pair_column] == pair_label]
+            rendered = _plot_curve(ax, pair_frame)
+            if rendered:
+                depth = float(
+                    pair_frame[energy_column].min()
+                    if energy_column in pair_frame
+                    else 0.0
+                )
+                ax.text(
+                    0.02,
+                    0.95,
+                    f"{element}\n{depth:.2f} eV",
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=8,
+                    fontweight="bold",
+                )
+            return rendered
+
+        render_periodic_table_grid(
+            title=overview_title.format(model=model_name),
+            filename_stem=periodic_dir / model_name / "overview",
+            plot_cell=plot_cell,
+            figsize=overview_figsize,
+            formats=overview_formats,
+            suptitle_kwargs=overview_suptitle,
+        )
+        return True
+
+    def _render_focus(
+        model_name: str,
+        frame: pd.DataFrame,
+        element: str,
+        output_path: Path,
+    ) -> bool:
+        """
+        Render per-element heteronuclear plots for a selected ``element``.
+
+        Parameters
+        ----------
+        model_name
+            Model identifier used in titles.
+        frame
+            Dataframe containing all pairs for the model.
+        element
+            Element symbol to highlight.
+        output_path
+            Destination path for the rendered figure.
+
+        Returns
+        -------
+        bool
+            ``True`` if any curve was drawn.
+        """
+        import matplotlib.pyplot as plt
+
+        pair_groups: dict[str, pd.DataFrame] = {}
+        for pair, group in frame.groupby(pair_column):
+            try:
+                first, second = str(pair).split(pair_separator)
+            except ValueError:
+                continue
+            if element not in {first, second}:
+                continue
+            other = second if first == element else first
+            pair_groups[other] = _sorted_pair(group)
+
+        if not pair_groups:
+            return False
+
+        fig, axes = plt.subplots(
+            PERIODIC_TABLE_ROWS,
+            PERIODIC_TABLE_COLS,
+            figsize=focus_figsize,
+            constrained_layout=True,
+        )
+        axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
+        for ax in axes.ravel():
+            ax.axis("off")
+
+        has_data = False
+        for other, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+            pair_frame = pair_groups.get(other)
+            if pair_frame is None or pair_frame.empty:
+                continue
+            ax = axes[row, col]
+            ax.axis("on")
+            rendered = _plot_curve(ax, pair_frame)
+            if not rendered:
+                ax.axis("off")
+                continue
+            shift = float(
+                pair_frame[energy_column].to_numpy()[-1]
+                if energy_column in pair_frame and not pair_frame.empty
+                else 0.0
+            )
+            ax.set_title(
+                f"{element}-{other}, shift: {shift:.4f}",
+                fontsize=8,
+            )
+            if other == element:
+                for spine in ax.spines.values():
+                    spine.set_edgecolor("crimson")
+                    spine.set_linewidth(2)
+            has_data = True
+
+        if not has_data:
+            plt.close(fig)
+            return False
+
+        if focus_title_template:
+            fig.suptitle(
+                focus_title_template.format(element=element, model=model_name),
+                fontsize=22,
+                fontweight="bold",
+            )
+        fig.savefig(output_path, format=output_path.suffix.lstrip("."), dpi=focus_dpi)
+        plt.close(fig)
+        return True
+
+    def periodic_curve_gallery_decorator(func: Callable) -> Callable:
+        """
+        Wrap the supplied callable to emit gallery assets on invocation.
+
+        Parameters
+        ----------
+        func
+            Callable returning a mapping of model names to dataframes.
+
+        Returns
+        -------
+        Callable
+            Wrapped callable that additionally persists gallery assets.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Execute the wrapped callable and persist curve/plot assets.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict[str, pd.DataFrame]
+                Mapping produced by the original callable.
+            """
+            model_frames = func(*args, **kwargs) or {}
+            if not isinstance(model_frames, dict):
+                raise TypeError(
+                    "periodic_curve_gallery expects the wrapped function to return "
+                    "a mapping of model names to pandas.DataFrame instances."
+                )
+
+            curve_dir.mkdir(parents=True, exist_ok=True)
+            periodic_dir.mkdir(parents=True, exist_ok=True)
+
+            for model_name, frame in model_frames.items():
+                if frame is None or frame.empty:
+                    continue
+                _write_curve_payloads(model_name, frame)
+
+                model_periodic_dir = periodic_dir / model_name
+                model_periodic_dir.mkdir(parents=True, exist_ok=True)
+                elements_dir = model_periodic_dir / "elements"
+                elements_dir.mkdir(parents=True, exist_ok=True)
+
+                overview_rendered = _render_overview(model_name, frame)
+                manifest: dict[str, Any] = {"elements": {}}
+                if overview_rendered and overview_formats:
+                    manifest["overview"] = f"overview.{overview_formats[0]}"
+
+                if focus_title_template and focus_formats:
+                    available_elements: set[str] = set()
+                    if element1_column in frame:
+                        available_elements |= {
+                            str(e)
+                            for e in frame[element1_column].dropna().astype(str)
+                            if e
+                        }
+                    if element2_column in frame:
+                        available_elements |= {
+                            str(e)
+                            for e in frame[element2_column].dropna().astype(str)
+                            if e
+                        }
+                    available_elements = sorted(available_elements)
+                    extension = focus_formats[0]
+                    for element in available_elements:
+                        output_path = elements_dir / f"{element}.{extension}"
+                        if _render_focus(model_name, frame, element, output_path):
+                            manifest["elements"][element] = (
+                                f"elements/{element}.{extension}"
+                            )
+
+                manifest_path = model_periodic_dir / "manifest.json"
+                with manifest_path.open("w", encoding="utf8") as fh:
+                    json.dump(manifest, fh, indent=2)
+
+            return model_frames
+
+        return wrapper
+
+    return periodic_curve_gallery_decorator
 
 
 def build_table(

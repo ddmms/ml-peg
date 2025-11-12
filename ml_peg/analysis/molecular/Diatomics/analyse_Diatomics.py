@@ -5,17 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
 
 from ml_peg.analysis.utils.decorators import (
-    PERIODIC_TABLE_COLS,
-    PERIODIC_TABLE_POSITIONS,
-    PERIODIC_TABLE_ROWS,
     build_table,
-    render_periodic_table_grid,
+    periodic_curve_gallery,
 )
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
@@ -32,15 +28,6 @@ PERIODIC_TABLE_PATH = OUT_PATH / "periodic_tables"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
-
-
-# DIATOMICS_THRESHOLDS = {
-#     "Force flips": (1.0, 5.0),
-#     "Energy minima": (1.0, 5.0),
-#     "Energy inflections": (1.0, 5.0),
-#     "ρ(E, repulsion)": (-1.0, 1.0),
-#     "ρ(E, attraction)": (1.0, -1.0),
-# }
 
 
 def load_model_data(model_name: str) -> pd.DataFrame:
@@ -230,245 +217,79 @@ def aggregate_model_metrics(
     return aggregated, well_depths
 
 
-def write_curve_data(model_name: str, df: pd.DataFrame) -> None:
+# helper to load per-model pair data -----------------------------------------
+
+
+def _load_pair_data() -> dict[str, pd.DataFrame]:
     """
-    Persist per-pair curve data for application callbacks.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model being processed.
-    df
-        Dataframe containing curve samples for the model.
-    """
-    model_dir = CURVE_PATH / model_name
-    model_dir.mkdir(parents=True, exist_ok=True)
-
-    for pair, df_pair in df.groupby("pair"):
-        payload = {
-            "pair": pair,
-            "element_1": df_pair["element_1"].iloc[0],
-            "element_2": df_pair["element_2"].iloc[0],
-            "distance": df_pair["distance"].tolist(),
-            "energy": df_pair["energy"].tolist(),
-            "force_parallel": df_pair["force_parallel"].tolist(),
-        }
-        with (model_dir / f"{pair}.json").open("w", encoding="utf8") as fh:
-            json.dump(payload, fh)
-
-
-def write_periodic_table_assets(
-    model_name: str,
-    df: pd.DataFrame,
-    well_depths: dict[str, float],
-) -> None:
-    """
-    Create periodic-table overview and element-focused plots for app consumption.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model being processed.
-    df
-        Dataframe containing curve samples for the model.
-    well_depths
-        Mapping of element symbol to homonuclear well depth.
-    """
-    if df.empty:
-        return
-
-    model_dir = PERIODIC_TABLE_PATH / model_name
-    elements_dir = model_dir / "elements"
-    model_dir.mkdir(parents=True, exist_ok=True)
-    elements_dir.mkdir(parents=True, exist_ok=True)
-
-    def _plot_overview(ax, element: str) -> bool:
-        """
-        Render the homonuclear curve for a single element into ``ax``.
-
-        Parameters
-        ----------
-        ax
-            Matplotlib axes to draw on.
-        element
-            Chemical symbol identifying the homonuclear pair.
-
-        Returns
-        -------
-        bool
-            ``True`` if the element had data and was plotted, else ``False``.
-        """
-        pair_label = f"{element}-{element}"
-        pair_df = (
-            df[df["pair"] == pair_label]
-            .sort_values("distance")
-            .drop_duplicates("distance")
-        )
-        if pair_df.empty:
-            return False
-
-        x = pair_df["distance"].to_numpy()
-        y = pair_df["energy"].to_numpy()
-        y_shifted = y - y[-1]
-
-        ax.plot(x, y_shifted, linewidth=1, color="tab:blue", zorder=1)
-        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
-        ax.set_facecolor("white")
-        ax.set_xlim(0.0, 6.0)
-        ax.set_ylim(-20.0, 20.0)
-        ax.set_xticks([0, 2, 4, 6])
-        ax.set_yticks([-20, -10, 0, 10, 20])
-        ax.tick_params(labelsize=7, length=2, pad=1)
-
-        depth = well_depths.get(element)
-        label = f"{element}\n{depth:.2f} eV" if depth is not None else element
-        ax.text(
-            0.02,
-            0.95,
-            label,
-            transform=ax.transAxes,
-            ha="left",
-            va="top",
-            fontsize=8,
-            fontweight="bold",
-        )
-        return True
-
-    render_periodic_table_grid(
-        title=f"Homonuclear diatomic curves: {model_name}",
-        filename_stem=model_dir / "overview",
-        plot_cell=_plot_overview,
-        figsize=(36, 20),
-        formats=("svg",),
-        suptitle_kwargs={"fontsize": 28, "fontweight": "bold"},
-    )
-
-    manifest: dict[str, dict[str, str] | str] = {
-        "overview": "overview.svg",
-        "elements": {},
-    }
-
-    available_elements = sorted(
-        e
-        for e in (set(df["element_1"].tolist()) | set(df["element_2"].tolist()))
-        if isinstance(e, str) and e
-    )
-    for element in available_elements:
-        rel_path = f"elements/{element}.png"
-        output_path = elements_dir / f"{element}.png"
-        if _render_element_focus(df, element, output_path):
-            manifest["elements"][element] = rel_path
-
-    manifest_path = model_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2))
-
-
-def _render_element_focus(df: pd.DataFrame, selected_element: str, output_path) -> bool:
-    """
-    Render heteronuclear overview for a selected element.
-
-    Parameters
-    ----------
-    df
-        Dataframe containing pair data.
-    selected_element
-        Element to highlight in the periodic table.
-    output_path
-        File path to save the PNG figure.
+    Load per-model diatomic curve dataframes from calculator outputs.
 
     Returns
     -------
-    bool
-        ``True`` if any data was rendered for the element.
+    dict[str, pd.DataFrame]
+        Mapping of model name to curve dataframe.
     """
-    pair_groups: dict[str, pd.DataFrame] = {}
-    for pair, df_pair in df.groupby("pair"):
-        try:
-            element1, element2 = pair.split("-")
-        except ValueError:
-            continue
-        if selected_element not in {element1, element2}:
-            continue
-        other = element2 if element1 == selected_element else element1
-        pair_groups[other] = df_pair.sort_values("distance").drop_duplicates("distance")
-
-    if not pair_groups:
-        return False
-
-    fig, axes = plt.subplots(
-        PERIODIC_TABLE_ROWS,
-        PERIODIC_TABLE_COLS,
-        figsize=(30, 15),
-        constrained_layout=True,
-    )
-    axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
-    for ax in axes.ravel():
-        ax.axis("off")
-
-    has_data = False
-    for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
-        pair_df = pair_groups.get(element)
-        if pair_df is None:
-            continue
-        x = pair_df["distance"].to_numpy()
-        y = pair_df["energy"].to_numpy()
-        shifted = y - y[-1]
-
-        ax = axes[row, col]
-        ax.axis("on")
-        ax.set_facecolor("white")
-        ax.plot(x, shifted, linewidth=1, color="tab:blue", zorder=1)
-        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
-        ax.set_xlim(0.0, 6.0)
-        ax.set_ylim(-20.0, 20.0)
-        ax.set_xticks([0, 2, 4, 6])
-        ax.set_yticks([-20, -10, 0, 10, 20])
-        ax.tick_params(labelsize=7, length=2, pad=1)
-        ax.set_title(
-            f"{selected_element}-{element}, shift: {float(y[-1]):.4f}",
-            fontsize=8,
-        )
-        if element == selected_element:
-            for spine in ax.spines.values():
-                spine.set_edgecolor("crimson")
-                spine.set_linewidth(2)
-        has_data = True
-
-    if not has_data:
-        plt.close(fig)
-        return False
-
-    fig.suptitle(
-        f"Diatomics involving {selected_element}",
-        fontsize=22,
-        fontweight="bold",
-    )
-    fig.savefig(output_path, format="png", dpi=200)
-    plt.close(fig)
-    return True
+    pair_data: dict[str, pd.DataFrame] = {}
+    for model_name in MODELS:
+        df = load_model_data(model_name)
+        if not df.empty:
+            pair_data[model_name] = df
+    return pair_data
 
 
-def collect_metrics() -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+persist_diatomics_pair_data = periodic_curve_gallery(
+    curve_dir=CURVE_PATH,
+    periodic_dir=PERIODIC_TABLE_PATH,
+    overview_title="Homonuclear diatomic curves: {model}",
+    overview_formats=("svg",),
+    focus_title_template="Diatomics involving {element}",
+    focus_formats=("png",),
+    series_columns={"force_parallel": "force_parallel"},
+    x_ticks=(0.0, 2.0, 4.0, 6.0),
+    y_ticks=(-20.0, -10.0, 0.0, 10.0, 20.0),
+    x_range=(0.0, 6.0),
+    y_range=(-20.0, 20.0),
+)(_load_pair_data)
+
+
+@pytest.fixture
+def diatomics_pair_data() -> dict[str, pd.DataFrame]:
+    """
+    Load curve data and persist gallery assets for pytest use.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Mapping of model name to per-pair curve data.
+    """
+    return persist_diatomics_pair_data()
+
+
+def collect_metrics(
+    pair_data: dict[str, pd.DataFrame] | None = None,
+) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
     Gather metrics and well depths for all models.
+
+    Parameters
+    ----------
+    pair_data
+        Optional mapping of model names to curve dataframes. When ``None``,
+        the data is loaded via ``persist_diatomics_pair_data``.
 
     Returns
     -------
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
         Aggregated metrics table and per-model homonuclear well depths.
     """
-    rows = []
+    rows: list[dict[str, float | str]] = []
     model_well_depths: dict[str, dict[str, float]] = {}
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    CURVE_PATH.mkdir(parents=True, exist_ok=True)
-    PERIODIC_TABLE_PATH.mkdir(parents=True, exist_ok=True)
 
-    for model_name in MODELS:
-        df = load_model_data(model_name)
-        if df.empty:
-            continue
+    data = pair_data if pair_data is not None else persist_diatomics_pair_data()
 
+    for model_name, df in data.items():
         metrics, well_depths = aggregate_model_metrics(df)
         if not metrics:
             continue
@@ -476,29 +297,35 @@ def collect_metrics() -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
         row = {"Model": model_name} | metrics
         rows.append(row)
 
-        write_curve_data(model_name, df)
-        write_periodic_table_assets(model_name, df, well_depths)
         model_well_depths[model_name] = well_depths
 
+    columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
     if not rows:
-        return pd.DataFrame(), model_well_depths
+        metrics_df = pd.DataFrame(columns=columns)
+        return metrics_df, model_well_depths
 
-    metrics_df = pd.DataFrame(rows)
-    metrics_df = metrics_df.reindex(columns=["Model"] + list(DEFAULT_THRESHOLDS.keys()))
+    metrics_df = pd.DataFrame(rows).reindex(columns=columns)
     return metrics_df, model_well_depths
 
 
 @pytest.fixture
-def diatomics_collection() -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+def diatomics_collection(
+    diatomics_pair_data: dict[str, pd.DataFrame],
+) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
     Collect diatomics metrics and well depths across all models.
+
+    Parameters
+    ----------
+    diatomics_pair_data
+        Mapping of model names to curve dataframes generated by the fixture.
 
     Returns
     -------
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
         Aggregated metrics dataframe and mapping of homonuclear well depths.
     """
-    return collect_metrics()
+    return collect_metrics(diatomics_pair_data)
 
 
 @pytest.fixture
