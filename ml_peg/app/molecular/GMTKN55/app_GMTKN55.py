@@ -7,9 +7,7 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
-)
+from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -29,18 +27,12 @@ class GMTKN55App(BaseApp):
             DATA_PATH / "figure_rel_energies.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
-        # structs_dir = DATA_PATH / MODELS[0]
-
-        # # Assets dir will be parent directory
-        # structs = list(
-        #     np.repeat(
-        #         [
-        #             f"assets/surfaces/GMTKN55/{MODELS[0]}/{i}.xyz"
-        #             for i in range(len(list(structs_dir.glob("*.xyz"))))
-        #         ],
-        #         3,
-        #     )
-        # )
+        # Assets dir will be parent directory - individual files for each polymorph
+        structs_dir = DATA_PATH / MODELS[0]
+        structs = [
+            f"assets/molecular/GMTKN55/{MODELS[0]}/{struct_file.stem}.xyz"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -48,12 +40,12 @@ class GMTKN55App(BaseApp):
             column_to_plot={"WTMAD": scatter, "Ranking Error": scatter},
         )
 
-        # struct_from_scatter(
-        #     scatter_id=f"{BENCHMARK_NAME}-figure",
-        #     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-        #     structs=structs,
-        #     mode="traj",
-        # )
+        struct_from_scatter(
+            scatter_id=f"{BENCHMARK_NAME}-figure",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=structs,
+            mode="traj",
+        )
 
 
 def get_app() -> GMTKN55App:
@@ -76,7 +68,7 @@ def get_app() -> GMTKN55App:
         table_path=DATA_PATH / "gmtkn55_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            # Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
