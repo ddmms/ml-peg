@@ -1,19 +1,22 @@
 metrics:
-  MAE:
+  Overall MAE:
     good: 0.0
     bad: 100.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: Experimental
+    weight: 1
   Charged MAE:
     good: 0.0
     bad: 100.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for charged systems
     level_of_theory: Experimental
+    weight: 0
   Neutral MAE:
     good: 0.0
     bad: 100.0
     unit: eV
     tooltip: Mean Absolute Error for neutral systems
     level_of_theory: Experimental
+    weight: 0

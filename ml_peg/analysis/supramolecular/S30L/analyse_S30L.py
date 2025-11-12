@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read
 import pytest
 
@@ -22,70 +23,38 @@ OUT_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
+# Constants
+EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
-def get_system_indices() -> list[int]:
+
+def get_info() -> dict[str, list[int]]:
     """
-    Get list of S30L system indices.
+    Get dictionary of S30L info.
 
     Returns
     -------
-    list[int]
-        List of system indices (1-30) from structure files.
+    dict[str, list[int]]
+        Dictionary of system indices, complex atom counts, and complex charges.
     """
-    system_indices = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = list(model_dir.glob("*.xyz"))
-            if xyz_files:
-                # S30L has 30 systems indexed 0-29 in files, 1-30 in original data
-                system_indices = list(range(1, len(xyz_files) + 1))
-                break
-    return system_indices
+    info = {"indices": [], "counts": [], "charges": []}
 
-
-def get_atom_counts() -> list[int]:
-    """
-    Get complex atom counts for S30L.
-
-    Returns
-    -------
-    list[int]
-        List of complex atom counts from structure files.
-    """
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                atom_counts = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    atom_counts.append(len(atoms))
-                return atom_counts
-    return []
+            # S30L has 30 systems indexed 0-29 in files, 1-30 in original data
+            info["indices"] = list(range(1, len(xyz_files) + 1))
+
+            for xyz_file in xyz_files:
+                atoms = read(xyz_file)
+                info["counts"].append(len(atoms))
+                info["charges"].append(atoms.info.get("complex_charge", 0))
+            break
+
+    return info
 
 
-def get_charges() -> list[int]:
-    """
-    Get complex charges for S30L.
-
-    Returns
-    -------
-    list[int]
-        List of complex charges from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                charges = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    charges.append(atoms.info.get("complex_charge", 0))
-                return charges
-    return []
+INFO = get_info()
 
 
 @pytest.fixture
@@ -95,9 +64,9 @@ def get_charges() -> list[int]:
     x_label="Predicted interaction energy / kcal/mol",
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
-        "System": get_system_indices(),
-        "Complex Atoms": get_atom_counts(),
-        "Charge": get_charges(),
+        "System": INFO["indices"],
+        "Complex Atoms": INFO["counts"],
+        "Charge": INFO["charges"],
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -129,9 +98,9 @@ def interaction_energies() -> dict[str, list]:
 
         for xyz_file in xyz_files:
             atoms = read(xyz_file)
-            model_energies.append(atoms.info["E_int_model_kcal"])
+            model_energies.append(atoms.info["E_int_model"] * EV_TO_KCAL_PER_MOL)
             if not ref_stored:
-                ref_energies.append(atoms.info["E_int_ref_kcal"])
+                ref_energies.append(atoms.info["E_int_ref"] * EV_TO_KCAL_PER_MOL)
 
         results[model_name] = model_energies
 
@@ -156,7 +125,7 @@ def interaction_energies() -> dict[str, list]:
 @pytest.fixture
 def s30l_mae(interaction_energies) -> dict[str, float]:
     """
-    Get mean absolute error for interaction energies (overall).
+    Get mean absolute error for interaction energies for all systems.
 
     Parameters
     ----------
@@ -195,7 +164,7 @@ def s30l_charged_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for charged systems.
     """
     # Get charges for filtering
-    charges = get_charges()
+    charges = INFO["charges"]
     charged_indices = [i for i, charge in enumerate(charges) if charge != 0]
 
     results = {}
@@ -227,7 +196,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for neutral systems.
     """
     # Get charges for filtering
-    charges = get_charges()
+    charges = INFO["charges"]
     neutral_indices = [i for i, charge in enumerate(charges) if charge == 0]
 
     results = {}
@@ -272,9 +241,9 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "MAE": s30l_mae,
-        "Charged MAE": s30l_charged_mae,
         "Neutral MAE": s30l_neutral_mae,
+        "Charged MAE": s30l_charged_mae,
+        "Overall MAE": s30l_mae,
     }
 
 
