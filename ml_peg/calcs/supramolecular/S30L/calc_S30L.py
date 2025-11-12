@@ -40,7 +40,7 @@ class S30LBenchmark(zntrack.Node):
     model_name: str = zntrack.params()
 
     @staticmethod
-    def read_charge(folder: Path) -> float:
+    def read_charge(folder: Path) -> int:
         """
         Read charge from .CHRG file.
 
@@ -51,18 +51,18 @@ class S30LBenchmark(zntrack.Node):
 
         Returns
         -------
-        float
-            Charge value, 0.0 if file doesn't exist.
+        int
+            Charge value, 0 if file doesn't exist.
         """
         for f in folder.iterdir():
             if f.name.upper() == ".CHRG":
                 try:
-                    return float(f.read_text().strip())
+                    return int(f.read_text().strip())
                 except ValueError:
                     warnings.warn(
                         f"Invalid charge in {f} - assuming neutral.", stacklevel=2
                     )
-        return 0.0
+        return 0
 
     def read_atoms(self, folder: Path, ident: str) -> Atoms:
         """
@@ -87,7 +87,7 @@ class S30LBenchmark(zntrack.Node):
             raise FileNotFoundError(f"No coord file in {folder}")
         atoms = read(coord, format="turbomole")
         atoms.info.update(
-            {"identifier": ident, "charge": int(self.read_charge(folder))}
+            {"identifier": ident, "charge": self.read_charge(folder), "spin": 1}
         )
         return atoms
 
@@ -206,20 +206,10 @@ class S30LBenchmark(zntrack.Node):
                 # Reference energy in eV
                 e_int_ref = refs[idx]
 
-                # Calculate errors
-                error_ev = e_int_model - e_int_ref
-                error_kcal = error_ev * EV_TO_KCAL_PER_MOL
-
                 # Store additional info in complex atoms
                 complex_atoms.info["model"] = model_name
-                complex_atoms.info["E_int_model_kcal"] = (
-                    e_int_model * EV_TO_KCAL_PER_MOL
-                )
-                complex_atoms.info["E_int_ref_kcal"] = e_int_ref * EV_TO_KCAL_PER_MOL
-                complex_atoms.info["E_int_model_ev"] = e_int_model
-                complex_atoms.info["E_int_ref_ev"] = e_int_ref
-                complex_atoms.info["error_kcal"] = error_kcal
-                complex_atoms.info["error_ev"] = error_ev
+                complex_atoms.info["E_int_model"] = e_int_model
+                complex_atoms.info["E_int_ref"] = e_int_ref
                 complex_atoms.info["system_index"] = idx
                 complex_atoms.info["n_atoms"] = len(complex_atoms)
                 complex_atoms.info["host_charge"] = host_atoms.info["charge"]
