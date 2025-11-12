@@ -9,7 +9,7 @@ from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -19,7 +19,8 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular" / "Wiggle150" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "Wiggle150"
 
-WIGGLE150_THRESHOLDS = {"MAE": (0, 20.0)}
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def _sorted_xyz_files(model_dir: Path) -> list[Path]:
@@ -179,11 +180,8 @@ def wiggle150_mae(relative_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "wiggle150_metrics_table.json",
-    metric_tooltips={
-        "MLIP": "Name of the method or model",
-        "MAE": "Mean absolute error of relative energies (kcal/mol)",
-    },
-    thresholds=WIGGLE150_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(wiggle150_mae: dict[str, float]) -> dict[str, dict]:
     """

@@ -13,7 +13,7 @@ from mlipx.abc import NodeWithCalculator
 from tqdm import tqdm
 import zntrack
 
-from ml_peg.calcs.utils.utils import chdir, get_benchmark_data
+from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -68,13 +68,13 @@ class Wiggle150Benchmark(zntrack.Node):
         return label, ref_energy
 
     @staticmethod
-    def load_structures(base_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
+    def load_structures(data_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
         """
         Load Wiggle150 structures and organise by molecule.
 
         Parameters
         ----------
-        base_dir
+        data_dir
             Directory containing the extracted dataset.
 
         Returns
@@ -82,7 +82,7 @@ class Wiggle150Benchmark(zntrack.Node):
         dict
             Mapping of molecule id to ground state and conformers.
         """
-        dataset_path = base_dir / DATA_FILENAME
+        dataset_path = data_dir / DATA_FILENAME
         structures = read(dataset_path, ":")
 
         molecules: dict[str, dict[str, list[Atoms]]] = {
@@ -130,7 +130,7 @@ class Wiggle150Benchmark(zntrack.Node):
 
     @staticmethod
     def benchmark_wiggle150(
-        calc: Calculator, model_name: str, base_dir: Path
+        calc: Calculator, model_name: str, data_dir: Path
     ) -> list[Atoms]:
         """
         Run Wiggle150 benchmark for a given calculator.
@@ -141,7 +141,7 @@ class Wiggle150Benchmark(zntrack.Node):
             ASE calculator for predictions.
         model_name
             Name of the model.
-        base_dir
+        data_dir
             Path to extracted Wiggle150 data.
 
         Returns
@@ -149,7 +149,7 @@ class Wiggle150Benchmark(zntrack.Node):
         list[Atoms]
             Conformer structures annotated with prediction metadata.
         """
-        molecules = Wiggle150Benchmark.load_structures(base_dir)
+        molecules = Wiggle150Benchmark.load_structures(data_dir)
         conformer_atoms: list[Atoms] = []
 
         for molecule in MOLECULE_ORDER:
@@ -194,9 +194,19 @@ class Wiggle150Benchmark(zntrack.Node):
         """Execute Wiggle150 benchmark calculations."""
         calc = self.model.get_calculator()
 
-        base_dir = get_benchmark_data(DATA_ARCHIVE) / DATA_SUBDIR
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
 
-        conformers = self.benchmark_wiggle150(calc, self.model_name, base_dir)
+        # Download data
+        data_dir = (
+            download_s3_data(
+                key="inputs/molecular_crystal/DMC_ICE13/DMC_ICE13.zip",
+                filename="DMC_ICE13.zip",
+            )
+            / "dmc-ice13-main/INPUT/VASP"
+        )
+
+        conformers = self.benchmark_wiggle150(calc, self.model_name, data_dir)
 
         write_dir = OUT_PATH / self.model_name
         write_dir.mkdir(parents=True, exist_ok=True)
