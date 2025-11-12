@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,6 +17,7 @@ from ml_peg.analysis.utils.decorators import (
     build_table,
     render_periodic_table_grid,
 )
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -27,13 +29,18 @@ OUT_PATH = APP_ROOT / "data" / "molecular" / "Diatomics"
 CURVE_PATH = OUT_PATH / "curves"
 PERIODIC_TABLE_PATH = OUT_PATH / "periodic_tables"
 
-DIATOMICS_THRESHOLDS = {
-    "Force flips": (1.0, 5.0),
-    "Energy minima": (1.0, 5.0),
-    "Energy inflections": (1.0, 5.0),
-    "ρ(E, repulsion)": (-1.0, 1.0),
-    "ρ(E, attraction)": (1.0, -1.0),
-}
+
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+
+
+# DIATOMICS_THRESHOLDS = {
+#     "Force flips": (1.0, 5.0),
+#     "Energy minima": (1.0, 5.0),
+#     "Energy inflections": (1.0, 5.0),
+#     "ρ(E, repulsion)": (-1.0, 1.0),
+#     "ρ(E, attraction)": (1.0, -1.0),
+# }
 
 
 def load_model_data(model_name: str) -> pd.DataFrame:
@@ -218,56 +225,9 @@ def aggregate_model_metrics(
 
     aggregated = {
         key: float(np.nanmean([metrics.get(key, np.nan) for metrics in pair_metrics]))
-        for key in DIATOMICS_THRESHOLDS
+        for key in DEFAULT_THRESHOLDS.keys()
     }
     return aggregated, well_depths
-
-
-def score_diatomics(
-    metrics_df: pd.DataFrame, normalise_to_model: str | None
-) -> pd.DataFrame:
-    """
-    Compute aggregate score based on physical targets.
-
-    Parameters
-    ----------
-    metrics_df
-        Dataframe containing per-model metrics.
-    normalise_to_model
-        Optional model to normalise scores against.
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with ``Score`` column appended.
-    """
-    ideal_targets = {
-        "Force flips": 1.0,
-        "Energy minima": 1.0,
-        "Energy inflections": 1.0,
-        "ρ(E, repulsion)": -1.0,
-        "ρ(E, attraction)": 1.0,
-    }
-
-    metrics_df["Score"] = 0.0
-    for model in metrics_df["Model"]:
-        for column, target in ideal_targets.items():
-            value = metrics_df.loc[metrics_df["Model"] == model, column].iloc[0]
-            if pd.isna(value):
-                continue
-            metrics_df.loc[metrics_df["Model"] == model, "Score"] += abs(value - target)
-
-    if normalise_to_model in metrics_df["Model"].values:
-        baseline = metrics_df.loc[
-            metrics_df["Model"] == normalise_to_model, "Score"
-        ].iloc[0]
-        if baseline != 0:
-            metrics_df["Score"] /= baseline
-
-    metrics_df["Rank"] = (
-        metrics_df["Score"].rank(ascending=True, method="min").astype(int)
-    )
-    return metrics_df
 
 
 def write_curve_data(model_name: str, df: pd.DataFrame) -> None:
@@ -488,16 +448,9 @@ def _render_element_focus(df: pd.DataFrame, selected_element: str, output_path) 
     return True
 
 
-def collect_metrics(
-    normalise_to_model: str | None = None,
-) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+def collect_metrics() -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
     Gather metrics and well depths for all models.
-
-    Parameters
-    ----------
-    normalise_to_model
-        Optional reference model for score normalisation.
 
     Returns
     -------
@@ -531,39 +484,21 @@ def collect_metrics(
         return pd.DataFrame(), model_well_depths
 
     metrics_df = pd.DataFrame(rows)
-    metrics_df = score_diatomics(metrics_df, normalise_to_model)
-    metrics_df = metrics_df.reindex(
-        columns=["Model"] + list(DIATOMICS_THRESHOLDS.keys()) + ["Score", "Rank"]
-    )
+    metrics_df = metrics_df.reindex(columns=["Model"] + list(DEFAULT_THRESHOLDS.keys()))
     return metrics_df, model_well_depths
 
 
 @pytest.fixture
-def diatomics_collection(
-    request: pytest.FixtureRequest,
-) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+def diatomics_collection() -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
     Collect diatomics metrics and well depths across all models.
-
-    Parameters
-    ----------
-    request
-        Pytest fixture request used to access optional parametrisation, namely
-        the ``normalise_to_model`` override.
 
     Returns
     -------
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
         Aggregated metrics dataframe and mapping of homonuclear well depths.
     """
-    normalise_to_model: str | None = None
-    if hasattr(request, "param"):
-        param = request.param
-        if isinstance(param, dict):
-            normalise_to_model = param.get("normalise_to_model")
-        else:
-            normalise_to_model = param
-    return collect_metrics(normalise_to_model)
+    return collect_metrics()
 
 
 @pytest.fixture
@@ -614,21 +549,8 @@ def diatomics_well_depths(
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "diatomics_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "Force flips": "Mean count of force-direction changes per pair (ideal 1)",
-        "Energy minima": "Average number of energy minima per pair",
-        "Energy inflections": "Average number of energy inflection points per pair",
-        "ρ(E, repulsion)": (
-            "Spearman correlation for energy in repulsive regime (ideal -1)"
-        ),
-        "ρ(E, attraction)": (
-            "Spearman correlation for energy in attractive regime (ideal +1)"
-        ),
-        "Score": "Aggregate deviation from physical targets (lower is better)",
-        "Rank": "Model ranking based on score (lower is better)",
-    },
-    thresholds=DIATOMICS_THRESHOLDS,
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
     diatomics_metrics_dataframe: pd.DataFrame,
@@ -653,13 +575,14 @@ def metrics(
 
     # _ = diatomics_well_depths
 
-    metrics_dict: dict[str, dict[str, float]] = {}
+    metrics_dict: dict[str, dict[str, float | None]] = {}
     for column in metrics_df.columns:
         if column == "Model":
             continue
-        metrics_dict[column] = dict(
-            zip(metrics_df["Model"], metrics_df[column], strict=False)
-        )
+        values = [
+            value if pd.notna(value) else None for value in metrics_df[column].tolist()
+        ]
+        metrics_dict[column] = dict(zip(metrics_df["Model"], values, strict=False))
     return metrics_dict
 
 
