@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 from numpy.typing import NDArray
 import pytest
@@ -109,6 +109,7 @@ def rel_energies() -> dict[str, list[float]]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
     for model_name in MODELS:
+        count = 0
         for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
             for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
                 structs = read(system_path, index=":")
@@ -126,6 +127,12 @@ def rel_energies() -> dict[str, list[float]]:
                 # Shared by all structures in a system, so can use last structure
                 if not ref_stored:
                     results["ref"].append(struct.info["ref_value"])
+
+                # Write out all structs in system for app
+                structs_dir = OUT_PATH / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{count}.xyz", structs)
+                count += 1
 
         ref_stored = True
     return results
