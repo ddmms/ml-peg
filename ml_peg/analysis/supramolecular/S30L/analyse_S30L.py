@@ -21,7 +21,9 @@ CALC_PATH = CALCS_ROOT / "supramolecular" / "S30L" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 # Constants
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
@@ -217,6 +219,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
     filename=OUT_PATH / "s30l_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     s30l_mae: dict[str, float],
