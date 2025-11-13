@@ -10,3 +10,4 @@ Benchmarks
     supramolecular
     physicality
     molecular_crystal
+    molecular

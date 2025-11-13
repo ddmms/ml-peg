@@ -20,7 +20,9 @@ CALC_PATH = CALCS_ROOT / "nebs" / "li_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
 

@@ -1,0 +1,43 @@
+metrics:
+  Small systems:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 0
+  Large systems:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 0
+  Barrier heights:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 0
+  Intramolecular NCIs:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 0
+  Intermolecular NCIs:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 0
+  WTMAD:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Total Weighted Mean Absolute Deviation"
+    level_of_theory: PBE
+    weight: 1

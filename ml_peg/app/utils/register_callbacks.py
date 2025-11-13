@@ -341,7 +341,9 @@ def register_benchmark_to_category_callback(
         return category_rows, style, category_rows
 
 
-def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None:
+def register_weight_callbacks(
+    input_id: str, table_id: str, column: str, default_weights: dict[str, float]
+) -> None:
     """
     Register all callbacks for weight inputs.
 
@@ -353,8 +355,11 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
         ID for table. Also used to identify reset button and weight store.
     column
         Column header corresponding to slider and input box.
+    default_weights
+        Optional weights for each metric, usually set during analysis. Default is
+        `None`, which sets all weights to 1.
     """
-    default_weight = 1.0
+    default_weights = default_weights if default_weights else {}
 
     @callback(
         Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
@@ -392,7 +397,9 @@ def register_weight_callbacks(input_id: str, table_id: str, column: str) -> None
                 raise PreventUpdate
             stored_weights[column] = input_weight
         elif trigger_id == f"{table_id}-reset-button":
-            stored_weights.update((key, default_weight) for key in stored_weights)
+            stored_weights.update(
+                (key, default_weights.get(key, 1.0)) for key in stored_weights
+            )
         else:
             raise PreventUpdate
 

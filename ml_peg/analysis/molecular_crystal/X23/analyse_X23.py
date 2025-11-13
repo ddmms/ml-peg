@@ -20,7 +20,9 @@ CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ

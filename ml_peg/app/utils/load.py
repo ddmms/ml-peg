@@ -13,6 +13,7 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     calculate_column_widths,
     clean_thresholds,
+    clean_weights,
     is_numeric_column,
     rank_format,
     sig_fig_format,
@@ -121,7 +122,13 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         persisted_props=["data"],
     )
 
+    thresholds = clean_thresholds(table_json.get("thresholds"))
+    weights = clean_weights(table_json.get("weights"))
+    if not thresholds or not weights:
+        raise ValueError(f"No thresholds defined in table JSON: {filename}")
+
     table.thresholds = thresholds
+    table.weights = weights
 
     return table
 
