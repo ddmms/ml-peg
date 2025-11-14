@@ -21,6 +21,7 @@ mace-mpa-0:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  level_of_theory: PBE
   kwargs:
     model: "medium-mpa-0"
 
