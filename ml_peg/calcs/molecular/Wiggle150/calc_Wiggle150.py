@@ -27,8 +27,8 @@ KCAL_PER_MOL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL_PER_MOL = 1.0 / KCAL_PER_MOL_TO_EV
 
 # Dataset constants
-DATA_ARCHIVE = "wiggle150-structures.zip"
-DATA_SUBDIR = "wiggle150-structures"
+DATA_ARCHIVE = "Wiggle150.zip"
+DATA_SUBDIR = "Wiggle150"
 DATA_FILENAME = "ct5c00015_si_003.xyz"
 MOLECULE_ORDER = ("ado", "bpn", "efa")
 
@@ -200,10 +200,10 @@ class Wiggle150Benchmark(zntrack.Node):
         # Download data
         data_dir = (
             download_s3_data(
-                key="inputs/molecular_crystal/DMC_ICE13/DMC_ICE13.zip",
-                filename="DMC_ICE13.zip",
+                key=f"inputs/molecular/{DATA_ARCHIVE}/{DATA_SUBDIR}.zip",
+                filename=f"{DATA_ARCHIVE}.zip",
             )
-            / "dmc-ice13-main/INPUT/VASP"
+            / DATA_SUBDIR
         )
 
         conformers = self.benchmark_wiggle150(calc, self.model_name, data_dir)
