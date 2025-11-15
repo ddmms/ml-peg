@@ -81,3 +81,52 @@ Reference data:
 
 * Same as input data
 * PBE-D3(BJ)
+
+
+
+
+
+Wiggle150
+===
+
+Summary
+-------
+
+Performance in predicting relative energies between 150 strained conformers of adenosine, benzylpenicillin, and efavirenz molecules (50 each) and their geometry optimised structures.
+
+
+Metrics
+-------
+
+1. Relative energy MAE
+
+Accuracy of relative energy predictions.
+
+For each molecular crystal, lattice energy is calculated by taking the difference
+between the energy of the solid molecular crystal divided by the number of molecules it
+comprises, and the energy of the isolated molecule. This is compared to the reference
+lattice energy.
+
+For each molecule, 50 relative energies are calculated by comparing the predicted energy of the
+DLPNO-CCSD(T)/CBS geometry optimised structure to the energies of its 50 strained conformers. The
+mean absolute error is reported over all 150 conformers.
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take less than a minute to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Brew, R. R. et al. Wiggle150: Benchmarking Density Functionals and Neural Network Potentials
+on Highly Strained Conformers. J. Chem. Theory Comput. 21, 3922-3929 (2025).
+
+
+Reference data:
+
+* Same as input data
