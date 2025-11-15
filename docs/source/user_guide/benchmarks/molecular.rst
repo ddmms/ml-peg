@@ -102,11 +102,6 @@ Metrics
 
 Accuracy of relative energy predictions.
 
-For each molecular crystal, lattice energy is calculated by taking the difference
-between the energy of the solid molecular crystal divided by the number of molecules it
-comprises, and the energy of the isolated molecule. This is compared to the reference
-lattice energy.
-
 For each molecule, 50 relative energies are calculated by comparing the predicted energy of the
 DLPNO-CCSD(T)/CBS geometry optimised structure to the energies of its 50 strained conformers. The
 mean absolute error is reported over all 150 conformers.
