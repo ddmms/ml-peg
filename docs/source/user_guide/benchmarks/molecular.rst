@@ -89,7 +89,8 @@ Wiggle150
 Summary
 -------
 
-Performance in predicting relative energies between 150 strained conformers of adenosine, benzylpenicillin, and efavirenz molecules (50 each) and their geometry optimised structures.
+Performance in predicting relative energies between 150 strained conformers of
+adenosine, benzylpenicillin, and efavirenz molecules (50 each) and their geometry optimised structures.
 
 
 Metrics
@@ -116,9 +117,10 @@ Data availability
 Input structures:
 
 * Brew, R. R. et al. Wiggle150: Benchmarking Density Functionals and Neural Network Potentials
-on Highly Strained Conformers. J. Chem. Theory Comput. 21, 3922-3929 (2025).
+  on Highly Strained Conformers. J. Chem. Theory Comput. 21, 3922-3929 (2025).
 
 
 Reference data:
 
 * Same as input data
+* DLPNO-CCSD(T)/CBS
