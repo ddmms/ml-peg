@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from importlib import import_module
+from importlib import import_module, metadata
+import time
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, callback, html
 from dash.dash_table import DataTable
 from dash.dcc import Store, Tab, Tabs
-from dash.html import H1, H3, Div
+from dash.html import H1, H3, Div, Footer
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores, get_table_style
@@ -241,6 +242,75 @@ def build_summary_table(
     return table
 
 
+def build_footer() -> Footer:
+    """
+    Build footer with copyright and license.
+
+    Returns
+    -------
+    Footer
+        Footer with details populated.
+    """
+    copyright_first_year = "2025"
+    current_year = str(time.localtime().tm_year)
+    copyright_owners = metadata.metadata("ml-peg")["author"]
+
+    copyright_year_string = (
+        current_year
+        if current_year == copyright_first_year
+        else f"{copyright_first_year}-{current_year}"
+    )
+    copyright_txt = (
+        f"Copyright © {copyright_year_string}, {copyright_owners}. All rights reserved"
+    )
+
+    return html.Footer(
+        html.Div(
+            [
+                html.Div(
+                    [
+                        html.Div(copyright_txt),
+                        html.Div(
+                            html.A(
+                                "GPL-3.0 license",
+                                href="https://github.com/ddmms/ml-peg/blob/main/LICENSE",
+                                target="_blank",
+                            ),
+                            style={"marginTop": "4px"},
+                        ),
+                    ],
+                    style={
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "justifyContent": "center",
+                    },
+                ),
+                html.Div(
+                    html.A(
+                        html.Img(src="/assets/github-mark.svg", height="24px"),
+                        href="https://github.com/ddmms/ml-peg",
+                        target="_blank",
+                        style={"display": "block"},
+                    ),
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+            ],
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "alignItems": "center",
+                "maxWidth": "1000px",
+                "margin": "0 auto",
+            },
+        ),
+        style={
+            "width": "100%",
+            "padding": "12px 0",
+            "backgroundColor": "#f0f0f0",
+        },
+    )
+
+
 def build_tabs(
     full_app: Dash,
     layouts: dict[str, list[Div]],
@@ -266,12 +336,21 @@ def build_tabs(
     ]
 
     tabs_layout = [
-        H1("ML-PEG"),
-        Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-        Div(id="tabs-content"),
+        Div(
+            [
+                H1("ML-PEG"),
+                Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                Div(id="tabs-content"),
+            ],
+            style={"flex": "1", "marginBottom": "40px"},
+        ),
+        build_footer(),
     ]
 
-    full_app.layout = Div(tabs_layout)
+    full_app.layout = Div(
+        tabs_layout,
+        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+    )
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
