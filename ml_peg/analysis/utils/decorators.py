@@ -869,13 +869,13 @@ def render_periodic_table_grid(
 def periodic_curve_gallery(
     *,
     curve_dir: Path,
-    periodic_dir: Path,
-    overview_title: str,
-    overview_formats: tuple[str, ...] = ("svg",),
+    periodic_dir: Path | None = None,
+    overview_title: str | None = None,
+    overview_formats: tuple[str, ...] = (),
     overview_figsize: tuple[float, float] | None = (36, 20),
     overview_suptitle: dict[str, Any] | None = None,
-    focus_title_template: str | None = "Diatomics involving {element}",
-    focus_formats: tuple[str, ...] = ("png",),
+    focus_title_template: str | None = None,
+    focus_formats: tuple[str, ...] = (),
     focus_figsize: tuple[float, float] = (30, 15),
     focus_dpi: int = 200,
     pair_column: str = "pair",
@@ -899,11 +899,13 @@ def periodic_curve_gallery(
     curve_dir
         Directory where per-pair JSON payloads will be written per model.
     periodic_dir
-        Directory where periodic-table overviews and per-element figures are stored.
+        Optional directory for periodic-table overviews and per-element figures. When
+        omitted, only the curve payloads are written.
     overview_title
-        Format string used for the overview title (receives ``model`` keyword).
+        Format string used for the overview title (receives ``model`` keyword). Ignored
+        if ``overview_formats`` is empty.
     overview_formats
-        File formats to emit for overview figure.
+        File formats to emit for overview figure. Empty tuple disables overview output.
     overview_figsize
         Matplotlib figsize for the overview grid.
     overview_suptitle
@@ -912,7 +914,7 @@ def periodic_curve_gallery(
         Format string for per-element focus plots (receives ``element`` and ``model``).
         Set to ``None`` to disable focus figures.
     focus_formats
-        File formats for per-element focus plots.
+        File formats for per-element focus plots. Empty tuple disables focus output.
     focus_figsize
         Matplotlib figsize for focus plots.
     focus_dpi
@@ -938,7 +940,7 @@ def periodic_curve_gallery(
         emits the associated gallery assets.
     """
     curve_dir = Path(curve_dir)
-    periodic_dir = Path(periodic_dir)
+    periodic_dir = Path(periodic_dir) if periodic_dir else None
 
     default_series = {"distance": distance_column, "energy": energy_column}
     if series_columns:
@@ -1221,22 +1223,32 @@ def periodic_curve_gallery(
                 )
 
             curve_dir.mkdir(parents=True, exist_ok=True)
-            periodic_dir.mkdir(parents=True, exist_ok=True)
+            if periodic_dir:
+                periodic_dir.mkdir(parents=True, exist_ok=True)
 
             for model_name, frame in model_frames.items():
                 if frame is None or frame.empty:
                     continue
                 _write_curve_payloads(model_name, frame)
 
+                # Skip image/manifest generation when no formats are requested or
+                # when no periodic_dir is supplied.
+                if not periodic_dir or (
+                    not overview_formats
+                    and not (focus_title_template and focus_formats)
+                ):
+                    continue
+
                 model_periodic_dir = periodic_dir / model_name
                 model_periodic_dir.mkdir(parents=True, exist_ok=True)
                 elements_dir = model_periodic_dir / "elements"
                 elements_dir.mkdir(parents=True, exist_ok=True)
 
-                overview_rendered = _render_overview(model_name, frame)
                 manifest: dict[str, Any] = {"elements": {}}
-                if overview_rendered and overview_formats:
-                    manifest["overview"] = f"overview.{overview_formats[0]}"
+                if overview_formats:
+                    overview_rendered = _render_overview(model_name, frame)
+                    if overview_rendered:
+                        manifest["overview"] = f"overview.{overview_formats[0]}"
 
                 if focus_title_template and focus_formats:
                     available_elements: set[str] = set()

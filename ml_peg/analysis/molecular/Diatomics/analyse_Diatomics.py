@@ -23,7 +23,6 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "molecular" / "Diatomics" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "Diatomics"
 CURVE_PATH = OUT_PATH / "curves"
-PERIODIC_TABLE_PATH = OUT_PATH / "periodic_tables"
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -241,11 +240,11 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
 
 persist_diatomics_pair_data = periodic_curve_gallery(
     curve_dir=CURVE_PATH,
-    periodic_dir=PERIODIC_TABLE_PATH,
-    overview_title="Homonuclear diatomic curves: {model}",
-    overview_formats=("svg",),
-    focus_title_template="Diatomics involving {element}",
-    focus_formats=("png",),
+    periodic_dir=None,
+    overview_title=None,
+    overview_formats=(),
+    focus_title_template=None,
+    focus_formats=(),
     series_columns={"force_parallel": "force_parallel"},
     x_ticks=(0.0, 2.0, 4.0, 6.0),
     y_ticks=(-20.0, -10.0, 0.0, 10.0, 20.0),
@@ -293,8 +292,6 @@ def collect_metrics(
 
     for model_name, df in data.items():
         metrics, well_depths = aggregate_model_metrics(df)
-        if not metrics:
-            continue
 
         row = {"Model": model_name} | metrics
         rows.append(row)
@@ -302,9 +299,6 @@ def collect_metrics(
         model_well_depths[model_name] = well_depths
 
     columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
-    if not rows:
-        metrics_df = pd.DataFrame(columns=columns)
-        return metrics_df, model_well_depths
 
     metrics_df = pd.DataFrame(rows).reindex(columns=columns)
     return metrics_df, model_well_depths

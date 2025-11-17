@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dash import Dash, dcc
+from dash.dcc import Loading
 from dash.html import Div, Label
 
 from ml_peg.app import APP_ROOT
@@ -15,6 +16,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Diatomics"
 DATA_PATH = APP_ROOT / "data" / "molecular" / "Diatomics"
 PERIODIC_TABLE_PATH = DATA_PATH / "periodic_tables"
+CURVE_PATH = DATA_PATH / "curves"
 
 
 class DiatomicsApp(BaseApp):
@@ -26,7 +28,9 @@ class DiatomicsApp(BaseApp):
             model_dropdown_id=f"{BENCHMARK_NAME}-model-dropdown",
             element_dropdown_id=f"{BENCHMARK_NAME}-element-dropdown",
             figure_id=f"{BENCHMARK_NAME}-figure",
-            manifest_dir=PERIODIC_TABLE_PATH,
+            manifest_dir=CURVE_PATH,
+            overview_label="Homonuclear diatomics",
+            curve_dir=CURVE_PATH,
         )
 
 
@@ -40,12 +44,13 @@ def get_app() -> DiatomicsApp:
         Benchmark layout and callback registration.
     """
     model_options = [{"label": model, "value": model} for model in MODELS]
-    default_model = model_options[0]["value"] if model_options else None
+    default_model = model_options[0]["value"]
+    overview_label = "Homonuclear diatomics"
 
     extra_components = [
         Div(
             [
-                Label("Select Model:"),
+                Label("Select model:"),
                 dcc.Dropdown(
                     id=f"{BENCHMARK_NAME}-model-dropdown",
                     options=model_options,
@@ -53,20 +58,23 @@ def get_app() -> DiatomicsApp:
                     clearable=False,
                     style={"width": "300px", "marginBottom": "20px"},
                 ),
-                Label("Select Element:"),
+                Label("Select heteronuclear element:"),
                 dcc.Dropdown(
                     id=f"{BENCHMARK_NAME}-element-dropdown",
-                    options=[{"label": "All", "value": "All"}],
-                    value="All",
+                    options=[{"label": overview_label, "value": overview_label}],
+                    value=overview_label,
                     clearable=False,
                     style={"width": "300px"},
                 ),
             ],
             style={"marginBottom": "20px"},
         ),
-        dcc.Graph(
-            id=f"{BENCHMARK_NAME}-figure",
-            style={"height": "700px", "width": "100%", "marginTop": "20px"},
+        Loading(
+            dcc.Graph(
+                id=f"{BENCHMARK_NAME}-figure",
+                style={"height": "700px", "width": "100%", "marginTop": "20px"},
+            ),
+            type="circle",
         ),
     ]
 

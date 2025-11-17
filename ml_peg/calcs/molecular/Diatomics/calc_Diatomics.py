@@ -26,10 +26,10 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # Benchmark configuration (matches historical benchmark settings)
 ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-INCLUDE_HETERONUCLEAR = False
+INCLUDE_HETERONUCLEAR = True
 MIN_DISTANCE = 0.18
 MAX_DISTANCE = 6.0
-N_POINTS = 100
+N_POINTS = 5
 
 
 def _distance_grid(
@@ -135,6 +135,8 @@ def run_diatomics(model_name: str, model) -> None:
     calc = model.get_calculator()
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
+    traj_dir = write_dir / "diatomics"
+    traj_dir.mkdir(parents=True, exist_ok=True)
 
     records: list[dict[str, float]] = []
     supported_pairs: set[str] = set()
@@ -205,7 +207,7 @@ def run_diatomics(model_name: str, model) -> None:
             failed_pairs.setdefault(pair_label, "no trajectory generated")
             continue
 
-        write(write_dir / f"{pair_label}.xyz", structures, format="extxyz")
+        write(traj_dir / f"{pair_label}.xyz", structures, format="extxyz")
         supported_pairs.add(pair_label)
         supported_elements.update({element1, element2})
 
