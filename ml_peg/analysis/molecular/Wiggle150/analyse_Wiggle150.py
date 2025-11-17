@@ -20,7 +20,7 @@ CALC_PATH = CALCS_ROOT / "molecular" / "Wiggle150" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "Wiggle150"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def _sorted_xyz_files(model_dir: Path) -> list[Path]:
