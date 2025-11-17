@@ -45,12 +45,12 @@ def parse_structure_info(atoms: Atoms) -> tuple[str, float]:
     tuple[str, float]
         Structure label and absolute reference energy.
     """
-    info_keys = list(atoms.info.keys())
+    info_keys = sorted(atoms.info.keys())
     if len(info_keys) < 2:
         raise ValueError("Structure metadata missing required keys.")
 
-    label = info_keys[0]
-    ref_energy = float(info_keys[1])
+    ref_energy = float(info_keys[0])
+    label = info_keys[1]
     return label, ref_energy
 
 
