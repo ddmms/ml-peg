@@ -8,8 +8,10 @@ from dash.dcc import Checklist, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
+from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import Thresholds
+from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_normalization_callbacks,
@@ -282,6 +284,101 @@ def build_weight_components(
         )
 
     return Div(layout)
+
+
+def load_authors_from_citation() -> list[str]:
+    """
+    Load author names from the repository CITATION.cff file.
+
+    Returns
+    -------
+    list[str]
+        Ordered list of author display names; empty if parsing fails.
+    """
+    citation_path = APP_ROOT.parent.parent / "CITATION.cff"
+    citation_text = citation_path.read_text(encoding="utf-8")
+    data = safe_load(citation_text) or {}
+
+    authors = []
+    for author in data.get("authors", []):
+        given = author.get("given-names") or author.get("given_names")
+        family = author.get("family-names") or author.get("family_names")
+        parts = [part for part in (given, family) if part]
+        if parts:
+            authors.append(" ".join(parts))
+    return authors
+
+
+def build_footer() -> html.Footer:
+    """
+    Build shared footer with author, copyright, and repository link.
+
+    Returns
+    -------
+    html.Footer
+        Styled footer component rendered at the bottom of each tab.
+    """
+    authors = load_authors_from_citation()
+    authors_text = "Authors: " + " • ".join(authors)
+
+    return html.Footer(
+        [
+            Div(
+                [
+                    html.Span(authors_text, style={"fontWeight": "800"}),
+                    html.Span(" • "),
+                    html.Span("Copyright © 2025 ML-PEG contributors"),
+                ],
+                style={
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
+            ),
+            Div(
+                html.A(
+                    [
+                        html.Img(
+                            src=(
+                                "https://github.githubassets.com/images/modules/logos_page/"
+                                "GitHub-Mark.png"
+                            ),
+                            alt="GitHub",
+                            width="16",
+                            height="16",
+                            style={
+                                "marginRight": "6px",
+                                "verticalAlign": "middle",
+                                "display": "block",
+                            },
+                        ),
+                        html.Span("View on GitHub"),
+                    ],
+                    href="https://github.com/ddmms/ml-peg",
+                    target="_blank",
+                    style={
+                        "color": "#0d6efd",
+                        "textDecoration": "none",
+                        "fontWeight": "800",
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                    },
+                ),
+                style={"marginTop": "6px"},
+            ),
+        ],
+        style={
+            "marginTop": "24px",
+            "padding": "14px 12px",
+            "color": "#343a40",
+            "fontSize": "12px",
+            "textAlign": "center",
+            "borderTop": "1px solid #dee2e6",
+            "background": "#f8f9fa",
+            "borderRadius": "6px",
+        },
+    )
 
 
 def build_test_layout(
