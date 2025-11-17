@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from importlib import metadata
+import time
+
 from dash import html
 from dash.dash_table import DataTable
 from dash.dcc import Checklist, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
-from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import Thresholds
-from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_normalization_callbacks,
@@ -286,29 +287,6 @@ def build_weight_components(
     return Div(layout)
 
 
-def load_authors_from_citation() -> list[str]:
-    """
-    Load author names from the repository CITATION.cff file.
-
-    Returns
-    -------
-    list[str]
-        Ordered list of author display names; empty if parsing fails.
-    """
-    citation_path = APP_ROOT.parent.parent / "CITATION.cff"
-    citation_text = citation_path.read_text(encoding="utf-8")
-    data = safe_load(citation_text) or {}
-
-    authors = []
-    for author in data.get("authors", []):
-        given = author.get("given-names") or author.get("given_names")
-        family = author.get("family-names") or author.get("family_names")
-        parts = [part for part in (given, family) if part]
-        if parts:
-            authors.append(" ".join(parts))
-    return authors
-
-
 def build_footer() -> html.Footer:
     """
     Build shared footer with author, copyright, and repository link.
@@ -318,16 +296,24 @@ def build_footer() -> html.Footer:
     html.Footer
         Styled footer component rendered at the bottom of each tab.
     """
-    authors = load_authors_from_citation()
-    authors_text = "Authors: " + " • ".join(authors)
+    copyright_first_year = "2025"
+    current_year = str(time.localtime().tm_year)
+    copyright_owners = metadata.metadata("ml-peg")["author"]
+
+    copyright_year_string = (
+        current_year
+        if current_year == copyright_first_year
+        else f"{copyright_first_year}-{current_year}"
+    )
+    copyright_txt = (
+        f"Copyright © {copyright_year_string}, {copyright_owners}. All rights reserved"
+    )
 
     return html.Footer(
         [
             Div(
                 [
-                    html.Span(authors_text, style={"fontWeight": "800"}),
-                    html.Span(" • "),
-                    html.Span("Copyright © 2025 ML-PEG contributors"),
+                    html.Span(copyright_txt, style={"fontWeight": "800"}),
                 ],
                 style={
                     "display": "flex",
@@ -335,6 +321,14 @@ def build_footer() -> html.Footer:
                     "flexWrap": "wrap",
                     "gap": "6px",
                 },
+            ),
+            Div(
+                html.A(
+                    "GPL-3.0 license",
+                    href="https://github.com/ddmms/ml-peg/blob/main/LICENSE",
+                    target="_blank",
+                ),
+                style={"marginTop": "4px", "fontWeight": "800"},
             ),
             Div(
                 html.A(

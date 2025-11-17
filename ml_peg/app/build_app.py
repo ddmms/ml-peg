@@ -266,12 +266,21 @@ def build_tabs(
     ]
 
     tabs_layout = [
-        H1("ML-PEG"),
-        Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-        Div(id="tabs-content"),
+        Div(
+            [
+                H1("ML-PEG"),
+                Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                Div(id="tabs-content"),
+            ],
+            style={"flex": "1", "marginBottom": "40px"},
+        ),
+        build_footer(),
     ]
 
-    full_app.layout = Div(tabs_layout)
+    full_app.layout = Div(
+        tabs_layout,
+        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+    )
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
@@ -298,10 +307,9 @@ def build_tabs(
                         id="summary-table-scores-store",
                         storage_type="session",
                     ),
-                    build_footer(),
                 ]
             )
-        return Div([layouts[tab], build_footer()])
+        return Div([layouts[tab]])
 
 
 def build_full_app(full_app: Dash, category: str = "*") -> None:
