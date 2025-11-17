@@ -27,7 +27,9 @@ PERIODIC_TABLE_PATH = OUT_PATH / "periodic_tables"
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 
 def load_model_data(model_name: str) -> pd.DataFrame:
@@ -378,6 +380,7 @@ def diatomics_well_depths(
     filename=OUT_PATH / "diatomics_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     diatomics_metrics_dataframe: pd.DataFrame,
