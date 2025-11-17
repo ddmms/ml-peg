@@ -83,11 +83,8 @@ Reference data:
 * PBE-D3(BJ)
 
 
-
-
-
 Wiggle150
-===
+=========
 
 Summary
 -------
