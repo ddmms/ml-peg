@@ -261,12 +261,12 @@ def plot_density_scatter(
     seed: int = 0,
 ) -> Callable:
     """
-    Plot density-coloured parity scatter with model selector.
+    Plot density-coloured parity scatter with legend-based model toggling.
 
     The decorated function must return a mapping of model name to a dictionary with
     ``ref`` and ``pred`` arrays (and optional ``mae``). Each model is rendered as a
     scatter trace with marker colours indicating local data density.
-    Only one model is shown at a time using a dropdown selector.
+    Only one model is shown at a time; use the legend to toggle models.
 
     Parameters
     ----------
@@ -486,41 +486,21 @@ def plot_density_scatter(
                 )
             )
 
-            buttons = []
-            n_models = len(model_names)
-            for idx, model in enumerate(model_names):
-                visible = [False] * n_models + [True]
-                visible[idx] = True
-                buttons.append(
-                    {
-                        "label": model,
-                        "method": "update",
-                        "args": [
-                            {"visible": visible},
-                            {
-                                "title": f"{title} - {model}" if title else None,
-                                "annotations": [annotations[idx]],
-                            },
-                        ],
-                    }
-                )
+            # Store all annotations and model order in layout meta so consumers
+            # can swap annotation text when filtering per-model on the frontend.
+            layout_meta = {
+                "annotations": annotations,
+                "models": model_names,
+            }
 
             fig.update_layout(
-                title={"text": f"{title} - {model_names[0]}" if title else None},
+                title={"text": title} if title else None,
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
-                updatemenus=[
-                    {
-                        "buttons": buttons,
-                        "direction": "down",
-                        "showactive": True,
-                        "x": 0.0,
-                        "xanchor": "left",
-                        "y": 1.15,
-                        "yanchor": "top",
-                    }
-                ],
                 annotations=[annotations[0]],
+                meta=layout_meta,
+                showlegend=True,
+                legend_title_text="Model",
             )
 
             Path(filename).parent.mkdir(parents=True, exist_ok=True)

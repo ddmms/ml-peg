@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from matplotlib import cm
 from matplotlib.colors import Colormap
@@ -111,6 +112,54 @@ def rmse(ref: list, prediction: list) -> float:
         Root mean squared error.
     """
     return mean_squared_error(ref, prediction)
+
+
+def build_density_inputs(
+    models: list[str],
+    model_stats: dict[str, dict[str, Any]],
+    property_key: str,
+    *,
+    mae_fn: Callable[[list, list], float] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """
+    Prepare a model->data mapping for density scatter plots.
+
+    Parameters
+    ----------
+    models
+        Ordered list of model names to include.
+    model_stats
+        Mapping of model -> {"<property_key>": {"ref": [...], "pred": [...]},
+        "excluded": int}.
+    property_key
+        Key to extract from ``model_stats`` for each model (e.g. ``"bulk"`` or
+        ``"shear"``).
+    mae_fn
+        Optional callable to compute MAE. Defaults to :func:`mae` when None.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping ready for ``plot_density_scatter``.
+    """
+    mae_fn = mae if mae_fn is None else mae_fn
+    inputs: dict[str, dict[str, Any]] = {}
+
+    for model_name in models:
+        stats = model_stats.get(model_name, {})
+        prop = stats.get(property_key)
+        excluded = stats.get("excluded")
+
+        ref_vals = prop.get("ref", [])
+        pred_vals = prop.get("pred", [])
+        inputs[model_name] = {
+            "ref": ref_vals,
+            "pred": pred_vals,
+            "mae": mae_fn(ref_vals, pred_vals) if ref_vals else None,
+            "meta": {"excluded": excluded} if excluded is not None else {},
+        }
+
+    return inputs
 
 
 def calc_metric_scores(

@@ -12,7 +12,11 @@ from ml_peg.analysis.utils.decorators import (
     build_table,
     plot_density_scatter,
 )
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_density_inputs,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -29,26 +33,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 K_COLUMN = "K_vrh"
 G_COLUMN = "G_vrh"
-
-
-def _load_results(model_name: str) -> pd.DataFrame | None:
-    """
-    Load benchmark results for a model, if available.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model whose results should be read.
-
-    Returns
-    -------
-    pd.DataFrame | None
-        Results dataframe if present, otherwise ``None``.
-    """
-    results_path = CALC_PATH / model_name / "moduli_results.csv"
-    if not results_path.exists():
-        return None
-    return pd.read_csv(results_path)
 
 
 def _filter_results(df: pd.DataFrame, model_name: str) -> tuple[pd.DataFrame, int]:
@@ -85,22 +69,11 @@ def _collect_model_data() -> dict[str, dict[str, Any]]:
     """
     stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
-        df = _load_results(model_name)
-        if df is None:
-            stats[model_name] = {
-                "bulk": None,
-                "shear": None,
-                "excluded": None,
-            }
-            continue
+        results_path = CALC_PATH / model_name / "moduli_results.csv"
+        df = pd.read_csv(results_path)
+
         filtered, excluded = _filter_results(df, model_name)
-        if filtered.empty:
-            stats[model_name] = {
-                "bulk": None,
-                "shear": None,
-                "excluded": excluded,
-            }
-            continue
+
         stats[model_name] = {
             "bulk": {
                 "ref": filtered[f"{K_COLUMN}_DFT"].tolist(),
@@ -113,44 +86,6 @@ def _collect_model_data() -> dict[str, dict[str, Any]]:
             "excluded": excluded,
         }
     return stats
-
-
-def _density_inputs(property_key: str, model_stats: dict[str, dict[str, Any]]) -> dict:
-    """
-    Prepare mapping for density scatter decorator.
-
-    Parameters
-    ----------
-    property_key
-        Property key to extract (``"bulk"`` or ``"shear"``).
-    model_stats
-        Aggregated statistics for each model.
-
-    Returns
-    -------
-    dict
-        Mapping of model name to density-scatter inputs.
-    """
-    inputs = {}
-    for model_name in MODELS:
-        prop = model_stats.get(model_name, {}).get(property_key)
-        excluded = model_stats.get(model_name, {}).get("excluded")
-        if not prop:
-            inputs[model_name] = {
-                "ref": [],
-                "pred": [],
-                "meta": {"excluded": excluded},
-            }
-            continue
-        ref_vals = prop["ref"]
-        pred_vals = prop["pred"]
-        inputs[model_name] = {
-            "ref": ref_vals,
-            "pred": pred_vals,
-            "mae": mae(ref_vals, pred_vals) if ref_vals else None,
-            "meta": {"excluded": excluded},
-        }
-    return inputs
 
 
 @pytest.fixture
@@ -185,9 +120,6 @@ def bulk_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | N
     results: dict[str, float | None] = {}
     for model_name in MODELS:
         prop = elasticity_stats.get(model_name, {}).get("bulk")
-        if not prop:
-            results[model_name] = None
-            continue
         results[model_name] = mae(prop["ref"], prop["pred"])
     return results
 
@@ -210,9 +142,6 @@ def shear_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | 
     results: dict[str, float | None] = {}
     for model_name in MODELS:
         prop = elasticity_stats.get(model_name, {}).get("shear")
-        if not prop:
-            results[model_name] = None
-            continue
         results[model_name] = mae(prop["ref"], prop["pred"])
     return results
 
@@ -220,7 +149,7 @@ def shear_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | 
 @pytest.fixture
 @plot_density_scatter(
     filename=OUT_PATH / "figure_bulk_density.json",
-    title="Bulk modulus density",
+    title="Bulk modulus density plot",
     x_label="Reference bulk modulus / GPa",
     y_label="Predicted bulk modulus / GPa",
 )
@@ -238,13 +167,13 @@ def bulk_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return _density_inputs("bulk", elasticity_stats)
+    return build_density_inputs(MODELS, elasticity_stats, "bulk", mae_fn=mae)
 
 
 @pytest.fixture
 @plot_density_scatter(
     filename=OUT_PATH / "figure_shear_density.json",
-    title="Shear modulus density",
+    title="Shear modulus density plot",
     x_label="Reference shear modulus / GPa",
     y_label="Predicted shear modulus / GPa",
 )
@@ -262,7 +191,7 @@ def shear_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return _density_inputs("shear", elasticity_stats)
+    return build_density_inputs(MODELS, elasticity_stats, "shear", mae_fn=mae)
 
 
 @pytest.fixture

@@ -26,7 +26,7 @@ def run_elasticity_benchmark(
     relax_structure: bool = True,
     relax_deformed_structures: bool = True,
     use_checkpoint: bool = True,
-    n_materials: int = 10,
+    n_materials: int = 5,
     fmax: float = 0.05,
 ) -> None:
     """

@@ -7,9 +7,12 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elasticity"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk.html#elasticity"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity"
@@ -20,22 +23,26 @@ class ElasticityApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        bulk_plot = read_plot(
-            DATA_PATH / "figure_bulk_density.json",
-            id=f"{BENCHMARK_NAME}-bulk-figure",
-        )
-        shear_plot = read_plot(
-            DATA_PATH / "figure_shear_density.json",
-            id=f"{BENCHMARK_NAME}-shear-figure",
-        )
+        density_plots = {
+            model: {
+                "Bulk modulus MAE": read_density_plot_for_model(
+                    filename=DATA_PATH / "figure_bulk_density.json",
+                    model=model,
+                    id=f"{BENCHMARK_NAME}-{model}-bulk-figure",
+                ),
+                "Shear modulus MAE": read_density_plot_for_model(
+                    filename=DATA_PATH / "figure_shear_density.json",
+                    model=model,
+                    id=f"{BENCHMARK_NAME}-{model}-shear-figure",
+                ),
+            }
+            for model in MODELS
+        }
 
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "Bulk modulus MAE": bulk_plot,
-                "Shear modulus MAE": shear_plot,
-            },
+            cell_to_plot=density_plots,
         )
 
 
