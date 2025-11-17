@@ -60,7 +60,7 @@ Reference data:
 
 
 Elastic Moduli
-===
+==============
 
 Summary
 -------
@@ -102,7 +102,7 @@ Data availability
 Input structures:
 
 * 1. De Jong, M. et al. Charting the complete elastic properties of
-inorganic crystalline compounds. Sci Data 2, 150009 (2015).
+  inorganic crystalline compounds. Sci Data 2, 150009 (2015).
 * Dataset release: mp-pbe-elasticity-2025.3.json.gz from the Materials Project database.
 
 Reference data:
