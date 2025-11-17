@@ -25,9 +25,6 @@ OUT_PATH = Path(__file__).parent / "outputs"
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
 # Dataset constants
-DATA_ARCHIVE = "Wiggle150"
-DATA_SUBDIR = "wiggle150-structures"
-DATA_FILENAME = "ct5c00015_si_003.xyz"
 MOLECULE_ORDER = ("ado", "bpn", "efa")
 
 
@@ -68,8 +65,7 @@ def load_structures(data_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
     dict
         Mapping of molecule id to ground state and conformers.
     """
-    dataset_path = data_dir / DATA_FILENAME
-    structures = read(dataset_path, ":")
+    structures = read(data_dir / "ct5c00015_si_003.xyz", ":")
 
     molecules: dict[str, dict[str, list[Atoms]]] = {
         mol: {"ground": None, "conformers": []} for mol in MOLECULE_ORDER
@@ -193,10 +189,10 @@ def test_wiggle150(mlip: tuple[str, Any]) -> None:
     # Download data
     data_dir = (
         download_s3_data(
-            key=f"inputs/molecular/{DATA_ARCHIVE}/{DATA_SUBDIR}.zip",
-            filename=f"{DATA_ARCHIVE}.zip",
+            key="inputs/molecular/Wiggle150/Wiggle150.zip",
+            filename="Wiggle150.zip.zip",
         )
-        / DATA_SUBDIR
+        / "wiggle150-structures"
     )
 
     conformers = benchmark_wiggle150(calc, model_name, data_dir)
