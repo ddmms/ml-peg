@@ -11,3 +11,4 @@ Benchmarks
     physicality
     molecular_crystal
     molecular
+    bulk_crystal
