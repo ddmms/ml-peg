@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from importlib import metadata
+import time
+
 from dash import html
 from dash.dash_table import DataTable
 from dash.dcc import Checklist, Store
@@ -281,6 +284,94 @@ def build_weight_components(
         )
 
     return Div(layout)
+
+
+def build_footer() -> html.Footer:
+    """
+    Build shared footer with author, copyright, and repository link.
+
+    Returns
+    -------
+    html.Footer
+        Styled footer component rendered at the bottom of each tab.
+    """
+    copyright_first_year = "2025"
+    current_year = str(time.localtime().tm_year)
+    copyright_owners = metadata.metadata("ml-peg")["author"]
+
+    copyright_year_string = (
+        current_year
+        if current_year == copyright_first_year
+        else f"{copyright_first_year}-{current_year}"
+    )
+    copyright_txt = (
+        f"Copyright © {copyright_year_string}, {copyright_owners}. All rights reserved"
+    )
+
+    return html.Footer(
+        [
+            Div(
+                [
+                    html.Span(copyright_txt, style={"fontWeight": "800"}),
+                ],
+                style={
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
+            ),
+            Div(
+                html.A(
+                    "GPL-3.0 license",
+                    href="https://github.com/ddmms/ml-peg/blob/main/LICENSE",
+                    target="_blank",
+                ),
+                style={"marginTop": "4px", "fontWeight": "800"},
+            ),
+            Div(
+                html.A(
+                    [
+                        html.Img(
+                            src=(
+                                "https://github.githubassets.com/images/modules/logos_page/"
+                                "GitHub-Mark.png"
+                            ),
+                            alt="GitHub",
+                            width="16",
+                            height="16",
+                            style={
+                                "marginRight": "6px",
+                                "verticalAlign": "middle",
+                                "display": "block",
+                            },
+                        ),
+                        html.Span("View on GitHub"),
+                    ],
+                    href="https://github.com/ddmms/ml-peg",
+                    target="_blank",
+                    style={
+                        "color": "#0d6efd",
+                        "textDecoration": "none",
+                        "fontWeight": "800",
+                        "display": "inline-flex",
+                        "alignItems": "center",
+                    },
+                ),
+                style={"marginTop": "6px"},
+            ),
+        ],
+        style={
+            "marginTop": "24px",
+            "padding": "14px 12px",
+            "color": "#343a40",
+            "fontSize": "12px",
+            "textAlign": "center",
+            "borderTop": "1px solid #dee2e6",
+            "background": "#f8f9fa",
+            "borderRadius": "6px",
+        },
+    )
 
 
 def build_test_layout(

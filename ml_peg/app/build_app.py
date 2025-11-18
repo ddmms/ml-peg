@@ -13,7 +13,7 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.build_components import build_weight_components
+from ml_peg.app.utils.build_components import build_footer, build_weight_components
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import calculate_column_widths, sig_fig_format
 from ml_peg.models.get_models import get_model_names
@@ -262,12 +262,21 @@ def build_tabs(
     ]
 
     tabs_layout = [
-        H1("ML-PEG"),
-        Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-        Div(id="tabs-content"),
+        Div(
+            [
+                H1("ML-PEG"),
+                Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                Div(id="tabs-content"),
+            ],
+            style={"flex": "1", "marginBottom": "40px"},
+        ),
+        build_footer(),
     ]
 
-    full_app.layout = Div(tabs_layout)
+    full_app.layout = Div(
+        tabs_layout,
+        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+    )
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
