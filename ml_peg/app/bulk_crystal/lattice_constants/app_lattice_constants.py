@@ -31,10 +31,19 @@ class LatticeConstantsApp(BaseApp):
         )
 
         structs_dir = DATA_PATH / MODELS[0]
-        structs = [
-            f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
-            for struct_file in sorted(structs_dir.glob("*.xyz"))
-        ]
+        structs = []
+        for struct_file in sorted(structs_dir.glob("*.xyz")):
+            if struct_file.stem == "SiC":
+                structs.extend(
+                    [
+                        f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                    ]
+                    * 2
+                )
+            else:
+                structs.append(
+                    f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                )
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -72,6 +81,7 @@ def get_app() -> LatticeConstantsApp:
         table_path=DATA_PATH / "lattice_constants_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 

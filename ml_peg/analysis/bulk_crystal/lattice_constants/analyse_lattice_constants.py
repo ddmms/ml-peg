@@ -87,7 +87,7 @@ def lattice_constants_exp() -> dict[str, list]:
         if not struct_files:
             continue
 
-        for i, struct_file in enumerate(struct_files):
+        for struct_file in struct_files:
             structs = read(struct_file, index=":")
 
             formula = structs[-1].info["name"]
@@ -120,7 +120,7 @@ def lattice_constants_exp() -> dict[str, list]:
             # Copy individual structure files to app data directory
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{i}.xyz", structs)
+            write(structs_dir / f"{structs[-1].info['name']}.xyz", structs)
 
         ref_stored = True
 
