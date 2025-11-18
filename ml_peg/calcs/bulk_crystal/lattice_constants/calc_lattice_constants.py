@@ -88,7 +88,7 @@ def test_lattice_consts(mlip: tuple[str, Any]) -> None:
 
     data_dir = (
         download_s3_data(
-            key="inputs/bulk_crystal/lattice_constants.zip",
+            key="inputs/bulk_crystal/lattice_constants/lattice_constants.zip",
             filename="lattice_constants.zip",
         )
         / "lattice_constants"
