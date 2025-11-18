@@ -26,7 +26,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # Benchmark configuration (matches historical benchmark settings)
 ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-INCLUDE_HETERONUCLEAR = True
+INCLUDE_HETERONUCLEAR = False
 MIN_DISTANCE = 0.18
 MAX_DISTANCE = 6.0
 N_POINTS = 5

@@ -13,9 +13,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Diatomics"
-DATA_PATH = APP_ROOT / "data" / "molecular" / "Diatomics"
-PERIODIC_TABLE_PATH = DATA_PATH / "periodic_tables"
+BENCHMARK_NAME = "diatomics"
+DATA_PATH = APP_ROOT / "data" / "molecular" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
 
 

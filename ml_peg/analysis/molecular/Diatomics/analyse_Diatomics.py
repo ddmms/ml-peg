@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -232,7 +231,9 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
     """
     pair_data: dict[str, pd.DataFrame] = {}
     for model_name in MODELS:
-        df = load_model_data(model_name)
+        csv_path = CALC_PATH / model_name / "diatomics.csv"
+        df = pd.read_csv(csv_path)
+
         if not df.empty:
             pair_data[model_name] = df
     return pair_data
@@ -346,30 +347,6 @@ def diatomics_metrics_dataframe(
 
 
 @pytest.fixture
-def diatomics_well_depths(
-    diatomics_collection: tuple[pd.DataFrame, dict[str, dict[str, float]]],
-) -> dict[str, dict[str, float]]:
-    """
-    Provide homonuclear well-depth metadata and persist it for downstream use.
-
-    Parameters
-    ----------
-    diatomics_collection
-        Tuple produced by ``collect_metrics`` containing metrics and well depths.
-
-    Returns
-    -------
-    dict[str, dict[str, float]]
-        Mapping of model name to per-element well depths.
-    """
-    _, well_depths = diatomics_collection
-    if well_depths:
-        with (OUT_PATH / "well_depths.json").open("w", encoding="utf8") as fh:
-            json.dump(well_depths, fh, indent=2)
-    return well_depths
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "diatomics_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -378,7 +355,6 @@ def diatomics_well_depths(
 )
 def metrics(
     diatomics_metrics_dataframe: pd.DataFrame,
-    diatomics_well_depths: dict[str, dict[str, float]],
 ) -> dict[str, dict]:
     """
     Compute diatomics metrics for all models.
@@ -387,8 +363,6 @@ def metrics(
     ----------
     diatomics_metrics_dataframe
         Aggregated per-model metrics produced by ``collect_metrics``.
-    diatomics_well_depths
-        Mapping of homonuclear well depths persisted for cross-analysis usage.
 
     Returns
     -------
@@ -396,9 +370,6 @@ def metrics(
         Mapping of metric names to per-model results.
     """
     metrics_df = diatomics_metrics_dataframe
-
-    # _ = diatomics_well_depths
-
     metrics_dict: dict[str, dict[str, float | None]] = {}
     for column in metrics_df.columns:
         if column == "Model":
