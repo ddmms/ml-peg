@@ -1,0 +1,13 @@
+metrics:
+  MAE (Experimental):
+    good: 0.0
+    bad: 0.2
+    unit: Å
+    tooltip: "Mean Absolute Error of lattice constants for all crystals compared to experiments"
+    level_of_theory: Experimental
+  MAE (PBE):
+    good: 0.0
+    bad: 0.2
+    unit: Å
+    tooltip: "Mean Absolute Error of lattice constants for all crystals compared to PBE"
+    level_of_theory: PBE
