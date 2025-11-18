@@ -58,15 +58,17 @@ def _filter_results(df: pd.DataFrame, model_name: str) -> tuple[pd.DataFrame, in
     return valid, excluded
 
 
-def _collect_model_data() -> dict[str, dict[str, Any]]:
+@pytest.fixture
+def elasticity_stats() -> dict[str, dict[str, Any]]:
     """
-    Collect filtered results, MAEs, and exclusion counts per model.
+    Load and cache processed benchmark statistics per model.
 
     Returns
     -------
     dict[str, dict[str, Any]]
-        Mapping of model name to bulk/shear data and exclusion metadata.
+        Processed information per model (bulk, shear, exclusion counts).
     """
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
     stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
         results_path = CALC_PATH / model_name / "moduli_results.csv"
@@ -85,21 +87,8 @@ def _collect_model_data() -> dict[str, dict[str, Any]]:
             },
             "excluded": excluded,
         }
+
     return stats
-
-
-@pytest.fixture
-def elasticity_stats() -> dict[str, dict[str, Any]]:
-    """
-    Load and cache processed benchmark statistics per model.
-
-    Returns
-    -------
-    dict[str, dict[str, Any]]
-        Processed information per model (bulk, shear, exclusion counts).
-    """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    return _collect_model_data()
 
 
 @pytest.fixture
@@ -167,7 +156,7 @@ def bulk_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return build_density_inputs(MODELS, elasticity_stats, "bulk", mae_fn=mae)
+    return build_density_inputs(MODELS, elasticity_stats, "bulk", metric_fn=mae)
 
 
 @pytest.fixture
@@ -191,7 +180,7 @@ def shear_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return build_density_inputs(MODELS, elasticity_stats, "shear", mae_fn=mae)
+    return build_density_inputs(MODELS, elasticity_stats, "shear", metric_fn=mae)
 
 
 @pytest.fixture

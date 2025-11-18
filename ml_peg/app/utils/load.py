@@ -170,29 +170,25 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
         line.
     """
     data = fig_dict.get("data", [])
-    layout = deepcopy(fig_dict.get("layout", {}))
-    annotations_meta = (
-        layout.get("meta") if isinstance(layout.get("meta"), dict) else {}
-    )
+    layout = deepcopy(fig_dict.get("layout"))
+    annotations_meta = layout.get("meta")
 
     fig_data = []
     for trace in data:
         name = trace.get("name")
-        if name is None:
-            line_trace = deepcopy(trace)
-            line_trace["visible"] = True
-            line_trace["showlegend"] = False  # keep reference line, no legend
-            fig_data.append(line_trace)
-        elif name == model:
-            model_trace = deepcopy(trace)
-            model_trace["visible"] = True
-            model_trace["showlegend"] = False  # hide legend to avoid overlap
-            fig_data.append(model_trace)
+        if name is None or name == model:
+            # y=x line or matching model trace
+            trace_copy = deepcopy(trace)
+            trace_copy["visible"] = True
+            trace_copy["showlegend"] = False
+            fig_data.append(trace_copy)
 
-    # Pick the matching annotation when available; otherwise keep a simple fallback.
+    # Pick the matching annotation when available
+    stored_annotations = (
+        annotations_meta.get("annotations") if annotations_meta else None
+    )
+    model_order = annotations_meta.get("models") if annotations_meta else None
     chosen_annotation = None
-    stored_annotations = annotations_meta.get("annotations")
-    model_order = annotations_meta.get("models")
     if isinstance(stored_annotations, list) and isinstance(model_order, list):
         try:
             idx = model_order.index(model)
@@ -202,11 +198,6 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
             pass
     if chosen_annotation:
         layout["annotations"] = [chosen_annotation]
-    elif layout.get("annotations"):
-        fallback = deepcopy(layout["annotations"][0])
-        if isinstance(fallback, dict):
-            fallback["text"] = model
-            layout["annotations"] = [fallback]
 
     # Hide legend entirely to prevent overlap with the density colorbar.
     layout["showlegend"] = False

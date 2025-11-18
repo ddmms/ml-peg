@@ -119,7 +119,7 @@ def build_density_inputs(
     model_stats: dict[str, dict[str, Any]],
     property_key: str,
     *,
-    mae_fn: Callable[[list, list], float] | None = None,
+    metric_fn: Callable[[list, list], float] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """
     Prepare a model->data mapping for density scatter plots.
@@ -134,15 +134,15 @@ def build_density_inputs(
     property_key
         Key to extract from ``model_stats`` for each model (e.g. ``"bulk"`` or
         ``"shear"``).
-    mae_fn
-        Optional callable to compute MAE. Defaults to :func:`mae` when None.
+    metric_fn
+        Optional callable to compute metric. Defaults to :func:`mae` when None.
 
     Returns
     -------
     dict[str, dict[str, Any]]
         Mapping ready for ``plot_density_scatter``.
     """
-    mae_fn = mae if mae_fn is None else mae_fn
+    metric_fn = mae if metric_fn is None else metric_fn
     inputs: dict[str, dict[str, Any]] = {}
 
     for model_name in models:
@@ -155,7 +155,7 @@ def build_density_inputs(
         inputs[model_name] = {
             "ref": ref_vals,
             "pred": pred_vals,
-            "mae": mae_fn(ref_vals, pred_vals) if ref_vals else None,
+            "metric": metric_fn(ref_vals, pred_vals) if ref_vals else None,
             "meta": {"excluded": excluded} if excluded is not None else {},
         }
 

@@ -79,7 +79,7 @@ def run_elasticity_benchmark(
         calc,
         model_name,
         n_jobs=n_jobs,
-        checkpoint_file=str(checkpoint_file) if checkpoint_file else None,
+        checkpoint_file=checkpoint_file if checkpoint_file else None,
         checkpoint_freq=100,
         delete_checkpoint_on_finish=False,
     )
