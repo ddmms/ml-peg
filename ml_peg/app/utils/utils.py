@@ -52,10 +52,9 @@ def calculate_column_widths(
     # Fixed widths for static columns
     widths.setdefault("MLIP", 150)
     widths.setdefault("Score", 100)
-    widths.setdefault("Rank", 100)
 
     for col in columns:
-        if col not in ("MLIP", "Score", "Rank"):
+        if col not in ("MLIP", "Score"):
             # Calculate width based on column title length
             calculated_width = len(col) * char_width + padding
             # Enforce minimum width
@@ -107,18 +106,6 @@ def sig_fig_format() -> TableFormat.Format:
     return TableFormat.Format(precision=3).scheme(
         TableFormat.Scheme.decimal_or_exponent
     )
-
-
-def rank_format() -> TableFormat.Format:
-    """
-    Build a formatter that displays integer ranks.
-
-    Returns
-    -------
-    TableFormat.Format
-        Dash table format configured for integer values.
-    """
-    return TableFormat.Format().scheme(TableFormat.Scheme.decimal_integer)
 
 
 def clean_thresholds(
@@ -271,7 +258,7 @@ def format_metric_columns(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "Rank", "id"}
+    reserved = {"MLIP", "Score", "id"}
     updated_columns: list[dict[str, object]] = []
 
     for column in columns:
@@ -352,7 +339,7 @@ def format_tooltip_headers(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "Rank", "id"}
+    reserved = {"MLIP", "Score", "id"}
 
     updated: dict[str, str] = {}
     for key, text in tooltip_header.items():

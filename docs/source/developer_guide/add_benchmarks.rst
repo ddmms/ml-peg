@@ -262,10 +262,10 @@ For ``@build_table``, the value returned should be of the form:
         ...
     }
 
-This will generate a table with columns for each metric, as well as "MLIP", "Score",
-and "Rank" columns. Tooltips for each column header can also be set by the decorator,
-as well as the location to save the JSON file to be loaded when building the app,
-which typically would be placed in ``ml_peg/app/data/[category]/[benchmark_name]``.
+This will generate a table with columns for each metric, as well as "MLIP" and "Score"
+columns. Tooltips for each column header can also be set by the decorator, as well as
+the location to save the JSON file to be loaded when building the app, which typically
+would be placed in ``ml_peg/app/data/[category]/[benchmark_name]``.
 
 Every benchmark should have at least one of these tables, which includes
 the score for each metric, and allowing the table to calculate an overall score for the

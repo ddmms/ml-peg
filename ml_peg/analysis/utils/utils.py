@@ -8,7 +8,6 @@ from pathlib import Path
 from matplotlib import cm
 from matplotlib.colors import Colormap
 import numpy as np
-from scipy.stats import rankdata
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from yaml import safe_load
 
@@ -145,7 +144,7 @@ def calc_metric_scores(
     for row in metrics_scores:
         for key, value in row.items():
             # Value may be ``None`` if missing for a benchmark
-            if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
+            if key not in {"MLIP", "Score", "id"} and value is not None:
                 if cleaned_thresholds is None or key not in cleaned_thresholds:
                     row[key] = value
                     continue
@@ -194,7 +193,7 @@ def calc_table_scores(
         weights_list = []
         for key, value in metrics_row.items():
             # Value may be ``None`` if missing for a benchmark
-            if key not in {"MLIP", "Score", "Rank", "id"} and value is not None:
+            if key not in {"MLIP", "Score", "id"} and value is not None:
                 scores_list.append(scores_row[key])
                 weights_list.append(weights.get(key, 1.0))
 
@@ -207,36 +206,6 @@ def calc_table_scores(
         else:
             metrics_row["Score"] = None
 
-    return metrics_data
-
-
-def calc_ranks(metrics_data: list[dict]) -> list[dict]:
-    """
-    Calculate rank for each model and add to table data.
-
-    Parameters
-    ----------
-    metrics_data
-        Rows data containing model name, metric values, and Score.
-        The "Score" column is used to calculate the rank, with the highest score ranked
-        1.
-
-    Returns
-    -------
-    list[dict]
-        Rows of data with rank for each model added.
-    """
-    # If a score is None, set to NaN for ranking purposes, but do not rank
-    ranked_scores = rankdata(
-        [x["Score"] if x.get("Score") is not None else np.nan for x in metrics_data],
-        nan_policy="omit",
-        method="max",
-    )
-    for i, row in enumerate(metrics_data):
-        if np.isnan(ranked_scores[i]):
-            row["Rank"] = None
-        else:
-            row["Rank"] = len(ranked_scores) - int(ranked_scores[i]) + 1
     return metrics_data
 
 
@@ -339,10 +308,7 @@ def get_table_style(
 
         # Use thresholds
         if normalized:
-            if col != "Rank":
-                min_value, max_value = 1, 0
-            else:
-                min_value, max_value = 1, len(numeric_values)
+            min_value, max_value = 1, 0
         else:
             min_value = min(numeric_values)
             max_value = max(numeric_values)
@@ -370,13 +336,13 @@ def get_table_style(
     return style_data_conditional
 
 
-def update_score_rank_style(
+def update_score_style(
     data: list[MetricRow],
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
 ) -> tuple[list[MetricRow], list[TableRow]]:
     """
-    Update table scores, ranks, and table styles.
+    Update table scores and table styles.
 
     Parameters
     ----------
@@ -395,7 +361,6 @@ def update_score_rank_style(
     """
     weights = clean_weights(weights)
     data = calc_table_scores(data, weights, thresholds)
-    data = calc_ranks(data)
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
     return data, style

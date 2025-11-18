@@ -12,7 +12,7 @@ from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
     calc_table_scores,
     get_table_style,
-    update_score_rank_style,
+    update_score_style,
 )
 from ml_peg.app.utils.utils import (
     Thresholds,
@@ -67,14 +67,14 @@ def register_summary_table_callbacks() -> None:
                     row[tab] = values[row["MLIP"]]
 
         # Update table contents
-        return update_score_rank_style(summary_data, stored_weights)
+        return update_score_style(summary_data, stored_weights)
 
 
 def register_category_table_callbacks(
     table_id: str, use_thresholds: bool = False
 ) -> None:
     """
-    Register callback to update table scores/rankings when stored values change.
+    Register callback to update table scores when stored values change.
 
     Parameters
     ----------
@@ -218,7 +218,7 @@ def register_category_table_callbacks(
             if not table_data:
                 raise PreventUpdate
 
-            scored_rows, style = update_score_rank_style(table_data, stored_weights)
+            scored_rows, style = update_score_style(table_data, stored_weights)
             return scored_rows, style, scored_rows
 
     @callback(
@@ -337,7 +337,7 @@ def register_benchmark_to_category_callback(
             if mlip in benchmark_scores:
                 row[benchmark_column] = benchmark_scores[mlip]
 
-        category_rows, style = update_score_rank_style(category_rows, category_weights)
+        category_rows, style = update_score_style(category_rows, category_weights)
         return category_rows, style, category_rows
 
 

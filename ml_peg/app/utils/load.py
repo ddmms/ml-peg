@@ -15,7 +15,6 @@ from ml_peg.app.utils.utils import (
     clean_thresholds,
     clean_weights,
     is_numeric_column,
-    rank_format,
     sig_fig_format,
 )
 
@@ -65,10 +64,7 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         width_labels.append(label_source)
         if column_id is None:
             continue
-        if column_id == "Rank":
-            column["type"] = "numeric"
-            column.setdefault("format", rank_format())
-        elif column.get("type") == "numeric" or is_numeric_column(data, column_id):
+        if column.get("type") == "numeric" or is_numeric_column(data, column_id):
             column["type"] = "numeric"
             column.setdefault("format", sig_fig_format())
         if column_name is not None and not isinstance(column_name, str):

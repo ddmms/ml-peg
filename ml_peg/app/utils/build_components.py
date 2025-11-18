@@ -31,7 +31,7 @@ def grid_template_from_widths(
     widths
         Mapping of column names to pixel widths.
     column_order
-        Ordered metric column names to render between the MLIP, Score, and Rank columns.
+        Ordered metric column names to render between the MLIP and Score columns.
 
     Returns
     -------
@@ -41,7 +41,6 @@ def grid_template_from_widths(
     tracks: list[tuple[str, int]] = [("MLIP", widths["MLIP"])]
     tracks.extend((col, widths[col]) for col in column_order)
     tracks.append(("Score", widths["Score"]))
-    tracks.append(("Rank", widths["Rank"]))
 
     template_parts: list[str] = []
     for _, width in tracks:
@@ -146,7 +145,7 @@ def build_weight_components(
             "Threshold metadata must be provided when use_thresholds=True."
         )
     # Identify metric columns (exclude reserved columns)
-    reserved = {"MLIP", "Score", "Rank", "id"}
+    reserved = {"MLIP", "Score", "id"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
 
     if not columns:
@@ -367,7 +366,7 @@ def build_test_layout(
 
     # Inline normalization thresholds when metadata is supplied
     if thresholds is not None:
-        reserved = {"MLIP", "Score", "Rank", "id"}
+        reserved = {"MLIP", "Score", "id"}
         metric_columns = [
             col["id"] for col in table.columns if col.get("id") not in reserved
         ]
@@ -663,19 +662,19 @@ def build_threshold_inputs(
             )
         )
 
-    for _ in ("Score", "Rank"):
-        cells.append(
-            Div(
-                "",
-                style={
-                    "width": "100%",
-                    "minWidth": "0",
-                    "maxWidth": "100%",
-                    "boxSizing": "border-box",
-                    "border": "1px solid transparent",
-                },
-            )
+    # Score
+    cells.append(
+        Div(
+            "",
+            style={
+                "width": "100%",
+                "minWidth": "0",
+                "maxWidth": "100%",
+                "boxSizing": "border-box",
+                "border": "1px solid transparent",
+            },
         )
+    )
 
     store = Store(
         id=f"{table_id}-thresholds-store",
