@@ -8,6 +8,6 @@ metrics:
   Ranking Error:
     good: 0.0
     bad: 1.0
-    unit: "-"
+    unit: null
     tooltip: Error in ranking stability across triplets
     level_of_theory: PBE
