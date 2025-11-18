@@ -12,7 +12,7 @@ from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_ranks, calc_table_scores
+from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
 
 
@@ -274,8 +274,7 @@ def build_table(
     filename
         Filename to save table. Default is "table.json".
     metric_tooltips
-        Tooltips for table metric headers. Defaults are set for "MLIP", "Score", and
-        "Rank".
+        Tooltips for table metric headers. Defaults are set for "MLIP" and "Score".
     normalize
         Whether to apply normalisation when calculating the score. Default is True.
     normalizer
@@ -365,10 +364,7 @@ def build_table(
                     | {"id": mlip},
                 )
 
-            summary_tooltips = {
-                "MLIP": "Name of the model",
-                "Rank": "Model rank based on score (lower is better)",
-            }
+            summary_tooltips = {"MLIP": "Name of the model"}
             if normalize:
                 summary_tooltips["Score"] = (
                     "Average of normalised metrics (higher is better)"
@@ -391,8 +387,7 @@ def build_table(
             else:
                 metrics_data = calc_table_scores(metrics_data)
 
-            metrics_data = calc_ranks(metrics_data)
-            metrics_columns += ("Score", "Rank")
+            metrics_columns += ("Score",)
 
             metric_weights = weights if weights else {}
             for column in results:
