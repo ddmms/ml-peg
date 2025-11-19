@@ -374,7 +374,7 @@ def register_image_gallery_callbacks(
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=[0, 1],
+                x=[0, aspect],
                 y=[0, 1],
                 mode="markers",
                 marker={"opacity": 0},
