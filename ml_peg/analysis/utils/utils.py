@@ -57,7 +57,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
                 f"Metric '{metric_name}' must define a 'unit' entry in {config_path}"
             )
 
-        if unit_value := metric_config["unit"] is not None:
+        if metric_config["unit"] is not None:
             unit_value = str(metric_config["unit"]).strip()
         else:
             unit_value = "-"
