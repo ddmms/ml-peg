@@ -101,8 +101,11 @@ def run_calcs(
 
     from ml_peg.calcs import CALCS_ROOT
 
-    test_paths = CALCS_ROOT.glob(f"{category}/{test}/calc_*")
-    options = list(test_paths)
+    options = list(CALCS_ROOT.glob(f"{category}/{test}/calc_*"))
+    if not options:
+        raise ValueError(
+            f"No tests were found matching {category}/{test}/calc_*. in {CALCS_ROOT}"
+        )
 
     if verbose:
         options.extend(["-s", "-vvv"])
@@ -154,8 +157,12 @@ def run_analysis(
 
     from ml_peg.analysis import ANALYSIS_ROOT
 
-    test_paths = ANALYSIS_ROOT.glob(f"{category}/{test}/analyse_*")
-    options = list(test_paths)
+    options = list(ANALYSIS_ROOT.glob(f"{category}/{test}/analyse_*"))
+    if not options:
+        raise ValueError(
+            f"No tests were found matching {category}/{test}/analyse_*. in "
+            f"{ANALYSIS_ROOT}"
+        )
 
     if verbose:
         options.extend(["-s", "-vvv"])
