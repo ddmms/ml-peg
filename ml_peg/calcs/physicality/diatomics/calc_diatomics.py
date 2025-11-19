@@ -26,10 +26,11 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # Benchmark configuration (matches historical benchmark settings)
 ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-INCLUDE_HETERONUCLEAR = False
+INCLUDE_HETERONUCLEAR = True
 MIN_DISTANCE = 0.18
 MAX_DISTANCE = 6.0
-N_POINTS = 5
+# for testing, reduce the number of points to e.g. 5
+N_POINTS = 100
 
 
 def _distance_grid(
@@ -116,7 +117,7 @@ def _project_force(forces: np.ndarray, bond_vector: np.ndarray) -> float:
     if norm == 0.0:
         return 0.0
     direction = bond_vector / norm
-    return float(np.dot(forces[1], direction))
+    return float(forces[1] @ direction)
 
 
 def run_diatomics(model_name: str, model) -> None:
