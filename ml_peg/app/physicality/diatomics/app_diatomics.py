@@ -1,4 +1,4 @@
-"""Run Diatomics app."""
+"""Run diatomics app."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "diatomics"
-DATA_PATH = APP_ROOT / "data" / "molecular" / "diatomics"
+DATA_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
 
 
@@ -35,7 +35,7 @@ class DiatomicsApp(BaseApp):
 
 def get_app() -> DiatomicsApp:
     """
-    Get Diatomics benchmark app layout and callback registration.
+    Get diatomics benchmark app layout and callback registration.
 
     Returns
     -------

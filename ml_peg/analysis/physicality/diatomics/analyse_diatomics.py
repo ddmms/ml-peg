@@ -19,8 +19,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "molecular" / "Diatomics" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular" / "Diatomics"
+CALC_PATH = CALCS_ROOT / "physicality" / "diatomics" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = OUT_PATH / "curves"
 
 
@@ -383,7 +383,7 @@ def metrics(
 
 def test_diatomics(metrics: dict[str, dict]) -> None:
     """
-    Run Diatomics analysis.
+    Run diatomics analysis.
 
     Parameters
     ----------
