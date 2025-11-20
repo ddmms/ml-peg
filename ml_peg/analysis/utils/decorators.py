@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import deepcopy
 import functools
 from json import dump
 from pathlib import Path
@@ -11,9 +12,11 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
+import yaml
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
+from ml_peg.models import MODELS_ROOT
 
 
 def plot_parity(
@@ -354,7 +357,7 @@ def build_table(
 
             metrics_columns = ("MLIP",) + tuple(results)
             # Use MLIP keys from first (any) metric keys
-            mlips = next(iter(results.values())).keys()
+            mlips = tuple(next(iter(results.values())).keys())
 
             metrics_data = []
             for mlip in mlips:
@@ -367,10 +370,13 @@ def build_table(
             summary_tooltips = {"MLIP": "Name of the model"}
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Average of normalised metrics (higher is better)"
+                    "Composite score across metrics, "
+                    "Higher is better (normalized 0 to 1)."
                 )
             else:
-                summary_tooltips["Score"] = "Average of metrics"
+                summary_tooltips["Score"] = (
+                    "Composite score across metrics, higher is better."
+                )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -400,6 +406,28 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
+            with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+                all_models = yaml.safe_load(model_file) or {}
+            model_levels: dict[str, str | None] = {}
+            model_configs: dict[str, Any] = {}
+            for mlip in mlips:
+                cfg = deepcopy(all_models.get(mlip) or {})
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                model_configs[mlip] = cfg
+                model_levels[mlip] = cfg.get("level_of_theory")
+            metric_levels = {}
+            if thresholds:
+                for metric_name in results:
+                    metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
+                        "level_of_theory"
+                    )
+                    metric_level = metric_levels[metric_name]
+                    if metric_level and metric_name in tooltip_header:
+                        # Column tooltip remains concise; mismatch details are
+                        # conveyed via row-level warnings.
+                        pass
+
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
@@ -410,6 +438,9 @@ def build_table(
                         "tooltip_header": tooltip_header,
                         "thresholds": thresholds,
                         "weights": metric_weights,
+                        "model_levels_of_theory": model_levels,
+                        "metric_levels_of_theory": metric_levels,
+                        "model_configs": model_configs,
                     },
                     fp,
                 )

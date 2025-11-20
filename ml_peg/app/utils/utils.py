@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TypedDict
+from functools import lru_cache
+import json
+from typing import Any, TypedDict
 
 import dash.dash_table.Format as TableFormat
+import yaml
+
+from ml_peg.models import MODELS_ROOT
 
 
 class ThresholdEntry(TypedDict):
@@ -130,10 +135,18 @@ def clean_thresholds(
     thresholds: Thresholds = {}
 
     for metric, bounds in raw_thresholds.items():
+        good_val: float | None
+        bad_val: float | None
+        unit_val: str | None = None
+        level_val: str | None = None
         try:
-            good_val = float(bounds["good"])
-            bad_val = float(bounds["bad"])
-            unit_val = str(bounds["unit"]).strip()
+            if isinstance(bounds, dict):
+                good_val = float(bounds["good"])
+                bad_val = float(bounds["bad"])
+                raw_unit = bounds.get("unit")
+                unit_val = str(raw_unit) if raw_unit not in (None, "") else None
+                raw_level = bounds.get("level_of_theory", bounds.get("level"))
+                level_val = str(raw_level) if raw_level not in (None, "") else None
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError(
                 f"Threshold entries must include 'good', 'bad', and 'unit': {bounds}"
@@ -141,9 +154,17 @@ def clean_thresholds(
         if not unit_val:
             raise ValueError(f"Unit must be a non-empty string for metric '{metric}'.")
 
-        thresholds[metric] = {"good": good_val, "bad": bad_val, "unit": unit_val}
-    if not thresholds:
-        raise ValueError("No valid thresholds were defined.")
+        entry: dict[str, float | str | None] = {
+            "good": good_val,
+            "bad": bad_val,
+            "unit": unit_val,
+        }
+
+        if level_val:
+            entry["level_of_theory"] = level_val
+
+        thresholds[metric] = entry
+
     return thresholds
 
 
@@ -203,6 +224,217 @@ def get_scores(
         return raw_rows
 
     return scored_rows
+
+
+WARNING_ICON_URL = (
+    'url("data:image/svg+xml;utf8,'
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
+    "<path fill='%23f0ad4e' d='M8 1.1 15.2 14H0.8Z'/>"
+    "<path fill='%23212121' d='M7.25 11.9h1.5V13h-1.5zM7.36 5.2h1.28l.3 5.4h-1.88z'/>"
+    '</svg>")'
+)
+
+
+def build_level_of_theory_warnings(
+    rows: list[dict[str, Any]] | None,
+    model_levels: Mapping[str, str | None] | None,
+    metric_levels: Mapping[str, str | None] | None,
+    model_configs: Mapping[str, Mapping[str, Any]] | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Generate inline styles and tooltips for MLIP column metadata.
+
+    Parameters
+    ----------
+    rows
+        Table rows currently displayed in the DataTable.
+    model_levels
+        Mapping of model name to configured level of theory.
+    metric_levels
+        Mapping of metric name to benchmark level of theory.
+    model_configs
+        Mapping of model name to stored configuration details.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], list[dict[str, Any]]]
+        Conditional style data and tooltip definitions to apply per row.
+    """
+    if not rows:
+        return [], []
+
+    model_levels = model_levels or {}
+    metric_levels = {
+        metric: level for metric, level in (metric_levels or {}).items() if level
+    }
+    model_configs = model_configs or {}
+
+    warning_styles: list[dict[str, Any]] = []
+    tooltip_rows: list[dict[str, Any]] = [{} for _ in rows]
+
+    def _stringify(value: Any) -> str:
+        """
+        Return a readable string for tooltip values.
+
+        Parameters
+        ----------
+        value
+            Arbitrary value to stringify.
+
+        Returns
+        -------
+        str
+            JSON-formatted output for containers, otherwise ``str(value)``.
+        """
+        if isinstance(value, dict | list | tuple):
+            try:
+                return json.dumps(value, sort_keys=True)
+            except (TypeError, ValueError):
+                return str(value)
+        return str(value)
+
+    def _section(title: str, lines: list[str]) -> list[str]:
+        """
+        Build a markdown section with a heading and bullet lines.
+
+        Parameters
+        ----------
+        title
+            Section heading to display in bold.
+        lines
+            Sequence of line items to include beneath the heading.
+
+        Returns
+        -------
+        list[str]
+            Formatted lines including the heading and a trailing blank line.
+        """
+        cleaned = [line for line in lines if line]
+        if not cleaned:
+            return []
+        section: list[str] = [f"**{title}**"]
+        section.extend(cleaned)
+        section.append("")
+        return section
+
+    for idx, row in enumerate(rows):
+        mlip = row.get("MLIP")
+        if not isinstance(mlip, str):
+            continue
+
+        model_level = model_levels.get(mlip)
+        config = model_configs.get(mlip) or {}
+        if not isinstance(config, Mapping):
+            config = {}
+        if not config:
+            fallback_cfg = load_model_registry_configs().get(mlip) or {}
+            if isinstance(fallback_cfg, Mapping):
+                config = fallback_cfg
+        if model_level is None and isinstance(config, Mapping):
+            model_level = config.get("level_of_theory")
+
+        module = config.get("module")
+        class_name = config.get("class_name")
+        device = config.get("device")
+        kwargs = config.get("kwargs")
+        other_keys = {
+            key: value
+            for key, value in config.items()
+            if key
+            not in {
+                "module",
+                "class_name",
+                "device",
+                "level_of_theory",
+                "args",
+                "kwargs",
+            }
+        }
+
+        level_display = (
+            _stringify(model_level) if model_level not in (None, "") else "n/a"
+        )
+        overview_lines = [
+            f"- **Model:** `{mlip}`",
+            f"- **Level of theory:** `{level_display}`",
+        ]
+        if module:
+            overview_lines.append(f"- **Module:** `{module}`")
+        if class_name:
+            overview_lines.append(f"- **Class:** `{class_name}`")
+        if device:
+            overview_lines.append(f"- **Device:** `{device}`")
+
+        kwarg_items: list[tuple[str, Any]] = []
+        if isinstance(kwargs, Mapping):
+            kwarg_items = [
+                (key, value) for key, value in kwargs.items() if value not in (None, "")
+            ]
+        elif kwargs not in (None, {}):
+            kwarg_items = [("value", kwargs)]
+
+        if kwarg_items:
+            overview_lines.append("- **Kwargs:**")
+            for key, value in sorted(kwarg_items):
+                overview_lines.append(f"  - `{key}`: `{_stringify(value)}`")
+        else:
+            overview_lines.append("- **Kwargs:** (none)")
+
+        other_lines: list[str] = []
+        if other_keys:
+            other_lines = [
+                f"- `{key}`: `{_stringify(value)}`"
+                for key, value in sorted(other_keys.items())
+            ]
+
+        mismatch_metrics: list[tuple[str, str]] = []
+        for metric_name, metric_level in metric_levels.items():
+            if model_level is None or model_level != metric_level:
+                mismatch_metrics.append((metric_name, metric_level))
+
+        align_lines: list[str] = []
+        if mismatch_metrics:
+            align_lines = [
+                "- [!] Mismatch detected between model and benchmark levels.",
+                f"- Model level: `{level_display}`",
+                "- Benchmark metrics:",
+            ]
+            for metric_name, metric_level in mismatch_metrics:
+                level_repr = _stringify(metric_level) if metric_level else "n/a"
+                align_lines.append(f"  - {metric_name}: `{level_repr}`")
+        elif metric_levels:
+            align_lines = ["- All benchmark metrics match the model level."]
+
+        tooltip_sections: list[str] = []
+        tooltip_sections.extend(_section("Model Overview", overview_lines))
+        if other_lines:
+            tooltip_sections.extend(_section("Additional Settings", other_lines))
+        if align_lines:
+            tooltip_sections.extend(_section("Benchmark Alignment", align_lines))
+
+        while tooltip_sections and tooltip_sections[-1] == "":
+            tooltip_sections.pop()
+
+        tooltip_rows[idx]["MLIP"] = {
+            "type": "markdown",
+            "value": "\n".join(tooltip_sections),
+        }
+
+        if mismatch_metrics:
+            row_id = row.get("id", mlip)
+            filter_query = "{id} = " + json.dumps(str(row_id))
+            warning_styles.append(
+                {
+                    "if": {"column_id": "MLIP", "filter_query": filter_query},
+                    "backgroundImage": WARNING_ICON_URL,
+                    "backgroundRepeat": "no-repeat",
+                    "backgroundPosition": "8px center",
+                    "backgroundSize": "14px 14px",
+                    "paddingLeft": "28px",
+                }
+            )
+
+    return warning_styles, tooltip_rows
 
 
 def base_column_label(column: Mapping[str, object]) -> str:
@@ -317,7 +549,7 @@ def format_tooltip_headers(
     tooltip_header: dict[str, str] | None,
     thresholds: Thresholds | None,
     show_normalized: bool,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """
     Update tooltip headers to reflect unitless normalised values.
 
@@ -341,21 +573,58 @@ def format_tooltip_headers(
     thresholds = thresholds or {}
     reserved = {"MLIP", "Score", "id"}
 
-    updated: dict[str, str] = {}
-    for key, text in tooltip_header.items():
-        if not isinstance(text, str) or key in reserved:
-            updated[key] = text
+    updated: dict[str, Any] = {}
+    for key, entry in tooltip_header.items():
+        if key in reserved:
+            updated[key] = entry
+            continue
+
+        text_val: str | None = None
+
+        if isinstance(entry, dict):
+            raw_value = entry.get("value")
+            if isinstance(raw_value, str):
+                text_val = raw_value
+        elif isinstance(entry, str):
+            text_val = entry
+
+        if text_val is None:
+            updated[key] = entry
             continue
 
         unit = thresholds.get(key, {}).get("unit")
-        if not unit or unit in ("", "-"):
-            updated[key] = text
-            continue
+        if unit and unit not in ("", "-"):
+            base_text = _swap_tooltip_unit(text_val, unit, unit)
+            if show_normalized:
+                text_val = base_text.replace(f"[{unit}]", "[-]", 1)
+            else:
+                text_val = base_text
 
-        base_text = _swap_tooltip_unit(text, unit, unit)
-        if show_normalized:
-            updated[key] = base_text.replace(f"[{unit}]", "[-]", 1)
+        if isinstance(entry, dict):
+            new_entry = entry.copy()
+            new_entry["value"] = text_val
+            updated[key] = new_entry
         else:
-            updated[key] = base_text
+            updated[key] = text_val
 
     return updated
+
+
+@lru_cache(maxsize=1)
+def load_model_registry_configs() -> dict[str, Any]:
+    """
+    Load model configurations from the models registry YAML.
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of model name to configuration dictionary.
+    """
+    try:
+        with open(MODELS_ROOT / "models.yml", encoding="utf8") as handle:
+            data = yaml.safe_load(handle) or {}
+            if isinstance(data, dict):
+                return data
+    except FileNotFoundError:
+        pass
+    return {}
