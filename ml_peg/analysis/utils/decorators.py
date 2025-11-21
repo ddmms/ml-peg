@@ -389,15 +389,14 @@ def plot_density_scatter(
                     "Density plot decorator expects a mapping of model results."
                 )
 
-            model_names = list(results)
-            if not model_names:
+            if not results:
                 raise ValueError("No results provided for density plot.")
 
             global_min = np.inf
             global_max = -np.inf
             processed = {}
             annotations = []
-            for model in model_names:
+            for model in results:
                 data = results[model]
                 ref_vals = np.asarray(data.get("ref", []), dtype=float)
                 pred_vals = np.asarray(data.get("pred", []), dtype=float)
@@ -450,7 +449,7 @@ def plot_density_scatter(
                 "<b>Excluded:</b> %{meta[0]}<extra></extra>"
             )
 
-            for idx, model in enumerate(model_names):
+            for idx, model in enumerate(results):
                 sample_x, sample_y, density = processed[model]["samples"]
                 fig.add_trace(
                     go.Scattergl(
@@ -489,7 +488,7 @@ def plot_density_scatter(
             # can swap annotation text when filtering per-model on the frontend.
             layout_meta = {
                 "annotations": annotations,
-                "models": model_names,
+                "models": list(results),
             }
 
             fig.update_layout(
