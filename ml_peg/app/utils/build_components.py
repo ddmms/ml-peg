@@ -189,7 +189,7 @@ def build_weight_components(
                         },
                     ),
                     Button(
-                        "Reset Weights",
+                        "Reset",
                         id=f"{table.id}-reset-button",
                         n_clicks=0,
                         style={
