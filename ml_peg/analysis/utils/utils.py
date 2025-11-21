@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from matplotlib import cm
 from matplotlib.colors import Colormap
@@ -114,6 +115,55 @@ def rmse(ref: list, prediction: list) -> float:
         Root mean squared error.
     """
     return mean_squared_error(ref, prediction)
+
+
+def build_density_inputs(
+    models: list[str],
+    model_results: dict[str, dict[str, Any]],
+    property_key: str,
+    metric_fn: Callable[[list, list], float],
+) -> dict[str, dict[str, Any]]:
+    """
+    Prepare a model->data mapping for density scatter plots.
+
+    Parameters
+    ----------
+    models
+        Ordered list of model names to include.
+    model_results
+        Mapping of model -> {"<property_key>": {"ref": [...], "pred": [...]},
+        "excluded": int}. These per-model property arrays come from the analysis step
+        (e.g. filtered bulk/shear values and metadata).
+    property_key
+        Key to extract from ``model_results`` for each model (e.g. ``"bulk"`` or
+        ``"shear"``).
+    metric_fn
+        Function that turns the ``ref`` and ``pred`` lists into a single value (for
+        example, MAE). This number is stored in the result so the plotting code can show
+        it in hover text/annotations.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping ready for ``plot_density_scatter``.
+    """
+    inputs: dict[str, dict[str, Any]] = {}
+
+    for model_name in models:
+        stats = model_results.get(model_name, {})
+        prop = stats.get(property_key)
+        excluded = stats.get("excluded")
+
+        ref_vals = prop.get("ref", [])
+        pred_vals = prop.get("pred", [])
+        inputs[model_name] = {
+            "ref": ref_vals,
+            "pred": pred_vals,
+            "metric": metric_fn(ref_vals, pred_vals) if ref_vals else None,
+            "meta": {"excluded": excluded} if excluded is not None else {},
+        }
+
+    return inputs
 
 
 def calc_metric_scores(

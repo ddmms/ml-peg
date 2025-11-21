@@ -1,0 +1,11 @@
+metrics:
+  Bulk modulus MAE:
+    good: 2.0
+    bad: 30.0
+    unit: GPa
+    tooltip: Mean absolute error of VRH bulk modulus (lower is better). Excludes systems with bulk moduli < -50 GPa and > 500 GPa.
+  Shear modulus MAE:
+    good: 2.0
+    bad: 30.0
+    unit: GPa
+    tooltip: Mean absolute error of VRH shear modulus (lower is better). Excludes systems with shear moduli < -50 GPa and > 500 GPa.

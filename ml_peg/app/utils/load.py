@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 from pathlib import Path
 
@@ -146,3 +147,85 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
         Loaded plotly Graph.
     """
     return Graph(id=id, figure=read_json(filename))
+
+
+def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
+    """
+    Filter a density-plot figure dict to a single model trace.
+
+    Keeps the y=x reference line and swaps to the annotation matching the model,
+    using metadata stored by ``plot_density_scatter``.
+
+    Parameters
+    ----------
+    fig_dict
+        Figure dictionary loaded from saved density-plot JSON.
+    model
+        Model name to keep visible in the filtered figure.
+
+    Returns
+    -------
+    dict
+        Filtered figure dictionary with only the requested model trace and reference
+        line.
+    """
+    data = fig_dict.get("data", [])
+    layout = deepcopy(fig_dict.get("layout"))
+    annotations_meta = layout.get("meta")
+
+    fig_data = []
+    for trace in data:
+        name = trace.get("name")
+        if name is None or name == model:
+            # ``name`` is ``None`` for the y=x reference line; keep that and the
+            # requested model trace visible while hiding their legend entries.
+            trace_copy = deepcopy(trace)
+            trace_copy["visible"] = True
+            trace_copy["showlegend"] = False
+            fig_data.append(trace_copy)
+
+    # Pick the matching annotation (Plotly layout annotation with MAE/exclusion text)
+    stored_annotations = (
+        annotations_meta.get("annotations") if annotations_meta else None
+    )
+    model_order = annotations_meta.get("models") if annotations_meta else None
+    chosen_annotation = None
+    if isinstance(stored_annotations, list) and isinstance(model_order, list):
+        try:
+            idx = model_order.index(model)
+            if idx < len(stored_annotations):
+                chosen_annotation = stored_annotations[idx]
+        except ValueError:
+            pass
+    if chosen_annotation:
+        layout["annotations"] = [chosen_annotation]
+
+    # Hide legend entirely to prevent overlap with the density colorbar.
+    layout["showlegend"] = False
+
+    return {"data": fig_data, "layout": layout}
+
+
+def read_density_plot_for_model(
+    filename: str | Path, model: str, id: str = "figure-1"
+) -> Graph:
+    """
+    Read a density-plot JSON and return a Graph filtered to a single model.
+
+    Parameters
+    ----------
+    filename
+        Path to saved density-plot JSON.
+    model
+        Model name to keep visible in the returned figure.
+    id
+        Dash component id for the Graph.
+
+    Returns
+    -------
+    Graph
+        Dash Graph displaying only the requested model (plus reference line).
+    """
+    with open(filename) as f:
+        fig_dict = json.load(f)
+    return Graph(id=id, figure=_filter_density_figure_for_model(fig_dict, model))
