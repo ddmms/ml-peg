@@ -116,7 +116,7 @@ def rmse(ref: list, prediction: list) -> float:
 
 def build_density_inputs(
     models: list[str],
-    model_properties: dict[str, dict[str, Any]],
+    model_results: dict[str, dict[str, Any]],
     property_key: str,
     metric_fn: Callable[[list, list], float],
 ) -> dict[str, dict[str, Any]]:
@@ -127,12 +127,12 @@ def build_density_inputs(
     ----------
     models
         Ordered list of model names to include.
-    model_properties
+    model_results
         Mapping of model -> {"<property_key>": {"ref": [...], "pred": [...]},
         "excluded": int}. These per-model property arrays come from the analysis step
         (e.g. filtered bulk/shear values and metadata).
     property_key
-        Key to extract from ``model_stats`` for each model (e.g. ``"bulk"`` or
+        Key to extract from ``model_results`` for each model (e.g. ``"bulk"`` or
         ``"shear"``).
     metric_fn
         Function that turns the ``ref`` and ``pred`` lists into a single value (for
@@ -147,7 +147,7 @@ def build_density_inputs(
     inputs: dict[str, dict[str, Any]] = {}
 
     for model_name in models:
-        stats = model_properties.get(model_name, {})
+        stats = model_results.get(model_name, {})
         prop = stats.get(property_key)
         excluded = stats.get("excluded")
 

@@ -353,10 +353,16 @@ def plot_density_scatter(
                 eps = 1e-9
 
                 norm_x = np.clip(
-                    (ref_vals - ref_vals.min()) / max(delta_x, eps), 0.0, 0.999999
+                    # Normalise to [0, 1). Clamp to avoid hitting the upper bound so
+                    # bin indices always live in [0, grid_size - 1].
+                    (ref_vals - ref_vals.min()) / max(delta_x, eps),
+                    0.0,
+                    0.999999,
                 )
                 norm_y = np.clip(
-                    (pred_vals - pred_vals.min()) / max(delta_y, eps), 0.0, 0.999999
+                    (pred_vals - pred_vals.min()) / max(delta_y, eps),
+                    0.0,
+                    0.999999,
                 )
                 bins_x = (norm_x * grid_size).astype(int)
                 bins_y = (norm_y * grid_size).astype(int)
@@ -409,13 +415,18 @@ def plot_density_scatter(
                     sampled = _downsample(ref_vals, pred_vals)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
-                mae_value = data.get("mae")
-                if mae_value is None and ref_vals.size:
-                    mae_value = float(np.mean(np.abs(ref_vals - pred_vals)))
-                mae_text = f"{mae_value:.3f}" if mae_value is not None else "n/a"
+                metric_value = data.get("mae")
+                if metric_value is None and ref_vals.size:
+                    metric_value = float(np.mean(np.abs(ref_vals - pred_vals)))
+                metric_text = (
+                    f"{metric_value:.3f}" if metric_value is not None else "n/a"
+                )
+                # top left corner annotation for each model with MAE and exclusion info
                 annotations.append(
                     {
-                        "text": f"{model} MAE: {mae_text} | Excluded: {excluded_text}",
+                        "text": (
+                            f"{model} MAE: {metric_text} | Excluded: {excluded_text}"
+                        ),
                         "xref": "paper",
                         "yref": "paper",
                         "x": 0.02,
