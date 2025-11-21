@@ -20,13 +20,13 @@ def run_elasticity_benchmark(
     calc,
     model_name: str,
     out_dir: Path,
-    n_jobs: int = -1,
+    n_jobs: int = 1,
     norm_strains: tuple[float, float, float, float] = (-0.1, -0.05, 0.05, 0.1),
     shear_strains: tuple[float, float, float, float] = (-0.02, -0.01, 0.01, 0.02),
     relax_structure: bool = True,
     relax_deformed_structures: bool = True,
     use_checkpoint: bool = True,
-    n_materials: int = 5,
+    n_materials: int | None = None,
     fmax: float = 0.05,
 ) -> None:
     """
@@ -53,7 +53,7 @@ def run_elasticity_benchmark(
     use_checkpoint
         If True, writes intermediate checkpoints inside ``out_dir/checkpoints``.
     n_materials
-        Number of materials sampled from the benchmark set.
+        Number of materials sampled from the benchmark set. If None, use all materials.
     fmax
         Force threshold for structural relaxations.
     """

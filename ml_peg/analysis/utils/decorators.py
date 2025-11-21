@@ -352,17 +352,16 @@ def plot_density_scatter(
                 delta_y = pred_vals.max() - pred_vals.min()
                 eps = 1e-9
 
-                norm_x = (
-                    np.clip((ref_vals - ref_vals.min()) / (delta_x + eps), 0.0, 1.0)
-                    * (grid_size - 1)
-                ).astype(int)
-                norm_y = (
-                    np.clip((pred_vals - pred_vals.min()) / (delta_y + eps), 0.0, 1.0)
-                    * (grid_size - 1)
-                ).astype(int)
-
+                norm_x = np.clip(
+                    (ref_vals - ref_vals.min()) / max(delta_x, eps), 0.0, 0.999999
+                )
+                norm_y = np.clip(
+                    (pred_vals - pred_vals.min()) / max(delta_y, eps), 0.0, 0.999999
+                )
+                bins_x = (norm_x * grid_size).astype(int)
+                bins_y = (norm_y * grid_size).astype(int)
                 cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
-                for idx, (cx, cy) in enumerate(zip(norm_x, norm_y, strict=True)):
+                for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
                     cell_points[(int(cx), int(cy))].append(idx)
 
                 rng = np.random.default_rng(seed)

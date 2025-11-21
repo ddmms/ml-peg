@@ -177,13 +177,14 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
     for trace in data:
         name = trace.get("name")
         if name is None or name == model:
-            # y=x line or matching model trace
+            # ``name`` is ``None`` for the y=x reference line; keep that and the
+            # requested model trace visible while hiding their legend entries.
             trace_copy = deepcopy(trace)
             trace_copy["visible"] = True
             trace_copy["showlegend"] = False
             fig_data.append(trace_copy)
 
-    # Pick the matching annotation when available
+    # Pick the matching annotation (Plotly layout annotation with MAE/exclusion text)
     stored_annotations = (
         annotations_meta.get("annotations") if annotations_meta else None
     )

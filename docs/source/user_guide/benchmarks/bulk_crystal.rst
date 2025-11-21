@@ -72,10 +72,11 @@ MatCalc's ElasticityCalc is used to deform the structures with normal (diagonal)
 magnitudes of ±0.01 and ±0.005 for ϵ11, ϵ22, ϵ33, and off-diagonal strain magnitudes of
 ±0.06 and ±0.03 for ϵ23, ϵ13, ϵ12. The Voigt-Reuss-Hill (VRH) average is used to obtain
 the bulk and shear moduli from the stress tensor. Both the initial and deformed
-structures are relaxed.
+structures are relaxed with MatCalc's default ElasticityCalc settings. For more information, see
+`MatCalc's ElasticityCalc documentation <https://github.com/materialsvirtuallab/matcalc/blob/main/src/matcalc/_elasticity.py>`_.
 
 Dataset excludes:
-    * K <= 0, K > 500 and G <= 0, G > 500 structures.
+    * B <= 0, B > 500 and G <= 0, G > 500 structures.
     * H2, N2, O2, F2, Cl2, He, Xe, Ne, Kr, Ar
     * materials with density < 0.5 (less dense than Li, the least density solid element)
 

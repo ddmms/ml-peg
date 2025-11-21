@@ -116,10 +116,9 @@ def rmse(ref: list, prediction: list) -> float:
 
 def build_density_inputs(
     models: list[str],
-    model_stats: dict[str, dict[str, Any]],
+    model_properties: dict[str, dict[str, Any]],
     property_key: str,
-    *,
-    metric_fn: Callable[[list, list], float] | None = None,
+    metric_fn: Callable[[list, list], float],
 ) -> dict[str, dict[str, Any]]:
     """
     Prepare a model->data mapping for density scatter plots.
@@ -128,25 +127,27 @@ def build_density_inputs(
     ----------
     models
         Ordered list of model names to include.
-    model_stats
+    model_properties
         Mapping of model -> {"<property_key>": {"ref": [...], "pred": [...]},
-        "excluded": int}.
+        "excluded": int}. These per-model property arrays come from the analysis step
+        (e.g. filtered bulk/shear values and metadata).
     property_key
         Key to extract from ``model_stats`` for each model (e.g. ``"bulk"`` or
         ``"shear"``).
     metric_fn
-        Optional callable to compute metric. Defaults to :func:`mae` when None.
+        Function that turns the ``ref`` and ``pred`` lists into a single value (for
+        example, MAE). This number is stored in the result so the plotting code can show
+        it in hover text/annotations.
 
     Returns
     -------
     dict[str, dict[str, Any]]
         Mapping ready for ``plot_density_scatter``.
     """
-    metric_fn = mae if metric_fn is None else metric_fn
     inputs: dict[str, dict[str, Any]] = {}
 
     for model_name in models:
-        stats = model_stats.get(model_name, {})
+        stats = model_properties.get(model_name, {})
         prop = stats.get(property_key)
         excluded = stats.get("excluded")
 
