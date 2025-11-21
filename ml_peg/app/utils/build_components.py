@@ -195,7 +195,7 @@ def build_weight_components(
                         style={
                             "fontSize": "11px",
                             "padding": "4px 8px",
-                            "marginTop": "6px",
+                            "marginTop": "2px",
                             "backgroundColor": "#6c757d",
                             "color": "white",
                             "border": "none",
@@ -245,10 +245,12 @@ def build_weight_components(
             "alignItems": "start",
             "columnGap": "0px",
             "rowGap": "4px",
-            "marginTop": "8px",
-            "padding": "10px 12px",
+            "marginTop": "2px",
+            "padding": "2px 4px",
             "backgroundColor": "#f8f9fa",
-            "border": "1px solid #dee2e6",
+            "border": "1px solid transparent"
+            if header == "Metric Weights"
+            else "1px solid #dee2e6",
             "borderRadius": "6px",
             "width": "100%",
             "minWidth": "0",
@@ -481,7 +483,6 @@ def build_test_layout(
             table_id=table.id,
             column_widths=column_widths,
         )
-        layout_contents.append(threshold_controls)
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
@@ -492,7 +493,40 @@ def build_test_layout(
         column_widths=column_widths,
         thresholds=thresholds,
     )
-    if metric_weights:
+    if threshold_controls and metric_weights:
+        # Combine threshold and weight panels in a single card while trimming the extra
+        # <Br/> injected at the top of the weight component so the boundary box hugs
+        # both controls.
+        weight_children = metric_weights.children
+        if isinstance(weight_children, tuple | list):
+            weight_children = list(weight_children)
+        elif weight_children is None:
+            weight_children = []
+        else:
+            weight_children = [weight_children]
+        if weight_children and isinstance(weight_children[0], Br):
+            weight_children = weight_children[1:]
+        compact_weights = Div(weight_children)
+
+        layout_contents.append(
+            Div(
+                [
+                    Div(threshold_controls, style={"marginBottom": "4px"}),
+                    Div(compact_weights, style={"marginTop": "0"}),
+                ],
+                style={
+                    "backgroundColor": "#f8f9fa",
+                    "border": "1px solid #dee2e6",
+                    "borderRadius": "6px",
+                    "padding": "10px",
+                    "boxSizing": "border-box",
+                    "width": "100%",
+                },
+            )
+        )
+    elif threshold_controls:
+        layout_contents.append(threshold_controls)
+    elif metric_weights:
         layout_contents.append(metric_weights)
 
     layout_contents.append(
@@ -543,10 +577,10 @@ def build_threshold_inputs(
         "justifyItems": "center",
         "columnGap": "0px",
         "rowGap": "0px",
-        "marginTop": "10px",
-        "padding": "4px 8px",
+        "marginTop": "2px",
+        "padding": "4px 4px",
         "backgroundColor": "#f8f9fa",
-        "border": "1px solid #dee2e6",
+        "border": "1px solid transparent",
         "borderRadius": "5px",
         "width": "100%",
         "minWidth": "0",
@@ -564,7 +598,7 @@ def build_threshold_inputs(
                     style={
                         "fontWeight": "bold",
                         "fontSize": "13px",
-                        "padding": "2px 4px",
+                        "padding": "2px 2px",
                         "whiteSpace": "nowrap",
                         "boxSizing": "border-box",
                     },
@@ -587,7 +621,7 @@ def build_threshold_inputs(
                 # Toggle to view normalized metric values in the table
                 Checklist(
                     id=f"{table_id}-normalized-toggle",
-                    options=[{"label": "Show normalized values", "value": "norm"}],
+                    options=[{"label": "Show normalised scores", "value": "norm"}],
                     value=[],
                     style={"marginTop": "6px", "fontSize": "11px"},
                     inputStyle={"marginRight": "6px"},
