@@ -415,18 +415,10 @@ def plot_density_scatter(
                     sampled = _downsample(ref_vals, pred_vals)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
-                metric_value = data.get("mae")
-                if metric_value is None and ref_vals.size:
-                    metric_value = float(np.mean(np.abs(ref_vals - pred_vals)))
-                metric_text = (
-                    f"{metric_value:.3f}" if metric_value is not None else "n/a"
-                )
-                # top left corner annotation for each model with MAE and exclusion info
+                # Top left corner annotation for each model with exclusion info
                 annotations.append(
                     {
-                        "text": (
-                            f"{model} MAE: {metric_text} | Excluded: {excluded_text}"
-                        ),
+                        "text": f"{model} | Excluded: {excluded_text}",
                         "xref": "paper",
                         "yref": "paper",
                         "x": 0.02,
