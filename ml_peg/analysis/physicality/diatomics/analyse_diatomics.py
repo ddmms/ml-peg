@@ -50,13 +50,15 @@ def load_model_data(model_name: str) -> pd.DataFrame:
     return pd.read_csv(csv_path)
 
 
-def prepare_pair_series(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def prepare_pair_series(
+    pair_dataframe: pd.DataFrame,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Sort and align energy/force series for a diatomic pair.
 
     Parameters
     ----------
-    df
+    pair_dataframe
         Pair-specific dataframe.
 
     Returns
@@ -65,22 +67,22 @@ def prepare_pair_series(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.nd
         Distances, shifted energies, and projected forces sorted by decreasing
         distance.
     """
-    df_sorted = df.sort_values("distance").drop_duplicates("distance")
-    values = df_sorted[["distance", "energy", "force_parallel"]].to_numpy()
-    if len(values) < 3:
+    df_sorted = pair_dataframe.sort_values("distance").drop_duplicates("distance")
+    series = df_sorted[["distance", "energy", "force_parallel"]].to_numpy()
+    if len(series) < 3:
         return np.array([]), np.array([]), np.array([])
 
-    rs = values[:, 0]
-    es = values[:, 1]
-    fs = values[:, 2]
+    distances = series[:, 0]
+    energies = series[:, 1]
+    forces = series[:, 2]
 
-    order = np.argsort(rs)[::-1]
-    rs = rs[order]
-    es = es[order]
-    fs = fs[order]
+    descending = np.argsort(distances)[::-1]
+    distances = distances[descending]
+    energies = energies[descending]
+    forces = forces[descending]
 
-    es_shifted = es - es[0]
-    return rs, es_shifted, fs
+    shifted_energies = energies - energies[0]
+    return distances, shifted_energies, forces
 
 
 def count_sign_changes(array: np.ndarray, tol: float) -> int:
@@ -125,26 +127,31 @@ def compute_pair_metrics(
     tuple[dict[str, float], float] | tuple[None, None]
         Dictionary of metrics and the homonuclear well depth (if applicable).
     """
-    rs, es, fs = prepare_pair_series(df_pair)
-    if rs.size < 3:
+    distances, shifted_energies, projected_forces = prepare_pair_series(df_pair)
+    if distances.size < 3:
         return None, None
 
-    de_dr = np.gradient(es, rs)
-    d2e_dr2 = np.gradient(de_dr, rs)
+    energy_gradient = np.gradient(shifted_energies, distances)
+    energy_curvature = np.gradient(energy_gradient, distances)
 
     minima = 0
-    if es.size >= 3:
-        minima = int(np.sum(np.diff(np.sign(np.diff(es))) > 0))
+    if shifted_energies.size >= 3:
+        second_diff = np.diff(np.sign(np.diff(shifted_energies)))
+        minima = int(np.sum(second_diff > 0))
 
-    inflections = count_sign_changes(d2e_dr2, tol=0.5)
+    inflections = count_sign_changes(energy_curvature, tol=0.5)
 
-    rounded_fs = fs.copy()
-    rounded_fs[np.abs(rounded_fs) < 1e-2] = 0.0
-    fs_sign = np.sign(rounded_fs)
-    mask = fs_sign != 0
-    f_flip = int(np.sum(np.diff(fs_sign[mask]) != 0)) if mask.any() else 0
+    rounded_forces = projected_forces.copy()
+    rounded_forces[np.abs(rounded_forces) < 1e-2] = 0.0
+    force_signs = np.sign(rounded_forces)
+    nonzero_mask = force_signs != 0
+    force_flip_count = (
+        int(np.sum(np.diff(force_signs[nonzero_mask]) != 0))
+        if nonzero_mask.any()
+        else 0
+    )
 
-    well_depth = float(es.min())
+    well_depth = float(shifted_energies.min())
 
     spearman_repulsion = np.nan
     spearman_attraction = np.nan
@@ -152,20 +159,24 @@ def compute_pair_metrics(
     try:
         from scipy import stats
 
-        imine = int(np.argmin(es))
-        if rs[imine:].size > 1:
+        well_index = int(np.argmin(shifted_energies))
+        if distances[well_index:].size > 1:
             spearman_repulsion = float(
-                stats.spearmanr(rs[imine:], es[imine:]).statistic
+                stats.spearmanr(
+                    distances[well_index:], shifted_energies[well_index:]
+                ).statistic
             )
-        if rs[:imine].size > 1:
+        if distances[:well_index].size > 1:
             spearman_attraction = float(
-                stats.spearmanr(rs[:imine], es[:imine]).statistic
+                stats.spearmanr(
+                    distances[:well_index], shifted_energies[:well_index]
+                ).statistic
             )
     except Exception:
         pass
 
     metrics = {
-        "Force flips": float(f_flip),
+        "Force flips": float(force_flip_count),
         "Energy minima": float(minima),
         "Energy inflections": float(inflections),
         "ρ(E, repulsion)": float(spearman_repulsion),
@@ -175,29 +186,29 @@ def compute_pair_metrics(
 
 
 def aggregate_model_metrics(
-    df: pd.DataFrame,
+    model_dataframe: pd.DataFrame,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
     Aggregate metrics for a model across all pairs.
 
     Parameters
     ----------
-    df
-        Model dataframe.
+    model_dataframe
+        Per-model diatomic dataset.
 
     Returns
     -------
     tuple[dict[str, float], dict[str, float]]
         Aggregated model metrics and homonuclear well depths.
     """
-    if df.empty:
+    if model_dataframe.empty:
         return {}, {}
 
     pair_metrics: list[dict[str, float]] = []
     well_depths: dict[str, float] = {}
 
-    for pair, df_pair in df.groupby("pair"):
-        metrics, well_depth = compute_pair_metrics(df_pair)
+    for pair, pair_dataframe in model_dataframe.groupby("pair"):
+        metrics, well_depth = compute_pair_metrics(pair_dataframe)
         if metrics is None:
             continue
         pair_metrics.append(metrics)
@@ -232,10 +243,10 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
     pair_data: dict[str, pd.DataFrame] = {}
     for model_name in MODELS:
         csv_path = CALC_PATH / model_name / "diatomics.csv"
-        df = pd.read_csv(csv_path)
+        model_dataframe = pd.read_csv(csv_path)
 
-        if not df.empty:
-            pair_data[model_name] = df
+        if not model_dataframe.empty:
+            pair_data[model_name] = model_dataframe
     return pair_data
 
 
@@ -255,7 +266,7 @@ persist_diatomics_pair_data = periodic_curve_gallery(
 
 
 @pytest.fixture
-def diatomics_pair_data() -> dict[str, pd.DataFrame]:
+def diatomics_pair_data_fixture() -> dict[str, pd.DataFrame]:
     """
     Load curve data and persist gallery assets for pytest use.
 
@@ -284,37 +295,37 @@ def collect_metrics(
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
         Aggregated metrics table and per-model homonuclear well depths.
     """
-    rows: list[dict[str, float | str]] = []
+    metrics_rows: list[dict[str, float | str]] = []
     model_well_depths: dict[str, dict[str, float]] = {}
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     data = pair_data if pair_data is not None else persist_diatomics_pair_data()
 
-    for model_name, df in data.items():
-        metrics, well_depths = aggregate_model_metrics(df)
+    for model_name, model_dataframe in data.items():
+        metrics, well_depths = aggregate_model_metrics(model_dataframe)
 
         row = {"Model": model_name} | metrics
-        rows.append(row)
+        metrics_rows.append(row)
 
         model_well_depths[model_name] = well_depths
 
     columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
 
-    metrics_df = pd.DataFrame(rows).reindex(columns=columns)
+    metrics_df = pd.DataFrame(metrics_rows).reindex(columns=columns)
     return metrics_df, model_well_depths
 
 
 @pytest.fixture
 def diatomics_collection(
-    diatomics_pair_data: dict[str, pd.DataFrame],
+    diatomics_pair_data_fixture: dict[str, pd.DataFrame],
 ) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
     """
     Collect diatomics metrics and well depths across all models.
 
     Parameters
     ----------
-    diatomics_pair_data
+    diatomics_pair_data_fixture
         Mapping of model names to curve dataframes generated by the fixture.
 
     Returns
@@ -322,7 +333,7 @@ def diatomics_collection(
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
         Aggregated metrics dataframe and mapping of homonuclear well depths.
     """
-    return collect_metrics(diatomics_pair_data)
+    return collect_metrics(diatomics_pair_data_fixture)
 
 
 @pytest.fixture
@@ -342,8 +353,6 @@ def diatomics_metrics_dataframe(
     pd.DataFrame
         Aggregated diatomics metrics indexed by model.
     """
-    metrics_df, _ = diatomics_collection
-    return metrics_df
 
 
 @pytest.fixture
