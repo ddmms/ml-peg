@@ -83,9 +83,12 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             raise ValueError(msg)
 
         tooltip_text = tooltip.strip()
+        tooltip_lines = [tooltip_text]
+        if unit_value and unit_value not in ("", "-"):
+            tooltip_lines[0] = f"{tooltip_lines[0]} [{unit_value}]"
         if level_of_theory:
-            tooltip_text = f"{tooltip_text}\nLevel of theory: {level_of_theory}"
-        markdown_value = tooltip_text.replace("\n", "  \n")
+            tooltip_lines.append(f"Level of theory: {level_of_theory}")
+        markdown_value = "\n".join(tooltip_lines).replace("\n", "  \n")
         tooltips[metric_name] = {
             "value": markdown_value,
             "type": "markdown",

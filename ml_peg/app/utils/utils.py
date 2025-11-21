@@ -6,9 +6,6 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 import json
 from typing import Any, TypedDict
-from functools import lru_cache
-import json
-from typing import Any, TypedDict
 
 import dash.dash_table.Format as TableFormat
 import yaml
@@ -229,13 +226,74 @@ def get_scores(
     return scored_rows
 
 
-WARNING_ICON_URL = (
-    'url("data:image/svg+xml;utf8,'
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
-    "<path fill='%23f0ad4e' d='M8 1.1 15.2 14H0.8Z'/>"
-    "<path fill='%23212121' d='M7.25 11.9h1.5V13h-1.5zM7.36 5.2h1.28l.3 5.4h-1.88z'/>"
-    '</svg>")'
-)
+WARNING_ICON_URLS = {
+    "dft": (
+        'url("data:image/svg+xml;utf8,'
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
+        "<path fill='%23d9534f' d='M8 1.1 15.2 14H0.8Z'/>"
+        "<path fill='%23212121' "
+        "d='M7.25 11.9h1.5V13h-1.5zM7.36 5.2h1.28l.3 5.4h-1.88z'/>"
+        '</svg>")'
+    ),
+    "high_level": (
+        'url("data:image/svg+xml;utf8,'
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
+        "<path fill='%23f0ad4e' d='M8 1.1 15.2 14H0.8Z'/>"
+        "<path fill='%23212121' "
+        "d='M7.25 11.9h1.5V13h-1.5zM7.36 5.2h1.28l.3 5.4h-1.88z'/>"
+        '</svg>")'
+    ),
+    "experimental": (
+        'url("data:image/svg+xml;utf8,'
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
+        "<path fill='%235cb85c' d='M8 1.1 15.2 14H0.8Z'/>"
+        "<path fill='%23212121' "
+        "d='M7.25 11.9h1.5V13h-1.5zM7.36 5.2h1.28l.3 5.4h-1.88z'/>"
+        '</svg>")'
+    ),
+}
+WARNING_CATEGORY_PRIORITY = {"dft": 3, "high_level": 2, "experimental": 1}
+WARNING_CATEGORY_DESCRIPTIONS = {
+    "dft": "DFT functional mismatch",
+    "high_level": "High-level theory mismatch",
+    "experimental": "Experimental reference mismatch",
+}
+DEFAULT_WARNING_CATEGORY = "dft"
+
+# Tokens grouped by category keeps the classification simple.
+CATEGORY_TOKENS = {
+    "experimental": ("experimental",),
+    "high_level": ("ccsd(t)", "mp2", "dlpno-ccsd(t)/cbs", "dmc"),
+    "dft": ("pbe", "r2scan"),
+}
+
+
+def _categorize_benchmark_level(level: str | None) -> str | None:
+    """
+    Infer the warning icon category for a benchmark level.
+
+    Parameters
+    ----------
+    level
+        Raw benchmark level-of-theory string.
+
+    Returns
+    -------
+    str | None
+        Canonical category key (``"dft"``, ``"high_level"``, or
+        ``"experimental"``). Returns ``DEFAULT_WARNING_CATEGORY`` when the level
+        is missing or unknown.
+    """
+    if not level:
+        return DEFAULT_WARNING_CATEGORY
+
+    normalized = str(level).strip().lower()
+
+    for category, tokens in CATEGORY_TOKENS.items():
+        if any(token in normalized for token in tokens):
+            return category
+
+    return DEFAULT_WARNING_CATEGORY
 
 
 def build_level_of_theory_warnings(
@@ -391,20 +449,34 @@ def build_level_of_theory_warnings(
             ]
 
         mismatch_metrics: list[tuple[str, str]] = []
+        row_warning_category = None
+        row_priority = 0
         for metric_name, metric_level in metric_levels.items():
             if model_level is None or model_level != metric_level:
                 mismatch_metrics.append((metric_name, metric_level))
+                category = _categorize_benchmark_level(metric_level)
+                priority = WARNING_CATEGORY_PRIORITY.get(
+                    category, WARNING_CATEGORY_PRIORITY[DEFAULT_WARNING_CATEGORY]
+                )
+                if priority > row_priority:
+                    row_priority = priority
+                    row_warning_category = category
 
         align_lines: list[str] = []
         if mismatch_metrics:
             align_lines = [
-                "- [!] Mismatch detected between model and benchmark levels.",
                 f"- Model level: `{level_display}`",
                 "- Benchmark metrics:",
             ]
             for metric_name, metric_level in mismatch_metrics:
                 level_repr = _stringify(metric_level) if metric_level else "n/a"
-                align_lines.append(f"  - {metric_name}: `{level_repr}`")
+                category = _categorize_benchmark_level(metric_level)
+                category_label = WARNING_CATEGORY_DESCRIPTIONS.get(
+                    category, "Level mismatch"
+                )
+                align_lines.append(
+                    f"  - {metric_name}: `{level_repr}` (**{category_label}**)"
+                )
         elif metric_levels:
             align_lines = ["- All benchmark metrics match the model level."]
 
@@ -426,10 +498,14 @@ def build_level_of_theory_warnings(
         if mismatch_metrics:
             row_id = row.get("id", mlip)
             filter_query = "{id} = " + json.dumps(str(row_id))
+            icon_key = row_warning_category or DEFAULT_WARNING_CATEGORY
+            icon_url = WARNING_ICON_URLS.get(
+                icon_key, WARNING_ICON_URLS[DEFAULT_WARNING_CATEGORY]
+            )
             warning_styles.append(
                 {
                     "if": {"column_id": "MLIP", "filter_query": filter_query},
-                    "backgroundImage": WARNING_ICON_URL,
+                    "backgroundImage": icon_url,
                     "backgroundRepeat": "no-repeat",
                     "backgroundPosition": "8px center",
                     "backgroundSize": "14px 14px",
@@ -543,9 +619,10 @@ def _swap_tooltip_unit(text: str, unit: str, replacement: str) -> str:
     if not text or not unit:
         return text
 
-    # find pattern like " [unit]" at end of string
-    base = text.split(" [", 1)[0]
-    return f"{base} [{replacement}]"
+    pattern = f" [{unit}]"
+    if pattern not in text:
+        return text
+    return text.replace(pattern, f" [{replacement}]", 1)
 
 
 def format_tooltip_headers(

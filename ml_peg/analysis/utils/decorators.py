@@ -633,7 +633,7 @@ def build_table(
                 )
 
             summary_tooltips = {
-                "MLIP": "Model identifier\nHover for configuration details.",
+                "MLIP": "Model identifier, hover for configuration details.",
             }
             if normalize:
                 summary_tooltips["Score"] = (
@@ -699,26 +699,8 @@ def build_table(
                     )
                     metric_level = metric_levels[metric_name]
                     if metric_level and metric_name in tooltip_header:
-                        mismatched = []
-                        for mlip in mlips:
-                            model_level = model_levels.get(mlip)
-                            if model_level and model_level != metric_level:
-                                mismatched.append((mlip, model_level))
-                        if mismatched:
-                            mismatch_str = ", ".join(
-                                f"{mlip} ({level})" if level else mlip
-                                for mlip, level in mismatched
-                            )
-                            tooltip_header[metric_name] = "\n".join(
-                                [
-                                    str(tooltip_header[metric_name]).rstrip(),
-                                    (
-                                        "Mismatch detected:\n"
-                                        f"  Benchmark level: {metric_level}\n"
-                                        f"  Models at: {mismatch_str}"
-                                    ),
-                                ]
-                            )
+                        # Metric tooltips already include level metadata.
+                        continue
 
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -732,7 +714,6 @@ def build_table(
                         "weights": metric_weights,
                         "model_levels_of_theory": model_levels,
                         "metric_levels_of_theory": metric_levels,
-                        "model_configs": model_configs,
                         "model_configs": model_configs,
                     },
                     fp,
