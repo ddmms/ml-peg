@@ -84,8 +84,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_rel_energies.json",
     title="Relative energies",
-    x_label="Predicted relative energy / meV",
-    y_label="Reference relative energy / meV",
+    x_label="Predicted relative energy / eV",
+    y_label="Reference relative energy / eV",
     hoverdata={
         "Composition": compositions(),
         "Labels": labels(),
