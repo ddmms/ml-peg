@@ -514,7 +514,7 @@ def build_test_layout(
         layout_contents.append(
             Div(
                 [
-                    Div(threshold_controls, style={"marginBottom": "4px"}),
+                    Div(threshold_controls, style={"marginBottom": "0px"}),
                     Div(compact_weights, style={"marginTop": "0"}),
                 ],
                 style={
@@ -763,7 +763,7 @@ def build_threshold_inputs(
                             "display": "flex",
                             "justifyContent": "center",
                             "alignItems": "center",
-                            "marginBottom": "4px",
+                            "marginBottom": "2px",
                         },
                     ),
                     Div(
