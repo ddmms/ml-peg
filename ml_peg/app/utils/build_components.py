@@ -245,7 +245,7 @@ def build_weight_components(
             "alignItems": "start",
             "columnGap": "0px",
             "rowGap": "4px",
-            "marginTop": "2px",
+            "marginTop": "-5px",
             "padding": "2px 4px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
@@ -508,6 +508,7 @@ def build_test_layout(
             weight_children = weight_children[1:]
         compact_weights = Div(weight_children)
 
+        layout_contents.append(Br())
         layout_contents.append(
             Div(
                 [
@@ -518,7 +519,8 @@ def build_test_layout(
                     "backgroundColor": "#f8f9fa",
                     "border": "1px solid #dee2e6",
                     "borderRadius": "6px",
-                    "padding": "10px",
+                    "padding": "4px 4px",
+                    "marginTop": "-5px",
                     "boxSizing": "border-box",
                     "width": "100%",
                 },
@@ -598,7 +600,7 @@ def build_threshold_inputs(
                     style={
                         "fontWeight": "bold",
                         "fontSize": "13px",
-                        "padding": "2px 2px",
+                        "padding": "-2px -2px",
                         "whiteSpace": "nowrap",
                         "boxSizing": "border-box",
                     },
