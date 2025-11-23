@@ -6,6 +6,7 @@
 [![DOI][doi-badge]][doi-link]
 
 [ML potential usability and performance guide](https://ml-peg.stfc.ac.uk)
+🔗 Visit the guide → https://ml-peg.stfc.ac.uk
 
 > [!NOTE]
 > Migration in progress! The live benchmarks are currently run and analysed using
