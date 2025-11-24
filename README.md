@@ -141,5 +141,5 @@ for information about contributing new benchmarks and models.
 [docs-link]: https://ddmms.github.io/ml-peg/
 [license-badge]: https://img.shields.io/badge/License-GPLv3-blue.svg
 [license-link]: https://opensource.org/license/gpl-3-0
-[doi-link]: https://doi.org/10.5281/zenodo.16904445
-[doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.16904445.svg
+[doi-link]: https://doi.org/10.5281/zenodo.16904444
+[doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.16904444.svg
