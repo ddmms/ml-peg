@@ -659,9 +659,11 @@ def build_threshold_inputs(
             "unit": unit_label,
         }
 
+        first_metric = metric == table_columns[0]
+
         good_children = [
             Label(
-                "Good:",
+                "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
                     "color": "lightseagreen",
@@ -704,7 +706,7 @@ def build_threshold_inputs(
 
         bad_children = [
             Label(
-                "Bad:",
+                "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
                     "color": "#dc3545",
