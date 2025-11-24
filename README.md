@@ -5,7 +5,7 @@
 [![License][license-badge]][license-link]
 [![DOI][doi-badge]][doi-link]
 
-🔗 See the live guide → https://ml-peg.stfc.ac.uk
+🔗 See our live guide: https://ml-peg.stfc.ac.uk
 
 > [!NOTE]
 > Migration in progress! The live benchmarks are currently run and analysed using
