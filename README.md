@@ -1,5 +1,7 @@
 # ML-PEG: ML potential usability and performance guide
 
+[![PyPI version][pypi-badge]][pypi-link]
+[![Python versions][python-badge]][python-link]
 [![Build Status][ci-badge]][ci-link]
 [![Docs status][docs-badge]][docs-link]
 [![License][license-badge]][license-link]
@@ -133,6 +135,10 @@ for information about contributing new benchmarks and models.
 
 [GNU General Public License version 3](LICENSE)
 
+[pypi-badge]: https://badge.fury.io/py/ml-peg.svg
+[pypi-link]: https://pypi.org/project/ml-peg/
+[python-badge]: https://img.shields.io/pypi/pyversions/ml-peg.svg
+[python-link]: https://pypi.org/project/ml-peg/
 [ci-badge]: https://github.com/ddmms/ml-peg/actions/workflows/ci.yml/badge.svg?branch=main
 [ci-link]: https://github.com/ddmms/ml-peg/actions
 [cov-badge]: https://coveralls.io/repos/github/ddmms/ml-peg/badge.svg?branch=main
