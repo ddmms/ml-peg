@@ -498,17 +498,16 @@ def build_test_layout(
         # Combine threshold and weight panels in a single card while trimming the extra
         # <Br/> injected at the top of the weight component so the boundary box hugs
         # both controls.
+        # The first child of the weight component is always the spacer <Br/> returned by
+        # build_weight_components. Drop it from the weights so the metric weights box
+        # hugs the threshold box.
         weight_children = metric_weights.children
-        if isinstance(weight_children, tuple | list):
-            weight_children = list(weight_children)
-        elif weight_children is None:
-            weight_children = []
-        else:
-            weight_children = [weight_children]
-        if weight_children and isinstance(weight_children[0], Br):
-            weight_children = weight_children[1:]
+        weight_children = weight_children[1:]
         compact_weights = Div(weight_children)
 
+        # Insert a single spacer before the combined card so its top aligns with the
+        # elements above (e.g. the table). The thresholds + weights content then sit
+        # within the shared box.
         layout_contents.append(Br())
         layout_contents.append(
             Div(
