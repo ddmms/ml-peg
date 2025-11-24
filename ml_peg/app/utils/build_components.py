@@ -212,7 +212,6 @@ def build_weight_components(
                     "alignItems": "flex-start",
                     "gap": "4px",
                     "boxSizing": "border-box",
-                    # "padding": "1px 2px",
                     "width": "100%",
                     "minWidth": "0",
                     "maxWidth": "100%",
