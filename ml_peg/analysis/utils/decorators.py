@@ -638,7 +638,7 @@ def build_table(
             if normalize:
                 summary_tooltips["Score"] = (
                     "Composite score across metrics, "
-                    "Higher is better (normalized 0 to 1)."
+                    "Higher is better (normalised 0 to 1)."
                 )
             else:
                 summary_tooltips["Score"] = (
