@@ -56,6 +56,7 @@ def grid_template_from_widths(
 def build_weight_input(
     input_id: str,
     default_value: float | None,
+    show_label: bool = False,
 ) -> Div:
     """
     Build numeric input for a metric weight.
@@ -66,6 +67,8 @@ def build_weight_input(
         ID for text box input component.
     default_value
         Default value for the text box input.
+    show_label
+        Whether to show the "Weight:" label (only for first column).
 
     Returns
     -------
@@ -78,6 +81,7 @@ def build_weight_input(
         "alignItems": "center",
         "boxSizing": "border-box",
         "border": "1px solid transparent",
+        "position": "relative",
     }
     wrapper_style.update(
         {
@@ -88,23 +92,39 @@ def build_weight_input(
         }
     )
 
-    return Div(
+    children = []
+    if show_label:
+        children.append(
+            Label(
+                "Weight:",
+                style={
+                    "fontSize": "13px",
+                    "color": "#6c757d",
+                    "textAlign": "right",
+                    "position": "absolute",
+                    "right": "calc(50% + 38px)",
+                },
+            )
+        )
+
+    children.append(
         DCC_Input(
             id=input_id,
             type="number",
             value=default_value,
             step=0.1,
             style={
-                "width": "80px",
+                "width": "60px",
                 "fontSize": "12px",
                 "padding": "2px 4px",
                 "border": "1px solid #6c757d",
                 "borderRadius": "3px",
                 "textAlign": "center",
             },
-        ),
-        style=wrapper_style,
+        )
     )
+
+    return Div(children, style=wrapper_style)
 
 
 def build_weight_components(
@@ -168,8 +188,9 @@ def build_weight_components(
         build_weight_input(
             input_id=f"{input_id}-input",
             default_value=weights[column],
+            show_label=(i == 0),
         )
-        for column, input_id in zip(columns, input_ids, strict=True)
+        for i, (column, input_id) in enumerate(zip(columns, input_ids, strict=True))
     ]
 
     container = Div(
@@ -659,24 +680,26 @@ def build_threshold_inputs(
             "unit": unit_label,
         }
 
+        first_metric = metric == table_columns[0]
+
         good_children = [
             Label(
-                "Good:",
+                "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
                     "color": "lightseagreen",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 52px)",
+                    "right": "calc(50% + 40px)",
                 },
             ),
             DCC_Input(
                 id=f"{table_id}-{metric}-good-threshold",
                 type="number",
                 value=good_val,
-                step=0.001,
+                step=0.01,
                 style={
-                    "width": "80px",
+                    "width": "60px",
                     "fontSize": "12px",
                     "padding": "2px 4px",
                     "border": "1px solid lightseagreen",
@@ -694,7 +717,7 @@ def build_threshold_inputs(
                         "fontSize": "12px",
                         "color": "#6c757d",
                         "position": "absolute",
-                        "left": "calc(50% + 52px)",
+                        "left": "calc(50% + 40px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",
@@ -704,13 +727,13 @@ def build_threshold_inputs(
 
         bad_children = [
             Label(
-                "Bad:",
+                "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
                     "color": "#dc3545",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 52px)",
+                    "right": "calc(50% + 40px)",
                     "top": "50%",
                     "transform": "translateY(-50%)",
                     "whiteSpace": "nowrap",
@@ -720,9 +743,9 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-bad-threshold",
                 type="number",
                 value=bad_val,
-                step=0.001,
+                step=0.01,
                 style={
-                    "width": "80px",
+                    "width": "60px",
                     "fontSize": "12px",
                     "padding": "2px 4px",
                     "border": "1px solid #dc3545",
@@ -740,7 +763,7 @@ def build_threshold_inputs(
                         "fontSize": "12px",
                         "color": "#6c757d",
                         "position": "absolute",
-                        "left": "calc(50% + 52px)",
+                        "left": "calc(50% + 40px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",
