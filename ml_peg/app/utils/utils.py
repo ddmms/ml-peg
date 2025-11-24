@@ -509,7 +509,7 @@ def build_level_of_theory_warnings(
                     "backgroundRepeat": "no-repeat",
                     "backgroundPosition": "8px center",
                     "backgroundSize": "14px 14px",
-                    "paddingLeft": "28px",
+                    "paddingLeft": "38px",
                 }
             )
 
