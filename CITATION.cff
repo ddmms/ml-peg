@@ -22,4 +22,4 @@ identifiers:
     value: 10.5281/zenodo.16904444
 repository-code: 'https://github.com/ddmms/ml-peg'
 abstract: "ML potential usability and performance guide"
-license: GNU General Public License v3 (GPLv3)
+license: GPL-3.0
