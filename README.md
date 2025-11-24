@@ -1,11 +1,11 @@
-# ML-PEG
+# ML-PEG: ML potential usability and performance guide
 
 [![Build Status][ci-badge]][ci-link]
 [![Docs status][docs-badge]][docs-link]
 [![License][license-badge]][license-link]
 [![DOI][doi-badge]][doi-link]
 
-[ML potential usability and performance guide](https://ml-peg.stfc.ac.uk)
+🔗 See our live guide: https://ml-peg.stfc.ac.uk
 
 > [!NOTE]
 > Migration in progress! The live benchmarks are currently run and analysed using
