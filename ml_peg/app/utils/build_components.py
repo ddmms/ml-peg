@@ -697,7 +697,7 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-good-threshold",
                 type="number",
                 value=good_val,
-                step=0.001,
+                step=0.01,
                 style={
                     "width": "60px",
                     "fontSize": "12px",
@@ -743,7 +743,7 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-bad-threshold",
                 type="number",
                 value=bad_val,
-                step=0.001,
+                step=0.01,
                 style={
                     "width": "60px",
                     "fontSize": "12px",
