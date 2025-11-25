@@ -60,7 +60,9 @@ class BaseApp(ABC):
         self.extra_components = extra_components
         self.docs_url = docs_url
         self.table_id = f"{self.name}-table"
-        self.table = rebuild_table(self.table_path, id=self.table_id)
+        self.table = rebuild_table(
+            self.table_path, id=self.table_id, description=description
+        )
         self.layout = self.build_layout()
 
     def build_layout(self) -> Div:

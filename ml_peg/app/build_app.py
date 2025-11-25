@@ -122,7 +122,9 @@ def build_category(
 
         # Build category summary table
         summary_table = build_summary_table(
-            all_tables[category], table_id=f"{category_title}-summary-table"
+            all_tables[category],
+            table_id=f"{category_title}-summary-table",
+            description=category_descrip,
         )
         category_tables[category_title] = summary_table
 
@@ -161,7 +163,9 @@ def build_category(
 
 
 def build_summary_table(
-    tables: dict[str, DataTable], table_id: str = "summary-table"
+    tables: dict[str, DataTable],
+    table_id: str = "summary-table",
+    description: str | None = None,
 ) -> DataTable:
     """
     Build summary table from a set of tables.
@@ -172,6 +176,8 @@ def build_summary_table(
         Dictionary of tables to be summarised.
     table_id
         ID of table being built. Default is 'summary-table'.
+    description
+        Description of summary table. Default is None.
 
     Returns
     -------
@@ -198,6 +204,8 @@ def build_summary_table(
     columns_headers = ("MLIP",) + tuple(tables.keys()) + ("Score",)
 
     columns = [{"name": headers, "id": headers} for headers in columns_headers]
+    tooltip_header = {header: table.description for header, table in tables.items()}
+
     for column in columns:
         column_id = column["id"]
         if column_id != "MLIP":
@@ -222,6 +230,8 @@ def build_summary_table(
             }
         )
 
+    tooltip_header["Score"] = "Weighted average of scores (higher is better)"
+
     table = DataTable(
         data=data,
         columns=columns,
@@ -232,8 +242,10 @@ def build_summary_table(
         persistence=True,
         persistence_type="session",
         persisted_props=["data"],
+        tooltip_header=tooltip_header,
     )
     table.column_widths = column_widths
+    table.description = description
     return table
 
 
