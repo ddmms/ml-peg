@@ -206,7 +206,9 @@ def build_summary_table(
     columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
 
     columns = [{"name": headers, "id": headers} for headers in columns_headers]
-    tooltip_header = {header: table.description for header, table in tables.items()}
+    tooltip_header = {
+        header + " Score": table.description for header, table in tables.items()
+    }
 
     for column in columns:
         column_id = column["id"]
