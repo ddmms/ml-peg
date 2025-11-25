@@ -252,8 +252,9 @@ def register_category_table_callbacks(
 
         if not scores_data:
             scores_data = {}
-        # Update scores store. Category table IDs are of form [category]-summary-table
-        scores_data[table_id.removesuffix("-summary-table")] = {
+        # Update scores store. Category table IDs are of form "[category]-summary-table"
+        # Table headings are of the form "[category] Score"
+        scores_data[table_id.removesuffix("-summary-table") + " Score"] = {
             row["MLIP"]: row["Score"] for row in table_data
         }
         return scores_data

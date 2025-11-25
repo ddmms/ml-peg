@@ -150,11 +150,12 @@ def build_category(
         )
 
         # Register benchmark table -> category table callbacks
+        # Category summary table columns add "Score" to name for clarity
         for test_name, benchmark_table in all_tables[category].items():
             register_benchmark_to_category_callback(
                 benchmark_table_id=benchmark_table.id,
                 category_table_id=f"{category_title}-summary-table",
-                benchmark_column=test_name,
+                benchmark_column=test_name + " Score",
             )
 
     return category_layouts, category_tables
@@ -176,7 +177,7 @@ def build_summary_table(
     Returns
     -------
     DataTable
-        Summary table with score from table being summarised.
+        Summary table with scores from tables being summarised.
     """
     summary_data = {}
     for category_name, table in tables.items():
@@ -186,8 +187,9 @@ def build_summary_table(
 
         for row in table.data:
             # Category tables may include models not to be included
+            # Table headings are of the form "[category] Score"
             if row["MLIP"] in summary_data:
-                summary_data[row["MLIP"]][category_name] = row["Score"]
+                summary_data[row["MLIP"]][f"{category_name} Score"] = row["Score"]
 
     data = []
     for mlip in summary_data:
@@ -195,7 +197,7 @@ def build_summary_table(
 
     data = calc_table_scores(data)
 
-    columns_headers = ("MLIP",) + tuple(tables.keys()) + ("Score",)
+    columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
 
     columns = [{"name": headers, "id": headers} for headers in columns_headers]
     for column in columns:
