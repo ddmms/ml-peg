@@ -20,7 +20,9 @@ from ml_peg.app.utils.utils import (
 )
 
 
-def rebuild_table(filename: str | Path, id: str) -> DataTable:
+def rebuild_table(
+    filename: str | Path, id: str, description: str | None = None
+) -> DataTable:
     """
     Rebuild saved dash table.
 
@@ -30,6 +32,8 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
         Name of json file with saved table data.
     id
         ID for table.
+    description
+        Description of table. Default is None.
 
     Returns
     -------
@@ -126,6 +130,7 @@ def rebuild_table(filename: str | Path, id: str) -> DataTable:
 
     table.thresholds = thresholds
     table.weights = weights
+    table.description = description
 
     return table
 
