@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from copy import deepcopy
 import functools
 from json import dump
 from pathlib import Path
@@ -13,11 +12,9 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import plotly.graph_objects as go
-import yaml
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
-from ml_peg.models import MODELS_ROOT
 
 
 def plot_parity(
@@ -637,12 +634,12 @@ def build_table(
             }
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Composite score across metrics, "
+                    "Weighted score across metrics, "
                     "Higher is better (normalised 0 to 1)."
                 )
             else:
                 summary_tooltips["Score"] = (
-                    "Composite score across metrics, higher is better."
+                    "Weighted score across metrics, higher is better."
                 )
 
             if metric_tooltips:
@@ -673,34 +670,17 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
-            with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
-                all_models = yaml.safe_load(model_file) or {}
-            model_levels: dict[str, str | None] = {}
-            model_configs: dict[str, Any] = {}
-            for mlip in mlips:
-                cfg = deepcopy(all_models.get(mlip) or {})
-                if not isinstance(cfg, dict):
-                    cfg = {}
-                model_configs[mlip] = cfg
-                model_levels[mlip] = cfg.get("level_of_theory")
-            model_levels: dict[str, str | None] = {}
-            model_configs: dict[str, Any] = {}
-            for mlip in mlips:
-                cfg = deepcopy(all_models.get(mlip) or {})
-                if not isinstance(cfg, dict):
-                    cfg = {}
-                model_configs[mlip] = cfg
-                model_levels[mlip] = cfg.get("level_of_theory")
+            # Load model configurations and extract level of theory metadata
+            from ml_peg.models.models import load_model_configs
+
+            model_configs, model_levels = load_model_configs(mlips)
+
+            # Extract metric level of theory from thresholds
             metric_levels = {}
-            if thresholds:
-                for metric_name in results:
-                    metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
-                        "level_of_theory"
-                    )
-                    metric_level = metric_levels[metric_name]
-                    if metric_level and metric_name in tooltip_header:
-                        # Metric tooltips already include level metadata.
-                        continue
+            for metric_name in results:
+                metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
+                    "level_of_theory"
+                )
 
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)

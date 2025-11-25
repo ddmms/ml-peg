@@ -24,13 +24,45 @@ from ml_peg.app.utils.utils import (
 )
 
 
+def extract_level_data(
+    lot_store: dict[str, dict[str, str | None]] | None,
+) -> tuple[
+    dict[str, str | None] | None,
+    dict[str, str | None] | None,
+    dict[str, Any] | None,
+]:
+    """
+    Extract model/metric levels and configs from a levels-of-theory store.
+
+    Parameters
+    ----------
+    lot_store
+        Dictionary containing model/metric level of theory and config metadata.
+
+    Returns
+    -------
+    tuple
+        A tuple of (model_levels, metric_levels, model_configs), where each value
+        is None if the store is not a dict or the key is missing.
+    """
+    if not isinstance(lot_store, dict):
+        return None, None, None
+    return (
+        lot_store.get("model"),
+        lot_store.get("metric"),
+        lot_store.get("config"),
+    )
+
+
 def register_summary_table_callbacks() -> None:
     """Register callbacks to update summary table."""
 
     @callback(
         Output("summary-table", "data"),
         Output("summary-table", "style_data_conditional"),
-        Output("summary-table", "tooltip_data"),
+        Output(
+            "summary-table", "tooltip_data"
+        ),  # Needed to display model config & level of theory tooltips
         Input("all-tabs", "value"),
         Input("summary-table-weight-store", "data"),
         State("summary-table-scores-store", "data"),
@@ -75,13 +107,7 @@ def register_summary_table_callbacks() -> None:
         # Update table contents
         updated_rows, base_style = update_score_style(summary_data, stored_weights)
 
-        model_levels = None
-        metric_levels = None
-        model_configs = None
-        if isinstance(levels_store, dict):
-            model_levels = levels_store.get("model")
-            metric_levels = levels_store.get("metric")
-            model_configs = levels_store.get("config")
+        model_levels, metric_levels, model_configs = extract_level_data(levels_store)
 
         warning_styles, tooltip_rows = build_level_of_theory_warnings(
             updated_rows, model_levels, metric_levels, model_configs
@@ -172,13 +198,7 @@ def register_category_table_callbacks(
             thresholds = clean_thresholds(stored_threshold)
             show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
-            model_levels = None
-            metric_levels = None
-            model_configs = None
-            if isinstance(lot_store, dict):
-                model_levels = lot_store.get("model")
-                metric_levels = lot_store.get("metric")
-                model_configs = lot_store.get("config")
+            model_levels, metric_levels, model_configs = extract_level_data(lot_store)
 
             def apply_levels_of_theory(
                 rows: list[dict], base_style: list[dict]
@@ -266,13 +286,7 @@ def register_category_table_callbacks(
             lot_store: dict[str, dict[str, str | None]] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
             trigger_id = ctx.triggered_id
-            model_levels = None
-            metric_levels = None
-            model_configs = None
-            if isinstance(lot_store, dict):
-                model_levels = lot_store.get("model")
-                metric_levels = lot_store.get("metric")
-                model_configs = lot_store.get("config")
+            model_levels, metric_levels, model_configs = extract_level_data(lot_store)
 
             def apply_levels(
                 rows: list[dict], base_style: list[dict]

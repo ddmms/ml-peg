@@ -478,6 +478,9 @@ def build_test_layout(
             data=table.data,
         )
     )
+    # Store level-of-theory metadata for callbacks
+    # NOTE: This data is constant after build, but using a Store simplifies callbacks
+    # by avoiding the need to pass this data as State parameters to every callback
     layout_contents.append(
         Store(
             id=f"{table.id}-levels-store",

@@ -4,17 +4,55 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 import dataclasses
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
+import yaml
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
 current_models = None
+
+
+def load_model_configs(
+    mlips: tuple[str, ...],
+) -> tuple[dict[str, Any], dict[str, str | None]]:
+    """
+    Load model configurations and level of theory metadata from models.yml.
+
+    Parameters
+    ----------
+    mlips
+        Tuple of model identifiers to load configurations for.
+
+    Returns
+    -------
+    tuple[dict[str, Any], dict[str, str | None]]
+        A tuple containing:
+        - model_configs: Dictionary mapping model names to their configuration dicts
+        - model_levels: Dictionary mapping model names to their level of
+          theory (or ``None``)
+    """
+    from ml_peg.models import MODELS_ROOT
+
+    with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+        all_models = yaml.safe_load(model_file) or {}
+
+    model_levels: dict[str, str | None] = {}
+    model_configs: dict[str, Any] = {}
+    for mlip in mlips:
+        cfg = deepcopy(all_models.get(mlip) or {})
+        if not isinstance(cfg, dict):
+            cfg = {}
+        model_configs[mlip] = cfg
+        model_levels[mlip] = cfg.get("level_of_theory")
+
+    return model_configs, model_levels
 
 
 @dataclasses.dataclass(kw_only=True)

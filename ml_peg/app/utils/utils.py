@@ -135,18 +135,13 @@ def clean_thresholds(
     thresholds: Thresholds = {}
 
     for metric, bounds in raw_thresholds.items():
-        good_val: float | None
-        bad_val: float | None
-        unit_val: str | None = None
-        level_val: str | None = None
         try:
-            if isinstance(bounds, dict):
-                good_val = float(bounds["good"])
-                bad_val = float(bounds["bad"])
-                raw_unit = bounds.get("unit")
-                unit_val = str(raw_unit) if raw_unit not in (None, "") else None
-                raw_level = bounds.get("level_of_theory", bounds.get("level"))
-                level_val = str(raw_level) if raw_level not in (None, "") else None
+            good_val = float(bounds["good"])
+            bad_val = float(bounds["bad"])
+            raw_unit = bounds.get("unit")
+            unit_val = str(raw_unit) if raw_unit not in (None, "") else None
+            raw_level = bounds.get("level_of_theory", bounds.get("level"))
+            level_val = str(raw_level) if raw_level not in (None, "") else None
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError(
                 f"Threshold entries must include 'good', 'bad', and 'unit': {bounds}"
@@ -298,7 +293,7 @@ def _categorize_benchmark_level(level: str | None) -> str | None:
 
 def build_level_of_theory_warnings(
     rows: list[dict[str, Any]] | None,
-    model_levels: Mapping[str, str | None] | None,
+    model_theory_levels: Mapping[str, str | None] | None,
     metric_levels: Mapping[str, str | None] | None,
     model_configs: Mapping[str, Mapping[str, Any]] | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -309,7 +304,7 @@ def build_level_of_theory_warnings(
     ----------
     rows
         Table rows currently displayed in the DataTable.
-    model_levels
+    model_theory_levels
         Mapping of model name to configured level of theory.
     metric_levels
         Mapping of metric name to benchmark level of theory.
@@ -319,12 +314,14 @@ def build_level_of_theory_warnings(
     Returns
     -------
     tuple[list[dict[str, Any]], list[dict[str, Any]]]
-        Conditional style data and tooltip definitions to apply per row.
+        A tuple of (warning_styles, tooltip_rows):
+        - warning_styles: List of conditional style dicts for warning icons
+        - tooltip_rows: List of tooltip data dicts, one per row
     """
     if not rows:
         return [], []
 
-    model_levels = model_levels or {}
+    model_theory_levels = model_theory_levels or {}
     metric_levels = {
         metric: level for metric, level in (metric_levels or {}).items() if level
     }
@@ -378,12 +375,22 @@ def build_level_of_theory_warnings(
         section.append("")
         return section
 
-    for idx, row in enumerate(rows):
-        mlip = row.get("MLIP")
-        if not isinstance(mlip, str):
-            continue
+    def _get_model_config(mlip: str) -> tuple[Mapping[str, Any], str | None]:
+        """
+        Retrieve the stored configuration and theory level for a model.
 
-        model_level = model_levels.get(mlip)
+        Parameters
+        ----------
+        mlip
+            Model identifier used in the table.
+
+        Returns
+        -------
+        tuple[Mapping[str, Any], str | None]
+            Tuple of (config, level_of_theory) where config falls back to the
+            registry entry when missing.
+        """
+        model_theory_level = model_theory_levels.get(mlip)
         config = model_configs.get(mlip) or {}
         if not isinstance(config, Mapping):
             config = {}
@@ -391,41 +398,49 @@ def build_level_of_theory_warnings(
             fallback_cfg = load_model_registry_configs().get(mlip) or {}
             if isinstance(fallback_cfg, Mapping):
                 config = fallback_cfg
-        if model_level is None and isinstance(config, Mapping):
-            model_level = config.get("level_of_theory")
+        if model_theory_level is None and isinstance(config, Mapping):
+            model_theory_level = config.get("level_of_theory")
+        return config, model_theory_level
 
-        module = config.get("module")
-        class_name = config.get("class_name")
-        device = config.get("device")
-        kwargs = config.get("kwargs")
-        other_keys = {
-            key: value
-            for key, value in config.items()
-            if key
-            not in {
-                "module",
-                "class_name",
-                "device",
-                "level_of_theory",
-                "args",
-                "kwargs",
-            }
-        }
+    def _build_overview_lines(
+        mlip: str, config: Mapping[str, Any], model_theory_level: str | None
+    ) -> list[str]:
+        """
+        Create the overview section describing model metadata.
 
+        Parameters
+        ----------
+        mlip
+            Model identifier to display.
+        config
+            Configuration mapping for the model.
+        model_theory_level
+            Stored level-of-theory metadata for the model.
+
+        Returns
+        -------
+        list[str]
+            Render-ready markdown lines describing the model overview.
+        """
         level_display = (
-            _stringify(model_level) if model_level not in (None, "") else "n/a"
+            _stringify(model_theory_level)
+            if model_theory_level not in (None, "")
+            else "n/a"
         )
         overview_lines = [
             f"- **Model:** `{mlip}`",
             f"- **Level of theory:** `{level_display}`",
         ]
-        if module:
-            overview_lines.append(f"- **Module:** `{module}`")
-        if class_name:
-            overview_lines.append(f"- **Class:** `{class_name}`")
-        if device:
-            overview_lines.append(f"- **Device:** `{device}`")
 
+        for key in ("module", "class_name", "device"):
+            value = config.get(key)
+            if value:
+                label = {"module": "Module", "class_name": "Class", "device": "Device"}[
+                    key
+                ]
+                overview_lines.append(f"- **{label}:** `{value}`")
+
+        kwargs = config.get("kwargs")
         kwarg_items: list[tuple[str, Any]] = []
         if isinstance(kwargs, Mapping):
             kwarg_items = [
@@ -441,18 +456,65 @@ def build_level_of_theory_warnings(
         else:
             overview_lines.append("- **Kwargs:** (none)")
 
-        other_lines: list[str] = []
+        return overview_lines
+
+    def _build_other_settings(config: Mapping[str, Any]) -> list[str]:
+        """
+        Build additional settings lines from configuration values.
+
+        Parameters
+        ----------
+        config
+            Model configuration dictionary.
+
+        Returns
+        -------
+        list[str]
+            Markdown formatted lines for non-core configuration entries.
+        """
+        other_keys = {
+            key: value
+            for key, value in config.items()
+            if key
+            not in {
+                "module",
+                "class_name",
+                "device",
+                "level_of_theory",
+                "args",
+                "kwargs",
+            }
+        }
         if other_keys:
-            other_lines = [
+            return [
                 f"- `{key}`: `{_stringify(value)}`"
                 for key, value in sorted(other_keys.items())
             ]
+        return []
 
+    def _find_level_mismatches(
+        model_theory_level: str | None,
+    ) -> tuple[list[tuple[str, str]], str | None]:
+        """
+        Detect benchmark metrics whose levels differ from the model metadata.
+
+        Parameters
+        ----------
+        model_theory_level
+            Level-of-theory configured for the model.
+
+        Returns
+        -------
+        tuple[list[tuple[str, str]], str | None]
+            Pair containing the mismatched metrics and the warning category
+            with the highest priority.
+        """
         mismatch_metrics: list[tuple[str, str]] = []
         row_warning_category = None
         row_priority = 0
+
         for metric_name, metric_level in metric_levels.items():
-            if model_level is None or model_level != metric_level:
+            if model_theory_level is None or model_theory_level != metric_level:
                 mismatch_metrics.append((metric_name, metric_level))
                 category = _categorize_benchmark_level(metric_level)
                 priority = WARNING_CATEGORY_PRIORITY.get(
@@ -462,7 +524,35 @@ def build_level_of_theory_warnings(
                     row_priority = priority
                     row_warning_category = category
 
-        align_lines: list[str] = []
+        return mismatch_metrics, row_warning_category
+
+    def _build_alignment_lines(
+        model_theory_level: str | None, mismatch_metrics: list[tuple[str, str]]
+    ) -> list[str]:
+        """
+        Build markdown rows describing benchmark alignment status.
+
+        Parameters
+        ----------
+        model_theory_level
+            Stored level-of-theory metadata for the model.
+        mismatch_metrics
+            Sequence of (metric, level) entries that do not match the model.
+
+        Returns
+        -------
+        list[str]
+            Markdown formatted lines for the benchmark alignment section.
+        """
+        if not metric_levels:
+            return []
+
+        level_display = (
+            _stringify(model_theory_level)
+            if model_theory_level not in (None, "")
+            else "n/a"
+        )
+
         if mismatch_metrics:
             align_lines = [
                 f"- Model level: `{level_display}`",
@@ -477,9 +567,30 @@ def build_level_of_theory_warnings(
                 align_lines.append(
                     f"  - {metric_name}: `{level_repr}` (**{category_label}**)"
                 )
-        elif metric_levels:
-            align_lines = ["- All benchmark metrics match the model level."]
+            return align_lines
+        return [
+            f"- Model level: `{level_display}`",
+            "- All benchmark metrics match the model level.",
+        ]
 
+    # Process each row to build tooltips and warning styles
+    for idx, row in enumerate(rows):
+        mlip = row.get("MLIP")
+        if not isinstance(mlip, str):
+            continue
+
+        # Get model configuration and level of theory
+        config, model_theory_level = _get_model_config(mlip)
+
+        # Build tooltip sections
+        overview_lines = _build_overview_lines(mlip, config, model_theory_level)
+        other_lines = _build_other_settings(config)
+        mismatch_metrics, row_warning_category = _find_level_mismatches(
+            model_theory_level
+        )
+        align_lines = _build_alignment_lines(model_theory_level, mismatch_metrics)
+
+        # Assemble tooltip
         tooltip_sections: list[str] = []
         tooltip_sections.extend(_section("Model Overview", overview_lines))
         if other_lines:
@@ -495,6 +606,7 @@ def build_level_of_theory_warnings(
             "value": "\n".join(tooltip_sections),
         }
 
+        # Add warning icon if mismatches exist
         if mismatch_metrics:
             row_id = row.get("id", mlip)
             filter_query = "{id} = " + json.dumps(str(row_id))
