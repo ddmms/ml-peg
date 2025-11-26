@@ -271,11 +271,13 @@ def register_category_table_callbacks(
         Output("summary-table-scores-store", "data", allow_duplicate=True),
         Input(table_id, "data"),
         State("summary-table-scores-store", "data"),
+        State(f"{table_id}-computed-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_scores_store(
         table_data: list[dict],
         scores_data: dict[str, dict[str, float]],
+        computed_rows: list[dict] | None,
     ) -> dict[str, dict[str, float]]:
         """
         Update stored scores values when weights update.
@@ -286,6 +288,8 @@ def register_category_table_callbacks(
             Data from `table_id` to be updated.
         scores_data
             Dictionary of scores for each tab.
+        computed_rows
+            Cached unfiltered rows for the category summary.
 
         Returns
         -------
@@ -296,12 +300,16 @@ def register_category_table_callbacks(
         if not table_id.endswith("-summary-table"):
             return scores_data
 
+        source_rows = computed_rows or table_data
+        if not source_rows:
+            return scores_data
+
         if not scores_data:
             scores_data = {}
         # Update scores store. Category table IDs are of form "[category]-summary-table"
         # Table headings are of the form "[category] Score"
         scores_data[table_id.removesuffix("-summary-table") + " Score"] = {
-            row["MLIP"]: row["Score"] for row in table_data
+            row["MLIP"]: row["Score"] for row in source_rows if row.get("MLIP")
         }
         return scores_data
 
