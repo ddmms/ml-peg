@@ -24,38 +24,23 @@ from ml_peg.app.utils.utils import (
 )
 
 
-def extract_level_data(
-    lot_store: dict[str, dict[str, str | None]] | None,
-) -> tuple[
-    dict[str, str | None] | None,
-    dict[str, str | None] | None,
-    dict[str, Any] | None,
-]:
+def register_summary_table_callbacks(
+    model_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | None] | None = None,
+    model_configs: dict[str, Any] | None = None,
+) -> None:
     """
-    Extract model/metric levels and configs from a levels-of-theory store.
+    Register callbacks to update summary table.
 
     Parameters
     ----------
-    lot_store
-        Dictionary containing model/metric level of theory and config metadata.
-
-    Returns
-    -------
-    tuple
-        A tuple of (model_levels, metric_levels, model_configs), where each value
-        is None if the store is not a dict or the key is missing.
+    model_levels
+        Mapping from model name to its level of theory badge text.
+    metric_levels
+        Mapping from metric column name to its level of theory badge text.
+    model_configs
+        Optional metadata/configuration dictionary for each model.
     """
-    if not isinstance(lot_store, dict):
-        return None, None, None
-    return (
-        lot_store.get("model"),
-        lot_store.get("metric"),
-        lot_store.get("config"),
-    )
-
-
-def register_summary_table_callbacks() -> None:
-    """Register callbacks to update summary table."""
 
     @callback(
         Output("summary-table", "data"),
@@ -67,7 +52,6 @@ def register_summary_table_callbacks() -> None:
         Input("summary-table-weight-store", "data"),
         State("summary-table-scores-store", "data"),
         State("summary-table", "data"),
-        State("summary-table-levels-store", "data"),
         prevent_initial_call=False,
     )
     def update_summary_table(
@@ -75,7 +59,6 @@ def register_summary_table_callbacks() -> None:
         stored_weights: dict[str, float],
         stored_scores: dict[str, dict[str, float]],
         summary_data: list[dict],
-        levels_store: dict[str, dict[str, str | None]] | None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Update summary table when scores/weights change, and sync on tab change.
@@ -90,8 +73,6 @@ def register_summary_table_callbacks() -> None:
             Stored scores for table scores.
         summary_data
             Data from summary table to be updated.
-        levels_store
-            Cached metadata containing model/metric levels and configuration details.
 
         Returns
         -------
@@ -107,8 +88,6 @@ def register_summary_table_callbacks() -> None:
         # Update table contents
         updated_rows, base_style = update_score_style(summary_data, stored_weights)
 
-        model_levels, metric_levels, model_configs = extract_level_data(levels_store)
-
         warning_styles, tooltip_rows = build_level_of_theory_warnings(
             updated_rows, model_levels, metric_levels, model_configs
         )
@@ -117,7 +96,11 @@ def register_summary_table_callbacks() -> None:
 
 
 def register_category_table_callbacks(
-    table_id: str, use_thresholds: bool = False
+    table_id: str,
+    use_thresholds: bool = False,
+    model_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | None] | None = None,
+    model_configs: dict[str, Any] | None = None,
 ) -> None:
     """
     Register callback to update table scores when stored values change.
@@ -130,6 +113,12 @@ def register_category_table_callbacks(
         If `True`, also watch the per-metric normalization store and recompute
         scores using the configured thresholds. This should only be used for benchmark
         tables.
+    model_levels
+        Mapping of model name -> level of theory metadata.
+    metric_levels
+        Mapping of metric name -> level of theory metadata.
+    model_configs
+        Optional configuration metadata for each model.
     """
     # Benchmark tables
     if use_thresholds:
@@ -149,7 +138,6 @@ def register_category_table_callbacks(
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
-            State(f"{table_id}-levels-store", "data"),
             State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
         )
@@ -161,7 +149,6 @@ def register_category_table_callbacks(
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
-            lot_store: dict[str, dict[str, str | None]] | None,
             current_columns: list[dict] | None,
         ) -> tuple[
             list[dict],
@@ -189,8 +176,6 @@ def register_category_table_callbacks(
                 Table data.
             stored_computed_data
                 Latest table rows emitted by the table.
-            lot_store
-                Mapping containing model and metric levels of theory.
             """
             if not stored_raw_data or current_columns is None:
                 raise PreventUpdate
@@ -198,7 +183,6 @@ def register_category_table_callbacks(
             thresholds = clean_thresholds(stored_threshold)
             show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
-            model_levels, metric_levels, model_configs = extract_level_data(lot_store)
 
             def apply_levels_of_theory(
                 rows: list[dict], base_style: list[dict]
@@ -275,7 +259,6 @@ def register_category_table_callbacks(
             Input("all-tabs", "value"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
-            State(f"{table_id}-levels-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
         def update_table_scores(
@@ -283,10 +266,8 @@ def register_category_table_callbacks(
             _tabs_value: str,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
-            lot_store: dict[str, dict[str, str | None]] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
             trigger_id = ctx.triggered_id
-            model_levels, metric_levels, model_configs = extract_level_data(lot_store)
 
             def apply_levels(
                 rows: list[dict], base_style: list[dict]

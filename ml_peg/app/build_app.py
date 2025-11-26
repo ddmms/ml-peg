@@ -151,15 +151,6 @@ def build_category(
                     storage_type="session",
                     data=summary_table.data,
                 ),
-                Store(
-                    id=f"{category_title}-summary-table-levels-store",
-                    storage_type="session",
-                    data={
-                        "model": getattr(summary_table, "model_levels_of_theory", {}),
-                        "metric": getattr(summary_table, "metric_levels_of_theory", {}),
-                        "config": getattr(summary_table, "model_configs", {}),
-                    },
-                ),
                 weight_components,
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
@@ -349,19 +340,6 @@ def build_tabs(
                 [
                     H1("Benchmarks Summary"),
                     summary_table,
-                    Store(
-                        id="summary-table-levels-store",
-                        storage_type="session",
-                        data={
-                            "model": getattr(
-                                summary_table, "model_levels_of_theory", {}
-                            ),
-                            "metric": getattr(
-                                summary_table, "metric_levels_of_theory", {}
-                            ),
-                            "config": getattr(summary_table, "model_configs", {}),
-                        },
-                    ),
                     weight_components,
                     Store(
                         id="summary-table-scores-store",

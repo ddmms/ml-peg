@@ -290,13 +290,25 @@ def build_weight_components(
         ),
     ]
 
+    model_levels = getattr(table, "model_levels_of_theory", None)
+    metric_levels = getattr(table, "metric_levels_of_theory", None)
+    model_configs = getattr(table, "model_configs", None)
+
     # Callbacks to update table scores when table weight dicts change
     if table.id != "summary-table":
         register_category_table_callbacks(
-            table_id=table.id, use_thresholds=use_thresholds
+            table_id=table.id,
+            use_thresholds=use_thresholds,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
         )
     else:
-        register_summary_table_callbacks()
+        register_summary_table_callbacks(
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+        )
 
     # Callbacks to sync sliders, text boxes, and stored table weights
     for column, input_id in zip(columns, input_ids, strict=True):
@@ -476,20 +488,6 @@ def build_test_layout(
             id=f"{table.id}-computed-store",
             storage_type="session",
             data=table.data,
-        )
-    )
-    # Store level-of-theory metadata for callbacks
-    # NOTE: This data is constant after build, but using a Store simplifies callbacks
-    # by avoiding the need to pass this data as State parameters to every callback
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-levels-store",
-            storage_type="session",
-            data={
-                "model": getattr(table, "model_levels_of_theory", {}),
-                "metric": getattr(table, "metric_levels_of_theory", {}),
-                "config": getattr(table, "model_configs", {}),
-            },
         )
     )
 
