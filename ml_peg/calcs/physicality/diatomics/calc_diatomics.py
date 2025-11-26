@@ -10,7 +10,6 @@ from pathlib import Path
 from ase import Atoms
 from ase.data import chemical_symbols
 from ase.io import write
-from mlipx.utils import freeze_copy_atoms
 import numpy as np
 import pandas as pd
 import pytest
@@ -175,7 +174,7 @@ def run_diatomics(model_name: str, model) -> None:
                 bond_vector = atoms.positions[1] - atoms.positions[0]
                 force_parallel = _project_force(forces, bond_vector)
 
-                atoms_copy = freeze_copy_atoms(atoms)
+                atoms_copy = atoms.copy()
                 atoms_copy.calc = None
                 atoms_copy.info.update(
                     {
