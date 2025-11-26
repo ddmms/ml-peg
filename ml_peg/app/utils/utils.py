@@ -173,6 +173,37 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
     return weights
 
 
+def filter_rows_by_models(
+    rows: list[dict] | None, selected_models: Sequence[str] | None
+) -> list[dict]:
+    """
+    Filter table rows by the selected MLIP identifiers.
+
+    Parameters
+    ----------
+    rows
+        Table rows that include an ``MLIP`` entry.
+    selected_models
+        Iterable of model identifiers to keep. ``None`` returns the original rows.
+
+    Returns
+    -------
+    list[dict]
+        Filtered rows that match ``selected_models`` while preserving order.
+    """
+    if not rows:
+        return []
+
+    if not selected_models:
+        return rows
+
+    selected = {model for model in selected_models if model}
+    if not selected:
+        return []
+
+    return [row for row in rows if row.get("MLIP") in selected]
+
+
 def get_scores(
     raw_rows: list[dict],
     scored_rows: list[dict],

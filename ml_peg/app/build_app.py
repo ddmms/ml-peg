@@ -5,10 +5,11 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
-from dash.html import H1, H3, Div
+from dash.dcc import Dropdown, Store, Tab, Tabs
+from dash.exceptions import PreventUpdate
+from dash.html import H1, H3, Button, Div
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -276,17 +277,88 @@ def build_tabs(
     all_tabs = [Tab(label="Summary", value="summary-tab", id="summary-tab")] + [
         Tab(label=category_name, value=category_name) for category_name in layouts
     ]
+    model_options = [{"label": model, "value": model} for model in MODELS]
 
     tabs_layout = [
         Div(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                Div(
+                    [
+                        H3("Visible models"),
+                        Dropdown(
+                            id="model-filter-dropdown",
+                            multi=True,
+                            options=model_options,
+                            value=MODELS,
+                            placeholder="Select models to display",
+                            clearable=False,
+                            style={"minWidth": "260px", "maxWidth": "100%"},
+                        ),
+                        Div(
+                            [
+                                Button(
+                                    "Select all",
+                                    id="model-filter-select-all",
+                                    n_clicks=0,
+                                    style={
+                                        "fontSize": "12px",
+                                        "padding": "4px 10px",
+                                        "backgroundColor": "#0d6efd",
+                                        "color": "#fff",
+                                        "border": "none",
+                                        "borderRadius": "4px",
+                                        "cursor": "pointer",
+                                    },
+                                ),
+                                Button(
+                                    "Clear",
+                                    id="model-filter-clear-all",
+                                    n_clicks=0,
+                                    style={
+                                        "fontSize": "12px",
+                                        "padding": "4px 10px",
+                                        "backgroundColor": "#6c757d",
+                                        "color": "#fff",
+                                        "border": "none",
+                                        "borderRadius": "4px",
+                                        "cursor": "pointer",
+                                    },
+                                ),
+                            ],
+                            style={
+                                "display": "flex",
+                                "gap": "8px",
+                                "flexWrap": "wrap",
+                                "marginTop": "8px",
+                            },
+                        ),
+                    ],
+                    style={
+                        "marginTop": "16px",
+                        "marginBottom": "16px",
+                        "padding": "12px",
+                        "border": "1px solid #dee2e6",
+                        "borderRadius": "6px",
+                        "background": "#f8f9fa",
+                    },
+                ),
                 Div(id="tabs-content"),
             ],
             style={"flex": "1", "marginBottom": "40px"},
         ),
         build_footer(),
+        Store(
+            id="selected-models-store",
+            storage_type="session",
+            data=MODELS,
+        ),
+        Store(
+            id="summary-table-computed-store",
+            storage_type="session",
+            data=summary_table.data,
+        ),
     ]
 
     full_app.layout = Div(
@@ -322,6 +394,58 @@ def build_tabs(
                 ]
             )
         return Div([layouts[tab]])
+
+    @callback(
+        Output("model-filter-dropdown", "value"),
+        Output("selected-models-store", "data"),
+        Input("model-filter-dropdown", "value"),
+        Input("model-filter-select-all", "n_clicks"),
+        Input("model-filter-clear-all", "n_clicks"),
+        Input("selected-models-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_model_filter(
+        dropdown_value: list[str] | None,
+        select_all_clicks: int,
+        clear_clicks: int,
+        stored_selection: list[str] | None,
+    ) -> tuple[list[str], list[str] | object]:
+        """
+        Keep the model selector and backing store synchronised.
+
+        Parameters
+        ----------
+        dropdown_value
+            Current selection from the multi-select dropdown.
+        select_all_clicks
+            Number of clicks on the Select all button.
+        clear_clicks
+            Number of clicks on the Clear button.
+        stored_selection
+            Previously persisted models pulled from ``selected-models-store``.
+
+        Returns
+        -------
+        tuple[list[str], list[str] | object]
+            Updated dropdown value and store contents.
+        """
+        trigger_id = ctx.triggered_id
+        stored_value = stored_selection if stored_selection is not None else MODELS
+
+        if trigger_id in (None, "selected-models-store"):
+            return stored_value, no_update
+
+        if trigger_id == "model-filter-select-all":
+            return MODELS, MODELS
+
+        if trigger_id == "model-filter-clear-all":
+            return [], []
+
+        if trigger_id == "model-filter-dropdown":
+            selected = dropdown_value or []
+            return selected, selected
+
+        raise PreventUpdate
 
 
 def build_full_app(full_app: Dash, category: str = "*") -> None:
