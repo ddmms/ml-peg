@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Store, Tab, Tabs
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Button, Div
+from dash.html import H1, H3, Button, Details, Div, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -284,64 +284,77 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                Div(
+                Details(
                     [
-                        H3("Visible models"),
-                        Dropdown(
-                            id="model-filter-dropdown",
-                            multi=True,
-                            options=model_options,
-                            value=MODELS,
-                            placeholder="Select models to display",
-                            clearable=False,
-                            style={"minWidth": "260px", "maxWidth": "100%"},
-                        ),
+                        Summary("Visible models"),
                         Div(
                             [
-                                Button(
-                                    "Select all",
-                                    id="model-filter-select-all",
-                                    n_clicks=0,
-                                    style={
-                                        "fontSize": "12px",
-                                        "padding": "4px 10px",
-                                        "backgroundColor": "#0d6efd",
-                                        "color": "#fff",
-                                        "border": "none",
-                                        "borderRadius": "4px",
-                                        "cursor": "pointer",
-                                    },
+                                H3("Visible models"),
+                                Dropdown(
+                                    id="model-filter-dropdown",
+                                    multi=True,
+                                    options=model_options,
+                                    value=MODELS,
+                                    placeholder="Select models to display",
+                                    clearable=False,
+                                    style={"minWidth": "260px", "maxWidth": "100%"},
                                 ),
-                                Button(
-                                    "Clear",
-                                    id="model-filter-clear-all",
-                                    n_clicks=0,
+                                Div(
+                                    [
+                                        Button(
+                                            "Select all",
+                                            id="model-filter-select-all",
+                                            n_clicks=0,
+                                            style={
+                                                "fontSize": "12px",
+                                                "padding": "4px 10px",
+                                                "backgroundColor": "#0d6efd",
+                                                "color": "#fff",
+                                                "border": "none",
+                                                "borderRadius": "4px",
+                                                "cursor": "pointer",
+                                            },
+                                        ),
+                                        Button(
+                                            "Clear",
+                                            id="model-filter-clear-all",
+                                            n_clicks=0,
+                                            style={
+                                                "fontSize": "12px",
+                                                "padding": "4px 10px",
+                                                "backgroundColor": "#6c757d",
+                                                "color": "#fff",
+                                                "border": "none",
+                                                "borderRadius": "4px",
+                                                "cursor": "pointer",
+                                            },
+                                        ),
+                                    ],
                                     style={
-                                        "fontSize": "12px",
-                                        "padding": "4px 10px",
-                                        "backgroundColor": "#6c757d",
-                                        "color": "#fff",
-                                        "border": "none",
-                                        "borderRadius": "4px",
-                                        "cursor": "pointer",
+                                        "display": "flex",
+                                        "gap": "8px",
+                                        "flexWrap": "wrap",
+                                        "marginTop": "8px",
                                     },
                                 ),
                             ],
                             style={
-                                "display": "flex",
-                                "gap": "8px",
-                                "flexWrap": "wrap",
-                                "marginTop": "8px",
+                                "padding": "12px",
+                                "border": "1px solid #dee2e6",
+                                "borderRadius": "6px",
+                                "background": "#f8f9fa",
                             },
                         ),
                     ],
+                    id="model-filter-details",
+                    open=True,
                     style={
                         "marginTop": "16px",
                         "marginBottom": "16px",
-                        "padding": "12px",
+                        "padding": "0 8px 8px 8px",
                         "border": "1px solid #dee2e6",
                         "borderRadius": "6px",
-                        "background": "#f8f9fa",
+                        "background": "#fff",
                     },
                 ),
                 Div(id="tabs-content"),
@@ -446,6 +459,27 @@ def build_tabs(
             return selected, selected
 
         raise PreventUpdate
+
+    @callback(
+        Output("model-filter-details", "open"),
+        Input("all-tabs", "value"),
+        prevent_initial_call=False,
+    )
+    def toggle_filter_panel(tab: str) -> bool:
+        """
+        Keep the visible-models panel expanded on the summary tab only.
+
+        Parameters
+        ----------
+        tab
+            Currently selected tab identifier.
+
+        Returns
+        -------
+        bool
+            ``True`` when the summary tab is selected, otherwise ``False``.
+        """
+        return tab == "summary-tab"
 
 
 def build_full_app(full_app: Dash, category: str = "*") -> None:
