@@ -671,7 +671,7 @@ def build_table(
             )
 
             # Load model configurations and extract level of theory metadata
-            from ml_peg.models.models import load_model_configs
+            from ml_peg.models.get_models import load_model_configs
 
             model_configs, model_levels = load_model_configs(mlips)
 
