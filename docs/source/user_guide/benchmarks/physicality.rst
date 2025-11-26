@@ -112,14 +112,14 @@ Metrics
    tolerance of 0.5 eV/Å² to avoid counting noise-induced inflections. A physical diatomic
    curve should show one inflection point.
 
-4. :math:`\\rho(E, \\text{repulsion})`
+4. :math:`\rho(E, \text{repulsion})`
 
    Spearman correlation between atomic separation and energy on the repulsive side of the well
    (bond lengths ≥ the equilibrium spacing). A perfect diatomic curve should show a strong
    negative correlation, so a value of -1, indicating that as atoms get further apart, the energy
    decreases.
 
-5. :math:`\\rho(E, \\text{attraction})`
+5. :math:`\rho(E, \text{attraction})`
 
    Spearman correlation between distance and energy on the attractive side (bond lengths
    shorter than the equilibrium spacing). A perfect diatomic curve should show a strong
