@@ -7,6 +7,7 @@ from typing import Any
 
 from ase import units
 from ase.io import read, write
+from aseMolec import anaAtoms as aA
 import pytest
 
 from ml_peg.models.get_models import load_models
@@ -32,7 +33,7 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    struct_paths = (DATA_PATH / "Intra_Inter_data").glob("*.xyz")
+    struct_paths = (DATA_PATH / "Intra_Inter_data").glob("output*.xyz")
 
     for struct_path in struct_paths:
         file_prefix = (
@@ -48,6 +49,16 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
             at.info["virial"] = -at.get_stress(voigt=False) * at.get_volume()
             at.calc = None
         write(file_prefix, configs)
+
+    eval_file_prefix = OUT_PATH / "Intra_Inter_output"
+    test = read(eval_file_prefix / f"output_{model_name}.xyz", ":")
+    single_molecule_test = []
+    for molsym in ["EMC", "EC", "PF6", "Li"]:
+        single_molecule_test += read(
+            eval_file_prefix / f"output{molsym}_{model_name}.xyz", ":"
+        )
+    aA.collect_molec_results_dict(test, single_molecule_test)
+    write(eval_file_prefix / f"intrainter_{model_name}.xyz", test)
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
