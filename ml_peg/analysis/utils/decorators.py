@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
+from ml_peg.models.get_models import load_model_configs
 
 
 def plot_parity(
@@ -669,9 +670,6 @@ def build_table(
                 id="metrics",
                 tooltip_header=tooltip_header,
             )
-
-            # Load model configurations and extract level of theory metadata
-            from ml_peg.models.get_models import load_model_configs
 
             model_configs, model_levels = load_model_configs(mlips)
 
