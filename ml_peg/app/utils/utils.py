@@ -114,7 +114,7 @@ def sig_fig_format() -> TableFormat.Format:
 
 
 def clean_thresholds(
-    raw_thresholds: Mapping[str, Mapping[str, object]] | None,
+    raw_thresholds: dict[str, dict[str, object]] | None,
 ) -> Thresholds:
     """
     Convert raw normalization mappings into ``good``/``bad`` bounds with units.
@@ -293,9 +293,9 @@ def _categorize_benchmark_level(level: str | None) -> str | None:
 
 def build_level_of_theory_warnings(
     rows: list[dict[str, Any]] | None,
-    model_theory_levels: Mapping[str, str | None] | None,
-    metric_levels: Mapping[str, str | None] | None,
-    model_configs: Mapping[str, Mapping[str, Any]] | None,
+    model_theory_levels: dict[str, str | None] | None,
+    metric_levels: dict[str, str | None] | None,
+    model_configs: dict[str, dict[str, Any]] | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
     Generate inline styles and tooltips for MLIP column metadata.
@@ -375,7 +375,7 @@ def build_level_of_theory_warnings(
         section.append("")
         return section
 
-    def _get_model_config(mlip: str) -> tuple[Mapping[str, Any], str | None]:
+    def _get_model_config(mlip: str) -> tuple[dict[str, Any], str | None]:
         """
         Retrieve the stored configuration and theory level for a model.
 
@@ -386,24 +386,24 @@ def build_level_of_theory_warnings(
 
         Returns
         -------
-        tuple[Mapping[str, Any], str | None]
+        tuple[dict[str, Any], str | None]
             Tuple of (config, level_of_theory) where config falls back to the
             registry entry when missing.
         """
         model_theory_level = model_theory_levels.get(mlip)
         config = model_configs.get(mlip) or {}
-        if not isinstance(config, Mapping):
+        if not isinstance(config, dict):
             config = {}
         if not config:
             fallback_cfg = load_model_registry_configs().get(mlip) or {}
-            if isinstance(fallback_cfg, Mapping):
+            if isinstance(fallback_cfg, dict):
                 config = fallback_cfg
-        if model_theory_level is None and isinstance(config, Mapping):
+        if model_theory_level is None and isinstance(config, dict):
             model_theory_level = config.get("level_of_theory")
         return config, model_theory_level
 
     def _build_overview_lines(
-        mlip: str, config: Mapping[str, Any], model_theory_level: str | None
+        mlip: str, config: dict[str, Any], model_theory_level: str | None
     ) -> list[str]:
         """
         Create the overview section describing model metadata.
@@ -458,7 +458,7 @@ def build_level_of_theory_warnings(
 
         return overview_lines
 
-    def _build_other_settings(config: Mapping[str, Any]) -> list[str]:
+    def _build_other_settings(config: dict[str, Any]) -> list[str]:
         """
         Build additional settings lines from configuration values.
 
