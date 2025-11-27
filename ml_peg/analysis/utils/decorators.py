@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
+from ml_peg.models.get_models import load_model_configs
 
 
 def plot_parity(
@@ -619,7 +620,7 @@ def build_table(
 
             metrics_columns = ("MLIP",) + tuple(results)
             # Use MLIP keys from first (any) metric keys
-            mlips = next(iter(results.values())).keys()
+            mlips = tuple(next(iter(results.values())).keys())
 
             metrics_data = []
             for mlip in mlips:
@@ -629,13 +630,18 @@ def build_table(
                     | {"id": mlip},
                 )
 
-            summary_tooltips = {"MLIP": "Name of the model"}
+            summary_tooltips = {
+                "MLIP": "Model identifier, hover for configuration details.",
+            }
             if normalize:
                 summary_tooltips["Score"] = (
-                    "Average of normalised metrics (higher is better)"
+                    "Weighted score across metrics, "
+                    "Higher is better (normalised 0 to 1)."
                 )
             else:
-                summary_tooltips["Score"] = "Average of metrics"
+                summary_tooltips["Score"] = (
+                    "Weighted score across metrics, higher is better."
+                )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -665,6 +671,15 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
+            model_configs, model_levels = load_model_configs(mlips)
+
+            # Extract metric level of theory from thresholds
+            metric_levels = {}
+            for metric_name in results:
+                metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
+                    "level_of_theory"
+                )
+
             # Save dict of table to be loaded
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
@@ -675,6 +690,9 @@ def build_table(
                         "tooltip_header": tooltip_header,
                         "thresholds": thresholds,
                         "weights": metric_weights,
+                        "model_levels_of_theory": model_levels,
+                        "metric_levels_of_theory": metric_levels,
+                        "model_configs": model_configs,
                     },
                     fp,
                 )

@@ -3,11 +3,46 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from copy import deepcopy
 from typing import Any
 
 import yaml
 
 from ml_peg.models import MODELS_ROOT
+
+
+def load_model_configs(
+    mlips: Iterable[str] | tuple[str, ...],
+) -> tuple[dict[str, Any], dict[str, str | None]]:
+    """
+    Load model configurations and level of theory metadata from models.yml.
+
+    Parameters
+    ----------
+    mlips
+        Iterable of model identifiers to load configurations for.
+
+    Returns
+    -------
+    tuple[dict[str, Any], dict[str, str | None]]
+        A tuple containing:
+        - model_configs: Dictionary mapping model names to their configuration dicts
+        - model_levels: Dictionary mapping model names to their level of
+          theory (or ``None``)
+    """
+    with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+        all_models = yaml.safe_load(model_file) or {}
+
+    model_levels: dict[str, str | None] = {}
+    model_configs: dict[str, Any] = {}
+    for mlip in mlips:
+        cfg = deepcopy(all_models.get(mlip) or {})
+        if not isinstance(cfg, dict):
+            cfg = {}
+        model_configs[mlip] = cfg
+        model_levels[mlip] = cfg.get("level_of_theory")
+
+    return model_configs, model_levels
 
 
 def get_subset(

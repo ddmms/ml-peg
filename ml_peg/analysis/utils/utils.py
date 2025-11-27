@@ -62,17 +62,37 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
             unit_value = str(metric_config["unit"]).strip()
         else:
             unit_value = "-"
+        level_of_theory = metric_config.get("level_of_theory")
 
         metric_threshold: ThresholdEntry = {
             "good": good_value,
             "bad": bad_value,
             "unit": unit_value,
+            "level_of_theory": level_of_theory,
         }
+
         thresholds[metric_name] = metric_threshold
 
-        # Permit no tooltip
         tooltip = metric_config.get("tooltip")
-        tooltips[metric_name] = tooltip
+
+        if tooltip is None or tooltip == "":
+            msg = (
+                f"Metric '{metric_name}' in '{config_path}' must define a non-empty "
+                "'tooltip' entry."
+            )
+            raise ValueError(msg)
+
+        tooltip_text = tooltip.strip()
+        tooltip_lines = [tooltip_text]
+        if unit_value and unit_value not in ("", "-"):
+            tooltip_lines[0] = f"{tooltip_lines[0]} [{unit_value}]"
+        if level_of_theory:
+            tooltip_lines.append(f"Level of theory: {level_of_theory}")
+        markdown_value = "\n".join(tooltip_lines).replace("\n", "  \n")
+        tooltips[metric_name] = {
+            "value": markdown_value,
+            "type": "markdown",
+        }
 
         weights[metric_name] = float(metric_config.get("weight", 1.0))
 

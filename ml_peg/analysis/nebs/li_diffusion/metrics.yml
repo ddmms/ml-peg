@@ -4,10 +4,10 @@ metrics:
     bad: 0.4
     unit: eV
     tooltip: "Energy barrier error for path B"
-    level_of_theory: R2SCAN
+    level_of_theory: r2SCAN
   Path C error:
     good: 0.1
     bad: 0.8
     unit: eV
     tooltip: "Energy barrier error for path C"
-    level_of_theory: R2SCAN
+    level_of_theory: r2SCAN
