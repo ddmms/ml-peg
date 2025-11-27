@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
