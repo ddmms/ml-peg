@@ -20,10 +20,16 @@ def pytest_addoption(parser):
         help="Run slow benchmarks",
     )
     parser.addoption(
+        "--run-very-slow",
+        action="store_true",
+        default=False,
+        help="Run very slow benchmarks",
+    )
+    parser.addoption(
         "--models",
         action="store",
         default=None,
-        help="MLIPs, in comma-separated list. Default: None.",
+        help="MLIPs, in comma-separated list. Default is all models",
     )
 
 
@@ -31,6 +37,7 @@ def pytest_configure(config):
     """Configure pytest to custom markers and CLI inputs."""
     # Create custom marker for slow tests
     config.addinivalue_line("markers", "slow: mark test as slow calculations")
+    config.addinivalue_line("markers", "very_slow: mark test as very slow calculations")
 
     # Set current models from CLI input
     models.current_models = config.getoption("--models")
@@ -38,10 +45,10 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     """Skip tests if marker applied to unit tests."""
-    if config.getoption("--run-slow"):
-        # --run-slow given in cli: do not skip tests
-        return
     skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
+    skip_very_slow = pytest.mark.skip(reason="need --run-very-slow option to run")
     for item in items:
-        if "slow" in item.keywords:
+        if "very_slow" in item.keywords and not config.getoption("--run-very-slow"):
+            item.add_marker(skip_very_slow)
+        elif "slow" in item.keywords and not config.getoption("--run-slow"):
             item.add_marker(skip_slow)
