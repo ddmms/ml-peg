@@ -87,6 +87,7 @@ def run_elasticity_benchmark(
     results.to_csv(out_dir / "moduli_results.csv", index=False)
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_elasticity(mlip: tuple[str, Any]) -> None:
     """
