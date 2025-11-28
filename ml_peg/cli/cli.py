@@ -74,6 +74,9 @@ def run_calcs(
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
     ] = True,
+    run_very_slow: Annotated[
+        bool, Option(help="Whether to run calculations labelled very slow.")
+    ] = False,
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
     ] = True,
@@ -94,6 +97,8 @@ def run_calcs(
         category.
     run_slow
         Whether to run slow calculations. Default is `True`.
+    run_very_slow
+        Whether to run very slow calculations. Default is `False`.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -112,6 +117,9 @@ def run_calcs(
 
     if run_slow:
         options.extend(["--run-slow"])
+
+    if run_very_slow:
+        options.extend(["--run-very-slow"])
 
     if models:
         options.extend(["--models", models])
