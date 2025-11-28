@@ -39,7 +39,7 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
         file_prefix = (
             OUT_PATH
             / "Intra_Inter_output"
-            / f"{struct_path.stem[:-4]}_{model_name}.xyz"
+            / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         )
         configs = read(struct_path, ":")
         for at in configs:
