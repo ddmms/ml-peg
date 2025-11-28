@@ -80,7 +80,7 @@ Input structures:
 Reference data:
 
 * Same as input data
-* PBE-D3(BJ)
+* CCSD(T)
 
 
 Wiggle150

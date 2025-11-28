@@ -4,4 +4,4 @@ metrics:
     bad: 100.0
     unit: kJ/mol
     tooltip: "Mean Absolute Error for all systems"
-    level_of_theory: PBE
+    level_of_theory: DMC
