@@ -7,7 +7,7 @@ import warnings
 
 from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Store, Tab, Tabs
+from dash.dcc import Checklist, Store, Tab, Tabs
 from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, Button, Details, Div, Summary
 from yaml import safe_load
@@ -290,14 +290,25 @@ def build_tabs(
                         Div(
                             [
                                 H3("Visible models"),
-                                Dropdown(
-                                    id="model-filter-dropdown",
-                                    multi=True,
+                                Checklist(
+                                    id="model-filter-checklist",
                                     options=model_options,
                                     value=MODELS,
-                                    placeholder="Select models to display",
-                                    clearable=False,
-                                    style={"minWidth": "260px", "maxWidth": "100%"},
+                                    inline=True,
+                                    style={
+                                        "display": "flex",
+                                        "flexWrap": "wrap",
+                                        "gap": "6px",
+                                    },
+                                    labelStyle={
+                                        "display": "flex",
+                                        "alignItems": "center",
+                                        "gap": "6px",
+                                        "border": "1px solid #ced4da",
+                                        "borderRadius": "6px",
+                                        "padding": "4px 10px",
+                                        "margin": "2px",
+                                    },
                                 ),
                                 Div(
                                     [
@@ -409,16 +420,16 @@ def build_tabs(
         return Div([layouts[tab]])
 
     @callback(
-        Output("model-filter-dropdown", "value"),
+        Output("model-filter-checklist", "value"),
         Output("selected-models-store", "data"),
-        Input("model-filter-dropdown", "value"),
+        Input("model-filter-checklist", "value"),
         Input("model-filter-select-all", "n_clicks"),
         Input("model-filter-clear-all", "n_clicks"),
         Input("selected-models-store", "data"),
         prevent_initial_call=False,
     )
     def sync_model_filter(
-        dropdown_value: list[str] | None,
+        checklist_value: list[str] | None,
         select_all_clicks: int,
         clear_clicks: int,
         stored_selection: list[str] | None,
@@ -428,8 +439,8 @@ def build_tabs(
 
         Parameters
         ----------
-        dropdown_value
-            Current selection from the multi-select dropdown.
+        checklist_value
+            Current selection from the checklist.
         select_all_clicks
             Number of clicks on the Select all button.
         clear_clicks
@@ -440,7 +451,7 @@ def build_tabs(
         Returns
         -------
         tuple[list[str], list[str] | object]
-            Updated dropdown value and store contents.
+            Updated checklist value and store contents.
         """
         trigger_id = ctx.triggered_id
         stored_value = stored_selection if stored_selection is not None else MODELS
@@ -454,8 +465,8 @@ def build_tabs(
         if trigger_id == "model-filter-clear-all":
             return [], []
 
-        if trigger_id == "model-filter-dropdown":
-            selected = dropdown_value or []
+        if trigger_id == "model-filter-checklist":
+            selected = checklist_value or []
             return selected, selected
 
         raise PreventUpdate
