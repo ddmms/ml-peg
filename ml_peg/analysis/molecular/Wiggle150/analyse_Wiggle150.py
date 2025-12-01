@@ -16,6 +16,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = {model: f"{model}-D3" for model in MODELS}
 CALC_PATH = CALCS_ROOT / "molecular" / "Wiggle150" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "Wiggle150"
 
@@ -160,6 +161,7 @@ def wiggle150_mae(relative_energies) -> dict[str, float]:
     filename=OUT_PATH / "wiggle150_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(wiggle150_mae: dict[str, float]) -> dict[str, dict]:
     """

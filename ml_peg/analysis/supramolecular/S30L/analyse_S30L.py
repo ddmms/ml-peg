@@ -16,6 +16,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = {model: f"{model}-D3" for model in MODELS}
 
 CALC_PATH = CALCS_ROOT / "supramolecular" / "S30L" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
@@ -220,6 +221,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     s30l_mae: dict[str, float],

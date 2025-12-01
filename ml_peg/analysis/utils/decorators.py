@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import functools
 from json import dump
 from pathlib import Path
@@ -522,6 +522,7 @@ def build_table(
     normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
+    mlip_name_map: Mapping[str, str] | None = None,
 ) -> Callable:
     """
     Build DataTable, including optional metric normalisation.
@@ -549,6 +550,10 @@ def build_table(
         Tooltips for table metric headers.
     weights
         Default weights for metrics. Default is 1 for all metrics.
+    mlip_name_map
+        Optional mapping of model identifier -> display name. Use this to annotate
+        table rows (e.g. append a suffix) without changing the underlying model
+        configuration metadata.
 
     Returns
     -------
@@ -622,12 +627,22 @@ def build_table(
             # Use MLIP keys from first (any) metric keys
             mlips = tuple(next(iter(results.values())).keys())
 
+            name_map = dict(mlip_name_map or {})
+            display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}
+            display_values = list(display_names.values())
+            if len(display_values) != len(set(display_values)):
+                raise ValueError(
+                    "Non-unique MLIP display names detected. Provide unique names via "
+                    "'mlip_name_map'."
+                )
+
             metrics_data = []
             for mlip in mlips:
+                display_name = display_names[mlip]
                 metrics_data.append(
-                    {"MLIP": mlip}
+                    {"MLIP": display_name}
                     | {key: value[mlip] for key, value in results.items()}
-                    | {"id": mlip},
+                    | {"id": display_name},
                 )
 
             summary_tooltips = {
@@ -673,6 +688,13 @@ def build_table(
 
             model_configs, model_levels = load_model_configs(mlips)
 
+            model_configs = {
+                display_names[name]: config for name, config in model_configs.items()
+            }
+            model_levels = {
+                display_names[name]: level for name, level in model_levels.items()
+            }
+
             # Extract metric level of theory from thresholds
             metric_levels = {}
             for metric_name in results:
@@ -681,6 +703,11 @@ def build_table(
                 )
 
             # Save dict of table to be loaded
+            model_name_map = {
+                display_name: canonical
+                for canonical, display_name in display_names.items()
+            }
+
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
                 dump(
@@ -693,6 +720,7 @@ def build_table(
                         "model_levels_of_theory": model_levels,
                         "metric_levels_of_theory": metric_levels,
                         "model_configs": model_configs,
+                        "model_name_map": model_name_map,
                     },
                     fp,
                 )

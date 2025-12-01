@@ -335,6 +335,7 @@ def register_benchmark_to_category_callback(
     category_table_id: str,
     benchmark_column: str,
     use_threshold_store: bool = False,
+    model_name_map: dict[str, str] | None = None,
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
@@ -349,9 +350,12 @@ def register_benchmark_to_category_callback(
         Column name in the category summary table corresponding to the benchmark.
     use_threshold_store
         Whether the benchmark table exposes a normalization store for metrics.
+    model_name_map
+        Optional mapping of displayed benchmark MLIP names -> canonical model names.
     """
     _ = use_threshold_store  # cached rows handle normalization
     # flag kept for compatibility with existing call sites
+    name_map = dict(model_name_map or {})
 
     @callback(
         Output(category_table_id, "data", allow_duplicate=True),
@@ -397,11 +401,14 @@ def register_benchmark_to_category_callback(
         if not category_rows:
             raise PreventUpdate
 
-        benchmark_scores = {
-            row.get("MLIP"): row.get("Score")
-            for row in benchmark_computed_store
-            if row.get("MLIP") is not None and row.get("Score") is not None
-        }
+        benchmark_scores: dict[str, float] = {}
+        for row in benchmark_computed_store:
+            display_name = row.get("MLIP")
+            canonical_name = name_map.get(display_name, display_name)
+            score = row.get("Score")
+            if display_name is None or canonical_name is None or score is None:
+                continue
+            benchmark_scores[canonical_name] = score
 
         for row in category_rows:
             mlip = row.get("MLIP")

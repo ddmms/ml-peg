@@ -18,6 +18,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = {model: f"{model}-D3" for model in MODELS}
 CALC_PATH = CALCS_ROOT / "molecular" / "GMTKN55" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 
@@ -290,6 +291,7 @@ def weighted_error(subset_errors: dict[str, dict[str, float]]) -> dict[str, floa
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     category_errors: dict[str, dict[str, float]], weighted_error: dict[str, float]
