@@ -9,14 +9,14 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = {model: f"{model}-D3" for model in MODELS}
+D3_MODEL_NAMES = build_d3_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
 

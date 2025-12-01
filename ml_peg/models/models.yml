@@ -3,6 +3,7 @@ mace-mp-0a:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  trained_on_d3: false
   level_of_theory: PBE
   kwargs:
     model: "medium"
@@ -12,6 +13,7 @@ mace-mp-0b3:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  trained_on_d3: false
   level_of_theory: PBE
   kwargs:
     model: "medium-0b3"
@@ -21,6 +23,7 @@ mace-mpa-0:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  trained_on_d3: false
   level_of_theory: PBE
   kwargs:
     model: "medium-mpa-0"
@@ -30,6 +33,7 @@ mace-omat-0:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  trained_on_d3: false
   level_of_theory: PBE
   kwargs:
     model: "medium-omat-0"
@@ -39,6 +43,7 @@ mace-matpes-r2scan:
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
+  trained_on_d3: false
   level_of_theory: r2SCAN
   kwargs:
     model: "mace-matpes-r2scan-0"
@@ -59,6 +64,7 @@ orb-v3-consv-inf-omat:
   class_name: OrbCalc
   device: "cpu"
   default_dtype: float32-high
+  trained_on_d3: false
   level_of_theory: PBE
   kwargs:
     name: "orb_v3_conservative_inf_omat"
