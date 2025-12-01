@@ -195,7 +195,7 @@ def filter_rows_by_models(
         return []
 
     if not selected_models:
-        return rows
+        return []
 
     selected = {model for model in selected_models if model}
     if not selected:
