@@ -60,8 +60,8 @@ Reference data:
   * PBE-D3(BJ)
 
 
-Elastic Moduli
-==============
+Elasticity
+==========
 
 Summary
 -------
