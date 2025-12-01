@@ -42,7 +42,7 @@ Input structures:
 Reference data:
 
 * Same as input data
-* PBE-D3(BJ)
+* DMC
 
 
 DMC-ICE13
