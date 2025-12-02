@@ -104,11 +104,10 @@ def count_sign_changes(array: np.ndarray, tol: float) -> int:
     if array.size < 3:
         return 0
     clipped = array.copy()
-    clipped[np.abs(clipped) < tol] = 0.0
+    clipped = clipped[np.abs(clipped) > tol]
     signs = np.sign(clipped)
-    mask = signs[:-1] != signs[1:]
-    valid = (np.abs(clipped[:-1]) > tol) & (np.abs(clipped[1:]) > tol)
-    return int(np.count_nonzero(mask & valid))
+    sign_flips = signs[:-1] != signs[1:]
+    return int(np.sum(sign_flips))
 
 
 def compute_pair_metrics(
