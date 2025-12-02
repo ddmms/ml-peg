@@ -352,6 +352,8 @@ def diatomics_metrics_dataframe(
     pd.DataFrame
         Aggregated diatomics metrics indexed by model.
     """
+    metrics_df, _ = diatomics_collection
+    return metrics_df
 
 
 @pytest.fixture
