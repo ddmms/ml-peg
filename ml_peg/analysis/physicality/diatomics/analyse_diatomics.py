@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from scipy.signal import find_peaks
 
 from ml_peg.analysis.utils.decorators import build_table, periodic_curve_gallery
 from ml_peg.analysis.utils.utils import load_metrics_config
@@ -22,9 +23,7 @@ CURVE_PATH = OUT_PATH / "curves"
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
-    METRICS_CONFIG_PATH
-)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def load_model_data(model_name: str) -> pd.DataFrame:
@@ -130,10 +129,17 @@ def compute_pair_metrics(
     energy_gradient = np.gradient(shifted_energies, distances)
     energy_curvature = np.gradient(energy_gradient, distances)
 
+    # Energy minima: count gradient sign changes from negative to positive
+    # Filter small gradients (< 0.01 eV/Å) to avoid counting noise as minima
     minima = 0
-    if shifted_energies.size >= 3:
-        second_diff = np.diff(np.sign(np.diff(shifted_energies)))
-        minima = int(np.sum(second_diff > 0))
+    if energy_gradient.size >= 2:
+        # Find minima (invert the signal)
+        minima_indices, properties = find_peaks(
+            -shifted_energies,
+            prominence=0.1,  # Very small prominence catches shallow minima
+            width=1,  # Require at least 1 point width
+        )
+        minima = len(minima_indices)
 
     inflections = count_sign_changes(energy_curvature, tol=0.5)
 
@@ -141,8 +147,8 @@ def compute_pair_metrics(
     # Use tolerance of 0.01 eV/Å to ignore numerical noise
     force_flip_count = count_sign_changes(projected_forces, tol=1e-2)
 
-    spearman_repulsion = None
-    spearman_attraction = None
+    spearman_repulsion = np.nan
+    spearman_attraction = np.nan
 
     try:
         from scipy import stats
@@ -228,7 +234,7 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
     return pair_data
 
 
-persist_diatomics_pair_data = periodic_curve_gallery(
+@periodic_curve_gallery(
     curve_dir=CURVE_PATH,
     periodic_dir=None,
     overview_title=None,
@@ -240,7 +246,17 @@ persist_diatomics_pair_data = periodic_curve_gallery(
     y_ticks=(-20.0, -10.0, 0.0, 10.0, 20.0),
     x_range=(0.0, 6.0),
     y_range=(-20.0, 20.0),
-)(_load_pair_data)
+)
+def persist_diatomics_pair_data() -> dict[str, pd.DataFrame]:
+    """
+    Persist curve payloads and return the per-model dataframes.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Mapping of model name to per-pair curve data.
+    """
+    return _load_pair_data()
 
 
 @pytest.fixture
@@ -336,7 +352,7 @@ def diatomics_metrics_dataframe(
     filename=OUT_PATH / "diatomics_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    weights=DEFAULT_WEIGHTS,
+    weights=None,
 )
 def metrics(
     diatomics_metrics_dataframe: pd.DataFrame,

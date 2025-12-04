@@ -16,6 +16,9 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Diatomics"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#diatomics"
+)
 
 
 class DiatomicsApp(BaseApp):
@@ -83,7 +86,7 @@ def get_app() -> DiatomicsApp:
             "Diatomics explorer with periodic-table views. Metrics are averaged "
             "across all diatomic pairs (both homonuclear and heteronuclear)."
         ),
-        docs_url=None,
+        docs_url=DOCS_URL,
         table_path=DATA_PATH / "diatomics_metrics_table.json",
         extra_components=extra_components,
     )

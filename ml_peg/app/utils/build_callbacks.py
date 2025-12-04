@@ -242,8 +242,8 @@ def register_image_gallery_callbacks(
     element_dropdown_id: str,
     figure_id: str,
     manifest_dir: str | Path,
+    curve_dir: str | Path,
     overview_label: str = "All",
-    curve_dir: str | Path | None = None,
 ) -> None:
     """
     Register callbacks to display pre-rendered images stored per model.
@@ -258,17 +258,13 @@ def register_image_gallery_callbacks(
         Dash component ID for the output ``dcc.Graph``.
     manifest_dir
         Directory containing per-model ``manifest.json`` files.
-    overview_label
-        Dropdown label representing the overview image. Default is ``"All"``.
     curve_dir
         Directory of per-model curve JSON payloads. Element selections are rendered on
         the fly from these payloads instead of relying on pre-generated element images.
+    overview_label
+        Dropdown label representing the overview image. Default is ``"All"``.
     """
     curve_base = Path(curve_dir) if curve_dir else None
-    if curve_base is None:
-        raise ValueError(
-            "curve_dir must be provided to render diatomic plots dynamically."
-        )
 
     def _data_url(path: Path) -> tuple[str, float, float]:
         """
