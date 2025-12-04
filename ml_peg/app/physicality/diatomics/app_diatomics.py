@@ -13,7 +13,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "diatomics"
+BENCHMARK_NAME = "Diatomics"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
 
@@ -79,7 +79,10 @@ def get_app() -> DiatomicsApp:
 
     return DiatomicsApp(
         name=BENCHMARK_NAME,
-        description="Homonuclear diatomic explorer with periodic-table views.",
+        description=(
+            "Diatomics explorer with periodic-table views. Metrics are averaged "
+            "across all diatomic pairs (both homonuclear and heteronuclear)."
+        ),
         docs_url=None,
         table_path=DATA_PATH / "diatomics_metrics_table.json",
         extra_components=extra_components,

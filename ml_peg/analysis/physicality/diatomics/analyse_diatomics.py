@@ -188,7 +188,7 @@ def aggregate_model_metrics(
     model_dataframe: pd.DataFrame,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Aggregate metrics for a model across all pairs.
+    Aggregate metrics across all homo/heteronuclear diatomic pairs.
 
     Parameters
     ----------
@@ -198,7 +198,8 @@ def aggregate_model_metrics(
     Returns
     -------
     tuple[dict[str, float], dict[str, float]]
-        Aggregated model metrics and homonuclear well depths.
+        Aggregated model metrics (averaged across all pairs) and homonuclear
+        well depths.
     """
     if model_dataframe.empty:
         return {}, {}
@@ -283,6 +284,8 @@ def collect_metrics(
     """
     Gather metrics and well depths for all models.
 
+    Metrics are averaged across all diatomic pairs (both homonuclear and heteronuclear).
+
     Parameters
     ----------
     pair_data
@@ -292,7 +295,7 @@ def collect_metrics(
     Returns
     -------
     tuple[pd.DataFrame, dict[str, dict[str, float]]]
-        Aggregated metrics table and per-model homonuclear well depths.
+        Aggregated metrics table (all pairs) and per-model homonuclear well depths.
     """
     metrics_rows: list[dict[str, float | str]] = []
     model_well_depths: dict[str, dict[str, float]] = {}
