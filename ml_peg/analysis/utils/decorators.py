@@ -5,17 +5,151 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 import functools
+import json
 from json import dump
 from pathlib import Path
 from typing import Any
 
 from dash import dash_table
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import load_model_configs
+
+PERIODIC_TABLE_POSITIONS: dict[str, tuple[int, int]] = {
+    # First row
+    "H": (0, 0),
+    "He": (0, 17),
+    # Second row
+    "Li": (1, 0),
+    "Be": (1, 1),
+    "B": (1, 12),
+    "C": (1, 13),
+    "N": (1, 14),
+    "O": (1, 15),
+    "F": (1, 16),
+    "Ne": (1, 17),
+    # Third row
+    "Na": (2, 0),
+    "Mg": (2, 1),
+    "Al": (2, 12),
+    "Si": (2, 13),
+    "P": (2, 14),
+    "S": (2, 15),
+    "Cl": (2, 16),
+    "Ar": (2, 17),
+    # Fourth row
+    "K": (3, 0),
+    "Ca": (3, 1),
+    "Sc": (3, 2),
+    "Ti": (3, 3),
+    "V": (3, 4),
+    "Cr": (3, 5),
+    "Mn": (3, 6),
+    "Fe": (3, 7),
+    "Co": (3, 8),
+    "Ni": (3, 9),
+    "Cu": (3, 10),
+    "Zn": (3, 11),
+    "Ga": (3, 12),
+    "Ge": (3, 13),
+    "As": (3, 14),
+    "Se": (3, 15),
+    "Br": (3, 16),
+    "Kr": (3, 17),
+    # Fifth row
+    "Rb": (4, 0),
+    "Sr": (4, 1),
+    "Y": (4, 2),
+    "Zr": (4, 3),
+    "Nb": (4, 4),
+    "Mo": (4, 5),
+    "Tc": (4, 6),
+    "Ru": (4, 7),
+    "Rh": (4, 8),
+    "Pd": (4, 9),
+    "Ag": (4, 10),
+    "Cd": (4, 11),
+    "In": (4, 12),
+    "Sn": (4, 13),
+    "Sb": (4, 14),
+    "Te": (4, 15),
+    "I": (4, 16),
+    "Xe": (4, 17),
+    # Sixth row
+    "Cs": (5, 0),
+    "Ba": (5, 1),
+    "La": (8, 3),
+    "Hf": (5, 3),
+    "Ta": (5, 4),
+    "W": (5, 5),
+    "Re": (5, 6),
+    "Os": (5, 7),
+    "Ir": (5, 8),
+    "Pt": (5, 9),
+    "Au": (5, 10),
+    "Hg": (5, 11),
+    "Tl": (5, 12),
+    "Pb": (5, 13),
+    "Bi": (5, 14),
+    "Po": (5, 15),
+    "At": (5, 16),
+    "Rn": (5, 17),
+    # Seventh row
+    "Fr": (6, 0),
+    "Ra": (6, 1),
+    "Ac": (9, 3),
+    "Rf": (6, 3),
+    "Db": (6, 4),
+    "Sg": (6, 5),
+    "Bh": (6, 6),
+    "Hs": (6, 7),
+    "Mt": (6, 8),
+    "Ds": (6, 9),
+    "Rg": (6, 10),
+    "Cn": (6, 11),
+    "Nh": (6, 12),
+    "Fl": (6, 13),
+    "Mc": (6, 14),
+    "Lv": (6, 15),
+    "Ts": (6, 16),
+    "Og": (6, 17),
+    # Lanthanides (row 8)
+    "Ce": (8, 4),
+    "Pr": (8, 5),
+    "Nd": (8, 6),
+    "Pm": (8, 7),
+    "Sm": (8, 8),
+    "Eu": (8, 9),
+    "Gd": (8, 10),
+    "Tb": (8, 11),
+    "Dy": (8, 12),
+    "Ho": (8, 13),
+    "Er": (8, 14),
+    "Tm": (8, 15),
+    "Yb": (8, 16),
+    "Lu": (8, 17),
+    # Actinides (row 9)
+    "Th": (9, 4),
+    "Pa": (9, 5),
+    "U": (9, 6),
+    "Np": (9, 7),
+    "Pu": (9, 8),
+    "Am": (9, 9),
+    "Cm": (9, 10),
+    "Bk": (9, 11),
+    "Cf": (9, 12),
+    "Es": (9, 13),
+    "Fm": (9, 14),
+    "Md": (9, 15),
+    "No": (9, 16),
+    "Lr": (9, 17),
+}
+PERIODIC_TABLE_ROWS = 10
+PERIODIC_TABLE_COLS = 18
 
 
 def plot_parity(
@@ -512,6 +646,643 @@ def plot_density_scatter(
         return plot_density_wrapper
 
     return plot_density_decorator
+
+
+def plot_periodic_table(
+    title: str | None = None,
+    colorbar_title: str | None = None,
+    hoverdata: dict[str, dict[str, Any]] | None = None,
+    filename: str = "periodic_table.json",
+    colorscale: str = "Viridis",
+) -> Callable:
+    """
+    Plot a periodic-table heatmap for element-wise metrics.
+
+    Parameters
+    ----------
+    title
+        Plot title.
+    colorbar_title
+        Label for the colour bar.
+    hoverdata
+        Optional mapping of hover labels to element-wise values.
+    filename
+        Output filename for the JSON figure.
+    colorscale
+        Plotly colourscale name. Default is ``"Viridis"``.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function returning element-value mappings.
+    """
+
+    def plot_periodic_table_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to produce periodic-table heatmap.
+
+        Parameters
+        ----------
+        func
+            Function returning mapping of element symbols to numeric values.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_periodic_table_wrapper(*args, **kwargs) -> dict[str, float]:
+            """
+            Wrap function to render periodic-table figure.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict[str, float]
+                Element-value mapping returned by ``func``.
+            """
+            values = func(*args, **kwargs)
+
+            grid = np.full((PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS), np.nan)
+            hover_grid = np.full_like(grid, "", dtype=object)
+            text_grid = np.full_like(grid, "", dtype=object)
+
+            for element, value in values.items():
+                position = PERIODIC_TABLE_POSITIONS.get(element)
+                if position is None:
+                    continue
+                row, col = position
+                grid[row, col] = value
+
+                hover_parts = [f"{element}"]
+                if value is not None and not np.isnan(value):
+                    hover_parts.append(f"Value: {value:.4g}")
+
+                if hoverdata:
+                    for label, mapping in hoverdata.items():
+                        extra = mapping.get(element)
+                        if extra is None:
+                            continue
+                        hover_parts.append(f"{label}: {extra}")
+
+                hover_grid[row, col] = "<br>".join(hover_parts)
+                text_grid[row, col] = element
+
+            fig = go.Figure(
+                data=go.Heatmap(
+                    z=grid,
+                    x=np.arange(PERIODIC_TABLE_COLS),
+                    y=np.arange(PERIODIC_TABLE_ROWS),
+                    text=hover_grid,
+                    hovertemplate="%{text}<extra></extra>",
+                    colorscale=colorscale,
+                    colorbar={"title": colorbar_title},
+                    showscale=True,
+                )
+            )
+
+            # Overlay element symbols
+            xs, ys, labels = [], [], []
+            for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+                xs.append(col)
+                ys.append(row)
+                labels.append(text_grid[row, col] or element)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="text",
+                    text=labels,
+                    textfont={"size": 12, "color": "black"},
+                    hoverinfo="skip",
+                )
+            )
+
+            fig.update_layout(
+                title={"text": title},
+                xaxis={
+                    "visible": False,
+                    "range": [-0.5, PERIODIC_TABLE_COLS - 0.5],
+                    "fixedrange": True,
+                },
+                yaxis={
+                    "visible": False,
+                    "autorange": "reversed",
+                    "range": [-0.5, PERIODIC_TABLE_ROWS - 0.5],
+                    "fixedrange": True,
+                },
+                margin={"l": 10, "r": 10, "t": 40, "b": 10},
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+            return values
+
+        return plot_periodic_table_wrapper
+
+    return plot_periodic_table_decorator
+
+
+def render_periodic_table_grid(
+    title: str,
+    filename_stem: str | Path,
+    plot_cell: Callable[[Any, str], bool],
+    *,
+    figsize: tuple[float, float] | None = None,
+    formats: tuple[str, ...] = ("svg", "pdf"),
+    rows: int = PERIODIC_TABLE_ROWS,
+    cols: int = PERIODIC_TABLE_COLS,
+    suptitle_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """
+    Render a periodic-table grid where each element's subplot is custom drawn.
+
+    Parameters
+    ----------
+    title
+        Figure title displayed above the grid.
+    filename_stem
+        Base path for the output files (without extension).
+    plot_cell
+        Callable receiving ``(axis, element)``; should draw the subplot and
+        return ``True`` when content was rendered.
+    figsize
+        Optional Matplotlib figure size. Defaults to a size proportional to the
+        table geometry.
+    formats
+        Iterable of file extensions to emit (``"svg"``, ``"pdf"``, etc.).
+    rows, cols
+        Grid dimensions. Defaults to the standard periodic table layout.
+    suptitle_kwargs
+        Extra keyword arguments forwarded to ``fig.suptitle``.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=figsize or (cols * 1.5, rows * 1.2),
+        constrained_layout=True,
+    )
+    axes = axes.reshape(rows, cols)
+
+    for r in range(rows):
+        for c in range(cols):
+            axes[r, c].axis("off")
+
+    for element, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+        ax = axes[row, col]
+        rendered = False
+        try:
+            ax.axis("on")
+            rendered = bool(plot_cell(ax, element))
+        except Exception:
+            rendered = False
+        if not rendered:
+            ax.axis("off")
+
+    for r in range(rows):
+        for c in range(cols):
+            ax = axes[r, c]
+            if ax.get_visible() and not ax.has_data():
+                ax.axis("off")
+
+    fig.suptitle(title, **(suptitle_kwargs or {}))
+
+    base_path = Path(filename_stem)
+    base_path.parent.mkdir(parents=True, exist_ok=True)
+    for fmt in formats:
+        fig.savefig(base_path.with_suffix(f".{fmt}"), format=fmt)
+    plt.close(fig)
+
+
+def periodic_curve_gallery(
+    *,
+    curve_dir: Path,
+    periodic_dir: Path | None = None,
+    overview_title: str | None = None,
+    overview_formats: tuple[str, ...] = (),
+    overview_figsize: tuple[float, float] | None = (36, 20),
+    overview_suptitle: dict[str, Any] | None = None,
+    focus_title_template: str | None = None,
+    focus_formats: tuple[str, ...] = (),
+    focus_figsize: tuple[float, float] = (30, 15),
+    focus_dpi: int = 200,
+    pair_column: str = "pair",
+    element1_column: str = "element_1",
+    element2_column: str = "element_2",
+    distance_column: str = "distance",
+    energy_column: str = "energy",
+    pair_separator: str = "-",
+    series_columns: dict[str, str] | None = None,
+    scalar_columns: dict[str, str] | None = None,
+    x_ticks: tuple[float, ...] = (0.0, 2.0, 4.0, 6.0),
+    y_ticks: tuple[float, ...] = (-20.0, -10.0, 0.0, 10.0, 20.0),
+    x_range: tuple[float, float] = (0.0, 6.0),
+    y_range: tuple[float, float] = (-20.0, 20.0),
+) -> Callable:
+    """
+    Decorate a fixture that returns per-model curve data to persist gallery assets.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory where per-pair JSON payloads will be written per model.
+    periodic_dir
+        Optional directory for periodic-table overviews and per-element figures. When
+        omitted, only the curve payloads are written.
+    overview_title
+        Format string used for the overview title (receives ``model`` keyword). Ignored
+        if ``overview_formats`` is empty.
+    overview_formats
+        File formats to emit for overview figure. Empty tuple disables overview output.
+    overview_figsize
+        Matplotlib figsize for the overview grid.
+    overview_suptitle
+        Additional kwargs passed to ``fig.suptitle`` for overview.
+    focus_title_template
+        Format string for per-element focus plots (receives ``element`` and ``model``).
+        Set to ``None`` to disable focus figures.
+    focus_formats
+        File formats for per-element focus plots. Empty tuple disables focus output.
+    focus_figsize
+        Matplotlib figsize for focus plots.
+    focus_dpi
+        DPI for per-element focus images.
+    pair_column, element1_column, element2_column, distance_column, energy_column
+        Column names describing the curve data.
+    pair_separator
+        Separator used between elements within the ``pair`` column.
+    series_columns
+        Mapping of payload keys to column names whose values should be serialised
+        as sequences.
+    scalar_columns
+        Mapping of payload keys to column names serialised as scalars.
+    x_ticks, y_ticks
+        Tick locations for the plots.
+    x_range, y_range
+        Axis limits for the plots.
+
+    Returns
+    -------
+    Callable
+        Decorator that wraps a callable returning model/dataframe mappings and
+        emits the associated gallery assets.
+    """
+    curve_dir = Path(curve_dir)
+    periodic_dir = Path(periodic_dir) if periodic_dir else None
+
+    default_series = {"distance": distance_column, "energy": energy_column}
+    if series_columns:
+        default_series.update(series_columns)
+
+    default_scalars = {"element_1": element1_column, "element_2": element2_column}
+    if scalar_columns:
+        default_scalars.update(scalar_columns)
+
+    def _sorted_pair(frame: pd.DataFrame) -> pd.DataFrame:
+        """
+        Return distance-sorted samples with duplicate distances removed.
+
+        Parameters
+        ----------
+        frame
+            Dataframe containing at least the ``distance`` column.
+
+        Returns
+        -------
+        pd.DataFrame
+            Frame sorted by distance with only unique distance entries.
+        """
+        return frame.sort_values(distance_column).drop_duplicates(distance_column)
+
+    def _plot_curve(ax, pair_frame: pd.DataFrame) -> bool:
+        """
+        Plot a distance-energy curve on the supplied axes.
+
+        Parameters
+        ----------
+        ax
+            Matplotlib axes the curve is plotted onto.
+        pair_frame
+            Dataframe containing the curve samples.
+
+        Returns
+        -------
+        bool
+            ``True`` when data was plotted, otherwise ``False``.
+        """
+        if pair_frame.empty or energy_column not in pair_frame:
+            return False
+        ordered = _sorted_pair(pair_frame)
+        if ordered.empty:
+            return False
+        x = ordered[distance_column].to_numpy()
+        y = ordered[energy_column].to_numpy()
+        if x.size == 0:
+            return False
+        shift = y[-1]
+        y_shifted = y - shift
+        ax.plot(x, y_shifted, linewidth=1, color="tab:blue", zorder=1)
+        ax.axhline(0, color="lightgray", linewidth=0.6, zorder=0)
+        ax.set_facecolor("white")
+        ax.set_xlim(*x_range)
+        ax.set_ylim(*y_range)
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+        ax.tick_params(labelsize=7, length=2, pad=1)
+        return True
+
+    def _write_curve_payloads(model_name: str, frame: pd.DataFrame) -> None:
+        """
+        Serialise per-pair JSON payloads for the Dash callbacks.
+
+        Parameters
+        ----------
+        model_name
+            Name of the model associated with ``frame``.
+        frame
+            Dataframe containing all pair samples for the model.
+        """
+        model_curve_dir = curve_dir / model_name
+        model_curve_dir.mkdir(parents=True, exist_ok=True)
+        for pair, group in frame.groupby(pair_column):
+            ordered = _sorted_pair(group)
+            payload: dict[str, Any] = {"pair": str(pair)}
+            for key, column in default_scalars.items():
+                if column in ordered:
+                    payload[key] = ordered[column].iloc[0]
+            for key, column in default_series.items():
+                if column in ordered:
+                    payload[key] = ordered[column].tolist()
+            with (model_curve_dir / f"{pair}.json").open("w", encoding="utf8") as fh:
+                json.dump(payload, fh)
+
+    def _render_overview(model_name: str, frame: pd.DataFrame) -> bool:
+        """
+        Render the homonuclear overview grid for ``model_name``.
+
+        Parameters
+        ----------
+        model_name
+            Name of the model whose overview is drawn.
+        frame
+            Dataframe containing all pair data for the model.
+
+        Returns
+        -------
+        bool
+            ``True`` when at least one curve was plotted.
+        """
+
+        def plot_cell(ax, element: str) -> bool:
+            """
+            Plot a single homonuclear curve in the periodic-table grid.
+
+            Parameters
+            ----------
+            ax
+                Matplotlib axes for the subplot.
+            element
+                Chemical symbol identifying the homonuclear pair.
+
+            Returns
+            -------
+            bool
+                ``True`` if data existed for the element.
+            """
+            pair_label = f"{element}{pair_separator}{element}"
+            pair_frame = frame[frame[pair_column] == pair_label]
+            rendered = _plot_curve(ax, pair_frame)
+            if rendered:
+                depth = float(
+                    pair_frame[energy_column].min()
+                    if energy_column in pair_frame
+                    else 0.0
+                )
+                ax.text(
+                    0.02,
+                    0.95,
+                    f"{element}\n{depth:.2f} eV",
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=8,
+                    fontweight="bold",
+                )
+            return rendered
+
+        render_periodic_table_grid(
+            title=overview_title.format(model=model_name),
+            filename_stem=periodic_dir / model_name / "overview",
+            plot_cell=plot_cell,
+            figsize=overview_figsize,
+            formats=overview_formats,
+            suptitle_kwargs=overview_suptitle,
+        )
+        return True
+
+    def _render_focus(
+        model_name: str,
+        frame: pd.DataFrame,
+        element: str,
+        output_path: Path,
+    ) -> bool:
+        """
+        Render per-element heteronuclear plots for a selected ``element``.
+
+        Parameters
+        ----------
+        model_name
+            Model identifier used in titles.
+        frame
+            Dataframe containing all pairs for the model.
+        element
+            Element symbol to highlight.
+        output_path
+            Destination path for the rendered figure.
+
+        Returns
+        -------
+        bool
+            ``True`` if any curve was drawn.
+        """
+        import matplotlib.pyplot as plt
+
+        pair_groups: dict[str, pd.DataFrame] = {}
+        for pair, group in frame.groupby(pair_column):
+            try:
+                first, second = str(pair).split(pair_separator)
+            except ValueError:
+                continue
+            if element not in {first, second}:
+                continue
+            other = second if first == element else first
+            pair_groups[other] = _sorted_pair(group)
+
+        if not pair_groups:
+            return False
+
+        fig, axes = plt.subplots(
+            PERIODIC_TABLE_ROWS,
+            PERIODIC_TABLE_COLS,
+            figsize=focus_figsize,
+            constrained_layout=True,
+        )
+        axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
+        for ax in axes.ravel():
+            ax.axis("off")
+
+        has_data = False
+        for other, (row, col) in PERIODIC_TABLE_POSITIONS.items():
+            pair_frame = pair_groups.get(other)
+            if pair_frame is None or pair_frame.empty:
+                continue
+            ax = axes[row, col]
+            ax.axis("on")
+            rendered = _plot_curve(ax, pair_frame)
+            if not rendered:
+                ax.axis("off")
+                continue
+            shift = float(
+                pair_frame[energy_column].to_numpy()[-1]
+                if energy_column in pair_frame and not pair_frame.empty
+                else 0.0
+            )
+            ax.set_title(
+                f"{element}-{other}, shift: {shift:.4f}",
+                fontsize=8,
+            )
+            if other == element:
+                for spine in ax.spines.values():
+                    spine.set_edgecolor("crimson")
+                    spine.set_linewidth(2)
+            has_data = True
+
+        if not has_data:
+            plt.close(fig)
+            return False
+
+        if focus_title_template:
+            fig.suptitle(
+                focus_title_template.format(element=element, model=model_name),
+                fontsize=22,
+                fontweight="bold",
+            )
+        fig.savefig(output_path, format=output_path.suffix.lstrip("."), dpi=focus_dpi)
+        plt.close(fig)
+        return True
+
+    def periodic_curve_gallery_decorator(func: Callable) -> Callable:
+        """
+        Wrap the supplied callable to emit gallery assets on invocation.
+
+        Parameters
+        ----------
+        func
+            Callable returning a mapping of model names to dataframes.
+
+        Returns
+        -------
+        Callable
+            Wrapped callable that additionally persists gallery assets.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Execute the wrapped callable and persist curve/plot assets.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict[str, pd.DataFrame]
+                Mapping produced by the original callable.
+            """
+            model_frames = func(*args, **kwargs) or {}
+            if not isinstance(model_frames, dict):
+                raise TypeError(
+                    "periodic_curve_gallery expects the wrapped function to return "
+                    "a mapping of model names to pandas.DataFrame instances."
+                )
+
+            curve_dir.mkdir(parents=True, exist_ok=True)
+            if periodic_dir:
+                periodic_dir.mkdir(parents=True, exist_ok=True)
+
+            for model_name, frame in model_frames.items():
+                if frame is None or frame.empty:
+                    continue
+                _write_curve_payloads(model_name, frame)
+
+                # Skip image/manifest generation when no formats are requested or
+                # when no periodic_dir is supplied.
+                if not periodic_dir or (
+                    not overview_formats
+                    and not (focus_title_template and focus_formats)
+                ):
+                    continue
+
+                model_periodic_dir = periodic_dir / model_name
+                model_periodic_dir.mkdir(parents=True, exist_ok=True)
+                elements_dir = model_periodic_dir / "elements"
+                elements_dir.mkdir(parents=True, exist_ok=True)
+
+                manifest: dict[str, Any] = {"elements": {}}
+                if overview_formats:
+                    overview_rendered = _render_overview(model_name, frame)
+                    if overview_rendered:
+                        manifest["overview"] = f"overview.{overview_formats[0]}"
+
+                if focus_title_template and focus_formats:
+                    available_elements: set[str] = set()
+                    if element1_column in frame:
+                        available_elements |= {
+                            str(e)
+                            for e in frame[element1_column].dropna().astype(str)
+                            if e
+                        }
+                    if element2_column in frame:
+                        available_elements |= {
+                            str(e)
+                            for e in frame[element2_column].dropna().astype(str)
+                            if e
+                        }
+                    available_elements = sorted(available_elements)
+                    extension = focus_formats[0]
+                    for element in available_elements:
+                        output_path = elements_dir / f"{element}.{extension}"
+                        if _render_focus(model_name, frame, element, output_path):
+                            manifest["elements"][element] = (
+                                f"elements/{element}.{extension}"
+                            )
+
+                manifest_path = model_periodic_dir / "manifest.json"
+                with manifest_path.open("w", encoding="utf8") as fh:
+                    json.dump(manifest, fh, indent=2)
+
+            return model_frames
+
+        return wrapper
+
+    return periodic_curve_gallery_decorator
 
 
 def build_table(
