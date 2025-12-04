@@ -129,7 +129,7 @@ Metrics
 Computational cost
 ------------------
 
-Medium: Expected to take hours to run on GPU, or around one day for slower MLIPs.
+High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
 
 Data availability
 -----------------
