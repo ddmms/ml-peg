@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 import functools
 from json import dump
 from pathlib import Path
@@ -522,7 +522,7 @@ def build_table(
     normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
-    mlip_name_map: Mapping[str, str] | None = None,
+    mlip_name_map: dict[str, str] | None = None,
 ) -> Callable:
     """
     Build DataTable, including optional metric normalisation.
