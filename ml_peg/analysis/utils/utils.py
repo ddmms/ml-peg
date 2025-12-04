@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -18,9 +18,37 @@ from ml_peg.app.utils.utils import (
     clean_thresholds,
     clean_weights,
 )
+from ml_peg.models.get_models import load_model_configs
 
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
+
+
+def build_d3_name_map(
+    models: Iterable[str],
+    suffix: str = "-D3",
+) -> dict[str, str]:
+    """
+    Return a suffix map for models requiring runtime D3 corrections.
+
+    Parameters
+    ----------
+    models
+        Iterable of model identifiers to inspect.
+    suffix
+        String appended to model names that need the D3 indicator.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of model -> display name for models not trained with D3 dispersion.
+    """
+    configs, _ = load_model_configs(tuple(models))
+    return {
+        model: f"{model}{suffix}"
+        for model in models
+        if not configs[model]["trained_on_d3"]
+    }
 
 
 def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:

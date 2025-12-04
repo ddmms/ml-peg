@@ -163,6 +163,7 @@ def build_category(
                 benchmark_table_id=benchmark_table.id,
                 category_table_id=f"{category_title}-summary-table",
                 benchmark_column=test_name + " Score",
+                model_name_map=getattr(benchmark_table, "model_name_map", None),
             )
 
     return category_layouts, category_tables
@@ -196,11 +197,13 @@ def build_summary_table(
         if not summary_data:
             summary_data = {model: {} for model in MODELS}
 
+        table_name_map = getattr(table, "model_name_map", {}) or {}
         for row in table.data:
             # Category tables may include models not to be included
             # Table headings are of the form "[category] Score"
-            if row["MLIP"] in summary_data:
-                summary_data[row["MLIP"]][f"{category_name} Score"] = row["Score"]
+            canonical_name = table_name_map.get(row["MLIP"], row["MLIP"])
+            if canonical_name in summary_data:
+                summary_data[canonical_name][f"{category_name} Score"] = row["Score"]
 
     data = []
     for mlip in summary_data:

@@ -19,12 +19,18 @@ current_models = None
 
 @dataclasses.dataclass(kw_only=True)
 class SumCalc:
-    """Base class to create SumCalculator with D3 dispersion."""
+    """
+    Base class that tracks whether a model already includes D3 dispersion.
 
-    add_d3: bool = False
+    ``add_d3_calculator`` only wraps calculators with an explicit TorchDFTD3
+    correction when ``trained_on_d3`` is ``False``; otherwise the original
+    calculator is returned untouched.
+    """
+
+    trained_on_d3: bool = False
     d3_kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def add_d3_calculator(self, calcs) -> SumCalculator:
+    def add_d3_calculator(self, calcs) -> Calculator | SumCalculator:
         """
         Add D3 dispersion to calculator(s).
 
@@ -36,9 +42,12 @@ class SumCalc:
 
         Returns
         -------
-        SumCalculator
-            Calculator(s) with D3 dispersion added.
+        SumCalculator | Calculator
+            Calculator(s) with D3 dispersion added, or the original calculator when
+            the model is already trained with D3 corrections.
         """
+        if self.trained_on_d3:
+            return calcs
         from ase import units
         from ase.calculators.mixing import SumCalculator
         import torch
@@ -82,12 +91,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         if self.default_dtype is not None:
             kwargs["default_dtype"] = self.default_dtype
 
-        calc = MlipxGenericASECalc.get_calculator(self, **kwargs)
-
-        if self.add_d3:
-            calc = self.add_d3_calculator(calc)
-
-        return calc
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
 # https://github.com/orbital-materials/orb-models
@@ -141,9 +145,6 @@ class OrbCalc(SumCalc):
             )
             calc = ORBCalculator(orbff, device=self.device, **self.kwargs)
 
-        if self.add_d3:
-            calc = self.add_d3_calculator(calc)
-
         return calc
 
     @property
@@ -190,12 +191,7 @@ class FairChemCalc(SumCalc):
         predictor = pretrained_mlip.get_predict_unit(
             self.model_name, device=self.device, overrides=self.overrides
         )
-        calc = FAIRChemCalculator(predictor, task_name=self.task_name)
-
-        if self.add_d3:
-            calc = self.add_d3_calculator(calc)
-
-        return calc
+        return FAIRChemCalculator(predictor, task_name=self.task_name)
 
     @property
     def available(self) -> bool:
