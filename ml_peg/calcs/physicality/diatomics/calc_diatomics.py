@@ -84,7 +84,12 @@ def _generate_pairs(
 
 
 def _safe_register_torch_slice() -> None:
-    """Allow torch safe loader to serialise ``slice`` objects."""
+    """
+    Register slice objects as safe for PyTorch deserialization.
+
+    Some torch.compile or JIT models serialize slice objects in weights.
+    This prevents deserialization errors when loading such models.
+    """
     try:
         import torch
 

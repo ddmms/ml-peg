@@ -8,10 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.analysis.utils.decorators import (
-    build_table,
-    periodic_curve_gallery,
-)
+from ml_peg.analysis.utils.decorators import build_table, periodic_curve_gallery
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -140,15 +137,9 @@ def compute_pair_metrics(
 
     inflections = count_sign_changes(energy_curvature, tol=0.5)
 
-    rounded_forces = projected_forces.copy()
-    rounded_forces[np.abs(rounded_forces) < 1e-2] = 0.0
-    force_signs = np.sign(rounded_forces)
-    nonzero_mask = force_signs != 0
-    force_flip_count = (
-        int(np.sum(np.diff(force_signs[nonzero_mask]) != 0))
-        if nonzero_mask.any()
-        else 0
-    )
+    # Force flip calculation: count sign changes in projected forces
+    # Use tolerance of 0.01 eV/Å to ignore numerical noise
+    force_flip_count = count_sign_changes(projected_forces, tol=1e-2)
 
     well_depth = float(shifted_energies.min())
 
