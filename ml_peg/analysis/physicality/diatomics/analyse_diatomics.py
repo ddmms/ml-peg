@@ -143,8 +143,8 @@ def compute_pair_metrics(
 
     well_depth = float(shifted_energies.min())
 
-    spearman_repulsion = np.nan
-    spearman_attraction = np.nan
+    spearman_repulsion = None
+    spearman_attraction = None
 
     try:
         from scipy import stats
