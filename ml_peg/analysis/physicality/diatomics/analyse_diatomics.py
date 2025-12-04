@@ -109,7 +109,7 @@ def count_sign_changes(array: np.ndarray, tol: float) -> int:
 
 def compute_pair_metrics(
     df_pair: pd.DataFrame,
-) -> tuple[dict[str, float], float] | tuple[None, None]:
+) -> dict[str, float] | None:
     """
     Compute diagnostics for a single diatomic pair.
 
@@ -120,12 +120,12 @@ def compute_pair_metrics(
 
     Returns
     -------
-    tuple[dict[str, float], float] | tuple[None, None]
-        Dictionary of metrics and the homonuclear well depth (if applicable).
+    dict[str, float] | None
+        Dictionary of metrics, or None if insufficient data.
     """
     distances, shifted_energies, projected_forces = prepare_pair_series(df_pair)
     if distances.size < 3:
-        return None, None
+        return None
 
     energy_gradient = np.gradient(shifted_energies, distances)
     energy_curvature = np.gradient(energy_gradient, distances)
@@ -140,8 +140,6 @@ def compute_pair_metrics(
     # Force flip calculation: count sign changes in projected forces
     # Use tolerance of 0.01 eV/Å to ignore numerical noise
     force_flip_count = count_sign_changes(projected_forces, tol=1e-2)
-
-    well_depth = float(shifted_energies.min())
 
     spearman_repulsion = None
     spearman_attraction = None
@@ -165,19 +163,18 @@ def compute_pair_metrics(
     except Exception:
         pass
 
-    metrics = {
+    return {
         "Force flips": float(force_flip_count),
         "Energy minima": float(minima),
         "Energy inflections": float(inflections),
         "ρ(E, repulsion)": float(spearman_repulsion),
         "ρ(E, attraction)": float(spearman_attraction),
     }
-    return metrics, well_depth
 
 
 def aggregate_model_metrics(
     model_dataframe: pd.DataFrame,
-) -> tuple[dict[str, float], dict[str, float]]:
+) -> dict[str, float]:
     """
     Aggregate metrics across all homo/heteronuclear diatomic pairs.
 
@@ -188,35 +185,27 @@ def aggregate_model_metrics(
 
     Returns
     -------
-    tuple[dict[str, float], dict[str, float]]
-        Aggregated model metrics (averaged across all pairs) and homonuclear
-        well depths.
+    dict[str, float]
+        Aggregated model metrics (averaged across all pairs).
     """
     if model_dataframe.empty:
-        return {}, {}
+        return {}
 
     pair_metrics: list[dict[str, float]] = []
-    well_depths: dict[str, float] = {}
 
-    for pair, pair_dataframe in model_dataframe.groupby("pair"):
-        metrics, well_depth = compute_pair_metrics(pair_dataframe)
+    for _pair, pair_dataframe in model_dataframe.groupby("pair"):
+        metrics = compute_pair_metrics(pair_dataframe)
         if metrics is None:
             continue
         pair_metrics.append(metrics)
 
-        symbols = pair.split("-")
-        if len(symbols) == 2 and symbols[0] == symbols[1]:
-            element = symbols[0]
-            well_depths[element] = well_depth
-
     if not pair_metrics:
-        return {}, well_depths
+        return {}
 
-    aggregated = {
+    return {
         key: float(np.nanmean([metrics.get(key, np.nan) for metrics in pair_metrics]))
         for key in DEFAULT_THRESHOLDS.keys()
     }
-    return aggregated, well_depths
 
 
 # helper to load per-model pair data -----------------------------------------
@@ -233,9 +222,7 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
     """
     pair_data: dict[str, pd.DataFrame] = {}
     for model_name in MODELS:
-        csv_path = CALC_PATH / model_name / "diatomics.csv"
-        model_dataframe = pd.read_csv(csv_path)
-
+        model_dataframe = load_model_data(model_name)
         if not model_dataframe.empty:
             pair_data[model_name] = model_dataframe
     return pair_data
@@ -271,9 +258,9 @@ def diatomics_pair_data_fixture() -> dict[str, pd.DataFrame]:
 
 def collect_metrics(
     pair_data: dict[str, pd.DataFrame] | None = None,
-) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+) -> pd.DataFrame:
     """
-    Gather metrics and well depths for all models.
+    Gather metrics for all models.
 
     Metrics are averaged across all diatomic pairs (both homonuclear and heteronuclear).
 
@@ -285,36 +272,31 @@ def collect_metrics(
 
     Returns
     -------
-    tuple[pd.DataFrame, dict[str, dict[str, float]]]
-        Aggregated metrics table (all pairs) and per-model homonuclear well depths.
+    pd.DataFrame
+        Aggregated metrics table (all pairs).
     """
     metrics_rows: list[dict[str, float | str]] = []
-    model_well_depths: dict[str, dict[str, float]] = {}
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     data = pair_data if pair_data is not None else persist_diatomics_pair_data()
 
     for model_name, model_dataframe in data.items():
-        metrics, well_depths = aggregate_model_metrics(model_dataframe)
-
+        metrics = aggregate_model_metrics(model_dataframe)
         row = {"Model": model_name} | metrics
         metrics_rows.append(row)
 
-        model_well_depths[model_name] = well_depths
-
     columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
 
-    metrics_df = pd.DataFrame(metrics_rows).reindex(columns=columns)
-    return metrics_df, model_well_depths
+    return pd.DataFrame(metrics_rows).reindex(columns=columns)
 
 
 @pytest.fixture
 def diatomics_collection(
     diatomics_pair_data_fixture: dict[str, pd.DataFrame],
-) -> tuple[pd.DataFrame, dict[str, dict[str, float]]]:
+) -> pd.DataFrame:
     """
-    Collect diatomics metrics and well depths across all models.
+    Collect diatomics metrics across all models.
 
     Parameters
     ----------
@@ -323,15 +305,15 @@ def diatomics_collection(
 
     Returns
     -------
-    tuple[pd.DataFrame, dict[str, dict[str, float]]]
-        Aggregated metrics dataframe and mapping of homonuclear well depths.
+    pd.DataFrame
+        Aggregated metrics dataframe.
     """
     return collect_metrics(diatomics_pair_data_fixture)
 
 
 @pytest.fixture
 def diatomics_metrics_dataframe(
-    diatomics_collection: tuple[pd.DataFrame, dict[str, dict[str, float]]],
+    diatomics_collection: pd.DataFrame,
 ) -> pd.DataFrame:
     """
     Provide the aggregated diatomics metrics dataframe.
@@ -339,15 +321,14 @@ def diatomics_metrics_dataframe(
     Parameters
     ----------
     diatomics_collection
-        Tuple of metrics dataframe and well depths produced by ``collect_metrics``.
+        Metrics dataframe produced by ``collect_metrics``.
 
     Returns
     -------
     pd.DataFrame
         Aggregated diatomics metrics indexed by model.
     """
-    metrics_df, _ = diatomics_collection
-    return metrics_df
+    return diatomics_collection
 
 
 @pytest.fixture
