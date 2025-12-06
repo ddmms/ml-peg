@@ -77,7 +77,11 @@ class S24Benchmark(zntrack.Node):
 
     def run(self):
         """Run S24 energy calculations."""
+        # Add D3 calculator and use double precision for this test
+        self.model.default_dtype = "float64"
         calc = self.model.get_calculator()
+        calc = self.model.add_d3_calculator(calc)
+
         data = (
             download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
             / "s24/s24_data.extxyz"
