@@ -627,7 +627,7 @@ def build_table(
             # Use MLIP keys from first (any) metric keys
             mlips = tuple(next(iter(results.values())).keys())
 
-            name_map = dict(mlip_name_map or {})
+            name_map = mlip_name_map if mlip_name_map else {}
             display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}
             display_values = list(display_names.values())
             if len(display_values) != len(set(display_values)):
