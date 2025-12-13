@@ -38,26 +38,62 @@ class S24Benchmark(zntrack.Node):
 
     @staticmethod
     def compute_adsorption_energy(
-        surface_e: float, mol_surf_e: float, molecule_e: float
+        surface_energy: float,
+        mol_surf_energy: float,
+        molecule_energy: float,
+        adsorbate_count: int = 1,
     ) -> float:
         """
         Compute adsorption energy.
 
         Parameters
         ----------
-        surface_e
+        surface_energy
             Energy of the clean surface.
-        mol_surf_e
-            Energy of the molecule+surface system.
-        molecule_e
+        mol_surf_energy
+            Energy of the combined molecule + surface system.
+        molecule_energy
             Energy of the isolated molecule.
+        adsorbate_count
+            Number of adsorbates. Default is 1.
 
         Returns
         -------
         float
             Adsorption energy.
         """
-        return mol_surf_e - (surface_e + molecule_e)
+        return mol_surf_energy - (surface_energy + adsorbate_count * molecule_energy)
+
+    @staticmethod
+    def count_adsorbates(surface: Atoms, mol_surface: Atoms, molecule: Atoms) -> int:
+        """
+        Infer how many copies of the molecule are present in the adsorbed structure.
+
+        Parameters
+        ----------
+        surface
+            Structure of clean surface.
+        mol_surface
+            Structure of molecule + surface.
+        molecule
+            Structure of the isolated molecule.
+
+        Returns
+        -------
+        int
+            Inferred number of adsorbates.
+        """
+        extra_atoms = len(mol_surface) - len(surface)
+
+        adsorbate_count, remainder = divmod(extra_atoms, len(molecule))
+        if remainder:
+            # Fall back to rounding if count deviates from exact multiple
+            adsorbate_count = round(extra_atoms / len(molecule))
+
+        if adsorbate_count < 1:
+            raise ValueError("Invalid adsorbate count")
+
+        return adsorbate_count
 
     @staticmethod
     def evaluate_energies(atoms_list: list[Atoms], calc: Calculator) -> None:
@@ -107,8 +143,17 @@ class S24Benchmark(zntrack.Node):
             # Store system information
             surface_formula = surface.get_chemical_formula()
             molecule_formula = molecule.get_chemical_formula()
-            system_name = f"{surface_formula}-{molecule_formula}"
 
+            # Count number of adsorbates
+            adsorbate_count = self.count_adsorbates(surface, mol_surface, molecule)
+
+            if adsorbate_count > 1:
+                system_name = f"{surface_formula}-{adsorbate_count}x{molecule_formula}"
+            else:
+                system_name = f"{surface_formula}-{molecule_formula}"
+
+            mol_surface.info["name"] = system_name
+            mol_surface.info["adsorbate_count"] = adsorbate_count
             mol_surface.info["sys_id"] = sys_id
             mol_surface.info["system_name"] = system_name
 
@@ -117,18 +162,21 @@ class S24Benchmark(zntrack.Node):
             self.evaluate_energies(triplet, calc)
 
             # Calculate and store adsorption energies
-            surface_e = surface.get_potential_energy()
-            mol_surf_e = mol_surface.get_potential_energy()
-            molecule_e = molecule.get_potential_energy()
+            surface_energy = surface.get_potential_energy()
+            mol_surf_energy = mol_surface.get_potential_energy()
+            molecule_energy = molecule.get_potential_energy()
             pred_ads_energy = self.compute_adsorption_energy(
-                surface_e, mol_surf_e, molecule_e
+                surface_energy, mol_surf_energy, molecule_energy, adsorbate_count
             )
 
-            ref_surface_e = surface.info["ref_energy"]
-            ref_mol_surf_e = mol_surface.info["ref_energy"]
-            ref_molecule_e = molecule.info["ref_energy"]
+            ref_surface_energy = surface.info["ref_energy"]
+            ref_mol_surf_energy = mol_surface.info["ref_energy"]
+            ref_molecule_energy = molecule.info["ref_energy"]
             ref_ads_energy = self.compute_adsorption_energy(
-                ref_surface_e, ref_mol_surf_e, ref_molecule_e
+                ref_surface_energy,
+                ref_mol_surf_energy,
+                ref_molecule_energy,
+                adsorbate_count,
             )
 
             # Store adsorption energies in mol_surface
