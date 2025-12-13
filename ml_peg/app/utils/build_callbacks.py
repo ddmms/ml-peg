@@ -7,12 +7,19 @@ import io
 import json
 import math
 from pathlib import Path
+import pickle
 from typing import Literal
 
-from dash import Input, Output, callback
+import matplotlib
+
+matplotlib.use("Agg")
+from dash import Input, Output, State, callback, callback_context, dcc, html
 from dash.dcc import Graph
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Iframe
+from matplotlib import gridspec
+import matplotlib.pyplot as plt
+import numpy as np
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.decorators import (
@@ -149,7 +156,7 @@ def struct_from_scatter(
             Visualised structure on plot click.
         """
         if not click_data:
-            return None
+            return Div("Click on a metric to view the structure.")
         idx = click_data["points"][0]["pointNumber"]
 
         if isinstance(structs, str):
@@ -520,7 +527,6 @@ def register_image_gallery_callbacks(
             mpl.use("Agg")
         except Exception:
             pass
-        import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(
             PERIODIC_TABLE_ROWS,
@@ -582,3 +588,649 @@ def register_image_gallery_callbacks(
         plt.close(fig)
         src, width, height = _data_url_from_bytes(buf.getvalue(), mime="image/png")
         return _image_figure(src, width, height)
+
+
+def register_phonon_callbacks(
+    *,
+    table_id: str,
+    table_data: list[dict],
+    plot_container_id: str,
+    dispersion_container_id: str,
+    scatter_meta_store_id: str,
+    last_cell_store_id: str,
+    scatter_graph_id: str,
+    interactive_data: dict,
+    calc_root: Path,
+) -> None:
+    """
+    Register callbacks for phonon scatter ↔ dispersion interactivity.
+
+    Parameters
+    ----------
+    table_id
+        Dash table identifier emitting `active_cell` events.
+    table_data
+        Pre-rendered table rows used to look up model names.
+    plot_container_id
+        Div ID hosting the scatter/violin/stability plots.
+    dispersion_container_id
+        Div ID that displays the phonon dispersion PNG.
+    scatter_meta_store_id
+        Store component ID that tracks the latest scatter metadata.
+    last_cell_store_id
+        Store component ID used to toggle table-cell interactions.
+    scatter_graph_id
+        Graph ID used for scatter callbacks.
+    interactive_data
+        Serialized dataset produced by ``interactive_payload`` analysis fixture.
+    calc_root
+        Base path where band/DOS assets live.
+    """
+    calc_root = Path(calc_root)
+    metric_labels = interactive_data.get("metrics", {})
+    label_to_key = {label: key for key, label in metric_labels.items()}
+    bz_column = interactive_data.get("bz_column", "Avg BZ MAE [THz]")
+    stability_column = interactive_data.get(
+        "stability_column", "Stability Classification (F1)"
+    )
+
+    def _metric_points(model_name: str, metric_key: str) -> list[dict]:
+        """
+        Return scatter entries for a given model/metric pair.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+        metric_key
+            Internal metric key (e.g. ``"max_freq"``).
+
+        Returns
+        -------
+        list[dict]
+            Scatter entries with ``ref``, ``pred``, and metadata.
+        """
+        return (
+            interactive_data["models"]
+            .get(model_name, {})
+            .get("metrics", {})
+            .get(metric_key, {})
+            .get("points", [])
+        )
+
+    def _band_errors(model_name: str) -> dict[str, list[float]]:
+        """
+        Return per-system band errors for a model.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+
+        Returns
+        -------
+        dict[str, list[float]]
+            Mapping of mp-id to BZ MAE samples.
+        """
+        return interactive_data["models"].get(model_name, {}).get("band_errors", {})
+
+    def _stability_points(model_name: str) -> list[dict]:
+        """
+        Return stability scatter entries for a model.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+
+        Returns
+        -------
+        list[dict]
+            Scatter entries storing ``ref``/``pred`` ω_min values.
+        """
+        return (
+            interactive_data["models"]
+            .get(model_name, {})
+            .get("stability", {})
+            .get("points", [])
+        )
+
+    def _build_metric_scatter(model_name: str, metric_key: str):
+        """
+        Build Plotly scatter figure for the requested metric.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+        metric_key
+            Internal metric identifier.
+
+        Returns
+        -------
+        go.Figure
+            Scatter figure showing ref vs pred values.
+        """
+        points = _metric_points(model_name, metric_key)
+        fig = go.Figure()
+        if not points:
+            fig.update_layout(title=f"No data for {model_name}")
+            return fig
+        refs = [point["ref"] for point in points]
+        preds = [point["pred"] for point in points]
+        hover = [point.get("label") or point.get("id") for point in points]
+        custom = [[point.get("id") or idx] for idx, point in enumerate(points)]
+        fig.add_trace(
+            go.Scatter(
+                x=refs,
+                y=preds,
+                mode="markers",
+                text=hover,
+                customdata=custom,
+                hovertemplate=(
+                    "System: %{text}<br>Reference: %{x:.3f}<br>"
+                    "Prediction: %{y:.3f}<extra></extra>"
+                ),
+                name=model_name,
+            )
+        )
+        lower = min(min(refs), min(preds))
+        upper = max(max(refs), max(preds))
+        fig.add_trace(
+            go.Scatter(
+                x=[lower, upper],
+                y=[lower, upper],
+                mode="lines",
+                showlegend=False,
+                line={"color": "#8c8c8c", "dash": "dash"},
+            )
+        )
+        mae_value = interactive_data["models"][model_name]["metrics"][metric_key].get(
+            "mae"
+        )
+        if mae_value is not None:
+            fig.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=0.02,
+                y=0.98,
+                text=f"MAE: {mae_value:.3f}",
+                showarrow=False,
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="#444",
+            )
+        fig.update_layout(
+            title=f"{model_name} – {metric_labels.get(metric_key, metric_key)}",
+            xaxis_title="Reference",
+            yaxis_title="Prediction",
+            xaxis={"scaleanchor": "y", "scaleratio": 1, "showgrid": True},
+            yaxis={"showgrid": True},
+            plot_bgcolor="#ffffff",
+        )
+        return fig
+
+    def _build_bz_violin(model_name: str):
+        """
+        Build BZ MAE violin plot for a model.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+
+        Returns
+        -------
+        go.Figure
+            Violin plot of per-structure BZ MAE values.
+        """
+        band_errors = _band_errors(model_name)
+        values = [val for series in band_errors.values() for val in series]
+        fig = go.Figure()
+        if not values:
+            fig.update_layout(title="No dispersion errors available.")
+            return fig
+        fig.add_trace(
+            go.Violin(
+                y=values,
+                box_visible=True,
+                meanline_visible=True,
+                fillcolor="#636EFA",
+                line_color="#636EFA",
+                opacity=0.6,
+            )
+        )
+        fig.update_layout(
+            title=f"{model_name} – Brillouin zone error distribution",
+            yaxis_title="|Error| / THz",
+            plot_bgcolor="#ffffff",
+        )
+        return fig
+
+    def _build_stability_scatter(model_name: str):
+        """
+        Build stability scatter plot for a model.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+
+        Returns
+        -------
+        go.Figure
+            Scatter figure comparing predicted vs reference ω_min.
+        """
+        points = _stability_points(model_name)
+        fig = go.Figure()
+        if not points:
+            fig.update_layout(title="No stability data available.")
+            return fig
+        colours = {
+            "TP": "#2ca02c",
+            "TN": "#1f77b4",
+            "FP": "#ff7f0e",
+            "FN": "#d62728",
+        }
+        for label, colour in colours.items():
+            subset = [point for point in points if point.get("class") == label]
+            if not subset:
+                continue
+            refs = [point["ref"] for point in subset]
+            preds = [point["pred"] for point in subset]
+            hover = [point.get("label") or point.get("id") for point in subset]
+            custom = [[point.get("id") or idx] for idx, point in enumerate(subset)]
+            fig.add_trace(
+                go.Scatter(
+                    x=refs,
+                    y=preds,
+                    mode="markers",
+                    name=label,
+                    marker={"color": colour},
+                    text=hover,
+                    customdata=custom,
+                    hovertemplate=(
+                        "System: %{text}<br>Reference: %{x:.3f}<br>"
+                        "Prediction: %{y:.3f}<extra></extra>"
+                    ),
+                )
+            )
+        combined_refs = [point["ref"] for point in points]
+        combined_preds = [point["pred"] for point in points]
+        lower = min(min(combined_refs), min(combined_preds))
+        upper = max(max(combined_refs), max(combined_preds))
+        fig.add_trace(
+            go.Scatter(
+                x=[lower, upper],
+                y=[lower, upper],
+                mode="lines",
+                showlegend=False,
+                line={"color": "#8c8c8c", "dash": "dash"},
+            )
+        )
+        fig.update_layout(
+            title=f"{model_name} – Stability classification",
+            xaxis_title="Reference ω_min / THz",
+            yaxis_title="Predicted ω_min / THz",
+            plot_bgcolor="#ffffff",
+        )
+        return fig
+
+    def _load_band(rel_path: str):
+        """
+        Load a band-structure dictionary from ``rel_path``.
+
+        Parameters
+        ----------
+        rel_path
+            Path relative to ``calc_root`` pointing to npz payload.
+
+        Returns
+        -------
+        dict | None
+            Parsed band-structure dictionary or ``None`` if missing.
+        """
+        if not rel_path:
+            return None
+        try:
+            with (calc_root / rel_path).open("rb") as handle:
+                return pickle.load(handle)
+        except OSError:
+            return None
+
+    def _load_dos(rel_path: str):
+        """
+        Load DOS (frequency, total_dos) tuple from ``rel_path``.
+
+        Parameters
+        ----------
+        rel_path
+            Relative path to the DOS npz payload.
+
+        Returns
+        -------
+        tuple | None
+            ``(frequency_points, total_dos)`` arrays or ``None``.
+        """
+        if not rel_path:
+            return None
+        try:
+            with (calc_root / rel_path).open("rb") as handle:
+                data = pickle.load(handle)
+            return data["frequency_points"], data["total_dos"]
+        except OSError:
+            return None
+
+    def _build_xticks(distances, labels, connections):
+        """
+        Construct Brillouin-path ticks for Matplotlib.
+
+        Parameters
+        ----------
+        distances
+            Distance arrays for each path segment.
+        labels
+            High-symmetry labels along the path.
+        connections
+            Boolean list denoting whether segments connect.
+
+        Returns
+        -------
+        tuple[list, list]
+            Tick positions and labels.
+        """
+        xticks, xticklabels = [], []
+        cumulative_dist, i = 0.0, 0
+        connections = [True] + connections
+        for seg_dist, connected in zip(distances, connections, strict=False):
+            start, end = labels[i], labels[i + 1]
+            pos_start = cumulative_dist
+            pos_end = cumulative_dist + (seg_dist[-1] - seg_dist[0])
+            xticks.append(pos_start)
+            xticklabels.append(f"{start}|{end}" if not connected else start)
+            i += 2 if not connected else 1
+            cumulative_dist = pos_end
+        xticks.append(cumulative_dist)
+        xticklabels.append(labels[-1])
+        return xticks, xticklabels
+
+    def _render_dispersion_image(model_name: str, system_label: str, paths: dict):
+        """
+        Render dispersion comparison figure to a base64 data URI.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+        system_label
+            Identifier shown above the plot.
+        paths
+            Mapping containing ``ref_band``, ``pred_band``, ``ref_dos``, ``pred_dos``.
+
+        Returns
+        -------
+        str | None
+            Base64 encoded PNG or ``None`` if assets are missing.
+        """
+        ref_band = _load_band(paths.get("ref_band"))
+        pred_band = _load_band(paths.get("pred_band"))
+        ref_dos = _load_dos(paths.get("ref_dos"))
+        pred_dos = _load_dos(paths.get("pred_dos"))
+        if not all([ref_band, pred_band, ref_dos, pred_dos]):
+            return None
+
+        fig = plt.figure(figsize=(9, 5))
+        gridspec.GridSpec(1, 2, width_ratios=[4, 1], wspace=0.05)
+        ax1 = fig.add_axes([0.12, 0.07, 0.67, 0.85])
+        ax2 = fig.add_axes([0.82, 0.07, 0.17, 0.85])
+
+        distances_ref = ref_band["distances"]
+        frequencies_ref = ref_band["frequencies"]
+        distances_pred = pred_band["distances"]
+        frequencies_pred = pred_band["frequencies"]
+        dos_freqs_ref, dos_values_ref = ref_dos
+        dos_freqs_pred, dos_values_pred = pred_dos
+
+        pred_label_added = False
+        for dist_segment, freq_segment in zip(
+            distances_pred, frequencies_pred, strict=False
+        ):
+            for band in freq_segment.T:
+                ax1.plot(
+                    dist_segment,
+                    band,
+                    lw=1,
+                    linestyle="--",
+                    color="red",
+                    label=model_name if not pred_label_added else None,
+                )
+                pred_label_added = True
+
+        ax2.plot(dos_values_pred, dos_freqs_pred, lw=1.2, color="red", linestyle="--")
+
+        ref_label_added = False
+        for dist_segment, freq_segment in zip(
+            distances_ref, frequencies_ref, strict=False
+        ):
+            for band in freq_segment.T:
+                ax1.plot(
+                    dist_segment,
+                    band,
+                    lw=1,
+                    linestyle="-",
+                    color="blue",
+                    label="DFT" if not ref_label_added else None,
+                )
+                ref_label_added = True
+
+        ax2.plot(dos_values_ref, dos_freqs_ref, lw=1.2, color="blue")
+
+        labels = ref_band.get("labels", [])
+        connections = ref_band.get("path_connections", [])
+        if labels and connections:
+            xticks, xticklabels = _build_xticks(distances_ref, labels, connections)
+            for x_val in xticks:
+                ax1.axvline(x=x_val, color="k", linewidth=1)
+            ax1.set_xticks(xticks, xticklabels)
+            ax1.set_xlim(xticks[0], xticks[-1])
+
+        ax1.axhline(0, color="k", linewidth=1)
+        ax2.axhline(0, color="k", linewidth=1)
+        ax1.set_ylabel("Frequency (THz)", fontsize=16)
+        ax1.set_xlabel("Wave Vector", fontsize=16)
+        ax1.tick_params(axis="both", which="major", labelsize=14)
+
+        pred_flat = np.concatenate(frequencies_pred).flatten()
+        ref_flat = np.concatenate(frequencies_ref).flatten()
+        all_freqs = np.concatenate([pred_flat, ref_flat])
+        ax1.set_ylim(all_freqs.min() - 0.4, all_freqs.max() + 0.4)
+        ax2.set_ylim(ax1.get_ylim())
+
+        plt.setp(ax2.get_yticklabels(), visible=False)
+        ax2.set_xlabel("DOS")
+
+        handles, labels = ax1.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles, strict=False))
+        if by_label:
+            fig.legend(
+                by_label.values(),
+                by_label.keys(),
+                loc="upper center",
+                bbox_to_anchor=(0.8, 1.02),
+                frameon=False,
+                ncol=2,
+                fontsize=14,
+            )
+
+        ax1.grid(True, linestyle=":", linewidth=0.5)
+        ax2.grid(True, linestyle=":", linewidth=0.5)
+        fig.suptitle(system_label, x=0.4, fontsize=14)
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+
+    @callback(
+        Output(plot_container_id, "children"),
+        Output(scatter_meta_store_id, "data"),
+        Output(last_cell_store_id, "data"),
+        Input(table_id, "active_cell"),
+        State(last_cell_store_id, "data"),
+        prevent_initial_call=True,
+    )
+    def update_plot(active_cell, last_cell):
+        """
+        Update plot container when a table cell is clicked.
+
+        Parameters
+        ----------
+        active_cell
+            Dash ``active_cell`` payload from the metrics table.
+        last_cell
+            Previously clicked cell stored in ``last_cell_store_id``.
+
+        Returns
+        -------
+        tuple
+            Plot container children, scatter meta, and new ``last_cell`` value.
+        """
+        if not active_cell:
+            raise PreventUpdate
+        if last_cell and last_cell == active_cell:
+            return (
+                html.Div("Click on a metric to view scatter plots."),
+                None,
+                None,
+            )
+        row = active_cell.get("row")
+        column = active_cell.get("column_id")
+        if row is None or column is None or row < 0 or row >= len(table_data):
+            raise PreventUpdate
+        model_display = table_data[row]["MLIP"]
+        model_data = interactive_data["models"].get(model_display)
+        if model_data is None:
+            return (
+                html.Div(f"No data for {model_display}"),
+                None,
+                active_cell,
+            )
+        if column in label_to_key:
+            metric_key = label_to_key[column]
+            figure = _build_metric_scatter(model_display, metric_key)
+            graph = dcc.Graph(id=scatter_graph_id, figure=figure)
+            meta = {
+                "model": model_display,
+                "type": "metric",
+                "metric": metric_key,
+            }
+            content = html.Div(
+                [html.P("Click a data point to preview its dispersion plot."), graph]
+            )
+            return content, meta, active_cell
+        if column == bz_column:
+            figure = _build_bz_violin(model_display)
+            graph = dcc.Graph(id=f"{scatter_graph_id}-bz", figure=figure)
+            content = html.Div([html.P("Average BZ MAE distribution."), graph])
+            return content, None, active_cell
+        if column == stability_column:
+            scatter = _build_stability_scatter(model_display)
+            confusion = go.Figure(
+                go.Heatmap(
+                    z=model_data.get("stability", {}).get("confusion"),
+                    y=["DFT stable", "DFT unstable"],
+                    x=["MLIP stable", "MLIP unstable"],
+                    colorscale="Blues",
+                    showscale=True,
+                )
+            )
+            scatter_graph = dcc.Graph(id=scatter_graph_id, figure=scatter)
+            confusion_graph = dcc.Graph(
+                id=f"{scatter_graph_id}-confusion", figure=confusion
+            )
+            meta = {"model": model_display, "type": "stability"}
+            content = html.Div(
+                [
+                    html.P("Click a data point to preview the phonon dispersion plot."),
+                    scatter_graph,
+                    confusion_graph,
+                ]
+            )
+            return content, meta, active_cell
+        raise PreventUpdate
+
+    @callback(
+        Output(dispersion_container_id, "children"),
+        Input(scatter_graph_id, "clickData"),
+        Input(scatter_meta_store_id, "data"),
+        prevent_initial_call=True,
+    )
+    def show_dispersion(click_data, scatter_meta):
+        """
+        Render the phonon dispersion figure for a clicked scatter point.
+
+        Parameters
+        ----------
+        click_data
+            Plotly click payload from the scatter graph.
+        scatter_meta
+            Metadata describing which model/metric is active.
+
+        Returns
+        -------
+        dash.html.Div
+            Container showing the dispersion PNG or a help message.
+        """
+        trigger = callback_context.triggered_id
+        if trigger is None:
+            raise PreventUpdate
+        if trigger == scatter_meta_store_id:
+            return html.Div("Click on a data point to preview the phonon dispersion.")
+        if trigger != scatter_graph_id or not scatter_meta:
+            raise PreventUpdate
+        if not click_data:
+            raise PreventUpdate
+        point = click_data["points"][0]
+        custom = point.get("customdata") or []
+        if not custom:
+            return html.Div("No dispersion plot available for this point.")
+        point_id = custom[0]
+        model_display = scatter_meta.get("model")
+        if scatter_meta.get("type") == "metric":
+            metric_points = _metric_points(model_display, scatter_meta.get("metric"))
+        else:
+            metric_points = _stability_points(model_display)
+        selected = next(
+            (entry for entry in metric_points if entry.get("id") == point_id),
+            None,
+        )
+        if selected is None and isinstance(point_id, int):
+            if 0 <= point_id < len(metric_points):
+                selected = metric_points[point_id]
+        if not selected:
+            return html.Div("No dispersion plot available for this point.")
+
+        image_src = None
+        data_paths = selected.get("data_paths")
+        if data_paths:
+            image_src = _render_dispersion_image(
+                model_display,
+                selected.get("label") or selected.get("id", ""),
+                data_paths,
+            )
+        elif selected.get("image"):
+            image_src = f"/{selected['image']}"
+
+        if not image_src:
+            return html.Div("No dispersion plot available for this point.")
+
+        title = selected.get("label") or selected.get("id", "")
+        return html.Div(
+            [
+                html.H4(title),
+                html.Img(
+                    src=image_src,
+                    style={"maxWidth": "100%", "border": "1px solid #ccc"},
+                ),
+            ]
+        )
