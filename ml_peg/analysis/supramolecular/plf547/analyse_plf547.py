@@ -10,6 +10,7 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
+    build_d3_name_map,
     load_metrics_config,
     mae,
     rmse,
@@ -20,6 +21,7 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
+D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
@@ -141,6 +143,7 @@ def get_rmse(interaction_energies) -> dict[str, float]:
     filename=OUT_PATH / "plf547_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
     """
