@@ -9,20 +9,19 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = build_d3_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "surfaces" / "OC157" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
-    METRICS_CONFIG_PATH
-)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 
 def get_relative_energies(energies: list) -> list:
@@ -187,6 +186,7 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
     filename=OUT_PATH / "oc157_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     oc157_mae: dict[str, float], ranking_error: dict[str, float]
