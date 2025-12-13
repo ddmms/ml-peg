@@ -1285,6 +1285,168 @@ def periodic_curve_gallery(
     return periodic_curve_gallery_decorator
 
 
+def table_scatter_png(*, filename: str | Path) -> Callable:
+    """
+    Persist scatter metadata for table→scatter→image interactions.
+
+    The decorated function must return a mapping with the following structure::
+
+        {
+            "metrics": {"internal_key": "Pretty Label", ...},
+            "models": {
+                "Model Display Name": {
+                    "metrics": {
+                        "internal_key": {
+                            "points": [
+                                {
+                                    "id": "identifier",
+                                    "ref": 0.0,
+                                    "pred": 0.0,
+                                    "image": "assets/.../plot.png",
+                                },
+                                ...
+                            ],
+                            "mae": 0.1,
+                        },
+                        ...
+                    },
+                    "band_errors": {"id": [0.1, 0.2]},
+                    "stability": {...},
+                },
+                ...
+            },
+        }
+
+    The payload is validated and serialised to ``filename`` so the Dash app can load
+    all required scatter information without recomputing it.
+
+    Parameters
+    ----------
+    filename
+        Target JSON file for the serialised payload.
+
+    Returns
+    -------
+    Callable
+        Decorator used by analysis fixtures.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """
+        Wrap the decorated callable so its payload is persisted.
+
+        Parameters
+        ----------
+        func
+            Function or fixture returning the scatter payload.
+
+        Returns
+        -------
+        Callable
+            Wrapped callable that mirrors ``func`` while writing JSON output.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Execute ``func`` and serialise the returned payload.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            Any
+                The original payload returned by ``func``.
+            """
+            payload = func(*args, **kwargs)
+            _validate_table_scatter_payload(payload)
+            data = _serialise_table_scatter_payload(payload)
+            output_path = Path(filename)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with output_path.open("w", encoding="utf8") as fobj:
+                dump(data, fobj)
+            return payload
+
+        return wrapper
+
+    return decorator
+
+
+def _validate_table_scatter_payload(payload: Any) -> None:
+    """
+    Ensure scatter payload is a nested mapping of models and metrics.
+
+    Parameters
+    ----------
+    payload
+        Object returned by the decorated function.
+    """
+    if not isinstance(payload, dict):
+        raise TypeError("Scatter payload must be a mapping of models and metrics.")
+    if "models" not in payload:
+        raise KeyError("Scatter payload must define a 'models' entry.")
+    if "metrics" not in payload:
+        raise KeyError("Scatter payload must define a 'metrics' entry.")
+    models = payload["models"]
+    if not isinstance(models, dict):
+        raise TypeError("Scatter payload 'models' entry must be a mapping.")
+    for model_name, model_data in models.items():
+        if not isinstance(model_data, dict):
+            raise TypeError(f"Model '{model_name}' scatter data must be a mapping.")
+        metrics = model_data.get("metrics")
+        if not isinstance(metrics, dict):
+            raise TypeError(
+                f"Model '{model_name}' scatter data must contain a 'metrics' mapping."
+            )
+        for metric_key, metric_data in metrics.items():
+            if not isinstance(metric_data, dict):
+                raise TypeError(
+                    f"Scatter entries for metric '{metric_key}' must be mappings."
+                )
+            points = metric_data.get("points", [])
+            if not isinstance(points, list):
+                raise TypeError(
+                    f"Scatter entries for metric '{metric_key}' must list points."
+                )
+
+
+def _serialise_table_scatter_payload(payload: Any) -> Any:
+    """
+    Convert scatter payload entries into JSON-friendly primitives.
+
+    Parameters
+    ----------
+    payload
+        Payload validated via ``_validate_table_scatter_payload``.
+
+    Returns
+    -------
+    Any
+        JSON-serialisable representation of ``payload``.
+    """
+    if isinstance(payload, dict):
+        return {
+            key: _serialise_table_scatter_payload(value)
+            for key, value in payload.items()
+        }
+    if isinstance(payload, list):
+        return [_serialise_table_scatter_payload(value) for value in payload]
+    if isinstance(payload, tuple):
+        return [_serialise_table_scatter_payload(value) for value in payload]
+    if isinstance(payload, Path):
+        return payload.as_posix()
+    if isinstance(payload, np.ndarray):
+        return payload.tolist()
+    if isinstance(payload, np.floating | np.integer):
+        return payload.item()
+    return payload
+
+
 def build_table(
     *,
     thresholds: Thresholds,
