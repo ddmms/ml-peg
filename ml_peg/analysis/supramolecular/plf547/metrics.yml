@@ -1,0 +1,13 @@
+metrics:
+  MAE/eV:
+    good: 0.0
+    bad: 2.0
+    unit: eV
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+  RMSE/eV:
+    good: 0.0
+    bad: 2.0
+    unit: eV
+    tooltip: Root Mean Square Error for all systems
+    level_of_theory: CCSD(T)
