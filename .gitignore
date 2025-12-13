@@ -25,6 +25,7 @@
 *.xz
 *.txt
 *.csv
+*.npz
 ~*
 *~
 .project
