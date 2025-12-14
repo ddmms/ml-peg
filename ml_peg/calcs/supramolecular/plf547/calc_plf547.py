@@ -30,7 +30,7 @@ DATA_PATH = (
     download_s3_data(
         filename="PLF547.zip", key="inputs/supramolecular/PLF547/PLF547.zip"
     )
-    / "PLF547"
+    # / "PLF547"
 )
 print(DATA_PATH)
 
@@ -285,6 +285,8 @@ class PLF547Benchmark(zntrack.Node):
         )
 
         calc = self.model.get_calculator()
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
 
         for label, ref_energy in tqdm(ref_energies.items()):
             pdb_fname = DATA_PATH / f"{label}.pdb"
@@ -310,7 +312,7 @@ class PLF547Benchmark(zntrack.Node):
             )
             complex_atoms.info["ref_int_energy"] = ref_energy
 
-            complex_atoms.calc.reset()
+            complex_atoms.calc = None
 
             write_dir = OUT_PATH / self.model_name
             write_dir.mkdir(parents=True, exist_ok=True)
