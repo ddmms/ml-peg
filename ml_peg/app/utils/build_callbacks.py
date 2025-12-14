@@ -892,8 +892,28 @@ def register_phonon_callbacks(
         if not rel_path:
             return None
         try:
-            with (calc_root / rel_path).open("rb") as handle:
-                return pickle.load(handle)
+            full_path = calc_root / rel_path
+            with full_path.open("rb") as handle:
+                band_data = pickle.load(handle)
+
+            # Load corresponding labels/connections
+            base_stem = full_path.stem.replace("_band_structure", "")
+            labels_path = full_path.parent / f"{base_stem}_labels.json"
+            connections_path = full_path.parent / f"{base_stem}_connections.json"
+
+            try:
+                import json
+
+                if labels_path.exists():
+                    with labels_path.open() as f:
+                        band_data["labels"] = json.load(f)
+                if connections_path.exists():
+                    with connections_path.open() as f:
+                        band_data["path_connections"] = json.load(f)
+            except Exception:
+                pass  # If labels/connections don't exist, continue without them
+
+            return band_data
         except OSError:
             return None
 
@@ -1018,7 +1038,7 @@ def register_phonon_callbacks(
                     lw=1,
                     linestyle="-",
                     color="blue",
-                    label="DFT" if not ref_label_added else None,
+                    label="PBE" if not ref_label_added else None,
                 )
                 ref_label_added = True
 

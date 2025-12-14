@@ -11,8 +11,6 @@ from typing import Any
 import matplotlib
 
 matplotlib.use("Agg")
-from matplotlib import gridspec
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from sklearn.metrics import f1_score
@@ -213,149 +211,6 @@ def _build_xticks(
     return xticks, xticklabels
 
 
-def _generate_dispersion_plot(
-    mp_id: str,
-    model_name: str,
-    ref_band: dict,
-    pred_band: dict,
-    ref_dos: tuple,
-    pred_dos: tuple,
-    formula: str | None = None,
-) -> Path | None:
-    """
-    Generate and save a phonon dispersion comparison plot.
-
-    Parameters
-    ----------
-    mp_id
-        Materials Project identifier used for filenames.
-    model_name
-        Display name of the MLIP.
-    ref_band
-        Reference band-structure dictionary.
-    pred_band
-        Predicted band-structure dictionary.
-    ref_dos
-        Tuple of frequency points and reference DOS values.
-    pred_dos
-        Tuple of frequency points and predicted DOS values.
-    formula
-        Optional chemical formula for the title.
-
-    Returns
-    -------
-    Path | None
-        Path to the saved PNG when ``correlation_plot_mode`` is enabled, else
-        ``None``.
-    """
-    try:
-        fig = plt.figure(figsize=(9, 5))
-        gridspec.GridSpec(1, 2, width_ratios=[4, 1], wspace=0.05)
-        ax1 = fig.add_axes([0.12, 0.07, 0.67, 0.85])
-        ax2 = fig.add_axes([0.82, 0.07, 0.17, 0.85])
-
-        # Extract data
-        distances_ref = ref_band["distances"]
-        frequencies_ref = ref_band["frequencies"]
-        distances_pred = pred_band["distances"]
-        frequencies_pred = pred_band["frequencies"]
-        dos_freqs_ref, dos_values_ref = ref_dos
-        dos_freqs_pred, dos_values_pred = pred_dos
-
-        # Plot predicted band structure
-        for dist_segment, freq_segment in zip(
-            distances_pred, frequencies_pred, strict=False
-        ):
-            for band in freq_segment.T:
-                ax1.plot(
-                    dist_segment,
-                    band,
-                    lw=1,
-                    linestyle="--",
-                    color="red",
-                    label=model_name,
-                )
-
-        ax2.plot(dos_values_pred, dos_freqs_pred, lw=1.2, color="red", linestyle="--")
-
-        # Plot reference band structure
-        for dist_segment, freq_segment in zip(
-            distances_ref, frequencies_ref, strict=False
-        ):
-            for band in freq_segment.T:
-                ax1.plot(
-                    dist_segment, band, lw=1, linestyle="-", color="blue", label="DFT"
-                )
-
-        ax2.plot(dos_values_ref, dos_freqs_ref, lw=1.2, color="blue")
-
-        # Setup x-axis using reference labels
-        labels = ref_band.get("labels", [])
-        connections = ref_band.get("path_connections", [])
-
-        if labels and connections:
-            xticks, xticklabels = _build_xticks(distances_ref, labels, connections)
-            for x in xticks:
-                ax1.axvline(x=x, color="k", linewidth=1)
-            ax1.set_xticks(xticks, xticklabels)
-            ax1.set_xlim(xticks[0], xticks[-1])
-
-        # Formatting
-        ax1.axhline(0, color="k", linewidth=1)
-        ax2.axhline(0, color="k", linewidth=1)
-        ax1.set_ylabel("Frequency (THz)", fontsize=16)
-        ax1.set_xlabel("Wave Vector", fontsize=16)
-        ax1.tick_params(axis="both", which="major", labelsize=14)
-
-        # Set y-limits
-        pred_freqs_flat = np.concatenate(frequencies_pred).flatten()
-        ref_freqs_flat = np.concatenate(frequencies_ref).flatten()
-        all_freqs = np.concatenate([pred_freqs_flat, ref_freqs_flat])
-        ax1.set_ylim(all_freqs.min() - 0.4, all_freqs.max() + 0.4)
-        ax2.set_ylim(ax1.get_ylim())
-
-        plt.setp(ax2.get_yticklabels(), visible=False)
-        ax2.set_xlabel("DOS")
-
-        # Legend
-        handles, labels_legend = ax1.get_legend_handles_labels()
-        by_label = dict(zip(labels_legend, handles, strict=False))
-        fig.legend(
-            by_label.values(),
-            by_label.keys(),
-            loc="upper center",
-            bbox_to_anchor=(0.8, 1.02),
-            frameon=False,
-            ncol=2,
-            fontsize=14,
-        )
-
-        ax1.grid(True, linestyle=":", linewidth=0.5)
-        ax2.grid(True, linestyle=":", linewidth=0.5)
-
-        # Title
-        if formula:
-            pretty_formula = _prettify_chemical_formula(formula)
-            plt.suptitle(f"{pretty_formula} ({mp_id})", x=0.4, fontsize=14)
-        else:
-            plt.suptitle(mp_id, x=0.4, fontsize=14)
-
-        # Save
-        plot_dir = ASSETS_PATH / model_name
-        plot_dir.mkdir(parents=True, exist_ok=True)
-        plot_path = plot_dir / f"{mp_id}.png"
-        fig.savefig(plot_path, bbox_inches="tight", dpi=150)
-        plt.close(fig)
-
-        return plot_path
-
-    except Exception as e:
-        LOGGER.error(
-            f"Failed to generate dispersion plot for {mp_id}/{model_name}: {e}"
-        )
-        return None
-
-
 def _classify_stability(ref_val: float, pred_val: float) -> str:
     """
     Classify stability based on minimum frequency predictions.
@@ -453,12 +308,22 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         ref_band_path = CALC_PATH / "DFT" / f"{mp_id}_band_structure.npz"
         ref_dos_path = CALC_PATH / "DFT" / f"{mp_id}_dos.npz"
         ref_thermal_path = CALC_PATH / "DFT" / f"{mp_id}_thermal_properties.json"
+        ref_labels_path = CALC_PATH / "DFT" / f"{mp_id}_labels.json"
+        ref_connections_path = CALC_PATH / "DFT" / f"{mp_id}_connections.json"
 
         ref_band = _load_band_structure(ref_band_path)
         ref_dos = _load_dos(ref_dos_path)
         ref_thermal = _load_thermal_properties(ref_thermal_path)
+        # Reuse JSON loader for band metadata
+        ref_labels = _load_thermal_properties(ref_labels_path)
+        ref_connections = _load_thermal_properties(ref_connections_path)
 
         if all([ref_band, ref_dos, ref_thermal]):
+            # Add labels and connections to band structure dict
+            if ref_labels and ref_connections:
+                ref_band["labels"] = ref_labels
+                ref_band["path_connections"] = ref_connections
+
             ref_cache[mp_id] = {
                 "band": ref_band,
                 "dos": ref_dos,
@@ -488,9 +353,8 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         band_errors: dict[str, list[float]] = {}
         stability_points: list[dict[str, Any]] = []
 
-        # OPTIMIZATION: Streaming BZ MAE calculation (no memory overhead)
-        total_bz_error_sum = 0.0
-        total_bz_error_count = 0
+        # Mean-of-means calculation: store mean per system, then average those means
+        system_mean_errors: list[float] = []
 
         processed_count = 0
         skipped_count = 0
@@ -569,9 +433,11 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     }
                 )
 
-            # Calculate band errors with streaming aggregation (memory efficient!)
-            # Accumulate sum/count for overall BZ MAE and store per mp id for the app
+            # Calculate band errors - skip entire system if band shapes don't match
+            # This matches the old method which treats each material equally
             band_abs_diffs = []
+            skip_system = False
+
             for p, r in zip(
                 pred_band["frequencies"], ref_band["frequencies"], strict=False
             ):
@@ -583,34 +449,43 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 r_arr = np.array(r[:min_len])
 
                 try:
-                    # Handle band count mismatch (e.g., 15 bands vs 60 bands)
+                    # Skip entire system if band shapes don't match
+                    # This matches old behavior of treating each material equally
                     if (
                         p_arr.ndim == 2
                         and r_arr.ndim == 2
                         and p_arr.shape[1] != r_arr.shape[1]
                     ):
-                        min_bands = min(p_arr.shape[1], r_arr.shape[1])
-                        p_arr = p_arr[:, :min_bands]
-                        r_arr = r_arr[:, :min_bands]
+                        print(
+                            f"  Skipping {mp_id} due to band mismatch: "
+                            f"{p_arr.shape} vs {r_arr.shape}"
+                        )
+                        skip_system = True
+                        break
 
                     abs_diff = np.abs(p_arr - r_arr)
                     band_abs_diffs.append(abs_diff)
 
-                    finite_mask = np.isfinite(abs_diff)
-                    if np.any(finite_mask):
-                        total_bz_error_sum += float(np.nansum(abs_diff))
-                        total_bz_error_count += int(finite_mask.sum())
                 except ValueError as e:
-                    # Skip this segment if shapes still don't match
-                    LOGGER.warning(f"Skipping band for {mp_id}/{model_name}: {e}")
-                    continue
+                    # Skip entire system on ValueError (matching old behavior)
+                    print(f"  Skipping {mp_id} due to ValueError: {e}")
+                    skip_system = True
+                    break
 
-            # Store mean per mp id for the app
+            # If system was skipped, don't include it in BZ MAE calculation
+            if skip_system:
+                LOGGER.warning(f"No valid band differences for {mp_id}/{model_name}")
+                band_errors[mp_id] = float("nan")
+                continue  # Skip to next system without adding to system_mean_errors
+
+            # Calculate mean for this system and store for mean-of-means
             if band_abs_diffs:
                 stacked = np.concatenate([arr.ravel() for arr in band_abs_diffs])
                 valid = stacked[np.isfinite(stacked)]
                 if valid.size:
-                    band_errors[mp_id] = float(np.nanmean(np.abs(valid)))
+                    system_mean = float(np.nanmean(np.abs(valid)))
+                    band_errors[mp_id] = system_mean
+                    system_mean_errors.append(system_mean)  # For mean-of-means
                 else:
                     band_errors[mp_id] = float("nan")
                 del stacked, band_abs_diffs  # Free memory immediately
@@ -638,10 +513,10 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 mae(ref_vals, pred_vals) if ref_vals and pred_vals else None
             )
 
-        # BZ mean error - computed from streaming sum/count (memory efficient!)
-        # This is mean(concatenate(all_errors_from_all_mp_ids)) without concatenating
-        if total_bz_error_count > 0:
-            bz_mean = float(total_bz_error_sum / total_bz_error_count)
+        # BZ mean error - mean-of-means (treats each material equally)
+        # This matches old method: mean(mean_per_system)
+        if system_mean_errors:
+            bz_mean = float(np.mean(system_mean_errors))
         else:
             bz_mean = None
 
@@ -660,10 +535,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             },
         }
 
-        print(
-            f"Completed {model_name}: {processed_count} processed, "
-            f"{skipped_count} skipped"
-        )
+        print(f"Completed {model_name}: {processed_count} processed")
         LOGGER.info(
             f"Completed {model_name}: {len(metrics_data['max_freq']['ref'])} systems"
         )
