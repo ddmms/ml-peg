@@ -163,8 +163,8 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
         Metric names and values for all models.
     """
     return {
-        "MAE/eV": get_mae,
-        "RMSE/eV": get_rmse,
+        "MAE": get_mae,
+        "RMSE": get_rmse,
     }
 
 

@@ -62,8 +62,8 @@ class PLF547App(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "MAE/eV": scatter,
-                "RMSE/eV": scatter,
+                "MAE": scatter,
+                "RMSE": scatter,
             },
         )
 
