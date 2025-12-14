@@ -74,3 +74,64 @@ Data availability
 -----------------
 
 None required.
+
+
+Diatomics
+=========
+
+Summary
+-------
+
+This benchmark probes the short- to medium-range behaviour of every homonuclear and
+heteronuclear diatomic pair in the periodic table. Each MLIP is evaluated on a 100-point
+linear distance grid spanning 0.18-6.0 Å and the resulting energies and projected forces
+are analysed for unphysical oscillations.
+
+Metrics
+-------
+
+1. Force flips
+
+   Average number of times the projected bond force changes sign. Forces are projected
+   onto the bond axis and values below :math:`10^{-2}` eV/Å are rounded to zero to avoid
+   counting noise-induced flips. A smooth curve should switch from attraction to repulsion
+   only once at the minimum.
+
+
+2. Energy minima
+
+   Mean count of distinct minima in the energy-distance profile. Local minima are
+   found from the second derivative, where a physical diatomic should show a single
+   minimum.
+
+
+3. Energy inflections
+
+   Mean number of inflection points obtained from the second derivative of the energy
+   curve. Inflections are flagged when the second derivative changes sign with a
+   tolerance of 0.5 eV/Å² to avoid counting noise-induced inflections. A physical diatomic
+   curve should show one inflection point.
+
+4. :math:`\rho(E, \text{repulsion})`
+
+   Spearman correlation between atomic separation and energy on the repulsive side of the well
+   (bond lengths ≥ the equilibrium spacing). A perfect diatomic curve should show a strong
+   negative correlation, so a value of -1, indicating that as atoms get further apart, the energy
+   decreases.
+
+5. :math:`\rho(E, \text{attraction})`
+
+   Spearman correlation between distance and energy on the attractive side (bond lengths
+   shorter than the equilibrium spacing). A perfect diatomic curve should show a strong
+   positive correlation, so a value of +1, indicating that as atoms get closer together, the
+   energy increases.
+
+Computational cost
+------------------
+
+High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
+
+Data availability
+-----------------
+
+None required; diatomics are generated in ASE.

@@ -1,0 +1,26 @@
+metrics:
+  Force flips:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Mean count of force-direction changes per pair
+  Energy minima:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy minima per pair
+  Energy inflections:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy inflection points per pair
+  ρ(E, repulsion):
+    good: -1.0
+    bad: 1.0
+    unit: null
+    tooltip: Spearman correlation for energy in repulsive regime
+  ρ(E, attraction):
+    good: 1.0
+    bad: -1.0
+    unit: null
+    tooltip: Spearman correlation for energy in attractive regime
