@@ -1234,8 +1234,8 @@ def register_phonon_callbacks(
                 confusion.add_trace(
                     go.Heatmap(
                         z=confusion_array,
-                        y=["DFT stable", "DFT unstable"],
-                        x=["MLIP stable", "MLIP unstable"],
+                        y=["MLIP stable", "MLIP unstable"],
+                        x=["DFT stable", "DFT unstable"],
                         colorscale="Blues",
                         showscale=True,
                         hovertemplate=(
@@ -1243,8 +1243,8 @@ def register_phonon_callbacks(
                         ),
                     )
                 )
-                for y_idx, y_label in enumerate(["DFT stable", "DFT unstable"]):
-                    for x_idx, x_label in enumerate(["MLIP stable", "MLIP unstable"]):
+                for y_idx, y_label in enumerate(["MLIP stable", "MLIP unstable"]):
+                    for x_idx, x_label in enumerate(["DFT stable", "DFT unstable"]):
                         cell_val = confusion_array[y_idx, x_idx]
                         pct = (cell_val / total * 100) if total else 0.0
                         color = (
