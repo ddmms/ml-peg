@@ -629,7 +629,7 @@ def register_phonon_callbacks(
     calc_root = Path(calc_root)
     metric_labels = interactive_data.get("metrics", {})
     label_to_key = {label: key for key, label in metric_labels.items()}
-    bz_column = interactive_data.get("bz_column", "Avg BZ MAE [THz]")
+    bz_column = interactive_data.get("bz_column", "Avg BZ MAE")
     stability_column = interactive_data.get(
         "stability_column", "Stability Classification (F1)"
     )
@@ -694,6 +694,35 @@ def register_phonon_callbacks(
             .get("stability", {})
             .get("points", [])
         )
+
+    def _system_payload(model_name: str, point_id: str | int) -> dict | None:
+        """
+        Fetch metadata for a specific system ID.
+
+        Parameters
+        ----------
+        model_name
+            Display name of the model.
+        point_id
+            Identifier (typically mp-id) of the system.
+
+        Returns
+        -------
+        dict | None
+            First matching metadata entry with ``data_paths``.
+        """
+        if point_id is None:
+            return None
+        model_entry = interactive_data["models"].get(model_name, {})
+        target = str(point_id)
+        for metric_data in model_entry.get("metrics", {}).values():
+            for point in metric_data.get("points", []):
+                if str(point.get("id")) == target:
+                    return point
+        for point in model_entry.get("stability", {}).get("points", []):
+            if str(point.get("id")) == target:
+                return point
+        return None
 
     def _build_metric_scatter(model_name: str, metric_key: str):
         """
@@ -784,24 +813,57 @@ def register_phonon_callbacks(
             Violin plot of per-structure BZ MAE values.
         """
         band_errors = _band_errors(model_name)
-        values = [val for series in band_errors.values() for val in series]
+        values: list[float] = []
+        labels: list[str] = []
+        for mp_id, series in band_errors.items():
+            if series is None:
+                continue
+            if isinstance(series, (int | float | np.floating | np.integer)):
+                values.append(float(series))
+                labels.append(str(mp_id))
+                continue
+            if isinstance(series, np.ndarray):
+                flattened = series.ravel().tolist()
+                values.extend(flattened)
+                labels.extend([str(mp_id)] * len(flattened))
+                continue
+            if isinstance(series, (list | tuple)):
+                numeric_vals = [
+                    float(val)
+                    for val in series
+                    if isinstance(val, (int | float | np.floating | np.integer))
+                ]
+                values.extend(numeric_vals)
+                labels.extend([str(mp_id)] * len(numeric_vals))
+                continue
+            try:
+                values.append(float(series))
+                labels.append(str(mp_id))
+            except (TypeError, ValueError):
+                continue
         fig = go.Figure()
         if not values:
             fig.update_layout(title="No dispersion errors available.")
             return fig
+        customdata = [[label] for label in labels]
         fig.add_trace(
             go.Violin(
                 y=values,
+                text=labels,
+                customdata=customdata,
+                points="all",
+                jitter=0.05,
                 box_visible=True,
                 meanline_visible=True,
                 fillcolor="#636EFA",
                 line_color="#636EFA",
                 opacity=0.6,
+                hovertemplate="System: %{text}<br>|Error|: %{y:.3f} K<extra></extra>",
             )
         )
         fig.update_layout(
             title=f"{model_name} – Brillouin zone error distribution",
-            yaxis_title="|Error| / THz",
+            yaxis_title="|Error| / K",
             plot_bgcolor="#ffffff",
         )
         return fig
@@ -849,8 +911,8 @@ def register_phonon_callbacks(
                     text=hover,
                     customdata=custom,
                     hovertemplate=(
-                        "System: %{text}<br>Reference: %{x:.3f}<br>"
-                        "Prediction: %{y:.3f}<extra></extra>"
+                        "System: %{text}<br>Reference: %{x:.3f} K<br>"
+                        "Prediction: %{y:.3f} K<extra></extra>"
                     ),
                 )
             )
@@ -869,8 +931,8 @@ def register_phonon_callbacks(
         )
         fig.update_layout(
             title=f"{model_name} – Stability classification",
-            xaxis_title="Reference ω_min / THz",
-            yaxis_title="Predicted ω_min / THz",
+            xaxis_title="Reference ω_min / K",
+            yaxis_title="Predicted ω_min / K",
             plot_bgcolor="#ffffff",
         )
         return fig
@@ -1150,20 +1212,62 @@ def register_phonon_callbacks(
             return content, meta, active_cell
         if column == bz_column:
             figure = _build_bz_violin(model_display)
-            graph = dcc.Graph(id=f"{scatter_graph_id}-bz", figure=figure)
-            content = html.Div([html.P("Average BZ MAE distribution."), graph])
-            return content, None, active_cell
+            graph = dcc.Graph(id=scatter_graph_id, figure=figure)
+            meta = {"model": model_display, "type": "bz"}
+            content = html.Div(
+                [
+                    html.P(
+                        "Click a violin sample to preview the phonon dispersion plot."
+                    ),
+                    graph,
+                ]
+            )
+            return content, meta, active_cell
         if column == stability_column:
             scatter = _build_stability_scatter(model_display)
-            confusion = go.Figure(
-                go.Heatmap(
-                    z=model_data.get("stability", {}).get("confusion"),
-                    y=["DFT stable", "DFT unstable"],
-                    x=["MLIP stable", "MLIP unstable"],
-                    colorscale="Blues",
-                    showscale=True,
+            confusion = go.Figure()
+            confusion_data = model_data.get("stability", {}).get("confusion") or []
+            if confusion_data:
+                confusion_array = np.array(confusion_data, dtype=float)
+                max_val = confusion_array.max(initial=0.0)
+                total = confusion_array.sum()
+                confusion.add_trace(
+                    go.Heatmap(
+                        z=confusion_array,
+                        y=["DFT stable", "DFT unstable"],
+                        x=["MLIP stable", "MLIP unstable"],
+                        colorscale="Blues",
+                        showscale=True,
+                        hovertemplate=(
+                            "DFT %{y}<br>MLIP %{x}<br>Count: %{z:.0f}<extra></extra>"
+                        ),
+                    )
                 )
-            )
+                for y_idx, y_label in enumerate(["DFT stable", "DFT unstable"]):
+                    for x_idx, x_label in enumerate(["MLIP stable", "MLIP unstable"]):
+                        cell_val = confusion_array[y_idx, x_idx]
+                        pct = (cell_val / total * 100) if total else 0.0
+                        color = (
+                            "#ffffff"
+                            if max_val and cell_val >= 0.6 * max_val
+                            else "#111111"
+                        )
+                        confusion.add_annotation(
+                            x=x_label,
+                            y=y_label,
+                            text=f"{cell_val:.0f} ({pct:.1f}%)",
+                            showarrow=False,
+                            font={"color": color, "size": 14},
+                        )
+                confusion.update_layout(
+                    title=f"{model_display} – Stability confusion matrix",
+                    plot_bgcolor="#ffffff",
+                )
+            else:
+                confusion.update_layout(
+                    title="No stability confusion data available.",
+                    plot_bgcolor="#ffffff",
+                )
             scatter_graph = dcc.Graph(id=scatter_graph_id, figure=scatter)
             confusion_graph = dcc.Graph(
                 id=f"{scatter_graph_id}-confusion", figure=confusion
@@ -1212,21 +1316,29 @@ def register_phonon_callbacks(
             raise PreventUpdate
         point = click_data["points"][0]
         custom = point.get("customdata") or []
-        if not custom:
+        point_id = custom[0] if custom else point.get("text") or point.get("label")
+        if point_id is None:
             return html.Div("No dispersion plot available for this point.")
-        point_id = custom[0]
         model_display = scatter_meta.get("model")
-        if scatter_meta.get("type") == "metric":
+        meta_type = scatter_meta.get("type")
+        selected = None
+        if meta_type == "metric":
             metric_points = _metric_points(model_display, scatter_meta.get("metric"))
-        else:
+            selected = next(
+                (entry for entry in metric_points if entry.get("id") == point_id),
+                None,
+            )
+            if selected is None and isinstance(point_id, int):
+                if 0 <= point_id < len(metric_points):
+                    selected = metric_points[point_id]
+        elif meta_type == "stability":
             metric_points = _stability_points(model_display)
-        selected = next(
-            (entry for entry in metric_points if entry.get("id") == point_id),
-            None,
-        )
-        if selected is None and isinstance(point_id, int):
-            if 0 <= point_id < len(metric_points):
-                selected = metric_points[point_id]
+            selected = next(
+                (entry for entry in metric_points if entry.get("id") == point_id),
+                None,
+            )
+        elif meta_type == "bz":
+            selected = _system_payload(model_display, point_id)
         if not selected:
             return html.Div("No dispersion plot available for this point.")
 
