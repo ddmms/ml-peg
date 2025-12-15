@@ -36,17 +36,19 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+THZ_TO_K = 47.99243072  # Kelvin per terahertz via h nu / k_B
+
 METRIC_LABELS = {
-    "max_freq": "ω_max [THz]",
-    "avg_freq": "ω_avg [THz]",
-    "min_freq": "ω_min [THz]",
-    "S": "S [J/mol·K]",
-    "F": "F [kJ/mol]",
-    "C_V": "C_V [J/mol·K]",
+    "max_freq": "ω_max",
+    "avg_freq": "ω_avg",
+    "min_freq": "ω_min",
+    "S": "S",
+    "F": "F",
+    "C_V": "C_V",
 }
-BZ_COLUMN = "Avg BZ MAE [THz]"
-STABILITY_COLUMN = "Stability Classification (F1)"
-STABILITY_THRESHOLD = -0.05
+BZ_COLUMN = "Avg BZ MAE"
+STABILITY_COLUMN = "Stability F1"
+STABILITY_THRESHOLD = -0.05 * THZ_TO_K
 T_300K_INDEX = 3  # Index for 300K in thermal properties (0, 75, 150, 300, 600)
 
 
@@ -218,9 +220,9 @@ def _classify_stability(ref_val: float, pred_val: float) -> str:
     Parameters
     ----------
     ref_val
-        Reference minimum frequency (THz).
+        Reference minimum frequency (Kelvin-equivalent).
     pred_val
-        Predicted minimum frequency (THz).
+        Predicted minimum frequency (Kelvin-equivalent).
 
     Returns
     -------
@@ -384,8 +386,8 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             processed_count += 1
 
             # Calculate metrics
-            ref_freqs = np.concatenate(ref_band["frequencies"])
-            pred_freqs = np.concatenate(pred_band["frequencies"])
+            ref_freqs = np.concatenate(ref_band["frequencies"]) * THZ_TO_K
+            pred_freqs = np.concatenate(pred_band["frequencies"]) * THZ_TO_K
 
             max_freq_ref = float(np.max(ref_freqs))
             max_freq_pred = float(np.max(pred_freqs))
@@ -463,7 +465,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                         skip_system = True
                         break
 
-                    abs_diff = np.abs(p_arr - r_arr)
+                    abs_diff = np.abs(p_arr - r_arr) * THZ_TO_K
                     band_abs_diffs.append(abs_diff)
 
                 except ValueError as e:

@@ -14,7 +14,7 @@ from ml_peg.calcs import CALCS_ROOT
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons"
 TABLE_PATH = DATA_PATH / "phonon_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "phonon_interactive.json"
-BENCHMARK_NAME = "phonons"
+BENCHMARK_NAME = "Phonons"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#phonons"
 )

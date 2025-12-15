@@ -1,54 +1,54 @@
 metrics:
-  ω_max [THz]:
+  ω_max:
     good: 0.5
     bad: 5.0
     unit: THz
     tooltip: "MAE of the maximum phonon frequency across all materials."
     weight: 1.0
     level_of_theory: PBE
-  ω_avg [THz]:
+  ω_avg:
     good: 0.3
     bad: 3.0
     unit: THz
     tooltip: "MAE of the average phonon frequency over the Brillouin zone."
     weight: 1.0
     level_of_theory: PBE
-  ω_min [THz]:
+  ω_min:
     good: 0.1
     bad: 2.0
     unit: THz
     tooltip: "MAE of the minimum phonon frequency (imaginary-mode sensitivity)."
     weight: 1.0
     level_of_theory: PBE
-  S [J/mol·K]:
+  S:
     good: 0.5
     bad: 5.0
     unit: J/mol·K
     tooltip: "MAE of vibrational entropy at 300 K."
     weight: 0.8
     level_of_theory: PBE
-  F [kJ/mol]:
+  F:
     good: 0.5
     bad: 4.0
     unit: kJ/mol
     tooltip: "MAE of vibrational Helmholtz free energy at 300 K."
     weight: 0.8
     level_of_theory: PBE
-  C_V [J/mol·K]:
+  C_V:
     good: 0.5
     bad: 4.0
     unit: J/mol·K
     tooltip: "MAE of constant-volume heat capacity at 300 K."
     weight: 0.8
     level_of_theory: PBE
-  Avg BZ MAE [THz]:
+  Avg BZ MAE:
     good: 0.05
     bad: 0.5
     unit: THz
     tooltip: "Average absolute error of the phonon dispersion across the Brillouin zone."
     weight: 1.2
     level_of_theory: PBE
-  Stability Classification (F1):
+  Stability F1:
     good: 1.0
     bad: 0.4
     unit: "-"
