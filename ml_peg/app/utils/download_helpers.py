@@ -1,4 +1,21 @@
-"""JavaScript helpers for table downloads."""
+"""
+Client-side JavaScript for capturing table screenshots as PNG/SVG.
+
+This module provides a Dash clientside callback handler that captures
+screenshots of rendered DataTables in the browser. It dynamically loads the
+html-to-image library and converts DOM elements to downloadable images.
+
+The handler:
+- Loads html-to-image library from CDN on-demand
+- Captures table elements by ID or CSS selector
+- Supports PNG and SVG formats with configurable DPI
+- Returns base64-encoded images for Dash Download component
+- Required as a Plotly-based approach which poorly replicates the Dash
+  DataTable styling (fonts, colors, borders) accurately
+
+Used by download callbacks in register_callbacks.py to provide PNG/SVG export
+functionality alongside CSV exports.
+"""
 
 from __future__ import annotations
 
