@@ -13,6 +13,7 @@ from typing import Literal
 import matplotlib
 
 matplotlib.use("Agg")
+import ase
 from dash import Input, Output, State, callback, callback_context, dcc, html
 from dash.dcc import Graph
 from dash.exceptions import PreventUpdate
@@ -28,6 +29,8 @@ from ml_peg.analysis.utils.decorators import (
     PERIODIC_TABLE_ROWS,
 )
 from ml_peg.app.utils.weas import generate_weas_html
+
+THz_to_K = ase.units._hplanck * 1e12 / ase.units._k
 
 
 def plot_from_table_column(
@@ -726,7 +729,7 @@ def register_phonon_callbacks(
 
     def _build_metric_scatter(model_name: str, metric_key: str):
         """
-        Build Plotly scatter figure for the requested metric.
+        Load pre-generated Plotly scatter figure for the requested metric.
 
         Parameters
         ----------
@@ -738,65 +741,24 @@ def register_phonon_callbacks(
         Returns
         -------
         go.Figure
-            Scatter figure showing ref vs pred values.
+            Pre-generated scatter figure showing ref vs pred values.
         """
-        points = _metric_points(model_name, metric_key)
-        fig = go.Figure()
-        if not points:
+        # Load pre-made figure from interactive_data
+        figure_dict = (
+            interactive_data["models"]
+            .get(model_name, {})
+            .get("figures", {})
+            .get(metric_key)
+        )
+
+        if figure_dict is None:
+            # Fallback for missing data
+            fig = go.Figure()
             fig.update_layout(title=f"No data for {model_name}")
             return fig
-        refs = [point["ref"] for point in points]
-        preds = [point["pred"] for point in points]
-        hover = [point.get("label") or point.get("id") for point in points]
-        custom = [[point.get("id") or idx] for idx, point in enumerate(points)]
-        fig.add_trace(
-            go.Scatter(
-                x=refs,
-                y=preds,
-                mode="markers",
-                text=hover,
-                customdata=custom,
-                hovertemplate=(
-                    "System: %{text}<br>Reference: %{x:.3f}<br>"
-                    "Prediction: %{y:.3f}<extra></extra>"
-                ),
-                name=model_name,
-            )
-        )
-        lower = min(min(refs), min(preds))
-        upper = max(max(refs), max(preds))
-        fig.add_trace(
-            go.Scatter(
-                x=[lower, upper],
-                y=[lower, upper],
-                mode="lines",
-                showlegend=False,
-                line={"color": "#8c8c8c", "dash": "dash"},
-            )
-        )
-        mae_value = interactive_data["models"][model_name]["metrics"][metric_key].get(
-            "mae"
-        )
-        if mae_value is not None:
-            fig.add_annotation(
-                xref="paper",
-                yref="paper",
-                x=0.02,
-                y=0.98,
-                text=f"MAE: {mae_value:.3f}",
-                showarrow=False,
-                bgcolor="rgba(255,255,255,0.8)",
-                bordercolor="#444",
-            )
-        fig.update_layout(
-            title=f"{model_name} – {metric_labels.get(metric_key, metric_key)}",
-            xaxis_title="Reference",
-            yaxis_title="Prediction",
-            xaxis={"scaleanchor": "y", "scaleratio": 1, "showgrid": True},
-            yaxis={"showgrid": True},
-            plot_bgcolor="#ffffff",
-        )
-        return fig
+
+        # Convert dict back to Plotly Figure object
+        return go.Figure(figure_dict)
 
     def _build_bz_violin(model_name: str):
         """
@@ -1066,11 +1028,17 @@ def register_phonon_callbacks(
         ax2 = fig.add_axes([0.82, 0.07, 0.17, 0.85])
 
         distances_ref = ref_band["distances"]
-        frequencies_ref = ref_band["frequencies"]
+        frequencies_ref = [
+            np.asarray(segment) * THz_to_K for segment in ref_band["frequencies"]
+        ]
         distances_pred = pred_band["distances"]
-        frequencies_pred = pred_band["frequencies"]
+        frequencies_pred = [
+            np.asarray(segment) * THz_to_K for segment in pred_band["frequencies"]
+        ]
         dos_freqs_ref, dos_values_ref = ref_dos
+        dos_freqs_ref = np.asarray(dos_freqs_ref) * THz_to_K
         dos_freqs_pred, dos_values_pred = pred_dos
+        dos_freqs_pred = np.asarray(dos_freqs_pred) * THz_to_K
 
         pred_label_added = False
         for dist_segment, freq_segment in zip(
@@ -1117,7 +1085,7 @@ def register_phonon_callbacks(
 
         ax1.axhline(0, color="k", linewidth=1)
         ax2.axhline(0, color="k", linewidth=1)
-        ax1.set_ylabel("Frequency (THz)", fontsize=16)
+        ax1.set_ylabel("Frequency (K)", fontsize=16)
         ax1.set_xlabel("Wave Vector", fontsize=16)
         ax1.tick_params(axis="both", which="major", labelsize=14)
 
