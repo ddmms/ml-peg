@@ -8,6 +8,7 @@ from pathlib import Path
 import pickle
 from typing import Any
 
+import ase
 import matplotlib
 
 matplotlib.use("Agg")
@@ -16,7 +17,7 @@ import pytest
 from sklearn.metrics import f1_score
 from tqdm import tqdm
 
-from ml_peg.analysis.utils.decorators import build_table, table_scatter_png
+from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -36,7 +37,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-THZ_TO_K = 47.99243072  # Kelvin per terahertz via h nu / k_B
+THZ_TO_K = ase.units._hplanck * 1e12 / ase.units._k
 
 METRIC_LABELS = {
     "max_freq": "ω_max",
@@ -607,10 +608,14 @@ def metrics(
 
 
 @pytest.fixture
-@table_scatter_png(filename=SCATTER_FILENAME)
+@cell_to_scatter(
+    filename=SCATTER_FILENAME,
+    x_label="Predicted",
+    y_label="Reference",
+)
 def interactive_payload(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
-    Serialise scatter metadata for the Dash app.
+    Generate pre-made scatter figures for each model-metric pair for the Dash app.
 
     Parameters
     ----------
@@ -620,8 +625,8 @@ def interactive_payload(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, An
     Returns
     -------
     dict[str, Any]
-        JSON-serialisable payload containing scatter points, MAEs, and
-        stability metadata.
+        JSON-serializable payload containing pre-generated scatter plots, MAEs,
+        and stability metadata.
     """
     payload = {
         "metrics": METRIC_LABELS,
