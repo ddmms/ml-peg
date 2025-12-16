@@ -55,7 +55,7 @@ T_300K_INDEX = 3  # Index for 300K in thermal properties (0, 75, 150, 300, 600)
 
 def _load_band_structure(file_path: Path) -> dict[str, Any] | None:
     """
-    Load a serialized band-structure payload.
+    Load a serialized band-structure dataset.
 
     Parameters
     ----------
@@ -89,7 +89,7 @@ def _load_dos(file_path: Path) -> tuple[np.ndarray, np.ndarray] | None:
     -------
     tuple[np.ndarray, np.ndarray] | None
         Pair of ``(frequency_points, total_dos)`` arrays, or ``None`` if the
-        payload could not be opened.
+        file content could not be opened.
     """
     try:
         with open(file_path, "rb") as f:
@@ -613,7 +613,7 @@ def metrics(
     x_label="Predicted",
     y_label="Reference",
 )
-def interactive_payload(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def interactive_dataset(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
     Generate pre-made scatter figures for each model-metric pair for the Dash app.
 
@@ -625,10 +625,10 @@ def interactive_payload(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, An
     Returns
     -------
     dict[str, Any]
-        JSON-serializable payload containing pre-generated scatter plots, MAEs,
+        JSON-serializable dataset containing pre-generated scatter plots, MAEs,
         and stability metadata.
     """
-    payload = {
+    dataset = {
         "metrics": METRIC_LABELS,
         "bz_column": BZ_COLUMN,
         "stability_column": STABILITY_COLUMN,
@@ -637,22 +637,22 @@ def interactive_payload(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, An
     }
 
     for model_name, model_data in phonon_stats.items():
-        payload["models"][model_name] = {
+        dataset["models"][model_name] = {
             "metrics": {},
             "band_errors": model_data["band_errors"],
             "bz_mean": model_data["bz_mean"],
             "stability": model_data["stability"],
         }
         for metric_key in METRIC_LABELS:
-            payload["models"][model_name]["metrics"][metric_key] = {
+            dataset["models"][model_name]["metrics"][metric_key] = {
                 "points": model_data["metrics"][metric_key]["points"],
                 "mae": model_data["metrics"][metric_key]["mae"],
             }
 
-    return payload
+    return dataset
 
 
-def test_phonons(metrics, interactive_payload) -> None:
+def test_phonons(metrics, interactive_dataset) -> None:
     """
     Exercise the phonon fixtures to ensure they build without errors.
 
@@ -660,7 +660,7 @@ def test_phonons(metrics, interactive_payload) -> None:
     ----------
     metrics
         Metrics dictionary produced by the ``metrics`` fixture.
-    interactive_payload
-        Scatter metadata produced by the ``interactive_payload`` fixture.
+    interactive_dataset
+        Scatter metadata produced by the ``interactive_dataset`` fixture.
     """
     return

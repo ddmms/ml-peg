@@ -320,7 +320,7 @@ def cell_to_scatter(
         Parameters
         ----------
         func
-            Analysis function returning the payload consumed by the Dash app.
+            Analysis function returning the dataset consumed by the Dash app.
 
         Returns
         -------
@@ -343,13 +343,13 @@ def cell_to_scatter(
             Returns
             -------
             dict
-                The payload produced by ``func`` (with ``figures`` entries).
+                The dataset produced by ``func`` (with ``figures`` entries).
             """
-            payload = func(*args, **kwargs)
+            data_bundle = func(*args, **kwargs)
 
             # Extract metadata
-            metric_labels = payload.get("metrics", {})
-            models_data = payload.get("models", {})
+            metric_labels = data_bundle.get("metrics", {})
+            models_data = data_bundle.get("models", {})
 
             # Create figures for each model-metric pair
             for model_name, model_data in models_data.items():
@@ -418,9 +418,9 @@ def cell_to_scatter(
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w", encoding="utf8") as f:
-                dump(payload, f)
+                dump(data_bundle, f)
 
-            return payload
+            return data_bundle
 
         return wrapper
 
