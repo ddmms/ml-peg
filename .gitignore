@@ -38,6 +38,4 @@ dist/
 pip-wheel-metadata/
 __pycache__/
 !ml_peg/app/data/onboarding/
-ml_peg/app/data/onboarding/*
-!ml_peg/app/data/onboarding/README.md
 certs/
