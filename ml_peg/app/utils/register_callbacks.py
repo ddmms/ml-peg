@@ -24,6 +24,7 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     update_score_style,
 )
+from ml_peg.app.utils.download_helpers import DOWNLOAD_CLIENTSIDE_HANDLER
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
@@ -731,16 +732,7 @@ def register_download_callbacks(table_id: str) -> None:
         raise PreventUpdate
 
     clientside_callback(
-        """
-        function(request) {
-            const dash = window.dash_clientside;
-            const helpers = dash && dash.download_helpers;
-            if (!request || !helpers || typeof helpers.captureTable !== "function") {
-                return dash && dash.no_update;
-            }
-            return helpers.captureTable(request);
-        }
-        """,
+        DOWNLOAD_CLIENTSIDE_HANDLER,
         Output(f"{table_id}-download", "data", allow_duplicate=True),
         Input(f"{table_id}-download-request", "data"),
         prevent_initial_call=True,
