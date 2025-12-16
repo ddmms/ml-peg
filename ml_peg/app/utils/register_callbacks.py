@@ -5,10 +5,18 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from dash import Input, Output, State, callback, ctx, dcc
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
 import pandas as pd
-import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -659,12 +667,12 @@ def register_download_callbacks(table_id: str) -> None:
     """
 
     @callback(
-        Output(f"{table_id}-download", "data"),
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
         Input(f"{table_id}-download-button", "n_clicks"),
         State(f"{table_id}-download-format", "value"),
         State(table_id, "data"),
         State(table_id, "columns"),
-        State(table_id, "style_data_conditional"),
         prevent_initial_call=True,
     )
     def download_table(
@@ -672,7 +680,6 @@ def register_download_callbacks(table_id: str) -> None:
         fmt: str,
         table_data: list[dict],
         columns: list[dict],
-        style_conditional: list[dict] | None,
     ):
         """
         Send the currently displayed table as CSV/PNG/SVG.
@@ -687,13 +694,11 @@ def register_download_callbacks(table_id: str) -> None:
             Rows currently displayed in the DataTable.
         columns : list[dict]
             Column metadata for the table.
-        style_conditional : list[dict] or None
-            Conditional formatting rules applied to the table.
 
         Returns
         -------
-        dash._callback.Output
-            Download payload produced by `dcc.send_data_frame` or `dcc.send_bytes`.
+        tuple
+            Pair of (CSV download payload, image download payload).
         """
         if not n_clicks or not table_data or not columns:
             raise PreventUpdate
@@ -705,176 +710,38 @@ def register_download_callbacks(table_id: str) -> None:
             df = pd.DataFrame(table_data)
             if "id" in df.columns:
                 df = df.drop(columns=["id"])
-            return dcc.send_data_frame(
+            csv_payload = dcc.send_data_frame(
                 df.to_csv,
                 filename=f"{filename_base}.csv",
                 index=False,
             )
+            return csv_payload, no_update
 
-        # Build column info
-        column_ids = [col.get("id") for col in columns if col.get("id") != "id"]
-        headers = [
-            col.get("name", col.get("id", ""))
-            for col in columns
-            if col.get("id") != "id"
-        ]
+        if fmt in {"png", "svg"}:
+            return (
+                no_update,
+                {
+                    "selector": f"#{table_id}",
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                    "request_id": n_clicks,
+                },
+            )
 
-        # Build cell values and colors
-        num_rows = len(table_data)
-        num_cols = len(column_ids)
+        raise PreventUpdate
 
-        # Initialize cell colors (2D array: rows x cols)
-        cell_colors = [["#ffffff" for _ in range(num_cols)] for _ in range(num_rows)]
-        cell_font_colors = [
-            ["#1f2630" for _ in range(num_cols)] for _ in range(num_rows)
-        ]
-
-        # Apply conditional styling
-        if style_conditional:
-            for row_idx, row in enumerate(table_data):
-                for col_idx, col_id in enumerate(column_ids):
-                    cell_value = row.get(col_id)
-
-                    # Check each style rule
-                    for style in style_conditional:
-                        if_condition = style.get("if", {})
-
-                        # Check if this style applies to this cell
-                        applies = True
-
-                        # Check column condition
-                        if "column_id" in if_condition:
-                            if if_condition["column_id"] != col_id:
-                                applies = False
-
-                        # Check row index condition
-                        if "row_index" in if_condition:
-                            if if_condition["row_index"] != row_idx:
-                                applies = False
-
-                        # Check filter query (for value-based styling)
-                        if "filter_query" in if_condition:
-                            # Parse simple filter queries like "{col_id} > 0.8"
-                            filter_str = if_condition["filter_query"]
-                            # This is a simplified parser - extend as needed
-                            if f"{{{col_id}}}" in filter_str and cell_value is not None:
-                                try:
-                                    if ">=" in filter_str:
-                                        part = filter_str.split(">=")[1].strip()
-                                        threshold = float(part)
-                                        applies = cell_value >= threshold
-                                    elif ">" in filter_str:
-                                        part = filter_str.split(">")[1].strip()
-                                        threshold = float(part)
-                                        applies = cell_value > threshold
-                                    elif "<=" in filter_str:
-                                        part = filter_str.split("<=")[1].strip()
-                                        threshold = float(part)
-                                        applies = cell_value <= threshold
-                                    elif "<" in filter_str:
-                                        part = filter_str.split("<")[1].strip()
-                                        threshold = float(part)
-                                        applies = cell_value < threshold
-                                except (ValueError, IndexError):
-                                    applies = False
-
-                        # Apply style if all conditions match
-                        if applies:
-                            if "backgroundColor" in style:
-                                cell_colors[row_idx][col_idx] = style["backgroundColor"]
-                            if "color" in style:
-                                cell_font_colors[row_idx][col_idx] = style["color"]
-
-        # Transpose for Plotly (columns x rows)
-        values = []
-        fill_colors = []
-        font_colors = []
-        alignments = []
-
-        for col_idx, col_id in enumerate(column_ids):
-            col_values = [row.get(col_id) for row in table_data]
-            col_fills = [cell_colors[row_idx][col_idx] for row_idx in range(num_rows)]
-            col_fonts = [
-                cell_font_colors[row_idx][col_idx] for row_idx in range(num_rows)
-            ]
-
-            # Format values
-            formatted_values = []
-            for val in col_values:
-                if isinstance(val, float):
-                    formatted_values.append(f"{val:.3f}")
-                else:
-                    formatted_values.append(str(val) if val is not None else "")
-
-            values.append(formatted_values)
-            fill_colors.append(col_fills)
-            font_colors.append(col_fonts)
-            # MLIP column left-aligned, others center
-            alignments.append("left" if col_id == "MLIP" else "center")
-
-        table_header = {
-            "values": headers,
-            "fill_color": "#40466e",
-            "font": {
-                "color": "white",
-                "size": 14,
-                "family": "Open Sans, Helvetica, Arial, sans-serif",
-                "weight": 600,
-            },
-            "align": ["left" if col == "MLIP" else "center" for col in column_ids],
-            "height": 40,
-            "line": {"width": 1, "color": "#2a3f5f"},
+    clientside_callback(
+        """
+        function(request) {
+            const dash = window.dash_clientside;
+            const helpers = dash && dash.download_helpers;
+            if (!request || !helpers || typeof helpers.captureTable !== "function") {
+                return dash && dash.no_update;
+            }
+            return helpers.captureTable(request);
         }
-        table_cells = {
-            "values": values,
-            "fill": {"color": fill_colors},
-            "font": {
-                "color": font_colors,
-                "size": 13,
-                "family": "Open Sans, Helvetica, Arial, sans-serif",
-            },
-            "align": alignments,
-            "height": 35,
-            "line": {"width": 1, "color": "#d6d6d6"},
-        }
-        fig = go.Figure(
-            data=[
-                go.Table(
-                    header=table_header,
-                    cells=table_cells,
-                )
-            ]
-        )
-
-        # Calculate better dimensions based on content
-        col_widths = []
-        for col_id, header in zip(column_ids, headers, strict=False):
-            if col_id == "MLIP":
-                # MLIP column wider for model names
-                lengths = [len(str(row.get(col_id, ""))) for row in table_data]
-                lengths.append(len(header))
-                max_len = max(lengths)
-                col_widths.append(max(180, min(max_len * 9, 300)))
-            else:
-                # Numeric columns
-                col_widths.append(max(100, len(header) * 10))
-
-        total_width = sum(col_widths) + 60
-        total_height = 60 + 40 + 35 * len(table_data)
-
-        fig.update_layout(
-            margin={"l": 20, "r": 20, "t": 20, "b": 20},
-            paper_bgcolor="#ffffff",
-            width=min(total_width, 2000),  # Cap width.
-            height=min(total_height, 3000),  # Cap height.
-        )
-
-        try:
-            image_bytes = fig.to_image(format=fmt)
-        except ValueError as err:
-            raise PreventUpdate from err
-
-        return dcc.send_bytes(
-            image_bytes,
-            filename=f"{filename_base}.{fmt}",
-        )
+        """,
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )

@@ -668,6 +668,7 @@ def build_download_controls(table: DataTable) -> Div:
                 },
             ),
             Download(id=f"{table_id}-download"),
+            Store(id=f"{table_id}-download-request", storage_type="memory"),
         ],
         style={
             "position": "absolute",
