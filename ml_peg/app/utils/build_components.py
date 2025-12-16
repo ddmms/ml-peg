@@ -7,7 +7,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Store
+from dash.dcc import Checklist, Download, Dropdown, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -15,6 +15,7 @@ from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
+    register_download_callbacks,
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_weight_callbacks,
@@ -193,52 +194,55 @@ def build_weight_components(
         for i, (column, input_id) in enumerate(zip(columns, input_ids, strict=True))
     ]
 
-    container = Div(
+    # Build controls column
+    controls_column = Div(
         [
             Div(
-                [
-                    Div(
-                        header,
-                        style={
-                            "fontWeight": "bold",
-                            "fontSize": "13px",
-                            "padding": "2px 4px",
-                            "color": "#212529",
-                            "whiteSpace": "nowrap",
-                            "boxSizing": "border-box",
-                            "border": "1px solid transparent",
-                        },
-                    ),
-                    Button(
-                        "Reset",
-                        id=f"{table.id}-reset-button",
-                        n_clicks=0,
-                        style={
-                            "fontSize": "11px",
-                            "padding": "4px 8px",
-                            "marginTop": "0px",
-                            "marginLeft": "4px",
-                            "backgroundColor": "#6c757d",
-                            "color": "white",
-                            "border": "none",
-                            "borderRadius": "3px",
-                            "width": "fit-content",
-                            "cursor": "pointer",
-                        },
-                    ),
-                ],
+                header,
                 style={
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "alignItems": "flex-start",
-                    "gap": "4px",
+                    "fontWeight": "bold",
+                    "fontSize": "13px",
+                    "padding": "2px 4px",
+                    "color": "#212529",
+                    "whiteSpace": "nowrap",
                     "boxSizing": "border-box",
-                    "width": "100%",
-                    "minWidth": "0",
-                    "maxWidth": "100%",
-                    "border": "1px solid transparent",  # #dee2e6 or transparent
+                    "border": "1px solid transparent",
                 },
             ),
+            Button(
+                "Reset",
+                id=f"{table.id}-reset-button",
+                n_clicks=0,
+                style={
+                    "fontSize": "11px",
+                    "padding": "4px 8px",
+                    "marginTop": "0px",
+                    "marginLeft": "4px",
+                    "backgroundColor": "#6c757d",
+                    "color": "white",
+                    "border": "none",
+                    "borderRadius": "3px",
+                    "width": "fit-content",
+                    "cursor": "pointer",
+                },
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "flex-start",
+            "gap": "4px",
+            "boxSizing": "border-box",
+            "width": "100%",
+            "minWidth": "0",
+            "maxWidth": "100%",
+            "border": "1px solid transparent",
+        },
+    )
+
+    container = Div(
+        [
+            controls_column,
             *weight_inputs,
             Div(
                 "",
@@ -318,6 +322,8 @@ def build_weight_components(
             column=column,
             default_weights=getattr(table, "weights", None),
         )
+
+    register_download_callbacks(table.id)
 
     return Div(layout)
 
@@ -482,7 +488,14 @@ def build_test_layout(
         ]
     )
 
-    layout_contents.append(Div(table))
+    layout_contents.append(
+        Div(
+            table,
+            style={
+                "overflowX": "auto",
+            },
+        )
+    )
     layout_contents.append(
         Store(
             id=f"{table.id}-computed-store",
@@ -545,10 +558,12 @@ def build_test_layout(
         layout_contents.append(
             Div(
                 [
+                    build_download_controls(table),
                     Div(threshold_controls, style={"marginBottom": "0px"}),
                     Div(compact_weights, style={"marginTop": "0"}),
                 ],
                 style={
+                    "position": "relative",
                     "backgroundColor": "#f8f9fa",
                     "border": "1px solid #dee2e6",
                     "borderRadius": "6px",
@@ -575,6 +590,106 @@ def build_test_layout(
         layout_contents.extend(extra_components)
 
     return Div(layout_contents)
+
+
+def wrap_weights_with_download(weight_components: Div, summary_table: DataTable) -> Div:
+    """
+    Add download controls to weight components by creating a positioned container.
+
+    Creates a relative-positioned wrapper around weight components and adds an
+    absolutely-positioned download button at the top-right corner. Used for
+    summary tables where download controls need to be attached to the weights box.
+
+    Parameters
+    ----------
+    weight_components
+        Weight components Div containing Br() + container + Store.
+    summary_table
+        Table to create download controls for.
+
+    Returns
+    -------
+    Div
+        Relative-positioned container with download button and weight components.
+    """
+    return Div(
+        [
+            build_download_controls(summary_table),
+            *weight_components.children[1:],  # Skip the Br() at start
+        ],
+        style={"position": "relative"},
+    )
+
+
+def build_download_controls(table: DataTable) -> Div:
+    """
+    Create compact button group with format selector for table exports.
+
+    Parameters
+    ----------
+    table
+        DataTable instance to attach download controls to.
+
+    Returns
+    -------
+    Div
+        A positioned container with format dropdown, button, and download target.
+    """
+    table_id = table.id
+    return Div(
+        [
+            Dropdown(
+                id=f"{table_id}-download-format",
+                options=[
+                    {"label": "CSV", "value": "csv"},
+                    {"label": "PNG", "value": "png"},
+                    {"label": "SVG", "value": "svg"},
+                ],
+                value="csv",
+                clearable=False,
+                placeholder="Format",
+                style={
+                    "width": "50px",
+                    "fontSize": "10px",
+                    "borderRadius": "4px",
+                    "height": "20px",
+                },
+            ),
+            Button(
+                "⬇",
+                id=f"{table_id}-download-button",
+                n_clicks=0,
+                style={
+                    "width": "30px",
+                    "backgroundColor": "#0d6efd",
+                    "color": "white",
+                    "border": "none",
+                    "borderRadius": "4px",
+                    "cursor": "pointer",
+                    "fontSize": "14px",
+                    "fontWeight": "600",
+                    "height": "34px",
+                    "transition": "background-color 0.2s",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                },
+            ),
+            Download(id=f"{table_id}-download"),
+            Store(id=f"{table_id}-download-request", storage_type="memory"),
+        ],
+        style={
+            "position": "absolute",
+            "top": "12px",
+            "right": "6px",
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "4px",
+            "borderRadius": "6px",
+            "width": "auto",
+            "zIndex": "20",
+        },
+    )
 
 
 def build_threshold_inputs(
@@ -625,6 +740,7 @@ def build_threshold_inputs(
     cells: list[Div] = []
     default_thresholds: Thresholds = {}
 
+    # Build controls column
     cells.append(
         Div(
             [

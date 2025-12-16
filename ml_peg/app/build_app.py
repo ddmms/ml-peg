@@ -8,12 +8,16 @@ import warnings
 from dash import Dash, Input, Output, callback
 from dash.dash_table import DataTable
 from dash.dcc import Store, Tab, Tabs
-from dash.html import H1, H3, Div
+from dash.html import H1, H3, Br, Div
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.build_components import build_footer, build_weight_components
+from ml_peg.app.utils.build_components import (
+    build_footer,
+    build_weight_components,
+    wrap_weights_with_download,
+)
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
@@ -139,19 +143,28 @@ def build_category(
             table=summary_table,
             column_widths=getattr(summary_table, "column_widths", None),
         )
+        weight_with_download = wrap_weights_with_download(
+            weight_components, summary_table
+        )
 
         # Build full layout with summary table, weight controls, and test layouts
         category_layouts[category_title] = Div(
             [
                 H1(category_title),
                 H3(category_descrip),
-                summary_table,
+                Div(
+                    summary_table,
+                    style={
+                        "overflowX": "auto",
+                    },
+                ),
                 Store(
                     id=f"{category_title}-summary-table-computed-store",
                     storage_type="session",
                     data=summary_table.data,
                 ),
-                weight_components,
+                Br(),
+                weight_with_download,
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
         )
@@ -344,8 +357,13 @@ def build_tabs(
             return Div(
                 [
                     H1("Benchmarks Summary"),
-                    summary_table,
-                    weight_components,
+                    Div(
+                        summary_table,
+                        style={
+                            "overflowX": "auto",
+                        },
+                    ),
+                    wrap_weights_with_download(weight_components, summary_table),
                     Store(
                         id="summary-table-scores-store",
                         storage_type="session",

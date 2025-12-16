@@ -5,8 +5,18 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from dash import Input, Output, State, callback, ctx
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -14,6 +24,7 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     update_score_style,
 )
+from ml_peg.app.utils.download_helpers import DOWNLOAD_CLIENTSIDE_HANDLER
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
@@ -355,7 +366,7 @@ def register_benchmark_to_category_callback(
     """
     _ = use_threshold_store  # cached rows handle normalization
     # flag kept for compatibility with existing call sites
-    name_map = dict(model_name_map or {})
+    name_map = (model_name_map or {}).copy()
 
     @callback(
         Output(category_table_id, "data", allow_duplicate=True),
@@ -644,3 +655,85 @@ def register_normalization_callbacks(
                 entry = cleaned_thresholds[metric]
                 return entry.get("good"), entry.get("bad")
             raise PreventUpdate
+
+
+def register_download_callbacks(table_id: str) -> None:
+    """
+    Attach download controls for a table.
+
+    Parameters
+    ----------
+    table_id
+        Identifier of the DataTable to link with the download controls.
+    """
+
+    @callback(
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
+        Input(f"{table_id}-download-button", "n_clicks"),
+        State(f"{table_id}-download-format", "value"),
+        State(table_id, "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+    )
+    def download_table(
+        n_clicks: int,
+        fmt: str,
+        table_data: list[dict],
+        columns: list[dict],
+    ):
+        """
+        Send the currently displayed table as CSV/PNG/SVG.
+
+        Parameters
+        ----------
+        n_clicks : int
+            Number of button clicks; ignored until > 0.
+        fmt : str
+            Selected download format (csv/png/svg).
+        table_data : list[dict]
+            Rows currently displayed in the DataTable.
+        columns : list[dict]
+            Column metadata for the table.
+
+        Returns
+        -------
+        tuple
+            Pair of (CSV download payload, image download payload).
+        """
+        if not n_clicks or not table_data or not columns:
+            raise PreventUpdate
+
+        fmt = (fmt or "csv").lower()
+        filename_base = table_id.replace("_", "-")
+
+        if fmt == "csv":
+            df = pd.DataFrame(table_data)
+            if "id" in df.columns:
+                df = df.drop(columns=["id"])
+            csv_payload = dcc.send_data_frame(
+                df.to_csv,
+                filename=f"{filename_base}.csv",
+                index=False,
+            )
+            return csv_payload, no_update
+
+        if fmt in {"png", "svg"}:
+            return (
+                no_update,
+                {
+                    "element_id": table_id,
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                    "request_id": n_clicks,
+                },
+            )
+
+        raise PreventUpdate
+
+    clientside_callback(
+        DOWNLOAD_CLIENTSIDE_HANDLER,
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )
