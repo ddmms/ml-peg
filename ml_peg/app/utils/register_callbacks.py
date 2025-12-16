@@ -721,7 +721,7 @@ def register_download_callbacks(table_id: str) -> None:
             return (
                 no_update,
                 {
-                    "selector": f"#{table_id}",
+                    "element_id": table_id,
                     "format": fmt,
                     "filename": f"{filename_base}.{fmt}",
                     "request_id": n_clicks,
