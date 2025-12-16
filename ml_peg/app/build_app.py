@@ -18,6 +18,7 @@ from ml_peg.app.utils.build_components import (
     build_weight_components,
     wrap_weights_with_download,
 )
+from ml_peg.app.utils.download_helpers import build_download_helper_script
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
@@ -322,6 +323,7 @@ def build_tabs(
     ]
 
     tabs_layout = [
+        build_download_helper_script(),
         Div(
             [
                 H1("ML-PEG"),

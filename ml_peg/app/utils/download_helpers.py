@@ -1,3 +1,10 @@
+"""Client-side helpers for download controls."""
+
+from __future__ import annotations
+
+from dash import html
+
+DOWNLOAD_HELPER_SCRIPT = """
 (function () {
   const HTML_TO_IMAGE_SRC =
     "https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js";
@@ -86,7 +93,7 @@
       return noUpdate;
     }
 
-    const format = (request.format || "png").toLowerCase();
+    const format = (request.format || \"png\").toLowerCase();
     const filename = request.filename || `table.${format}`;
     const pixelRatio = request.pixel_ratio || window.devicePixelRatio || 2;
     const options = {
@@ -129,3 +136,16 @@
     window.dash_clientside.download_helpers || {};
   window.dash_clientside.download_helpers.captureTable = captureTable;
 })();
+"""
+
+
+def build_download_helper_script():
+    """
+    Build the inline script element that registers the download helper.
+
+    Returns
+    -------
+    dash.html.Script
+        Script tag containing the helper code.
+    """
+    return html.Script(DOWNLOAD_HELPER_SCRIPT, type="text/javascript")

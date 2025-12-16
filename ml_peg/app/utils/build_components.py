@@ -594,7 +594,11 @@ def build_test_layout(
 
 def wrap_weights_with_download(weight_components: Div, summary_table: DataTable) -> Div:
     """
-    Wrap weight components with download button in top-right corner.
+    Add download controls to weight components by creating a positioned container.
+
+    Creates a relative-positioned wrapper around weight components and adds an
+    absolutely-positioned download button at the top-right corner. Used for
+    summary tables where download controls need to be attached to the weights box.
 
     Parameters
     ----------
@@ -606,7 +610,7 @@ def wrap_weights_with_download(weight_components: Div, summary_table: DataTable)
     Returns
     -------
     Div
-        Wrapped component with download button.
+        Relative-positioned container with download button and weight components.
     """
     return Div(
         [
