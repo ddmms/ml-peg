@@ -6,22 +6,35 @@ from dash import Input, Output, State, callback, ctx, dcc, get_asset_url, html
 
 ONBOARDING_SLIDES: list[dict[str, str]] = [
     {
-        "id": "tables",
-        "title": "Interactive tables",
+        "id": "tooltips",
+        "title": "Tooltips",
         "description": (
-            "Click column headers to sort, hover for tooltips, and tweak metric "
-            "weights to see the scores update instantly."
+            "Hover over model names and column headers in the tables to get quick "
+            "information about each model and test."
         ),
-        "video": "onboarding/interactive-tables.mp4",
+        "video": "onboarding/tooltips.mp4",
     },
     {
         "id": "plots",
-        "title": "Interactive plots",
+        "title": "Interactive tables and plots",
         "description": (
-            "Use the toolbar on each plot to zoom, pan, and download high-resolution "
-            "images. Hover points to inspect per-model details."
+            "Test tables and plots are interactive! Click table cells to show the "
+            "data from which each result is calculated, then click points in the "
+            "plots to dive into the datapoint either showing where the data comes "
+            "from (e.g. phonon dispersion) or a structure visualisation."
         ),
-        "video": "onboarding/interactive-plots.mp4",
+        "video": "onboarding/interactive-tables-plots.mp4",
+    },
+    {
+        "id": "weights-thresholds",
+        "title": "Weights and normalisation thresholds",
+        "description": (
+            "Use the weights and thresholds controls to customise how models are "
+            "scored and ranked, based on your needs. Adjust the weights to "
+            "prioritise certain tests or metrics, and set 'Good' and 'Bad' "
+            "thresholds to alter the linear normalisation of scores."
+        ),
+        "video": "onboarding/weights-thresholds.mp4",
     },
 ]
 
