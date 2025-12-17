@@ -1,8 +1,9 @@
-"""Helpers to render band-structure and DOS assets."""
+"""Utilities for building phonon interactive assets."""
 
 from __future__ import annotations
 
 import base64
+from collections.abc import Mapping
 from io import BytesIO
 import json
 from pathlib import Path
@@ -12,9 +13,12 @@ from typing import Any
 import matplotlib
 
 matplotlib.use("Agg")
+from dash import dcc, html
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
 import numpy as np
+
+from ml_peg.app.utils.plot_helpers import build_violin_distribution
 
 
 def _load_band(calc_root: Path, rel_path: str | None) -> dict[str, Any] | None:
@@ -45,11 +49,11 @@ def _load_band(calc_root: Path, rel_path: str | None) -> dict[str, Any] | None:
         connections_path = full_path.parent / f"{base_stem}_connections.json"
 
         if labels_path.exists():
-            with labels_path.open() as f:
-                band_data["labels"] = json.load(f)
+            with labels_path.open() as file_obj:
+                band_data["labels"] = json.load(file_obj)
         if connections_path.exists():
-            with connections_path.open() as f:
-                band_data["path_connections"] = json.load(f)
+            with connections_path.open() as file_obj:
+                band_data["path_connections"] = json.load(file_obj)
 
         return band_data
     except OSError:
@@ -101,25 +105,210 @@ def _build_xticks(distances, labels, connections):
         Matplotlib tick positions and corresponding labels.
     """
     xticks, xticklabels = [], []
-    cumulative_dist, i = 0.0, 0
+    cumulative_dist, index = 0.0, 0
     connections = [True] + connections
     for seg_dist, connected in zip(distances, connections, strict=False):
-        start, end = labels[i], labels[i + 1]
+        start, end = labels[index], labels[index + 1]
         pos_start = cumulative_dist
         pos_end = cumulative_dist + (seg_dist[-1] - seg_dist[0])
         xticks.append(pos_start)
         xticklabels.append(f"{start}|{end}" if not connected else start)
-        i += 2 if not connected else 1
+        index += 2 if not connected else 1
         cumulative_dist = pos_end
     xticks.append(cumulative_dist)
     xticklabels.append(labels[-1])
     return xticks, xticklabels
 
 
+def _flatten_band_errors(errors: Mapping[str, Any]) -> tuple[list[float], list[str]]:
+    """
+    Convert band-error mapping into aligned ``(values, labels)`` lists.
+
+    Parameters
+    ----------
+    errors
+        Mapping from Materials Project ID to error series (scalar/composite).
+
+    Returns
+    -------
+    tuple[list[float], list[str]]
+        Flattened values and matching MP-ID labels for violin plotting.
+    """
+    values: list[float] = []
+    labels: list[str] = []
+    for mp_id, series in errors.items():
+        if series is None:
+            continue
+        if isinstance(series, (int | float | np.floating | np.integer)):
+            values.append(float(series))
+            labels.append(str(mp_id))
+            continue
+        if isinstance(series, np.ndarray):
+            flattened = series.ravel().tolist()
+            values.extend(flattened)
+            labels.extend([str(mp_id)] * len(flattened))
+            continue
+        if isinstance(series, (list | tuple)):
+            numeric_vals = [
+                float(val)
+                for val in series
+                if isinstance(val, (int | float | np.floating | np.integer))
+            ]
+            values.extend(numeric_vals)
+            labels.extend([str(mp_id)] * len(numeric_vals))
+            continue
+        try:
+            values.append(float(series))
+            labels.append(str(mp_id))
+        except (TypeError, ValueError):
+            continue
+    return values, labels
+
+
+def build_bz_violin_content(
+    model_display: str,
+    column_id: str,  # Dash passes column_id to every handler; unused for BZ plots.
+    *,
+    models_data: Mapping[str, Any],
+    scatter_id: str,
+    instructions: str,
+    yaxis_title: str,
+    hovertemplate: str,
+):
+    """
+    Build the Brillouin-zone error distribution content.
+
+    Parameters
+    ----------
+    model_display
+        Table entry label for the selected model.
+    column_id
+        Column identifier (unused).
+    models_data
+        Interactive dataset keyed by model name.
+    scatter_id
+        Graph identifier used for the violin plot.
+    instructions
+        Instructional text displayed above the violin plot.
+    yaxis_title
+        Label describing the violin axis.
+    hovertemplate
+        Plotly hover template applied to each violin point.
+
+    Returns
+    -------
+    tuple
+        ``(content, meta)`` pair consumed by the shared callback helper.
+    """
+    band_errors = models_data.get(model_display, {}).get("band_errors", {})
+    values, labels = _flatten_band_errors(band_errors)
+    fig = build_violin_distribution(
+        values,
+        labels,
+        title=f"{model_display} – Brillouin zone error distribution",
+        yaxis_title=yaxis_title,
+        hovertemplate=hovertemplate,
+    )
+    graph = dcc.Graph(id=scatter_id, figure=fig)
+    meta = {"model": model_display, "type": "bz"}
+    content = html.Div([html.P(instructions), graph])
+    return content, meta
+
+
+def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
+    """
+    Find the dataset entry (metric or stability) linked to ``point_id``.
+
+    Parameters
+    ----------
+    model_entry
+        Dictionary describing a single model's metrics/stability info.
+    point_id
+        Identifier extracted from the scatter click.
+
+    Returns
+    -------
+    dict | None
+        Matching point metadata or ``None`` when not found.
+    """
+    target = str(point_id)
+    for metric_data in model_entry.get("metrics", {}).values():
+        for point in metric_data.get("points", []):
+            if str(point.get("id")) == target:
+                return point
+    for point in model_entry.get("stability", {}).get("points", []):
+        if str(point.get("id")) == target:
+            return point
+    return None
+
+
+def render_dispersion_component(
+    selection_context: Mapping[str, Any],
+    scatter_meta: Mapping[str, Any],  # Unused but kept for signature parity.
+    *,
+    calc_root: Path,
+    frequency_scale: float,
+    frequency_unit: str,
+    reference_label: str,
+):
+    """
+    Render a Matplotlib dispersion PNG or fallback image for a selection.
+
+    Parameters
+    ----------
+    selection_context
+        Dictionary containing ``model`` and resolved ``selection`` data.
+    scatter_meta
+        Metadata describing the scatter context (unused).
+    calc_root
+        Base directory containing serialized band/DOS assets.
+    frequency_scale
+        Multiplicative factor applied to raw frequencies.
+    frequency_unit
+        Unit label displayed on the y-axis after scaling.
+    reference_label
+        Legend label for the reference trace.
+
+    Returns
+    -------
+    dash.html.Div | None
+        Component containing the image preview, or ``None`` if missing.
+    """
+    model_display = selection_context.get("model")
+    selected = selection_context.get("selection") or {}
+    data_paths = selected.get("data_paths")
+    label = selected.get("label") or selected.get("id", "")
+    image_src = None
+    if data_paths:
+        image_src = render_band_dos_png(
+            calc_root=calc_root,
+            paths=data_paths,
+            model_label=model_display,
+            system_label=label,
+            frequency_scale=frequency_scale,
+            frequency_unit=frequency_unit,
+            reference_label=reference_label,
+            prediction_label=model_display,
+        )
+    elif selected.get("image"):
+        image_src = f"/{selected['image']}"
+    if not image_src:
+        return None
+    return html.Div(
+        [
+            html.H4(label),
+            html.Img(
+                src=image_src,
+                style={"maxWidth": "100%", "border": "1px solid #ccc"},
+            ),
+        ]
+    )
+
+
 def render_band_dos_png(
     *,
     calc_root: Path,
-    paths: dict,
+    paths: Mapping[str, str | None],
     model_label: str,
     system_label: str,
     frequency_scale: float = 1.0,
