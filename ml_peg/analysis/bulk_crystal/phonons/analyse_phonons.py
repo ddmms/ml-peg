@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 import pickle
 from typing import Any
@@ -23,8 +22,6 @@ from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
-
-LOGGER = logging.getLogger(__name__)
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "phonons" / "outputs"
@@ -71,8 +68,8 @@ def _load_band_structure(file_path: Path) -> dict[str, Any] | None:
     try:
         with open(file_path, "rb") as f:
             return pickle.load(f)
-    except Exception as e:
-        LOGGER.warning(f"Failed to load band structure from {file_path}: {e}")
+    except OSError as exc:
+        print(f"Failed to load band structure from {file_path}: {exc}")
         return None
 
 
@@ -95,8 +92,8 @@ def _load_dos(file_path: Path) -> tuple[np.ndarray, np.ndarray] | None:
         with open(file_path, "rb") as f:
             dos_dict = pickle.load(f)
         return dos_dict["frequency_points"], dos_dict["total_dos"]
-    except Exception as e:
-        LOGGER.warning(f"Failed to load DOS from {file_path}: {e}")
+    except OSError as exc:
+        print(f"Failed to load DOS from {file_path}: {exc}")
         return None
 
 
@@ -119,8 +116,8 @@ def _load_thermal_properties(file_path: Path) -> dict[str, Any] | None:
     try:
         with open(file_path, encoding="utf8") as f:
             return json.load(f)
-    except Exception as e:
-        LOGGER.warning(f"Failed to load thermal properties from {file_path}: {e}")
+    except OSError as exc:
+        print(f"Failed to load thermal properties from {file_path}: {exc}")
         return None
 
 
@@ -138,7 +135,6 @@ def _get_mp_ids() -> list[str]:
     if not ref_dir.exists():
         print(f"ERROR: Reference directory not found: {ref_dir}")
         print(f"Expected location: {ref_dir.absolute()}")
-        LOGGER.error(f"Reference directory not found: {ref_dir}")
         return []
 
     mp_ids = set()
@@ -298,14 +294,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
     if not mp_ids:
         print("ERROR: No reference data found!")
         print(f"Expected DFT reference files in: {CALC_PATH / 'DFT'}")
-        LOGGER.error("No reference data found!")
         return {}
 
     print(f"✓ Found {len(mp_ids)} systems with reference data")
-    LOGGER.info(f"Found {len(mp_ids)} systems with reference data")
 
-    # OPTIMIZATION 1: Pre-load all reference data once (not per-model!)
-    print("→ Pre-loading reference data...")
+    # optimisation: Pre-load all reference data once (not per-model)
+    print("Pre-loading reference data...")
     ref_cache: dict[str, dict[str, Any]] = {}
     for mp_id in tqdm(mp_ids, desc="Loading reference data", leave=False):
         ref_band_path = CALC_PATH / "DFT" / f"{mp_id}_band_structure.npz"
@@ -340,13 +334,11 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
     stats: dict[str, dict[str, Any]] = {}
 
     for model_name in tqdm(MODELS, desc="Processing models"):
-        print(f"\n→ Processing model: {model_name}")
-        LOGGER.info(f"Processing model: {model_name}")
+        print(f"\n Processing model: {model_name}")
         model_dir = CALC_PATH / model_name
 
         if not model_dir.exists():
-            print(f"  ⚠ Model directory not found: {model_dir}")
-            LOGGER.warning(f"Model directory not found: {model_dir}")
+            print(f"Model directory not found: {model_dir}")
             continue
 
         metrics_data: dict[str, dict[str, Any]] = {
@@ -363,7 +355,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         skipped_count = 0
 
         for mp_id in tqdm(ref_cache.keys(), desc=f"  {model_name[:20]}", leave=False):
-            # OPTIMIZATION 1: Use pre-loaded reference data
+            # optimisation: Use pre-loaded reference data
             ref_data = ref_cache[mp_id]
             ref_band = ref_data["band"]
             ref_dos = ref_data["dos"]
@@ -404,8 +396,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             cv_ref = ref_thermal["heat_capacity"][T_300K_INDEX]
             cv_pred = pred_thermal["heat_capacity"][T_300K_INDEX]
 
-            # Store data paths for on-demand plot generation
-            # This replaces pre-generated PNGs and dramatically reduces runtime
+            # Store data paths for on the fly plot generation -> 10-100x speed increase
             data_paths = {
                 "ref_band": str(ref_band_path.relative_to(CALC_PATH.parent)),
                 "ref_dos": str(ref_dos_path.relative_to(CALC_PATH.parent)),
@@ -436,8 +427,6 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     }
                 )
 
-            # Calculate band errors - skip entire system if band shapes don't match
-            # This matches the old method which treats each material equally
             band_abs_diffs = []
             skip_system = False
 
@@ -452,8 +441,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 r_arr = np.array(r[:min_len])
 
                 try:
-                    # Skip entire system if band shapes don't match
-                    # This matches old behavior of treating each material equally
+                    # Skip system if band shapes don't match
                     if (
                         p_arr.ndim == 2
                         and r_arr.ndim == 2
@@ -470,14 +458,14 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     band_abs_diffs.append(abs_diff)
 
                 except ValueError as e:
-                    # Skip entire system on ValueError (matching old behavior)
+                    # Skip entire system on ValueError
                     print(f"  Skipping {mp_id} due to ValueError: {e}")
                     skip_system = True
                     break
 
             # If system was skipped, don't include it in BZ MAE calculation
             if skip_system:
-                LOGGER.warning(f"No valid band differences for {mp_id}/{model_name}")
+                print(f"No valid band differences for {mp_id}/{model_name}")
                 band_errors[mp_id] = float("nan")
                 continue  # Skip to next system without adding to system_mean_errors
 
@@ -491,9 +479,9 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     system_mean_errors.append(system_mean)  # For mean-of-means
                 else:
                     band_errors[mp_id] = float("nan")
-                del stacked, band_abs_diffs  # Free memory immediately
+                del stacked, band_abs_diffs
             else:
-                LOGGER.warning(f"No valid band differences for {mp_id}/{model_name}")
+                print(f"No valid band differences for {mp_id}/{model_name}")
                 band_errors[mp_id] = float("nan")
 
             # Stability classification
@@ -517,11 +505,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             )
 
         # BZ mean error - mean-of-means (treats each material equally)
-        # This matches old method: mean(mean_per_system)
-        if system_mean_errors:
-            bz_mean = float(np.mean(system_mean_errors))
-        else:
-            bz_mean = None
+        bz_mean = float(np.mean(system_mean_errors))
 
         # Stability statistics
         stability_f1, confusion = _stability_statistics(stability_points)
@@ -539,9 +523,6 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         }
 
         print(f"Completed {model_name}: {processed_count} processed")
-        LOGGER.info(
-            f"Completed {model_name}: {len(metrics_data['max_freq']['ref'])} systems"
-        )
 
     return stats
 
