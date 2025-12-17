@@ -12,8 +12,8 @@ from dash import Dash, dcc, html
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    register_scatter_asset_callbacks,
-    register_table_plot_callbacks,
+    model_asset_from_scatter,
+    scatter_and_assets_from_table,
 )
 from ml_peg.app.utils.plot_helpers import (
     build_classification_panel,
@@ -98,7 +98,7 @@ class PhononApp(BaseApp):
         )
         column_handlers = {bz_column: bz_handler, stability_column: stability_handler}
 
-        register_table_plot_callbacks(
+        scatter_and_assets_from_table(
             table_id=self.table_id,
             table_data=self.table.data,
             plot_container_id=PLOT_CONTAINER_ID,
@@ -122,7 +122,7 @@ class PhononApp(BaseApp):
             reference_label="PBE",
         )
 
-        register_scatter_asset_callbacks(
+        model_asset_from_scatter(
             scatter_id=SCATTER_GRAPH_ID,
             meta_store_id=SCATTER_META_STORE_ID,
             asset_container_id=DISPERSION_CONTAINER_ID,

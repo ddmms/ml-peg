@@ -586,7 +586,7 @@ def register_image_gallery_callbacks(
         return _image_figure(src, width, height)
 
 
-def register_table_plot_callbacks(
+def scatter_and_assets_from_table(
     *,
     table_id: str,
     table_data: list[dict],
@@ -599,7 +599,7 @@ def register_table_plot_callbacks(
     model_key: str = "MLIP",
 ) -> None:
     """
-    Register callbacks that map table cell clicks to plot content.
+    Render scatter content and persist model-specific metadata for asset callbacks.
 
     Parameters
     ----------
@@ -631,7 +631,7 @@ def register_table_plot_callbacks(
         State(last_cell_store_id, "data"),
         prevent_initial_call=True,
     )
-    def update_plot(active_cell, last_cell):
+    def _update_scatter_and_meta(active_cell, last_cell):
         """
         Map table cells to plot content.
 
@@ -670,7 +670,7 @@ def register_table_plot_callbacks(
         return content, meta, active_cell
 
 
-def register_scatter_asset_callbacks(
+def model_asset_from_scatter(
     *,
     scatter_id: str,
     meta_store_id: str,
@@ -681,7 +681,7 @@ def register_scatter_asset_callbacks(
     missing_message: str,
 ) -> None:
     """
-    Register callbacks that map scatter clicks to rendered assets.
+    Render a model-specific asset whenever the active scatter point is clicked.
 
     Parameters
     ----------
@@ -707,7 +707,7 @@ def register_scatter_asset_callbacks(
         Input(meta_store_id, "data"),
         prevent_initial_call=True,
     )
-    def display_asset(click_data, scatter_meta):
+    def _display_asset(click_data, scatter_meta):
         """
         Render the requested asset when a scatter point is clicked.
 
