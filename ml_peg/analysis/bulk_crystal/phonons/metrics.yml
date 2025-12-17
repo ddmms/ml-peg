@@ -1,57 +1,57 @@
 metrics:
   ω_max:
-    good: 24.0
-    bad: 240.0
+    good: 0.0
+    bad: 50.0
     unit: K
     tooltip: "MAE of the maximum phonon frequency across all materials."
     weight: 1.0
     level_of_theory: PBE
   ω_avg:
-    good: 14.4
-    bad: 144.0
+    good: 0.0
+    bad: 50.0
     unit: K
     tooltip: "MAE of the average phonon frequency over the Brillouin zone."
     weight: 1.0
     level_of_theory: PBE
   ω_min:
-    good: 4.8
-    bad: 96.0
+    good: 0.0
+    bad: 50.0
     unit: K
     tooltip: "MAE of the minimum phonon frequency (imaginary-mode sensitivity)."
     weight: 1.0
     level_of_theory: PBE
   S:
-    good: 0.5
-    bad: 5.0
+    good: 0.0
+    bad: 50.0
     unit: J/mol·K
     tooltip: "MAE of vibrational entropy at 300 K."
-    weight: 0.8
+    weight: 1.0
     level_of_theory: PBE
   F:
-    good: 0.5
-    bad: 4.0
+    good: 0.0
+    bad: 50.0
     unit: kJ/mol
     tooltip: "MAE of vibrational Helmholtz free energy at 300 K."
-    weight: 0.8
+    weight: 1.0
     level_of_theory: PBE
   C_V:
-    good: 0.5
-    bad: 4.0
+    good: 0.0
+    bad: 50.0
     unit: J/mol·K
     tooltip: "MAE of constant-volume heat capacity at 300 K."
-    weight: 0.8
+    weight: 1.0
     level_of_theory: PBE
   Avg BZ MAE:
-    good: 2.4
-    bad: 24.0
+    good: 0.0
+    bad: 50.0
     unit: K
-    tooltip: "Average absolute error of the phonon dispersion across the Brillouin zone."
-    weight: 1.2
+    tooltip: "Average absolute error of the phonon dispersion across the entire Brillouin zone."
+    weight: 1.0
     level_of_theory: PBE
   Stability F1:
-    good: 1.0
-    bad: 0.4
+    good: 0.0
+    bad: 50.0
     unit: "-"
     tooltip: "F1 score for predicting the presence of imaginary modes (|ω| < 2.4 K)."
-    weight: 1.2
+    weight: 1.0
     level_of_theory: PBE
