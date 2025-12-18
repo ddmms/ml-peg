@@ -22,7 +22,7 @@ from ml_peg.app.utils.plot_helpers import (
 )
 from ml_peg.calcs import CALCS_ROOT
 
-from .interactive_helpers import (
+from ml_peg.app.bulk_crystal.phonons.interactive_helpers import (
     build_bz_violin_content,
     lookup_system_entry,
     render_dispersion_component,
