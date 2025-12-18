@@ -51,7 +51,7 @@ metrics:
   Stability F1:
     good: 0.0
     bad: 50.0
-    unit: "-"
+    unit: None
     tooltip: "F1 score for predicting the presence of imaginary modes (|ω| < 2.4 K)."
     weight: 1.0
     level_of_theory: PBE
