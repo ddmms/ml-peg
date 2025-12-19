@@ -23,16 +23,7 @@ MODELS = load_models(current_models)
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
 
-DATA_PATH = Path(__file__).parent / "data"
-
 OUT_PATH = Path(__file__).parent / "outputs"
-DATA_PATH = (
-    download_s3_data(
-        filename="PLF547.zip", key="inputs/supramolecular/PLF547/PLF547.zip"
-    )
-    # / "PLF547"
-)
-print(DATA_PATH)
 
 
 class PLF547Benchmark(zntrack.Node):
@@ -279,17 +270,21 @@ class PLF547Benchmark(zntrack.Node):
     def run(self):
         """Run new benchmark."""
         # Read in data and attach calculator
-        # data_path = get_benchmark_data("PLA15.zip") / "PLA15/data/PLF547_pdbs"
-        ref_energies = self.parse_plf547_references(
-            DATA_PATH / "reference_energies.txt"
+        data_dir = (
+            download_s3_data(
+                filename="PLF547.zip", key="inputs/supramolecular/PLF547/PLF547.zip"
+            )
+            / "PLF547"
         )
+
+        ref_energies = self.parse_plf547_references(data_dir / "reference_energies.txt")
 
         calc = self.model.get_calculator()
         # Add D3 calculator for this test
         calc = self.model.add_d3_calculator(calc)
 
         for label, ref_energy in tqdm(ref_energies.items()):
-            pdb_fname = DATA_PATH / f"{label}.pdb"
+            pdb_fname = data_dir / f"{label}.pdb"
 
             fragments = self.process_pdb_file(pdb_fname)
             if not fragments:
