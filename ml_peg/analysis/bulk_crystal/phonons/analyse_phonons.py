@@ -25,6 +25,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "phonons" / "outputs"
+REF_PATH = CALC_PATH / "DFT"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons"
 ASSETS_PATH = OUT_PATH.parent.parent / "assets" / "bulk_crystal" / "phonons"
 SCATTER_FILENAME = OUT_PATH / "phonon_interactive.json"
@@ -131,7 +132,7 @@ def _get_mp_ids() -> list[str]:
         Sorted collection of MP identifiers discovered in the reference DFT
         directory.
     """
-    ref_dir = CALC_PATH / "DFT"
+    ref_dir = REF_PATH
     if not ref_dir.exists():
         print(f"ERROR: Reference directory not found: {ref_dir}")
         print(f"Expected location: {ref_dir.absolute()}")
@@ -142,7 +143,9 @@ def _get_mp_ids() -> list[str]:
         mp_id = file_path.stem.replace("_thermal_properties", "")
         mp_ids.add(mp_id)
 
-    return sorted(mp_ids)
+    # Sort by numeric part of MP ID for natural ordering
+    # (e.g., mp-1, mp-2, mp-10 instead of mp-1, mp-10, mp-2)
+    return sorted(mp_ids, key=lambda x: int(x.split("-")[1]))
 
 
 def _prettify_chemical_formula(formula: str) -> str:
@@ -173,8 +176,8 @@ def _prettify_chemical_formula(formula: str) -> str:
 
 
 def _build_xticks(
-    distances: list, labels: list, connections: list
-) -> tuple[list, list]:
+    distances: list[np.ndarray], labels: list[str], connections: list[bool]
+) -> tuple[list[float], list[str]]:
     """
     Build x-axis ticks for the band-structure plot.
 
@@ -214,6 +217,8 @@ def _classify_stability(ref_val: float, pred_val: float) -> str:
     """
     Classify stability based on minimum frequency predictions.
 
+    Used to assign classes to points for colouring in scatter plots.
+
     Parameters
     ----------
     ref_val
@@ -230,12 +235,12 @@ def _classify_stability(ref_val: float, pred_val: float) -> str:
     ref_stable = ref_val > STABILITY_THRESHOLD
     pred_stable = pred_val > STABILITY_THRESHOLD
     if ref_stable and pred_stable:
-        return "TN"
-    if (not ref_stable) and (not pred_stable):
         return "TP"
+    if (not ref_stable) and (not pred_stable):
+        return "TN"
     if (not ref_stable) and pred_stable:
-        return "FN"
-    return "FP"
+        return "FP"
+    return "FN"
 
 
 def _stability_statistics(
@@ -247,7 +252,8 @@ def _stability_statistics(
     Parameters
     ----------
     points
-        Sequence of dictionaries with ``ref`` and ``pred`` ω_min values.
+        Sequence of dictionaries with ``ref``, ``pred`` ω_min values, and
+        ``class`` labels from ``_classify_stability``.
 
     Returns
     -------
@@ -267,10 +273,11 @@ def _stability_statistics(
 
     f1_value = f1_score(y_true, y_pred, zero_division=0)
 
-    tp = int(np.logical_and(y_true, y_pred).sum())
-    fn = int(np.logical_and(y_true, ~y_pred).sum())
-    fp = int(np.logical_and(~y_true, y_pred).sum())
-    tn = int(np.logical_and(~y_true, ~y_pred).sum())
+    # Count existing classifications from _classify_stability
+    tp = sum(1 for entry in points if entry["class"] == "TP")
+    fn = sum(1 for entry in points if entry["class"] == "FN")
+    fp = sum(1 for entry in points if entry["class"] == "FP")
+    tn = sum(1 for entry in points if entry["class"] == "TN")
     matrix = [[tp, fn], [fp, tn]]
 
     return f1_value, matrix
@@ -293,20 +300,20 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
     mp_ids = _get_mp_ids()
     if not mp_ids:
         print("ERROR: No reference data found!")
-        print(f"Expected DFT reference files in: {CALC_PATH / 'DFT'}")
+        print(f"Expected DFT reference files in: {REF_PATH}")
         return {}
 
-    print(f"✓ Found {len(mp_ids)} systems with reference data")
+    print(f"Found {len(mp_ids)} systems with reference data")
 
     # optimisation: Pre-load all reference data once (not per-model)
     print("Pre-loading reference data...")
     ref_cache: dict[str, dict[str, Any]] = {}
     for mp_id in tqdm(mp_ids, desc="Loading reference data", leave=False):
-        ref_band_path = CALC_PATH / "DFT" / f"{mp_id}_band_structure.npz"
-        ref_dos_path = CALC_PATH / "DFT" / f"{mp_id}_dos.npz"
-        ref_thermal_path = CALC_PATH / "DFT" / f"{mp_id}_thermal_properties.json"
-        ref_labels_path = CALC_PATH / "DFT" / f"{mp_id}_labels.json"
-        ref_connections_path = CALC_PATH / "DFT" / f"{mp_id}_connections.json"
+        ref_band_path = REF_PATH / f"{mp_id}_band_structure.npz"
+        ref_dos_path = REF_PATH / f"{mp_id}_dos.npz"
+        ref_thermal_path = REF_PATH / f"{mp_id}_thermal_properties.json"
+        ref_labels_path = REF_PATH / f"{mp_id}_labels.json"
+        ref_connections_path = REF_PATH / f"{mp_id}_connections.json"
 
         ref_band = _load_band_structure(ref_band_path)
         ref_dos = _load_dos(ref_dos_path)
@@ -329,7 +336,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 "dos_path": ref_dos_path,
             }
 
-    print(f"✓ Cached {len(ref_cache)} reference systems\n")
+    print(f"Loaded {len(ref_cache)} reference systems into memory\n")
 
     stats: dict[str, dict[str, Any]] = {}
 
@@ -429,32 +436,31 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
 
             band_abs_diffs = []
             skip_system = False
-
-            for p, r in zip(
+            for pred_segment, ref_segment in zip(
                 pred_band["frequencies"], ref_band["frequencies"], strict=False
             ):
-                len_p = len(p)
-                len_r = len(r)
-                min_len = min(len_p, len_r)
+                len_pred = len(pred_segment)
+                len_ref = len(ref_segment)
+                min_len = min(len_pred, len_ref)
 
-                p_arr = np.array(p[:min_len])
-                r_arr = np.array(r[:min_len])
+                pred_arr = np.array(pred_segment[:min_len])
+                ref_arr = np.array(ref_segment[:min_len])
 
                 try:
                     # Skip system if band shapes don't match
                     if (
-                        p_arr.ndim == 2
-                        and r_arr.ndim == 2
-                        and p_arr.shape[1] != r_arr.shape[1]
+                        pred_arr.ndim == 2
+                        and ref_arr.ndim == 2
+                        and pred_arr.shape[1] != ref_arr.shape[1]
                     ):
                         print(
                             f"  Skipping {mp_id} due to band mismatch: "
-                            f"{p_arr.shape} vs {r_arr.shape}"
+                            f"{pred_arr.shape} vs {ref_arr.shape}"
                         )
                         skip_system = True
                         break
 
-                    abs_diff = np.abs(p_arr - r_arr) * THZ_TO_K
+                    abs_diff = np.abs(pred_arr - ref_arr) * THZ_TO_K
                     band_abs_diffs.append(abs_diff)
 
                 except ValueError as e:

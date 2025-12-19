@@ -291,9 +291,8 @@ def cell_to_scatter(
     pair). For benchmarks where clicking a COLUMN shows all models on one scatter
     (like S24 or OC157), use @plot_parity instead.
 
-    This decorator takes the same input format as @save_scatter_data but generates
-    complete Plotly figures during analysis instead of saving raw points for the
-    app to process on-the-fly.
+    This decorator generates complete Plotly figures during analysis instead of
+    saving raw points for the app to process on-the-fly.
 
     Parameters
     ----------
