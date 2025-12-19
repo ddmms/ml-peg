@@ -35,11 +35,9 @@ class PLF547Benchmark(zntrack.Node):
     # PDB processing functions
     # ------------------------------------------------------------
     @staticmethod
-    def extract_charge_and_selections(
-        pdb_path: Path,
-    ) -> tuple[float, float, float, str, str]:
+    def extract_charge_and_selections(pdb_path: Path) -> tuple[float, float, float]:
         """
-        Extract charge and selection information from PDB REMARK lines.
+        Extract charge information from PDB REMARK lines.
 
         Parameters
         ----------
@@ -48,16 +46,14 @@ class PLF547Benchmark(zntrack.Node):
 
         Returns
         -------
-        tuple[int, int, int, list, list]: A tuple containing:
+        tuple[int, int, int]
+            A tuple containing:
 
             - total_charge: Total charge of the system.
             - qa: Charge of selection a.
             - qb: Charge of selection b.
-            - selection_a: Atom indices of selection a.
-            - selection_b: Atom indices of selection b.
         """
         total_charge = qa = qb = 0.0
-        selection_a = selection_b = ""
 
         with open(pdb_path) as f:
             for line in f:
@@ -78,12 +74,8 @@ class PLF547Benchmark(zntrack.Node):
                     qa = int(parts[2])
                 elif tag == "charge_b":
                     qb = int(parts[2])
-                elif tag == "selection_a":
-                    selection_a = " ".join(parts[2:])
-                elif tag == "selection_b":
-                    selection_b = " ".join(parts[2:])
 
-        return total_charge, qa, qb, selection_a, selection_b
+        return total_charge, qa, qb
 
     @staticmethod
     def separate_protein_ligand_simple(pdb_path: Path):
@@ -182,9 +174,7 @@ class PLF547Benchmark(zntrack.Node):
             Dictionary containing the ASE atoms objects
             of the complex, protein, and ligand.
         """
-        total_charge, charge_a, charge_b, _, _ = self.extract_charge_and_selections(
-            pdb_path
-        )
+        total_charge, charge_a, charge_b = self.extract_charge_and_selections(pdb_path)
 
         try:
             all_atoms, protein_atoms, ligand_atoms = (
