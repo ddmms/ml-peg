@@ -35,7 +35,7 @@ class PLF547Benchmark(zntrack.Node):
     # PDB processing functions
     # ------------------------------------------------------------
     @staticmethod
-    def extract_charge_and_selections(pdb_path: Path) -> tuple[float, float, float]:
+    def extract_charge_and_selections(pdb_path: Path) -> tuple[int, int, int]:
         """
         Extract charge information from PDB REMARK lines.
 
@@ -53,7 +53,7 @@ class PLF547Benchmark(zntrack.Node):
             - qa: Charge of selection a.
             - qb: Charge of selection b.
         """
-        total_charge = qa = qb = 0.0
+        total_charge = qa = qb = 0
 
         with open(pdb_path) as f:
             for line in f:
