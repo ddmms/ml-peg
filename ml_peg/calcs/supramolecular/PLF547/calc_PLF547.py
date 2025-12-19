@@ -21,7 +21,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
