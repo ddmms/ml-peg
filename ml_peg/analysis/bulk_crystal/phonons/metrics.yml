@@ -10,14 +10,14 @@ metrics:
     good: 0.0
     bad: 50.0
     unit: K
-    tooltip: "MAE of the average phonon frequency over the Brillouin zone."
+    tooltip: "MAE of the average phonon frequency across all materials."
     weight: 1.0
     level_of_theory: PBE
   ω_min:
     good: 0.0
     bad: 50.0
     unit: K
-    tooltip: "MAE of the minimum phonon frequency (imaginary-mode sensitivity)."
+    tooltip: "MAE of the minimum phonon frequency across all materials (imaginary-mode sensitivity)."
     weight: 1.0
     level_of_theory: PBE
   S:
