@@ -25,8 +25,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "supramolecular" / "plf547" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "supramolecular" / "plf547"
+CALC_PATH = CALCS_ROOT / "supramolecular" / "PLF547" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "supramolecular" / "PLF547"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -170,7 +170,7 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
 
 def test_plf547(metrics: dict[str, dict]) -> None:
     """
-    Run plf547 test.
+    Run PLF547 test.
 
     Parameters
     ----------

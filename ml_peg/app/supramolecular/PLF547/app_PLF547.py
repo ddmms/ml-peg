@@ -22,7 +22,7 @@ BENCHMARK_NAME = "PLF547"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#plf547"
 )
-DATA_PATH = APP_ROOT / "data" / "supramolecular" / "plf547"
+DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLF547"
 
 
 def _structure_paths(model_name: str) -> list[str]:
@@ -41,7 +41,7 @@ def _structure_paths(model_name: str) -> list[str]:
     """
     struct_dir = DATA_PATH / model_name
     xyz_files = sorted(struct_dir.glob("*.xyz"))
-    prefix = Path("assets") / "supramolecular" / "plf547" / model_name
+    prefix = Path("assets") / "supramolecular" / "PLF547" / model_name
     return [str(prefix / path.name) for path in xyz_files]
 
 
