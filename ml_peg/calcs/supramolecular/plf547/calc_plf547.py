@@ -74,11 +74,11 @@ class PLF547Benchmark(zntrack.Node):
                 tag = parts[1].lower()
 
                 if tag == "charge":
-                    total_charge = float(parts[2])
+                    total_charge = int(parts[2])
                 elif tag == "charge_a":
-                    qa = float(parts[2])
+                    qa = int(parts[2])
                 elif tag == "charge_b":
-                    qb = float(parts[2])
+                    qb = int(parts[2])
                 elif tag == "selection_a":
                     selection_a = " ".join(parts[2:])
                 elif tag == "selection_b":
@@ -144,7 +144,7 @@ class PLF547Benchmark(zntrack.Node):
 
         if not atom_list:
             atoms = Atoms()
-            atoms.info.update({"charge": charge, "identifier": identifier})
+            atoms.info.update({"charge": charge, "spin": 1, "identifier": identifier})
             return atoms
 
         symbols = []
