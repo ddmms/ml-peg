@@ -104,7 +104,7 @@ class IONPI19Benchmark(zntrack.Node):
                 for line in lines:
                     items = line.strip().split()
                     charge = int(items[0])
-        atoms.info["charge"] = int(charge)
+        atoms.info["charge"] = charge
         return atoms
 
     def get_ref_energies(self, data_path):
