@@ -100,7 +100,7 @@ class NCIAR739x5Benchmark(zntrack.Node):
                 filename="NCIA_R739.zip",
                 key="inputs/non_covalent_interactions/NCIA_R739x5/NCIA_R739x5.zip",
             )
-            / "NCIA_739x5"
+            / "NCIA_R739x5"
         )
         self.get_ref_energies(data_path)
 
