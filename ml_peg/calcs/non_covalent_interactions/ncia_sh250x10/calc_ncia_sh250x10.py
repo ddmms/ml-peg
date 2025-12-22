@@ -98,7 +98,7 @@ class NCIASH250x10Benchmark(zntrack.Node):
                 filename="NCIA_SH250x10.zip",
                 key="inputs/non_covalent_interactions/NCIA_SH250x10/NCIA_SH250x10.zip",
             )
-            / "SH250x10"
+            / "NCIA_SH250x10"
         )
         self.get_ref_energies(data_path)
 
