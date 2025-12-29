@@ -105,6 +105,8 @@ class NCIAR739x5Benchmark(zntrack.Node):
         self.get_ref_energies(data_path)
 
         calc = self.model.get_calculator()
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
 
         for label, ref_energy in tqdm(self.ref_energies.items()):
             xyz_fname = f"{label}.xyz"
