@@ -138,6 +138,9 @@ class IONPI19Benchmark(zntrack.Node):
         # Read in data and attach calculator
         calc = self.model.get_calculator()
 
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
+
         for system_id in tqdm(range(1, 20)):
             for config in self.species[system_id]:
                 label = f"{config}"
