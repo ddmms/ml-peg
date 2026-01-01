@@ -140,11 +140,9 @@ def get_rmse(conformer_energies) -> dict[str, float]:
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "37conf8_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error (eV)",
-        "RMSE": "Root Mean Square Error (eV)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
     """
