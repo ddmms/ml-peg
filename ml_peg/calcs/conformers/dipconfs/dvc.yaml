@@ -1,0 +1,8 @@
+stages:
+  mace-omol_DipCONFSBenchmark:
+    cmd: zntrack run calc_dipconfs.DipCONFSBenchmark --name mace-omol_DipCONFSBenchmark
+    metrics:
+    - nodes/mace-omol/DipCONFSBenchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-omol_DipCONFSBenchmark
