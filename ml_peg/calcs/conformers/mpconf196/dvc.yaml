@@ -1,0 +1,8 @@
+stages:
+  uma-s-1p1-omol_MPCONF196Benchmark:
+    cmd: zntrack run calc_mpconf196.MPCONF196Benchmark --name uma-s-1p1-omol_MPCONF196Benchmark
+    metrics:
+    - nodes/uma-s-1p1-omol/MPCONF196Benchmark/node-meta.json:
+        cache: true
+    params:
+    - uma-s-1p1-omol_MPCONF196Benchmark
