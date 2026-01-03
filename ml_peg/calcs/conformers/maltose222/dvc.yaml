@@ -1,0 +1,22 @@
+stages:
+  mace-fukui-spin-2L_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name mace-fukui-spin-2L_Maltose222Benchmark
+    metrics:
+    - nodes/mace-fukui-spin-2L/Maltose222Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-fukui-spin-2L_Maltose222Benchmark
+  mace-omol_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name mace-omol_Maltose222Benchmark
+    metrics:
+    - nodes/mace-omol/Maltose222Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-omol_Maltose222Benchmark
+  orb-v3-conservative-omol_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name orb-v3-conservative-omol_Maltose222Benchmark
+    metrics:
+    - nodes/orb-v3-conservative-omol/Maltose222Benchmark/node-meta.json:
+        cache: true
+    params:
+    - orb-v3-conservative-omol_Maltose222Benchmark
