@@ -1,0 +1,89 @@
+schema: '2.0'
+stages:
+  uma-s-1p1-omol_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name
+      uma-s-1p1-omol_Maltose222Benchmark
+    params:
+      params.yaml:
+        uma-s-1p1-omol_Maltose222Benchmark:
+          model:
+            _cls: ml_peg.models.models.FairChemCalc
+            d3_kwargs: {}
+            default_dtype: float32
+            device: cuda
+            model_name: uma-s-1p1
+            overrides: {}
+            task_name: omol
+            trained_on_d3: true
+          model_name: uma-s-1p1-omol
+    outs:
+    - path: nodes/uma-s-1p1-omol/Maltose222Benchmark/node-meta.json
+      hash: md5
+      md5: 65e53e3539849a44b98d0d3c99413e87
+      size: 727
+  mace-fukui-spin-2L_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name
+      mace-fukui-spin-2L_Maltose222Benchmark
+    params:
+      params.yaml:
+        mace-fukui-spin-2L_Maltose222Benchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: MACECalculator
+            d3_kwargs: {}
+            default_dtype:
+            device: auto
+            kwargs:
+              model_paths:
+                /home/dk584/work/mace-fukui-spin-models/mace-fukui-spin-2L.model
+            module: mace.calculators.mace
+            spec:
+            trained_on_d3: true
+          model_name: mace-fukui-spin-2L
+    outs:
+    - path: nodes/mace-fukui-spin-2L/Maltose222Benchmark/node-meta.json
+      hash: md5
+      md5: 31199ec2d0a862b975564352b8595658
+      size: 887
+  mace-omol_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name
+      mace-omol_Maltose222Benchmark
+    params:
+      params.yaml:
+        mace-omol_Maltose222Benchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: mace_omol
+            d3_kwargs: {}
+            default_dtype:
+            device: auto
+            kwargs: {}
+            module: mace.calculators
+            spec:
+            trained_on_d3: true
+          model_name: mace-omol
+    outs:
+    - path: nodes/mace-omol/Maltose222Benchmark/node-meta.json
+      hash: md5
+      md5: 03cc31853cea5a528b398c9bea8731db
+      size: 741
+  orb-v3-conservative-omol_Maltose222Benchmark:
+    cmd: zntrack run calc_maltose222.Maltose222Benchmark --name
+      orb-v3-conservative-omol_Maltose222Benchmark
+    params:
+      params.yaml:
+        orb-v3-conservative-omol_Maltose222Benchmark:
+          model:
+            _cls: ml_peg.models.models.OrbCalc
+            d3_kwargs: {}
+            default_dtype: float32-high
+            device: auto
+            kwargs: {}
+            name: orb_v3_conservative_omol
+            trained_on_d3: true
+          model_name: orb-v3-conservative-omol
+    outs:
+    - path: nodes/orb-v3-conservative-omol/Maltose222Benchmark/node-meta.json
+      hash: md5
+      md5: 33cbd771f739b072c31bf1cb32a8c1af
+      size: 729
