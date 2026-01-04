@@ -1,0 +1,89 @@
+schema: '2.0'
+stages:
+  mace-omol_solvMPCONF196Benchmark:
+    cmd: zntrack run calc_solv_mpconf196.solvMPCONF196Benchmark --name
+      mace-omol_solvMPCONF196Benchmark
+    params:
+      params.yaml:
+        mace-omol_solvMPCONF196Benchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: mace_omol
+            d3_kwargs: {}
+            default_dtype:
+            device: auto
+            kwargs: {}
+            module: mace.calculators
+            spec:
+            trained_on_d3: true
+          model_name: mace-omol
+    outs:
+    - path: nodes/mace-omol/solvMPCONF196Benchmark/node-meta.json
+      hash: md5
+      md5: 0a2bfc1e8225bad4b8e585769729d9eb
+      size: 754
+  mace-fukui-spin-2L_solvMPCONF196Benchmark:
+    cmd: zntrack run calc_solv_mpconf196.solvMPCONF196Benchmark --name
+      mace-fukui-spin-2L_solvMPCONF196Benchmark
+    params:
+      params.yaml:
+        mace-fukui-spin-2L_solvMPCONF196Benchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: MACECalculator
+            d3_kwargs: {}
+            default_dtype:
+            device: auto
+            kwargs:
+              model_paths:
+                /home/dk584/work/mace-fukui-spin-models/mace-fukui-spin-2L.model
+            module: mace.calculators.mace
+            spec:
+            trained_on_d3: true
+          model_name: mace-fukui-spin-2L
+    outs:
+    - path: nodes/mace-fukui-spin-2L/solvMPCONF196Benchmark/node-meta.json
+      hash: md5
+      md5: d5208efd4c4fcd105722321bcc3da537
+      size: 900
+  orb-v3-conservative-omol_solvMPCONF196Benchmark:
+    cmd: zntrack run calc_solv_mpconf196.solvMPCONF196Benchmark --name
+      orb-v3-conservative-omol_solvMPCONF196Benchmark
+    params:
+      params.yaml:
+        orb-v3-conservative-omol_solvMPCONF196Benchmark:
+          model:
+            _cls: ml_peg.models.models.OrbCalc
+            d3_kwargs: {}
+            default_dtype: float32-high
+            device: auto
+            kwargs: {}
+            name: orb_v3_conservative_omol
+            trained_on_d3: true
+          model_name: orb-v3-conservative-omol
+    outs:
+    - path: nodes/orb-v3-conservative-omol/solvMPCONF196Benchmark/node-meta.json
+      hash: md5
+      md5: 2510e1fe67bdf9b520509bbf9e38a1e0
+      size: 741
+  uma-s-1p1-omol_solvMPCONF196Benchmark:
+    cmd: zntrack run calc_solv_mpconf196.solvMPCONF196Benchmark --name
+      uma-s-1p1-omol_solvMPCONF196Benchmark
+    params:
+      params.yaml:
+        uma-s-1p1-omol_solvMPCONF196Benchmark:
+          model:
+            _cls: ml_peg.models.models.FairChemCalc
+            d3_kwargs: {}
+            default_dtype: float32
+            device: cuda
+            model_name: uma-s-1p1
+            overrides: {}
+            task_name: omol
+            trained_on_d3: true
+          model_name: uma-s-1p1-omol
+    outs:
+    - path: nodes/uma-s-1p1-omol/solvMPCONF196Benchmark/node-meta.json
+      hash: md5
+      md5: e6c14322cba12a42c2ffd4d54ddd7772
+      size: 740
