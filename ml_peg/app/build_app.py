@@ -152,6 +152,18 @@ def build_category(
                     data=summary_table.data,
                 ),
                 weight_components,
+                Div(
+                    [
+                        Div(
+                            style={
+                                "width": "100%",
+                                "height": "1px",
+                                "backgroundColor": "#a7adb3",
+                            }
+                        ),
+                    ],
+                    style={"margin": "32px 0 24px"},
+                ),
                 Div([all_layouts[category][test] for test in all_layouts[category]]),
             ]
         )
