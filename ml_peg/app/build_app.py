@@ -158,7 +158,7 @@ def build_category(
                             style={
                                 "width": "100%",
                                 "height": "1px",
-                                "backgroundColor": "#a7adb3",  # 6c757d
+                                "backgroundColor": "#a7adb3",
                             }
                         ),
                     ],
