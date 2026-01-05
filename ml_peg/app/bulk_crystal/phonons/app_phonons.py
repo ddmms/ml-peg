@@ -11,6 +11,11 @@ from dash import Dash, dcc, html
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.bulk_crystal.phonons.interactive_helpers import (
+    build_bz_violin_content,
+    lookup_system_entry,
+    render_dispersion_component,
+)
 from ml_peg.app.utils.build_callbacks import (
     model_asset_from_scatter,
     scatter_and_assets_from_table,
@@ -21,12 +26,6 @@ from ml_peg.app.utils.plot_helpers import (
     resolve_scatter_selection,
 )
 from ml_peg.calcs import CALCS_ROOT
-
-from ml_peg.app.bulk_crystal.phonons.interactive_helpers import (
-    build_bz_violin_content,
-    lookup_system_entry,
-    render_dispersion_component,
-)
 
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons"
 TABLE_PATH = DATA_PATH / "phonon_metrics_table.json"
