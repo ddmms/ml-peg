@@ -165,7 +165,7 @@ class PLF547Benchmark(zntrack.Node):
             positions.append(atom.position)
 
         atoms = Atoms(symbols=symbols, positions=np.array(positions))
-        atoms.info.update({"charge": charge, "identifier": identifier})
+        atoms.info.update({"charge": charge, "spin": 1, "identifier": identifier})
         return atoms.copy()
 
     def process_pdb_file(self, pdb_path: Path) -> dict[str, ase.Atoms]:
