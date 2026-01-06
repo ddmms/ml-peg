@@ -164,7 +164,7 @@ def build_tutorial_button() -> html.Button:
         Button that reopens the onboarding modal when clicked.
     """
     return html.Button(
-        "? Tutorial",
+        "Tutorial",
         id="restart-tutorial-button",
         title="Restart the interactive tutorial",
         style={
