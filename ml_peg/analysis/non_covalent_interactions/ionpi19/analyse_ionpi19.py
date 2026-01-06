@@ -80,16 +80,20 @@ stoich = {
 
 def labels() -> list:
     """
-    Get list of system names.
+    Get list of system identifiers.
 
     Returns
     -------
     list
-        List of all system names.
+        List of system identifiers (one per system, 19 total).
     """
-    for model_name in MODELS:
-        labels_list = [path.stem for path in sorted((CALC_PATH / model_name).glob("*"))]
-        break
+    # Systems 1-17 have complexes (AB), show those labels
+    # Systems 18-19 only have fragments, show system numbers
+    labels_list = []
+    for i in range(1, 18):
+        labels_list.append(f"{i}_AB")
+    labels_list.append("18")
+    labels_list.append("19")
     return labels_list
 
 
