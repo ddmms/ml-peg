@@ -58,7 +58,9 @@ mattersim = [
 orb = [
     "orb-models == 0.5.5; sys_platform != 'win32' and python_version < '3.13'",
 ]
-
+pet-mad = [
+    "pet-mad == 1.4.4; sys_platform != 'win32'"
+]
 uma = [
     "fairchem-core == 2.10.0",
 ]
