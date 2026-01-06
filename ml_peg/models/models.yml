@@ -156,3 +156,13 @@ orb-v3-consv-inf-omat:
 #   kwargs:
 #     model_name: "uma-s-1p1"
 #     task_name: "omol"
+
+pet-mad:
+  module: pet_mad.calculator
+  class_name: PETMADCalculator
+  device: "cpu"
+  default_dtype: float32
+  trained_on_d3: false
+  level_of_theory: PBEsol
+  kwargs:
+    version: "v1.0.2"

@@ -97,7 +97,7 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
     dict[str, Any]
         Loaded models from models.yml.
     """
-    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc
+    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc, PetMadCalc
 
     loaded_models = {}
 
@@ -132,6 +132,16 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                 module=cfg["module"],
                 class_name=cfg["class_name"],
                 device=cfg.get("device", "auto"),
+                default_dtype=cfg.get("default_dtype", "float32"),
+                kwargs=cfg.get("kwargs", {}),
+                trained_on_d3=cfg.get("trained_on_d3", False),
+                d3_kwargs=cfg.get("d3_kwargs", {}),
+            )
+        elif cfg["class_name"] == "PETMADCalculator":
+            loaded_models[name] = PetMadCalc(
+                module=cfg["module"],
+                class_name=cfg["class_name"],
+                device=cfg.get("device", "cpu"),
                 default_dtype=cfg.get("default_dtype", "float32"),
                 kwargs=cfg.get("kwargs", {}),
                 trained_on_d3=cfg.get("trained_on_d3", False),
