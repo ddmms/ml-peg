@@ -166,3 +166,5 @@ pet-mad:
   level_of_theory: PBEsol
   kwargs:
     version: "v1.0.2"
+  d3_kwargs:
+    xc: pbesol
