@@ -43,7 +43,7 @@ def labels() -> list:
         List of all system names.
     """
     for model in MODELS:
-        labels_list = [path.stem for path in (CALC_PATH / model).glob("*.xyz")]
+        labels_list = sorted([path.stem for path in (CALC_PATH / model).glob("*.xyz")])
         break
     return labels_list
 
