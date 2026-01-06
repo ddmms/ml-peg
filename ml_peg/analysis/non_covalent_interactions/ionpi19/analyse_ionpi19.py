@@ -13,7 +13,6 @@ from ml_peg.analysis.utils.utils import (
     build_d3_name_map,
     load_metrics_config,
     mae,
-    rmse,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -163,36 +162,13 @@ def get_mae(conformer_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_rmse(conformer_energies) -> dict[str, float]:
-    """
-    Get root mean square error for conformer energies.
-
-    Parameters
-    ----------
-    conformer_energies
-        Dictionary of reference and predicted conformer energies.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of predicted conformer energies errors for all models.
-    """
-    results = {}
-    for model_name in MODELS:
-        results[model_name] = rmse(
-            conformer_energies["ref"], conformer_energies[model_name]
-        )
-    return results
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "ionpi19_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -201,9 +177,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     get_mae
         Mean absolute errors for all models.
 
-    get_rmse
-        Root Mean Square Error for all models.
-
     Returns
     -------
     dict[str, dict]
@@ -211,7 +184,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     """
     return {
         "MAE": get_mae,
-        "RMSE": get_rmse,
     }
 
 
