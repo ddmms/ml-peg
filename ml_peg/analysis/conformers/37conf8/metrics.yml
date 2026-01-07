@@ -4,10 +4,4 @@ metrics:
     bad: 1.0
     unit: eV
     tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-  RMSE:
-    good: 0.0
-    bad: 1.0
-    unit: eV
-    tooltip: Root Mean Square Error for all systems
-    level_of_theory: CCSD(T)
+    level_of_theory: DLPNO-CCSD(T)/cc-pVTZ
