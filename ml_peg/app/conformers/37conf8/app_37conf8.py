@@ -66,8 +66,10 @@ def get_app() -> ThirtySevenCONF8App:
     return ThirtySevenCONF8App(
         name=BENCHMARK_NAME,
         description=(
-            "Performance in predicting conformer relative energies "
-            "for the 37CONF8 dataset (37 neutral molecules, 8 conformers each). "
+            "Performance in predicting relative conformer energies "
+            "of 37 organic molecules representing pharmaceuticals, drugs, catalysts, "
+            "synthetic precursors, and industry-related chemicals (37 neutral "
+            "molecules, 8 conformers each). "
             "Reference data from DLPNO-CCSD(T) calculations."
         ),
         docs_url=DOCS_URL,
