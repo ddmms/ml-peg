@@ -14,12 +14,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import (
-    build_d3_name_map,
-    load_metrics_config,
-    mae,
-    rmse,
-)
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
@@ -39,20 +34,59 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
+def get_system_names() -> list[str]:
     """
-    Get list of system names.
+    Get list of reaction system names from the first available model.
 
     Returns
     -------
-    list
-        List of all system names.
+    list[str]
+        List of system names (reaction identifiers).
     """
     for model_name in sorted(CALC_PATH.glob("*")):
-        xyz_paths = sorted((CALC_PATH / model_name).glob("*TS.xyz"))
-        labels_list = [path.stem.replace("TS", "") for path in xyz_paths]
-        break
-    return labels_list
+        if model_name.is_dir():
+            xyz_paths = sorted((CALC_PATH / model_name).glob("*TS.xyz"))
+            if xyz_paths:
+                return [path.stem.replace("TS", "") for path in xyz_paths]
+    return []
+
+
+def get_reaction_numbers() -> list[int]:
+    """
+    Get reaction numbers extracted from system names.
+
+    Returns
+    -------
+    list[int]
+        List of reaction numbers (e.g., [1, 2, 3, ...]).
+    """
+    system_names = get_system_names()
+    reaction_nums = []
+    for name in system_names:
+        # Extract reaction number from format like "01_1" -> 1
+        parts = name.split("_")
+        if len(parts) == 2:
+            reaction_nums.append(int(parts[0]))
+    return reaction_nums
+
+
+def get_structure_numbers() -> list[int]:
+    """
+    Get structure numbers (different geometries for same reaction).
+
+    Returns
+    -------
+    list[int]
+        List of structure numbers for each reaction.
+    """
+    system_names = get_system_names()
+    struct_nums = []
+    for name in system_names:
+        # Extract structure number from format like "01_1" -> 1
+        parts = name.split("_")
+        if len(parts) == 2:
+            struct_nums.append(int(parts[1]))
+    return struct_nums
 
 
 @pytest.fixture
@@ -62,7 +96,9 @@ def labels() -> list:
     x_label="Predicted barrier / eV",
     y_label="Reference barrier / eV",
     hoverdata={
-        "Labels": labels(),
+        "Reaction": get_reaction_numbers(),
+        "Structure": get_structure_numbers(),
+        "System ID": get_system_names(),
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -77,12 +113,15 @@ def barrier_heights() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
+    system_names = get_system_names()
     for model_name in MODELS:
         model_barriers = []
         ref_barriers = []
-        for label in labels()[model_name]:
-            ref_stored = False
-
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            results[model_name] = []
+            continue
+        for system_name in system_names:
             model_forward_barrier = 0
             ref_forward_barrier = 0
 
@@ -90,7 +129,7 @@ def barrier_heights() -> dict[str, list]:
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
 
-            for fname in (CALC_PATH / model_name).glob(f"{label}*"):
+            for fname in model_dir.glob(f"{system_name}*"):
                 if "TS" in fname.stem:
                     atoms = read(fname)
                     model_forward_barrier += atoms.info["model_energy"]
@@ -133,34 +172,13 @@ def get_mae(barrier_heights) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_rmse(barrier_heights) -> dict[str, float]:
-    """
-    Get root mean square error for barrier heights.
-
-    Parameters
-    ----------
-    barrier_heights
-        Dictionary of reference and predicted barrier heights.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of predicted barrier height errors for all models.
-    """
-    results = {}
-    for model_name in MODELS:
-        results[model_name] = rmse(barrier_heights["ref"], barrier_heights[model_name])
-    return results
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "bh9_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -169,9 +187,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     get_mae
         Mean absolute errors for all models.
 
-    get_rmse
-        Root Mean Square Error for all models.
-
     Returns
     -------
     dict[str, dict]
@@ -179,7 +194,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     """
     return {
         "MAE": get_mae,
-        "RMSE": get_rmse,
     }
 
 
