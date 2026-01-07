@@ -33,17 +33,23 @@ class BH2O36App(BaseApp):
 
         model_dir = DATA_PATH / MODELS[0]
         if model_dir.exists():
+            # Get system names from trajectory files
             labels = sorted(
-                {f.stem.replace("_ts", "") for f in model_dir.glob("*_ts.xyz")}
+                {
+                    f.stem.replace("_rct_to_ts", "")
+                    for f in model_dir.glob("*_rct_to_ts.xyz")
+                }
             )
             asset_prefix = f"assets/molecular_reactions/bh2o_36/{MODELS[0]}/"
+            # Each system has 2 data points:
+            # TS-Reactants (rct->TS), TS-Products (pro->TS)
             structs = [
-                {
-                    "Reactants": f"{asset_prefix}{label}_rct.xyz",
-                    "Products": f"{asset_prefix}{label}_pro.xyz",
-                    "Transition state": f"{asset_prefix}{label}_ts.xyz",
-                }
+                path
                 for label in labels
+                for path in [
+                    f"{asset_prefix}{label}_rct_to_ts.xyz",
+                    f"{asset_prefix}{label}_pro_to_ts.xyz",
+                ]
             ]
         else:
             structs = []
@@ -58,7 +64,7 @@ class BH2O36App(BaseApp):
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
             structs=structs,
-            mode="reaction",
+            mode="traj",  # Use trajectory mode to cycle between relevant structures
         )
 
 
