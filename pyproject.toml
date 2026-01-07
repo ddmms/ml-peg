@@ -33,6 +33,7 @@ dependencies = [
     "typer<1.0.0,>=0.19.1",
     "matcalc",
     "matminer",
+    "openpyxl",
 ]
 
 [project.optional-dependencies]
