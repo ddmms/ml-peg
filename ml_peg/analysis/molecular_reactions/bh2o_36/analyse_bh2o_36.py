@@ -34,21 +34,40 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
+def get_system_names() -> list[str]:
     """
-    Get list of system names.
+    Get list of reaction system names from the first available model.
 
     Returns
     -------
-    list
-        List of all system names.
+    list[str]
+        List of base system names (without suffixes).
     """
-    labels_list = []
     for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*ts.xyz")):
-            labels_list.append(system_path.stem.replace("_ts", ""))
-        break  # only need the first model to list available systems
-    return labels_list
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            system_names = []
+            for system_path in sorted(model_dir.glob("*_ts.xyz")):
+                system_names.append(system_path.stem.replace("_ts", ""))
+            if system_names:
+                return system_names
+    return []
+
+
+def get_barrier_labels() -> list[str]:
+    """
+    Get list of barrier labels for plotting (two per reaction system).
+
+    Returns
+    -------
+    list[str]
+        List of barrier labels with reaction context.
+    """
+    return [
+        label
+        for system in get_system_names()
+        for label in [f"{system} (TS-Reactants)", f"{system} (TS-Products)"]
+    ]
 
 
 @pytest.fixture
@@ -58,7 +77,16 @@ def labels() -> list:
     x_label="Predicted barrier / eV",
     y_label="Reference barrier / eV",
     hoverdata={
-        "Labels": labels(),
+        "System": [
+            system_name
+            for system_name in get_system_names()
+            for _ in range(2)  # Duplicate each system name for both barriers
+        ],
+        "Barrier Type": [
+            barrier_type
+            for _ in get_system_names()
+            for barrier_type in ["TS-Reactants", "TS-Products"]
+        ],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -73,15 +101,18 @@ def barrier_heights() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
+    system_names = get_system_names()
     for model_name in MODELS:
-        for label in labels():
-            atoms_rct = read(CALC_PATH / model_name / f"{label}_rct.xyz")
-            atoms_pro = read(CALC_PATH / model_name / f"{label}_pro.xyz")
-            atoms_ts = read(CALC_PATH / model_name / f"{label}_ts.xyz")
+        for system_name in system_names:
+            atoms_rct = read(CALC_PATH / model_name / f"{system_name}_rct.xyz")
+            atoms_pro = read(CALC_PATH / model_name / f"{system_name}_pro.xyz")
+            atoms_ts = read(CALC_PATH / model_name / f"{system_name}_ts.xyz")
 
+            # TS - Reactants barrier
             results[model_name].append(
                 atoms_ts.info["pred_energy"] - atoms_rct.info["pred_energy"]
             )
+            # TS - Products barrier
             results[model_name].append(
                 atoms_ts.info["pred_energy"] - atoms_pro.info["pred_energy"]
             )
@@ -97,9 +128,25 @@ def barrier_heights() -> dict[str, list]:
             # Write structures for app
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}_rct.xyz", atoms_rct)
-            write(structs_dir / f"{label}_pro.xyz", atoms_pro)
-            write(structs_dir / f"{label}_ts.xyz", atoms_ts)
+
+            # Write individual structures
+            write(structs_dir / f"{system_name}_rct.xyz", atoms_rct)
+            write(structs_dir / f"{system_name}_pro.xyz", atoms_pro)
+            write(structs_dir / f"{system_name}_ts.xyz", atoms_ts)
+
+            # Write trajectory files for each barrier type
+            # TS-Reactants barrier: reactants -> TS
+            write(
+                structs_dir / f"{system_name}_rct_to_ts.xyz",
+                [atoms_rct, atoms_ts],
+                append=False,
+            )
+            # TS-Products barrier: products -> TS
+            write(
+                structs_dir / f"{system_name}_pro_to_ts.xyz",
+                [atoms_pro, atoms_ts],
+                append=False,
+            )
         ref_stored = True
     return results
 
