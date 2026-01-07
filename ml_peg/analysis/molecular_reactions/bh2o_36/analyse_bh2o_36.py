@@ -14,12 +14,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import (
-    build_d3_name_map,
-    load_metrics_config,
-    mae,
-    rmse,
-)
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
@@ -30,8 +25,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "molecular_reactions" / "bh2o-36" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "bh2o-36"
+CALC_PATH = CALCS_ROOT / "molecular_reactions" / "bh2o_36" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "bh2o_36"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -131,34 +126,13 @@ def get_mae(barrier_heights) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_rmse(barrier_heights) -> dict[str, float]:
-    """
-    Get root mean square error for barrier heights.
-
-    Parameters
-    ----------
-    barrier_heights
-        Dictionary of reference and predicted barrier heights.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of predicted barrier height errors for all models.
-    """
-    results = {}
-    for model_name in MODELS:
-        results[model_name] = rmse(barrier_heights["ref"], barrier_heights[model_name])
-    return results
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "bh2o_36_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -167,9 +141,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     get_mae
         Mean absolute errors for all models.
 
-    get_rmse
-        Root Mean Square Error for all models.
-
     Returns
     -------
     dict[str, dict]
@@ -177,7 +148,6 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     """
     return {
         "MAE": get_mae,
-        "RMSE": get_rmse,
     }
 
 
