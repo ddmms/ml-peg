@@ -1,8 +1,0 @@
-stages:
-  uma-s-1p1-omol_Glucose205Benchmark:
-    cmd: zntrack run calc_glucose205.Glucose205Benchmark --name uma-s-1p1-omol_Glucose205Benchmark
-    metrics:
-    - nodes/uma-s-1p1-omol/Glucose205Benchmark/node-meta.json:
-        cache: true
-    params:
-    - uma-s-1p1-omol_Glucose205Benchmark
