@@ -8,12 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import (
-    build_d3_name_map,
-    load_metrics_config,
-    mae,
-    rmse,
-)
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
@@ -113,36 +108,13 @@ def get_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_rmse(interaction_energies) -> dict[str, float]:
-    """
-    Get root mean square error for energies.
-
-    Parameters
-    ----------
-    interaction_energies
-        Dictionary of reference and predicted energies.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of predicted energy errors for all models.
-    """
-    results = {}
-    for model_name in MODELS:
-        results[model_name] = rmse(
-            interaction_energies["ref"], interaction_energies[model_name]
-        )
-    return results
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "plf547_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -151,18 +123,12 @@ def metrics(get_mae: dict[str, float], get_rmse: dict[str, float]) -> dict[str, 
     get_mae
         Mean absolute errors for all models.
 
-    get_rmse
-        Root Mean Square Error for all models.
-
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "MAE": get_mae,
-        "RMSE": get_rmse,
-    }
+    return {"MAE": get_mae}
 
 
 def test_plf547(metrics: dict[str, dict]) -> None:
