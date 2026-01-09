@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
 import pytest
 
@@ -24,6 +25,8 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+EV_TO_KCAL = units.mol / units.kcal
 
 
 def labels() -> list:
@@ -71,9 +74,9 @@ def interaction_energies() -> dict[str, list]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"])
+                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
-            results[model_name].append(atoms.info["model_int_energy"])
+            results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
