@@ -29,21 +29,35 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KCAL = units.mol / units.kcal
 
 
-def labels() -> list:
+def get_info() -> dict[str, list[int]]:
     """
-    Get list of system names.
+    Get dictionary of S30L info.
 
     Returns
     -------
-    list
-        List of all system names.
+    dict[str, list[int]]
+        Dictionary of system indices, complex atom counts, and complex charges.
     """
+    info = {"labels": [], "charged": []}
+
     for model_name in MODELS:
-        labels_list = [
-            path.stem for path in sorted((CALC_PATH / model_name).glob("*.xyz"))
-        ]
-        break
-    return labels_list
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+
+            info["labels"] = [path.stem for path in xyz_files]
+
+            for xyz_file in xyz_files:
+                structs = read(xyz_file, index=":")
+                info["charged"].append(
+                    any(struct.info.get("charge") != 0 for struct in structs)
+                )
+            break
+
+    return info
+
+
+INFO = get_info()
 
 
 @pytest.fixture
@@ -53,7 +67,8 @@ def labels() -> list:
     x_label="Predicted energy / eV",
     y_label="Reference energy / eV",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["labels"],
+        "Charged": INFO["charged"],
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -70,8 +85,8 @@ def interaction_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+        for label in INFO["labels"]:
+            atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=0)
 
             if not ref_stored:
                 results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
@@ -88,9 +103,9 @@ def interaction_energies() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_mae(interaction_energies) -> dict[str, float]:
+def total_mae(interaction_energies) -> dict[str, float]:
     """
-    Get mean absolute error for energies.
+    Get mean absolute error for energies for all systems.
 
     Parameters
     ----------
@@ -111,27 +126,102 @@ def get_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def charged_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for charged systems only.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for charged systems.
+    """
+    # Get charges for filtering
+    charged_indices = [i for i, charged in enumerate(INFO["charged"]) if charged]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and charged_indices:
+            ref_charged = [interaction_energies["ref"][i] for i in charged_indices]
+            pred_charged = [
+                interaction_energies[model_name][i] for i in charged_indices
+            ]
+            results[model_name] = mae(ref_charged, pred_charged)
+        else:
+            results[model_name] = None
+    return results
+
+
+@pytest.fixture
+def neutral_mae(interaction_energies) -> dict[str, float]:
+    """
+    Get mean absolute error for neutral systems only.
+
+    Parameters
+    ----------
+    interaction_energies
+        Dictionary of reference and predicted interaction energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted interaction energy errors for neutral systems.
+    """
+    # Get charges for filtering
+    charged_indices = [i for i, charged in enumerate(INFO["charged"]) if not charged]
+
+    results = {}
+    for model_name in MODELS:
+        if interaction_energies[model_name] and charged_indices:
+            ref_neutral = [interaction_energies["ref"][i] for i in charged_indices]
+            pred_neutral = [
+                interaction_energies[model_name][i] for i in charged_indices
+            ]
+            results[model_name] = mae(ref_neutral, pred_neutral)
+        else:
+            results[model_name] = None
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "plf547_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    total_mae: dict[str, float],
+    charged_mae: dict[str, float],
+    neutral_mae: dict[str, float],
+) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
-    get_mae
+    total_mae
         Mean absolute errors for all models.
+    charged_mae
+        Mean absolute errors for all models for charged systems.
+    neutral_mae
+        Mean absolute errors for all models for neutral systems.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {"MAE": get_mae}
+    return {
+        "Neutral MAE": neutral_mae,
+        "Charged MAE": charged_mae,
+        "Overall MAE": total_mae,
+    }
 
 
 def test_plf547(metrics: dict[str, dict]) -> None:
