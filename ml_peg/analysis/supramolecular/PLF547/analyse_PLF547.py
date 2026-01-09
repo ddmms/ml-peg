@@ -64,8 +64,8 @@ INFO = get_info()
 @plot_parity(
     filename=OUT_PATH / "figure_plf547.json",
     title="Interaction energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": INFO["labels"],
         "Charged": INFO["charged"],
