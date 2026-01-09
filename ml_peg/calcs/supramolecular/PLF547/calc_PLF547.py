@@ -297,11 +297,16 @@ class PLF547Benchmark(zntrack.Node):
             complex_atoms.info["ref_int_energy"] = ref_energy
 
             complex_atoms.calc = None
+            ligand_atoms.calc = None
+            protein_atoms.calc = None
 
             write_dir = OUT_PATH / self.model_name
             write_dir.mkdir(parents=True, exist_ok=True)
 
-            write(write_dir / f"{label}_complex.xyz", complex_atoms)
+            write(
+                write_dir / f"{label}_complex.xyz",
+                [complex_atoms, ligand_atoms, protein_atoms],
+            )
 
 
 def build_project(repro: bool = False) -> None:
