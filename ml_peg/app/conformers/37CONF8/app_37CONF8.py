@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "37CONF8"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#37conf8"
-DATA_PATH = APP_ROOT / "data" / "conformers" / "37conf8"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "37CONF8"
 
 
 class ThirtySevenCONF8App(BaseApp):
@@ -35,7 +35,7 @@ class ThirtySevenCONF8App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/37conf8/{MODELS[0]}/{label}.xyz" for label in labels
+                f"assets/conformers/37CONF8/{MODELS[0]}/{label}.xyz" for label in labels
             ]
         else:
             structs = []
