@@ -1,18 +1,21 @@
-"""Helpers to create callbacks for Dash app."""
+"""Helpers to create callbacks and reusable plots for Dash apps."""
 
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 import io
 import json
 import math
 from pathlib import Path
 from typing import Literal
 
-from dash import Input, Output, callback
+from dash import Input, Output, State, callback, callback_context, html
 from dash.dcc import Graph
+from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Iframe
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.decorators import (
@@ -149,7 +152,7 @@ def struct_from_scatter(
             Visualised structure on plot click.
         """
         if not click_data:
-            return None
+            return Div("Click on a metric to view the structure.")
         idx = click_data["points"][0]["pointNumber"]
 
         if isinstance(structs, str):
@@ -520,7 +523,6 @@ def register_image_gallery_callbacks(
             mpl.use("Agg")
         except Exception:
             pass
-        import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(
             PERIODIC_TABLE_ROWS,
@@ -582,3 +584,159 @@ def register_image_gallery_callbacks(
         plt.close(fig)
         src, width, height = _data_url_from_bytes(buf.getvalue(), mime="image/png")
         return _image_figure(src, width, height)
+
+
+def scatter_and_assets_from_table(
+    *,
+    table_id: str,
+    table_data: list[dict],
+    plot_container_id: str,
+    scatter_meta_store_id: str,
+    last_cell_store_id: str,
+    column_handlers: dict[str, Callable[[str, str], tuple[Component, dict] | None]],
+    default_handler: Callable[[str, str], tuple[Component, dict] | None] | None = None,
+    refresh_message: str = "Click on a metric to view scatter plots.",
+    model_key: str = "MLIP",
+) -> None:
+    """
+    Render scatter content and persist model-specific metadata for asset callbacks.
+
+    Parameters
+    ----------
+    table_id
+        Dash table identifier emitting ``active_cell`` callbacks.
+    table_data
+        Pre-rendered table rows used to look up the clicked model.
+    plot_container_id
+        Div ID hosting the rendered plot content.
+    scatter_meta_store_id
+        Store component ID that tracks the latest plot metadata.
+    last_cell_store_id
+        Store component ID used to reset when the same cell is clicked twice.
+    column_handlers
+        Mapping of column identifiers to callables returning ``(content, meta)``.
+    default_handler
+        Fallback callable invoked when ``column_handlers`` has no entry.
+    refresh_message
+        Message displayed when a user re-clicks the active cell.
+    model_key
+        Key in ``table_data`` used to look up the model display name.
+    """
+
+    @callback(
+        Output(plot_container_id, "children"),
+        Output(scatter_meta_store_id, "data"),
+        Output(last_cell_store_id, "data"),
+        Input(table_id, "active_cell"),
+        State(last_cell_store_id, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_scatter_and_meta(active_cell, last_cell):
+        """
+        Map table cells to plot content.
+
+        Parameters
+        ----------
+        active_cell
+            Dash ``active_cell`` data dict from the metrics table.
+        last_cell
+            Previously clicked cell stored in ``last_cell_store_id``.
+
+        Returns
+        -------
+        tuple
+            Plot container children, scatter meta, and new ``last_cell`` value.
+        """
+        if not active_cell:
+            raise PreventUpdate
+        if last_cell and last_cell == active_cell:
+            return html.Div(refresh_message), None, None
+        row = active_cell.get("row")
+        column = active_cell.get("column_id")
+        if row is None or column is None or row < 0 or row >= len(table_data):
+            raise PreventUpdate
+        model_display = table_data[row].get(model_key)
+        if not model_display:
+            raise PreventUpdate
+        handler = column_handlers.get(column)
+        if handler is None:
+            handler = default_handler
+        if handler is None:
+            raise PreventUpdate
+        result = handler(model_display, column)
+        if not result:
+            raise PreventUpdate
+        content, meta = result
+        return content, meta, active_cell
+
+
+def model_asset_from_scatter(
+    *,
+    scatter_id: str,
+    meta_store_id: str,
+    asset_container_id: str,
+    data_lookup: Callable[[dict, dict], dict | None],
+    asset_renderer: Callable[[dict, dict], Component | None],
+    empty_message: str,
+    missing_message: str,
+) -> None:
+    """
+    Render a model-specific asset whenever the active scatter point is clicked.
+
+    Parameters
+    ----------
+    scatter_id
+        Graph ID emitting ``clickData`` event dicts.
+    meta_store_id
+        Store component describing the currently active scatter context.
+    asset_container_id
+        Div ID where rendered assets will be displayed.
+    data_lookup
+        Callable receiving ``(point_data, scatter_meta)`` and returning metadata.
+    asset_renderer
+        Callable that converts lookup results to Dash components.
+    empty_message
+        Message shown when scatter metadata changes (before a click).
+    missing_message
+        Message shown when no asset can be produced for the click event.
+    """
+
+    @callback(
+        Output(asset_container_id, "children"),
+        Input(scatter_id, "clickData"),
+        Input(meta_store_id, "data"),
+        prevent_initial_call=True,
+    )
+    def _display_asset(click_data, scatter_meta):
+        """
+        Render the requested asset when a scatter point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Plotly ``clickData`` event data.
+        scatter_meta
+            Metadata describing the active scatter context.
+
+        Returns
+        -------
+        dash.html.Div | Component
+            Rendered asset container or an informational message.
+        """
+        trigger = callback_context.triggered_id
+        if trigger is None:
+            raise PreventUpdate
+        if trigger == meta_store_id:
+            return html.Div(empty_message)
+        if trigger != scatter_id or not scatter_meta:
+            raise PreventUpdate
+        if not click_data or not click_data.get("points"):
+            raise PreventUpdate
+        point_data = click_data["points"][0]
+        asset_data = data_lookup(point_data, scatter_meta)
+        if not asset_data:
+            return html.Div(missing_message)
+        rendered = asset_renderer(asset_data, scatter_meta)
+        if rendered is None:
+            return html.Div(missing_message)
+        return rendered
