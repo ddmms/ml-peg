@@ -48,6 +48,8 @@ mace-matpes-r2scan:
   kwargs:
     model: "mace-matpes-r2scan-0"
     head: "matpes_pbe"
+  d3_kwargs:
+    xc: r2scan
 
 # mace-mh-1-omat:
 #   module: mace.calculators
