@@ -1,0 +1,8 @@
+stages:
+  mace-mp-0a_OpenFFTorsBenchmark:
+    cmd: zntrack run calc_openff_tors.OpenFFTorsBenchmark --name mace-mp-0a_OpenFFTorsBenchmark
+    metrics:
+    - nodes/mace-mp-0a/OpenFFTorsBenchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-mp-0a_OpenFFTorsBenchmark
