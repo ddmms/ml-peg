@@ -20,7 +20,7 @@ BENCHMARK_NAME = "solvMPCONF196"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#solvmpconf196"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "solv_mpconf196"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "SolvMPCONF196"
 
 
 class SolvMPCONF196App(BaseApp):
@@ -37,7 +37,7 @@ class SolvMPCONF196App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/solv_mpconf196/{MODELS[0]}/{label}.xyz"
+                f"assets/conformers/SolvMPCONF196/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:

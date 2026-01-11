@@ -22,8 +22,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-CALC_PATH = CALCS_ROOT / "conformers" / "solv_mpconf196" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "conformers" / "solv_mpconf196"
+CALC_PATH = CALCS_ROOT / "conformers" / "SolvMPCONF196" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "conformers" / "SolvMPCONF196"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -151,7 +151,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_solv_mpconf196(metrics: dict[str, dict]) -> None:
     """
-    Run solvMPCONF196 test.
+    Run SolvMPCONF196 test.
 
     Parameters
     ----------

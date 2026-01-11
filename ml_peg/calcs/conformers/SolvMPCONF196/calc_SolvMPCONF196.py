@@ -1,5 +1,5 @@
 """
-Calculate the solvMPCONF196 dataset of solvated biomolecule conformers.
+Calculate the SolvMPCONF196 dataset of solvated biomolecule conformers.
 
 J. Comput. Chem. 2024, 45(7), 419.
 https://doi.org/10.1002/jcc.27248.
@@ -184,5 +184,5 @@ def build_project(repro: bool = False) -> None:
 
 
 def test_solv_mpconf196():
-    """Run solvMPCONF196 benchmark via pytest."""
+    """Run SolvMPCONF196 benchmark via pytest."""
     build_project(repro=True)
