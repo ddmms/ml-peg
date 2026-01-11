@@ -20,7 +20,7 @@ BENCHMARK_NAME = "Maltose222"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#maltose222"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "maltose222"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "Maltose222"
 
 
 class Maltose222App(BaseApp):
@@ -37,7 +37,7 @@ class Maltose222App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/maltose222/{MODELS[0]}/{label}.xyz"
+                f"assets/conformers/Maltose222/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
