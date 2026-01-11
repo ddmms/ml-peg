@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "OpenFF-Tors"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#openff-tors"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#openff-tors"
 )
 DATA_PATH = APP_ROOT / "data" / "conformers" / "OpenFF_Tors"
 
