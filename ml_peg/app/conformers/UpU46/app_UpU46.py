@@ -1,4 +1,4 @@
-"""Run UPU46 app."""
+"""Run UpU46 app."""
 
 from __future__ import annotations
 
@@ -16,13 +16,13 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "UPU46"
+BENCHMARK_NAME = "UpU46"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#upu46"
-DATA_PATH = APP_ROOT / "data" / "conformers" / "upu46"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "UpU46"
 
 
-class UPU46App(BaseApp):
-    """UPU46 benchmark app layout and callbacks."""
+class UpU46App(BaseApp):
+    """UpU46 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -35,7 +35,7 @@ class UPU46App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/upu46/{MODELS[0]}/{label}.xyz" for label in labels
+                f"assets/conformers/UpU46/{MODELS[0]}/{label}.xyz" for label in labels
             ]
         else:
             structs = []
@@ -54,20 +54,20 @@ class UPU46App(BaseApp):
         )
 
 
-def get_app() -> UPU46App:
+def get_app() -> UpU46App:
     """
-    Get UPU46 benchmark app layout and callback registration.
+    Get UpU46 benchmark app layout and callback registration.
 
     Returns
     -------
-    UPU46App
+    UpU46App
         Benchmark layout and callback registration.
     """
-    return UPU46App(
+    return UpU46App(
         name=BENCHMARK_NAME,
         description=(
             "Performance in predicting RNA backbone conformer energies for the "
-            "UPU46 dataset comprising 46 uracil dinucleotides (UpU), representing "
+            "UpU46 dataset comprising 46 uracil dinucleotides (UpU), representing "
             "all known 46 RNA backbone conformational families. Reference data "
             "from CCSD(T) calculations."
         ),

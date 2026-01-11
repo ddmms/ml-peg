@@ -1,5 +1,5 @@
 """
-Calculate the UPU46 benchmark dataset for RNA backbone conformations.
+Calculate the UpU46 benchmark dataset for RNA backbone conformations.
 
 Journal of Chemical Theory and Computation,
 2015 11 (10), 4972-4991.
@@ -28,7 +28,7 @@ KCAL_TO_EV = units.kcal / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-class UPU46Benchmark(zntrack.Node):
+class UpU46Benchmark(zntrack.Node):
     """Compute the benchmark."""
 
     model: NodeWithCalculator = zntrack.deps()
@@ -81,7 +81,7 @@ class UPU46Benchmark(zntrack.Node):
         data_path = (
             download_s3_data(
                 filename="UPU46.zip",
-                key="inputs/conformers/UPU46/UPU46.zip",
+                key="inputs/conformers/UpU46/UpU46.zip",
             )
             / "UPU46"
         )
@@ -129,7 +129,7 @@ def build_project(repro: bool = False) -> None:
 
     for model_name, model in MODELS.items():
         with project.group(model_name):
-            benchmark = UPU46Benchmark(
+            benchmark = UpU46Benchmark(
                 model=model,
                 model_name=model_name,
             )
@@ -143,5 +143,5 @@ def build_project(repro: bool = False) -> None:
 
 
 def test_upu46():
-    """Run UPU46 benchmark via pytest."""
+    """Run UpU46 benchmark via pytest."""
     build_project(repro=True)

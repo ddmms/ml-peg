@@ -1,5 +1,5 @@
 """
-Analyse the UPU46 benchmark dataset for RNA backbone conformations.
+Analyse the UpU46 benchmark dataset for RNA backbone conformations.
 
 Journal of Chemical Theory and Computation,
 2015 11 (10), 4972-4991.
@@ -26,8 +26,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 
 EV_TO_KCAL = units.mol / units.kcal
-CALC_PATH = CALCS_ROOT / "conformers" / "upu46" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "conformers" / "upu46"
+CALC_PATH = CALCS_ROOT / "conformers" / "UpU46" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "conformers" / "UpU46"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -141,7 +141,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_upu46(metrics: dict[str, dict]) -> None:
     """
-    Run UPU46 test.
+    Run UpU46 test.
 
     Parameters
     ----------
