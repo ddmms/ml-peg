@@ -20,7 +20,7 @@ BENCHMARK_NAME = "DipCONFS"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#dipconfs"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "dipconfs"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "DipCONFS"
 
 
 class DipCONFSApp(BaseApp):
@@ -37,7 +37,7 @@ class DipCONFSApp(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/dipconfs/{MODELS[0]}/{label}.xyz"
+                f"assets/conformers/DipCONFS/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:

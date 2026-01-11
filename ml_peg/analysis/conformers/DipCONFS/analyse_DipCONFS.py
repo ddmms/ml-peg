@@ -23,8 +23,8 @@ MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
-CALC_PATH = CALCS_ROOT / "conformers" / "dipconfs" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "conformers" / "dipconfs"
+CALC_PATH = CALCS_ROOT / "conformers" / "DipCONFS" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "conformers" / "DipCONFS"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
