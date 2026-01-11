@@ -17,7 +17,9 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "37CONF8"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#37conf8"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#37conf8"
+)
 DATA_PATH = APP_ROOT / "data" / "conformers" / "37CONF8"
 
 
