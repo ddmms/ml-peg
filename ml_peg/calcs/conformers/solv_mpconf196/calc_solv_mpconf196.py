@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase import units
+from ase import Atoms, units
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
@@ -23,9 +23,6 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -53,7 +50,7 @@ class SolvMPCONF196Benchmark(zntrack.Node):
     model_name: str = zntrack.params()
 
     @staticmethod
-    def get_atoms(atoms_path):
+    def get_atoms(atoms_path: Path) -> Atoms:
         """
         Read atoms object and add charge and spin.
 
@@ -72,7 +69,7 @@ class SolvMPCONF196Benchmark(zntrack.Node):
         atoms.info["spin"] = 1
         return atoms
 
-    def get_ref_energies(self, data_path):
+    def get_ref_energies(self, data_path: Path) -> None:
         """
         Get reference conformer energies.
 
