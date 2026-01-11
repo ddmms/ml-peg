@@ -106,3 +106,45 @@ Reference data:
     * These are empirical gas-phase reference values (ΔE_emp), obtained by
       back-correcting the experimental association free energies with theoretical
       estimates of vibrational and solvation contributions.
+
+
+PLF547
+======
+
+Summary
+-------
+
+Performance in predicting intramolecular hydrogen bonding and side–chain/backbone
+contacts in polypeptide fragments for the PLF547 set of 547 shorter peptide-like
+fragments.
+
+
+Metrics
+-------
+
+1. MAE
+
+For each complex, the interaction energy is calculated by taking the difference in
+energy between the ligand-fragment complex and the sum of the individual ligand and
+protein fragment energies. This is compared to the reference interaction energy.
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* K. Kříž and J. Řezáč, "Benchmarking of Semiempirical Quantum-Mechanical Methods on
+  Systems Relevant to Computer-Aided Drug Design", Journal of Chemical Information and
+  Modeling, vol. 60, no. 3, pp. 1453-1460, 2020, doi: 10.1021/acs.jcim.9b01171
+    * DLPNO-CCSD(T)/CBS
+
+Reference data:
+
+Same as input structures
