@@ -24,8 +24,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
+
+EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "conformers" / "upu46" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "upu46"
 
@@ -56,8 +56,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_upu46.json",
     title="Energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": labels(),
     },
@@ -78,9 +78,9 @@ def conformer_energies() -> dict[str, list]:
         for label in labels():
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
-            results[model_name].append(atoms.info["model_rel_energy"])
+            results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_energy"])
+                results["ref"].append(atoms.info["ref_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
