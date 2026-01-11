@@ -110,6 +110,8 @@ class MPCONF196Benchmark(zntrack.Node):
             model_abs_energies = []
             ref_abs_energies = []
             current_molecule_labels = []
+
+            # Get reference and predicted energy for each conformer
             for label, e_ref in self.ref_energies.items():
                 molecule_label = label.split("_")[0]
                 conformer_label = label.split("_")[1]
@@ -126,6 +128,7 @@ class MPCONF196Benchmark(zntrack.Node):
                 ref_abs_energies.append(e_ref)
                 current_molecule_labels.append(label)
 
+            # Get energies relative to average conformer energies
             for label, e_model in zip(
                 current_molecule_labels, model_abs_energies, strict=True
             ):
