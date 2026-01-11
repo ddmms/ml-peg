@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -23,8 +22,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 CALC_PATH = CALCS_ROOT / "conformers" / "openff_tors" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "openff_tors"
 

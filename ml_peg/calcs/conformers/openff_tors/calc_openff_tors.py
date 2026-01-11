@@ -25,9 +25,6 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
-
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -37,7 +34,7 @@ class OpenFFTorsBenchmark(zntrack.Node):
     model: NodeWithCalculator = zntrack.deps()
     model_name: str = zntrack.params()
 
-    def run(self):
+    def run(self) -> None:
         """Run the benchmark."""
         data_path = (
             download_s3_data(
@@ -71,7 +68,7 @@ class OpenFFTorsBenchmark(zntrack.Node):
             ]
 
             for i, (ref_energy, positions) in enumerate(
-                zip(conf["final_energies"], conf["final_geometries"], strict=False)
+                zip(conf["final_energies"], conf["final_geometries"], strict=True)
             ):
                 label = f"{molecule_id}_{i}"
                 atoms = Atoms(
