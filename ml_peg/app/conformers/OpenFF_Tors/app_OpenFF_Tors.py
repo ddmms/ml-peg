@@ -20,7 +20,7 @@ BENCHMARK_NAME = "OpenFF-Tors"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#openff-tors"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "openff_tors"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "OpenFF_Tors"
 
 
 class OpenFFTorsApp(BaseApp):
@@ -37,7 +37,7 @@ class OpenFFTorsApp(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/openff_tors/{MODELS[0]}/{label}.xyz"
+                f"assets/conformers/OpenFF_Tors/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
