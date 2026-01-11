@@ -23,7 +23,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -54,7 +53,7 @@ class Benchmark37Conf8(zntrack.Node):
         write_dir = OUT_PATH / self.model_name
         write_dir.mkdir(parents=True, exist_ok=True)
 
-        for i in tqdm(range(0, len(df) - 3)):
+        for i in tqdm(range(len(df) - 3)):
             molecule_name = df.iloc[i][0].strip()
             conf_id = int(df.iloc[i][1])
             label = f"{molecule_name}_{conf_id}"
