@@ -1,5 +1,5 @@
 """
-Analyse 37CONF8 conformer energy benchmark.
+Analyse 37Conf8 conformer energy benchmark.
 
 10.1002/cphc.201801063.
 """
@@ -23,8 +23,8 @@ MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
-CALC_PATH = CALCS_ROOT / "conformers" / "37CONF8" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "conformers" / "37CONF8"
+CALC_PATH = CALCS_ROOT / "conformers" / "37Conf8" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "conformers" / "37Conf8"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -136,7 +136,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_37conf8(metrics: dict[str, dict]) -> None:
     """
-    Run 37CONF8 barriers test.
+    Run 37Conf8 barriers test.
 
     Parameters
     ----------

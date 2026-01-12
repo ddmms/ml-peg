@@ -28,7 +28,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 
 class Benchmark37Conf8(zntrack.Node):
-    """Benchmark the 37CONF8 dataset."""
+    """Benchmark the 37Conf8 dataset."""
 
     model: NodeWithCalculator = zntrack.deps()
     model_name: str = zntrack.params()
@@ -38,7 +38,7 @@ class Benchmark37Conf8(zntrack.Node):
         data_path = (
             download_s3_data(
                 filename="37CONF8.zip",
-                key="inputs/conformers/37CONF8/37CONF8.zip",
+                key="inputs/conformers/37Conf8/37Conf8.zip",
             )
             / "37CONF8"
         )
@@ -103,5 +103,5 @@ def build_project(repro: bool = False) -> None:
 
 
 def test_37conf8_conformer_energies():
-    """Run 37CONF8 benchmark via pytest."""
+    """Run 37Conf8 benchmark via pytest."""
     build_project(repro=True)

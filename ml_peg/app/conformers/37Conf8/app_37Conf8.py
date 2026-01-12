@@ -1,4 +1,4 @@
-"""Run 37CONF8 app."""
+"""Run 37Conf8 app."""
 
 from __future__ import annotations
 
@@ -16,15 +16,15 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "37CONF8"
+BENCHMARK_NAME = "37Conf8"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#37conf8"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "37CONF8"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "37Conf8"
 
 
-class ThirtySevenCONF8App(BaseApp):
-    """37CONF8 benchmark app layout and callbacks."""
+class ThirtySevenConf8App(BaseApp):
+    """37Conf8 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -37,7 +37,7 @@ class ThirtySevenCONF8App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/37CONF8/{MODELS[0]}/{label}.xyz" for label in labels
+                f"assets/conformers/37Conf8/{MODELS[0]}/{label}.xyz" for label in labels
             ]
         else:
             structs = []
@@ -56,16 +56,16 @@ class ThirtySevenCONF8App(BaseApp):
         )
 
 
-def get_app() -> ThirtySevenCONF8App:
+def get_app() -> ThirtySevenConf8App:
     """
-    Get 37CONF8 benchmark app layout and callback registration.
+    Get 37Conf8 benchmark app layout and callback registration.
 
     Returns
     -------
     ThirtySevenCONF8App
         Benchmark layout and callback registration.
     """
-    return ThirtySevenCONF8App(
+    return ThirtySevenConf8App(
         name=BENCHMARK_NAME,
         description=(
             "Performance in predicting relative conformer energies "
