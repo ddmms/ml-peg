@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
 import pytest
 
@@ -29,6 +30,8 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+EV_TO_KCAL = units.mol / units.kcal
 
 
 def labels() -> list:
@@ -52,8 +55,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_openff_tors.json",
     title="Energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": labels(),
     },
@@ -74,9 +77,9 @@ def conformer_energies() -> dict[str, list]:
         for label in labels():
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
-            results[model_name].append(atoms.info["model_rel_energy"])
+            results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_rel_energy"])
+                results["ref"].append(atoms.info["ref_rel_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
