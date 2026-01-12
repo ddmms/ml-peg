@@ -85,7 +85,8 @@ class DipCONFSBenchmark(zntrack.Node):
                 df["Conformer"].tolist(),
                 df["PNO-LCCSD(T)-F12b/AVQZ’"].tolist(),
                 strict=True,
-            )
+            ),
+            total=len(df["PNO-LCCSD(T)-F12b/AVQZ’"].tolist()),
         ):
             # Get reference energy
             e_rel_ref = float(e_rel_ref) * KCAL_TO_EV
