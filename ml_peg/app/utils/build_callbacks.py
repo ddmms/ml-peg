@@ -591,7 +591,7 @@ def scatter_and_assets_from_table(
     table_id: str,
     table_data: list[dict],
     plot_container_id: str,
-    scatter_meta_store_id: str,
+    scatter_metadata_store_id: str,
     last_cell_store_id: str,
     column_handlers: dict[str, Callable[[str, str], tuple[Component, dict] | None]],
     default_handler: Callable[[str, str], tuple[Component, dict] | None] | None = None,
@@ -609,7 +609,7 @@ def scatter_and_assets_from_table(
         Pre-rendered table rows used to look up the clicked model.
     plot_container_id
         Div ID hosting the rendered plot content.
-    scatter_meta_store_id
+    scatter_metadata_store_id
         Store component ID that tracks the latest plot metadata.
     last_cell_store_id
         Store component ID used to reset when the same cell is clicked twice.
@@ -625,7 +625,7 @@ def scatter_and_assets_from_table(
 
     @callback(
         Output(plot_container_id, "children"),
-        Output(scatter_meta_store_id, "data"),
+        Output(scatter_metadata_store_id, "data"),
         Output(last_cell_store_id, "data"),
         Input(table_id, "active_cell"),
         State(last_cell_store_id, "data"),

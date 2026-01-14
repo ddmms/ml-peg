@@ -42,7 +42,7 @@ with SCATTER_PATH.open(encoding="utf8") as handle:
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
 LAST_CELL_STORE_ID = f"{BENCHMARK_NAME}-last-cell"
-SCATTER_META_STORE_ID = f"{BENCHMARK_NAME}-scatter-meta"
+SCATTER_METADATA_STORE_ID = f"{BENCHMARK_NAME}-scatter-meta"
 SCATTER_GRAPH_ID = f"{BENCHMARK_NAME}-scatter"
 THZ_TO_K = ase.units._hplanck * 1e12 / ase.units._k
 
@@ -101,7 +101,7 @@ class PhononApp(BaseApp):
             table_id=self.table_id,
             table_data=self.table.data,
             plot_container_id=PLOT_CONTAINER_ID,
-            scatter_meta_store_id=SCATTER_META_STORE_ID,
+            scatter_metadata_store_id=SCATTER_METADATA_STORE_ID,
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers=column_handlers,
             default_handler=metric_handler,
@@ -123,7 +123,7 @@ class PhononApp(BaseApp):
 
         model_asset_from_scatter(
             scatter_id=SCATTER_GRAPH_ID,
-            meta_store_id=SCATTER_META_STORE_ID,
+            meta_store_id=SCATTER_METADATA_STORE_ID,
             asset_container_id=DISPERSION_CONTAINER_ID,
             data_lookup=selection_lookup,
             asset_renderer=dispersion_renderer,
@@ -149,9 +149,12 @@ def get_app() -> PhononApp:
         ),
         docs_url=DOCS_URL,
         table_path=TABLE_PATH,
+        # Dash Stores persist the last clicked cell and the scatter metadata that
+        # identifies the selected system + model so the dispersion callback can
+        # look up the correct asset paths when rendering dispersion plots
         extra_components=[
             dcc.Store(id=LAST_CELL_STORE_ID),
-            dcc.Store(id=SCATTER_META_STORE_ID),
+            dcc.Store(id=SCATTER_METADATA_STORE_ID),
             html.Div(
                 [
                     html.Div(
