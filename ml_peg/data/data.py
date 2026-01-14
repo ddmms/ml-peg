@@ -110,8 +110,10 @@ def upload(
     if not filename.exists():
         raise ValueError(f"{filename} does not exist")
 
-    file_size = filename.stat().st_sizest_size
-    with tqdm.tqdm(total=file_size, unit="B", unit_scale=True, desc=filename) as pbar:
+    file_size = filename.stat().st_size
+    with tqdm.tqdm(
+        total=file_size, unit="B", unit_scale=True, desc=str(filename)
+    ) as pbar:
         s3.upload_file(
             Filename=filename,
             Bucket=bucket,
