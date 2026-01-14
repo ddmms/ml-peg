@@ -59,11 +59,15 @@ class Criegee22Benchmark(zntrack.Node):
                 bh_ref = float(items[8]) * KJ_TO_EV
                 atoms_reac = read(data_path / "structures" / f"{label}-reac.xyz")
                 atoms_reac.calc = calc
+                atoms_reac.info["charge"] = 0
+                atoms_reac.info["spin"] = 1
                 atoms_reac.info["model_energy"] = atoms_reac.get_potential_energy()
                 atoms_reac.info["ref_energy"] = 0
 
                 atoms_ts = read(data_path / "structures" / f"{label}-TS.xyz")
                 atoms_ts.calc = calc
+                atoms_ts.info["charge"] = 0
+                atoms_ts.info["spin"] = 1
                 atoms_ts.info["model_energy"] = atoms_ts.get_potential_energy()
                 atoms_ts.info["ref_energy"] = bh_ref
 
