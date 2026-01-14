@@ -13,6 +13,7 @@ from ase import units
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
@@ -51,7 +52,7 @@ class Criegee22Benchmark(zntrack.Node):
         calc = self.model.add_d3_calculator(calc)
 
         with open(data_path / "reference.txt") as lines:
-            for i, line in enumerate(lines):
+            for i, line in tqdm(enumerate(lines)):
                 if i == 0:
                     continue
                 items = line.strip().split()
