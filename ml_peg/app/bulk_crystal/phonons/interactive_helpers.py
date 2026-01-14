@@ -244,7 +244,7 @@ def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
 
 def render_dispersion_component(
     selection_context: Mapping[str, Any],
-    scatter_meta: Mapping[str, Any],  # Unused but kept for signature parity.
+    scatter_metadata: Mapping[str, Any],  # Unused but kept for signature parity.
     *,
     calc_root: Path,
     frequency_scale: float,
@@ -258,7 +258,7 @@ def render_dispersion_component(
     ----------
     selection_context
         Dictionary containing ``model`` and resolved ``selection`` data.
-    scatter_meta
+    scatter_metadata
         Metadata describing the scatter context (unused).
     calc_root
         Base directory containing serialized band/DOS assets.

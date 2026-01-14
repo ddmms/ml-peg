@@ -105,7 +105,6 @@ class PhononApp(BaseApp):
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers=column_handlers,
             default_handler=metric_handler,
-            refresh_message=refresh_msg,
         )
 
         selection_lookup = partial(
@@ -123,7 +122,7 @@ class PhononApp(BaseApp):
 
         model_asset_from_scatter(
             scatter_id=SCATTER_GRAPH_ID,
-            meta_store_id=SCATTER_METADATA_STORE_ID,
+            metadata_store_id=SCATTER_METADATA_STORE_ID,
             asset_container_id=DISPERSION_CONTAINER_ID,
             data_lookup=selection_lookup,
             asset_renderer=dispersion_renderer,

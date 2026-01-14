@@ -378,7 +378,7 @@ def build_classification_panel(
 
 def resolve_scatter_selection(
     point_data: Mapping[str, Any],
-    scatter_meta: Mapping[str, Any],
+    scatter_metadata: Mapping[str, Any],
     *,
     models_data: Mapping[str, Any],
     system_lookup,
@@ -390,7 +390,7 @@ def resolve_scatter_selection(
     ----------
     point_data
         Plotly point dictionary from ``clickData``.
-    scatter_meta
+    scatter_metadata
         Metadata describing the currently active scatter context.
     models_data
         Interactive dataset keyed by model name.
@@ -408,14 +408,14 @@ def resolve_scatter_selection(
     )
     if point_id is None:
         return None
-    model_display = scatter_meta.get("model")
-    meta_type = scatter_meta.get("type")
+    model_display = scatter_metadata.get("model")
+    meta_type = scatter_metadata.get("type")
     if model_display is None or meta_type is None:
         return None
     model_entry = models_data.get(model_display, {})
     selected = None
     if meta_type == "metric":
-        metric_key = scatter_meta.get("metric")
+        metric_key = scatter_metadata.get("metric")
         metric_points = (
             model_entry.get("metrics", {}).get(metric_key, {}).get("points", [])
         )
