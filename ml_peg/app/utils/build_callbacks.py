@@ -681,7 +681,7 @@ def model_asset_from_scatter(
     metadata_store_id: str,
     asset_container_id: str,
     data_lookup: Callable[[dict, dict], dict | None],
-    asset_renderer: Callable[[dict, dict], Component | None],
+    asset_renderer: Callable[[dict], Component | None],
     empty_message: str,
     missing_message: str,
 ) -> None:
@@ -721,7 +721,7 @@ def model_asset_from_scatter(
         click_data
             Plotly ``clickData`` event data.
         scatter_metadata
-            Metadata describing the active scatter context (model, metric, etc.).
+            Stored metadata describing the active scatter context.
 
         Returns
         -------
@@ -741,7 +741,7 @@ def model_asset_from_scatter(
         asset_data = data_lookup(point_data, scatter_metadata)
         if not asset_data:
             return html.Div(missing_message)
-        rendered = asset_renderer(asset_data, scatter_metadata)
+        rendered = asset_renderer(asset_data)
         if rendered is None:
             return html.Div(missing_message)
         return rendered

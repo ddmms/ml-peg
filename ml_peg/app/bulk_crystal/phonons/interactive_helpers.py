@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from io import BytesIO
 import json
 from pathlib import Path
@@ -231,21 +231,39 @@ def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
     dict | None
         Matching point metadata or ``None`` when not found.
     """
-    target = str(point_id)
-    for metric_data in model_entry.get("metrics", {}).values():
-        for point in metric_data.get("points", []):
-            if str(point.get("id")) == target:
-                return point
-    for point in model_entry.get("stability", {}).get("points", []):
-        if str(point.get("id")) == target:
-            return point
-    return None
+
+    def _match(points: Iterable[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+        """
+        Match selection IDs across metric/stability buckets.
+
+        Parameters
+        ----------
+        points
+            Iterable of point dictionaries to probe.
+
+        Returns
+        -------
+        dict | None
+            Matching point metadata or ``None`` when not found.
+        """
+        target = str(point_id)
+        return next(
+            (point for point in points if str(point.get("id")) == target),
+            None,
+        )
+
+    metrics = model_entry.get("metrics", {})
+    for metric_data in metrics.values():
+        match = _match(metric_data.get("points", []))
+        if match:
+            return match
+
+    stability_points = model_entry.get("stability", {}).get("points", [])
+    return _match(stability_points)
 
 
 def render_dispersion_component(
     selection_context: Mapping[str, Any],
-    scatter_metadata: Mapping[str, Any],  # Unused but kept for signature parity.
-    *,
     calc_root: Path,
     frequency_scale: float,
     frequency_unit: str,
@@ -258,8 +276,6 @@ def render_dispersion_component(
     ----------
     selection_context
         Dictionary containing ``model`` and resolved ``selection`` data.
-    scatter_metadata
-        Metadata describing the scatter context (unused).
     calc_root
         Base directory containing serialized band/DOS assets.
     frequency_scale
