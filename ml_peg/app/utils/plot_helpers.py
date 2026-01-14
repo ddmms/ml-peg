@@ -179,7 +179,9 @@ def build_classified_parity_scatter(
     Parameters
     ----------
     points
-        Sequence of metadata dictionaries containing reference/prediction values.
+        Sequence of dictionaries describing each scatter point (must include the
+        reference/prediction values alongside metadata such as ``id``, ``label``,
+        and classification label).
     title
         Figure title.
     xaxis_title
