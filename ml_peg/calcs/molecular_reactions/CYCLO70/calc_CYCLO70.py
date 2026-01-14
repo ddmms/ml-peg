@@ -84,18 +84,42 @@ class CYCLO70Benchmark(zntrack.Node):
                 for atoms_label in r_labels:
                     atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
                     atoms.calc = calc
+                    if "mult" in atoms.info:
+                        atoms.info["spin"] = int(atoms.info["mult"])
+                    else:
+                        atoms.info["spin"] = 1
+                    if "charge" in atoms.info:
+                        atoms.info["charge"] = int(atoms.info["charge"])
+                    else:
+                        atoms.info["charge"] = 0
                     bh_forward_model -= atoms.get_potential_energy()
                     write(write_dir / f"{atoms_label}.xyz", atoms)
 
                 for atoms_label in p_labels:
                     atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
                     atoms.calc = calc
+                    if "mult" in atoms.info:
+                        atoms.info["spin"] = int(atoms.info["mult"])
+                    else:
+                        atoms.info["spin"] = 1
+                    if "charge" in atoms.info:
+                        atoms.info["charge"] = int(atoms.info["charge"])
+                    else:
+                        atoms.info["charge"] = 0
                     bh_reverse_model -= atoms.get_potential_energy()
                     write(write_dir / f"{atoms_label}.xyz", atoms)
 
                 for atoms_label in ts_labels:
                     atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
                     atoms.calc = calc
+                    if "mult" in atoms.info:
+                        atoms.info["spin"] = int(atoms.info["mult"])
+                    else:
+                        atoms.info["spin"] = 1
+                    if "charge" in atoms.info:
+                        atoms.info["charge"] = int(atoms.info["charge"])
+                    else:
+                        atoms.info["charge"] = 0
                     bh_forward_model += atoms.get_potential_energy()
                     bh_reverse_model += atoms.get_potential_energy()
 
