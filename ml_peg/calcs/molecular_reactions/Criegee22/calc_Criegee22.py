@@ -22,8 +22,6 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 KJ_TO_EV = units.kJ / units.mol
 EV_TO_KJ = 1 / KJ_TO_EV
 
