@@ -26,8 +26,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-CALC_PATH = CALCS_ROOT / "molecular_reactions" / "cyclo70" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "cyclo70"
+CALC_PATH = CALCS_ROOT / "molecular_reactions" / "CYCLO70" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "CYCLO70"
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -143,7 +143,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_cyclo70_barriers(metrics: dict[str, dict]) -> None:
     """
-    Run cyclo70 barriers test.
+    Run CYCLO70 barriers test.
 
     Parameters
     ----------
