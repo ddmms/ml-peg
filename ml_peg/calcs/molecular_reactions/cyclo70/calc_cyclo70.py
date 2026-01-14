@@ -51,6 +51,8 @@ class Cyclo70Benchmark(zntrack.Node):
         )
 
         calc = self.model.get_calculator()
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
 
         with open(data_path / "dlpno-ccsdt-34.dat") as lines:
             for i, line in tqdm(enumerate(lines)):
