@@ -79,13 +79,13 @@ def barrier_heights() -> dict[str, list]:
             atoms_ts = read(CALC_PATH / model_name / f"{label}_ts.xyz")
 
             results[model_name].append(
-                atoms_ts.info["model_energy"]
-                - atoms_rct.info["model_energy"] * EV_TO_KCAL
+                (atoms_ts.info["model_energy"] - atoms_rct.info["model_energy"])
+                * EV_TO_KCAL
             )
             if not ref_stored:
                 results["ref"].append(
-                    atoms_ts.info["ref_energy"]
-                    - atoms_rct.info["ref_energy"] * EV_TO_KCAL
+                    (atoms_ts.info["ref_energy"] - atoms_rct.info["ref_energy"])
+                    * EV_TO_KCAL
                 )
 
             # Write structures for app
