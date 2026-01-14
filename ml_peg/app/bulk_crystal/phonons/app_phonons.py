@@ -36,9 +36,6 @@ DOCS_URL = (
 )
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / "phonons"
 
-with SCATTER_PATH.open(encoding="utf8") as handle:
-    INTERACTIVE_DATA = json.load(handle)
-
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
 LAST_CELL_STORE_ID = f"{BENCHMARK_NAME}-last-cell"
@@ -52,12 +49,15 @@ class PhononApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register scatter/dispersion callbacks via shared helpers."""
+        with SCATTER_PATH.open(encoding="utf8") as handle:
+            interactive_data = json.load(handle)
+
         calc_root = Path(CALC_BASE)
-        models_data = INTERACTIVE_DATA.get("models", {})
-        metric_labels = INTERACTIVE_DATA.get("metrics", {})
+        models_data = interactive_data.get("models", {})
+        metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
-        bz_column = INTERACTIVE_DATA.get("bz_column", "Avg BZ MAE")
-        stability_column = INTERACTIVE_DATA.get(
+        bz_column = interactive_data.get("bz_column", "Avg BZ MAE")
+        stability_column = interactive_data.get(
             "stability_column", "Stability Classification (F1)"
         )
         refresh_msg = "Click on a metric to view scatter plots."
