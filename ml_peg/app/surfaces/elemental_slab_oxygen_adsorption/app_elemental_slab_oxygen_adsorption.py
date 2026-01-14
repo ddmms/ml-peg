@@ -13,9 +13,9 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
-MODELS = get_model_names(current_models)
+# Get all models
+MODELS = get_model_names(None)
 BENCHMARK_NAME = "Elemental Slab Oxygen Adsorption"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#elemental-slab-oxygen-adsorption"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"

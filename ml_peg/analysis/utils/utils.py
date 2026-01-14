@@ -261,6 +261,7 @@ def calc_table_scores(
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
+    require_all_metrics: bool = True,
 ) -> list[MetricRow]:
     """
     Calculate (normalised) score for each model and add to table data.
@@ -279,6 +280,10 @@ def calc_table_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
+    require_all_metrics
+        If True, score is set to None unless all metrics are present (not None).
+        If False, score is calculated from available metrics only.
+        Default is True.
 
     Returns
     -------
@@ -292,14 +297,23 @@ def calc_table_scores(
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         scores_list = []
         weights_list = []
-        for key, value in metrics_row.items():
-            # Value may be ``None`` if missing for a benchmark
-            if key not in {"MLIP", "Score", "id"} and value is not None:
-                scores_list.append(scores_row[key])
-                weights_list.append(weights.get(key, 1.0))
+        all_metrics_present = True
 
-        # Ensure at least one score is being averaged
-        if scores_list:
+        for key, value in metrics_row.items():
+            if key not in {"MLIP", "Score", "id"}:
+                if value is not None:
+                    scores_list.append(scores_row[key])
+                    weights_list.append(weights.get(key, 1.0))
+                else:
+                    # Track if any metric is missing
+                    all_metrics_present = False
+
+        # Calculate score only if conditions are met
+        if require_all_metrics and not all_metrics_present:
+            # Strict mode: require all metrics to be present
+            metrics_row["Score"] = None
+        elif scores_list:
+            # Calculate weighted average of available metrics
             try:
                 metrics_row["Score"] = np.average(scores_list, weights=weights_list)
             except ZeroDivisionError:
@@ -384,14 +398,22 @@ def get_table_style(
 
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
+        none_row_indices: list[int] = []  # Track rows with None values
         for i, row in enumerate(data):
             if col not in row:
                 continue
             raw_value = row[col]
-            # Skip if unable to convert to float (e.g. `None`)
+            # Track None values separately for styling
+            is_none = raw_value is None
+            is_nan = isinstance(raw_value, float) and np.isnan(raw_value)
+            if is_none or is_nan:
+                none_row_indices.append(i)
+                continue
+            # Skip if unable to convert to float
             try:
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):
+                none_row_indices.append(i)
                 continue
 
             # Get scored value, if is exists
@@ -401,6 +423,30 @@ def get_table_style(
                 scored_value = raw_value
 
             numeric_entries.append((raw_value, numeric_value, scored_value))
+
+        # Apply styling for None/missing values: gray hashed pattern
+        for row_idx in none_row_indices:
+            mlip_name = data[row_idx].get("MLIP", "")
+            style_data_conditional.append(
+                {
+                    "if": {
+                        "filter_query": f"{{MLIP}} = '{mlip_name}'",
+                        "column_id": col,
+                    },
+                    "backgroundColor": "#e0e0e0",
+                    "backgroundImage": (
+                        "repeating-linear-gradient("
+                        "45deg, "
+                        "transparent, "
+                        "transparent 5px, "
+                        "#d0d0d0 5px, "
+                        "#d0d0d0 10px"
+                        ")"
+                    ),
+                    "color": "#888888",
+                    "fontStyle": "italic",
+                }
+            )
 
         if not numeric_entries:
             continue

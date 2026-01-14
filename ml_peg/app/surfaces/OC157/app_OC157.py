@@ -14,9 +14,9 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
-MODELS = get_model_names(current_models)
+# Get all models
+MODELS = get_model_names(None)
 BENCHMARK_NAME = "OC157"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#oc157"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "OC157"

@@ -27,9 +27,9 @@ from ml_peg.app.utils.utils import (
     sig_fig_format,
 )
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
-MODELS = get_model_names(current_models)
+# Get all models
+MODELS = get_model_names(None)
 
 
 def get_all_tests(
@@ -209,10 +209,14 @@ def build_summary_table(
         Summary table with scores from tables being summarised.
     """
     summary_data = {}
+    category_columns = []  # Track all category columns
     for category_name, table in tables.items():
         # Prepare rows for all current models
         if not summary_data:
             summary_data = {model: {} for model in MODELS}
+
+        category_col = f"{category_name} Score"
+        category_columns.append(category_col)
 
         table_name_map = getattr(table, "model_name_map", {}) or {}
         for row in table.data:
@@ -220,11 +224,15 @@ def build_summary_table(
             # Table headings are of the form "[category] Score"
             canonical_name = table_name_map.get(row["MLIP"], row["MLIP"])
             if canonical_name in summary_data:
-                summary_data[canonical_name][f"{category_name} Score"] = row["Score"]
+                summary_data[canonical_name][category_col] = row["Score"]
 
+    # Ensure all models have entries for all category columns (None if missing)
     data = []
     for mlip in summary_data:
-        data.append({"MLIP": mlip} | summary_data[mlip])
+        row = {"MLIP": mlip}
+        for category_col in category_columns:
+            row[category_col] = summary_data[mlip].get(category_col, None)
+        data.append(row)
 
     data = calc_table_scores(data)
 

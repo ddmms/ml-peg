@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
 from ml_peg.app.utils.utils import Thresholds
-from ml_peg.models.get_models import load_model_configs
+from ml_peg.models.get_models import get_model_names, load_model_configs
 
 PERIODIC_TABLE_POSITIONS: dict[str, tuple[int, int]] = {
     # First row
@@ -1395,8 +1395,10 @@ def build_table(
             # }
 
             metrics_columns = ("MLIP",) + tuple(results)
-            # Use MLIP keys from first (any) metric keys
-            mlips = tuple(next(iter(results.values())).keys())
+
+            # Get all models (including those without results for this benchmark)
+            all_registered_models = get_model_names(None)
+            mlips = tuple(all_registered_models)
 
             name_map = mlip_name_map if mlip_name_map else {}
             display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}
@@ -1410,11 +1412,12 @@ def build_table(
             metrics_data = []
             for mlip in mlips:
                 display_name = display_names[mlip]
-                metrics_data.append(
-                    {"MLIP": display_name}
-                    | {key: value[mlip] for key, value in results.items()}
-                    | {"id": display_name},
-                )
+                # For models without results, set metric values to None
+                row_data = {"MLIP": display_name}
+                for key, value in results.items():
+                    row_data[key] = value.get(mlip, None)
+                row_data["id"] = display_name
+                metrics_data.append(row_data)
 
             summary_tooltips = {
                 "MLIP": "Model identifier, hover for configuration details.",

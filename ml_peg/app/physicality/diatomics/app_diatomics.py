@@ -10,9 +10,9 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import register_image_gallery_callbacks
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
-MODELS = get_model_names(current_models)
+# Get all models
+MODELS = get_model_names(None)
 BENCHMARK_NAME = "Diatomics"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
