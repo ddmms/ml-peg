@@ -359,7 +359,9 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         system_mean_errors: list[float] = []
 
         processed_count = 0
-        skipped_count = 0
+        skipped_missing = 0
+        skipped_band_mismatch = 0
+        skipped_value_error = 0
 
         for mp_id in tqdm(ref_cache.keys(), desc=f"  {model_name[:20]}", leave=False):
             # optimisation: Use pre-loaded reference data
@@ -380,7 +382,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             pred_thermal = _load_thermal_properties(pred_thermal_path)
 
             if not all([pred_band, pred_dos, pred_thermal]):
-                skipped_count += 1
+                skipped_missing += 1
                 continue
 
             processed_count += 1
@@ -436,6 +438,9 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
 
             band_abs_diffs = []
             skip_system = False
+            # Band structures are stored as a list of path segments; each segment is
+            # an array of shape ``(n_kpoints_in_segment, n_branches)``. We compare
+            # segment-by-segment to preserve the original Brillouin-path ordering.
             for pred_segment, ref_segment in zip(
                 pred_band["frequencies"], ref_band["frequencies"], strict=False
             ):
@@ -447,7 +452,11 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 ref_arr = np.array(ref_segment[:min_len])
 
                 try:
-                    # Skip system if band shapes don't match
+                    # within each segment of the BZ path, we have multiple branches.
+                    # Both arrays are ``(n_kpoints, n_branches)``. The first
+                    # dimension (points sampled along the path) can differ because we
+                    # truncate to the shorter one, but the branch count (second axis)
+                    # must match so each phonon mode is compared like-for-like.
                     if (
                         pred_arr.ndim == 2
                         and ref_arr.ndim == 2
@@ -458,8 +467,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                             f"{pred_arr.shape} vs {ref_arr.shape}"
                         )
                         skip_system = True
+                        skipped_band_mismatch += 1
                         break
 
+                    # When either array is not 2-D (e.g., flattened lists), we fall
+                    # back to straight subtraction; ``np.abs`` will raise ValueError if
+                    # the shapes are incompatible, and we skip that system entirely.
                     abs_diff = np.abs(pred_arr - ref_arr) * THZ_TO_K
                     band_abs_diffs.append(abs_diff)
 
@@ -467,6 +480,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     # Skip entire system on ValueError
                     print(f"  Skipping {mp_id} due to ValueError: {e}")
                     skip_system = True
+                    skipped_value_error += 1
                     break
 
             # If system was skipped, don't include it in BZ MAE calculation
@@ -528,7 +542,13 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             },
         }
 
-        print(f"Completed {model_name}: {processed_count} processed")
+        total_skipped = skipped_missing + skipped_band_mismatch + skipped_value_error
+        print(
+            f"Completed {model_name}: {processed_count} processed, "
+            f"{total_skipped} skipped "
+            f"(missing data={skipped_missing}, band mismatch={skipped_band_mismatch}, "
+            f"value errors={skipped_value_error})"
+        )
 
     return stats
 
