@@ -8,14 +8,17 @@ from ase.io import read
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
+from aseMolec import extAtoms as ea
 
 MODELS = get_model_names(current_models)
+
+MODELS = MODELS[:-1]
 REF_PATH = CALCS_ROOT / "bulk_liquids" / "battery_electrolyte" / "data"
 CALC_PATH = CALCS_ROOT / "bulk_liquids" / "battery_electrolyte" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_liquids" / "battery_electrolyte"
@@ -30,6 +33,10 @@ property_metadata = {
     "Intra-Virial": ["info", "virial_intram"],
     "Inter-Virial": ["info", "virial_interm"],
 }
+conf_type = [
+    "solvent",
+    "electrolyte"
+]
 
 
 def get_property_results(prop_key: str) -> dict[str, float]:
@@ -74,27 +81,6 @@ def get_property_results(prop_key: str) -> dict[str, float]:
 
     return results
 
-
-# @pytest.fixture
-# @plot_parity(
-#     filename=OUT_PATH / "test.json"
-#     # title=f"{prop_key}",
-#     # x_label="Predicted lattice energy / METRICS_CONFIG_PATH",
-#     # y_label="Reference lattice energy / kJ/mol",
-#     # hoverdata={
-#     #     "System": get_system_names(),
-#     # },
-# )
-# def intra_forces_plot() -> dict[str, dict]:
-#     results = get_property_results("Intra-Forces")
-
-#     return results
-
-
-# def test_parity_plot(intra_forces_plot: None) -> None:
-#     return
-
-
 @pytest.fixture
 def get_property_rmses() -> dict[str, dict]:
     """
@@ -116,6 +102,105 @@ def get_property_rmses() -> dict[str, dict]:
 
     return property_rmse
 
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "intra_forces_parity.json",
+    title="Intra Forces",
+    x_label="Predicted intra-forces / eV/Å",
+    y_label="DFT intra-forces / eV/Å"
+)
+def intra_forces_parity() -> dict[str, float]:
+    """
+    Intra-forces results for each model for parity plots.
+
+    Returns
+    -------
+    dict[str, float]
+        Intra-forces results for each model.
+    """
+    intra_forces_results = get_property_results("Intra-Forces")
+
+    return intra_forces_results
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "inter_forces_parity.json",
+    title="Inter Forces",
+    x_label="Predicted inter-forces / eV/Å",
+    y_label="DFT inter-forces / eV/Å"
+)
+def inter_forces_parity() -> dict[str, float]:
+    """
+    Inter-forces results for each model for parity plots.
+
+    Returns
+    -------
+    dict[str, float]
+        Inter-forces results for each model.
+    """
+    inter_forces_results = get_property_results("Inter-Forces")
+
+    return inter_forces_results
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "inter_energy_parity.json",
+    title="Inter Energy",
+    x_label="Predicted inter-energy / meV/atom",
+    y_label="DFT inter-energy / meV/atom"
+)
+def inter_energy_parity() -> dict[str, float]:
+    """
+    Inter-energy results for each model for parity plots.
+
+    Returns
+    -------
+    dict[str, float]
+        Inter-energy results for each model.
+    """
+    inter_energy_results = get_property_results("Inter-Energy")
+
+    return inter_energy_results
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "intra_virial_parity.json",
+    title="Intra Virial",
+    x_label="Predicted intra-virial / meV",
+    y_label="DFT intra-virial / meV"
+)
+def intra_virial_parity() -> dict[str, float]:
+    """
+    Intra-virial results for each model for parity plots.
+
+    Returns
+    -------
+    dict[str, float]
+        Intra-virial results for each model.
+    """
+    intra_virial_results = get_property_results("Intra-Virial")
+
+    return intra_virial_results
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "inter_virial_parity.json",
+    title="Inter Virial",
+    x_label="Predicted inter-virial / meV",
+    y_label="DFT inter-virial / meV"
+)
+def inter_virial_parity() -> dict[str, float]:
+    """
+    Inter-virial results for each model for parity plots.
+
+    Returns
+    -------
+    dict[str, float]
+        Inter-virial results for each model.
+    """
+    inter_virial_results = get_property_results("Inter-Virial")
+
+    return inter_virial_results
 
 @pytest.fixture
 @build_table(
@@ -140,7 +225,14 @@ def rmse_metrics(get_property_rmses: dict[str, dict]) -> dict[str, dict]:
     return get_property_rmses
 
 
-def test_rmse_metrics(rmse_metrics: dict[str, dict]) -> None:
+def test_rmse_metrics(
+        rmse_metrics: dict[str, dict], 
+        intra_forces_parity: dict[str, float],
+        inter_forces_parity: dict[str, float],
+        inter_energy_parity: dict[str, float],
+        intra_virial_parity: dict[str, float],
+        inter_virial_parity: dict[str, float]
+        ) -> None:
     """
     Run inter-intra property test.
 
@@ -151,14 +243,94 @@ def test_rmse_metrics(rmse_metrics: dict[str, dict]) -> None:
     """
     return
 
+@pytest.fixture
+def volscan_results(conf_type: str) -> tuple[dict[str, float], dict[str, float]]:
+    """
+    Get relative energies per atom for a type of Volume Scan.
 
-# @pytest.fixture
-# def solvent_volscan_results() -> list[float, float]:
-#     """
-#     Get results for the neat solvent Volume Scan.
+    Returns
+    -------
+    
+        .
+    """
+    results = {"ref": []} | {mlip: [] for mlip in MODELS}
+    densities = {"ref": []} | {mlip: [] for mlip in MODELS}
 
-#     Returns
-#     -------
-#     dict[str, dict]
-#         Dictionary for every property containing each model's RMSE.
-#     """
+    for model in results.keys():
+        if model == "ref":
+            configs = read(REF_PATH / "Volume_Scan_data" / f"{type}_VS_PBED3.xyz", ":")
+
+        else:
+            configs = read(
+                CALC_PATH / "Volume_Scan_output" / f"{type}_VS_{model}_D3.xyz", ":"
+            )
+
+        energies  = [frame.calc.__dict__["results"]['energy']/len(frame) for frame in configs]
+        relative_energies = energies-min(energies)
+
+        results[model].append(relative_energies.tolist())
+        densities = [ea.get_density_gcm3(frame) for frame in configs]
+
+    return results, densities
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "solvent_volscan_scatter.json",
+    title="Solvent Volume Scans",
+    x_label="Predicted intra-forces / eV/atom",
+    y_label="DFT intra-forces / eV/atom"
+)
+def solvent_volscan_scatter() -> dict[str, float]:
+    """
+    Solvent volume scan results of each model for parity plots.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float]]
+        Volume scan energies and densities for each model.
+    """
+    solvent_vs_energies, solvent_vs_densities = volscan_results("solvent") 
+    return solvent_vs_energies, solvent_vs_densities
+
+def plot_volscans(model: str) -> None:
+    """
+    Plot volume scans and save all structure files.
+
+    Parameters
+    ----------
+    model
+        Name of MLIP.
+    """
+
+    @plot_scatter(
+        filename=OUT_PATH / f"{conf_type}_VS_{model}.json",
+        title=f"Volume Scan of {conf_type} configs",
+        x_label="Density / g/cm3",
+        y_label="Energy / eV/atom",
+        show_line=True,
+    )
+    def plot_volscan() -> dict[str, tuple[list[float], list[float]]]:
+        """
+        Plot a Volume Scan and save the structure file.
+
+        Returns
+        -------
+        dict[str, tuple[list[float], list[float]]]
+            Dictionary of tuples of image/energy for each model.
+        """
+        results = {}
+        structs = read(
+            CALC_PATH / f"li_diffusion_{path.lower()}-{model}-neb-band.extxyz",
+            index=":",
+        )
+        results[model] = [
+            list(range(len(structs))),
+            [struct.get_potential_energy() for struct in structs],
+        ]
+        structs_dir = OUT_PATH / model
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{model}-{path.lower()}-neb-band.extxyz", structs)
+
+        return results
+
+    plot_neb()
