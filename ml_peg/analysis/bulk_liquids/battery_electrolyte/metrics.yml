@@ -4,33 +4,47 @@ metrics:
     bad: 0.5
     unit: eV/Å
     tooltip: "Weighted Root Mean Square Deviation of Intra-Forces"
-    level_of_theory: PBE
+    level_of_theory: PBE/D3
     weight: 0
   Inter-Forces:
     good: 0.1
     bad: 0.5
     unit: eV/Å
     tooltip: "Weighted Root Mean Square Deviation of Inter-Forces"
-    level_of_theory: PBE
+    level_of_theory: PBE/D3
     weight: 0
   Inter-Energy:
     good: 5
     bad: 60.0
     unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Inter-Energy"
-    level_of_theory: PBE
+    level_of_theory: PBE/D3
     weight: 0
   Intra-Virial:
     good: 10.0
     bad: 50.0
     unit: meV
     tooltip: "Weighted Root Mean Square Deviation of Intra-Virial"
-    level_of_theory: PBE
+    level_of_theory: PBE/D3
     weight: 0
   Inter-Virial:
     good: 1.0
     bad: 50.0
     unit: meV
     tooltip: "Weighted Root Mean Square Deviation of Inter-Virial"
-    level_of_theory: PBE
+    level_of_theory: PBE/D3
+    weight: 0
+  solvent:
+    good: 1.0
+    bad: 50.0
+    unit: meV/atom
+    tooltip: "Weighted Root Mean Square Deviation of Solvent Volume Scan energies"
+    level_of_theory: PBE/D3
+    weight: 0
+  electrolyte:
+    good: 1.0
+    bad: 50.0
+    unit: meV/atom
+    tooltip: "Weighted Root Mean Square Deviation of Electrolyte Volume Scan energies"
+    level_of_theory: PBE/D3
     weight: 0
