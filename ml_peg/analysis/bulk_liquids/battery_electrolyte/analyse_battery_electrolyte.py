@@ -7,7 +7,7 @@ from pathlib import Path
 from ase.io import read
 import numpy as np
 import pytest
-
+from aseMolec import extAtoms as ea
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
@@ -32,7 +32,7 @@ property_metadata = {
     "Intra-Virial": ["info", "virial_intram"],
     "Inter-Virial": ["info", "virial_interm"],
 }
-conf_type = ["solvent", "electrolyte"]
+conf_types = ["solvent", "electrolyte"]
 
 
 def get_property_results(prop_key: str) -> dict[str, float]:
@@ -170,37 +170,97 @@ def test_rmse_metrics(
     return
 
 
+@pytest.fixture
+def get_volscan_results(conf_type: str) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
+    """
+    Get relative energies per atom for a type of Volume Scan.
+
+    Returns
+    -------
+    results
+        Relative energy of each model per Volume Scan config.
+    densities
+        Density of each volume scan config
+    """
+    results = {"ref": []} | {mlip: [] for mlip in MODELS}
+    densities = {"ref": []} | {mlip: [] for mlip in MODELS}
+
+    for model in results.keys():
+        if model == "ref":
+            configs = read(REF_PATH / "Volume_Scan_data" /
+                              f"{type}_VS_PBED3.xyz", ":")
+
+        else:
+            configs = read(
+                CALC_PATH / "Volume_Scan_output" / f"{type}_VS_{model}_D3.xyz", ":"
+            )
+
+        energies = [
+            frame.calc.__dict__["results"]["energy"] / len(frame) for frame in configs
+        ]
+        relative_energies = energies - min(energies)
+
+        results[model].append(relative_energies.tolist())
+        densities = [ea.get_density_gcm3(frame) for frame in configs]
+
+    return results, densities
+
+@pytest.fixture
+def get_volscan_rmses() -> dict[str, dict]:
+    """
+    Get model prediction RMSEs for all volume scan energies.
+
+    Returns
+    -------
+    volscan_rmse
+        Dictionary of energy RMSE per model for each volume scan.
+    """
+    volscan_rmse = {conf_type: {} for conf_type in conf_types}
+
+    for conf_type in conf_types:
+        results, densities = get_volscan_results(conf_type)
+        #plot_results(prop_key, results)
+        for model in MODELS:
+            model_rmse = rmse(results["ref"], results[model])
+            volscan_rmse[conf_type][model] = model_rmse
+
+    return volscan_rmse
+
 # @pytest.fixture
-# def volscan_results(conf_type: str) -> tuple[dict[str, float], dict[str, float]]:
+# @build_table(
+#     filename=OUT_PATH / "Volscan_metrics_table.json",
+#     metric_tooltips=DEFAULT_TOOLTIPS,
+#     thresholds=DEFAULT_THRESHOLDS,
+# )
+# def rmse_metrics(get_property_rmses: dict[str, dict]) -> dict[str, dict]:
 #     """
-#     Get relative energies per atom for a type of Volume Scan.
+#     Get all inter intra RMSE metrics.
+
+#     Parameters
+#     ----------
+#     get_property_rmses
+#         Dictionary for every property containing each model's RMSE.
 
 #     Returns
 #     -------
-#         .
+#     dict[str, dict]
+#         Dictionary for every property containing each model's RMSE.
 #     """
-#     results = {"ref": []} | {mlip: [] for mlip in MODELS}
-#     densities = {"ref": []} | {mlip: [] for mlip in MODELS}
+#     return get_property_rmses
 
-#     for model in results.keys():
-#         if model == "ref":
-#             configs = read(REF_PATH / "Volume_Scan_data" /
-#                               f"{type}_VS_PBED3.xyz", ":")
 
-#         else:
-#             configs = read(
-#                 CALC_PATH / "Volume_Scan_output" / f"{type}_VS_{model}_D3.xyz", ":"
-#             )
+# def test_rmse_metrics(
+#     rmse_metrics: dict[str, dict],
+# ) -> None:
+#     """
+#     Run inter-intra property test.
 
-#         energies = [
-#             frame.calc.__dict__["results"]["energy"] / len(frame) for frame in configs
-#         ]
-#         relative_energies = energies - min(energies)
-
-#         results[model].append(relative_energies.tolist())
-#         densities = [ea.get_density_gcm3(frame) for frame in configs]
-
-#     return results, densities
+#     Parameters
+#     ----------
+#     rmse_metrics
+#         All inter-intra metrics.
+#     """
+#     return
 
 
 # @pytest.fixture
