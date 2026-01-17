@@ -47,7 +47,7 @@ def get_property_results(prop_key: str) -> dict[str, float]:
     Returns
     -------
     dict[str, list]
-        Dictionary of reference and predicted inter-intra properties.
+        Dictionary of reference and predicted inter-intra property.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
 
@@ -78,6 +78,39 @@ def get_property_results(prop_key: str) -> dict[str, float]:
     return results
 
 
+def plot_results(prop_key: str, results: dict[str, float]) -> None:
+    """
+    Plot inter-intra property parity plots.
+
+    Parameters
+    ----------
+    prop_key
+        Name of inter-intra property to be plotted.
+    results
+        Results from all models for a single property.
+    """
+
+    @plot_parity(
+        filename=OUT_PATH / f"{prop_key}_parity.json",
+        title=prop_key,
+        x_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        y_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        plot_combined=False,
+    )
+    def plot_result() -> dict[str, list[float]]:
+        """
+        Plot the inter-intra propery parity plots.
+
+        Returns
+        -------
+        dict[str, tuple[list[float]]]
+            Dictionary of reference and predicted inter-intra property.
+        """
+        return results
+
+    plot_result()
+
+
 @pytest.fixture
 def get_property_rmses() -> dict[str, dict]:
     """
@@ -92,112 +125,12 @@ def get_property_rmses() -> dict[str, dict]:
 
     for prop_key in property_metadata.keys():
         results = get_property_results(prop_key)
-
+        plot_results(prop_key, results)
         for model in MODELS:
             model_rmse = rmse(results["ref"], results[model])
             property_rmse[prop_key][model] = model_rmse
 
     return property_rmse
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "intra_forces_parity.json",
-    title="Intra Forces",
-    x_label="Predicted intra-forces / eV/Å",
-    y_label="DFT intra-forces / eV/Å",
-    plot_combined=False,
-)
-def intra_forces_parity() -> dict[str, float]:
-    """
-    Get Intra-forces results for each model for parity plots.
-
-    Returns
-    -------
-    dict[str, float]
-        Intra-forces results for each model.
-    """
-    return get_property_results("Intra-Forces")
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "inter_forces_parity.json",
-    title="Inter Forces",
-    x_label="Predicted inter-forces / eV/Å",
-    y_label="DFT inter-forces / eV/Å",
-    plot_combined=False,
-)
-def inter_forces_parity() -> dict[str, float]:
-    """
-    Get Inter-forces results for each model for parity plots.
-
-    Returns
-    -------
-    dict[str, float]
-        Inter-forces results for each model.
-    """
-    return get_property_results("Inter-Forces")
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "inter_energy_parity.json",
-    title="Inter Energy",
-    x_label="Predicted inter-energy / meV/atom",
-    y_label="DFT inter-energy / meV/atom",
-    plot_combined=False,
-)
-def inter_energy_parity() -> dict[str, float]:
-    """
-    Get Inter-energy results for each model for parity plots.
-
-    Returns
-    -------
-    dict[str, float]
-        Inter-energy results for each model.
-    """
-    return get_property_results("Inter-Energy")
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "intra_virial_parity.json",
-    title="Intra Virial",
-    x_label="Predicted intra-virial / meV",
-    y_label="DFT intra-virial / meV",
-    plot_combined=False,
-)
-def intra_virial_parity() -> dict[str, float]:
-    """
-    Get Intra-virial results for each model for parity plots.
-
-    Returns
-    -------
-    dict[str, float]
-        Intra-virial results for each model.
-    """
-    return get_property_results("Intra-Virial")
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "inter_virial_parity.json",
-    title="Inter Virial",
-    x_label="Predicted inter-virial / meV",
-    y_label="DFT inter-virial / meV",
-    plot_combined=False,
-)
-def inter_virial_parity() -> dict[str, float]:
-    """
-    Get Inter-virial results for each model for parity plots.
-
-    Returns
-    -------
-    dict[str, float]
-        Inter-virial results for each model.
-    """
-    return get_property_results("Inter-Virial")
 
 
 @pytest.fixture
@@ -225,11 +158,6 @@ def rmse_metrics(get_property_rmses: dict[str, dict]) -> dict[str, dict]:
 
 def test_rmse_metrics(
     rmse_metrics: dict[str, dict],
-    intra_forces_parity: dict[str, float],
-    inter_forces_parity: dict[str, float],
-    inter_energy_parity: dict[str, float],
-    intra_virial_parity: dict[str, float],
-    inter_virial_parity: dict[str, float],
 ) -> None:
     """
     Run inter-intra property test.
@@ -238,16 +166,6 @@ def test_rmse_metrics(
     ----------
     rmse_metrics
         All inter-intra metrics.
-    intra_forces_parity
-        Intra forces parity plots.
-    inter_forces_parity
-        Inter forces parity plots.
-    inter_energy_parity
-        Inter energies parity plots.
-    intra_virial_parity
-        Intra virial parity plots.
-    inter_virial_parity
-        Inter virial parity plots.
     """
     return
 
