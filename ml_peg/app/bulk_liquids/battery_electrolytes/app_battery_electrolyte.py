@@ -7,12 +7,13 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.models.get_models import get_model_names
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+MODELS = MODELS[:-1]
 
 BENCHMARK_NAME = "Battery electrolyte"
 DATA_PATH = APP_ROOT / "data" / "bulk_liquids" / "battery_electrolyte"
@@ -23,32 +24,36 @@ class BatteryElectrolyteApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter_intraforces = read_plot(
-            DATA_PATH / "intra_forces_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
-        scatter_interforces = read_plot(
-            DATA_PATH / "inter_forces_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
-        scatter_interenergy = read_plot(
-            DATA_PATH / "inter_energy_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
-        scatter_intravirial = read_plot(
-            DATA_PATH / "intra_virial_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
-        scatter_intervirial = read_plot(
-            DATA_PATH / "inter_virial_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
+        parity_plots = {
+            model: {
+                "Intra-Forces": read_plot(
+                    DATA_PATH / f"intra_forces_parity_{model}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+                "Inter-Forces": read_plot(
+                    DATA_PATH / f"inter_forces_parity_{model}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+                "Inter-Energy": read_plot(
+                    DATA_PATH / f"inter_energy_parity_{model}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+                "Intra-Virial": read_plot(
+                    DATA_PATH / f"intra_virial_parity_{model}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+                "Inter-Virial": read_plot(
+                    DATA_PATH / f"inter_virial_parity_{model}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+            }
+            for model in MODELS
+        }
 
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "Intra-Forces": scatter_intraforces,
-                "Inter-Forces": scatter_interforces,
-                "Inter-Energy": scatter_interenergy,
-                "Intra-Virial": scatter_intravirial,
-               "Inter-Virial": scatter_intervirial
-            },
+            cell_to_plot=parity_plots,
         )
 
 

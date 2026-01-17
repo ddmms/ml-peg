@@ -48,6 +48,7 @@ def plot_parity(
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
     log: bool = False,
+    plot_combined: bool = True,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -71,6 +72,8 @@ def plot_parity(
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
+    plot_combined
+        Whether to combine models in one plot or write a plot per model.
     log
         Whether to use log-log axes. When True, the y=x line spans the positive
         data range. Default is False.
@@ -151,89 +154,103 @@ def plot_parity(
                     )
                 )
 
-            # Preserve traces for models not being analysed, before axis limits are
-            # calculated from all traces
-            fig = merge_saved_traces(fig, filename)
+            figures = [(Path(filename), fig)]
+            if not plot_combined:
+                figures = [
+                    (
+                        Path(filename).with_stem(f"{Path(filename).stem}_{trace.name}"),
+                        go.Figure(data=[trace]),
+                    )
+                    for trace in fig.data
+                ]
 
-            if symbol_by:
-                for group in groups:
-                    label = (symbol_labels or {}).get(group, group)
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[None],
-                            y=[None],
-                            name=label,
-                            mode="markers",
-                            marker={"symbol": group_symbol[group], "color": "black"},
-                            hoverinfo="skip",
-                            legend="legend2",
-                            showlegend=True,
+            for out, fig in figures:
+                # Preserve traces for models not being analysed, before axis limits are
+                # calculated from all traces
+                fig = merge_saved_traces(fig, out)
+
+                if symbol_by:
+                    for group in groups:
+                        label = (symbol_labels or {}).get(group, group)
+                        fig.add_trace(
+                            go.Scatter(
+                                x=[None],
+                                y=[None],
+                                name=label,
+                                mode="markers",
+                                marker={
+                                    "symbol": group_symbol[group],
+                                    "color": "black",
+                                },
+                                hoverinfo="skip",
+                                legend="legend2",
+                                showlegend=True,
+                            )
                         )
+
+                if log:
+                    # Include preserved models when spanning the positive data range.
+                    all_vals = [
+                        value
+                        for trace in fig.data
+                        for coords in (trace.x, trace.y)
+                        if coords is not None
+                        for value in coords
+                    ]
+                    positive = [
+                        v
+                        for v in all_vals
+                        if isinstance(v, Real) and np.isfinite(v) and v > 0
+                    ]
+                    lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
+                else:
+                    full_fig = fig.full_figure_for_development()
+                    x_range = full_fig.layout.xaxis.range
+                    y_range = full_fig.layout.yaxis.range
+
+                    lims = [
+                        np.min([x_range, y_range]),  # min of both axes
+                        np.max([x_range, y_range]),  # max of both axes
+                    ]
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=lims,
+                        y=lims,
+                        mode="lines",
+                        name=PARITY_LINE_NAME,
+                        showlegend=False,
+                        hoverinfo="skip",
+                    )
+                )
+
+                xaxis = {"title": {"text": x_label}}
+                yaxis = {"title": {"text": y_label}}
+                if log:
+                    xaxis["type"] = "log"
+                    yaxis["type"] = "log"
+
+                fig.update_layout(
+                    title={"text": title},
+                    xaxis=xaxis,
+                    yaxis=yaxis,
+                )
+                if symbol_by:
+                    fig.update_layout(
+                        legend2={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "left",
+                            "x": 0,
+                        }
                     )
 
-            if log:
-                # Include preserved models when spanning the positive data range.
-                all_vals = [
-                    value
-                    for trace in fig.data
-                    for coords in (trace.x, trace.y)
-                    if coords is not None
-                    for value in coords
-                ]
-                positive = [
-                    v
-                    for v in all_vals
-                    if isinstance(v, Real) and np.isfinite(v) and v > 0
-                ]
-                lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
-            else:
-                full_fig = fig.full_figure_for_development()
-                x_range = full_fig.layout.xaxis.range
-                y_range = full_fig.layout.yaxis.range
+                fig.update_traces()
 
-                lims = [
-                    np.min([x_range, y_range]),  # min of both axes
-                    np.max([x_range, y_range]),  # max of both axes
-                ]
-
-            fig.add_trace(
-                go.Scatter(
-                    x=lims,
-                    y=lims,
-                    mode="lines",
-                    name=PARITY_LINE_NAME,
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
-
-            xaxis = {"title": {"text": x_label}}
-            yaxis = {"title": {"text": y_label}}
-            if log:
-                xaxis["type"] = "log"
-                yaxis["type"] = "log"
-
-            fig.update_layout(
-                title={"text": title},
-                xaxis=xaxis,
-                yaxis=yaxis,
-            )
-            if symbol_by:
-                fig.update_layout(
-                    legend2={
-                        "orientation": "h",
-                        "yanchor": "bottom",
-                        "y": 1.02,
-                        "xanchor": "left",
-                        "x": 0,
-                    }
-                )
-
-            fig.update_traces()
-
-            # Write to file
-            Path(filename).parent.mkdir(parents=True, exist_ok=True)
-            fig.write_json(filename)
+                # Write to file
+                out.parent.mkdir(parents=True, exist_ok=True)
+                fig.write_json(out)
 
             return results
 
