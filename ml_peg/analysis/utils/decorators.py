@@ -37,11 +37,15 @@ def plot_parity(
     y_label: str | None = None,
     hoverdata: dict | None = None,
     filename: str = "parity.json",
+<<<<<<< HEAD
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
+=======
+    plot_combined: bool = True,
+>>>>>>> 88ef424 (Inter-intra test completed, with parity plots per model option)
 ) -> Callable:
     """
-    Plot parity plot of MLIP results against reference data.
+    Plot parity plots of MLIP results against reference data.
 
     Parameters
     ----------
@@ -55,6 +59,7 @@ def plot_parity(
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "parity.json".
+<<<<<<< HEAD
     symbol_by
         Per-point list of group values. When provided, each point receives a
         marker symbol based on its group, while trace colours still represent
@@ -62,6 +67,10 @@ def plot_parity(
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
+=======
+    plot_combined
+        Option to plot data from all models in a single parity plot.
+>>>>>>> 88ef424 (Inter-intra test completed, with parity plots per model option)
 
     Returns
     -------
@@ -112,6 +121,7 @@ def plot_parity(
                     hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
+<<<<<<< HEAD
             fig = go.Figure()
             marker_kwargs = {}
             if symbol_by:
@@ -123,11 +133,14 @@ def plot_parity(
                 marker_kwargs = {
                     "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
                 }
+=======
+            traces = []
+>>>>>>> 88ef424 (Inter-intra test completed, with parity plots per model option)
 
             for mlip, value in results.items():
                 if mlip == "ref":
                     continue
-                fig.add_trace(
+                traces.append(
                     go.Scatter(
                         x=value,
                         y=ref,
@@ -139,6 +152,7 @@ def plot_parity(
                     )
                 )
 
+<<<<<<< HEAD
             if symbol_by:
                 for group in groups:
                     label = (symbol_labels or {}).get(group, group)
@@ -158,19 +172,65 @@ def plot_parity(
             full_fig = fig.full_figure_for_development()
             x_range = full_fig.layout.xaxis.range
             y_range = full_fig.layout.yaxis.range
+=======
+            if not plot_combined:
+                for trace in traces:
+                    fig = go.Figure()
+                    fig.add_trace(trace)
+                    full_fig = fig.full_figure_for_development()
+                    x_range = full_fig.layout.xaxis.range
+                    y_range = full_fig.layout.yaxis.range
+>>>>>>> 88ef424 (Inter-intra test completed, with parity plots per model option)
 
-            lims = [
-                np.min([x_range, y_range]),  # min of both axes
-                np.max([x_range, y_range]),  # max of both axes
-            ]
+                    lims = [
+                        np.min([x_range, y_range]),  # min of both axes
+                        np.max([x_range, y_range]),  # max of both axes
+                    ]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=lims,
-                    y=lims,
-                    mode="lines",
-                    showlegend=False,
+                    fig.add_trace(
+                        go.Scatter(
+                            x=lims,
+                            y=lims,
+                            mode="lines",
+                            showlegend=False,
+                        )
+                    )
+
+                    fig.update_traces()
+                    fig.update_layout(
+                        title={"text": title},
+                        xaxis={"title": {"text": x_label}},
+                        yaxis={"title": {"text": y_label}},
+                    )
+                    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+                    out = Path(filename).with_stem(
+                        f"{Path(filename).stem}_{trace.name}"
+                    )
+                    fig.write_json(out)
+            else:
+                fig = go.Figure()
+
+                for trace in traces:
+                    fig.add_trace(trace)
+
+                full_fig = fig.full_figure_for_development()
+                x_range = full_fig.layout.xaxis.range
+                y_range = full_fig.layout.yaxis.range
+
+                lims = [
+                    np.min([x_range, y_range]),  # min of both axes
+                    np.max([x_range, y_range]),  # max of both axes
+                ]
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=lims,
+                        y=lims,
+                        mode="lines",
+                        showlegend=False,
+                    )
                 )
+<<<<<<< HEAD
             )
 
             fig.update_layout(
@@ -194,6 +254,10 @@ def plot_parity(
             # Write to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             fig.write_json(filename)
+=======
+                Path(filename).parent.mkdir(parents=True, exist_ok=True)
+                fig.write_json(filename)
+>>>>>>> 88ef424 (Inter-intra test completed, with parity plots per model option)
 
             return results
 
