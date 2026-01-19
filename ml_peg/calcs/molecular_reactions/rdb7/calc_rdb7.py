@@ -111,6 +111,8 @@ class RDB7Benchmark(zntrack.Node):
         # Read in data and attach calculator
 
         calc = self.model.get_calculator()
+        # Add D3 calculator for this test
+        calc = self.model.add_d3_calculator(calc)
 
         for i in tqdm(range(0, 11961)):
             bh_forward_ref = 0
