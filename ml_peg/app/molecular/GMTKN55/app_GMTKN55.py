@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from dash import Dash
 from dash.html import Div
 
@@ -31,7 +33,9 @@ class GMTKN55App(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
             f"assets/molecular/GMTKN55/{MODELS[0]}/{struct_file.stem}.xyz"
-            for struct_file in sorted(structs_dir.glob("*.xyz"))
+            for struct_file in sorted(
+                structs_dir.glob("*.xyz"), key=lambda f: int(Path(f).stem)
+            )
         ]
 
         plot_from_table_column(
