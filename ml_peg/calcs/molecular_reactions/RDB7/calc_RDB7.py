@@ -33,7 +33,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 
 class RDB7Benchmark(zntrack.Node):
-    """Benchmark RDB7 reaction barriers from 10.1038/s41597-022-01529-6."""
+    """Benchmark RDB7 reaction barriers."""
 
     model: NodeWithCalculator = zntrack.deps()
     model_name: str = zntrack.params()
@@ -124,17 +124,17 @@ class RDB7Benchmark(zntrack.Node):
                 atoms.calc = calc
                 bh_forward_model -= atoms.get_potential_energy()
             for qm_path in (data_path / "qm_logs" / f"rxn{label}").glob("ts*"):
-                bh_forward_model += self.get_cc_energy(qm_path)
+                bh_forward_ref += self.get_cc_energy(qm_path)
                 atoms = self.get_atoms_from_molpro(qm_path)
                 atoms.calc = calc
                 bh_forward_model += atoms.get_potential_energy()
 
-                atoms.info["model_forward_barrier"] = bh_forward_model
-                atoms.info["ref_forward_barrier"] = bh_forward_ref
+            atoms.info["model_forward_barrier"] = bh_forward_model
+            atoms.info["ref_forward_barrier"] = bh_forward_ref
 
-                write_dir = OUT_PATH / self.model_name
-                write_dir.mkdir(parents=True, exist_ok=True)
-                write(write_dir / f"{label}_ts.xyz", atoms)
+            write_dir = OUT_PATH / self.model_name
+            write_dir.mkdir(parents=True, exist_ok=True)
+            write(write_dir / f"{label}_ts.xyz", atoms)
 
 
 def build_project(repro: bool = False) -> None:
