@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -34,10 +33,7 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
     struct_paths = DATA_PATH.glob("*.xyz")
 
     for struct_path in struct_paths:
-        file_prefix = (
-            OUT_PATH
-            / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
-        )
+        file_prefix = OUT_PATH / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for at in configs:
             at.calc = calc
