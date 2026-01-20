@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.io import read
-from aseMolec import extAtoms as ea
-import numpy as np
+from aseMolec import extAtoms
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
@@ -19,20 +18,26 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 
 MODELS = MODELS[:-1]
-REF_PATH = CALCS_ROOT / "bulk_liquids" / "volume_scans" / "data"
-CALC_PATH = CALCS_ROOT / "bulk_liquids" / "volume_scans" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "bulk_liquids" / "volume_scans"
+REF_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "data"
+CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 conf_types = ["Solvent", "Electrolyte"]
 
+
 def get_volscan_results(
     conf_type: str,
 ) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
     """
     Get relative energies per atom for a type of Volume Scan.
+
+    Parameters
+    ----------
+    conf_type
+        Name of Volume Scan type to be plotted.
 
     Returns
     -------
@@ -47,16 +52,14 @@ def get_volscan_results(
             configs = read(REF_PATH / f"{conf_type.lower()}_VS_PBED3.xyz", ":")
 
         else:
-            configs = read(
-                CALC_PATH / f"{conf_type.lower()}_VS_{model}_D3.xyz", ":"
-            )
+            configs = read(CALC_PATH / f"{conf_type.lower()}_VS_{model}_D3.xyz", ":")
 
         energies = [
-            frame.calc.__dict__["results"]["energy"]*1000 / len(frame) for frame in configs
+            frame.calc.__dict__["results"]["energy"] * 1000 / len(frame)
+            for frame in configs
         ]
-        relative_energies = (energies - min(energies))
-        densities = [ea.get_density_gcm3(frame) for frame in configs]
-        
+        relative_energies = energies - min(energies)
+        densities = [extAtoms.get_density_gcm3(frame) for frame in configs]
 
         results[model].append(densities)
         results[model].append(relative_energies.tolist())
@@ -64,13 +67,13 @@ def get_volscan_results(
     return results
 
 
-def plot_volscans(conf_key: str, model: str, results: dict[str, float]) -> None:
+def plot_volscans(conf_type: str, model: str, results: dict[str, float]) -> None:
     """
     Plot Volume Scan scatter plots.
 
     Parameters
     ----------
-    conf_key
+    conf_type
         Name of Volume Scan type to be plotted.
     model
         Name of MLIP.
@@ -79,8 +82,8 @@ def plot_volscans(conf_key: str, model: str, results: dict[str, float]) -> None:
     """
 
     @plot_scatter(
-        filename=OUT_PATH / f"{conf_key.lower()}_{model}_volscan_scatter.json",
-        title=f"{conf_key} Volume Scan",
+        filename=OUT_PATH / f"{conf_type.lower()}_{model}_volscan_scatter.json",
+        title=f"{conf_type} Volume Scan",
         x_label="Density / g cm<sup>-3</sup>",
         y_label="Energy wrt Minimum Energy / meV/atom",
         show_line=True,
@@ -94,11 +97,8 @@ def plot_volscans(conf_key: str, model: str, results: dict[str, float]) -> None:
         model_results
             Dictionary of reference and a specific MLIP's Volume Scan energies.
         """
-        model_results = {
-            "ref" : results["ref"],
-            model : results[model]
-        }
-        return model_results
+        return {"ref": results["ref"], model: results[model]}
+
     plot_result()
 
 
@@ -123,6 +123,7 @@ def get_volscan_rmses() -> dict[str, dict]:
 
     return volscan_rmse
 
+
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "vol_scan_rmses_table.json",
@@ -135,7 +136,7 @@ def vs_rmse_metrics(get_volscan_rmses: dict[str, dict]) -> dict[str, dict]:
 
     Parameters
     ----------
-    get_property_rmses
+    get_volscan_rmses
         Dictionary of each model's RMSE for all Volume Scans.
 
     Returns
@@ -158,4 +159,3 @@ def test_vs_rmse_metrics(
         All Volume Scan metrics.
     """
     return
-

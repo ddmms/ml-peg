@@ -1,4 +1,4 @@
-"""Run calculations for battery system."""
+"""Run calculations for inter intra benchmark."""
 
 from __future__ import annotations
 
@@ -33,14 +33,10 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    struct_paths = (DATA_PATH / "Intra_Inter_data").glob("output*.xyz")
+    struct_paths = DATA_PATH.glob("output*.xyz")
 
     for struct_path in struct_paths:
-        file_prefix = (
-            OUT_PATH
-            / "Intra_Inter_output"
-            / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
-        )
+        file_prefix = OUT_PATH / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for at in configs:
             at.calc = calc
@@ -50,7 +46,7 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
             at.calc = None
         write(file_prefix, configs)
 
-    eval_file_prefix = OUT_PATH / "Intra_Inter_output"
+    eval_file_prefix = OUT_PATH
     test = read(eval_file_prefix / f"output_{model_name}.xyz", ":")
     single_molecule_test = []
     for molsym in ["EMC", "EC", "PF6", "Li"]:
@@ -59,34 +55,3 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
         )
     aA.collect_molec_results_dict(test, single_molecule_test)
     write(eval_file_prefix / f"intrainter_{model_name}.xyz", test)
-
-
-@pytest.mark.parametrize("mlip", MODELS.items())
-def test_volume_scans(mlip: tuple[str, Any]) -> None:
-    """
-    Run calculations required for Volume Scan tests.
-
-    Parameters
-    ----------
-    mlip
-        Name of model use and model to get calculator.
-    """
-    model_name, model = mlip
-    calc = model.get_calculator()
-
-    struct_paths = (DATA_PATH / "Volume_Scan_data").glob("*.xyz")
-
-    for struct_path in struct_paths:
-        file_prefix = (
-            OUT_PATH
-            / "Volume_Scan_output"
-            / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
-        )
-        configs = read(struct_path, ":")
-        for at in configs:
-            at.calc = calc
-            at.info["energy"] = at.get_potential_energy()
-            at.arrays["forces"] = at.get_forces()
-            at.info["virial"] = -at.get_stress(voigt=False) * at.get_volume()
-            at.calc = None
-        write(file_prefix, configs)
