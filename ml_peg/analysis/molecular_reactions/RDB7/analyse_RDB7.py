@@ -15,6 +15,7 @@ from pathlib import Path
 from ase import units
 from ase.io import read, write
 import pytest
+from tqdm import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
@@ -46,7 +47,13 @@ def labels() -> list:
     list
         List of all system names.
     """
-    return [str(i).zfill(6) for i in range(0, 11961)]
+    for model_name in MODELS:
+        labels_list = [
+            path.stem.replace("_ts", "")
+            for path in sorted((CALC_PATH / model_name).glob("*_ts.xyz"))
+        ]
+        break
+    return labels_list
 
 
 @pytest.fixture
@@ -72,7 +79,7 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in tqdm(labels()):
             atoms = read(CALC_PATH / model_name / f"{label}_ts.xyz")
             results[model_name].append(atoms.info["model_forward_barrier"] * EV_TO_KCAL)
             if not ref_stored:
