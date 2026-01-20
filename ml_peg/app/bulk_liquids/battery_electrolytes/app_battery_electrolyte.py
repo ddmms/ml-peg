@@ -118,7 +118,7 @@ def get_app() -> BatteryElectrolyteApp:
         # extra_components=[
         #     Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         # ],
-        table_path=DATA_PATH / "Vol_scan_rmses_table.json",
+        table_path=DATA_PATH / "ol_scan_rmses_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
