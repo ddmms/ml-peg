@@ -17,7 +17,6 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
-MODELS = MODELS[:-1]
 REF_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "data"
 CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
