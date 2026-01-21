@@ -14,7 +14,6 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-MODELS = MODELS[:-1]
 
 BENCHMARK_NAME = "Inter-Intra"
 DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
