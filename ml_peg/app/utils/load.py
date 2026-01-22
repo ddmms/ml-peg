@@ -60,7 +60,7 @@ def rebuild_table(
 
     # Pad table with all models from registry (models without data will be
     # grayed/hashed out)
-    all_registry_models = get_model_names(None)
+    all_registry_models = get_model_names()
     existing_display_names = {row.get("MLIP") for row in data}
 
     # Model names come in two forms:
