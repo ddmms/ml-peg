@@ -40,4 +40,5 @@ pip-wheel-metadata/
 __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
+ml_peg/calcs/*/*/outputs/
 certs/
