@@ -19,6 +19,7 @@ from ml_peg.app.utils.utils import (
     is_numeric_column,
     sig_fig_format,
 )
+from ml_peg.models.get_models import get_model_names, load_model_configs
 
 
 def rebuild_table(
@@ -56,6 +57,43 @@ def rebuild_table(
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
+
+    # Pad table with all models from registry (models without data will be
+    # grayed/hashed out)
+    all_registry_models = get_model_names()
+    existing_display_names = {row.get("MLIP") for row in data}
+
+    # Model names come in two forms:
+    # - Canonical name: Base name from models.yml (e.g., "mace-mp-0a")
+    # - Display name: UI name, may have suffix (e.g., "mace-mp-0a-D3")
+
+    # model_name_map stores: display_name -> canonical_name
+    # We need the inverse for lookups: canonical_name -> display_name
+    canonical_to_display = {}
+    for display_name, canonical_name in model_name_map.items():
+        canonical_to_display[canonical_name] = display_name
+
+    # Determine which metrics exist (excluding MLIP, Score, id)
+    metric_columns = [
+        col["id"] for col in columns if col.get("id") not in {"MLIP", "Score", "id"}
+    ]
+
+    # Add missing models with None for all metrics
+    for canonical_model in all_registry_models:
+        # Convert canonical name (from registry) to display name (for table)
+        display_name = canonical_to_display.get(canonical_model, canonical_model)
+        if display_name not in existing_display_names:
+            # Create row with None for all metrics (will appear grayed out)
+            new_row = {"MLIP": display_name, "id": display_name}
+            for metric in metric_columns:
+                new_row[metric] = None
+            # Score will be None (calculated later by calc_table_scores)
+            new_row["Score"] = None
+            data.append(new_row)
+
+            # Update model_name_map if this is a new model not in original JSON
+            if canonical_model not in model_name_map.values():
+                model_name_map[display_name] = canonical_model
 
     width_labels: list[str] = []
 
@@ -95,6 +133,28 @@ def rebuild_table(
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
+
+    # Add model configs and levels for newly added models
+    # (models that were padded but not in original JSON)
+    all_display_names = {row.get("MLIP") for row in data}
+    missing_models = []
+    for display_name in all_display_names:
+        # Convert display name to canonical name for config lookup
+        canonical_name = model_name_map.get(display_name, display_name)
+        if display_name not in model_configs:
+            missing_models.append(canonical_name)
+
+    if missing_models:
+        # Load configs using canonical names (as they appear in models.yml)
+        new_configs, new_levels = load_model_configs(missing_models)
+        for canonical_name in missing_models:
+            # Convert back to display name for storage in table metadata
+            display_name = canonical_to_display.get(canonical_name, canonical_name)
+            if canonical_name in new_configs:
+                model_configs[display_name] = new_configs[canonical_name]
+            if canonical_name in new_levels:
+                model_levels[display_name] = new_levels[canonical_name]
+
     warning_styles, tooltip_rows = build_level_of_theory_warnings(
         data, model_levels, metric_levels, model_configs
     )
@@ -227,7 +287,7 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
 
 def read_density_plot_for_model(
     filename: str | Path, model: str, id: str = "figure-1"
-) -> Graph:
+) -> Graph | None:
     """
     Read a density-plot JSON and return a Graph filtered to a single model.
 
@@ -242,9 +302,18 @@ def read_density_plot_for_model(
 
     Returns
     -------
-    Graph
+    Graph | None
         Dash Graph displaying only the requested model (plus reference line).
+        Returns None if the model has no data in the plot.
     """
     with open(filename) as f:
         fig_dict = json.load(f)
-    return Graph(id=id, figure=_filter_density_figure_for_model(fig_dict, model))
+
+    filtered_fig = _filter_density_figure_for_model(fig_dict, model)
+
+    # Check if model has actual data (not just the reference line)
+    # If only 1 trace (the y=x line) or 0 traces, model has no data
+    if len(filtered_fig.get("data", [])) <= 1:
+        return None
+
+    return Graph(id=id, figure=filtered_fig)

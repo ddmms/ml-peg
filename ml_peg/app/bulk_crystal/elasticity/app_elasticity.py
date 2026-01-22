@@ -12,6 +12,7 @@ from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
+# Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elasticity"
 DOCS_URL = (
@@ -25,8 +26,11 @@ class ElasticityApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        density_plots = {
-            model: {
+        # Build plots for models with data (read_density_plot_for_model
+        # returns None for models without data)
+        density_plots = {}
+        for model in MODELS:
+            plots = {
                 "Bulk modulus MAE": read_density_plot_for_model(
                     filename=DATA_PATH / "figure_bulk_density.json",
                     model=model,
@@ -38,8 +42,10 @@ class ElasticityApp(BaseApp):
                     id=f"{BENCHMARK_NAME}-{model}-shear-figure",
                 ),
             }
-            for model in MODELS
-        }
+            # Filter out None values (models without data for that metric)
+            model_plots = {k: v for k, v in plots.items() if v is not None}
+            if model_plots:
+                density_plots[model] = model_plots
 
         plot_from_table_cell(
             table_id=self.table_id,
