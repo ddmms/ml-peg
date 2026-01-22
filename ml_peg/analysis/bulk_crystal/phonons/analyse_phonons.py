@@ -175,44 +175,6 @@ def _prettify_chemical_formula(formula: str) -> str:
     return pretty
 
 
-def _build_xticks(
-    distances: list[np.ndarray], labels: list[str], connections: list[bool]
-) -> tuple[list[float], list[str]]:
-    """
-    Build x-axis ticks for the band-structure plot.
-
-    Parameters
-    ----------
-    distances
-        Distances along the Brillouin-path segments.
-    labels
-        High-symmetry labels for each vertex.
-    connections
-        Boolean mask describing segment connectivity.
-
-    Returns
-    -------
-    tuple[list, list]
-        Tick positions and tick labels for Matplotlib.
-    """
-    xticks, xticklabels = [], []
-    cumulative_dist, i = 0.0, 0
-    connections = [True] + connections
-
-    for seg_dist, connected in zip(distances, connections, strict=False):
-        start, end = labels[i], labels[i + 1]
-        pos_start = cumulative_dist
-        pos_end = cumulative_dist + (seg_dist[-1] - seg_dist[0])
-        xticks.append(pos_start)
-        xticklabels.append(f"{start}|{end}" if not connected else start)
-        i += 2 if not connected else 1
-        cumulative_dist = pos_end
-
-    xticks.append(cumulative_dist)
-    xticklabels.append(labels[-1])
-    return xticks, xticklabels
-
-
 def _classify_stability(ref_val: float, pred_val: float) -> str:
     """
     Classify stability based on minimum frequency predictions.

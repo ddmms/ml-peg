@@ -387,7 +387,9 @@ def render_band_dos_png(
 
     pred_label_added = False
     for dist_segment, freq_segment in zip(
-        distances_pred, frequencies_pred, strict=False
+        distances_pred,
+        frequencies_pred,
+        strict=False,
     ):
         for band in freq_segment.T:
             ax1.plot(
