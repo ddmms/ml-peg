@@ -10,9 +10,10 @@ from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell
 from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
 # Get all models
-MODELS = get_model_names(None)
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elasticity"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#elasticity"
