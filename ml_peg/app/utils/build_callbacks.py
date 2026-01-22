@@ -605,7 +605,7 @@ def scatter_and_assets_from_table(
     table_id
         Dash table identifier emitting ``active_cell`` callbacks.
     table_data
-        Pre-rendered table rows used to look up the clicked model.
+        Default table rows.
     plot_container_id
         Div ID hosting the rendered plot content.
     scatter_metadata_store_id
@@ -653,11 +653,24 @@ def scatter_and_assets_from_table(
             raise PreventUpdate
 
         row = active_cell.get("row")
+        row_id = active_cell.get("row_id")
         column = active_cell.get("column_id")
-        if row is None or column is None or row < 0 or row >= len(table_data):
+        if column is None:
             raise PreventUpdate
 
-        model_display = table_data[row].get(model_key)
+        selected_row = None
+        if row_id is not None:
+            for entry in table_data:
+                if entry.get("id") == row_id:
+                    selected_row = entry
+                    break
+
+        if selected_row is None:
+            if row is None or row < 0 or row >= len(table_data):
+                raise PreventUpdate
+            selected_row = table_data[row]
+
+        model_display = selected_row.get(model_key)
         if not model_display:
             raise PreventUpdate
 
