@@ -1397,7 +1397,7 @@ def build_table(
             metrics_columns = ("MLIP",) + tuple(results)
 
             # Get all models (including those without results for this benchmark)
-            mlips = tuple(get_model_names(None))
+            mlips = tuple(get_model_names())
 
             name_map = mlip_name_map if mlip_name_map else {}
             display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}
