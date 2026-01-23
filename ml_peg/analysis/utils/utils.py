@@ -300,13 +300,20 @@ def calc_table_scores(
         all_metrics_present = True
 
         for key, value in metrics_row.items():
-            if key not in {"MLIP", "Score", "id"}:
-                if value is not None:
-                    scores_list.append(scores_row[key])
-                    weights_list.append(weights.get(key, 1.0))
-                else:
-                    # Track if any metric is missing
-                    all_metrics_present = False
+            if key in {"MLIP", "Score", "id"}:
+                continue
+
+            weight = weights.get(key, 1.0)
+            if weight == 0:
+                # Weight of zero excludes the metric from scoring requirements
+                continue
+
+            if value is not None:
+                scores_list.append(scores_row[key])
+                weights_list.append(weight)
+            else:
+                # Track if any (weighted) metric is missing
+                all_metrics_present = False
 
         # Calculate score only if conditions are met
         if require_all_metrics and not all_metrics_present:
