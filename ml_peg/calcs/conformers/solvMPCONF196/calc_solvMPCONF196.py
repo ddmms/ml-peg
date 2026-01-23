@@ -1,5 +1,5 @@
 """
-Calculate the SolvMPCONF196 dataset of solvated biomolecule conformers.
+Calculate the solvMPCONF196 dataset of solvated biomolecule conformers.
 
 J. Comput. Chem. 2024, 45(7), 419.
 https://doi.org/10.1002/jcc.27248.
@@ -94,7 +94,7 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
     """
-    Run SolvMPCONF196 benchmark.
+    Run solvMPCONF196 benchmark.
 
     Parameters
     ----------
