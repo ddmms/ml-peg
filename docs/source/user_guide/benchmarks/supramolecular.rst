@@ -143,7 +143,8 @@ Input structures:
 * K. Kříž and J. Řezáč, "Benchmarking of Semiempirical Quantum-Mechanical Methods on
   Systems Relevant to Computer-Aided Drug Design", Journal of Chemical Information and
   Modeling, vol. 60, no. 3, pp. 1453-1460, 2020, doi: 10.1021/acs.jcim.9b01171
-    * DLPNO-CCSD(T)/CBS
+
+  * DLPNO-CCSD(T)/CBS
 
 Reference data:
 
