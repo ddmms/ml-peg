@@ -89,6 +89,7 @@ def get_atoms_from_molpro(fname):
     return atoms
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_rdb87(mlip: tuple[str, Any]) -> None:
     """
