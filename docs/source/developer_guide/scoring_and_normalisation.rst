@@ -22,7 +22,7 @@ In general, by default, metrics are equally weighted. However, users can specify
 
 
 Scoring and normalisation
-----------------------------------
+-------------------------
 
 By default, every benchmark metric is normalised to a unitless score between 0 (worst) and 1 (best) using "good" and "bad" thresholds specified in each benchmark's metric configuration file (``metrics.yml``).
 In the app, thresholds can be customised for each metric by users to suit their own requirements, by editing the text boxes below the corresponding columns. For example, a phonon expert may have strict requirements for phonon frequency accuracy, whereas a user interested in general trends may be satisfied with a more approximate model.
