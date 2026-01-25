@@ -1,5 +1,5 @@
 =============================================
-Benchmark scoring: normalisation and weights
+Benchmark scoring
 =============================================
 
 
@@ -20,6 +20,30 @@ The scoring system uses a 5-level hierarchy:
 
 In general, by default, metrics are equally weighted. However, users can specify custom weights by editing the text box below the corresponding column.
 
+For developers to specify custom default weights, you can do so in the benchmark's ``metrics.yml`` configuration file by adding a ``weight`` field for each metric, e.g.:
+
+.. code-block:: yaml
+
+   metrics:
+     MAE:
+       good: 0.0
+       bad: 100.0
+       weight: 2.0
+       unit: kJ/mol
+       tooltip: "Mean Absolute Error for all systems"
+       level_of_theory: DMC
+
+Then add ``DEFAULT_WEIGHTS`` to the ``@build_table`` decorator in the analysis file, e.g.:
+
+.. code-block:: python
+
+   @build_table(
+       filename=OUT_PATH / "x23_metrics_table.json",
+       metric_tooltips=DEFAULT_TOOLTIPS,
+       thresholds=DEFAULT_THRESHOLDS,
+       mlip_name_map=D3_MODEL_NAMES,
+       weights=DEFAULT_WEIGHTS,
+   )
 
 Scoring and normalisation
 -------------------------
