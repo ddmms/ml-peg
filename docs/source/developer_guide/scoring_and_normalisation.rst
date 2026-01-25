@@ -8,7 +8,7 @@ Normalisation of benchmark metrics to yield a unitless score is essential if we 
 
 
 Weights and Score Aggregation
--------------------------------------
+-----------------------------
 
 The scoring system uses a 5-level hierarchy:
 
