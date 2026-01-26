@@ -8,6 +8,7 @@ from pathlib import Path
 import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
+import tqdm
 
 
 def download(
@@ -52,10 +53,19 @@ def download(
             aws_secret_access_key=user_credentials["secret_key"],
         )
 
-    # Ensure path exists before download
+    # Ensure directory exists before download
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
-    s3.download_file(Bucket=bucket, Filename=filename, Key=key)
+    object_size = s3.head_object(Bucket=bucket, Key=key)["ContentLength"]
+    with tqdm.tqdm(total=object_size, unit="B", unit_scale=True, desc=filename) as pbar:
+        s3.download_file(
+            Bucket=bucket,
+            Key=key,
+            Filename=filename,
+            Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+        )
+
+    # s3.download_file(Bucket=bucket, Filename=filename, Key=key)
 
 
 def upload(
@@ -95,4 +105,19 @@ def upload(
         aws_secret_access_key=user_credentials["secret_key"],
     )
 
-    s3.upload_file(Bucket=bucket, Filename=filename, Key=key, ExtraArgs={"ACL": acl})
+    # Ensure path exists before download
+    filename = Path(filename)
+    if not filename.exists():
+        raise ValueError(f"{filename} does not exist")
+
+    file_size = filename.stat().st_size
+    with tqdm.tqdm(
+        total=file_size, unit="B", unit_scale=True, desc=str(filename)
+    ) as pbar:
+        s3.upload_file(
+            Filename=filename,
+            Bucket=bucket,
+            Key=key,
+            ExtraArgs={"ACL": acl},
+            Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+        )
