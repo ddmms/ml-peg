@@ -57,7 +57,9 @@ def download(
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
     object_size = s3.head_object(Bucket=bucket, Key=key)["ContentLength"]
-    with tqdm.tqdm(total=object_size, unit="B", unit_scale=True, desc=filename) as pbar:
+    with tqdm.tqdm(
+        total=object_size, unit="B", unit_scale=True, desc=str(filename)
+    ) as pbar:
         s3.download_file(
             Bucket=bucket,
             Key=key,
