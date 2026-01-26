@@ -115,7 +115,6 @@ build-backend = "uv_build"
 [tool.pytest.ini_options]
 # Configuration for [pytest](https://docs.pytest.org)
 python_files = "test_*.py"
-addopts = '--cov-report xml'
 pythonpath = ["."]
 
 [tool.coverage.run]
