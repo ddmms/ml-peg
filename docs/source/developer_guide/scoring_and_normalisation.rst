@@ -33,7 +33,15 @@ For developers to specify custom default weights, you can do so in the benchmark
        tooltip: "Mean Absolute Error for all systems"
        level_of_theory: DMC
 
-Then add ``DEFAULT_WEIGHTS`` to the ``@build_table`` decorator in the analysis file, e.g.:
+
+These weights are returned as part of the tuple from ``load_metrics_config``
+
+.. code-block:: python
+
+   DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(METRICS_CONFIG_PATH)
+
+
+and should be passed to the ``@build_table`` decorator in the analysis file, e.g.:
 
 .. code-block:: python
 
