@@ -1,7 +1,7 @@
 Welcome to ML-PEG's documentation!
 ========================================
 
-ML-PEG is an ML potential usability and performance guide.
+ML-PEG is an ML Performance and Extrapolation Guide.
 
 We host a `live instance <https://ml-peg.stfc.ac.uk>`_ of ML-PEG, with the latest
 models and benchmarks, as well as providing tools to develop your own benchmarks. These
