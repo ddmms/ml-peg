@@ -1,6 +1,6 @@
-=============================================
+=================
 Benchmark scoring
-=============================================
+=================
 
 
 This guide will break down how benchmark metrics are scored, normalised and combined by default and how users can specify their own normalisation schemes.
