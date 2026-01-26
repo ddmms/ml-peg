@@ -11,3 +11,4 @@ Developer guide
     running
     data
     add_models
+    scoring_and_normalisation
