@@ -68,6 +68,7 @@ def plot_from_table_cell(
     table_id: str,
     plot_id: str,
     cell_to_plot: dict[str, dict[Graph]],
+    table_data: list[dict] | None = None,
 ) -> None:
     """
     Attach callback to show plot when a table cell is clicked.
@@ -80,10 +81,17 @@ def plot_from_table_cell(
         ID for Dash plot placeholder Div.
     cell_to_plot
         Nested dictionary of model names, column names, and plot to show.
+    table_data
+        Optional table data to check for None/missing values. If provided,
+        cells with None values will show "No data available" message.
     """
 
-    @callback(Output(plot_id, "children"), Input(table_id, "active_cell"))
-    def show_plot(active_cell) -> Div:
+    @callback(
+        Output(plot_id, "children"),
+        Input(table_id, "active_cell"),
+        Input(table_id, "data"),
+    )
+    def show_plot(active_cell, current_table_data) -> Div:
         """
         Register callback to show plot when a table cell is clicked.
 
@@ -91,6 +99,8 @@ def plot_from_table_cell(
         ----------
         active_cell
             Clicked cell in Dash table.
+        current_table_data
+            Current table data (includes live updates from callbacks).
 
         Returns
         -------
@@ -101,6 +111,16 @@ def plot_from_table_cell(
             return Div("Click on a metric to view plot.")
         column_id = active_cell.get("column_id", None)
         row_id = active_cell.get("row_id", None)
+        row_index = active_cell.get("row", None)
+
+        # Check if cell value is None (no data for this model)
+        if current_table_data and row_index is not None:
+            try:
+                cell_value = current_table_data[row_index].get(column_id)
+                if cell_value is None:
+                    return Div("No data available for this model.")
+            except (IndexError, KeyError, TypeError):
+                pass  # Fall through to normal handling
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
             return Div(cell_to_plot[row_id][column_id])

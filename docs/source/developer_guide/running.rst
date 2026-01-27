@@ -19,14 +19,16 @@ Help for this command can be found by running ``ml_peg calc --help``:
 
     Run calculations
 
-    ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-    │ --models                       TEXT  Comma-separated models to run calculations on. Default is all models.       │
-    │ --category                     TEXT  Category to run calculations for. Default is all categories. [default: *]   │
-    │ --test                         TEXT  Test to run calculations for. Default is all tests. [default: *]            │
-    │ --run-slow    --no-run-slow          Whether to run calculations labelled slow. [default: run-slow]              │
-    │ --verbose     --no-verbose           Whether to run pytest with verbose and stdout printed. [default: verbose]   │
-    │ --help                               Show this message and exit.                                                 │
-    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+    ╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+    │ --models                                 TEXT  Comma-separated models to run calculations on. Default is all models.      │
+    │ --category                               TEXT  Category to run calculations for. Default is all categories. [default: *]  │
+    │ --test                                   TEXT  Test to run calculations for. Default is all tests. [default: *]           │
+    │ --run-slow         --no-run-slow               Whether to run calculations labelled slow. [default: run-slow]             │
+    │ --run-very-slow    --no-run-very-slow          Whether to run calculations labelled very slow.                            │
+    │                                                [default: no-run-very-slow]                                                │
+    │ --verbose          --no-verbose                Whether to run pytest with verbose and stdout printed. [default: verbose]  │
+    │ --help                                         Show this message and exit.                                                │
+    ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 ``ml_peg calc`` launches calculations using ``pytest``, and will automatically
@@ -35,11 +37,11 @@ run based on our
 `custom markers <https://docs.pytest.org/en/7.1.x/example/markers.html>`_.
 
 For example, to run the ``S24`` test in the ``surfaces`` category, with the
-``mace_mp_0b3`` model, you could run:
+``mace-mp-0b3`` model, you could run:
 
 .. code-block:: bash
 
-    ml_peg calc --category surfaces --test S24 --models mace_mp_0b3
+    ml_peg calc --category surfaces --test S24 --models mace-mp-0b3
 
 
 This is effectively equivalent to:
@@ -48,7 +50,7 @@ This is effectively equivalent to:
 
     .. code-block:: bash
 
-    pytest -vvv ml_peg/calcs/surfaces/S24/calc_S24.py --models mace_mp_0b3
+    pytest -vvv ml_peg/calcs/surfaces/S24/calc_S24.py --models mace-mp-0b3
 
 
 Analysis
@@ -77,12 +79,12 @@ Help for this command can be found by running ``ml_peg analyse --help``:
 ``ml_peg analyse`` launches analysis using ``pytest``.
 
 For example, to run the ``OC157`` test in the
-``surfaces`` category, with the ``mace_mp_0b3`` and ``orb_v3_conservative_inf_omat__``
+``surfaces`` category, with the ``mace-mp-0b3`` and ``orb-v3-consv-inf-omat``
 models, you could run:
 
 .. code-block:: bash
 
-    ml_peg analyse --category surfaces --test OC157 --models mace_mp_0b3,orb_v3_conservative_inf_omat__
+    ml_peg analyse --category surfaces --test OC157 --models mace-mp-0b3,orb-v3-consv-inf-omat
 
 
 This is effectively equivalent to:
@@ -91,7 +93,7 @@ This is effectively equivalent to:
 
     .. code-block:: bash
 
-    pytest -vvv ml_peg/analysis/surfaces/OC157/analyse_OC157.py --models mace_mp_0b3,orb_v3_conservative_inf_omat__
+    pytest -vvv ml_peg/analysis/surfaces/OC157/analyse_OC157.py --models mace-mp-0b3,orb-v3-consv-inf-omat
 
 
 Application
