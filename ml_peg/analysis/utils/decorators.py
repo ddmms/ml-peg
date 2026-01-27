@@ -276,6 +276,156 @@ def plot_parity(
     return plot_parity_decorator
 
 
+def cell_to_scatter(
+    *,
+    filename: str | Path,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    title_template: str = "{model} - {metric}",
+) -> Callable:
+    """
+    Pre-generate scatter plots for each table cell (model-metric pair).
+
+    Use this for benchmarks where each table CELL generates its own scatter plot
+    (e.g., clicking MACE's ω_max shows a scatter for that specific model-metric
+    pair). For benchmarks where clicking a COLUMN shows all models on one scatter
+    (like S24 or OC157), use @plot_parity instead.
+
+    This decorator generates complete Plotly figures during analysis instead of
+    saving raw points for the app to process on-the-fly.
+
+    Parameters
+    ----------
+    filename
+        Path where JSON data with pre-made figures will be saved.
+    x_label
+        Label for x-axis (typically "Predicted"). Default is None.
+    y_label
+        Label for y-axis (typically "Reference"). Default is None.
+    title_template
+        Template for plot titles with {model} and {metric} placeholders.
+        Default is "{model} - {metric}".
+
+    Returns
+    -------
+    Callable
+        Decorator that wraps analysis functions to pre-generate scatter figures.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """
+        Wrap the decorated callable to pre-generate scatter figures.
+
+        Parameters
+        ----------
+        func
+            Analysis function returning the dataset consumed by the Dash app.
+
+        Returns
+        -------
+        Callable
+            Wrapped function that runs ``func`` and emits Plotly figures.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Execute func and generate scatter plots for each model-metric pair.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict
+                The dataset produced by ``func`` (with ``figures`` entries).
+            """
+            data_bundle = func(*args, **kwargs)
+
+            # Extract metadata
+            metric_labels = data_bundle.get("metrics", {})
+            models_data = data_bundle.get("models", {})
+
+            # Create figures for each model-metric pair
+            for model_name, model_data in models_data.items():
+                model_data["figures"] = {}
+                metrics_data = model_data.get("metrics", {})
+
+                for metric_key, metric_info in metrics_data.items():
+                    points = metric_info.get("points", [])
+                    if not points:
+                        continue
+
+                    # Extract ref and pred values
+                    refs = [p["ref"] for p in points]
+                    preds = [p["pred"] for p in points]
+                    ids = [p.get("id", "") for p in points]
+
+                    # Build hovertemplate
+                    hovertemplate = (
+                        "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>"
+                        "<b>ID: </b>%{customdata[0]}<br>"
+                    )
+                    customdata = [[id_val] for id_val in ids]
+
+                    # Create figure
+                    fig = go.Figure()
+                    fig.add_trace(
+                        go.Scatter(
+                            x=preds,
+                            y=refs,
+                            mode="markers",
+                            customdata=customdata,
+                            hovertemplate=hovertemplate,
+                            showlegend=False,
+                        )
+                    )
+
+                    # Add parity line
+                    full_fig = fig.full_figure_for_development()
+                    x_range = full_fig.layout.xaxis.range
+                    y_range = full_fig.layout.yaxis.range
+                    lims = [
+                        np.min([x_range, y_range]),
+                        np.max([x_range, y_range]),
+                    ]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=lims,
+                            y=lims,
+                            mode="lines",
+                            showlegend=False,
+                        )
+                    )
+
+                    # Update layout
+                    metric_label = metric_labels.get(metric_key, metric_key)
+                    title = title_template.format(model=model_name, metric=metric_label)
+                    fig.update_layout(
+                        title={"text": title},
+                        xaxis={"title": {"text": x_label}},
+                        yaxis={"title": {"text": y_label}},
+                    )
+
+                    # Store figure as JSON-serializable dict
+                    model_data["figures"][metric_key] = json.loads(fig.to_json())
+
+            # Save to file
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            with open(filename, "w", encoding="utf8") as f:
+                dump(data_bundle, f)
+
+            return data_bundle
+
+        return wrapper
+
+    return decorator
+
+
 def plot_scatter(
     title: str | None = None,
     x_label: str | None = None,
