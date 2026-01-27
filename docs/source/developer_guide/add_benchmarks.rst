@@ -77,14 +77,13 @@ relaxation to be reused by multiple tests within the module.
 
 Current examples are implemented with two alternative approaches:
 
-a. Defining a script that iterates over models:
+a. Defining a script that iterates over models (recommended)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 For consistency, we use similar model definitions as ``mlipx``. Models from
-``ml_peg/models/models.yml`` can be loaded using the
-``ml_peg.models.get_models.load_models`` function, while
-``ml_peg.models.models.current_models`` allows a subset of those to be used for
-calculations, including through a command-line input, ``--models``, to ``pytest``, or
-to ``ml_peg calc``.
+``ml_peg/models/models.yml`` can be loaded using the ``load_models`` function, while
+``current_models`` allows a subset of those to be used for calculations, including
+through a command-line input, ``--models``, to ``pytest``, or to ``ml_peg calc``.
 
 Details about model definitions and loading are described in more detail in
 :doc:`Adding models </developer_guide/add_models>`.
@@ -108,7 +107,7 @@ the same calculation is run for each model name-model pair:
 
 
     @pytest.mark.parametrize("mlip", MODELS.items())
-    def test_benchmark(mlip: tuple[str, GenericASECalculator]) -> None:
+    def test_benchmark(mlip: tuple[str, Any]) -> None:
         """
         Run calculations required for lithium diffusion along path B.
 
@@ -130,7 +129,8 @@ the same calculation is run for each model name-model pair:
 
 
 
-b. Defining a ``ZnTrack`` node to run via ``mlipx``:
+b. Defining a ``ZnTrack`` node to run via ``mlipx``
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The process of running these is largely as
 `described by mlipx <https://mlipx.readthedocs.io/en/latest/quickstart/cli.html>`_,

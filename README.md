@@ -1,4 +1,4 @@
-# ML-PEG: ML potential usability and performance guide
+# ML-PEG: ML Performance and Extrapolation Guide
 
 [![PyPI version][pypi-badge]][pypi-link]
 [![Python versions][python-badge]][python-link]
@@ -34,7 +34,7 @@ All required and optional dependencies can be found in [pyproject.toml](pyprojec
 
 ### Installation
 
-The latest stable release of ML-PEG, including its dependencies, will be installable from PyPI by running:
+The latest stable release of ML-PEG, including its dependencies, can be installed from PyPI by running:
 
 ```
 python3 -m pip install ml-peg
@@ -108,11 +108,8 @@ The app should now be accessible at http://localhost:8050.
 
 ## Development
 
-Please ensure you have consulted our
-[contribution guidelines](contributing.md)
-and
-[coding style](coding_style.md)
-before proceeding.
+Please ensure you have consulted our [contribution guidelines](contributing.md) and
+[coding style](coding_style.md) before proceeding.
 
 We recommend installing `uv` for dependency management when developing for ML-PEG:
 

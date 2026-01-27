@@ -3,7 +3,7 @@ Getting started
 ===============
 
 Please ensure you have consulted our
-`contribution guidelines <https://github.com/ddmms/ml-peg/blob/main/CONTRIBUTING.md>`_
+`contribution guidelines <https://github.com/ddmms/ml-peg/blob/main/contributing.md>`_
 and
 `coding style <https://github.com/ddmms/ml-peg/blob/main/coding_style.md>`_
 before proceeding.
@@ -27,13 +27,19 @@ This provides a number of useful features, including:
 
 - `Building and publishing <https://docs.astral.sh/uv/guides/publish/>`_ tools
 
-  * Currently, an external build backend, such as `pdm <https://pypi.org/project/pdm-backend>`_, is required
-
 
 Dependencies useful for development can then be installed by running::
 
     uv sync -p 3.12
     source .venv/bin/activate
+
+
+`Extras <https://peps.python.org/pep-0508/#extras>`_ are used to install MLIP
+packages, as well dispersion. These are defined in the
+``[project.optional-dependencies]`` section of ``pyproject.toml``, and can be installed
+by adding ``--extra``. For example, to install MACE, Orb, and torch-dftd, you can run::
+
+    uv sync --extra mace --extra orb --extra d3
 
 
 Using uv
@@ -63,7 +69,7 @@ rather than using ``uv pip install`` to modify the project environment manually.
     The desired Python version can be specified when running project commands with the ``--python``/``-p`` option.
 
 
-For further information, please refer to the `documentation <https://docs.astral.sh/uv/>`_
+For further information, please refer to the `uv documentation <https://docs.astral.sh/uv/>`_.
 
 
 Running unit tests

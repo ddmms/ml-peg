@@ -33,7 +33,6 @@ extensions = [
     "sphinxcontrib.contentui",
     "sphinx_copybutton",
     "sphinx_autodoc_typehints",
-    "nbsphinx",
 ]
 
 always_use_bars_union = True
