@@ -5985,7 +5985,7 @@ wheels = [
 
 [[package]]
 name = "ml-peg"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
@@ -6047,7 +6047,6 @@ docs = [
     { name = "furo" },
     { name = "jupyter" },
     { name = "markupsafe" },
-    { name = "nbsphinx" },
     { name = "numpydoc" },
     { name = "sphinx" },
     { name = "sphinx-autodoc-typehints" },
@@ -6103,7 +6102,6 @@ docs = [
     { name = "furo", specifier = ">=2024.1.29,<2025.0.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "markupsafe" },
-    { name = "nbsphinx", specifier = ">=0.9.6" },
     { name = "numpydoc", specifier = ">=1.6.0,<2.0.0" },
     { name = "sphinx", specifier = ">=8.0.2,<8.2.0" },
     { name = "sphinx-autodoc-typehints", specifier = ">=2.5.0,<3.0.0" },
@@ -6715,23 +6713,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6d/fd/91545e604bc3dad7dca9ed03284086039b294c6b3d75c0d2fa45f9e9caf3/nbformat-5.10.4.tar.gz", hash = "sha256:322168b14f937a5d11362988ecac2a4952d3d8e3a2cbeb2319584631226d5b3a", size = 142749, upload-time = "2024-04-04T11:20:37.371Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl", hash = "sha256:3b48d6c8fbca4b299bf3982ea7db1af21580e4fec269ad087b9e81588891200b", size = 78454, upload-time = "2024-04-04T11:20:34.895Z" },
-]
-
-[[package]]
-name = "nbsphinx"
-version = "0.9.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "docutils" },
-    { name = "jinja2" },
-    { name = "nbconvert" },
-    { name = "nbformat" },
-    { name = "sphinx" },
-    { name = "traitlets" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/d1/82081750f8a78ad0399c6ed831d42623b891904e8e7b8a75878225cf1dce/nbsphinx-0.9.8.tar.gz", hash = "sha256:d0765908399a8ee2b57be7ae881cf2ea58d66db3af7bbf33e6eb48f83bea5495", size = 417469, upload-time = "2025-11-28T17:41:02.336Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/78/843bcf0cf31f88d2f8a9a063d2d80817b1901657d83d65b89b3aa835732e/nbsphinx-0.9.8-py3-none-any.whl", hash = "sha256:92d95ee91784e56bc633b60b767a6b6f23a0445f891e24641ce3c3f004759ccf", size = 31961, upload-time = "2025-11-28T17:41:00.796Z" },
 ]
 
 [[package]]
