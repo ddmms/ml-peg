@@ -34,6 +34,7 @@ dependencies = [
     "matcalc",
     "matminer",
     "MDAnalysis",
+    "openpyxl",
     "tqdm",
 ]
 
