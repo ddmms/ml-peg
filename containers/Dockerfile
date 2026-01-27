@@ -11,6 +11,9 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 # Install Python before the project for caching
 RUN uv python install 3.12
 
+# Install git, gcc etc.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y build-essential
+
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
