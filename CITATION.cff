@@ -21,5 +21,5 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.16904444
 repository-code: 'https://github.com/ddmms/ml-peg'
-abstract: "ML potential usability and performance guide"
+abstract: "ML Performance and Extrapolation Guide"
 license: GPL-3.0
