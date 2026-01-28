@@ -21,7 +21,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
     "molecular.html#bh9-reaction-barriers"
 )
-DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "bh9"
+DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH9"
 
 
 class BH9App(BaseApp):
@@ -38,7 +38,7 @@ class BH9App(BaseApp):
         if model_dir.exists():
             ts_files = sorted(model_dir.glob("*TS.xyz"))
             structs = [
-                f"assets/molecular_reactions/bh9/{MODELS[0]}/{ts_file.name}"
+                f"assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:
