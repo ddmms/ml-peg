@@ -56,9 +56,9 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     with open(data_path / "dlpno-ccsdt-34.dat") as lines:
-        for i, line in tqdm(enumerate(lines)):
-            if i == 0:
-                continue
+        # Skip header
+        next(lines)
+        for line in tqdm(lines, total=70):
             items = line.strip().split()
             if len(items) == 0:
                 break
