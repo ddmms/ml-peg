@@ -46,3 +46,39 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1149/1.1633511.
 * Meta-GGA (Perdew-Wang) exchange correlation functional
+
+
+Surface reaction
+============
+
+Summary
+-------
+
+Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset. 
+
+Metrics
+-------
+
+1. Convergence 
+
+2. Reaction energy and activation barrier difference compared to DFT reference
+
+3. Sanity of NEB results (in terms of connectivity etc...)
+
+Computational cost
+------------------
+
+Medium: tests are likely to take several minutes to run on CPU.
+Or Long: 
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
