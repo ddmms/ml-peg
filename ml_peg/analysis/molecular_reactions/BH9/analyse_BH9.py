@@ -196,7 +196,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_bh9_barriers(metrics: dict[str, dict]) -> None:
     """
-    Run bh9_barriers test.
+    Run BH9 test.
 
     Parameters
     ----------
