@@ -51,8 +51,8 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
 
     ttime = 100 * units.fs  # timescale themostat
 
-    print("Reading start_config from " + DATA_PATH + "/init_38A_slab.xyz")
-    start_config = read(DATA_PATH + "/init_38A_slab.xyz", "-1")
+    print("Reading start_config from ", DATA_PATH / "init_38A_slab.xyz")
+    start_config = read(DATA_PATH / "init_38A_slab.xyz", "-1")
     start_config.set_cell(np.triu(start_config.get_cell()))  # why?
     start_config.info["charge"] = 0.0
     start_config.info["spin"] = 1
@@ -79,8 +79,8 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    thermo_traj = open(write_dir + "/" + out_name + ".thermo", "w")  # file for output
-    coord_traj_name = write_dir + "/" + out_name + ".xyz"  # file for coordinate output
+    thermo_traj = open(write_dir / (out_name + ".thermo"), "w")  # file for output
+    coord_traj_name = write_dir / (out_name + ".xyz")  # file for coordinate output
 
     def print_traj(a=start_config):
         """
