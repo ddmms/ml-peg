@@ -22,7 +22,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 KJ_TO_EV = units.kJ / units.mol
-EV_TO_KJ = 1 / KJ_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -54,6 +53,7 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     with open(data_path / "reference.txt") as lines:
+        # Skip header
         next(lines)
         for line in tqdm(lines, total=22):
             items = line.strip().split()
