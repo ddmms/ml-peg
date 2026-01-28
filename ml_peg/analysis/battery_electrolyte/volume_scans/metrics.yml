@@ -4,12 +4,12 @@ metrics:
     bad: 1000.0
     unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Solvent Volume Scan energies"
-    level_of_theory: PBE/D3
-    weight: 0
+    level_of_theory: PBE
+    weight: 1
   Electrolyte:
     good: 10.0
     bad: 1000.0
     unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Electrolyte Volume Scan energies"
-    level_of_theory: PBE/D3
-    weight: 0
+    level_of_theory: PBE
+    weight: 1

@@ -503,6 +503,11 @@ wheels = [
 ]
 
 [[package]]
+name = "asemolec"
+version = "1.0.0"
+source = { git = "https://github.com/imagdau/aseMolec.git#f411b5618381ba3b807cbbb041f12f460a69d606" }
+
+[[package]]
 name = "asn1crypto"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5992,6 +5997,7 @@ name = "ml-peg"
 version = "0.2.2"
 source = { editable = "." }
 dependencies = [
+    { name = "asemolec" },
     { name = "boto3" },
     { name = "dash" },
     { name = "janus-core" },
@@ -6070,6 +6076,7 @@ prod = [
 
 [package.metadata]
 requires-dist = [
+    { name = "asemolec", git = "https://github.com/imagdau/aseMolec.git" },
     { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
     { name = "dash", specifier = ">=3.1.1" },
