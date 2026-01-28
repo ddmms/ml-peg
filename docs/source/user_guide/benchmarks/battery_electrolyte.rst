@@ -23,7 +23,7 @@ These tests are related to the model's ability to accurately predict density and
 Metrics
 -------
 
-1. RMSE (PBE)
+1. Inter-intra Property RMSE (PBE)
 
 Root mean square errors for each predicted property compared to PBE data.
 
@@ -41,7 +41,7 @@ Data availability
 
 Input structures:
 
-* Built from LIB ful electrolyte (LiPF6 EC:EMC) and neat solvent (EC:EMC) configs.
+* Built from LIB ful electrolyte (LiPF6 EC:EMC) and neat solvent (EC:EMC) configs using the aseMolec package https://github.com/imagdau/aseMolec.git.
 
 Reference data:
 
@@ -61,7 +61,7 @@ Evaluate model energy predictions across battery solvent and battery electrolyte
 Metrics
 -------
 
-(1) Energy RMSE
+(1) Energy RMSE (PBE)
 
 Root mean square error (RMSE) between predicted and reference energy values for each volume scan config.
 
