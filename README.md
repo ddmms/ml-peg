@@ -9,20 +9,11 @@
 
 🔗 See our live guide: https://ml-peg.stfc.ac.uk
 
-> [!NOTE]
-> Migration in progress! The live benchmarks are currently run and analysed using
-> [mlipx](https://github.com/basf/mlipx) nodes defined in this repository:
-> https://github.com/joehart2001/mlipx.
->
-> New benchmarks are expected to be added following the format defined in this
-> repository, and work is ongoing to migrate all existing benchmarks to this format.
-> Our original interactive analysis suite is currently hosted at: http://mlip-testing.stfc.ac.uk:8050
-
 ## Contents
 - [Getting started](#getting-started)
 - [Features](#features)
-- [Docker/Podman images](#dockerpodman-images)
 - [Development](#development)
+- [Docker/Podman images](#dockerpodman-images)
 - [License](#license)
 
 ## Getting started
@@ -50,6 +41,29 @@ python3 -m pip install git+https://github.com/ddmms/ml-peg.git
 ## Features
 
 Coming soon!
+
+
+## Development
+
+Please ensure you have consulted our [contribution guidelines](contributing.md) and
+[coding style](coding_style.md) before proceeding.
+
+We recommend installing `uv` for dependency management when developing for ML-PEG:
+
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation)
+2. Install ML-PEG with dependencies in a virtual environment:
+
+```shell
+git clone https://github.com/ddmms/ml-peg
+cd ml-peg
+uv sync # Create a virtual environment and install dependencies
+source .venv/bin/activate
+pre-commit install  # Install pre-commit hooks
+pytest -v  # Discover and run all tests
+```
+
+Please refer to the [online documentation](https://ddmms.github.io/ml-peg/developer_guide/index.html)
+for information about contributing new benchmarks and models.
 
 
 ## Docker/Podman images
@@ -106,27 +120,6 @@ docker compose -f containers/compose.yml up -d
 
 The app should now be accessible at http://localhost:8050.
 
-## Development
-
-Please ensure you have consulted our [contribution guidelines](contributing.md) and
-[coding style](coding_style.md) before proceeding.
-
-We recommend installing `uv` for dependency management when developing for ML-PEG:
-
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation)
-2. Install ML-PEG with dependencies in a virtual environment:
-
-```shell
-git clone https://github.com/ddmms/ml-peg
-cd ml-peg
-uv sync # Create a virtual environment and install dependencies
-source .venv/bin/activate
-pre-commit install  # Install pre-commit hooks
-pytest -v  # Discover and run all tests
-```
-
-Please refer to the [online documentation](https://ddmms.github.io/ml-peg/developer_guide/index.html)
-for information about contributing new benchmarks and models.
 
 ## License
 
