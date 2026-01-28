@@ -33,7 +33,7 @@ EV_TO_KJ = 1 / KJ_TO_EV
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-class Cyclo70Benchmark(zntrack.Node):
+class CYCLO70Benchmark(zntrack.Node):
     """Benchmark the CYCLO70 reaction benchmark."""
 
     model: NodeWithCalculator = zntrack.deps()
@@ -120,7 +120,7 @@ def build_project(repro: bool = False) -> None:
 
     for model_name, model in MODELS.items():
         with project.group(model_name):
-            benchmark = Cyclo70Benchmark(
+            benchmark = CYCLO70Benchmark(
                 model=model,
                 model_name=model_name,
             )
@@ -134,5 +134,5 @@ def build_project(repro: bool = False) -> None:
 
 
 def test_cyclo70_barrier_heights():
-    """Run Cyclo70 benchmark via pytest."""
+    """Run CYCLO70 benchmark via pytest."""
     build_project(repro=True)

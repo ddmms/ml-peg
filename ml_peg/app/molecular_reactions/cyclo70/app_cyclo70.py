@@ -17,8 +17,8 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CYCLO70"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#cyclo70"
-DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "cyclo70"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#CYCLO70"
+DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "CYCLO70"
 
 
 class CYCLO70App(BaseApp):
@@ -35,7 +35,7 @@ class CYCLO70App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/molecular_reactions/cyclo70/{MODELS[0]}/{label}.xyz"
+                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
