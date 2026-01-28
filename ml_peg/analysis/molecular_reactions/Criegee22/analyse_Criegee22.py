@@ -22,8 +22,7 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
+EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "Criegee22" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "Criegee22"
 
