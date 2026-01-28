@@ -54,9 +54,8 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     with open(data_path / "reference.txt") as lines:
-        for i, line in tqdm(enumerate(lines)):
-            if i == 0:
-                continue
+        next(lines)
+        for line in tqdm(lines, total=22):
             items = line.strip().split()
             label = items[0]
             bh_ref = float(items[8]) * KJ_TO_EV
