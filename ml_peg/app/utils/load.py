@@ -225,7 +225,8 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
     Graph
         Loaded plotly Graph.
     """
-    return Graph(id=id, figure=read_json(filename))
+    figure = read_json(filename) if Path(filename).exists() else None
+    return Graph(id=id, figure=figure)
 
 
 def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
