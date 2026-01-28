@@ -7,6 +7,7 @@ from functools import lru_cache
 import json
 from typing import Any, TypedDict
 
+from dash import html
 import dash.dash_table.Format as TableFormat
 import yaml
 
@@ -187,6 +188,37 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def build_analytics_components(tracking_id: str | None) -> list[html.Script]:
+    """
+    Construct third-party analytics scripts (e.g., Google Analytics gtag).
+
+    Parameters
+    ----------
+    tracking_id
+        Measurement identifier for the analytics property.
+
+    Returns
+    -------
+    list[html.Script]
+        Script tags to be appended to the Dash layout (empty if no ID provided).
+    """
+    if not tracking_id:
+        return []
+
+    gtag_src = f"https://www.googletagmanager.com/gtag/js?id={tracking_id}"
+    inline_script = (
+        "window.dataLayer = window.dataLayer || [];"
+        "function gtag(){dataLayer.push(arguments);}"
+        "gtag('js', new Date());"
+        f"gtag('config', '{tracking_id}');"
+    )
+
+    return [
+        html.Script(src=gtag_src, **{"async": True}),
+        html.Script(children=inline_script),
+    ]
 
 
 def get_scores(
