@@ -11,6 +11,7 @@ from ase.io import read, write
 import pandas as pd
 import pytest
 import numpy as np
+from typing import Any
 
 from ml_peg.calcs.utils.utils import chdir, download_github_data
 
