@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dash import Dash, Input, Output, callback
-from dash.html import Div, Iframe
+from dash import Dash
+from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
-from ml_peg.app.utils.weas import generate_weas_html
 
 BENCHMARK_NAME = "Lanthanide Isomer Complexes"
 DOCS_URL = (
@@ -35,44 +34,25 @@ class IsomerComplexesApp(BaseApp):
             column_to_plot={"MAE": scatter},
         )
 
-        @callback(
-            Output(f"{BENCHMARK_NAME}-struct-placeholder", "children"),
-            Input(f"{BENCHMARK_NAME}-figure", "clickData"),
-        )
-        def show_structure(click_data) -> Div:
-            """
-            Render a structure viewer for the clicked point.
+        struct_root = DATA_PATH / "structures"
+        if struct_root.exists():
+            structs = []
+            for system_dir in sorted(struct_root.glob("*")):
+                if not system_dir.is_dir():
+                    continue
+                for struct_file in sorted(system_dir.glob("*.xyz")):
+                    structs.append(
+                        f"assets/lanthanides/isomer_complexes/structures/"
+                        f"{system_dir.name}/{struct_file.name}"
+                    )
 
-            Parameters
-            ----------
-            click_data
-                Plotly click payload from the parity scatter.
-
-            Returns
-            -------
-            Div
-                Viewer iframe or placeholder message.
-            """
-            if not click_data:
-                return Div("Click on a model point to view the structure.")
-
-            point = click_data.get("points", [{}])[0]
-            custom = point.get("customdata") or []
-            if not custom or not custom[0]:
-                return Div("No structure available for this point.")
-
-            struct_path = custom[0]
-            return Div(
-                Iframe(
-                    srcDoc=generate_weas_html(struct_path, "struct", 0),
-                    style={
-                        "height": "550px",
-                        "width": "100%",
-                        "border": "1px solid #ddd",
-                        "borderRadius": "5px",
-                    },
+            if structs:
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=structs,
+                    mode="struct",
                 )
-            )
 
 
 def get_app() -> IsomerComplexesApp:
