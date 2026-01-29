@@ -1,0 +1,8 @@
+stages:
+  mace-mp-0a_S24Benchmark:
+    cmd: zntrack run calc_S24.S24Benchmark --name mace-mp-0a_S24Benchmark
+    metrics:
+    - nodes/mace-mp-0a/S24Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-mp-0a_S24Benchmark

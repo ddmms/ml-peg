@@ -16,8 +16,8 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "transition_metal" / "CMRAds" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "transition_metal" / "CMRAds"
+CALC_PATH = CALCS_ROOT / "metal" / "CMRAds" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "metal" / "CMRAds"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
@@ -81,9 +81,9 @@ def adsorption_energies() -> dict[str, list]:
         if not model_dir.exists():
             results[model_name] = []
             continue
-
-        for system_path in sorted(model_dir.glob("*.xyz")):
-            mol_surface = read(system_path)
+        mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
+        for mol_surface_idx, mol_surface in enumerate(mol_surface_list): #sorted(model_dir.glob("*.xyz")):
+            system_name = mol_surface.info["sys_formula"]
 
             # Get pre-calculated adsorption energies
             pred_ads_energy = mol_surface.info["pred_adsorption_energy"]
@@ -96,7 +96,7 @@ def adsorption_energies() -> dict[str, list]:
             # Write molecule-surface structure to app data
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system_path.stem}.xyz", mol_surface)
+            write(structs_dir / f"{system_name}.xyz", mol_surface)
 
         ref_stored = True
     return results
@@ -145,6 +145,7 @@ def metrics(cmrads_mae: dict[str, float]) -> dict[str, dict]:
     dict[str, dict]
         Metric names and values for all models.
     """
+    print(cmrads_mae)
     return {
         "MAE": cmrads_mae,
     }

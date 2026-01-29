@@ -1,0 +1,8 @@
+stages:
+  mace-mp-0a_OC157Benchmark:
+    cmd: zntrack run calc_OC157.OC157Benchmark --name mace-mp-0a_OC157Benchmark
+    metrics:
+    - nodes/mace-mp-0a/OC157Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mace-mp-0a_OC157Benchmark
