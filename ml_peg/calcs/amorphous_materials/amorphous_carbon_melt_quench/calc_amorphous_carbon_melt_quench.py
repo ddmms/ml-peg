@@ -6,10 +6,10 @@ from pathlib import Path
 
 from ase import Atoms, units
 from ase.build import bulk
+from ase.io import write
 from ase.md.langevin import Langevin
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import LBFGS
-from ase.io import write
 import pytest
 
 from ml_peg.models.get_models import load_models
