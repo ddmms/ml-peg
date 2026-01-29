@@ -220,7 +220,8 @@ def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
             "hexagonal",
             "trigonal_6",
             "trigonal_7",
-            "tetragonal",
+            "tetragonal_6",
+            "tetragonal_7",
         ):
             if not _allclose([c[0, 0], c[1, 1]]):
                 pass_symm_check = False
