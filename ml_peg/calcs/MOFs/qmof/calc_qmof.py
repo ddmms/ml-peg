@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from copy import copy
 
 from ase.io import read, write
 from janus_core.calculations.single_point import SinglePoint
@@ -34,12 +35,14 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    model.default_dtype = "float64"
+    #model.kwargs['enable_cueq']=True
+    model.device = 'cuda'
     calc = model.get_calculator()
 
     # Add D3 calculator for this test (for models where applicable)
-    calc = model.add_d3_calculator(calc)
+    #calc = model.add_d3_calculator(calc)
 
-    # Download X23 dataset
     qmof_energy_dir = (
         download_s3_data(
             key="inputs/MOFs/qmof/QMOF.zip",
@@ -50,10 +53,11 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
     input_file = "qmof_valid_structures.xyz"
     mofs = read(qmof_energy_dir / input_file, index=":")
     for mof in mofs:
-        mof.calc = calc.copy()
-    sp = SinglePoint(struct=mofs)
-    sp.run()
+        mof.calc = copy(calc)
+        sp = SinglePoint(struct=mof)
+        sp.run()
     # Write output structures
     write_dir = OUT_PATH / model_name
+    print(write_dir)
     write_dir.mkdir(parents=True, exist_ok=True)
     write(write_dir / input_file, mofs)
