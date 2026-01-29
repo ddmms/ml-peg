@@ -12,3 +12,4 @@ Benchmarks
     molecular_crystal
     molecular
     bulk_crystal
+    lanthanides
