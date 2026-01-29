@@ -142,7 +142,7 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         atoms = read(entry["xyz"])
         atoms.info["charge"] = entry["charge"]
         atoms.info["spin_multiplicity"] = entry["multiplicity"]
-        atoms.info["spin"] = (entry["multiplicity"] - 1) / 2
+        atoms.info["spin"] = entry["multiplicity"]
         atoms.calc = calc
         energy_ev = float(atoms.get_potential_energy())
         energy_kcal = energy_ev * KCAL_PER_EV
