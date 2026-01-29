@@ -43,6 +43,19 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
             Input("amorphous-carbon-melt-quench-figure", "clickData"),
         )
         def show_structure(click_data) -> Div:
+            """
+            Render a structure/trajectory viewer for the clicked point.
+
+            Parameters
+            ----------
+            click_data
+                Plotly click payload from the sp3 vs density scatter.
+
+            Returns
+            -------
+            Div
+                Viewer iframe or placeholder message.
+            """
             if not click_data:
                 return Div("Click on a model point to view the structure.")
             point = click_data["points"][0]

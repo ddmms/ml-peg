@@ -32,6 +32,16 @@ def generate_weas_html(
         Frame of structure file to load, or of trajectory to view. In "struct" mode,
         all structures will be loaded by default. In "traj" mode, the first frame will
         be loaded by default.
+    color_by
+        Optional atom attribute name to color by.
+    color_ramp
+        Optional color ramp for attribute coloring.
+    legend_items
+        Optional legend entries as ``(label, color)`` pairs.
+    show_controls
+        Whether to display viewer controls.
+    show_bounds
+        Whether to show the periodic cell bounds.
 
     Returns
     -------
@@ -45,9 +55,7 @@ def generate_weas_html(
         frame = index
         atoms_txt = "atoms"
 
-    color_by_js = (
-        f'editor.avr.color_by = "{color_by}";' if color_by is not None else ""
-    )
+    color_by_js = f'editor.avr.color_by = "{color_by}";' if color_by is not None else ""
     color_ramp_js = (
         f"editor.avr.color_ramp = {json.dumps(color_ramp)};"
         if color_ramp is not None
