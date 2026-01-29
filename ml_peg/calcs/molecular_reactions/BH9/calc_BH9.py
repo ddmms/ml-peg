@@ -26,7 +26,7 @@ KCAL_TO_EV = units.kcal / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-def process_atoms(path):
+def process_atoms(path: Path):
     """
     Get the ASE Atoms object with prepared charge and spin states.
 
@@ -43,9 +43,8 @@ def process_atoms(path):
     with open(path) as lines:
         for i, line in enumerate(lines):
             if i == 1:
-                items = line.strip().split()
-                charge = int(items[0])
-                spin = int(items[1])
+                charge, spin = map(int, line.split())
+                break
 
     atoms = read(path)
     atoms.info["charge"] = charge
@@ -53,7 +52,7 @@ def process_atoms(path):
     return atoms
 
 
-def parse_cc_energy(fname):
+def parse_cc_energy(fname: Path) -> float:
     """
     Get the CCSD barrier from the data file.
 
@@ -143,15 +142,11 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
         atoms.calc = calc
         atoms.info["model_energy"] = atoms.get_potential_energy()
 
-        """
-        Write both forward and reverse barriers,
-        only forward will be used in analysis here.
-        """
+        # Write both forward and reverse barriers, only forward used in analysis here
         label = fname.stem
-        if "TS" in label:
-            label = label.replace("TS", "")
-            atoms.info["ref_forward_barrier"] = ref_energies[label]["forward"]
-            atoms.info["ref_reverse_barrier"] = ref_energies[label]["reverse"]
+        label = label.replace("TS", "")
+        atoms.info["ref_forward_barrier"] = ref_energies[label]["forward"]
+        atoms.info["ref_reverse_barrier"] = ref_energies[label]["reverse"]
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
