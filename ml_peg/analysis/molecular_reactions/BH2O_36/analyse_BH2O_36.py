@@ -25,8 +25,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "molecular_reactions" / "bh2o_36" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "bh2o_36"
+CALC_PATH = CALCS_ROOT / "molecular_reactions" / "BH2O_36" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH2O_36"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -200,7 +200,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_bh2o_36_barriers(metrics: dict[str, dict]) -> None:
     """
-    Run bh2o_36_barriers test.
+    Run BH2O-36 test.
 
     Parameters
     ----------

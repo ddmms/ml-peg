@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "BH2O-36"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#bh2o-36"
-DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "bh2o_36"
+DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH2O_36"
 
 
 class BH2O36App(BaseApp):
@@ -40,7 +40,7 @@ class BH2O36App(BaseApp):
                     for f in model_dir.glob("*_rct_to_ts.xyz")
                 }
             )
-            asset_prefix = f"assets/molecular_reactions/bh2o_36/{MODELS[0]}/"
+            asset_prefix = f"assets/molecular_reactions/BH2O_36/{MODELS[0]}/"
             # Each system has 2 data points:
             # TS-Reactants (rct->TS), TS-Products (pro->TS)
             structs = [
