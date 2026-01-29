@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from ase.io import read, write
 from ase.neighborlist import neighbor_list
@@ -65,7 +65,21 @@ def _load_reference(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _sp3_fraction_from_atoms(atoms, cutoff: float = SP3_CUTOFF) -> float:
-    """Calculate sp3 fraction (%) from a structure."""
+    """
+    Calculate sp3 fraction (%) from a structure.
+
+    Parameters
+    ----------
+    atoms
+        Atomic configuration.
+    cutoff
+        Bond-length cutoff to define neighbors.
+
+    Returns
+    -------
+    float
+        Sp3 fraction as a percentage.
+    """
     i_indices, _ = neighbor_list("ij", atoms, cutoff)
     counts = np.bincount(i_indices, minlength=len(atoms))
     sp3_count = int(np.sum(counts == 4))
@@ -75,6 +89,13 @@ def _sp3_fraction_from_atoms(atoms, cutoff: float = SP3_CUTOFF) -> float:
 def _coordination_classes(atoms, cutoff: float = SP3_CUTOFF) -> np.ndarray:
     """
     Map coordination numbers to classes for coloring.
+
+    Parameters
+    ----------
+    atoms
+        Atomic configuration.
+    cutoff
+        Bond-length cutoff to define neighbors.
 
     Returns
     -------
@@ -114,8 +135,8 @@ def _write_colored_structure(atoms, model_name: str, density: float) -> Path:
     # Map coordination to element symbols for color in viewer
     symbol_map = {
         0: "Cl",  # sp1 -> green
-        1: "N",   # sp2 -> blue
-        2: "P",   # sp3 -> orange
+        1: "N",  # sp2 -> blue
+        2: "P",  # sp3 -> orange
         -1: "C",
     }
     atoms_copy.symbols = [symbol_map[int(cls)] for cls in classes]
@@ -147,9 +168,7 @@ def _load_model_summary(model_name: str) -> dict[float, float]:
 
     for density in DENSITY_GRID:
         final_path = (
-            model_dir
-            / f"density_{density:.1f}"
-            / f"final_density_{density:.1f}.xyz"
+            model_dir / f"density_{density:.1f}" / f"final_density_{density:.1f}.xyz"
         )
         if not final_path.exists():
             continue
@@ -161,7 +180,21 @@ def _load_model_summary(model_name: str) -> dict[float, float]:
 
 
 def _structure_asset_path(model_name: str, density: float) -> str:
-    """Return asset path for trajectory if present, else colored structure."""
+    """
+    Return asset path for trajectory if present, else colored structure.
+
+    Parameters
+    ----------
+    model_name
+        Model identifier.
+    density
+        Density value.
+
+    Returns
+    -------
+    str
+        Asset path for the structure or trajectory.
+    """
     rel_dir = (
         Path("amorphous_materials")
         / "amorphous_carbon_melt_quench"
@@ -194,8 +227,22 @@ def _load_all_model_data(models: Iterable[str]) -> dict[str, dict[float, float]]
     return {model: _load_model_summary(model) for model in models}
 
 
-def _series_from_mapping(mapping: dict[float, float]) -> tuple[list[float], list[float]]:
-    """Return density/sp3 lists aligned to the density grid."""
+def _series_from_mapping(
+    mapping: dict[float, float],
+) -> tuple[list[float], list[float]]:
+    """
+    Return density/sp3 lists aligned to the density grid.
+
+    Parameters
+    ----------
+    mapping
+        Mapping of density to sp3 percentage.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Density values and sp3 percentages aligned to the density grid.
+    """
     densities: list[float] = []
     sp3: list[float] = []
     for density in DENSITY_GRID:
@@ -208,7 +255,23 @@ def _series_from_mapping(mapping: dict[float, float]) -> tuple[list[float], list
 def _mae_against_reference(
     model_series: dict[float, float], ref_density: np.ndarray, ref_sp3: np.ndarray
 ) -> float | None:
-    """Compute MAE against a reference curve at the density grid."""
+    """
+    Compute MAE against a reference curve at the density grid.
+
+    Parameters
+    ----------
+    model_series
+        Mapping of density to sp3 percentage for a model.
+    ref_density
+        Reference density values.
+    ref_sp3
+        Reference sp3 percentages aligned to `ref_density`.
+
+    Returns
+    -------
+    float | None
+        MAE against the reference curve or ``None`` if data are incomplete.
+    """
     densities, predictions = _series_from_mapping(model_series)
     if len(densities) != len(DENSITY_GRID):
         return None
@@ -217,7 +280,14 @@ def _mae_against_reference(
 
 
 def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
-    """Generate sp3 vs density plot data."""
+    """
+    Generate sp3 vs density plot data.
+
+    Returns
+    -------
+    dict[str, tuple[list[float], list[float]]]
+        Mapping of series name to densities and sp3 percentages.
+    """
     dft_density, dft_sp3 = _load_reference(REF_DFT_PATH)
     expt_density, expt_sp3 = _load_reference(REF_EXPT_PATH)
 
@@ -309,7 +379,14 @@ def build_sp3_vs_density_plot(
 
 @pytest.fixture
 def mae_vs_dft() -> dict[str, float | None]:
-    """Compute MAE against DFT reference for each model."""
+    """
+    Compute MAE against DFT reference for each model.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Mapping of model name to MAE (or ``None`` if unavailable).
+    """
     dft_density, dft_sp3 = _load_reference(REF_DFT_PATH)
     model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
@@ -320,7 +397,14 @@ def mae_vs_dft() -> dict[str, float | None]:
 
 @pytest.fixture
 def mae_vs_expt() -> dict[str, float | None]:
-    """Compute MAE against experimental reference for each model."""
+    """
+    Compute MAE against experimental reference for each model.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Mapping of model name to MAE (or ``None`` if unavailable).
+    """
     expt_density, expt_sp3 = _load_reference(REF_EXPT_PATH)
     model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
@@ -340,7 +424,21 @@ def metrics(
     mae_vs_dft: dict[str, float | None],
     mae_vs_expt: dict[str, float | None],
 ) -> dict[str, dict]:
-    """Build metrics table entries."""
+    """
+    Build metrics table entries.
+
+    Parameters
+    ----------
+    mae_vs_dft
+        MAE values against the DFT reference.
+    mae_vs_expt
+        MAE values against the experimental reference.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric data for the table builder.
+    """
     return {
         "MAE vs DFT": mae_vs_dft,
         "MAE vs Expt": mae_vs_expt,
@@ -348,7 +446,14 @@ def metrics(
 
 
 def test_amorphous_carbon_melt_quench(metrics: dict[str, dict]) -> None:
-    """Run analysis for amorphous carbon melt-quench benchmark."""
+    """
+    Run analysis for amorphous carbon melt-quench benchmark.
+
+    Parameters
+    ----------
+    metrics
+        Metric data produced by the analysis fixtures.
+    """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     build_sp3_vs_density_plot(OUT_PATH / "figure_sp3_vs_density.json")
     return
