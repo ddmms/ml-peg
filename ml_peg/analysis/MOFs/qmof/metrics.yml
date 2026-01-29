@@ -1,0 +1,7 @@
+metrics:
+    MAE:
+        good: 0.0
+        bad: 100.0
+        unit: eV
+        tooltip: "Mean Absolute Error for all systems"
+        level_of_theory: PBE+D3
