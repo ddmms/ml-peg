@@ -44,10 +44,10 @@ def get_dipoles() -> dict[str, np.ndarray]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
-            if model_dir.glob("dipoles.npy"):
+            if (model_dir / "dipoles.npy").is_file():
                 results[model_name] = np.load(model_dir / "dipoles.npy")
             else:
-                atoms = read(model_dir / "slab.xyz")
+                atoms = read(model_dir / "slab.xyz", ":")
                 dipoles = np.zeros(len(atoms))
                 for i, struc in enumerate(atoms):
                     o_index = [atom.index for atom in struc if atom.number == 8]
@@ -75,7 +75,7 @@ def dipole_std() -> dict[str, float]:
     dipoles = get_dipoles()
     results = {}
     for model_name in MODELS:
-        if dipoles[model_name]:
+        if model_name in dipoles.keys():
             results[model_name] = np.std(dipoles[model_name])
         else:
             results[model_name] = None
@@ -102,7 +102,7 @@ def n_bad() -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        if dipoles[model_name]:
+        if model_name in dipoles.keys():
             results[model_name] = (
                 np.abs(dipoles[model_name]) > dipole_bad_threshold
             ).sum() / len(dipoles[model_name])
