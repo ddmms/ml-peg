@@ -43,9 +43,9 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
 
     out_name = "slab"
 
-    md_t = 200  # 200000 # number of timesteps, here dt = 1fs
-    md_dt = 10  # 500  # intervals for printing energy, T, etc
-    th_dt = 10  # 500  # intervals for printing structures
+    md_t = 200000  # number of timesteps, here dt = 1fs
+    md_dt = 500  # intervals for printing energy, T, etc
+    th_dt = 500  # intervals for printing structures
     temp = 300  # Kelvin
     pres = 1.013  # bar
 
@@ -115,7 +115,11 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     # print_traj could also be done using MDLogger and write_traj
 
     thermo_traj.write(
-        "# ASE Dynamics. Date: " + date.today().strftime("%d %b %Y") + ", started: " + datetime.now().strftime("%H:%M:%S") + "\n"
+        "# ASE Dynamics. Date: "
+        + date.today().strftime("%d %b %Y")
+        + ", started: "
+        + datetime.now().strftime("%H:%M:%S")
+        + "\n"
     )
     thermo_traj.write("#   Time(fs)      Temperature(K)       Energy(eV)  \n")
     open(coord_traj_name, "w").close()
@@ -126,6 +130,10 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     md.run(md_t)
 
     thermo_traj.write(
-            "# Date: " + date.today().strftime("%d %b %Y") + ", finished: " + datetime.now().strftime("%H:%M:%S") + "\n"
+        "# Date: "
+        + date.today().strftime("%d %b %Y")
+        + ", finished: "
+        + datetime.now().strftime("%H:%M:%S")
+        + "\n"
     )
     thermo_traj.close()
