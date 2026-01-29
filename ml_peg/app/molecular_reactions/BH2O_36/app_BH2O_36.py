@@ -37,7 +37,7 @@ class BH2O36App(BaseApp):
             labels = sorted(
                 {
                     f.stem.replace("_rct_to_ts", "")
-                    for f in model_dir.glob("*_rct_to_ts.xyz")
+                    for f in sorted(model_dir.glob("*_rct_to_ts.xyz"))
                 }
             )
             asset_prefix = f"assets/molecular_reactions/BH2O_36/{MODELS[0]}/"
