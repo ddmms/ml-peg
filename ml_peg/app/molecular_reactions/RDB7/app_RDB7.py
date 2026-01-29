@@ -8,10 +8,9 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
-    struct_from_scatter,
+    plot_from_table_cell,
 )
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -28,32 +27,26 @@ class RDB7App(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_rdb7_barriers.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        # Build plots for models with data (read_density_plot_for_model
+        # returns None for models without data)
+        density_plots: dict[str, dict] = {}
+        for model in MODELS:
+            plots = {
+                "MAE": read_density_plot_for_model(
+                    filename=DATA_PATH / "figure_barrier_density.json",
+                    model=model,
+                    id=f"{BENCHMARK_NAME}-{model}-barrier-figure",
+                ),
+            }
+            # Filter out None values (models without data for that metric)
+            model_plots = {k: v for k, v in plots.items() if v is not None}
+            if model_plots:
+                density_plots[model] = model_plots
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
-            structs = [
-                f"assets/molecular_reactions/RDB7/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
-
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
-        )
-
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
+            cell_to_plot=density_plots,
         )
 
 
@@ -77,7 +70,7 @@ def get_app() -> RDB7App:
         table_path=DATA_PATH / "rdb7_barriers_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
+            # Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 

@@ -11,14 +11,20 @@ https://doi.org/10.1038/s41597-022-01529-6
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ase import units
 from ase.io import read, write
 import pytest
 from tqdm import tqdm
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.utils import (
+    build_d3_name_map,
+    build_density_inputs,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
@@ -56,15 +62,6 @@ def labels() -> list:
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_rdb7_barriers.json",
-    title="Reaction barriers",
-    x_label="Predicted barrier / kcal/mol",
-    y_label="Reference barrier / kcal/mol",
-    hoverdata={
-        "Labels": labels(),
-    },
-)
 def barrier_heights() -> dict[str, list]:
     """
     Get barrier heights for all systems.
@@ -90,6 +87,40 @@ def barrier_heights() -> dict[str, list]:
             write(structs_dir / f"{label}_ts.xyz", atoms)
         ref_stored = True
     return results
+
+
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_barrier_density.json",
+    title="Reaction barrier density plot",
+    x_label="Reference reaction barrier / kcal/mol",
+    y_label="Predicted reaction barrier / kcal/mol",
+)
+def barrier_density(barrier_heights: dict[str, dict[str, Any]]) -> dict[str, dict]:
+    """
+    Density scatter inputs for reaction barrier.
+
+    Parameters
+    ----------
+    barrier_heights
+        Aggregated barrier height data per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    stats_dict = {
+        model_name: {
+            "barrier": {
+                "ref": barrier_heights["ref"],
+                "pred": barrier_heights[model_name],
+            }
+        }
+        for model_name in MODELS
+    }
+
+    return build_density_inputs(MODELS, stats_dict, "barrier", metric_fn=mae)
 
 
 @pytest.fixture
@@ -137,7 +168,10 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": get_mae}
 
 
-def test_rdb7_barriers(metrics: dict[str, dict]) -> None:
+def test_rdb7_barriers(
+    metrics: dict[str, dict],
+    barrier_density: dict[str, dict],
+) -> None:
     """
     Run rdb7_barriers test.
 
@@ -145,5 +179,7 @@ def test_rdb7_barriers(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All new benchmark metric names and dictionary of values for each model.
+    barrier_density
+        Density scatter inputs for reaction barrier.
     """
     return
