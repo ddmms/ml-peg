@@ -46,7 +46,6 @@ def get_crystal_system(struct):
         return "tetragonal_7" if point_group in {"4", "-4", "4/m"} else "tetragonal_6"
 
     if crystal_system in {"trigonal", "rhombohedral"}:
-        print(crystal_system, point_group)
         return "trigonal_7" if point_group in {"3", "-3"} else "trigonal_6"
 
     return crystal_system
@@ -260,7 +259,7 @@ def test_elasticity(mlip: tuple[str, Any]) -> None:
         calc=calc,
         model_name=model_name,
         out_dir=OUT_PATH / model_name,
-        n_materials=25,
-        relax_structure=True,
-        relax_deformed_structures=True,
+        n_materials=100,
+        relax_structure=False,
+        relax_deformed_structures=False,
     )
