@@ -40,20 +40,31 @@ R2SCAN_REF: dict[str, dict[str, float]] = {
 }
 
 
-def _resolve_csv_path() -> Path | None:
+def _load_isomer_dataframe() -> pd.DataFrame | None:
     """
-    Resolve the source CSV path for isomer energies.
+    Load isomer energies from a CSV file or per-model outputs.
 
     Returns
     -------
-    Path | None
-        CSV path if found, otherwise ``None``.
+    pandas.DataFrame | None
+        Loaded dataframe, or ``None`` if no data are found.
     """
     env_path = os.environ.get(CSV_ENV_VAR)
     if env_path:
-        return Path(env_path).expanduser()
-    csv_path = CALC_PATH / "isomer_energies.csv"
-    return csv_path if csv_path.exists() else None
+        path = Path(env_path).expanduser()
+        if path.exists():
+            return pd.read_csv(path)
+
+    combined_path = CALC_PATH / "isomer_energies.csv"
+    if combined_path.exists():
+        return pd.read_csv(combined_path)
+
+    csv_paths = sorted(CALC_PATH.glob("*/isomer_energies.csv"))
+    if not csv_paths:
+        return None
+
+    frames = [pd.read_csv(path) for path in csv_paths]
+    return pd.concat(frames, ignore_index=True) if frames else None
 
 
 def _build_reference_df() -> pd.DataFrame:
@@ -187,14 +198,13 @@ def isomer_complex_outputs() -> dict[str, float | None]:
     dict[str, float | None]
         Mean absolute errors by model.
     """
-    csv_path = _resolve_csv_path()
-    if csv_path is None:
+    df = _load_isomer_dataframe()
+    if df is None:
         pytest.skip(
             "No lanthanide isomer CSV found. "
             "Set ML_PEG_LANTHANIDE_CSV or run calc to stage outputs."
         )
 
-    df = pd.read_csv(csv_path)
     if df.empty:
         pytest.skip("Lanthanide isomer CSV is empty.")
 
