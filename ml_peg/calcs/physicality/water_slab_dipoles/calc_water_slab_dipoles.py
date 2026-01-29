@@ -78,6 +78,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     # Write output structures
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
+    print("Writing to ", write_dir)
 
     thermo_traj = open(write_dir / (out_name + ".thermo"), "w")  # file for output
     coord_traj_name = write_dir / (out_name + ".xyz")  # file for coordinate output

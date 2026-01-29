@@ -1,7 +1,7 @@
 metrics:
     sigma:
-        good:
-        bad:
+        good: 0.007
+        bad: 0.015
         unit: e/A
         tooltip: Standard deviation of total dipole in z direction
         level of theory: null
