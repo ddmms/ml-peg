@@ -351,7 +351,7 @@ def register_benchmark_to_category_callback(
     use_threshold_store
         Whether the benchmark table exposes a normalization store for metrics.
     model_name_map
-        Optional mapping of displayed benchmark MLIP names -> canonical model names.
+        Optional mapping of displayed benchmark MLIP names -> original model names.
     """
     _ = use_threshold_store  # cached rows handle normalization
     # flag kept for compatibility with existing call sites
@@ -404,11 +404,11 @@ def register_benchmark_to_category_callback(
         benchmark_scores: dict[str, float] = {}
         for row in benchmark_computed_store:
             display_name = row.get("MLIP")
-            canonical_name = name_map.get(display_name, display_name)
+            original_name = name_map.get(display_name, display_name)
             score = row.get("Score")
-            if display_name is None or canonical_name is None or score is None:
+            if display_name is None or original_name is None or score is None:
                 continue
-            benchmark_scores[canonical_name] = score
+            benchmark_scores[original_name] = score
 
         for row in category_rows:
             mlip = row.get("MLIP")

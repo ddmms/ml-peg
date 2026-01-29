@@ -223,9 +223,11 @@ def build_summary_table(
         for row in table.data:
             # Category tables may include models not to be included
             # Table headings are of the form "[category] Score"
-            canonical_name = table_name_map.get(row["MLIP"], row["MLIP"])
-            if canonical_name in summary_data:
-                summary_data[canonical_name][category_col] = row["Score"]
+            # ``original_name`` refers to the original model identifier
+            # (no display suffix)
+            original_name = table_name_map.get(row["MLIP"], row["MLIP"])
+            if original_name in summary_data:
+                summary_data[original_name][category_col] = row["Score"]
 
     # Ensure all models have entries for all category columns (None if missing)
     data = []
