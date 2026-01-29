@@ -105,8 +105,7 @@ Symmetry checks are applied to components on the diagonal with a relative tolera
 Computational cost
 ------------------
 
-High: benchmarks can take hours to days on GPU depending on the number of materials
-and relaxation options.
+High: tests are likely to take hours-days to run on GPU.
 
 Data availability
 -----------------
