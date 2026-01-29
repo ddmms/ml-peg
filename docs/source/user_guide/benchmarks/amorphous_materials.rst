@@ -33,7 +33,7 @@ Data availability
 -----------------
 
 Reference DFT and experimental datasets are stored with the benchmark analysis files
-and digitized from published curves. [#dft]_ [#expt]_
+and taken from published curves. [#dft]_ [#expt]_
 
 References
 ----------
