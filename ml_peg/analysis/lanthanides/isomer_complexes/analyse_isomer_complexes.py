@@ -41,6 +41,14 @@ R2SCAN_REF: dict[str, dict[str, float]] = {
 
 
 def _resolve_csv_path() -> Path | None:
+    """
+    Resolve the source CSV path for isomer energies.
+
+    Returns
+    -------
+    Path | None
+        CSV path if found, otherwise ``None``.
+    """
     env_path = os.environ.get(CSV_ENV_VAR)
     if env_path:
         return Path(env_path).expanduser()
@@ -49,6 +57,14 @@ def _resolve_csv_path() -> Path | None:
 
 
 def _build_reference_df() -> pd.DataFrame:
+    """
+    Build a reference dataframe from the r2SCAN-3c table.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe with columns: system, isomer, ref.
+    """
     records = []
     for system, iso_map in R2SCAN_REF.items():
         for iso, ref in iso_map.items():
@@ -57,6 +73,21 @@ def _build_reference_df() -> pd.DataFrame:
 
 
 def _copy_structures(struct_root: Path, reference_df: pd.DataFrame) -> dict[tuple, str]:
+    """
+    Copy reference structures into the app assets directory.
+
+    Parameters
+    ----------
+    struct_root
+        Root directory containing isomer structures.
+    reference_df
+        Dataframe of systems/isomers to copy.
+
+    Returns
+    -------
+    dict[tuple, str]
+        Mapping of (system, isomer) to asset path.
+    """
     struct_map: dict[tuple, str] = {}
     for _, row in reference_df.iterrows():
         system = row["system"]
@@ -78,9 +109,21 @@ def _build_table(
     mae_by_model: dict[str, float | None],
     model_order: list[str],
 ) -> None:
+    """
+    Build the metrics table JSON for the app.
+
+    Parameters
+    ----------
+    mae_by_model
+        MAE values keyed by model name.
+    model_order
+        Ordered list of model names to include.
+    """
     metrics_data = []
     for model in model_order:
-        metrics_data.append({"MLIP": model, "MAE": mae_by_model.get(model), "id": model})
+        metrics_data.append(
+            {"MLIP": model, "MAE": mae_by_model.get(model), "id": model}
+        )
 
     metrics_data = calc_table_scores(
         metrics_data,
@@ -101,7 +144,7 @@ def _build_table(
     tooltip_header = DEFAULT_TOOLTIPS | summary_tooltips
 
     model_configs = {model: {} for model in model_order}
-    model_levels = {model: None for model in model_order}
+    model_levels = dict.fromkeys(model_order)
     metric_levels = {
         metric_name: DEFAULT_THRESHOLDS.get(metric_name, {}).get("level_of_theory")
         for metric_name in DEFAULT_THRESHOLDS
