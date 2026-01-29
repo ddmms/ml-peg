@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -115,7 +115,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     # print_traj could also be done using MDLogger and write_traj
 
     thermo_traj.write(
-        "# ASE Dynamics. Date: " + date.today().strftime("%d %b %Y") + "\n"
+        "# ASE Dynamics. Date: " + date.today().strftime("%d %b %Y") + ", started: " + datetime.now().strftime("%H:%M:%S") + "\n"
     )
     thermo_traj.write("#   Time(fs)      Temperature(K)       Energy(eV)  \n")
     open(coord_traj_name, "w").close()
@@ -125,4 +125,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     md.attach(print_traj)
     md.run(md_t)
 
+    thermo_traj.write(
+            "# Date: " + date.today().strftime("%d %b %Y") + ", finished: " + datetime.now().strftime("%H:%M:%S") + "\n"
+    )
     thermo_traj.close()
