@@ -19,3 +19,4 @@ Benchmarks
     supramolecular
     surfaces
     tm_complexes
+    MOFs
