@@ -76,7 +76,7 @@ def make_interpolation() -> dict[str, Atoms]:
             print(f"{model_name = }")
     
             model = MODELS[model_name]
-            model.device = "cuda"
+#            model.device = "cuda"
             calc = calc.get_calculator()
     
             traj = read(DATA_PATH / f"{struct_name}.xyz", ":")
@@ -87,9 +87,9 @@ def make_interpolation() -> dict[str, Atoms]:
                 struct.calc = calc
                 struct.constraints = [FixAtoms(indices=fix_indices)]
                 opt = BFGS(struct)
-                opt.run(fmax=fmax)
+                opt.run(fmax=0.05)
     
-            images = [initial.copy()] + [initial.copy() for _ in range(numimages)] + [final.copy()]
+            images = [initial.copy()] + [initial.copy() for _ in range(8)] + [final.copy()]
             interpolate(images, mic=True, apply_constraint=True)
             idpp_interpolate(images, mic=True, traj=None, log=None)
             for struct in images:
@@ -97,3 +97,39 @@ def make_interpolation() -> dict[str, Atoms]:
 
             interpolations[f"{struct_name}-{model_name}"] = images
     return interpolations
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", MODELS)
+def test_surface_reaction(make_interpolation: dict[str, Atoms], model_name: str) -> None:
+    """
+    Run calculations required for lithium diffusion along path B.
+
+    Parameters
+    ----------
+    relaxed_structs
+        Relaxed input structures, indexed by structure name and model name.
+    model_name
+        Name of model to use.
+    """
+    images = make_interpolation[f"transfer_id_601_1482_1_211-5-{model_name}"]
+    neb = DyNEB(images, k=1.0, climb=False, method="eb",
+                allow_shared_calculator=True, scale_fmax=1.0)
+    opt = BFGS(neb)
+    conv = opt.run(fmax=0.05+0.4, steps=200)
+    if conv:
+        neb.climb = True
+        conv = opt.run(fmax=0.05, steps=300)
+
+    if conv:
+        converged = True
+    else:
+        converged = False
+
+    for at in neb.images:
+        at.info["converged"] = converged
+        at.info["mlip_energy"] = at.get_potential_energy()
+        at.arrays["mlip_forces"] = at.get_forces()
+
+#    write(homedir / f"{struct_name}_{model_name}.xyz", neb.images)
+
