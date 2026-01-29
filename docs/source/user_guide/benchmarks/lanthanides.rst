@@ -21,16 +21,13 @@ Accuracy of relative isomer energy predictions.
 
 For each complex, the relative isomer energies are computed with respect to the
 lowest-energy isomer in the r2SCAN-3c reference set and compared to the r2SCAN-3c
-relative energies reported in the reference dataset. The r2SCAN-3c geometries are
-used, with wB97X-V/def2-mTZVPP single-point calculations reported for validation
-in the source study.
+relative energies reported in the reference dataset.
 
 
 Computational cost
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU once model outputs
-are available.
+Low: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
