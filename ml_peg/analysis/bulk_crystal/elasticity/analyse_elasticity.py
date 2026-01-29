@@ -37,6 +37,10 @@ G_COLUMN = "G_vrh"
 E_TENSOR_COLUMN = "elastic_tensor"
 SYMMETRY_COLUMN = "crystal_system"
 
+# Sources:
+# Physical Properties of Crystals: An Introduction (pp 215)
+# https://ocean-jh.github.io/elastic-mechanics/
+
 VOIGT_SYMMETRIES = {
     "triclinic": {
         "indices": [
@@ -249,14 +253,14 @@ def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
 
 def _filter_results(df: pd.DataFrame, model_name: str) -> tuple[pd.DataFrame, int]:
     """
-    Filter outliers from benchmark results.
+    Filter outlier predictions and return remaining data with exclusion count.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Raw benchmark dataframe.
+        Dataframe containing raw benchmark results.
     model_name : str
-        Model column to filter.
+        Model whose columns should be filtered..
 
     Returns
     -------
@@ -273,7 +277,7 @@ def _filter_results(df: pd.DataFrame, model_name: str) -> tuple[pd.DataFrame, in
 @pytest.fixture
 def elasticity_stats() -> dict[str, dict[str, Any]]:
     """
-    Load processed benchmark statistics per model.
+    Load and cache processed benchmark statistics per model.
 
     Returns
     -------
