@@ -20,8 +20,10 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
-MODELS = ["mace-mp-0a-small"]
+MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "elasticity" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity"
 
