@@ -59,7 +59,6 @@ Reference data:
     Physics, 163(18).
   * PBE-D3(BJ)
 
-
 Elasticity
 ==========
 
@@ -95,12 +94,19 @@ Mean absolute error (MAE) between predicted and reference shear modulus (G) valu
 
 Calculated alongside (1), with the same exclusion criteria used in analysis.
 
+(3) Elastic tensor MAE
+
+Element-wise mean absolute error of the 6x6 Voigt-form elasticity tensor.
+
+Symmetry-independent elastic constants are extracted based on crystal system:
+triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
+Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
 Computational cost
 ------------------
 
-High: tests are likely to take hours-days to run on GPU.
-
+High: benchmarks can take hours to days on GPU depending on the number of materials
+and relaxation options.
 
 Data availability
 -----------------
