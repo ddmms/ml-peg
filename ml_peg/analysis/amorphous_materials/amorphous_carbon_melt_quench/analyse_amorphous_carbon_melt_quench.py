@@ -5,12 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-from ase.io import read
+from ase.io import read, write
 from ase.neighborlist import neighbor_list
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -31,6 +32,7 @@ REF_EXPT_PATH = Path(__file__).with_name("reference_expt.csv")
 
 DENSITY_GRID = [1.5, 2.0, 2.5, 3.0, 3.5]
 SP3_CUTOFF = 1.85
+STRUCTURES_DIR = OUT_PATH / "structures"
 
 
 def _load_reference(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -70,6 +72,60 @@ def _sp3_fraction_from_atoms(atoms, cutoff: float = SP3_CUTOFF) -> float:
     return 100.0 * sp3_count / len(atoms)
 
 
+def _coordination_classes(atoms, cutoff: float = SP3_CUTOFF) -> np.ndarray:
+    """
+    Map coordination numbers to classes for coloring.
+
+    Returns
+    -------
+    np.ndarray
+        Array of integers: 0=sp1, 1=sp2, 2=sp3, -1=other.
+    """
+    i_indices, _ = neighbor_list("ij", atoms, cutoff)
+    counts = np.bincount(i_indices, minlength=len(atoms))
+    classes = np.full(len(atoms), -1, dtype=int)
+    classes[counts == 2] = 0
+    classes[counts == 3] = 1
+    classes[counts == 4] = 2
+    return classes
+
+
+def _write_colored_structure(atoms, model_name: str, density: float) -> Path:
+    """
+    Write a colored structure file with coordination classes.
+
+    Parameters
+    ----------
+    atoms
+        Atomic configuration.
+    model_name
+        Model identifier.
+    density
+        Density value.
+
+    Returns
+    -------
+    Path
+        Path to the written structure file.
+    """
+    classes = _coordination_classes(atoms)
+    atoms_copy = atoms.copy()
+    atoms_copy.set_array("coordination", classes)
+    # Map coordination to element symbols for color in viewer
+    symbol_map = {
+        0: "Cl",  # sp1 -> green
+        1: "N",   # sp2 -> blue
+        2: "P",   # sp3 -> orange
+        -1: "C",
+    }
+    atoms_copy.symbols = [symbol_map[int(cls)] for cls in classes]
+    out_dir = STRUCTURES_DIR / model_name / f"density_{density:.1f}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"colored_density_{density:.1f}.extxyz"
+    write(out_path, atoms_copy, format="extxyz")
+    return out_path
+
+
 def _load_model_summary(model_name: str) -> dict[float, float]:
     """
     Load sp3 fractions from final structures for a model.
@@ -99,8 +155,26 @@ def _load_model_summary(model_name: str) -> dict[float, float]:
             continue
         atoms = read(final_path)
         results[density] = _sp3_fraction_from_atoms(atoms)
+        _write_colored_structure(atoms, model_name, density)
 
     return results
+
+
+def _structure_asset_path(model_name: str, density: float) -> str:
+    """Return asset path for trajectory if present, else colored structure."""
+    rel_dir = (
+        Path("amorphous_materials")
+        / "amorphous_carbon_melt_quench"
+        / "structures"
+        / model_name
+        / f"density_{density:.1f}"
+    )
+    traj_name = f"trajectory_density_{density:.1f}.extxyz"
+    colored_name = f"colored_density_{density:.1f}.extxyz"
+    traj_path = STRUCTURES_DIR / rel_dir / traj_name
+    if traj_path.exists():
+        return f"assets/{rel_dir.as_posix()}/{traj_name}"
+    return f"assets/{rel_dir.as_posix()}/{colored_name}"
 
 
 def _load_all_model_data(models: Iterable[str]) -> dict[str, dict[float, float]]:
@@ -142,13 +216,6 @@ def _mae_against_reference(
     return float(mae(ref_interp.tolist(), predictions))
 
 
-@plot_scatter(
-    filename=OUT_PATH / "figure_sp3_vs_density.json",
-    title="sp3 fraction vs density",
-    x_label="Density (g cm^-3)",
-    y_label="sp3 count (%)",
-    show_line=True,
-)
 def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
     """Generate sp3 vs density plot data."""
     dft_density, dft_sp3 = _load_reference(REF_DFT_PATH)
@@ -166,6 +233,78 @@ def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
             results[model_name] = (densities, sp3)
 
     return results
+
+
+def build_sp3_vs_density_plot(
+    filename: Path,
+    title: str = "sp3 fraction vs density",
+    x_label: str = "Density (g cm^-3)",
+    y_label: str = "sp3 count (%)",
+) -> None:
+    """
+    Build sp3 vs density plot with experimental points as scatter only.
+
+    Parameters
+    ----------
+    filename
+        Path to save the plotly JSON file.
+    title
+        Plot title.
+    x_label
+        X-axis label.
+    y_label
+        Y-axis label.
+    """
+    data = sp3_vs_density()
+    fig = go.Figure()
+
+    dft = data.get("DFT")
+    if dft:
+        fig.add_trace(
+            go.Scatter(
+                x=dft[0],
+                y=dft[1],
+                name="DFT",
+                mode="lines+markers",
+            )
+        )
+
+    expt = data.get("Expt.")
+    if expt:
+        fig.add_trace(
+            go.Scatter(
+                x=expt[0],
+                y=expt[1],
+                name="Expt.",
+                mode="markers",
+                marker={"symbol": "cross", "size": 8},
+            )
+        )
+
+    for model_name, series in data.items():
+        if model_name in {"DFT", "Expt."}:
+            continue
+        customdata = [
+            _structure_asset_path(model_name, density) for density in series[0]
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=series[0],
+                y=series[1],
+                name=model_name,
+                mode="lines+markers",
+                customdata=customdata,
+            )
+        )
+
+    fig.update_layout(
+        title={"text": title},
+        xaxis={"title": {"text": x_label}},
+        yaxis={"title": {"text": y_label}},
+    )
+
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_json(filename)
 
 
 @pytest.fixture
@@ -211,5 +350,5 @@ def metrics(
 def test_amorphous_carbon_melt_quench(metrics: dict[str, dict]) -> None:
     """Run analysis for amorphous carbon melt-quench benchmark."""
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    sp3_vs_density()
+    build_sp3_vs_density_plot(OUT_PATH / "figure_sp3_vs_density.json")
     return
