@@ -15,6 +15,14 @@ CSV_ENV_VAR = "ML_PEG_LANTHANIDE_CSV"
 
 
 def _resolve_source_csv() -> Path | None:
+    """
+    Resolve the source CSV path to stage for analysis.
+
+    Returns
+    -------
+    Path | None
+        CSV path if found, otherwise ``None``.
+    """
     env_path = os.environ.get(CSV_ENV_VAR)
     if env_path:
         return Path(env_path).expanduser()
