@@ -69,8 +69,8 @@ def _build_reference_df() -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 
-REFERENCE_DF = _build_reference_df().sort_values(["system", "isomer"]).reset_index(
-    drop=True
+REFERENCE_DF = (
+    _build_reference_df().sort_values(["system", "isomer"]).reset_index(drop=True)
 )
 REFERENCE_INDEX = pd.MultiIndex.from_frame(REFERENCE_DF[["system", "isomer"]])
 REFERENCE_HOVERDATA = {
@@ -97,19 +97,20 @@ def isomer_relative_energies() -> dict[str, list]:
         Reference and per-model relative energies.
     """
     df = _load_isomer_dataframe()
-    df = df.merge(REFERENCE_DF, on=["system", "isomer"], how="inner") if not df.empty else df
+    df = (
+        df.merge(REFERENCE_DF, on=["system", "isomer"], how="inner")
+        if not df.empty
+        else df
+    )
 
     prediction_table = pd.DataFrame(index=REFERENCE_INDEX)
     if not df.empty:
-        prediction_table = (
-            df.pivot_table(
-                index=["system", "isomer"],
-                columns="model",
-                values="rel_energy_kcal",
-                aggfunc="first",
-            )
-            .reindex(REFERENCE_INDEX)
-        )
+        prediction_table = df.pivot_table(
+            index=["system", "isomer"],
+            columns="model",
+            values="rel_energy_kcal",
+            aggfunc="first",
+        ).reindex(REFERENCE_INDEX)
 
     results: dict[str, list] = {"ref": REFERENCE_DF["ref"].tolist()}
     for model in MODELS:
