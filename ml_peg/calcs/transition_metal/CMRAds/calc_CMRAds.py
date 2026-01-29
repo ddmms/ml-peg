@@ -64,7 +64,7 @@ def test_CMRAds(mlip: tuple[str, Any]) -> None:
     structs_energy_dict = { struct.info['sys_formula'] : struct for struct in cmr_structs_list }
 
     # Compute adsorption energies
-    for reaction_id in cmrads_reactions_dict.keys():
+    for idx, reaction_id in enumerate(cmrads_reactions_dict.keys()):
         systems_list = cmrads_reactions_dict[ reaction_id ]['Systems'].split(",")
         stoichiometry_list = np.array(cmrads_reactions_dict[ reaction_id ]['Stoichiometry'].split(",")).astype(float)
         systems_energies = np.array([ structs_energy_dict[ sys ].get_potential_energy() for sys in systems_list ])
@@ -77,4 +77,5 @@ def test_CMRAds(mlip: tuple[str, Any]) -> None:
         mol_surface.calc = None
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir / f"{reaction_id}.extxyz", mol_surface)
+        append_mode = True if idx > 0 else False
+        write(write_dir / f"mol_surface_structs.extxyz", mol_surface, append=append_mode)
