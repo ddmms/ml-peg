@@ -19,7 +19,7 @@ mace-mp-0b3:
     model: "medium-0b3"
 
 mace-mpa-0:
-  module: mace.calculators
+  module: mace.calculators 
   class_name: mace_mp
   device: "auto"
   default_dtype: float32
