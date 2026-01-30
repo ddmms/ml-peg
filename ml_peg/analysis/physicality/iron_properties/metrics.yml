@@ -1,0 +1,101 @@
+metrics:
+  # EOS properties
+  a0 error (%):
+    good: 0.0
+    bad: 2.0
+    unit: "%"
+    tooltip: "Lattice parameter error relative to DFT"
+    level_of_theory: PBE
+  B0 error (%):
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "Bulk modulus error relative to DFT"
+    level_of_theory: PBE
+  BCC-FCC ΔE error (meV):
+    good: 0.0
+    bad: 50.0
+    unit: "meV"
+    tooltip: "Error in BCC-FCC energy difference along Bain path"
+    level_of_theory: PBE
+  C11 (GPa):
+    good: 243.0
+    bad: 150.0
+    unit: "GPa"
+    tooltip: "Elastic constant C11"
+    level_of_theory: PBE
+  C12 (GPa):
+    good: 145.0
+    bad: 100.0
+    unit: "GPa"
+    tooltip: "Elastic constant C12"
+    level_of_theory: PBE
+  C44 (GPa):
+    good: 116.0
+    bad: 80.0
+    unit: "GPa"
+    tooltip: "Elastic constant C44 (shear modulus)"
+    level_of_theory: PBE
+  # Defect properties
+  E_vac error (%):
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "Vacancy formation energy error relative to DFT"
+    level_of_theory: PBE
+  Surface MAE (J/m²):
+    good: 0.0
+    bad: 0.5
+    unit: "J/m²"
+    tooltip: "Mean absolute error for surface energies (100, 110, 111, 112)"
+    level_of_theory: PBE
+  Max SFE 110 error (%):
+    good: 0.0
+    bad: 30.0
+    unit: "%"
+    tooltip: "Error in maximum stacking fault energy for {110}<111> slip system"
+    level_of_theory: PBE
+  Max SFE 112 error (%):
+    good: 0.0
+    bad: 30.0
+    unit: "%"
+    tooltip: "Error in maximum stacking fault energy for {112}<111> slip system"
+    level_of_theory: PBE
+  # Dislocation properties
+  Mean core energy (eV):
+    good: 0.0
+    bad: 5.0
+    unit: "eV"
+    tooltip: "Mean dislocation core energy across all types"
+    level_of_theory: DFT
+  Core E Screw a0/2[111](112) (eV):
+    good: 0.0
+    bad: 3.0
+    unit: "eV"
+    tooltip: "Core energy of screw a0/2[111](112) dislocation"
+    level_of_theory: DFT
+  Core E Edge a0/2[111](110) (eV):
+    good: 0.0
+    bad: 3.0
+    unit: "eV"
+    tooltip: "Core energy of edge a0/2[111](110) dislocation"
+    level_of_theory: DFT
+  # Fracture properties
+  Mean K_Griffith (MPa√m):
+    good: 1.0
+    bad: 2.0
+    unit: "MPa√m"
+    tooltip: "Mean Griffith stress intensity factor across crack systems"
+    level_of_theory: DFT
+  K_Griffith (100)[010] (MPa√m):
+    good: 1.0
+    bad: 2.0
+    unit: "MPa√m"
+    tooltip: "Griffith K for (100)[010] crack system"
+    level_of_theory: DFT
+  K_Griffith (110)[001] (MPa√m):
+    good: 1.0
+    bad: 2.0
+    unit: "MPa√m"
+    tooltip: "Griffith K for (110)[001] crack system"
+    level_of_theory: DFT
