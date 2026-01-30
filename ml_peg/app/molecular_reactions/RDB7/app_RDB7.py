@@ -17,7 +17,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "RDB7"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#RDB7"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#rdb7"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "RDB7"
 
