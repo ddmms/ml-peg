@@ -22,8 +22,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
+EV_TO_KCAL = units.mol / units.kcal
+
 CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "IONPI19" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "IONPI19"
 
@@ -32,7 +32,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-species = {
+SPECIES = {
     1: ["1_AB", "1_A", "1_B"],
     2: ["2_AB", "2_A", "2_B"],
     3: ["3_AB", "3_A", "3_B"],
@@ -54,7 +54,7 @@ species = {
     19: ["19_A", "19_B"],
 }
 
-stoich = {
+STOICH = {
     1: [1, -1, -1],
     2: [1, -1, -1],
     3: [1, -1, -1],
@@ -100,8 +100,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_ionpi19.json",
     title="Energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": labels(),
     },
@@ -121,7 +121,7 @@ def conformer_energies() -> dict[str, list]:
     for model_name in MODELS:
         for system in range(1, 20):
             model_int_energy = 0
-            for spec, stoic in zip(species[system], stoich[system], strict=False):
+            for spec, stoic in zip(SPECIES[system], STOICH[system], strict=False):
                 label = spec
                 atoms = read(CALC_PATH / model_name / f"{label}.xyz")
                 model_int_energy += atoms.info["model_energy"] * stoic
@@ -131,9 +131,9 @@ def conformer_energies() -> dict[str, list]:
                 structs_dir = OUT_PATH / model_name
                 structs_dir.mkdir(parents=True, exist_ok=True)
                 write(structs_dir / f"{label}.xyz", atoms)
-            results[model_name].append(model_int_energy)
+            results[model_name].append(model_int_energy * EV_TO_KCAL)
             if not ref_stored:
-                results["ref"].append(ref_int_energy)
+                results["ref"].append(ref_int_energy * EV_TO_KCAL)
         ref_stored = True
     return results
 
