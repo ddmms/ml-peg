@@ -75,17 +75,19 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator()
 
     volumes_per_atoms = np.linspace(12, 22, 100, endpoint=False)
-    results = {"V/atom": volumes_per_atoms}
-
+    
     elements = ["W", "Mo", "Nb"]
 
     for element in elements:
+        results = {"V/atom": volumes_per_atoms}
         for lattice_name, lattice in lattices.items():
             start_time = datetime.now()
             print(f"Start time for {lattice_name} @ {model_name}: {start_time}")
+            
             lattice_constants, energies = equation_of_state(
                 calc, lattice, symbol=element, volumes_per_atoms=volumes_per_atoms
             )
+            
             end_time = datetime.now()
             duration = end_time - start_time
             hours, remainder = divmod(duration.seconds, 3600)
@@ -98,8 +100,8 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
             results[f"{element}_{lattice_name}_a"] = lattice_constants
             results[f"{element}_{lattice_name}_E"] = energies
 
-    write_dir = OUT_PATH / model_name
-    df = pd.DataFrame(results)
-    output_file = write_dir / "eos_results.csv"
-    write_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_file, index=False)
+        write_dir = OUT_PATH / model_name
+        df = pd.DataFrame(results)
+        output_file = write_dir / f"{element}_eos_results.csv"
+        write_dir.mkdir(parents=True, exist_ok=True)
+        df.to_csv(output_file, index=False)
