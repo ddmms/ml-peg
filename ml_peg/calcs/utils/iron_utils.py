@@ -453,14 +453,14 @@ def create_surface_111(
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rot = np.array([ex, ey, ez])
+    R = np.array([ex, ey, ez])  # noqa: N806
 
     for i in range(-max_range, max_range + 1):
         for j in range(-max_range, max_range + 1):
             for k in range(-max_range, max_range + 1):
                 for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
                     pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     frac_x = pos_oriented[0] / lx
                     frac_y = pos_oriented[1] / ly
                     frac_z = pos_oriented[2] / lz
@@ -524,14 +524,14 @@ def create_surface_112(
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rot = np.array([ex, ey, ez])
+    R = np.array([ex, ey, ez])  # noqa: N806
 
     for i in range(-max_range, max_range + 1):
         for j in range(-max_range, max_range + 1):
             for k in range(-max_range, max_range + 1):
                 for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
                     pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     frac_x = pos_oriented[0] / lx
                     frac_y = pos_oriented[1] / ly
                     frac_z = pos_oriented[2] / lz
@@ -581,7 +581,7 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rot = np.array([ex, ey, ez])
+    R = np.array([ex, ey, ez])  # noqa: N806
 
     lx = a * np.sqrt(2) * size[0]
     ly = a * np.sqrt(3) * size[1]
@@ -596,7 +596,7 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
             for k in range(-max_range, max_range + 1):
                 for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
                     pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     frac_x = pos_oriented[0] / lx
                     frac_y = pos_oriented[1] / ly
                     frac_z = pos_oriented[2] / lz
@@ -641,7 +641,7 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
     ex = np.array([1, 1, -2]) / np.sqrt(6)
     ey = np.array([-1, 1, 0]) / np.sqrt(2)
     ez = np.array([1, 1, 1]) / np.sqrt(3)
-    rot = np.array([ex, ey, ez])
+    R = np.array([ex, ey, ez])  # noqa: N806
 
     lx = a * np.sqrt(6) * size[0]
     ly = a * np.sqrt(2) * size[1]
@@ -656,7 +656,7 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
             for k in range(-max_range, max_range + 1):
                 for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
                     pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     frac_x = pos_oriented[0] / lx
                     frac_y = pos_oriented[1] / ly
                     frac_z = pos_oriented[2] / lz
@@ -726,7 +726,7 @@ def create_oriented_bcc_cell(
     ox = orient_x / np.linalg.norm(orient_x)
     oy = orient_y / np.linalg.norm(orient_y)
     oz = orient_z / np.linalg.norm(orient_z)
-    rot = np.array([ox, oy, oz])
+    R = np.array([ox, oy, oz])  # noqa: N806
 
     len_x = np.linalg.norm(orient_x)
     len_y = np.linalg.norm(orient_y)
@@ -750,7 +750,7 @@ def create_oriented_bcc_cell(
             for k in range(-max_range, max_range + 1):
                 for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
                     pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     eps = 1e-8
                     if (
                         -half_lx - eps <= pos_oriented[0] < half_lx - eps
@@ -1090,14 +1090,18 @@ def get_crack_orientation(
 
 
 def aniso_disp_solution(
-    c_mat: np.ndarray, a1: np.ndarray, a2: np.ndarray, a3: np.ndarray, surf_e: float
+    C: np.ndarray,  # noqa: N803
+    a1: np.ndarray,
+    a2: np.ndarray,
+    a3: np.ndarray,
+    surfE: float,  # noqa: N803
 ) -> tuple:
     """
     Solve the anisotropic LEFM displacement field coefficients.
 
     Parameters
     ----------
-    c_mat : np.ndarray
+    C : np.ndarray
         6x6 elastic stiffness matrix in Voigt notation.
     a1 : np.ndarray
         First orientation vector.
@@ -1105,7 +1109,7 @@ def aniso_disp_solution(
         Second orientation vector.
     a3 : np.ndarray
         Third orientation vector.
-    surf_e : float
+    surfE : float
         Surface energy in J/m^2.
 
     Returns
@@ -1115,68 +1119,68 @@ def aniso_disp_solution(
         K_I is the Griffith stress intensity factor, and G_I is the
         energy release rate.
     """
-    s_inv = np.linalg.inv(c_mat)
+    S = np.linalg.inv(C)  # noqa: N806
     a1 = a1 / np.linalg.norm(a1)
     a2 = a2 / np.linalg.norm(a2)
     a3 = a3 / np.linalg.norm(a3)
-    q = np.array([a1, a2, a3])
+    Q = np.array([a1, a2, a3])  # noqa: N806
 
-    k1 = np.array(
+    K1 = np.array(  # noqa: N806
         [
-            [q[0, 0] ** 2, q[0, 1] ** 2, q[0, 2] ** 2],
-            [q[1, 0] ** 2, q[1, 1] ** 2, q[1, 2] ** 2],
-            [q[2, 0] ** 2, q[2, 1] ** 2, q[2, 2] ** 2],
+            [Q[0, 0] ** 2, Q[0, 1] ** 2, Q[0, 2] ** 2],
+            [Q[1, 0] ** 2, Q[1, 1] ** 2, Q[1, 2] ** 2],
+            [Q[2, 0] ** 2, Q[2, 1] ** 2, Q[2, 2] ** 2],
         ]
     )
-    k2 = np.array(
+    K2 = np.array(  # noqa: N806
         [
-            [q[0, 1] * q[0, 2], q[0, 2] * q[0, 0], q[0, 0] * q[0, 1]],
-            [q[1, 1] * q[1, 2], q[1, 2] * q[1, 0], q[1, 0] * q[1, 1]],
-            [q[2, 1] * q[2, 2], q[2, 2] * q[2, 0], q[2, 0] * q[2, 1]],
+            [Q[0, 1] * Q[0, 2], Q[0, 2] * Q[0, 0], Q[0, 0] * Q[0, 1]],
+            [Q[1, 1] * Q[1, 2], Q[1, 2] * Q[1, 0], Q[1, 0] * Q[1, 1]],
+            [Q[2, 1] * Q[2, 2], Q[2, 2] * Q[2, 0], Q[2, 0] * Q[2, 1]],
         ]
     )
-    k3 = np.array(
+    K3 = np.array(  # noqa: N806
         [
-            [q[1, 0] * q[2, 0], q[1, 1] * q[2, 1], q[1, 2] * q[2, 2]],
-            [q[2, 0] * q[0, 0], q[2, 1] * q[0, 1], q[2, 2] * q[0, 2]],
-            [q[0, 0] * q[1, 0], q[0, 1] * q[1, 1], q[0, 2] * q[1, 2]],
+            [Q[1, 0] * Q[2, 0], Q[1, 1] * Q[2, 1], Q[1, 2] * Q[2, 2]],
+            [Q[2, 0] * Q[0, 0], Q[2, 1] * Q[0, 1], Q[2, 2] * Q[0, 2]],
+            [Q[0, 0] * Q[1, 0], Q[0, 1] * Q[1, 1], Q[0, 2] * Q[1, 2]],
         ]
     )
-    k4 = np.array(
+    K4 = np.array(  # noqa: N806
         [
             [
-                q[1, 1] * q[2, 2] + q[1, 2] * q[2, 1],
-                q[1, 2] * q[2, 0] + q[1, 0] * q[2, 2],
-                q[1, 0] * q[2, 1] + q[1, 1] * q[2, 0],
+                Q[1, 1] * Q[2, 2] + Q[1, 2] * Q[2, 1],
+                Q[1, 2] * Q[2, 0] + Q[1, 0] * Q[2, 2],
+                Q[1, 0] * Q[2, 1] + Q[1, 1] * Q[2, 0],
             ],
             [
-                q[2, 1] * q[0, 2] + q[2, 2] * q[0, 1],
-                q[2, 2] * q[0, 0] + q[2, 0] * q[0, 2],
-                q[2, 0] * q[0, 1] + q[2, 1] * q[0, 0],
+                Q[2, 1] * Q[0, 2] + Q[2, 2] * Q[0, 1],
+                Q[2, 2] * Q[0, 0] + Q[2, 0] * Q[0, 2],
+                Q[2, 0] * Q[0, 1] + Q[2, 1] * Q[0, 0],
             ],
             [
-                q[0, 1] * q[1, 2] + q[0, 2] * q[1, 1],
-                q[0, 2] * q[1, 0] + q[0, 0] * q[1, 2],
-                q[0, 0] * q[1, 1] + q[0, 1] * q[1, 0],
+                Q[0, 1] * Q[1, 2] + Q[0, 2] * Q[1, 1],
+                Q[0, 2] * Q[1, 0] + Q[0, 0] * Q[1, 2],
+                Q[0, 0] * Q[1, 1] + Q[0, 1] * Q[1, 0],
             ],
         ]
     )
 
-    k_mat = np.vstack((np.hstack((k1, 2 * k2)), np.hstack((k3, k4))))
-    s_star = np.linalg.inv(k_mat).T @ s_inv @ np.linalg.inv(k_mat)
+    K_mat = np.vstack((np.hstack((K1, 2 * K2)), np.hstack((K3, K4))))  # noqa: N806
+    S_star = np.linalg.inv(K_mat).T @ S @ np.linalg.inv(K_mat)  # noqa: N806
 
-    b_11 = (s_star[0, 0] * s_star[2, 2] - s_star[0, 2] ** 2) / s_star[2, 2]
-    b_22 = (s_star[1, 1] * s_star[2, 2] - s_star[1, 2] ** 2) / s_star[2, 2]
-    b_66 = (s_star[5, 5] * s_star[2, 2] - s_star[2, 5] ** 2) / s_star[2, 2]
-    b_12 = (s_star[0, 1] * s_star[2, 2] - s_star[0, 2] * s_star[1, 2]) / s_star[2, 2]
-    b_16 = (s_star[0, 5] * s_star[2, 2] - s_star[0, 2] * s_star[2, 5]) / s_star[2, 2]
-    b_26 = (s_star[1, 5] * s_star[2, 2] - s_star[1, 2] * s_star[2, 5]) / s_star[2, 2]
+    b_11 = (S_star[0, 0] * S_star[2, 2] - S_star[0, 2] ** 2) / S_star[2, 2]
+    b_22 = (S_star[1, 1] * S_star[2, 2] - S_star[1, 2] ** 2) / S_star[2, 2]
+    b_66 = (S_star[5, 5] * S_star[2, 2] - S_star[2, 5] ** 2) / S_star[2, 2]
+    b_12 = (S_star[0, 1] * S_star[2, 2] - S_star[0, 2] * S_star[1, 2]) / S_star[2, 2]
+    b_16 = (S_star[0, 5] * S_star[2, 2] - S_star[0, 2] * S_star[2, 5]) / S_star[2, 2]
+    b_26 = (S_star[1, 5] * S_star[2, 2] - S_star[1, 2] * S_star[2, 5]) / S_star[2, 2]
 
-    b_factor = np.sqrt(
+    B = np.sqrt(  # noqa: N806
         (b_11 * b_22 / 2) * (np.sqrt(b_22 / b_11) + ((2 * b_12 + b_66) / (2 * b_11)))
     )
-    k_i = np.sqrt(2 * surf_e * (1 / (b_factor * 1000)))
-    g_i = 2 * surf_e
+    K_I = np.sqrt(2 * surfE * (1 / (B * 1000)))  # noqa: N806
+    G_I = 2 * surfE  # noqa: N806
 
     coefvct = [b_11, -2 * b_16, 2 * b_12 + b_66, -2 * b_26, b_22]
     rt = np.roots(coefvct)
@@ -1189,22 +1193,26 @@ def aniso_disp_solution(
     )
     q = np.array([b_12 * s[0] + b_22 / s[0] - b_26, b_12 * s[1] + b_22 / s[1] - b_26])
 
-    return s, p, q, k_i, g_i
+    return s, p, q, K_I, G_I
 
 
 def compute_lefm_coefficients(
-    c11: float, c12: float, c44: float, surface_energy: float, crack_system: int
+    C11: float,  # noqa: N803
+    C12: float,  # noqa: N803
+    C44: float,  # noqa: N803
+    surface_energy: float,
+    crack_system: int,
 ) -> dict[str, Any]:
     """
     Compute LEFM coefficients for anisotropic crack analysis.
 
     Parameters
     ----------
-    c11 : float
+    C11 : float
         Elastic constant C11 in GPa.
-    c12 : float
+    C12 : float
         Elastic constant C12 in GPa.
-    c44 : float
+    C44 : float
         Elastic constant C44 in GPa.
     surface_energy : float
         Surface energy in J/m^2.
@@ -1216,18 +1224,18 @@ def compute_lefm_coefficients(
     dict
         Dictionary with LEFM coefficients s1, s2, p1, p2, q1, q2, K_I, G_I.
     """
-    c_mat = np.array(
+    C = np.array(  # noqa: N806
         [
-            [c11, c12, c12, 0, 0, 0],
-            [c12, c11, c12, 0, 0, 0],
-            [c12, c12, c11, 0, 0, 0],
-            [0, 0, 0, c44, 0, 0],
-            [0, 0, 0, 0, c44, 0],
-            [0, 0, 0, 0, 0, c44],
+            [C11, C12, C12, 0, 0, 0],
+            [C12, C11, C12, 0, 0, 0],
+            [C12, C12, C11, 0, 0, 0],
+            [0, 0, 0, C44, 0, 0],
+            [0, 0, 0, 0, C44, 0],
+            [0, 0, 0, 0, 0, C44],
         ]
     )
     a1, a2, a3 = get_crack_orientation(crack_system)
-    s, p, q, k_i, g_i = aniso_disp_solution(c_mat, a1, a2, a3, surface_energy)
+    s, p, q, K_I, G_I = aniso_disp_solution(C, a1, a2, a3, surface_energy)  # noqa: N806
     return {
         "s1": s[0],
         "s2": s[1],
@@ -1235,14 +1243,14 @@ def compute_lefm_coefficients(
         "p2": p[1],
         "q1": q[0],
         "q2": q[1],
-        "K_I": k_i,
-        "G_I": g_i,
+        "K_I": K_I,
+        "G_I": G_I,
     }
 
 
 def apply_crack_displacement(
     positions: np.ndarray,
-    k_sif: float,
+    K: float,  # noqa: N803
     coeffs: dict[str, Any],
     crack_tip: tuple[float, float],
     reference_positions: np.ndarray | None = None,
@@ -1254,7 +1262,7 @@ def apply_crack_displacement(
     ----------
     positions : np.ndarray
         Current atomic positions (N, 3).
-    k_sif : float
+    K : float
         Stress intensity factor.
     coeffs : dict
         LEFM coefficients from compute_lefm_coefficients.
@@ -1282,7 +1290,7 @@ def apply_crack_displacement(
     r = np.maximum(np.sqrt(x**2 + y**2), 1e-10)
     theta = np.arctan2(y, x)
 
-    coef = k_sif * np.sqrt(2.0 * r / np.pi)
+    coef = K * np.sqrt(2.0 * r / np.pi)
     z1 = np.cos(theta) + s1 * np.sin(theta)
     z2 = np.cos(theta) + s2 * np.sin(theta)
 
@@ -1300,7 +1308,7 @@ def apply_crack_displacement(
 
 def compute_incremental_displacement(
     positions: np.ndarray,
-    dk: float,
+    dK: float,  # noqa: N803
     coeffs: dict[str, Any],
     crack_tip: tuple[float, float],
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -1311,7 +1319,7 @@ def compute_incremental_displacement(
     ----------
     positions : np.ndarray
         Atomic positions (N, 3).
-    dk : float
+    dK : float
         Increment in stress intensity factor.
     coeffs : dict
         LEFM coefficients from compute_lefm_coefficients.
@@ -1333,7 +1341,7 @@ def compute_incremental_displacement(
     r = np.maximum(np.sqrt(x**2 + y**2), 1e-10)
     theta = np.arctan2(y, x)
 
-    coef = dk * np.sqrt(2.0 * r / np.pi)
+    coef = dK * np.sqrt(2.0 * r / np.pi)
     z1 = np.cos(theta) + s1 * np.sin(theta)
     z2 = np.cos(theta) + s2 * np.sin(theta)
 
@@ -1373,7 +1381,7 @@ def create_crack_cell(
     ox = config["orient_x"] / np.linalg.norm(config["orient_x"])
     oy = config["orient_y"] / np.linalg.norm(config["orient_y"])
     oz = config["orient_z"] / np.linalg.norm(config["orient_z"])
-    rot = np.array([ox, oy, oz])
+    R = np.array([ox, oy, oz])  # noqa: N806
 
     len_x = np.linalg.norm(config["orient_x"])
     len_y = np.linalg.norm(config["orient_y"])
@@ -1394,7 +1402,7 @@ def create_crack_cell(
                     pos_cubic = a0 * np.array(
                         [i + basis[0], j + basis[1], k + basis[2]]
                     )
-                    pos_oriented = rot @ pos_cubic
+                    pos_oriented = R @ pos_cubic
                     if (
                         -lx / 2 <= pos_oriented[0] < lx / 2
                         and -ly / 2 <= pos_oriented[1] < ly / 2
@@ -1453,8 +1461,8 @@ def apply_strain(atoms: Atoms, strain_matrix: np.ndarray) -> Atoms:
         Strained ASE Atoms object.
     """
     atoms_strained = atoms.copy()
-    deformation = np.eye(3) + strain_matrix
-    new_cell = atoms_strained.cell @ deformation.T
+    F = np.eye(3) + strain_matrix  # noqa: N806
+    new_cell = atoms_strained.cell @ F.T
     atoms_strained.set_cell(new_cell, scale_atoms=True)
     return atoms_strained
 
@@ -1496,15 +1504,19 @@ def get_voigt_strain(direction: int, magnitude: float) -> np.ndarray:
     return strain
 
 
-def calculate_surface_energy(e_slab: float, e_bulk: float, area: float) -> float:
+def calculate_surface_energy(
+    E_slab: float,  # noqa: N803
+    E_bulk: float,  # noqa: N803
+    area: float,
+) -> float:
     """
     Calculate surface energy in J/m^2.
 
     Parameters
     ----------
-    e_slab : float
+    E_slab : float
         Total energy of the slab with vacuum (eV).
-    e_bulk : float
+    E_bulk : float
         Total energy of the bulk reference (eV).
     area : float
         Surface area (Angstrom^2).
@@ -1514,5 +1526,5 @@ def calculate_surface_energy(e_slab: float, e_bulk: float, area: float) -> float
     float
         Surface energy in J/m^2.
     """
-    delta_e = e_slab - e_bulk
-    return delta_e * EV_TO_J / (2 * area * ANGSTROM_TO_M**2)
+    delta_E = E_slab - E_bulk  # noqa: N806
+    return delta_E * EV_TO_J / (2 * area * ANGSTROM_TO_M**2)
