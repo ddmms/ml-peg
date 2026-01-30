@@ -5,6 +5,7 @@ from copy import copy
 from pathlib import Path
 from typing import Any
 from datetime import datetime
+from glob import glob
 
 from ase import units
 from ase.io import read, write
@@ -23,9 +24,8 @@ from ase.lattice.cubic import SimpleCubicFactory, \
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
+DATA_PATH = Path(__file__).parent / "../../../../inputs/bulk_crystal/equation_of_state/"
 OUT_PATH = Path(__file__).parent / "outputs"
-
 
 
 class A15Factory(SimpleCubicFactory):
@@ -74,15 +74,26 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    volumes_per_atoms = np.linspace(12, 22, 100, endpoint=False)
-    
-    elements = ["W", "Mo", "Nb"]
+    fns = list(DATA_PATH.glob("*DFT*"))
+      
+       
+    for fn in fns:
+        element = fn.name.split("_")[0]
+        print(f"Starting EOS calculations for {element} with model {model_name}")
 
-    for element in elements:
+        dft_data = pd.read_csv(fn, comment="#")  
+
+        volumes_per_atoms = np.linspace(np.round(dft_data[dft_data.columns[0]].min() * 0.95), 
+                                        np.round(dft_data[dft_data.columns[0]].max() * 1.05), 50, endpoint=False)
         results = {"V/atom": volumes_per_atoms}
-        for lattice_name, lattice in lattices.items():
+        
+        phases = [col.split("_")[1] for col in dft_data.columns if "Delta" in col]
+
+        for phase in phases:
+            assert phase in lattices, f"Lattice {phase} not implemented for EOS test."
+            lattice = lattices[phase]
             start_time = datetime.now()
-            print(f"Start time for {lattice_name} @ {model_name}: {start_time}")
+            print(f"Start time for {phase} @ {model_name}: {start_time}")
             
             lattice_constants, energies = equation_of_state(
                 calc, lattice, symbol=element, volumes_per_atoms=volumes_per_atoms
@@ -92,13 +103,13 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
             duration = end_time - start_time
             hours, remainder = divmod(duration.seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
-            print(f"End time for {lattice_name} @ {model_name}: {end_time}")
-            print(f"Duration for {lattice_name} @ {model_name}: {hours} hours {minutes} minutes {seconds} seconds")
+            print(f"End time for {phase} @ {model_name}: {end_time}")
+            print(f"Duration for {phase} @ {model_name}: {hours} hours {minutes} minutes {seconds} seconds")
             print(duration)
 
 
-            results[f"{element}_{lattice_name}_a"] = lattice_constants
-            results[f"{element}_{lattice_name}_E"] = energies
+            results[f"{phase}_a"] = lattice_constants
+            results[f"{phase}_E"] = energies
 
         write_dir = OUT_PATH / model_name
         df = pd.DataFrame(results)
