@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from scipy.constants import e, epsilon_0
 
-from ml_peg.analysis.utils.decorators import build_table  # , plot_parity
+from ml_peg.analysis.utils.decorators import build_table, plot_hist
 from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -29,6 +29,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
+
+# We consider a dipole as bad if the expected band gap is <= 0
+# The expected band gap is 4.50 V - |P_z_per_unit_area| / epsilon_0
+# Hence "bad" is |P_z_per_unit_area| > 4.50 V * epsilon_0 / e * 10^(-10)
+# epsilon_0 is in F/m = C/(V*m), so this gives it in e/(V*A)
+DIPOLE_BAD_THRESHOLD = 4.50 * epsilon_0 / e * 10 ** (-10)
 
 
 def get_dipoles() -> dict[str, np.ndarray]:
@@ -94,21 +100,46 @@ def n_bad() -> dict[str, float]:
     """
     dipoles = get_dipoles()
 
-    # We consider a dipole as bad if the expected band gap is <= 0
-    # The expected band gap is 4.50 V - |P_z_per_unit_area| / epsilon_0
-    # Hence "bad" is |P_z_per_unit_area| > 4.50 V * epsilon_0 / e * 10^(-10)
-    # epsilon_0 is in F/m = C/(V*m), so this gives it in e/(V*A)
-    dipole_bad_threshold = 4.50 * epsilon_0 / e * 10 ** (-10)
-
     results = {}
     for model_name in MODELS:
         if model_name in dipoles.keys():
             results[model_name] = (
-                np.abs(dipoles[model_name]) > dipole_bad_threshold
+                np.abs(dipoles[model_name]) > DIPOLE_BAD_THRESHOLD
             ).sum() / len(dipoles[model_name])
         else:
             results[model_name] = None
     return results
+
+
+def plot_distribution(model: str) -> None:
+    """
+    Plot NEB paths and save all structure files.
+
+    Parameters
+    ----------
+    model
+        Name of MLIP.
+    """
+
+    @plot_hist(
+        filename=OUT_PATH / f"figure_{model}_dipoledistr.json",
+        title=f"Dipole Distribution {model}",
+        x_label="Total z-Dipole per unit area [e/A]",
+        good=-DIPOLE_BAD_THRESHOLD,
+        bad=DIPOLE_BAD_THRESHOLD,
+    )
+    def plot_distr() -> dict[str, np.ndarray]:
+        """
+        Plot a NEB and save the structure file.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Dictionary of array with all dipoles for each model.
+        """
+        return get_dipoles()
+
+    plot_distr()
 
 
 @pytest.fixture

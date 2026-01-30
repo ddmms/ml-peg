@@ -427,177 +427,145 @@ def cell_to_scatter(
     return decorator
 
 
-def model_to_hist(
+def plot_hist(
     *,
-    filename: str | Path,
-    datadir: Path,
-    dataname: str,
     bins: Any | None = None,
     good: float | None = None,
     bad: float | None = None,
-    x_label: str | None = None,
     title: str | None = None,
-    title_template: str = "{model} - {title}",
+    x_label: str | None = None,
+    filename: str | Path,
 ) -> Callable:
     """
-    Pre-generate histogram plots for each table row (model).
-
-    Use this for benchmarks where each table CELL generates its own scatter plot
-    (e.g., clicking MACE's ω_max shows a scatter for that specific model-metric
-    pair). For benchmarks where clicking a COLUMN shows all models on one scatter
-    (like S24 or OC157), use @plot_parity instead.
-
-    This decorator generates complete Plotly figures during analysis instead of
-    saving raw points for the app to process on-the-fly.
+    Plot scatter plot of MLIP results.
 
     Parameters
     ----------
-    filename
-        Path where JSON data with pre-made figures will be saved.
-    datadir
-        Directory in which modeldir with data for plotting are.
-    dataname
-        Name of data file for each model.
     bins
-        Bins for the histogram. Default is None.
+        Bins for histogram. Default is None.
     good
-        Line to be plotted for marking outliers. Default is None.
+        Minimum threshold for good values to draw line at.
+        Default is None.
     bad
-        Line to be plotted for marking outliers. Default is None.
-    x_label
-        Label for x-axis. Default is None.
+        Maximum threshold for good values to draw line at.
+        Default is None.
     title
-        Title for the plot to be used in template. Default is None.
-    title_template
-        Template for plot titles with {model} and {title} placeholders.
-        Default is "{model} - {title}".
+        Graph title.
+    x_label
+        Label for x-axis. Default is `None`.
+
+    filename
+        Filename to save plot as JSON. Default is "scatter.json".
 
     Returns
     -------
     Callable
-        Decorator that wraps analysis functions to pre-generate scatter figures.
+        Decorator to wrap function.
     """
 
-    def decorator(func: Callable) -> Callable:
+    def plot_hist_decorator(func: Callable) -> Callable:
         """
-        Wrap the decorated callable to pre-generate scatter figures.
+        Decorate function to plot scatter.
 
         Parameters
         ----------
         func
-            Analysis function returning the dataset consumed by the Dash app.
+            Function being wrapped.
 
         Returns
         -------
         Callable
-            Wrapped function that runs ``func`` and emits Plotly figures.
+            Wrapped function.
         """
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def plot_hist_wrapper(*args, **kwargs) -> dict[str, Any]:
             """
-            Execute func and generate scatter plots for each model-metric pair.
+            Wrap function to plot scatter.
 
             Parameters
             ----------
             *args
-                Positional arguments forwarded to ``func``.
+                Arguments to pass to the function being wrapped.
             **kwargs
-                Keyword arguments forwarded to ``func``.
+                Key word arguments to pass to the function being wrapped.
 
             Returns
             -------
             dict
-                The dataset produced by ``func`` (with ``figures`` entries).
+                Results dictionary.
             """
-            data_bundle = func(*args, **kwargs)
+            results = func(*args, **kwargs)
 
-            # Extract metadata
-            # metric_labels = data_bundle.get("metrics", {})
-            models_data = data_bundle.get("models", {})
-            hist_data = {}
+            # hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            # customdata = []
+            # if hoverdata:
+            #    for i, key in enumerate(hoverdata):
+            #        hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
+            #    customdata = list(zip(*hoverdata.values(), strict=True))
 
-            # Create figures for each model-metric pair
-            for model_name, model_data in models_data.items():
-                model_data["figures"] = {}
-                # metrics_data = model_data.get("metrics", {})
-                hist_data[model_name] = np.load(datadir / model_name / dataname)
-
-                # for metric_key, metric_info in metrics_data.items():
-                # points = metric_info.get("points", [])
-                # if not points:
-                #    continue
-
-                # Extract ref and pred values
-                # refs = [p["ref"] for p in points]
-                # preds = [p["pred"] for p in points]
-                # ids = [p.get("id", "") for p in points]
-
-                # Build hovertemplate
-                # hovertemplate = (
-                #    "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>"
-                #    "<b>ID: </b>%{customdata[0]}<br>"
-                # )
-                # customdata = [[id_val] for id_val in ids]
-
+            fig = go.Figure()
+            for model_name, hist_data in results.items():
                 # Create figure
                 # counts, np_bins = np.histogram(hist_data[model_name], bins = bins)
-                fig = px.histogram(
-                    hist_data[model_name], histnorm="probability density", x=bins
+                fig.add_trace(
+                    px.histogram(
+                        hist_data,
+                        histnorm="probability density",
+                        x=bins,
+                        title=model_name,
+                    )
                 )
 
-                # Add good & bad threshold line
-                full_fig = fig.full_figure_for_development()
-                y_range = full_fig.layout.yaxis.range
-                if good is not None:
-                    lims = [
-                        np.min([good, y_range]),
-                        np.max([good, y_range]),
-                    ]
-                    fig.add_trace(
-                        go.Scatter(
-                            x=lims,
-                            y=lims,
-                            mode="lines",
-                            showlegend=False,
-                        )
+            # Add good & bad threshold line
+            full_fig = fig.full_figure_for_development()
+            y_range = full_fig.layout.yaxis.range
+            if good is not None:
+                lims = [
+                    np.min([good, y_range]),
+                    np.max([good, y_range]),
+                ]
+                fig.add_trace(
+                    go.Scatter(
+                        x=lims,
+                        y=lims,
+                        mode="lines",
+                        showlegend=False,
                     )
-                if bad is not None:
-                    lims = [
-                        np.min([bad, y_range]),
-                        np.max([bad, y_range]),
-                    ]
-                    fig.add_trace(
-                        go.Scatter(
-                            x=lims,
-                            y=lims,
-                            mode="lines",
-                            showlegend=False,
-                        )
+                )
+            if bad is not None:
+                lims = [
+                    np.min([bad, y_range]),
+                    np.max([bad, y_range]),
+                ]
+                fig.add_trace(
+                    go.Scatter(
+                        x=lims,
+                        y=lims,
+                        mode="lines",
+                        showlegend=False,
                     )
+                )
 
-                    # Update layout
-                    fig_title = title_template.format(model=model_name, title=title)
-                    fig.update_layout(
-                        title={"text": fig_title},
-                        xaxis={"title": {"text": x_label}},
-                        # yaxis={"title": {"text": y_label}},
-                        # no label, y axis is probability density
-                    )
+                # Update layout
+                fig.update_layout(
+                    title={"text": title},
+                    xaxis={"title": {"text": x_label}},
+                    # yaxis={"title": {"text": y_label}},
+                    # no label, y axis is probability density
+                )
 
-                    # Store figure as JSON-serializable dict
-                    model_data["figures"] = json.loads(fig.to_json())
+            fig.update_traces()
 
-            # Save to file
+            # Write to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
-            with open(filename, "w", encoding="utf8") as f:
-                dump(data_bundle, f)
+            fig.write_json(filename)
 
-            return data_bundle
+            return results
 
-        return wrapper
+        return plot_hist_wrapper
 
-    return decorator
+    return plot_hist_decorator
 
 
 def plot_scatter(

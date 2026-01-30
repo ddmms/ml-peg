@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from dash import Dash
+from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-
-# from ml_peg.app.utils.build_callbacks import (
-#    plot_from_table_column,
-#    struct_from_scatter,
-# )
-# from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_cell,
+    #    struct_from_scatter,
+)
+from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -27,7 +27,20 @@ class WaterSlabDipolesApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        return
+        hists = {
+            model: {
+                "Dipole Distribution": read_plot(
+                    DATA_PATH / f"figure_{model}_dipoledistr.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+            }
+            for model in MODELS
+        }
+        plot_from_table_cell(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
+            cell_to_plot=hists,
+        )
 
 
 def get_app() -> WaterSlabDipolesApp:
@@ -44,7 +57,9 @@ def get_app() -> WaterSlabDipolesApp:
         description="Dipole distribution of a 38 A water slab",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "water_slab_dipoles_metrics_table.json",
-        extra_components=[],
+        extra_components=[
+            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+        ],
     )
 
 
