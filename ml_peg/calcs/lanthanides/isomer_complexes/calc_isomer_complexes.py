@@ -50,6 +50,8 @@ def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
     for system_dir in sorted(struct_root.glob("*")):
         if not system_dir.is_dir():
             continue
+        if system_dir.name not in R2SCAN_REF:
+            continue
         for iso_dir in sorted(system_dir.glob("iso*")):
             xyz_path = iso_dir / "orca.xyz"
             if not xyz_path.exists():
