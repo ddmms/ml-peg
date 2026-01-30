@@ -2,37 +2,34 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
-from ase.io import read
+from ase.io import read, write
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
 OUT_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
-STRUCT_ENV_VAR = "ML_PEG_LANTHANIDE_STRUCTURES"
 KCAL_PER_EV = 23.060547
 
 
-def _resolve_structure_root() -> Path | None:
-    """
-    Resolve the root directory containing isomer structures.
-
-    Returns
-    -------
-    Path | None
-        Structure root path if found, otherwise ``None``.
-    """
-    env_path = os.environ.get(STRUCT_ENV_VAR)
-    if env_path:
-        return Path(env_path).expanduser()
-    return None
+# r2SCAN-3c references (kcal/mol) from Table S4 (lanthanides only)
+R2SCAN_REF: dict[str, dict[str, float]] = {
+    "Lu_ff6372": {"iso1": 2.15, "iso2": 12.96, "iso3": 0.00, "iso4": 2.08},
+    "Ce_ff6372": {"iso1": 2.47, "iso2": 7.13, "iso3": 0.00, "iso4": 2.17},
+    "Ce_1d271a": {"iso1": 0.00, "iso2": 2.20},
+    "Sm_ed79e8": {"iso1": 2.99, "iso2": 0.00},
+    "La_f1a50d": {"iso1": 0.00, "iso2": 3.11},
+    "Eu_ff6372": {"iso1": 0.00, "iso2": 6.74},
+    "Nd_c5f44a": {"iso1": 0.00, "iso2": 1.61},
+}
 
 
 def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
@@ -77,42 +74,6 @@ def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
     return entries
 
 
-def _write_model_csv(
-    model_name: str, rows: list[dict[str, Any]], out_dir: Path
-) -> None:
-    """
-    Write a per-model CSV of isomer energies.
-
-    Parameters
-    ----------
-    model_name
-        Model identifier.
-    rows
-        Rows containing per-isomer energies and metadata.
-    out_dir
-        Output directory for the CSV file.
-    """
-    import csv
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = out_dir / "isomer_energies.csv"
-    fieldnames = [
-        "model",
-        "system",
-        "isomer",
-        "energy_ev",
-        "energy_kcal",
-        "rel_energy_kcal",
-        "charge",
-        "multiplicity",
-    ]
-    with csv_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({k: row.get(k, "") for k in fieldnames})
-
-
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     """
@@ -123,22 +84,24 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     mlip
         Model name and MLIP calculator wrapper.
     """
-    struct_root = _resolve_structure_root()
-    if struct_root is None or not struct_root.exists():
-        pytest.skip(
-            "No lanthanide structure root found. "
-            "Set ML_PEG_LANTHANIDE_STRUCTURES to the isomer_structures path."
+    # download lanthanide isomer complexes dataset
+    isomer_complexes_dir = (
+        download_s3_data(
+            key="inputs/lanthanides/isomer_complexes/isomer_complexes.zip",
+            filename="isomer_complexes.zip",
         )
+        / "isomer_complexes"
+    )
 
-    entries = _load_isomer_entries(struct_root)
+    entries = _load_isomer_entries(isomer_complexes_dir)
     if not entries:
-        pytest.skip(f"No isomer structures found under {struct_root}.")
+        pytest.skip(f"No isomer structures found under {isomer_complexes_dir}.")
 
     model_name, model = mlip
     calc = model.get_calculator()
 
-    results: list[dict[str, Any]] = []
-    for entry in entries:
+    # results: list[dict[str, Any]] = []
+    for entry in tqdm(entries, desc=f"Calculating energies for {model_name}"):
         atoms = read(entry["xyz"])
         atoms.info["charge"] = entry["charge"]
         atoms.info["spin_multiplicity"] = entry["multiplicity"]
@@ -146,27 +109,17 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         atoms.calc = calc
         energy_ev = float(atoms.get_potential_energy())
         energy_kcal = energy_ev * KCAL_PER_EV
-        results.append(
-            {
-                "model": model_name,
-                "system": entry["system"],
-                "isomer": entry["isomer"],
-                "energy_ev": energy_ev,
-                "energy_kcal": energy_kcal,
-                "charge": entry["charge"],
-                "multiplicity": entry["multiplicity"],
-            }
+
+        atoms.info["model"] = model_name
+        atoms.info["energy_ev"] = energy_ev
+        atoms.info["energy_kcal"] = energy_kcal
+        atoms.info["system"] = entry["system"]
+        atoms.info["isomer"] = entry["isomer"]
+
+        atoms.info["ref_energy_kcal"] = R2SCAN_REF.get(entry["system"], {}).get(
+            entry["isomer"]
         )
 
-    results.sort(key=lambda row: (row["model"], row["system"], row["isomer"]))
-    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in results:
-        key = (row["model"], row["system"])
-        grouped.setdefault(key, []).append(row)
-
-    for rows in grouped.values():
-        min_energy = min(row["energy_kcal"] for row in rows)
-        for row in rows:
-            row["rel_energy_kcal"] = row["energy_kcal"] - min_energy
-
-    _write_model_csv(model_name, results, OUT_PATH / model_name)
+        write_dir = OUT_PATH / model_name
+        write_dir.mkdir(parents=True, exist_ok=True)
+        write(write_dir / f"{entry['system']}_{entry['isomer']}.xyz", atoms)
