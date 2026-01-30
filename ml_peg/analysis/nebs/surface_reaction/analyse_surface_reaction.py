@@ -17,6 +17,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+DATA_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "data"
 CALC_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
 
@@ -74,8 +75,11 @@ def plot_nebs(model: str, path: Literal["transfer_id_601_1482_1_211-5"]) -> None
     plot_neb()
 
 
+@pytest.fixture
 def energies() -> dict[str, list]:
-    results = {"ref": [] | {mlip: [] for mlip in MODELS}
+    ref_traj = read(DATA_PATH / "transfer_id_601_1482_1_211-5.xyz", ":")
+    results = {"ref": [at.info["DFT_energy"] for at in ref_traj]} | {mlip: [] for mlip in MODELS}
+
     for model_name in MODELS:
         structs = read(CALC_PATH / f"transfer_id_601_1482_1_211-5_{model_name}.xyz", ":")
 
