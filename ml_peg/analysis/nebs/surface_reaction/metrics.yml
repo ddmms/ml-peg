@@ -1,0 +1,13 @@
+metrics:
+  Reaction energy error:
+    good: 0.02
+    bad: 0.4
+    unit: eV
+    tooltip: "Reaction energy error"
+    level_of_theory: RPBE
+  Forward barrier error:
+    good: 0.1
+    bad: 0.8
+    unit: eV
+    tooltip: "Forward barrier error"
+    level_of_theory: RPBE
