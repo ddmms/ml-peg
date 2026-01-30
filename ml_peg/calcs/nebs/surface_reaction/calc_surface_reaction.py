@@ -87,7 +87,9 @@ def make_interpolation() -> dict[str, Atoms]:
                 struct.calc = calc
                 struct.constraints = [FixAtoms(indices=fix_indices)]
                 opt = BFGS(struct)
-                opt.run(fmax=0.05)
+                conv = opt.run(fmax=0.05, steps=500)
+                if not conv:
+                    raise 
     
             images = [initial.copy()] + [initial.copy() for _ in range(8)] + [final.copy()]
             interpolate(images, mic=True, apply_constraint=True)
@@ -130,6 +132,7 @@ def test_surface_reaction(make_interpolation: dict[str, Atoms], model_name: str)
         at.info["converged"] = converged
         at.info["mlip_energy"] = at.get_potential_energy()
         at.arrays["mlip_forces"] = at.get_forces()
-
-#    write(homedir / f"{struct_name}_{model_name}.xyz", neb.images)
+   
+    OUT_PATH.mkdir(exist_ok=True, parents=True)    
+    write(OUT_PATH / f"{struct_name}_{model_name}.xyz", neb.images)
 
