@@ -13,7 +13,6 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import calc_table_scores
@@ -509,11 +508,11 @@ def plot_hist(
                 # Create figure
                 # counts, np_bins = np.histogram(hist_data[model_name], bins = bins)
                 fig.add_trace(
-                    px.histogram(
-                        hist_data,
+                    go.Histogram(
+                        x=hist_data,
                         histnorm="probability density",
-                        x=bins,
-                        title=model_name,
+                        nbinsx=bins,
+                        name=model_name,
                     )
                 )
 
@@ -521,27 +520,23 @@ def plot_hist(
             full_fig = fig.full_figure_for_development()
             y_range = full_fig.layout.yaxis.range
             if good is not None:
-                lims = [
-                    np.min([good, y_range]),
-                    np.max([good, y_range]),
-                ]
+                x = [0, y_range]
+                y = [good, good]
                 fig.add_trace(
                     go.Scatter(
-                        x=lims,
-                        y=lims,
+                        x=x,
+                        y=y,
                         mode="lines",
                         showlegend=False,
                     )
                 )
             if bad is not None:
-                lims = [
-                    np.min([bad, y_range]),
-                    np.max([bad, y_range]),
-                ]
+                x = [0, y_range]
+                y = [bad, bad]
                 fig.add_trace(
                     go.Scatter(
-                        x=lims,
-                        y=lims,
+                        x=x,
+                        y=y,
                         mode="lines",
                         showlegend=False,
                     )

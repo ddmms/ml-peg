@@ -103,6 +103,7 @@ def n_bad() -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         if model_name in dipoles.keys():
+            plot_distribution(model_name)
             results[model_name] = (
                 np.abs(dipoles[model_name]) > DIPOLE_BAD_THRESHOLD
             ).sum() / len(dipoles[model_name])
