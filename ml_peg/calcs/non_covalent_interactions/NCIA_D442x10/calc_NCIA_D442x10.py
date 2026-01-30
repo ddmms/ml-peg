@@ -6,10 +6,11 @@ Phys. Chem. Chem. Phys., 2022,24, 14780-14793.
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 from typing import Any
 
-from ase import units
+from ase import Atoms, units
 from ase.io import read, write
 import numpy as np
 import pytest
@@ -22,7 +23,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 EXCLUDE_NOBLE_GASES = True
@@ -55,7 +55,7 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
     return ref_energies
 
 
-def get_monomers(atoms):
+def get_monomers(atoms: Atoms):
     """
     Get ASE atoms objects of the monomers.
 
@@ -132,8 +132,8 @@ def test_ncia_d442x10(mlip: tuple[str, Any]) -> None:
         atoms.info["spin"] = 1
         atoms.info["charge"] = int(atoms_a.info["charge"] + atoms_b.info["charge"])
         atoms.calc = calc
-        atoms_a.calc = calc
-        atoms_b.calc = calc
+        atoms_a.calc = copy(calc)
+        atoms_b.calc = copy(calc)
 
         atoms.info["model_int_energy"] = (
             atoms.get_potential_energy()
