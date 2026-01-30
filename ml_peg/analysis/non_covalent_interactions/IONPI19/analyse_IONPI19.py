@@ -24,8 +24,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "ionpi19" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ionpi19"
+CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "IONPI19" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "IONPI19"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
