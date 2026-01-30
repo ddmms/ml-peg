@@ -1,7 +1,7 @@
 metrics:
   MAE:
     good: 0.0
-    bad: 0.5
-    unit: eV
+    bad: 10
+    unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
