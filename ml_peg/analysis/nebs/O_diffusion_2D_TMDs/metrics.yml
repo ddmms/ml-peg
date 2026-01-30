@@ -1,0 +1,37 @@
+metrics:
+  MoS2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for MoS2"
+    level_of_theory: DFT-PBE
+  MoSe2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for MoSe2"
+    level_of_theory: DFT-PBE
+  MoTe2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for MoTe2"
+    level_of_theory: DFT-PBE
+  WS2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for WS2"
+    level_of_theory: DFT-PBE
+  WSe2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for WSe2"
+    level_of_theory: DFT-PBE
+  WTe2 barrier error:
+    good: 0.05
+    bad: 0.4
+    unit: eV
+    tooltip: "Diffusion barrier error for WTe2"
+    level_of_theory: DFT-PBE
