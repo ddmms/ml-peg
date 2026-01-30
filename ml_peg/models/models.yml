@@ -1,12 +1,12 @@
-mace-mp-0a:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_d3: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium"
+# mace-mp-0a:
+#   module: mace.calculators
+#   class_name: mace_mp
+#   device: "auto"
+#   default_dtype: float32
+#   trained_on_d3: false
+#   level_of_theory: PBE
+#   kwargs:
+#     model: "medium"
 
 mace-mp-0b3:
   module: mace.calculators
@@ -18,38 +18,38 @@ mace-mp-0b3:
   kwargs:
     model: "medium-0b3"
 
-mace-mpa-0:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_d3: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-mpa-0"
+# mace-mpa-0:
+#   module: mace.calculators
+#   class_name: mace_mp
+#   device: "auto"
+#   default_dtype: float32
+#   trained_on_d3: false
+#   level_of_theory: PBE
+#   kwargs:
+#     model: "medium-mpa-0"
 
-mace-omat-0:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_d3: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-omat-0"
+# mace-omat-0:
+#   module: mace.calculators
+#   class_name: mace_mp
+#   device: "auto"
+#   default_dtype: float32
+#   trained_on_d3: false
+#   level_of_theory: PBE
+#   kwargs:
+#     model: "medium-omat-0"
 
-mace-matpes-r2scan:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_d3: false
-  level_of_theory: r2SCAN
-  kwargs:
-    model: "mace-matpes-r2scan-0"
-    head: "matpes_pbe"
-  d3_kwargs:
-    xc: r2scan
+# mace-matpes-r2scan:
+#   module: mace.calculators
+#   class_name: mace_mp
+#   device: "auto"
+#   default_dtype: float32
+#   trained_on_d3: false
+#   level_of_theory: r2SCAN
+#   kwargs:
+#     model: "mace-matpes-r2scan-0"
+#     head: "matpes_pbe"
+#   d3_kwargs:
+#     xc: r2scan
 
 # mace-mh-1-omat:
 #   module: mace.calculators
@@ -65,7 +65,7 @@ mace-matpes-r2scan:
 orb-v3-consv-inf-omat:
   module: orb_models.forcefield
   class_name: OrbCalc
-  device: "cpu"
+  device: "cuda"
   default_dtype: float32-high
   trained_on_d3: false
   level_of_theory: PBE
@@ -169,14 +169,14 @@ orb-v3-consv-inf-omat:
 #     model_name: "uma-m-1p1"
 #     task_name: "omol"
 
-pet-mad:
-  module: pet_mad.calculator
-  class_name: PETMADCalculator
-  device: "cpu"
-  default_dtype: float32
-  trained_on_d3: false
-  level_of_theory: PBEsol
-  kwargs:
-    version: "v1.0.2"
-  d3_kwargs:
-    xc: pbesol
+# pet-mad:
+#   module: pet_mad.calculator
+#   class_name: PETMADCalculator
+#   device: "cpu"
+#   default_dtype: float32
+#   trained_on_d3: false
+#   level_of_theory: PBEsol
+#   kwargs:
+#     version: "v1.0.2"
+#   d3_kwargs:
+#     xc: pbesol
