@@ -1,4 +1,4 @@
-"""Analyse ncia_r739x5 benchmark."""
+"""Analyse NCIA R739x5 benchmark."""
 
 from __future__ import annotations
 
@@ -18,10 +18,9 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "ncia_r739x5" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ncia_r739x5"
+EV_TO_KCAL = units.mol / units.kcal
+CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NCIA_R739x5" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_R739x5"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -48,8 +47,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_ncia_r739x5.json",
     title="Interaction energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": labels(),
     },
@@ -71,9 +70,9 @@ def interaction_energies() -> dict[str, list]:
         for label in labels():
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"])
+                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
-            results[model_name].append(atoms.info["model_int_energy"])
+            results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
@@ -135,7 +134,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_ncia_r739x5(metrics: dict[str, dict]) -> None:
     """
-    Run ncia_r739x5 test.
+    Run NCIA R739x5 test.
 
     Parameters
     ----------
