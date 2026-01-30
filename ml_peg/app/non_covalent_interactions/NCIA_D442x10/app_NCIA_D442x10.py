@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "NCIA_D442x10"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#ncia-d442x10"
-DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ncia_d442x10"
+DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_D442x10"
 
 
 class NCIAD442x10App(BaseApp):
@@ -36,7 +36,7 @@ class NCIAD442x10App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/non_covalent_interactions/ncia_d442x10/{MODELS[0]}/{label}.xyz"
+                f"assets/non_covalent_interactions/NCIA_D442x10/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
