@@ -130,6 +130,52 @@ def plot_from_table_cell(
         return Div("Click on a metric to view plot.")
 
 
+def plot_from_scatter(
+    scatter_id: str,
+    plot_id: str,
+    plots_list: list[Graph],
+) -> None:
+    """
+    Attach callback to show plot when a table cell is clicked.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    plot_id
+        ID for Dash plot placeholder Div where new plot will be rendered.
+    plots_list
+        List of plots to show, in same order as scatter data.
+    """
+
+    @callback(
+        Output(plot_id, "children", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_plot(click_data) -> Div:
+        """
+        Register callback to show plot when a scatter point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div
+            Plot on scatter click.
+        """
+        if not click_data:
+            return Div("Click on a metric to view plot.")
+        idx = click_data["points"][0]["pointNumber"]
+
+        if idx >= 0 and idx < len(plots_list):
+            return Div(plots_list[idx])
+        return Div("Click on a metric to view plot.")
+
+
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
