@@ -1,4 +1,4 @@
-"""Analyse ncia_ihb100x10 benchmark."""
+"""Analyse NCIA IHB100x10 benchmark."""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
-CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "ncia_ihb100x10" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ncia_ihb100x10"
+CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NCIA_IHB100x10" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_IHB100x10"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -134,7 +134,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_ncia_ihb100x10(metrics: dict[str, dict]) -> None:
     """
-    Run ncia_ihb100x10 test.
+    Run NCIA IHB100x10 test.
 
     Parameters
     ----------
