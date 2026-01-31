@@ -1,4 +1,4 @@
-"""Run NCIA_HB375x10 app."""
+"""Run NCIA HB375x10 app."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class NCIANHB375x10App(BaseApp):
 
 def get_app() -> NCIANHB375x10App:
     """
-    Get NCIA_HB375x10 benchmark app layout and callback registration.
+    Get NCIA HB375x10 benchmark app layout and callback registration.
 
     Returns
     -------
