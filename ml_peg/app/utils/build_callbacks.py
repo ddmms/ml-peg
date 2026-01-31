@@ -136,7 +136,7 @@ def plot_from_scatter(
     plots_list: list[Graph],
 ) -> None:
     """
-    Attach callback to show plot when a table cell is clicked.
+    Attach callback to show plot when a scatter point is clicked.
 
     Parameters
     ----------
