@@ -18,8 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
-KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
+EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NCIA_HB375x10" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_HB375x10"
 
@@ -48,8 +47,8 @@ def labels() -> list:
 @plot_parity(
     filename=OUT_PATH / "figure_ncia_hb375x10.json",
     title="Interaction energies",
-    x_label="Predicted energy / eV",
-    y_label="Reference energy / eV",
+    x_label="Predicted energy / kcal/mol",
+    y_label="Reference energy / kcal/mol",
     hoverdata={
         "Labels": labels(),
     },
@@ -71,9 +70,9 @@ def interaction_energies() -> dict[str, list]:
         for label in labels():
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"])
+                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
-            results[model_name].append(atoms.info["model_int_energy"])
+            results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name

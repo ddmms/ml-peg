@@ -100,7 +100,7 @@ def get_monomers(atoms: Atoms) -> tuple[Atoms, Atoms]:
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ncia_hb375x10(mlip: tuple[str, Any]) -> None:
     """
-    Run NCIA_HB375x10 barriers benchmark.
+    Run NCIA HB375x10 barriers benchmark.
 
     Parameters
     ----------
