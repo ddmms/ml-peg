@@ -1,4 +1,4 @@
-"""Analyse NCIA_HB300SPXx10 benchmark."""
+"""Analyse NCIA HB300SPXx10 benchmark."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 KCAL_TO_EV = units.kcal / units.mol
 EV_TO_KCAL = 1 / KCAL_TO_EV
-CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "ncia_hb300spxx10" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ncia_hb300spxx10"
+CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NCIA_HB300SPXx10" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_HB300SPXx10"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -135,7 +135,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
 
 def test_ncia_hb300spxx10(metrics: dict[str, dict]) -> None:
     """
-    Run ncia_hb300spxx10 test.
+    Run NCIA HB300SPXx10 test.
 
     Parameters
     ----------
