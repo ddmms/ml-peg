@@ -1,4 +1,4 @@
-"""Run NCIA_D1200 app."""
+"""Run NCIA D1200 app."""
 
 from __future__ import annotations
 
@@ -16,13 +16,13 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "NCIA_D1200"
+BENCHMARK_NAME = "NCIA D1200"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#ncia-d1200"
-DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "ncia_d1200"
+DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_D1200"
 
 
 class NCIAD1200App(BaseApp):
-    """NCIA_D1200 benchmark app layout and callbacks."""
+    """NCIA D1200 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -37,7 +37,7 @@ class NCIAD1200App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/non_covalent_interactions/ncia_d1200/{MODELS[0]}/{label}.xyz"
+                f"assets/non_covalent_interactions/NCIA_D1200/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
@@ -59,7 +59,7 @@ class NCIAD1200App(BaseApp):
 
 def get_app() -> NCIAD1200App:
     """
-    Get NCIA_D1200 benchmark app layout and callback registration.
+    Get NCIA D1200 benchmark app layout and callback registration.
 
     Returns
     -------
