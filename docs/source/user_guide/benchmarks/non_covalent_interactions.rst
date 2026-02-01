@@ -1,6 +1,6 @@
-==============
+=========================
 Non Covalent Interactions
-==============
+=========================
 
 IONPI19
 =======
@@ -74,8 +74,8 @@ Data availability
 Input structures:
 
 * Řezáč, J., 2022. Non-Covalent Interactions Atlas benchmark data sets 5:
-London dispersion in an extended chemical space. Physical Chemistry
-Chemical Physics, 24(24), pp.14780-14793.
+  London dispersion in an extended chemical space. Physical Chemistry
+  Chemical Physics, 24(24), pp.14780-14793.
 
 Reference data:
 
@@ -83,7 +83,7 @@ Reference data:
 
 
 NCIA HB375x10
-======================
+=============
 
 Summary
 -------
@@ -120,7 +120,7 @@ Reference data:
 
 
 NCIA IHB100x10
-======================
+==============
 
 Summary
 -------
@@ -158,7 +158,7 @@ Reference data:
 
 
 NCIA HB300SPXx10
-======================
+================
 
 Summary
 -------
@@ -196,7 +196,7 @@ Reference data:
 
 
 NCIA SH250x10
-======================
+=============
 
 Summary
 -------
@@ -225,7 +225,7 @@ Data availability
 Input structures:
 
 * Kříž, K. and Řezáč, J., 2022. Non-covalent interactions atlas benchmark data sets 4:
-σ-hole interactions. Physical Chemistry Chemical Physics, 24(24), pp.14794-14804.
+  σ-hole interactions. Physical Chemistry Chemical Physics, 24(24), pp.14794-14804.
 
 Reference data:
 
@@ -233,7 +233,7 @@ Reference data:
 
 
 NCIA R739x5
-======================
+===========
 
 Summary
 -------
