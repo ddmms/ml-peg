@@ -49,6 +49,20 @@ DFT_REFERENCE = {
     "gamma_112": 2.48,
     "gamma_us_110": 0.75,  # Unstable SFE (J/m²)
     "gamma_us_112": 1.12,
+    # Traction-separation properties
+    "max_traction_100": 35.0,  # Max traction for (100) cleavage (GPa)
+    "max_traction_110": 30.0,  # Max traction for (110) cleavage (GPa)
+}
+
+
+# Curve file mapping for CSV loading
+CURVE_FILES = {
+    "eos": "eos_curve.csv",
+    "bain": "bain_path.csv",
+    "sfe_110": "sfe_110_curve.csv",
+    "sfe_112": "sfe_112_curve.csv",
+    "ts_100": "ts_100_curve.csv",
+    "ts_110": "ts_110_curve.csv",
 }
 
 
@@ -72,81 +86,26 @@ def load_model_results(model_name: str) -> dict[str, Any] | None:
     return json.loads(json_path.read_text())
 
 
-def load_eos_curve(model_name: str) -> pd.DataFrame:
+def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
     """
-    Load EOS curve data for a model.
+    Load curve data for a model.
 
     Parameters
     ----------
     model_name : str
-        Name of the model to load EOS curve for.
+        Name of the model to load curve for.
+    curve_type : str
+        Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
 
     Returns
     -------
     pd.DataFrame
-        EOS curve data, or empty DataFrame if file does not exist.
+        Curve data, or empty DataFrame if file does not exist.
     """
-    csv_path = CALC_PATH / model_name / "eos_curve.csv"
-    if not csv_path.exists():
+    filename = CURVE_FILES.get(curve_type)
+    if not filename:
         return pd.DataFrame()
-    return pd.read_csv(csv_path)
-
-
-def load_bain_curve(model_name: str) -> pd.DataFrame:
-    """
-    Load Bain path curve data for a model.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the model to load Bain path curve for.
-
-    Returns
-    -------
-    pd.DataFrame
-        Bain path curve data, or empty DataFrame if file does not exist.
-    """
-    csv_path = CALC_PATH / model_name / "bain_path.csv"
-    if not csv_path.exists():
-        return pd.DataFrame()
-    return pd.read_csv(csv_path)
-
-
-def load_sfe_110_curve(model_name: str) -> pd.DataFrame:
-    """
-    Load SFE 110 curve data for a model.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the model to load SFE 110 curve for.
-
-    Returns
-    -------
-    pd.DataFrame
-        SFE 110 curve data, or empty DataFrame if file does not exist.
-    """
-    csv_path = CALC_PATH / model_name / "sfe_110_curve.csv"
-    if not csv_path.exists():
-        return pd.DataFrame()
-    return pd.read_csv(csv_path)
-
-
-def load_sfe_112_curve(model_name: str) -> pd.DataFrame:
-    """
-    Load SFE 112 curve data for a model.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the model to load SFE 112 curve for.
-
-    Returns
-    -------
-    pd.DataFrame
-        SFE 112 curve data, or empty DataFrame if file does not exist.
-    """
-    csv_path = CALC_PATH / model_name / "sfe_112_curve.csv"
+    csv_path = CALC_PATH / model_name / filename
     if not csv_path.exists():
         return pd.DataFrame()
     return pd.read_csv(csv_path)
@@ -253,6 +212,17 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
         )
         metrics["Max SFE 112 error (%)"] = max_sfe_112_error
 
+    # ==========================================================================
+    # Traction-separation metrics
+    # ==========================================================================
+    ts_100 = results.get("ts_100", {})
+    if "max_traction" in ts_100:
+        metrics["Max traction (100) (GPa)"] = ts_100["max_traction"]
+
+    ts_110 = results.get("ts_110", {})
+    if "max_traction" in ts_110:
+        metrics["Max traction (110) (GPa)"] = ts_110["max_traction"]
+
     return metrics
 
 
@@ -273,6 +243,28 @@ def _load_all_results() -> dict[str, dict[str, Any]]:
     return all_results
 
 
+def _load_curves_for_all_models(curve_type: str) -> dict[str, pd.DataFrame]:
+    """
+    Load curves of given type for all models.
+
+    Parameters
+    ----------
+    curve_type : str
+        Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their curve DataFrames.
+    """
+    curves: dict[str, pd.DataFrame] = {}
+    for model_name in MODELS:
+        curve = load_curve(model_name, curve_type)
+        if not curve.empty:
+            curves[model_name] = curve
+    return curves
+
+
 @pytest.fixture
 def iron_eos_curves() -> dict[str, pd.DataFrame]:
     """
@@ -283,12 +275,7 @@ def iron_eos_curves() -> dict[str, pd.DataFrame]:
     dict[str, pd.DataFrame]
         Dictionary mapping model names to their EOS curve DataFrames.
     """
-    curves: dict[str, pd.DataFrame] = {}
-    for model_name in MODELS:
-        curve = load_eos_curve(model_name)
-        if not curve.empty:
-            curves[model_name] = curve
-    return curves
+    return _load_curves_for_all_models("eos")
 
 
 @pytest.fixture
@@ -301,12 +288,7 @@ def iron_bain_curves() -> dict[str, pd.DataFrame]:
     dict[str, pd.DataFrame]
         Dictionary mapping model names to their Bain path curve DataFrames.
     """
-    curves: dict[str, pd.DataFrame] = {}
-    for model_name in MODELS:
-        curve = load_bain_curve(model_name)
-        if not curve.empty:
-            curves[model_name] = curve
-    return curves
+    return _load_curves_for_all_models("bain")
 
 
 @pytest.fixture
@@ -319,12 +301,7 @@ def iron_sfe_110_curves() -> dict[str, pd.DataFrame]:
     dict[str, pd.DataFrame]
         Dictionary mapping model names to their SFE 110 curve DataFrames.
     """
-    curves: dict[str, pd.DataFrame] = {}
-    for model_name in MODELS:
-        curve = load_sfe_110_curve(model_name)
-        if not curve.empty:
-            curves[model_name] = curve
-    return curves
+    return _load_curves_for_all_models("sfe_110")
 
 
 @pytest.fixture
@@ -337,12 +314,33 @@ def iron_sfe_112_curves() -> dict[str, pd.DataFrame]:
     dict[str, pd.DataFrame]
         Dictionary mapping model names to their SFE 112 curve DataFrames.
     """
-    curves: dict[str, pd.DataFrame] = {}
-    for model_name in MODELS:
-        curve = load_sfe_112_curve(model_name)
-        if not curve.empty:
-            curves[model_name] = curve
-    return curves
+    return _load_curves_for_all_models("sfe_112")
+
+
+@pytest.fixture
+def iron_ts_100_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load T-S (100) curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their T-S (100) curve DataFrames.
+    """
+    return _load_curves_for_all_models("ts_100")
+
+
+@pytest.fixture
+def iron_ts_110_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load T-S (110) curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their T-S (110) curve DataFrames.
+    """
+    return _load_curves_for_all_models("ts_110")
 
 
 def collect_metrics() -> pd.DataFrame:

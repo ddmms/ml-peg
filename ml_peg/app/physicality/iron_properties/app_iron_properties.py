@@ -23,6 +23,59 @@ CALC_PATH = CALCS_ROOT / "physicality" / "iron_properties" / "outputs"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#iron-properties"
 
 
+# Curve configuration: file name, x column, y column, title, x label, y label
+CURVE_CONFIG = {
+    "eos": {
+        "file": "eos_curve.csv",
+        "x": "volume",
+        "y": "energy",
+        "title": "Equation of State",
+        "x_label": "Volume (Å³/atom)",
+        "y_label": "Energy (eV/atom)",
+    },
+    "bain": {
+        "file": "bain_path.csv",
+        "x": "ca_ratio",
+        "y": "energy_meV",
+        "title": "Bain Path",
+        "x_label": "c/a ratio",
+        "y_label": "Energy (meV/atom)",
+    },
+    "sfe_110": {
+        "file": "sfe_110_curve.csv",
+        "x": "displacement",
+        "y": "sfe_J_per_m2",
+        "title": "Stacking Fault Energy {110}<111>",
+        "x_label": "Displacement (Å)",
+        "y_label": "SFE (J/m²)",
+    },
+    "sfe_112": {
+        "file": "sfe_112_curve.csv",
+        "x": "displacement",
+        "y": "sfe_J_per_m2",
+        "title": "Stacking Fault Energy {112}<111>",
+        "x_label": "Displacement (Å)",
+        "y_label": "SFE (J/m²)",
+    },
+    "ts_100": {
+        "file": "ts_100_curve.csv",
+        "x": "separation",
+        "y": "traction",
+        "title": "Traction-Separation Curve (100)",
+        "x_label": "Separation (Å)",
+        "y_label": "Traction (GPa)",
+    },
+    "ts_110": {
+        "file": "ts_110_curve.csv",
+        "x": "separation",
+        "y": "traction",
+        "title": "Traction-Separation Curve (110)",
+        "x_label": "Separation (Å)",
+        "y_label": "Traction (GPa)",
+    },
+}
+
+
 def _load_curve_data(model_name: str, curve_type: str) -> pd.DataFrame | None:
     """
     Load curve data for a model.
@@ -43,18 +96,11 @@ def _load_curve_data(model_name: str, curve_type: str) -> pd.DataFrame | None:
     if not model_dir.exists():
         return None
 
-    file_map = {
-        "eos": "eos_curve.csv",
-        "bain": "bain_path.csv",
-        "sfe_110": "sfe_110_curve.csv",
-        "sfe_112": "sfe_112_curve.csv",
-    }
-
-    filename = file_map.get(curve_type)
-    if not filename:
+    config = CURVE_CONFIG.get(curve_type)
+    if not config:
         return None
 
-    csv_path = model_dir / filename
+    csv_path = model_dir / config["file"]
     if not csv_path.exists():
         return None
 
@@ -79,82 +125,32 @@ def _create_figure(df: pd.DataFrame, curve_type: str, model_name: str) -> go.Fig
     go.Figure
         Plotly figure object.
     """
+    config = CURVE_CONFIG.get(curve_type, {})
+
     fig = go.Figure()
 
-    if curve_type == "eos":
-        fig.add_trace(
-            go.Scatter(
-                x=df["volume"],
-                y=df["energy"],
-                mode="lines+markers",
-                name=model_name,
-                line={"width": 2},
-                marker={"size": 6},
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=df[config["x"]],
+            y=df[config["y"]],
+            mode="lines+markers",
+            name=model_name,
+            line={"width": 2},
+            marker={"size": 6},
         )
-        fig.update_layout(
-            title=f"Equation of State - {model_name}",
-            xaxis_title="Volume (Å³/atom)",
-            yaxis_title="Energy (eV/atom)",
-        )
+    )
 
-    elif curve_type == "bain":
-        fig.add_trace(
-            go.Scatter(
-                x=df["ca_ratio"],
-                y=df["energy_meV"],
-                mode="lines+markers",
-                name=model_name,
-                line={"width": 2},
-                marker={"size": 6},
-            )
-        )
-        # Add vertical lines for BCC and FCC
+    # Special handling for Bain path (add BCC/FCC reference lines)
+    if curve_type == "bain":
         fig.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="BCC")
         fig.add_vline(
             x=1.414, line_dash="dash", line_color="gray", annotation_text="FCC"
         )
-        fig.update_layout(
-            title=f"Bain Path - {model_name}",
-            xaxis_title="c/a ratio",
-            yaxis_title="Energy (meV/atom)",
-        )
-
-    elif curve_type == "sfe_110":
-        fig.add_trace(
-            go.Scatter(
-                x=df["displacement"],
-                y=df["sfe_J_per_m2"],
-                mode="lines+markers",
-                name=model_name,
-                line={"width": 2},
-                marker={"size": 6},
-            )
-        )
-        fig.update_layout(
-            title=f"Stacking Fault Energy {{110}}<111> - {model_name}",
-            xaxis_title="Displacement (Å)",
-            yaxis_title="SFE (J/m²)",
-        )
-
-    elif curve_type == "sfe_112":
-        fig.add_trace(
-            go.Scatter(
-                x=df["displacement"],
-                y=df["sfe_J_per_m2"],
-                mode="lines+markers",
-                name=model_name,
-                line={"width": 2},
-                marker={"size": 6},
-            )
-        )
-        fig.update_layout(
-            title=f"Stacking Fault Energy {{112}}<111> - {model_name}",
-            xaxis_title="Displacement (Å)",
-            yaxis_title="SFE (J/m²)",
-        )
 
     fig.update_layout(
+        title=f"{config['title']} - {model_name}",
+        xaxis_title=config["x_label"],
+        yaxis_title=config["y_label"],
         template="plotly_white",
         showlegend=True,
         height=500,
@@ -248,6 +244,8 @@ def get_app() -> IronPropertiesApp:
                         {"label": "Bain Path", "value": "bain"},
                         {"label": "SFE {110}<111>", "value": "sfe_110"},
                         {"label": "SFE {112}<111>", "value": "sfe_112"},
+                        {"label": "T-S Curve (100)", "value": "ts_100"},
+                        {"label": "T-S Curve (110)", "value": "ts_110"},
                     ],
                     value="eos",
                     clearable=False,
@@ -272,8 +270,9 @@ def get_app() -> IronPropertiesApp:
             "Includes equation of state (lattice parameter, bulk modulus), "
             "elastic constants (C11, C12, C44), Bain path (BCC-FCC transformation), "
             "vacancy formation energy, surface energies (100, 110, 111, 112), "
-            "and generalized stacking fault energy curves for {110}<111> and "
-            "{112}<111> slip systems. "
+            "generalized stacking fault energy curves for {110}<111> and "
+            "{112}<111> slip systems, and traction-separation curves for (100) "
+            "and (110) cleavage planes. "
             "This benchmark is computationally expensive and marked with "
             "@pytest.mark.slow."
         ),

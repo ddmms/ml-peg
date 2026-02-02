@@ -142,6 +142,83 @@ def fit_eos(
 # =============================================================================
 
 
+def _create_oriented_bcc_structure(
+    lattice_parameter: float,
+    rotation: np.ndarray,
+    cell_dims: tuple[float, float, float],
+    max_range: int,
+    symbol: str = "Fe",
+    wrap: bool = True,
+) -> Atoms:
+    """
+    Create BCC structure with given orientation using rotation matrix.
+
+    This is a generic function used by several oriented structure creators.
+
+    Parameters
+    ----------
+    lattice_parameter : float
+        BCC lattice parameter in Angstroms.
+    rotation : np.ndarray
+        3x3 rotation matrix (rows are the new basis vectors).
+    cell_dims : tuple[float, float, float]
+        Cell dimensions (lx, ly, lz) in Angstroms.
+    max_range : int
+        Range for scanning cubic positions.
+    symbol : str, optional
+        Chemical symbol (default: 'Fe').
+    wrap : bool, optional
+        Whether to wrap positions into cell (default: True).
+
+    Returns
+    -------
+    Atoms
+        ASE Atoms object with oriented structure.
+    """
+    a = lattice_parameter
+    lx, ly, lz = cell_dims
+    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
+
+    positions = []
+    eps = 1e-8
+
+    for i in range(-max_range, max_range + 1):
+        for j in range(-max_range, max_range + 1):
+            for k in range(-max_range, max_range + 1):
+                for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
+                    pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
+                    pos_oriented = rotation @ pos_cubic
+
+                    frac_x = pos_oriented[0] / lx
+                    frac_y = pos_oriented[1] / ly
+                    frac_z = pos_oriented[2] / lz
+
+                    if (
+                        0 - eps <= frac_x < 1 - eps
+                        and 0 - eps <= frac_y < 1 - eps
+                        and 0 - eps <= frac_z < 1 - eps
+                    ):
+                        positions.append(pos_oriented)
+
+    if len(positions) == 0:
+        raise ValueError("No atoms found for oriented structure")
+
+    positions = np.array(positions)
+    _, unique_idx = np.unique(
+        np.round(positions, decimals=6), axis=0, return_index=True
+    )
+    positions = positions[unique_idx]
+
+    atoms = Atoms(
+        symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
+    )
+
+    if wrap:
+        atoms.wrap()
+
+    return atoms
+
+
 def create_bcc_supercell(
     lattice_parameter: float, size: tuple = (4, 4, 4), symbol: str = "Fe"
 ) -> Atoms:
@@ -302,51 +379,27 @@ def create_surface_111(
         ASE Atoms object with the (111) surface slab.
     """
     a = lattice_parameter
-    lx = a * np.sqrt(2) * size[0]
-    ly = a * np.sqrt(3) * size[1]
-    lz = a * np.sqrt(6) * size[2]
 
-    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
-    positions = []
-    max_range = int(max(size) * 3 + 5)
-
+    # Rotation matrix for (111) orientation
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    R = np.array([ex, ey, ez])  # noqa: N806
+    rotation = np.array([ex, ey, ez])
 
-    for i in range(-max_range, max_range + 1):
-        for j in range(-max_range, max_range + 1):
-            for k in range(-max_range, max_range + 1):
-                for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
-                    pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = R @ pos_cubic
-                    frac_x = pos_oriented[0] / lx
-                    frac_y = pos_oriented[1] / ly
-                    frac_z = pos_oriented[2] / lz
-                    eps = 1e-8
-                    if (
-                        0 - eps <= frac_x < 1 - eps
-                        and 0 - eps <= frac_y < 1 - eps
-                        and 0 - eps <= frac_z < 1 - eps
-                    ):
-                        positions.append(pos_oriented)
-
-    if len(positions) == 0:
-        raise ValueError("No atoms found for (111) surface")
-
-    positions = np.array(positions)
-    _, unique_idx = np.unique(
-        np.round(positions, decimals=6), axis=0, return_index=True
+    cell_dims = (
+        a * np.sqrt(2) * size[0],
+        a * np.sqrt(3) * size[1],
+        a * np.sqrt(6) * size[2],
     )
-    positions = positions[unique_idx]
+    max_range = int(max(size) * 3 + 5)
 
-    atoms = Atoms(
-        symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
+    atoms = _create_oriented_bcc_structure(
+        lattice_parameter, rotation, cell_dims, max_range, symbol
     )
-    atoms.wrap()
+
     if vacuum > 0:
         atoms.center(vacuum=vacuum, axis=1)
+
     return atoms
 
 
@@ -373,51 +426,23 @@ def create_surface_112(
         ASE Atoms object with the (112) surface slab.
     """
     a = lattice_parameter
-    lx = a * np.sqrt(2)
-    ly = a * np.sqrt(3)
-    lz = a * np.sqrt(6) * layers
 
-    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
-    positions = []
-    max_range = int(layers * 3 + 5)
-
+    # Rotation matrix for (112) orientation
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    R = np.array([ex, ey, ez])  # noqa: N806
+    rotation = np.array([ex, ey, ez])
 
-    for i in range(-max_range, max_range + 1):
-        for j in range(-max_range, max_range + 1):
-            for k in range(-max_range, max_range + 1):
-                for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
-                    pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = R @ pos_cubic
-                    frac_x = pos_oriented[0] / lx
-                    frac_y = pos_oriented[1] / ly
-                    frac_z = pos_oriented[2] / lz
-                    eps = 1e-8
-                    if (
-                        0 - eps <= frac_x < 1 - eps
-                        and 0 - eps <= frac_y < 1 - eps
-                        and 0 - eps <= frac_z < 1 - eps
-                    ):
-                        positions.append(pos_oriented)
+    cell_dims = (a * np.sqrt(2), a * np.sqrt(3), a * np.sqrt(6) * layers)
+    max_range = int(layers * 3 + 5)
 
-    if len(positions) == 0:
-        raise ValueError("No atoms found for (112) surface")
-
-    positions = np.array(positions)
-    _, unique_idx = np.unique(
-        np.round(positions, decimals=6), axis=0, return_index=True
+    atoms = _create_oriented_bcc_structure(
+        lattice_parameter, rotation, cell_dims, max_range, symbol
     )
-    positions = positions[unique_idx]
 
-    atoms = Atoms(
-        symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
-    )
-    atoms.wrap()
     if vacuum > 0:
         atoms.center(vacuum=vacuum, axis=2)
+
     return atoms
 
 
@@ -438,47 +463,22 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
     a = lattice_parameter
     size = (20, 1, 3)
 
+    # Rotation matrix for {110} orientation
     ex = np.array([-1, 1, 0]) / np.sqrt(2)
     ey = np.array([1, 1, 1]) / np.sqrt(3)
     ez = np.array([1, 1, -2]) / np.sqrt(6)
-    R = np.array([ex, ey, ez])  # noqa: N806
+    rotation = np.array([ex, ey, ez])
 
-    lx = a * np.sqrt(2) * size[0]
-    ly = a * np.sqrt(3) * size[1]
-    lz = a * np.sqrt(6) * size[2]
-
-    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
-    positions = []
+    cell_dims = (
+        a * np.sqrt(2) * size[0],
+        a * np.sqrt(3) * size[1],
+        a * np.sqrt(6) * size[2],
+    )
     max_range = int(max(size) * 3 + 5)
 
-    for i in range(-max_range, max_range + 1):
-        for j in range(-max_range, max_range + 1):
-            for k in range(-max_range, max_range + 1):
-                for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
-                    pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = R @ pos_cubic
-                    frac_x = pos_oriented[0] / lx
-                    frac_y = pos_oriented[1] / ly
-                    frac_z = pos_oriented[2] / lz
-                    eps = 1e-8
-                    if (
-                        0 - eps <= frac_x < 1 - eps
-                        and 0 - eps <= frac_y < 1 - eps
-                        and 0 - eps <= frac_z < 1 - eps
-                    ):
-                        positions.append(pos_oriented)
-
-    positions = np.array(positions)
-    _, unique_idx = np.unique(
-        np.round(positions, decimals=6), axis=0, return_index=True
+    return _create_oriented_bcc_structure(
+        lattice_parameter, rotation, cell_dims, max_range
     )
-    positions = positions[unique_idx]
-
-    atoms = Atoms(
-        symbols=["Fe"] * len(positions), positions=positions, cell=cell, pbc=True
-    )
-    atoms.wrap()
-    return atoms
 
 
 def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
@@ -498,47 +498,112 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
     a = lattice_parameter
     size = (15, 1, 1)
 
+    # Rotation matrix for {112} orientation
     ex = np.array([1, 1, -2]) / np.sqrt(6)
     ey = np.array([-1, 1, 0]) / np.sqrt(2)
     ez = np.array([1, 1, 1]) / np.sqrt(3)
-    R = np.array([ex, ey, ez])  # noqa: N806
+    rotation = np.array([ex, ey, ez])
 
-    lx = a * np.sqrt(6) * size[0]
-    ly = a * np.sqrt(2) * size[1]
-    lz = a * np.sqrt(3) * size[2]
-
-    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
-    positions = []
+    cell_dims = (
+        a * np.sqrt(6) * size[0],
+        a * np.sqrt(2) * size[1],
+        a * np.sqrt(3) * size[2],
+    )
     max_range = int(max(size) * 3 + 5)
 
-    for i in range(-max_range, max_range + 1):
-        for j in range(-max_range, max_range + 1):
-            for k in range(-max_range, max_range + 1):
-                for basis in [(0, 0, 0), (0.5, 0.5, 0.5)]:
-                    pos_cubic = a * np.array([i + basis[0], j + basis[1], k + basis[2]])
-                    pos_oriented = R @ pos_cubic
-                    frac_x = pos_oriented[0] / lx
-                    frac_y = pos_oriented[1] / ly
-                    frac_z = pos_oriented[2] / lz
-                    eps = 1e-8
-                    if (
-                        0 - eps <= frac_x < 1 - eps
-                        and 0 - eps <= frac_y < 1 - eps
-                        and 0 - eps <= frac_z < 1 - eps
-                    ):
-                        positions.append(pos_oriented)
-
-    positions = np.array(positions)
-    _, unique_idx = np.unique(
-        np.round(positions, decimals=6), axis=0, return_index=True
+    return _create_oriented_bcc_structure(
+        lattice_parameter, rotation, cell_dims, max_range
     )
-    positions = positions[unique_idx]
 
-    atoms = Atoms(
-        symbols=["Fe"] * len(positions), positions=positions, cell=cell, pbc=True
+
+# =============================================================================
+# Traction-Separation Structure Functions
+# =============================================================================
+
+
+def create_ts_100_structure(
+    lattice_parameter: float, layers: int = 36, symbol: str = "Fe"
+) -> Atoms:
+    """
+    Create structure for (100) traction-separation calculation.
+
+    Orientation: x=[100], y=[010], z=[001]
+    Slab: 1x1xlayers lattice units
+    Cleavage plane: perpendicular to z
+
+    Parameters
+    ----------
+    lattice_parameter : float
+        BCC lattice parameter in Angstroms.
+    layers : int, optional
+        Number of layers in z direction (default: 36).
+    symbol : str, optional
+        Chemical symbol (default: 'Fe').
+
+    Returns
+    -------
+    Atoms
+        ASE Atoms object for T-S calculation.
+    """
+    a = lattice_parameter
+
+    # Cell dimensions
+    lx = a
+    ly = a
+    lz = a * layers
+
+    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
+
+    # Generate BCC atoms
+    positions = []
+    for k in range(layers):
+        # Two atoms per unit cell in z
+        positions.append([0, 0, k * a])
+        positions.append([0.5 * a, 0.5 * a, (k + 0.5) * a])
+
+    return Atoms(
+        symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
     )
-    atoms.wrap()
-    return atoms
+
+
+def create_ts_110_structure(
+    lattice_parameter: float, layers: int = 10, symbol: str = "Fe"
+) -> Atoms:
+    """
+    Create structure for (110) traction-separation calculation.
+
+    Orientation: x=[100], y=[01-1], z=[011]
+    Slab: 1x1xlayers lattice units
+    Cleavage plane: perpendicular to z (which is [011])
+
+    Parameters
+    ----------
+    lattice_parameter : float
+        BCC lattice parameter in Angstroms.
+    layers : int, optional
+        Number of layers in z direction (default: 10).
+    symbol : str, optional
+        Chemical symbol (default: 'Fe').
+
+    Returns
+    -------
+    Atoms
+        ASE Atoms object for T-S calculation.
+    """
+    a = lattice_parameter
+
+    # Rotation matrix for T-S 110 orientation
+    ex = np.array([1, 0, 0])
+    ey = np.array([0, 1, -1]) / np.sqrt(2)
+    ez = np.array([0, 1, 1]) / np.sqrt(2)
+    rotation = np.array([ex, ey, ez])
+
+    cell_dims = (a, a * np.sqrt(2), a * np.sqrt(2) * layers)
+    max_range = int(layers * 2 + 5)
+
+    return _create_oriented_bcc_structure(
+        lattice_parameter, rotation, cell_dims, max_range, symbol
+    )
 
 
 # =============================================================================

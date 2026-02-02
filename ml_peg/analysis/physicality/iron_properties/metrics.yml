@@ -61,3 +61,16 @@ metrics:
     unit: "%"
     tooltip: "Error in maximum stacking fault energy for {112}<111> slip system"
     level_of_theory: PBE
+  # Traction-separation properties
+  Max traction (100) (GPa):
+    good: 35.0
+    bad: 20.0
+    unit: "GPa"
+    tooltip: "Maximum traction stress for (100) cleavage plane"
+    level_of_theory: DFT
+  Max traction (110) (GPa):
+    good: 30.0
+    bad: 18.0
+    unit: "GPa"
+    tooltip: "Maximum traction stress for (110) cleavage plane"
+    level_of_theory: DFT

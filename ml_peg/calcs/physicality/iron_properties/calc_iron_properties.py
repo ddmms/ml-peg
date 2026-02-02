@@ -8,6 +8,7 @@ This benchmark computes fundamental properties of BCC iron including:
 - Vacancy formation energy
 - Surface energies (100, 110, 111, 112)
 - Generalized stacking fault energy curves (110, 112)
+- Traction-separation curves (100, 110)
 
 This benchmark is computationally expensive and marked with @pytest.mark.slow.
 """
@@ -39,6 +40,8 @@ from ml_peg.calcs.utils.iron_utils import (
     create_surface_110,
     create_surface_111,
     create_surface_112,
+    create_ts_100_structure,
+    create_ts_110_structure,
     fit_eos,
     get_voigt_strain,
 )
@@ -79,6 +82,10 @@ SFE_110_STEPS = 63
 SFE_112_STEPS = 100
 SFE_STEP_SIZE = 0.04  # Angstroms
 SFE_FMAX = 1e-5
+
+# Traction-separation parameters
+TS_MAX_SEPARATION = 5.0  # Angstroms
+TS_STEP_SIZE = 0.05  # Angstroms
 
 
 # =============================================================================
@@ -345,6 +352,34 @@ def run_vacancy_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 # Surface Calculations
 # =============================================================================
 
+# Surface configuration: create_fn, layers/size, area_axes, vacuum
+SURFACE_CONFIG = {
+    "100": {
+        "create_fn": create_surface_100,
+        "layers": 10,
+        "area_axes": (0, 1),
+        "vacuum": SURFACE_VACUUM,
+    },
+    "110": {
+        "create_fn": create_surface_110,
+        "layers": 10,
+        "area_axes": (0, 1),
+        "vacuum": SURFACE_VACUUM,
+    },
+    "111": {
+        "create_fn": create_surface_111,
+        "size": (3, 15, 3),
+        "area_axes": (0, 2),
+        "vacuum": SURFACE_VACUUM,
+    },
+    "112": {
+        "create_fn": create_surface_112,
+        "layers": 15,
+        "area_axes": (0, 1),
+        "vacuum": 5.0,
+    },
+}
+
 
 def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, Any]:
     """
@@ -364,80 +399,54 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
     """
     surfaces = {}
 
-    # (100) surface
-    atoms_bulk = create_surface_100(lattice_parameter, layers=10, vacuum=0.0)
-    atoms_bulk.calc = calc
-    E_bulk = atoms_bulk.get_potential_energy()  # noqa: N806
-    cell = atoms_bulk.get_cell()
-    area = np.linalg.norm(np.cross(cell[0], cell[1]))
+    for name, cfg in SURFACE_CONFIG.items():
+        create_fn = cfg["create_fn"]
+        area_axes = cfg["area_axes"]
+        vacuum = cfg["vacuum"]
 
-    atoms_slab = create_surface_100(lattice_parameter, layers=10, vacuum=SURFACE_VACUUM)
-    atoms_slab.calc = calc
-    opt = BFGS(atoms_slab, logfile=None)
-    opt.run(fmax=SURFACE_FMAX, steps=10000)
-    E_slab = atoms_slab.get_potential_energy()  # noqa: N806
-    surfaces["100"] = calculate_surface_energy(E_slab, E_bulk, area)
+        # Build kwargs for structure creation
+        if "size" in cfg:
+            bulk_kwargs = {"size": cfg["size"], "vacuum": 0.0}
+            slab_kwargs = {"size": cfg["size"], "vacuum": vacuum}
+        else:
+            bulk_kwargs = {"layers": cfg["layers"], "vacuum": 0.0}
+            slab_kwargs = {"layers": cfg["layers"], "vacuum": vacuum}
 
-    # (110) surface
-    atoms_bulk = create_surface_110(lattice_parameter, layers=10, vacuum=0.0)
-    atoms_bulk.calc = calc
-    E_bulk = atoms_bulk.get_potential_energy()  # noqa: N806
-    cell = atoms_bulk.get_cell()
-    area = np.linalg.norm(np.cross(cell[0], cell[1]))
+        # Bulk reference
+        atoms_bulk = create_fn(lattice_parameter, **bulk_kwargs)
+        atoms_bulk.calc = calc
+        e_bulk = atoms_bulk.get_potential_energy()
+        cell = atoms_bulk.get_cell()
+        area = np.linalg.norm(np.cross(cell[area_axes[0]], cell[area_axes[1]]))
 
-    atoms_slab = create_surface_110(lattice_parameter, layers=10, vacuum=SURFACE_VACUUM)
-    atoms_slab.calc = calc
-    opt = BFGS(atoms_slab, logfile=None)
-    opt.run(fmax=SURFACE_FMAX, steps=10000)
-    E_slab = atoms_slab.get_potential_energy()  # noqa: N806
-    surfaces["110"] = calculate_surface_energy(E_slab, E_bulk, area)
+        # Slab with vacuum
+        atoms_slab = create_fn(lattice_parameter, **slab_kwargs)
+        atoms_slab.calc = calc
+        opt = BFGS(atoms_slab, logfile=None)
+        opt.run(fmax=SURFACE_FMAX, steps=10000)
+        e_slab = atoms_slab.get_potential_energy()
 
-    # (111) surface
-    atoms_bulk = create_surface_111(lattice_parameter, size=(3, 15, 3), vacuum=0.0)
-    atoms_bulk.calc = calc
-    E_bulk = atoms_bulk.get_potential_energy()  # noqa: N806
-    cell = atoms_bulk.get_cell()
-    area = np.linalg.norm(np.cross(cell[0], cell[2]))
+        surfaces[name] = calculate_surface_energy(e_slab, e_bulk, area)
 
-    atoms_slab = create_surface_111(
-        lattice_parameter, size=(3, 15, 3), vacuum=SURFACE_VACUUM
-    )
-    atoms_slab.calc = calc
-    opt = BFGS(atoms_slab, logfile=None)
-    opt.run(fmax=SURFACE_FMAX, steps=10000)
-    E_slab = atoms_slab.get_potential_energy()  # noqa: N806
-    surfaces["111"] = calculate_surface_energy(E_slab, E_bulk, area)
-
-    # (112) surface
-    atoms_bulk = create_surface_112(lattice_parameter, layers=15, vacuum=0.0)
-    atoms_bulk.calc = calc
-    E_bulk = atoms_bulk.get_potential_energy()  # noqa: N806
-    cell = atoms_bulk.get_cell()
-    area = np.linalg.norm(np.cross(cell[0], cell[1]))
-
-    atoms_slab = create_surface_112(lattice_parameter, layers=15, vacuum=5.0)
-    atoms_slab.calc = calc
-    opt = BFGS(atoms_slab, logfile=None)
-    opt.run(fmax=SURFACE_FMAX, steps=10000)
-    E_slab = atoms_slab.get_potential_energy()  # noqa: N806
-    surfaces["112"] = calculate_surface_energy(E_slab, E_bulk, area)
-
-    return {
-        "gamma_100": surfaces["100"],
-        "gamma_110": surfaces["110"],
-        "gamma_111": surfaces["111"],
-        "gamma_112": surfaces["112"],
-    }
+    return {f"gamma_{k}": v for k, v in surfaces.items()}
 
 
 # =============================================================================
 # Stacking Fault Energy Calculations
 # =============================================================================
 
+# SFE configuration: create_fn, number of steps, displacement axis
+SFE_CONFIG = {
+    "110": {"create_fn": create_sfe_110_structure, "steps": SFE_110_STEPS, "axis": 1},
+    "112": {"create_fn": create_sfe_112_structure, "steps": SFE_112_STEPS, "axis": 2},
+}
 
-def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+
+def run_sfe_calculation(
+    calc: Any, lattice_parameter: float, sfe_type: str
+) -> dict[str, Any]:
     """
-    Calculate GSFE curve for {110}<111> slip system.
+    Calculate GSFE curve for specified slip system.
 
     Parameters
     ----------
@@ -445,13 +454,16 @@ def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
         ASE calculator object.
     lattice_parameter : float
         Equilibrium lattice parameter from EOS fit.
+    sfe_type : str
+        Type of SFE calculation ('110' or '112').
 
     Returns
     -------
     dict
         Dictionary with displacements, sfe_J_per_m2, and max_sfe.
     """
-    atoms = create_sfe_110_structure(lattice_parameter)
+    config = SFE_CONFIG[sfe_type]
+    atoms = config["create_fn"](lattice_parameter)
     atoms.calc = calc
 
     cell = atoms.get_cell()
@@ -461,7 +473,7 @@ def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
     opt = BFGS(atoms, logfile=None)
     opt.run(fmax=SFE_FMAX, steps=10000)
-    E0 = atoms.get_potential_energy()  # noqa: N806
+    e0 = atoms.get_potential_energy()
 
     positions = atoms.get_positions()
     x_mid = (positions[:, 0].min() + positions[:, 0].max()) / 2 + 0.1
@@ -472,9 +484,11 @@ def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     sfe_j_per_m2 = [0.0]
 
     constraints = [FixedLine(idx, direction=[1, 0, 0]) for idx in range(len(atoms))]
-    for step in range(1, SFE_110_STEPS + 1):
+    displacement_axis = config["axis"]
+
+    for step in range(1, config["steps"] + 1):
         positions = atoms.get_positions()
-        positions[upper_indices, 1] += SFE_STEP_SIZE
+        positions[upper_indices, displacement_axis] += SFE_STEP_SIZE
         atoms.set_positions(positions)
 
         atoms.set_constraint(constraints)
@@ -486,8 +500,8 @@ def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
             pass
 
         atoms.set_constraint()
-        E = atoms.get_potential_energy()  # noqa: N806
-        sfe = (E - E0) / (2 * area) * EV_PER_A2_TO_J_PER_M2
+        energy = atoms.get_potential_energy()
+        sfe = (energy - e0) / (2 * area) * EV_PER_A2_TO_J_PER_M2
 
         displacements.append(step * SFE_STEP_SIZE)
         sfe_j_per_m2.append(sfe)
@@ -499,9 +513,25 @@ def run_sfe_110_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     }
 
 
-def run_sfe_112_calculation(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+# =============================================================================
+# Traction-Separation Calculations
+# =============================================================================
+
+# T-S configuration: structure creation function
+TS_CONFIG = {
+    "100": create_ts_100_structure,
+    "110": create_ts_110_structure,
+}
+
+
+def run_ts_calculation(
+    calc: Any, lattice_parameter: float, direction: str
+) -> dict[str, Any]:
     """
-    Calculate GSFE curve for {112}<111> slip system.
+    Calculate traction-separation curve for specified cleavage plane.
+
+    The calculation incrementally separates crystal halves without relaxation
+    and measures energy and traction (stress from forces).
 
     Parameters
     ----------
@@ -509,58 +539,97 @@ def run_sfe_112_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
         ASE calculator object.
     lattice_parameter : float
         Equilibrium lattice parameter from EOS fit.
+    direction : str
+        Cleavage plane direction ('100' or '110').
 
     Returns
     -------
     dict
-        Dictionary with displacements, sfe_J_per_m2, and max_sfe.
+        Dictionary with separations, energies, traction, and max_traction.
     """
-    atoms = create_sfe_112_structure(lattice_parameter)
-    atoms.calc = calc
+    create_fn = TS_CONFIG[direction]
+    num_steps = int(TS_MAX_SEPARATION / TS_STEP_SIZE) + 1
 
-    cell = atoms.get_cell()
-    ly = cell[1, 1]
-    lz = cell[2, 2]
-    area = ly * lz
+    separations = []
+    energies = []
+    traction = []
 
-    opt = BFGS(atoms, logfile=None)
-    opt.run(fmax=SFE_FMAX, steps=10000)
-    E0 = atoms.get_potential_energy()  # noqa: N806
+    for i in range(num_steps):
+        dd = TS_STEP_SIZE * i
 
-    positions = atoms.get_positions()
-    x_mid = (positions[:, 0].min() + positions[:, 0].max()) / 2 + 0.1
-    upper_mask = positions[:, 0] < x_mid
-    upper_indices = np.where(upper_mask)[0]
+        # Create fresh structure for each separation
+        atoms = create_fn(lattice_parameter)
+        atoms.calc = calc
 
-    displacements = [0.0]
-    sfe_j_per_m2 = [0.0]
+        # Get cell dimensions
+        cell = atoms.get_cell()
+        lx = cell[0, 0]
+        ly = cell[1, 1]
+        lz = cell[2, 2]
+        area = lx * ly
 
-    constraints = [FixedLine(idx, direction=[1, 0, 0]) for idx in range(len(atoms))]
-    for step in range(1, SFE_112_STEPS + 1):
+        # Identify upper and lower atoms
         positions = atoms.get_positions()
-        positions[upper_indices, 2] += SFE_STEP_SIZE
+        z_mid = lz / 2 - 0.1
+        upper_mask = positions[:, 2] > z_mid
+        upper_indices = np.where(upper_mask)[0]
+
+        # Expand cell in z direction
+        new_cell = cell.copy()
+        new_cell[2, 2] = lz + dd
+        atoms.set_cell(new_cell, scale_atoms=False)
+
+        # Move upper atoms
+        positions = atoms.get_positions()
+        positions[upper_indices, 2] += dd
         atoms.set_positions(positions)
 
-        atoms.set_constraint(constraints)
+        # Calculate energy (no relaxation!)
+        energy = atoms.get_potential_energy()
 
-        opt = BFGS(atoms, logfile=None)
-        try:
-            opt.run(fmax=SFE_FMAX, steps=10000)
-        except Exception:
-            pass
+        # Calculate forces for stress
+        forces = atoms.get_forces()
 
-        atoms.set_constraint()
-        E = atoms.get_potential_energy()  # noqa: N806
-        sfe = (E - E0) / (2 * area) * EV_PER_A2_TO_J_PER_M2
+        # Sum of z-forces on upper region
+        fz_upper = np.sum(forces[upper_indices, 2])
 
-        displacements.append(step * SFE_STEP_SIZE)
-        sfe_j_per_m2.append(sfe)
+        # Convert to stress (GPa): σ = F / A
+        sig_upper = EV_PER_A3_TO_GPA * fz_upper / area
+
+        separations.append(dd)
+        energies.append(energy)
+        traction.append(sig_upper)
+
+    # Max traction from force-based calculation
+    max_traction = np.max(np.abs(traction))
 
     return {
-        "displacements": displacements,
-        "sfe_J_per_m2": sfe_j_per_m2,
-        "max_sfe": max(sfe_j_per_m2),
+        "separations": separations,
+        "energies": energies,
+        "traction": traction,
+        "max_traction": max_traction,
     }
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def _save_curve(write_dir: Path, name: str, data: dict[str, list]) -> None:
+    """
+    Save curve data to CSV file.
+
+    Parameters
+    ----------
+    write_dir : Path
+        Directory to save the file.
+    name : str
+        Base name for the CSV file (without extension).
+    data : dict[str, list]
+        Column name to data mapping for the DataFrame.
+    """
+    pd.DataFrame(data).to_csv(write_dir / f"{name}.csv", index=False)
 
 
 # =============================================================================
@@ -579,6 +648,7 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     - Vacancy formation energy
     - Surface energies (100, 110, 111, 112)
     - Stacking fault energy curves (110, 112)
+    - Traction-separation curves (100, 110)
 
     Parameters
     ----------
@@ -604,13 +674,11 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     )
 
     # Save EOS curve data
-    eos_df = pd.DataFrame(
-        {
-            "volume": eos_results["volumes"],
-            "energy": eos_results["energies"],
-        }
+    _save_curve(
+        write_dir,
+        "eos_curve",
+        {"volume": eos_results["volumes"], "energy": eos_results["energies"]},
     )
-    eos_df.to_csv(write_dir / "eos_curve.csv", index=False)
 
     # Elastic constants calculation
     print(f"[{model_name}] Running elastic constants calculation...")
@@ -627,14 +695,15 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     results["bain_path"] = bain_results
 
     # Save Bain path data
-    bain_df = pd.DataFrame(
+    _save_curve(
+        write_dir,
+        "bain_path",
         {
             "ca_ratio": bain_results["ca_ratios"],
             "energy": bain_results["energies"],
             "energy_meV": bain_results["energies_meV"],
-        }
+        },
     )
-    bain_df.to_csv(write_dir / "bain_path.csv", index=False)
 
     # Vacancy calculation
     print(f"[{model_name}] Running vacancy calculation...")
@@ -647,29 +716,42 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     surface_results = run_surface_calculations(calc, a0)
     results["surfaces"] = surface_results
 
-    # SFE 110 calculation
-    print(f"[{model_name}] Running SFE 110 calculation...")
-    sfe_110_results = run_sfe_110_calculation(calc, a0)
-    results["sfe_110"] = {"max_sfe": sfe_110_results["max_sfe"]}
-    sfe_110_df = pd.DataFrame(
-        {
-            "displacement": sfe_110_results["displacements"],
-            "sfe_J_per_m2": sfe_110_results["sfe_J_per_m2"],
-        }
-    )
-    sfe_110_df.to_csv(write_dir / "sfe_110_curve.csv", index=False)
+    # SFE calculations
+    sfe_results = {}
+    for sfe_type in ["110", "112"]:
+        print(f"[{model_name}] Running SFE {sfe_type} calculation...")
+        sfe_result = run_sfe_calculation(calc, a0, sfe_type)
+        sfe_results[sfe_type] = sfe_result
+        results[f"sfe_{sfe_type}"] = {"max_sfe": sfe_result["max_sfe"]}
+        _save_curve(
+            write_dir,
+            f"sfe_{sfe_type}_curve",
+            {
+                "displacement": sfe_result["displacements"],
+                "sfe_J_per_m2": sfe_result["sfe_J_per_m2"],
+            },
+        )
 
-    # SFE 112 calculation
-    print(f"[{model_name}] Running SFE 112 calculation...")
-    sfe_112_results = run_sfe_112_calculation(calc, a0)
-    results["sfe_112"] = {"max_sfe": sfe_112_results["max_sfe"]}
-    sfe_112_df = pd.DataFrame(
-        {
-            "displacement": sfe_112_results["displacements"],
-            "sfe_J_per_m2": sfe_112_results["sfe_J_per_m2"],
-        }
-    )
-    sfe_112_df.to_csv(write_dir / "sfe_112_curve.csv", index=False)
+    # T-S calculations
+    ts_results = {}
+    for direction in ["100", "110"]:
+        print(f"[{model_name}] Running T-S ({direction}) calculation...")
+        ts_result = run_ts_calculation(calc, a0, direction)
+        ts_results[direction] = ts_result
+        results[f"ts_{direction}"] = {"max_traction": ts_result["max_traction"]}
+        _save_curve(
+            write_dir,
+            f"ts_{direction}_curve",
+            {
+                "separation": ts_result["separations"],
+                "energy": ts_result["energies"],
+                "traction": ts_result["traction"],
+            },
+        )
+        print(
+            f"[{model_name}] Max traction ({direction}): "
+            f"{ts_result['max_traction']:.2f} GPa"
+        )
 
     # Save all results as JSON
     (write_dir / "results.json").write_text(json.dumps(results, indent=2, default=str))
@@ -687,8 +769,10 @@ def run_iron_properties(model_name: str, model: Any) -> None:
         "gamma_110": surface_results["gamma_110"],
         "gamma_111": surface_results["gamma_111"],
         "gamma_112": surface_results["gamma_112"],
-        "max_sfe_110": sfe_110_results["max_sfe"],
-        "max_sfe_112": sfe_112_results["max_sfe"],
+        "max_sfe_110": sfe_results["110"]["max_sfe"],
+        "max_sfe_112": sfe_results["112"]["max_sfe"],
+        "max_traction_100": ts_results["100"]["max_traction"],
+        "max_traction_110": ts_results["110"]["max_traction"],
     }
 
     (write_dir / "summary.json").write_text(json.dumps(summary, indent=2))
