@@ -95,7 +95,7 @@ def _ref_forces(atoms: Atoms) -> np.ndarray:
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_si_defect_neb_singlepoints(mlip: tuple[str, Any]) -> None:
+def test_si_defects(mlip: tuple[str, Any]) -> None:
     """
     Compare MLIP energies/forces to DFT along fixed NEB images.
 
@@ -133,4 +133,4 @@ def test_si_defect_neb_singlepoints(mlip: tuple[str, Any]) -> None:
             )
             results.append(out_atoms)
 
-        write(out_dir / "si_defect_neb_singlepoints.extxyz", results)
+        write(out_dir / "si_defects.extxyz", results)

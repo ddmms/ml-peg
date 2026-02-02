@@ -18,7 +18,7 @@ MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Si interstitial NEB"
 DOCS_URL = None
-DATA_PATH = APP_ROOT / "data" / "nebs" / "si_defect_neb_singlepoints"
+DATA_PATH = APP_ROOT / "data" / "nebs" / "si_defects"
 
 
 @dataclass(frozen=True)
@@ -74,8 +74,7 @@ class SiDefectNebSinglepointsApp(BaseApp):
         for model in scatter_plots:
             for case in CASES:
                 structs = (
-                    f"assets/nebs/si_defect_neb_singlepoints/{case.key}/"
-                    f"{model}/{model}-neb-band.extxyz"
+                    f"assets/nebs/si_defects/{case.key}/{model}/{model}-neb-band.extxyz"
                 )
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-{case.key}-energy-figure",
@@ -107,7 +106,7 @@ def get_app() -> SiDefectNebSinglepointsApp:
             "referenced to DFT singlepoints."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "si_defect_neb_singlepoints_metrics_table.json",
+        table_path=DATA_PATH / "si_defects_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),

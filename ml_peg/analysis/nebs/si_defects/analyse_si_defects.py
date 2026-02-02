@@ -20,7 +20,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
-BENCHMARK_DIR = "si_defect_neb_singlepoints"
+BENCHMARK_DIR = "si_defects"
 CALC_PATH = CALCS_ROOT / "nebs" / BENCHMARK_DIR / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / BENCHMARK_DIR
 
@@ -282,7 +282,7 @@ def metrics(metrics_dict: dict[str, dict[str, float]]) -> dict[str, dict]:
     return metrics_dict
 
 
-def test_si_defect_neb_singlepoints(metrics: dict[str, dict]) -> None:
+def test_si_defects(metrics: dict[str, dict]) -> None:
     """
     Run analysis for Si interstitial NEB DFT singlepoints.
 
