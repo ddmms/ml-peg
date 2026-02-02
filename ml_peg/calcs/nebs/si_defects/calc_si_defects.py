@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any
 
 from ase.atoms import Atoms
 from ase.io import read, write
 import numpy as np
 import pytest
+from tqdm.auto import tqdm
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -117,7 +119,17 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         results: list[Atoms] = []
-        for atoms in frames:
+        it = frames
+        # Only show tqdm progress bars in an interactive terminal; otherwise the
+        # carriage-return updates tend to spam CI/log outputs.
+        if sys.stderr.isatty():
+            it = tqdm(
+                frames,
+                desc=f"{model_name} {case.key}",
+                unit="img",
+                leave=False,
+            )
+        for atoms in it:
             ref_energy_ev = _ref_energy_ev(atoms)
             ref_forces = _ref_forces(atoms)
 
