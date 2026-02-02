@@ -544,7 +544,8 @@ def plot_density_scatter(
     grid_size: int = 80,
     max_points_per_cell: int = 5,
     seed: int = 0,
-    hover_metadata: tuple[tuple[str, str], ...] | None = None,
+    hover_metadata: dict[str, str] | None = None,
+    annotation_metadata: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot density-coloured parity scatter with legend-based model toggling.
@@ -573,9 +574,14 @@ def plot_density_scatter(
     seed
         Seed for deterministic sub-sampling. Default is 0.
     hover_metadata
-        Sequence of ``(metadata_key, label)`` pairs to include in hover text/
-        annotations.
-        Pass ``None`` (default) to omit additional metadata.
+        Dictionary mapping metadata keys to display labels for hover tooltips.
+        Keys are used to look up values in each point's metadata; labels are shown
+        in the hover text. Pass ``None`` (default) to omit additional hover metadata.
+    annotation_metadata
+        Dictionary mapping metadata keys to display labels for model-level
+        annotations (shown in the text box on the plot). Keys are used to look up
+        values in the model's metadata dict; labels are shown in the annotation.
+        Pass ``None`` (default) to omit additional annotation metadata.
 
     Returns
     -------
@@ -692,28 +698,43 @@ def plot_density_scatter(
             global_max = -np.inf
             processed = {}
             annotations = []
-            metadata_fields = hover_metadata or ()
+            annotation_fields = annotation_metadata or {}
+            hover_fields = hover_metadata or {}
+
             for model in results:
                 data = results[model]
                 ref_vals = np.asarray(data.get("ref", []), dtype=float)
                 pred_vals = np.asarray(data.get("pred", []), dtype=float)
                 meta = data.get("meta") or {}
-                meta_values: list[str] = []
-                for meta_key, _ in metadata_fields:
+
+                # Extract annotation metadata values (for text box)
+                annotation_values: list[str] = []
+                for meta_key in annotation_fields:
                     meta_raw = meta.get(meta_key)
-                    meta_values.append("n/a" if meta_raw is None else str(meta_raw))
+                    annotation_values.append(
+                        "n/a" if meta_raw is None else str(meta_raw)
+                    )
+
+                # Extract hover metadata values (for tooltips)
+                hover_values: list[str] = []
+                for meta_key in hover_fields:
+                    meta_raw = meta.get(meta_key)
+                    hover_values.append("n/a" if meta_raw is None else str(meta_raw))
+
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
                 else:
                     sampled = _downsample(ref_vals, pred_vals)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
+
+                # Build annotation text from annotation metadata
                 summary_text = ""
-                if metadata_fields:
+                if annotation_fields:
                     summary_text = " | ".join(
                         f"{label}: {value}"
-                        for value, (_, label) in zip(
-                            meta_values, metadata_fields, strict=False
+                        for value, label in zip(
+                            annotation_values, annotation_fields.values(), strict=True
                         )
                     )
                 annotations.append(
@@ -733,7 +754,7 @@ def plot_density_scatter(
                 processed[model] = {
                     "samples": sampled,
                     "counts": len(ref_vals),
-                    "meta": meta_values if metadata_fields else None,
+                    "meta": hover_values if hover_fields else None,
                 }
 
             if not np.isfinite(global_min) or not np.isfinite(global_max):
@@ -751,8 +772,8 @@ def plot_density_scatter(
                 "<b>Predicted:</b> %{y:.3f}",
                 "<b>Density:</b> %{customdata[0]:.0f}",
             ]
-            if metadata_fields:
-                for idx, (_, label) in enumerate(metadata_fields):
+            if hover_fields:
+                for idx, label in enumerate(hover_fields.values()):
                     hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
             hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
