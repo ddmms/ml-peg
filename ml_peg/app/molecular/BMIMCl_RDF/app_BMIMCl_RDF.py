@@ -58,13 +58,9 @@ def get_app() -> BMIMClRDFApp:
 
 
 if __name__ == "__main__":
-    # Create Dash app
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
     bmimcl_app = get_app()
     full_app.layout = bmimcl_app.layout
     bmimcl_app.register_callbacks()
 
-    # Run app
     full_app.run(port=8054, debug=True)

@@ -58,7 +58,7 @@ def compute_rdf_from_trajectory(traj_path: Path) -> tuple[np.ndarray, np.ndarray
     rmax = min(cell_lengths) / 2 - 0.01
     nbins = int(rmax * BINS_PER_ANG)
 
-    # Compute RDFs sequentially (multiprocessing causes memory issues with ASE)
+    # Compute RDFs with progress bar
     rdfs = []
     r = None
     for atoms in tqdm(images, desc="Computing RDF"):
@@ -124,7 +124,6 @@ def rdf_data() -> dict[str, list]:
         r, rdf = compute_rdf_from_trajectory(traj_path)
         results[model_name] = [r.tolist(), rdf.tolist()]
 
-        # Save RDF data
         rdf_out = OUT_PATH / model_name
         rdf_out.mkdir(parents=True, exist_ok=True)
         np.savetxt(
