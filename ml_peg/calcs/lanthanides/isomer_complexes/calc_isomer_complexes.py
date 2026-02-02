@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ase import units
 from ase.io import read, write
 import pytest
 from tqdm import tqdm
@@ -17,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 OUT_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
-KCAL_PER_EV = 23.060547
+KCAL_PER_EV = units.mol / units.kcal
 
 
 # r2SCAN-3c references (kcal/mol) from Table S4 (lanthanides only)
