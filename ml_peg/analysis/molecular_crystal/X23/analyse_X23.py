@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 from ase import units
 from ase.io import read, write
@@ -27,6 +29,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
+X23_METADATA: dict[str, dict[str, Any]] = {}
+X23_SYSTEM_ORDER: list[str] = []
+STRUCTURE_MODEL: str | None = None
 
 
 def get_system_names() -> list[str]:
@@ -51,6 +56,29 @@ def get_system_names() -> list[str]:
     return system_names
 
 
+def get_system_elements() -> list[str]:
+    """
+    Get list of X23 system elements.
+
+    Returns
+    -------
+    list[str]
+        List of system elements from structure files.
+    """
+    system_elements = []
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            if xyz_files:
+                for xyz_file in xyz_files:
+                    atoms = read(xyz_file)
+                    symbols = sorted(set(atoms.get_chemical_symbols()))
+                    system_elements.append(", ".join(symbols))
+                break
+    return system_elements
+
+
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_lattice_energies.json",
@@ -59,6 +87,7 @@ def get_system_names() -> list[str]:
     y_label="Reference lattice energy / kJ/mol",
     hoverdata={
         "System": get_system_names(),
+        "Elements": get_system_elements(),
     },
 )
 def lattice_energies() -> dict[str, list]:
@@ -70,6 +99,11 @@ def lattice_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted lattice energies.
     """
+    global STRUCTURE_MODEL
+    X23_METADATA.clear()
+    X23_SYSTEM_ORDER.clear()
+    STRUCTURE_MODEL = None
+
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
@@ -82,6 +116,8 @@ def lattice_energies() -> dict[str, list]:
         xyz_files = sorted(model_dir.glob("*.xyz"))
         if not xyz_files:
             continue
+        if STRUCTURE_MODEL is None:
+            STRUCTURE_MODEL = model_name
 
         for xyz_file in xyz_files:
             structs = read(xyz_file, index=":")
@@ -90,9 +126,22 @@ def lattice_energies() -> dict[str, list]:
             num_molecules = structs[0].info["num_molecules"]
             system = structs[0].info["system"]
             molecule_energy = structs[1].get_potential_energy()
+            elements = sorted(set(structs[0].get_chemical_symbols()))
+            ref_energy = structs[0].info["ref"]
 
             lattice_energy = (solid_energy / num_molecules) - molecule_energy
-            results[model_name].append(lattice_energy * EV_TO_KJ_PER_MOL)
+            converted_energy = lattice_energy * EV_TO_KJ_PER_MOL
+            results[model_name].append(converted_energy)
+
+            if system not in X23_METADATA:
+                X23_SYSTEM_ORDER.append(system)
+                X23_METADATA[system] = {
+                    "system": system,
+                    "elements": elements,
+                    "ref": ref_energy,
+                    "models": {},
+                }
+            X23_METADATA[system]["models"][model_name] = converted_energy
 
             # Copy individual structure files to app data directory
             structs_dir = OUT_PATH / model_name
@@ -101,11 +150,37 @@ def lattice_energies() -> dict[str, list]:
 
             # Store reference energies (only once)
             if not ref_stored:
-                results["ref"].append(structs[0].info["ref"])
+                results["ref"].append(ref_energy)
 
         ref_stored = True
 
     return results
+
+
+@pytest.fixture
+def x23_filter_payload(lattice_energies: dict[str, list]) -> dict[str, Any]:
+    """
+    Write X23 filtering payload with per-system metadata.
+
+    Parameters
+    ----------
+    lattice_energies
+        Fixture ensuring metadata has been populated and structures copied.
+
+    Returns
+    -------
+    dict[str, Any]
+        Payload written to disk for downstream filtering.
+    """
+    _ = lattice_energies  # ensure metadata populated
+    payload = {
+        "systems": [X23_METADATA[system] for system in X23_SYSTEM_ORDER],
+        "structure_model": STRUCTURE_MODEL,
+    }
+    payload_path = OUT_PATH / "x23_filter_payload.json"
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    payload_path.write_text(json.dumps(payload, indent=2))
+    return payload
 
 
 @pytest.fixture
@@ -160,7 +235,10 @@ def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
     }
 
 
-def test_x23(metrics: dict[str, dict]) -> None:
+def test_x23(
+    metrics: dict[str, dict],
+    x23_filter_payload: dict[str, Any],
+) -> None:
     """
     Run X23 test.
 
@@ -168,5 +246,8 @@ def test_x23(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All X23 metrics.
+    x23_filter_payload
+        Filter payload generated alongside the metrics to support interactive
+        element filtering in the Dash application.
     """
     return

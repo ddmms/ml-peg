@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from dash import Dash
 from dash.html import Div
 
@@ -10,6 +12,10 @@ from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_scatter,
+)
+from ml_peg.app.utils.element_filter import (
+    ELEMENT_FILTER_STORE_ID,
+    build_x23_filter_handler,
 )
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
@@ -22,6 +28,28 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#x23"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
+FILTER_PAYLOAD_PATH = DATA_PATH / "x23_filter_payload.json"
+
+
+def _load_model_name_map() -> dict[str, str]:
+    """
+    Load display->canonical model name mapping from saved table JSON.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping used to realign scores with canonical registry names.
+    """
+    table_path = DATA_PATH / "x23_metrics_table.json"
+    try:
+        with table_path.open() as handle:
+            table_json = json.load(handle)
+    except FileNotFoundError:
+        return {}
+    return table_json.get("model_name_map") or {}
+
+
+MODEL_NAME_MAP = _load_model_name_map()
 
 
 class X23App(BaseApp):
@@ -73,6 +101,15 @@ def get_app() -> X23App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        table_customizations={
+            "filter_config": {
+                "store_id": ELEMENT_FILTER_STORE_ID,
+                "handler": build_x23_filter_handler(
+                    FILTER_PAYLOAD_PATH,
+                    alias_map=MODEL_NAME_MAP,
+                ),
+            }
+        },
     )
 
 

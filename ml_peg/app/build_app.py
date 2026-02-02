@@ -5,7 +5,7 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, State, callback
 from dash.dash_table import DataTable
 from dash.dcc import Store, Tab, Tabs
 from dash.html import H1, H3, Div
@@ -14,6 +14,13 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_footer, build_weight_components
+from ml_peg.app.utils.element_filter import (
+    ALL_ELEMENTS,
+    ELEMENT_FILTER_STORE_ID,
+    build_element_filter_panel,
+    load_filter_elements,
+    register_element_filter_callbacks,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     build_tutorial_button,
@@ -315,6 +322,8 @@ def build_tabs(
     layouts: dict[str, list[Div]],
     summary_table: DataTable,
     weight_components: Div,
+    summary_extras: list[Div] | None = None,
+    element_filter_defaults: list[str] | None = None,
 ) -> None:
     """
     Build tab layouts and summary tab.
@@ -329,7 +338,27 @@ def build_tabs(
         Summary table with score from each category.
     weight_components
         Weight sliders, text boxes and reset button.
+    summary_extras
+        Optional components rendered at the top of the summary tab (below the header).
+    element_filter_defaults
+        Default list of selected elements for the summary filter Store.
     """
+    summary_extras = summary_extras or []
+    default_selection = element_filter_defaults or ALL_ELEMENTS
+    filter_panel_style = {"marginBottom": "16px", "display": "block"}
+    filter_panel = build_element_filter_panel(
+        available_elements=None,
+        description=(
+            "Toggle elements to include/exclude benchmarks containing those "
+            "species. Currently applied to the X23 lattice-energy benchmark."
+        ),
+    )
+    filter_wrapper = Div(
+        filter_panel,
+        id="element-filter-wrapper",
+        style=filter_panel_style,
+    )
+
     all_tabs = [Tab(label="Summary", value="summary-tab", id="summary-tab")] + [
         Tab(label=category_name, value=category_name) for category_name in layouts
     ]
@@ -337,10 +366,16 @@ def build_tabs(
     tabs_layout = [
         build_onboarding_modal(),
         build_tutorial_button(),
+        Store(
+            id=ELEMENT_FILTER_STORE_ID,
+            storage_type="session",
+            data=default_selection,
+        ),
         Div(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                filter_wrapper,
                 Div(id="tabs-content"),
             ],
             style={"flex": "1", "marginBottom": "40px"},
@@ -356,22 +391,23 @@ def build_tabs(
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
         """
-        Select tab contents to be displayed.
+        Select the layout to display for the requested tab.
 
         Parameters
         ----------
         tab
-            Name of tab selected.
+            Identifier of the active tab (e.g., ``"summary-tab"`` or a category name).
 
         Returns
         -------
         Div
-            Summary or tab contents to be displayed.
+            Container with the summary layout or the selected category layout.
         """
         if tab == "summary-tab":
             return Div(
                 [
                     H1("Benchmarks Summary"),
+                    *summary_extras,
                     summary_table,
                     weight_components,
                     Store(
@@ -381,6 +417,31 @@ def build_tabs(
                 ]
             )
         return Div([layouts[tab]])
+
+    @callback(
+        Output("element-filter-wrapper", "style"),
+        Input("all-tabs", "value"),
+        State("element-filter-wrapper", "style"),
+    )
+    def toggle_filter_visibility(tab_value: str, current_style: dict | None) -> dict:
+        """
+        Show or hide the element filter panel when switching tabs.
+
+        Parameters
+        ----------
+        tab_value
+            Currently selected tab identifier.
+        current_style
+            Existing style dictionary applied to the filter wrapper.
+
+        Returns
+        -------
+        dict
+            Updated style dict with the ``display`` flag toggled.
+        """
+        style = dict(current_style or {})
+        style["display"] = "block" if tab_value == "summary-tab" else "none"
+        return style
 
 
 def build_full_app(full_app: Dash, category: str = "*") -> None:
@@ -409,6 +470,18 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         table=summary_table,
         column_widths=getattr(summary_table, "column_widths", None),
     )
+    payload_path = (
+        APP_ROOT / "data" / "molecular_crystal" / "X23" / "x23_filter_payload.json"
+    )
+    filter_defaults = load_filter_elements(payload_path)
     # Build summary and category tabs
-    build_tabs(full_app, category_layouts, summary_table, weight_components)
+    build_tabs(
+        full_app,
+        category_layouts,
+        summary_table,
+        weight_components,
+        summary_extras=None,
+        element_filter_defaults=filter_defaults,
+    )
+    register_element_filter_callbacks(default_selection=filter_defaults)
     register_onboarding_callbacks()

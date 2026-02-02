@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from dash.development.base_component import Component
 from dash.html import Div
@@ -28,6 +29,9 @@ class BaseApp(ABC):
         List of other Dash components to add to app.
     docs_url
         URL for online documentation. Default is None.
+    table_customizations
+        Optional attribute overrides applied to the Dash table before the layout is
+        built (e.g., adding filter hooks).
     """
 
     def __init__(
@@ -37,6 +41,7 @@ class BaseApp(ABC):
         table_path: Path,
         extra_components: list[Component],
         docs_url: str | None = None,
+        table_customizations: dict[str, Any] | None = None,
     ):
         """
         Initiaise class.
@@ -53,6 +58,9 @@ class BaseApp(ABC):
             List of other Dash components to add to app.
         docs_url
             URL to online documentation. Default is None.
+        table_customizations
+            Optional attribute overrides applied to the Dash table prior to building
+            the layout (e.g. filter configuration hooks).
         """
         self.name = name
         self.description = description
@@ -63,6 +71,9 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        if table_customizations:
+            for key, value in table_customizations.items():
+                setattr(self.table, key, value)
         self.layout = self.build_layout()
 
     def build_layout(self) -> Div:

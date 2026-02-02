@@ -302,6 +302,7 @@ def build_weight_components(
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
+            filter_config=getattr(table, "filter_config", None),
         )
     else:
         register_summary_table_callbacks(
@@ -490,8 +491,16 @@ def build_test_layout(
             data=table.data,
         )
     )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-base-data-store",
+            storage_type="session",
+            data=table.data,
+        )
+    )
 
     # Inline normalization thresholds when metadata is supplied
+    threshold_controls: Div | None = None
     if thresholds is not None:
         reserved = {"MLIP", "Score", "id"}
         metric_columns = [

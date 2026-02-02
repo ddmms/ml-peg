@@ -101,6 +101,7 @@ def register_category_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
+    filter_config: dict[str, Any] | None = None,
 ) -> None:
     """
     Register callback to update table scores when stored values change.
@@ -119,11 +120,13 @@ def register_category_table_callbacks(
         Mapping of metric name -> level of theory metadata.
     model_configs
         Optional configuration metadata for each model.
+    filter_config
+        Optional configuration mapping specifying a shared filter store ID and a
+        handler callable that mutates the table rows when the filter changes.
     """
     # Benchmark tables
     if use_thresholds:
-
-        @callback(
+        output_args = [
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
             Output(table_id, "tooltip_data", allow_duplicate=True),
@@ -131,25 +134,33 @@ def register_category_table_callbacks(
             Output(table_id, "tooltip_header", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Output(f"{table_id}-raw-data-store", "data"),
+        ]
+        input_args = [
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
             Input("all-tabs", "value"),
             Input(f"{table_id}-normalized-toggle", "value"),
+        ]
+        filter_inputs: list[Input] = []
+        if filter_config and filter_config.get("store_id"):
+            filter_inputs.append(Input(filter_config["store_id"], "data"))
+        state_args = [
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
-            prevent_initial_call="initial_duplicate",
-        )
+            State(f"{table_id}-base-data-store", "data"),
+        ]
+
+        callback_args = output_args + input_args + filter_inputs + state_args
+
+        @callback(*callback_args, prevent_initial_call="initial_duplicate")
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
             _tabs_value: str,
             toggle_value: list[str] | None,
-            stored_raw_data: list[dict] | None,
-            stored_computed_data: list[dict] | None,
-            raw_tooltips: dict[str, str] | None,
-            current_columns: list[dict] | None,
+            *extra_inputs,
         ) -> tuple[
             list[dict],
             list[dict],
@@ -177,12 +188,37 @@ def register_category_table_callbacks(
             stored_computed_data
                 Latest table rows emitted by the table.
             """
-            if not stored_raw_data or current_columns is None:
+            num_filter_inputs = len(filter_inputs)
+            filter_value = None
+            if num_filter_inputs:
+                filter_value = extra_inputs[0]
+            (
+                stored_raw_data,
+                stored_computed_data,
+                raw_tooltips,
+                current_columns,
+                base_data,
+            ) = extra_inputs[num_filter_inputs:]
+
+            if current_columns is None:
                 raise PreventUpdate
 
             thresholds = clean_thresholds(stored_threshold)
             show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
+
+            base_rows = base_data or stored_raw_data
+            if base_rows is None:
+                raise PreventUpdate
+
+            filter_store_id = (filter_config or {}).get("store_id")
+            handler = (filter_config or {}).get("handler")
+            if handler:
+                active_raw_data = handler(deepcopy(base_rows), filter_value)
+                if ctx.triggered_id == filter_store_id:
+                    stored_computed_data = None
+            else:
+                active_raw_data = stored_raw_data or deepcopy(base_rows)
 
             def apply_levels_of_theory(
                 rows: list[dict], base_style: list[dict]
@@ -201,9 +237,9 @@ def register_category_table_callbacks(
                 and stored_computed_data
             ):
                 display_rows = get_scores(
-                    stored_raw_data, stored_computed_data, thresholds, toggle_value
+                    active_raw_data, stored_computed_data, thresholds, toggle_value
                 )
-                scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+                scored_rows = calc_metric_scores(active_raw_data, thresholds=thresholds)
                 style = get_table_style(display_rows, scored_data=scored_rows)
                 style, tooltip_data = apply_levels_of_theory(display_rows, style)
                 columns = format_metric_columns(
@@ -219,15 +255,15 @@ def register_category_table_callbacks(
                     columns,
                     tooltips,
                     stored_computed_data,
-                    stored_raw_data,
+                    active_raw_data,
                 )
 
             # Update overall table score for new weights and thresholds
             metrics_data = calc_table_scores(
-                stored_raw_data, stored_weights, thresholds
+                active_raw_data, stored_weights, thresholds
             )
             # Update stored scores per metric
-            scored_rows = calc_metric_scores(stored_raw_data, thresholds)
+            scored_rows = calc_metric_scores(active_raw_data, thresholds)
             # Select between unitful and unitless data
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
