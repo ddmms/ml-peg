@@ -6,6 +6,7 @@ import bz2
 from copy import copy
 import json
 from pathlib import Path
+import random
 from typing import Any
 import urllib.request
 
@@ -39,9 +40,10 @@ PRESSURE_LABELS = ["P000", "P025", "P050", "P075", "P100", "P125", "P150"]
 # Relaxation parameters
 FMAX = 0.0002  # eV/A - tight convergence
 MAX_STEPS = 500
+RANDOM_SEED = 42
 
 # Number of structures to use for testing
-N_STRUCTURES = 3
+N_STRUCTURES = 100
 
 
 def download_pressure_data(pressure_label: str) -> Path:
@@ -107,7 +109,18 @@ def load_structures(
     adaptor = AseAtomsAdaptor()
     structures = []
 
-    for entry_dict in start_data["entries"][:n_structures]:
+    start_entries = start_data["entries"]
+    if n_structures > len(start_entries):
+        raise ValueError(
+            f"Requested {n_structures} structures but only"
+            f" {len(start_entries)} available"
+        )
+
+    rng = random.Random(RANDOM_SEED)
+    selected_indices = sorted(rng.sample(range(len(start_entries)), k=n_structures))
+
+    for idx in selected_indices:
+        entry_dict = start_entries[idx]
         entry = ComputedStructureEntry.from_dict(entry_dict)
         mat_id = entry.data["mat_id"]
         ref_entry = ref_map.get(mat_id)
@@ -184,7 +197,8 @@ def relax_with_pressure(
     except Exception as e:
         print(f"Relaxation failed: {e}")
         return None, False, None
-
+    if not converged:
+        return None, False, None
     # Calculate enthalpy: H = E + PV
     energy = relaxed.get_potential_energy()
     volume = relaxed.get_volume()
