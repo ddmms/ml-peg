@@ -32,7 +32,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 TEMPERATURE = 353.15
 STEPS = 10_000
 TIMESTEP = 0.5  # fs
-FRICTION = 0.01  # 1/fs
+FRICTION = 0.01
 N_ION_PAIRS = 10
 DENSITY = 1052  # kg/m³ at 353.15 K
 
@@ -56,14 +56,11 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     box = molify.pack(data=[[ion_pair]], counts=[N_ION_PAIRS], density=DENSITY)
     box.calc = calc
 
-    # Optimize structure
     opt = LBFGS(box)
     opt.run(fmax=0.1)
 
-    # Initialize velocities
     MaxwellBoltzmannDistribution(box, temperature_K=TEMPERATURE)
 
-    # MD setup
     dyn = Langevin(
         box,
         timestep=TIMESTEP * units.fs,
@@ -71,16 +68,13 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
         friction=FRICTION / units.fs,
     )
 
-    # Output directory
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_file = write_dir / "md.xyz"
 
-    # Remove existing trajectory file if present
     if traj_file.exists():
         traj_file.unlink()
 
-    # Run MD and save trajectory
     for _ in tqdm(range(STEPS), desc=f"{model_name} MD"):
         dyn.run(1)
         write(traj_file, box, append=True)
