@@ -573,9 +573,9 @@ def plot_density_scatter(
     seed
         Seed for deterministic sub-sampling. Default is 0.
     hover_metadata
-        Sequence of ``(meta_key, label)`` pairs to include in hover text/annotations.
-        Defaults to showing ``("excluded", "Excluded")``; set to ``None`` for no extra
-        metadata.
+        Sequence of ``(metadata_key, label)`` pairs to include in hover text/
+        annotations.
+        Pass ``None`` (default) to omit additional metadata.
 
     Returns
     -------
