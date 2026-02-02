@@ -48,10 +48,6 @@ def _load_curve_data(model_name: str, curve_type: str) -> pd.DataFrame | None:
         "bain": "bain_path.csv",
         "sfe_110": "sfe_110_curve.csv",
         "sfe_112": "sfe_112_curve.csv",
-        "crack_1": "crack_1_KE.csv",
-        "crack_2": "crack_2_KE.csv",
-        "crack_3": "crack_3_KE.csv",
-        "crack_4": "crack_4_KE.csv",
     }
 
     filename = file_map.get(curve_type)
@@ -158,30 +154,6 @@ def _create_figure(df: pd.DataFrame, curve_type: str, model_name: str) -> go.Fig
             yaxis_title="SFE (J/m²)",
         )
 
-    elif curve_type.startswith("crack_"):
-        crack_names = {
-            "crack_1": "(100)[010]",
-            "crack_2": "(100)[001]",
-            "crack_3": "(110)[001]",
-            "crack_4": "(110)[1-10]",
-        }
-        crack_name = crack_names.get(curve_type, curve_type)
-        fig.add_trace(
-            go.Scatter(
-                x=df["K"],
-                y=df["energy"],
-                mode="lines+markers",
-                name=model_name,
-                line={"width": 2},
-                marker={"size": 6},
-            )
-        )
-        fig.update_layout(
-            title=f"Crack K-E Curve {crack_name} - {model_name}",
-            xaxis_title="K (MPa√m)",
-            yaxis_title="Energy (eV)",
-        )
-
     fig.update_layout(
         template="plotly_white",
         showlegend=True,
@@ -276,10 +248,6 @@ def get_app() -> IronPropertiesApp:
                         {"label": "Bain Path", "value": "bain"},
                         {"label": "SFE {110}<111>", "value": "sfe_110"},
                         {"label": "SFE {112}<111>", "value": "sfe_112"},
-                        {"label": "(100)[010] K-E Curve", "value": "crack_1"},
-                        {"label": "(100)[001] K-E Curve", "value": "crack_2"},
-                        {"label": "(110)[001] K-E Curve", "value": "crack_3"},
-                        {"label": "(110)[1-10] K-E Curve", "value": "crack_4"},
                     ],
                     value="eos",
                     clearable=False,
@@ -304,10 +272,8 @@ def get_app() -> IronPropertiesApp:
             "Includes equation of state (lattice parameter, bulk modulus), "
             "elastic constants (C11, C12, C44), Bain path (BCC-FCC transformation), "
             "vacancy formation energy, surface energies (100, 110, 111, 112), "
-            "generalized stacking fault energy curves for {110}<111> and "
-            "{112}<111> slip systems, "
-            "dislocation core energies for 5 dislocation types (edge, mixed, screw), "
-            "and crack K-tests for 4 crack systems. "
+            "and generalized stacking fault energy curves for {110}<111> and "
+            "{112}<111> slip systems. "
             "This benchmark is computationally expensive and marked with "
             "@pytest.mark.slow."
         ),

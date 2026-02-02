@@ -8,17 +8,8 @@ This benchmark computes fundamental properties of BCC iron including:
 - Vacancy formation energy
 - Surface energies (100, 110, 111, 112)
 - Generalized stacking fault energy curves (110, 112)
-- Dislocation core energies (5 types)
-- Crack K-tests (4 systems)
 
 This benchmark is computationally expensive and marked with @pytest.mark.slow.
-
-References
-----------
-Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2023).
-Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
-Application to Dislocations and Cracks in Iron.
-arXiv:2307.10072. https://arxiv.org/abs/2307.10072
 """
 
 from __future__ import annotations
@@ -28,45 +19,27 @@ from pathlib import Path
 from typing import Any
 
 from ase.build import bulk
-from ase.constraints import FixAtoms, FixedLine
+from ase.constraints import FixedLine
 from ase.filters import ExpCellFilter
-from ase.optimize import BFGS, FIRE
+from ase.optimize import BFGS
 import numpy as np
 import pandas as pd
 import pytest
 
 from ml_peg.calcs.utils.iron_utils import (
-    CRACK_SYSTEMS_CONFIG,
-    # Configurations
-    DISLOCATION_TYPES,
     EV_PER_A2_TO_J_PER_M2,
     EV_PER_A3_TO_GPA,
-    # Constants
-    apply_crack_displacement,
-    apply_edge_displacement,
-    apply_mixed_displacement,
-    apply_screw_displacement,
-    # Elastic utilities
     apply_strain,
     calculate_surface_energy,
-    compute_incremental_displacement,
-    # LEFM utilities
-    compute_lefm_coefficients,
     create_bain_cell,
-    # Structure creation
     create_bcc_supercell,
-    create_crack_cell,
-    # Dislocation utilities
-    create_dislocation_cell,
     create_sfe_110_structure,
     create_sfe_112_structure,
     create_surface_100,
     create_surface_110,
     create_surface_111,
     create_surface_112,
-    # EOS fitting
     fit_eos,
-    get_dislocation_info,
     get_voigt_strain,
 )
 from ml_peg.models.get_models import load_models
@@ -106,14 +79,6 @@ SFE_110_STEPS = 63
 SFE_112_STEPS = 100
 SFE_STEP_SIZE = 0.04  # Angstroms
 SFE_FMAX = 1e-5
-
-# Dislocation test parameters
-DISLOCATION_FMAX = 1e-5
-DISLOCATION_STRESS_TOL = 100.0  # bar
-DISLOCATION_MAX_ITERATIONS = 10
-
-# Crack test parameters
-CRACK_K_STEPS = 100
 
 
 # =============================================================================
@@ -599,243 +564,6 @@ def run_sfe_112_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
 
 # =============================================================================
-# Dislocation Tests
-# =============================================================================
-
-
-def run_dislocation_test(
-    calc: Any, a0: float, e_coh: float, dislocation_type: str
-) -> dict[str, Any]:
-    """
-    Run dislocation test for a specific type.
-
-    Parameters
-    ----------
-    calc : Any
-        ASE calculator object.
-    a0 : float
-        Equilibrium lattice parameter.
-    e_coh : float
-        Cohesive energy per atom.
-    dislocation_type : str
-        Type of dislocation (e.g., 'edge_100_010', 'screw_111').
-
-    Returns
-    -------
-    dict
-        Dictionary with dislocation_type, name, core_energy, and n_atoms.
-    """
-    config = get_dislocation_info(dislocation_type)
-    atoms = create_dislocation_cell(a0, dislocation_type)
-    atoms.calc = calc
-
-    atoms_perfect = atoms.copy()
-    atoms_perfect.calc = calc
-
-    # Box relaxation for perfect crystal with stress convergence loop
-    mask = [True, True, False, False, False, True]
-    for _iteration in range(DISLOCATION_MAX_ITERATIONS):
-        ecf = ExpCellFilter(atoms_perfect, mask=mask, scalar_pressure=0.0)
-        opt = BFGS(ecf, logfile=None)
-        opt.run(fmax=DISLOCATION_FMAX, steps=2000)
-
-        # Check stress convergence (convert eV/Å³ to bar)
-        stress = atoms_perfect.get_stress() * 160.2176621 * 10000  # bar
-        if (
-            abs(stress[0]) < DISLOCATION_STRESS_TOL
-            and abs(stress[1]) < DISLOCATION_STRESS_TOL
-        ):
-            break
-
-    # Final relaxation with FIRE
-    opt = FIRE(atoms_perfect, logfile=None)
-    opt.run(fmax=DISLOCATION_FMAX, steps=5000)
-
-    E_perfect = atoms_perfect.get_potential_energy()  # noqa: N806
-    n_atoms_perfect = len(atoms_perfect)
-    E_coh_local = E_perfect / n_atoms_perfect  # noqa: N806
-
-    atoms = atoms_perfect.copy()
-    atoms.calc = calc
-
-    burgers_vec = config["burgers"]
-    b_mag = a0 * np.linalg.norm(burgers_vec)
-    disl_type = config["type"]
-
-    if disl_type == "screw":
-        apply_screw_displacement(atoms, b_mag)
-    elif disl_type == "edge":
-        # Use LAMMPS-matched deletion region parameters from config
-        delete_axis = config.get("delete_axis", 1)
-        delete_min = config.get("delete_min", -0.6)
-        delete_max = config.get("delete_max", 0.1)
-        atoms = apply_edge_displacement(
-            atoms,
-            b_mag,
-            a0,
-            delete_half_plane=True,
-            delete_axis=delete_axis,
-            delete_min=delete_min,
-            delete_max=delete_max,
-        )
-        atoms.calc = calc
-    elif disl_type == "mixed":
-        # Use LAMMPS-matched parameters from config
-        screw_frac = config.get("screw_fraction", 0.325568)
-        edge_fac = config.get("edge_factor", 0.5)
-        delete_axis = config.get("delete_axis", 0)
-        delete_min = config.get("delete_min", -0.5)
-        delete_max = config.get("delete_max", 0.1)
-        atoms = apply_mixed_displacement(
-            atoms,
-            b_mag,
-            a0,
-            screw_fraction=screw_frac,
-            edge_factor=edge_fac,
-            delete_axis=delete_axis,
-            delete_min=delete_min,
-            delete_max=delete_max,
-        )
-        atoms.calc = calc
-
-    # Multi-stage relaxation of dislocation structure with stress convergence loop
-    mask = [True, True, False, False, False, True]
-    for _iteration in range(DISLOCATION_MAX_ITERATIONS):
-        ecf = ExpCellFilter(atoms, mask=mask, scalar_pressure=0.0)
-        opt = BFGS(ecf, logfile=None)
-        opt.run(fmax=DISLOCATION_FMAX, steps=2000)
-
-        stress = atoms.get_stress() * 160.2176621 * 10000  # bar
-        if (
-            abs(stress[0]) < DISLOCATION_STRESS_TOL
-            and abs(stress[1]) < DISLOCATION_STRESS_TOL
-        ):
-            break
-
-    # Final relaxation with FIRE
-    opt = FIRE(atoms, logfile=None)
-    opt.run(fmax=DISLOCATION_FMAX, steps=5000)
-
-    E_disl = atoms.get_potential_energy()  # noqa: N806
-    n_atoms_disl = len(atoms)
-    core_energy = E_disl - n_atoms_disl * E_coh_local
-
-    return {
-        "dislocation_type": dislocation_type,
-        "name": config["name"],
-        "core_energy": core_energy,
-        "n_atoms": n_atoms_disl,
-    }
-
-
-# =============================================================================
-# Crack Tests
-# =============================================================================
-
-
-def run_crack_test(
-    calc: Any,
-    a0: float,
-    elastic_constants: dict[str, float],
-    surface_energies: dict[str, float],
-    crack_system: int,
-    k_steps: int = CRACK_K_STEPS,
-) -> dict[str, Any]:
-    """
-    Run crack K-test for a specific system.
-
-    Parameters
-    ----------
-    calc : Any
-        ASE calculator object.
-    a0 : float
-        Equilibrium lattice parameter.
-    elastic_constants : dict[str, float]
-        Dictionary with elastic constants C11, C12, C44.
-    surface_energies : dict[str, float]
-        Dictionary with surface energies for relevant surfaces.
-    crack_system : int
-        Crack system index (1-4).
-    k_steps : int, optional
-        Number of K steps for the K-test (default: CRACK_K_STEPS).
-
-    Returns
-    -------
-    dict
-        Dictionary with crack_system, name, K_Griffith, K_values, and energies.
-    """
-    config = CRACK_SYSTEMS_CONFIG[crack_system]
-    surface = config["surface"]
-    surf_energy = surface_energies.get(surface, 2.0)
-
-    coeffs = compute_lefm_coefficients(
-        elastic_constants["C11"],
-        elastic_constants["C12"],
-        elastic_constants["C44"],
-        surf_energy,
-        crack_system,
-    )
-    k_griffith = coeffs["K_I"]
-
-    atoms, crack_tip, radius = create_crack_cell(a0, crack_system)
-    atoms.calc = calc
-
-    positions = atoms.get_positions()
-    xtip, ytip = crack_tip
-    r = np.sqrt((positions[:, 0] - xtip) ** 2 + (positions[:, 1] - ytip) ** 2)
-    boundary_mask = r > (radius - 10.0)
-    boundary_indices = np.where(boundary_mask)[0]
-
-    opt = BFGS(atoms, logfile=None)
-    opt.run(fmax=1e-3, steps=10000)
-
-    ref_positions = atoms.get_positions().copy()
-
-    k_start = max(0.5, k_griffith * 100 - 10)
-    k_stop = k_start + k_steps
-
-    new_positions = apply_crack_displacement(
-        atoms.get_positions(), k_start, coeffs, crack_tip, ref_positions
-    )
-    atoms.set_positions(new_positions)
-
-    dx, dy = compute_incremental_displacement(ref_positions, 1.0, coeffs, crack_tip)
-
-    k_values = []
-    energies = []
-
-    atoms.set_constraint(FixAtoms(indices=boundary_indices))
-    dk = (k_stop - k_start) / k_steps if k_steps > 0 else 1.0
-
-    for i in range(k_steps + 1):
-        k = k_start + i * dk
-
-        if i > 0:
-            positions = atoms.get_positions()
-            positions[:, 0] += dx * dk
-            positions[:, 1] += dy * dk
-            atoms.set_positions(positions)
-
-        opt = BFGS(atoms, logfile=None)
-        try:
-            opt.run(fmax=1e-3, steps=5000)
-        except Exception:
-            pass
-
-        energy = atoms.get_potential_energy()
-        k_values.append(k)
-        energies.append(energy)
-
-    return {
-        "crack_system": crack_system,
-        "name": config["name"],
-        "K_Griffith": k_griffith,
-        "K_values": k_values,
-        "energies": energies,
-    }
-
-
-# =============================================================================
 # Main Benchmark Function
 # =============================================================================
 
@@ -851,8 +579,6 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     - Vacancy formation energy
     - Surface energies (100, 110, 111, 112)
     - Stacking fault energy curves (110, 112)
-    - Dislocation core energies (5 types)
-    - Crack K-tests (4 systems)
 
     Parameters
     ----------
@@ -872,7 +598,6 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     eos_results = run_eos_calculation(calc)
     results["eos"] = eos_results
     a0 = eos_results["a0"]
-    e_coh = eos_results["E0"]
     print(
         f"[{model_name}] Lattice parameter: {a0:.4f} Å, "
         f"Bulk modulus: {eos_results['B0']:.1f} GPa"
@@ -946,52 +671,6 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     )
     sfe_112_df.to_csv(write_dir / "sfe_112_curve.csv", index=False)
 
-    # Dislocation tests
-    print(f"[{model_name}] Running dislocation tests...")
-    dislocation_results = {}
-    for disl_type in DISLOCATION_TYPES:
-        print(f"[{model_name}]   {disl_type}...")
-        try:
-            disl_result = run_dislocation_test(calc, a0, e_coh, disl_type)
-            dislocation_results[disl_type] = disl_result
-        except Exception as e:
-            print(f"[{model_name}]   Error: {e}")
-            dislocation_results[disl_type] = {"error": str(e)}
-    results["dislocations"] = dislocation_results
-
-    # Crack K-tests
-    print(f"[{model_name}] Running crack K-tests...")
-    crack_results = {}
-    for crack_sys in [1, 2, 3, 4]:
-        print(f"[{model_name}]   System {crack_sys}...")
-        try:
-            crack_result = run_crack_test(
-                calc,
-                a0,
-                elastic_results,
-                {
-                    "100": surface_results["gamma_100"],
-                    "110": surface_results["gamma_110"],
-                },
-                crack_sys,
-                K_steps=CRACK_K_STEPS,
-            )
-            crack_results[crack_sys] = {
-                "name": crack_result["name"],
-                "K_Griffith": crack_result["K_Griffith"],
-            }
-            ke_df = pd.DataFrame(
-                {
-                    "K": crack_result["K_values"],
-                    "energy": crack_result["energies"],
-                }
-            )
-            ke_df.to_csv(write_dir / f"crack_{crack_sys}_KE.csv", index=False)
-        except Exception as e:
-            print(f"[{model_name}]   Error: {e}")
-            crack_results[crack_sys] = {"error": str(e)}
-    results["cracks"] = crack_results
-
     # Save all results as JSON
     (write_dir / "results.json").write_text(json.dumps(results, indent=2, default=str))
 
@@ -1011,14 +690,6 @@ def run_iron_properties(model_name: str, model: Any) -> None:
         "max_sfe_110": sfe_110_results["max_sfe"],
         "max_sfe_112": sfe_112_results["max_sfe"],
     }
-
-    for disl_type, disl_data in dislocation_results.items():
-        if "core_energy" in disl_data:
-            summary[f"core_energy_{disl_type}"] = disl_data["core_energy"]
-
-    for crack_sys, crack_data in crack_results.items():
-        if "K_Griffith" in crack_data:
-            summary[f"K_Griffith_{crack_sys}"] = crack_data["K_Griffith"]
 
     (write_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
