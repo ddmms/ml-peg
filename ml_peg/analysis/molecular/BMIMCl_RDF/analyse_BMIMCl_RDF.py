@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import ase.io as aio
 from ase.data import atomic_numbers
 from ase.geometry.rdf import get_rdf
+import ase.io as aio
 import numpy as np
 import pytest
 from tqdm import tqdm
@@ -31,7 +31,7 @@ ELEMENT2 = "C"
 Z1 = atomic_numbers[ELEMENT1]
 Z2 = atomic_numbers[ELEMENT2]
 BINS_PER_ANG = 50
-UNPHYSICAL_CUTOFF = 2.5 
+UNPHYSICAL_CUTOFF = 2.5
 # Angstrom - any Cl-C closer than this indicates
 # a bond which should not be there
 PEAK_THRESHOLD = 0.1  # g(r) threshold for bond detection
@@ -83,7 +83,7 @@ def check_bond_formation(r: np.ndarray, rdf: np.ndarray) -> int:
     r
         Distance array.
     rdf
-        g(r) values.
+        The g(r) values.
 
     Returns
     -------
