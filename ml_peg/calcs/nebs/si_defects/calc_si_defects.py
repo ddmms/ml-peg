@@ -1,4 +1,4 @@
-"""Evaluate MLIPs on Si interstitial NEB DFT singlepoints (energies + forces)."""
+"""Evaluate MLIPs on Si defects DFT singlepoints (energies + forces)."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ S3_FILENAME = "si_defects.zip"
 
 @dataclass(frozen=True)
 class _Case:
-    """Definition of a single Si interstitial NEB dataset."""
+    """Definition of a single Si defects NEB dataset."""
 
     key: str
     ref_file: str

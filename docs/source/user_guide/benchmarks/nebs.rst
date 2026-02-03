@@ -48,8 +48,8 @@ Reference data:
 * Meta-GGA (Perdew-Wang) exchange correlation functional
 
 
-Si interstitial NEB
-===================
+Si defects
+==========
 
 Summary
 -------

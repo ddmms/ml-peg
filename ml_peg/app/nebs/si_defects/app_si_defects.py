@@ -1,4 +1,4 @@
-"""Run app for Si interstitial NEB benchmark."""
+"""Run app for Si defects benchmark."""
 
 from __future__ import annotations
 
@@ -16,16 +16,14 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
-BENCHMARK_NAME = "Si interstitial NEB"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#si-interstitial-neb"
-)
+BENCHMARK_NAME = "Si defects"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#si-defects"
 DATA_PATH = APP_ROOT / "data" / "nebs" / "si_defects"
 
 
 @dataclass(frozen=True)
 class _Case:
-    """Definition of a single Si interstitial NEB dataset."""
+    """Definition of a single Si defects NEB dataset."""
 
     key: str
     label: str
@@ -39,7 +37,7 @@ CASES: tuple[_Case, ...] = (
 
 
 class SiDefectNebSinglepointsApp(BaseApp):
-    """Si interstitial NEB benchmark app layout and callbacks."""
+    """Si defects benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register interactive callbacks for plot and structure viewing."""
@@ -94,7 +92,7 @@ class SiDefectNebSinglepointsApp(BaseApp):
 
 def get_app() -> SiDefectNebSinglepointsApp:
     """
-    Get Si interstitial NEB app.
+    Get Si defects app.
 
     Returns
     -------
@@ -104,7 +102,7 @@ def get_app() -> SiDefectNebSinglepointsApp:
     return SiDefectNebSinglepointsApp(
         name=BENCHMARK_NAME,
         description=(
-            "Energy/force MAE of MLIPs on fixed Si interstitial NEB images, "
+            "Energy/force MAE of MLIPs on fixed Si interstitial migration NEB images, "
             "referenced to DFT singlepoints."
         ),
         docs_url=DOCS_URL,

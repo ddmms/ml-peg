@@ -1,4 +1,4 @@
-"""Analyse Si interstitial NEB DFT singlepoints (energies + forces)."""
+"""Analyse Si defects DFT singlepoints (energies + forces)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 @dataclass(frozen=True)
 class _Case:
-    """Definition of a single Si interstitial NEB dataset."""
+    """Definition of a single Si defects NEB dataset."""
 
     key: str
     label: str
@@ -284,7 +284,7 @@ def metrics(metrics_dict: dict[str, dict[str, float]]) -> dict[str, dict]:
 
 def test_si_defects(metrics: dict[str, dict]) -> None:
     """
-    Run analysis for Si interstitial NEB DFT singlepoints.
+    Run analysis for Si defects DFT singlepoints.
 
     Parameters
     ----------
