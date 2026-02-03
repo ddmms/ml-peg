@@ -51,6 +51,7 @@ Related Documentation
 For related libraries on Context7:
 
 - **mlipx** (``/basf/mlipx``): Base calculator abstraction library used by ML-PEG
+- **janus-core** (``/stfc/janus-core``: another back-end for ML-PEG
 
 
 API Keys and Rate Limits
