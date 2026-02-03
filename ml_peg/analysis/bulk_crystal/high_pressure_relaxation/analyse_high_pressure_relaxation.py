@@ -99,6 +99,11 @@ def get_converged_data_for_pressure(
         return [], [], [], []
 
     # Filter converged structures and remove NaN values
+    # set outliers with less than -25 eV/atom or more than 25 eV/atom to unconverged
+    df.loc[
+        (df["pred_energy_per_atom"] <= -25) | (df["pred_energy_per_atom"] >= 25),
+        "converged",
+    ] = False
     df_conv = df[df["converged"]].copy()
     df_conv = df_conv.dropna(subset=["pred_volume_per_atom", "pred_energy_per_atom"])
 
@@ -129,8 +134,14 @@ def get_convergence_rate_for_pressure(
         Convergence rate (%) or None if no data.
     """
     df = load_results_for_pressure(model_name, pressure_label)
+    # set outliers with less than -25 eV/atom or more than 25 eV/atom to unconverged
     if df.empty:
         return None
+    df.loc[
+        (df["pred_energy_per_atom"] <= -25) | (df["pred_energy_per_atom"] >= 25),
+        "converged",
+    ] = False
+    # set energies of unconverged to NaN
     return (df["converged"].sum() / len(df)) * 100
 
 
