@@ -28,9 +28,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 R2SCAN_REF: dict[str, dict[str, float]] = {
     "Lu_ff6372": {"iso1": 2.15, "iso2": 12.96, "iso3": 0.00, "iso4": 2.08},
     "Ce_ff6372": {"iso1": 2.47, "iso2": 7.13, "iso3": 0.00, "iso4": 2.17},
+    "Th_ff6372": {"iso1": 2.13, "iso2": 8.03, "iso3": 0.00, "iso4": 1.23},
     "Ce_1d271a": {"iso1": 0.00, "iso2": 2.20},
     "Sm_ed79e8": {"iso1": 2.99, "iso2": 0.00},
     "La_f1a50d": {"iso1": 0.00, "iso2": 3.11},
+    "Ac_f1a50d": {"iso1": 0.00, "iso2": 3.52},
     "Eu_ff6372": {"iso1": 0.00, "iso2": 6.74},
     "Nd_c5f44a": {"iso1": 0.00, "iso2": 1.61},
 }
