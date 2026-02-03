@@ -1,4 +1,5 @@
 *.json
+!ml_peg/calcs/bulk_crystal/qha_lattice_constants/data/*.json
 *.html
 *.dat
 *.lock
