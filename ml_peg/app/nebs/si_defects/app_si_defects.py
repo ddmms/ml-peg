@@ -17,7 +17,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Si interstitial NEB"
-DOCS_URL = None
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#si-interstitial-neb"
+)
 DATA_PATH = APP_ROOT / "data" / "nebs" / "si_defects"
 
 
