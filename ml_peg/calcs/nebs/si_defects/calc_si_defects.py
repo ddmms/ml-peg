@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from tqdm.auto import tqdm
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -20,6 +21,8 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
+S3_KEY = "inputs/nebs/si_defects/si_defects.zip"
+S3_FILENAME = "si_defects.zip"
 
 
 @dataclass(frozen=True)
@@ -113,8 +116,14 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
+    local_files_present = all((DATA_PATH / case.ref_file).exists() for case in CASES)
+    if local_files_present:
+        data_dir = DATA_PATH
+    else:
+        data_dir = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "si_defects"
+
     for case in CASES:
-        frames = _read_frames(DATA_PATH / case.ref_file)
+        frames = _read_frames(data_dir / case.ref_file)
         out_dir = OUT_PATH / case.key / model_name
         out_dir.mkdir(parents=True, exist_ok=True)
 

@@ -82,8 +82,9 @@ Data availability
 
 Input/reference data:
 
-* Bundled with the repository as extxyz trajectories (including per-image DFT energies and
-  forces) shipped with the benchmark.
+* Reference extxyz trajectories (including per-image DFT energies and forces) are distributed as a
+  separate zip archive and downloaded on-demand from the ML-PEG data store.
+  The calculation script uses the public ML-PEG S3 bucket to retrieve these inputs.
 * The reference DFT energies/forces come from Quantum ESPRESSO (PWscf) single-point calculations
   with:
 
