@@ -43,7 +43,7 @@ MAX_STEPS = 500
 RANDOM_SEED = 42
 
 # Number of structures to use for testing
-N_STRUCTURES = 100
+N_STRUCTURES = 3000
 
 
 def download_pressure_data(pressure_label: str) -> Path:
