@@ -22,9 +22,8 @@ BENCHMARK_NAME = "Graphene Wetting Under Strain"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#graphene-wetting-under-strain"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "graphene_wetting_under_strain"
 
-with open(
-    CALCS_ROOT / "surfaces" / "graphene_wetting_under_strain" / "database_info.yml"
-) as fp:
+CALC_PATH = CALCS_ROOT / "surfaces" / "graphene_wetting_under_strain" / "outputs"
+with open(CALC_PATH / "database_info.yml") as fp:
     DATABASE_INFO = yaml.safe_load(fp)
 ORIENTATIONS = DATABASE_INFO["orientations"]
 STRAINS = DATABASE_INFO["strains"]

@@ -19,14 +19,7 @@ MODELS = load_models(current_models)
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
-with open(Path(__file__).parent / "database_info.yml") as fp:
-    DATABASE_INFO = yaml.safe_load(fp)
-
-# List of orientations used in the database
-ORIENTATIONS = DATABASE_INFO["orientations"]
-
-# List of strains used in the database
-STRAINS = DATABASE_INFO["strains"]
+DATABASE_INFO_SAVED = False
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -56,19 +49,35 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
         / "graphene_wetting_under_strain"
     )
 
+    db_info_path = Path(structs_dir) / "database_info.yml"
+    with open(db_info_path) as fp:
+        database_info = yaml.safe_load(fp)
+    orientations = database_info["orientations"]
+    strains = database_info["strains"]
+
+    # save database info for use in analysis
+    # (without needing to redownload to get the path)
+    global DATABASE_INFO_SAVED
+    if not DATABASE_INFO_SAVED:
+        OUT_PATH.mkdir(parents=True, exist_ok=True)
+        database_info_path = OUT_PATH / "database_info.yml"
+        with database_info_path.open("w", encoding="utf-8") as target_fp:
+            yaml.safe_dump(database_info, target_fp, sort_keys=False)
+        DATABASE_INFO_SAVED = True
+
     # Calculate energy of single water molecule
     atoms = ase.io.read(structs_dir / "ref_water.xyz", format="extxyz")
     atoms.calc = calc
     water_energy = atoms.get_potential_energy()
 
     # Iterate through strain conditions
-    for strain in STRAINS:
+    for strain in strains:
         atoms = ase.io.read(structs_dir / f"ref_graphene_{strain}.xyz", format="extxyz")
         atoms.calc = calc
         graphene_energy = atoms.get_potential_energy()
 
         # Iterate through orientations
-        for orientation in ORIENTATIONS:
+        for orientation in orientations:
             systems = ase.io.iread(
                 structs_dir / f"{orientation}_{strain}.xyz", index=":", format="extxyz"
             )

@@ -27,9 +27,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-with open(
-    CALCS_ROOT / "surfaces" / "graphene_wetting_under_strain" / "database_info.yml"
-) as fp:
+with open(CALC_PATH / "database_info.yml") as fp:
     DATABASE_INFO = yaml.safe_load(fp)
 ORIENTATIONS = DATABASE_INFO["orientations"]
 STRAINS = DATABASE_INFO["strains"]
