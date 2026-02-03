@@ -10,13 +10,14 @@ from typing import Any
 from ase.io import read, write
 from ase.optimize import LBFGS
 import pytest
+from tqdm.auto import tqdm
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 # TODO: DATA_PATH = download_github_data(filename, github_uri)
-DATA_PATH = Path("/u/twarford/dev/defect_data/out")
+DATA_PATH = Path("/Users/tw/Downloads/out")
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -39,20 +40,25 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     fmax = 0.03
     steps = 200
 
-    for material_dir in DATA_PATH.iterdir():
-        for cation_dir in material_dir.iterdir():
-            if not cation_dir.is_dir():
-                continue  # skip pristine supercell.xyz files (not used)
-
+    for material_dir in tqdm(list(DATA_PATH.iterdir())):
+        cation_dirs = [
+            p for p in material_dir.iterdir() if p.is_dir()
+        ]  # skip pristine supercell.xyz files (not used)
+        for cation_dir in tqdm(cation_dirs, leave=False):
             nv_xyz_path = cation_dir / "normal_vacancy.xyz"
             sv_xyz_path = cation_dir / "split_vacancy.xyz"
             sv_from_nv_xyz_path = cation_dir / "normal_vacancy_to_split_vac.xyz"
 
-            for atoms_path in [nv_xyz_path, sv_xyz_path, sv_from_nv_xyz_path]:
+            for atoms_path in tqdm(
+                [nv_xyz_path, sv_xyz_path, sv_from_nv_xyz_path], leave=False
+            ):
+                if not atoms_path.exists():
+                    continue
+
                 relaxed_atoms = []
                 atoms_list = read(atoms_path, ":")
 
-                for atoms in atoms_list:
+                for atoms in tqdm(atoms_list, leave=False):
                     atoms.calc = deepcopy(calc)
                     atoms.info["initial_energy"] = atoms.get_potential_energy()
 
@@ -62,7 +68,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                     atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
                     relaxed_atoms.append(atoms)
-                    break
+                    # break
 
                 atoms_out_path = (
                     OUT_PATH
@@ -73,5 +79,5 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                 )
                 atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
 
-                write(relaxed_atoms, atoms_out_path)
-                break
+                write(atoms_out_path, relaxed_atoms)
+                # break
