@@ -3,35 +3,35 @@ metrics:
     good: 0.02
     bad: 0.2
     unit: eV
-    tooltip: "MAE between MLIP and DFT relative energies along the NEB (image 0 shifted to 0 eV)."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) relative single-point energies along the NEB (image 0 shifted to 0 eV)."
+    level_of_theory: PBE
   Force MAE (64):
     good: 0.05
     bad: 0.5
     unit: eV/Å
-    tooltip: "MAE between MLIP and DFT forces across all atoms and images along the NEB."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) single-point forces across all atoms and images along the NEB."
+    level_of_theory: PBE
   Energy MAE (216):
     good: 0.02
     bad: 0.2
     unit: eV
-    tooltip: "MAE between MLIP and DFT relative energies along the NEB (image 0 shifted to 0 eV)."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) relative single-point energies along the NEB (image 0 shifted to 0 eV)."
+    level_of_theory: PBE
   Force MAE (216):
     good: 0.05
     bad: 0.5
     unit: eV/Å
-    tooltip: "MAE between MLIP and DFT forces across all atoms and images along the NEB."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) single-point forces across all atoms and images along the NEB."
+    level_of_theory: PBE
   Energy MAE (216 di-to-single):
     good: 0.02
     bad: 0.2
     unit: eV
-    tooltip: "MAE between MLIP and DFT relative energies along the NEB (image 0 shifted to 0 eV)."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) relative single-point energies along the NEB (image 0 shifted to 0 eV)."
+    level_of_theory: PBE
   Force MAE (216 di-to-single):
     good: 0.05
     bad: 0.5
     unit: eV/Å
-    tooltip: "MAE between MLIP and DFT forces across all atoms and images along the NEB."
-    level_of_theory: DFT (singlepoints)
+    tooltip: "MAE between MLIP and DFT (PBE) single-point forces across all atoms and images along the NEB."
+    level_of_theory: PBE
