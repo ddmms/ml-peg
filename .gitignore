@@ -41,3 +41,6 @@ __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 certs/
+calculate_rmsd.py
+DB/
+DB.zip
