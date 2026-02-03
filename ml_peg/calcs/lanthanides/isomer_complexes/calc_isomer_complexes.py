@@ -59,12 +59,8 @@ def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
                 continue
             charge_path = iso_dir / ".CHRG"
             uhf_path = iso_dir / ".UHF"
-            charge = (
-                float(charge_path.read_text().strip()) if charge_path.exists() else 0.0
-            )
-            multiplicity = (
-                int(float(uhf_path.read_text().strip())) if uhf_path.exists() else 1
-            )
+            charge = int(charge_path.read_text().strip()) if charge_path.exists() else 0
+            multiplicity = int(uhf_path.read_text().strip()) if uhf_path.exists() else 1
             entries.append(
                 {
                     "system": system_dir.name,
