@@ -25,8 +25,10 @@ class LowDimensionalRelaxationApp(BaseApp):
         """Register callbacks to app."""
         # Define plot paths and their metric mappings
         plot_configs = [
-            ("figure_area.json", "Area MAE (2D)", "area"),
-            ("figure_energy.json", "Energy MAE (2D)", "energy"),
+            ("figure_area_2d.json", "Area MAE (2D)", "area-2d"),
+            ("figure_energy_2d.json", "Energy MAE (2D)", "energy-2d"),
+            ("figure_length_1d.json", "Length MAE (1D)", "length-1d"),
+            ("figure_energy_1d.json", "Energy MAE (1D)", "energy-1d"),
         ]
 
         # Build column-to-plot mapping
@@ -60,10 +62,11 @@ def get_app() -> LowDimensionalRelaxationApp:
     return LowDimensionalRelaxationApp(
         name=BENCHMARK_NAME,
         description=(
-            "Performance in relaxing low-dimensional (2D/1D) crystal structures. "
-            "Structures from the Alexandria database are relaxed with cell masks "
-            "to constrain relaxation to the appropriate dimensions and compared "
-            "to PBE reference calculations."
+            "Performance in relaxing low-dimensional crystal structures. "
+            "2D structures are evaluated on area per atom, and 1D structures "
+            "on length per atom. Structures from the Alexandria database are "
+            "relaxed with cell masks to constrain relaxation to the appropriate "
+            "dimensions and compared to PBE reference calculations."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "low_dimensional_metrics_table.json",
