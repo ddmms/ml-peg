@@ -45,6 +45,7 @@ def get_system_names() -> list[str]:
     """
     for model_name in sorted(CALC_PATH.glob("*")):
         if model_name.is_dir():
+            # Note: sorting different to rxn_count order in calc
             xyz_paths = sorted((CALC_PATH / model_name).glob("*TS.xyz"))
             if xyz_paths:
                 return [path.stem.replace("TS", "") for path in xyz_paths]

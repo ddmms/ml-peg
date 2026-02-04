@@ -74,6 +74,25 @@ def parse_cc_energy(fname: Path) -> float:
     return float(items[1]) * KCAL_TO_EV
 
 
+def sort_labels(path: Path) -> tuple[int, int]:
+    """
+    Sort structure labels.
+
+    Parameters
+    ----------
+    path
+        Globbed path of the form 01_02TS.xyz.
+
+    Returns
+    -------
+    tuple[int, int]
+        Integer values of of the first and second numbers in the filename (e.g. 1 and
+        2 in the above example) to for numerical sorting.
+    """
+    x, y = path.stem.split("_")
+    return int(x), int(y.removesuffix("TS"))
+
+
 def get_ref_energies(data_path: Path) -> dict[str, dict[str, float]]:
     """
     Get the reference barriers.
@@ -91,7 +110,9 @@ def get_ref_energies(data_path: Path) -> dict[str, dict[str, float]]:
     ref_energies = {}
     labels = [
         path.stem.replace("TS", "")
-        for path in sorted((data_path / "BH9_SI" / "XYZ_files").glob("*TS.xyz"))
+        for path in sorted(
+            (data_path / "BH9_SI" / "XYZ_files").glob("*TS.xyz"), key=sort_labels
+        )
     ]
     rxn_count = 0
 
@@ -137,6 +158,7 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
+    # sort_labels not required here as we have the correct labels
     for fname in tqdm(sorted((data_path / "BH9_SI" / "XYZ_files").glob("*TS.xyz"))):
         atoms = process_atoms(fname)
         atoms.calc = calc

@@ -36,6 +36,7 @@ class BH9App(BaseApp):
 
         model_dir = DATA_PATH / MODELS[0]
         if model_dir.exists():
+            # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*TS.xyz"))
             structs = [
                 f"assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
