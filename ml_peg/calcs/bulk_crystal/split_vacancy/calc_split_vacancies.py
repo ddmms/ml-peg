@@ -48,14 +48,11 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
         for cation_dir in tqdm(cation_dirs, leave=False):
             nv_xyz_path = cation_dir / "normal_vacancy.xyz"
             sv_xyz_path = cation_dir / "split_vacancy.xyz"
-            sv_from_nv_xyz_path = cation_dir / "normal_vacancy_to_split_vac.xyz"
 
             if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
                 continue
 
             atoms_paths = [nv_xyz_path, sv_xyz_path]
-            if sv_from_nv_xyz_path.exists():
-                atoms_paths += sv_from_nv_xyz_path
 
             for atoms_path in tqdm(atoms_paths, leave=False):
                 relaxed_atoms = []
@@ -71,7 +68,6 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                     atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
                     relaxed_atoms.append(atoms)
-                    # break
 
                 atoms_out_path = (
                     OUT_PATH
@@ -83,4 +79,3 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                 atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
 
                 write(atoms_out_path, relaxed_atoms)
-                # break
