@@ -40,7 +40,6 @@ from ml_peg.calcs.utils.iron_utils import (
     create_surface_110,
     create_surface_111,
     create_surface_112,
-    create_ts_100_structure,
     create_ts_110_structure,
     fit_eos,
     relax_volume_isotropic,
@@ -540,7 +539,7 @@ def run_sfe_calculation(
 
 # T-S configuration: structure creation function
 TS_CONFIG = {
-    "100": create_ts_100_structure,
+    "100": lambda a: create_surface_100(a, layers=36, vacuum=0.0),
     "110": create_ts_110_structure,
 }
 

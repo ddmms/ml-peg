@@ -22,6 +22,21 @@ ANGSTROM_TO_M = 1.0e-10
 EV_PER_A2_TO_J_PER_M2 = 16.0217733
 EV_PER_A3_TO_GPA = 160.21765
 
+# =============================================================================
+# Crystallographic Rotation Matrices
+# =============================================================================
+
+# Rotation matrix for [-110]/[111]/[11-2] crystallographic frame
+# Used for (111) surface, (112) surface, and {110}<111> SFE
+ROTATION_111_FRAME = np.array(
+    [
+        [-1, 1, 0],  # ex: [-110]
+        [1, 1, 1],  # ey: [111]
+        [1, 1, -2],  # ez: [11-2]
+    ],
+    dtype=float,
+) / np.array([[np.sqrt(2)], [np.sqrt(3)], [np.sqrt(6)]])
+
 
 # =============================================================================
 # EOS Fitting Functions
@@ -470,12 +485,6 @@ def create_surface_111(
     """
     a = lattice_parameter
 
-    # Rotation matrix for (111) orientation
-    ex = np.array([-1, 1, 0]) / np.sqrt(2)
-    ey = np.array([1, 1, 1]) / np.sqrt(3)
-    ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rotation = np.array([ex, ey, ez])
-
     cell_dims = (
         a * np.sqrt(2) * size[0],
         a * np.sqrt(3) * size[1],
@@ -484,7 +493,7 @@ def create_surface_111(
     max_range = int(max(size) * 3 + 5)
 
     atoms = _create_oriented_bcc_structure(
-        lattice_parameter, rotation, cell_dims, max_range, symbol
+        lattice_parameter, ROTATION_111_FRAME, cell_dims, max_range, symbol
     )
 
     if vacuum > 0:
@@ -517,17 +526,11 @@ def create_surface_112(
     """
     a = lattice_parameter
 
-    # Rotation matrix for (112) orientation
-    ex = np.array([-1, 1, 0]) / np.sqrt(2)
-    ey = np.array([1, 1, 1]) / np.sqrt(3)
-    ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rotation = np.array([ex, ey, ez])
-
     cell_dims = (a * np.sqrt(2), a * np.sqrt(3), a * np.sqrt(6) * layers)
     max_range = int(layers * 3 + 5)
 
     atoms = _create_oriented_bcc_structure(
-        lattice_parameter, rotation, cell_dims, max_range, symbol
+        lattice_parameter, ROTATION_111_FRAME, cell_dims, max_range, symbol
     )
 
     if vacuum > 0:
@@ -553,12 +556,6 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
     a = lattice_parameter
     size = (20, 1, 3)
 
-    # Rotation matrix for {110} orientation
-    ex = np.array([-1, 1, 0]) / np.sqrt(2)
-    ey = np.array([1, 1, 1]) / np.sqrt(3)
-    ez = np.array([1, 1, -2]) / np.sqrt(6)
-    rotation = np.array([ex, ey, ez])
-
     cell_dims = (
         a * np.sqrt(2) * size[0],
         a * np.sqrt(3) * size[1],
@@ -567,7 +564,7 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
     max_range = int(max(size) * 3 + 5)
 
     return _create_oriented_bcc_structure(
-        lattice_parameter, rotation, cell_dims, max_range
+        lattice_parameter, ROTATION_111_FRAME, cell_dims, max_range
     )
 
 
@@ -609,51 +606,6 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
 # =============================================================================
 # Traction-Separation Structure Functions
 # =============================================================================
-
-
-def create_ts_100_structure(
-    lattice_parameter: float, layers: int = 36, symbol: str = "Fe"
-) -> Atoms:
-    """
-    Create structure for (100) traction-separation calculation.
-
-    Orientation: x=[100], y=[010], z=[001]
-    Slab: 1x1xlayers lattice units
-    Cleavage plane: perpendicular to z
-
-    Parameters
-    ----------
-    lattice_parameter : float
-        BCC lattice parameter in Angstroms.
-    layers : int, optional
-        Number of layers in z direction (default: 36).
-    symbol : str, optional
-        Chemical symbol (default: 'Fe').
-
-    Returns
-    -------
-    Atoms
-        ASE Atoms object for T-S calculation.
-    """
-    a = lattice_parameter
-
-    # Cell dimensions
-    lx = a
-    ly = a
-    lz = a * layers
-
-    cell = np.array([[lx, 0, 0], [0, ly, 0], [0, 0, lz]])
-
-    # Generate BCC atoms
-    positions = []
-    for k in range(layers):
-        # Two atoms per unit cell in z
-        positions.append([0, 0, k * a])
-        positions.append([0.5 * a, 0.5 * a, (k + 0.5) * a])
-
-    return Atoms(
-        symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
-    )
 
 
 def create_ts_110_structure(
@@ -699,29 +651,6 @@ def create_ts_110_structure(
 # =============================================================================
 # Elastic Calculation Utilities
 # =============================================================================
-
-
-def apply_strain(atoms: Atoms, strain_matrix: np.ndarray) -> Atoms:
-    """
-    Apply a strain to the atoms object.
-
-    Parameters
-    ----------
-    atoms : Atoms
-        ASE Atoms object.
-    strain_matrix : np.ndarray
-        3x3 strain matrix.
-
-    Returns
-    -------
-    Atoms
-        Strained ASE Atoms object.
-    """
-    atoms_strained = atoms.copy()
-    F = np.eye(3) + strain_matrix  # noqa: N806
-    new_cell = atoms_strained.cell @ F.T
-    atoms_strained.set_cell(new_cell, scale_atoms=True)
-    return atoms_strained
 
 
 def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
@@ -785,43 +714,6 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
 
     atoms_strained.set_cell(cell, scale_atoms=True)
     return atoms_strained
-
-
-def get_voigt_strain(direction: int, magnitude: float) -> np.ndarray:
-    """
-    Get the strain tensor for a given Voigt direction (1-6).
-
-    Parameters
-    ----------
-    direction : int
-        Voigt direction (1-6).
-    magnitude : float
-        Strain magnitude.
-
-    Returns
-    -------
-    np.ndarray
-        3x3 strain matrix.
-    """
-    strain = np.zeros((3, 3))
-
-    if direction == 1:
-        strain[0, 0] = magnitude
-    elif direction == 2:
-        strain[1, 1] = magnitude
-    elif direction == 3:
-        strain[2, 2] = magnitude
-    elif direction == 4:
-        strain[1, 2] = magnitude / 2
-        strain[2, 1] = magnitude / 2
-    elif direction == 5:
-        strain[0, 2] = magnitude / 2
-        strain[2, 0] = magnitude / 2
-    elif direction == 6:
-        strain[0, 1] = magnitude / 2
-        strain[1, 0] = magnitude / 2
-
-    return strain
 
 
 def calculate_surface_energy(
