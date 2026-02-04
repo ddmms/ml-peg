@@ -50,6 +50,7 @@ class SplitVacancyApp(BaseApp):
             column_to_plot={
                 "MAE": scatter_dft,
                 "Mean Spearman's Coefficient": scatter_dft,
+                "RMSD": scatter_dft,
             },
         )
 

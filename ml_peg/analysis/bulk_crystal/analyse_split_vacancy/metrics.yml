@@ -11,3 +11,9 @@ metrics:
     unit: eV
     tooltip: Formation energy of split vacancy, considering lowest energy relaxed structures.
     level_of_theory: PBE
+  RMSD:
+    good: 0.0
+    bad: 1.0
+    unit: Å
+    tooltip: RMSD between DFT relaxed structures, pre- and post- MLIP relaxation.
+    level_of_theory: PBE

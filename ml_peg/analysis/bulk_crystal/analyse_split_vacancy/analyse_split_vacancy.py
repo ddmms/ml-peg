@@ -110,19 +110,6 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
                 nv_atoms_list = read(nv_xyz_path, ":")
                 sv_atoms_list = read(sv_xyz_path, ":")
 
-                nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
-                sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
-
-                # TODO (later): result_rmsd[model_name]
-                # load original structure
-                # use get_rmsd
-
-                # formula = nv_atoms_list[0].info["name"]
-                # cell_charge = nv_atoms_list[0][-1].info["cell_charge"]  # TODO
-
-                sv_formation_energy = min(sv_energies) - min(nv_energies)
-                sv_preferred = sv_formation_energy < preference_energy_threshold
-
                 if not ref_stored:
                     ref_nv_energies = [
                         float(at.info["ref_energy"]) for at in nv_atoms_list
@@ -139,14 +126,33 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
                     )
 
                     result_formation_energy["ref"].append(ref_sv_formation_energy)
+                    
+                    ref_cation_dir = CALC_PATH / 'ref' / material_dir.stem / cation_dir.stem
+                    ref_nv_atoms_list = read(ref_cation_dir / "normal_vacancy.xyz.gz", ':')
+                    ref_sv_atoms_list = read(ref_cation_dir / "split_vacancy.xyz.gz", ':')
+
+
+                nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
+                sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
 
                 # calculate metrics
+                sv_formation_energy = min(sv_energies) - min(nv_energies)
+                sv_preferred = sv_formation_energy < preference_energy_threshold
+
                 spearmans_coefficient = spearmanr(
                     nv_energies + sv_energies, ref_sv_energies + ref_nv_energies
                 ).statistic
-                # result_rmsd[model_name] = get_rmsd()  # TODO: RMSD of what??
+
+                rmsd_list = []
+                for ref_atoms, mlip_atoms in  zip(ref_nv_atoms_list, nv_atoms_list):
+                    rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
+                for ref_atoms, mlip_atoms in zip(ref_sv_atoms_list, sv_atoms_list):
+                    rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
+
+                # add metrics to dicts
                 result_formation_energy[model_name].append(sv_formation_energy)
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
+                result_rmsd[model_name].extend(rmsd_list)
 
         # print(result_formation_energy)
         # print(result_spearmans_coefficient)
@@ -226,6 +232,28 @@ def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
         results[model_name] = float(np.mean(result_spearmans_coefficient[model_name]))
     return results
 
+@pytest.fixture
+def rmsd_dft_mean(build_results) -> dict[str, float]:
+    """
+    Get RMSD between DFT and MLIP relaxed structures.
+
+    Parameters
+    ----------
+    build_results
+        Dictionary of DFT and predicted lattice constants.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted lattice constant errors for all models.
+    """
+    _, _, result_rmsd = build_results
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = float(np.mean(result_rmsd[model_name]))
+    return results
+
 
 @pytest.fixture
 @build_table(
@@ -236,6 +264,7 @@ def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
 def metrics(
     formation_energy_dft_mae: dict[str, float],
     spearmans_coefficient_dft_mean: dict[str, float],
+    rmsd_dft_mean: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -256,6 +285,7 @@ def metrics(
     return {
         "MAE": formation_energy_dft_mae,
         "Mean Spearman's Coefficient": spearmans_coefficient_dft_mean,
+        "RMSD": rmsd_dft_mean,
     }
 
 
