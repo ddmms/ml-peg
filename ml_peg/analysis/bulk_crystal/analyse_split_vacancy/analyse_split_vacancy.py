@@ -1,3 +1,5 @@
+"""Analyse split vacancy benchmark."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,7 +33,20 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False)
 
 
-def get_rmsd(atoms_1, atoms_2):
+def get_rmsd(atoms_1, atoms_2) -> float:
+    """
+    Calculate the RMSD between two ASE Atoms objects.
+
+    Parameters
+    ----------
+    atoms_1, atoms_2
+        ASE Atoms objects.
+
+    Returns
+    -------
+    float
+        Root mean square displacement.
+    """
     rmsd, max_dist = STRUCTURE_MATCHER.get_rms_dist(
         Structure.from_ase_atoms(atoms_1), Structure.from_ase_atoms(atoms_2)
     )
@@ -40,7 +55,15 @@ def get_rmsd(atoms_1, atoms_2):
 
 
 def get_hoverdata() -> tuple[list, list, list]:
-    # TODO: RMSD could be good hoverdata - think about this. Only needed for formation energy parity plot.
+    """
+    Get hover data.
+
+    Returns
+    -------
+    tuple[list, list, list ]
+        Tuple of Materials Project IDs, bulk formulae and vacant cations.
+    """
+    # TODO: RMSD could be good hoverdata?
     # TODO: add cell charge?
     mp_ids = []
     formulae = []
@@ -71,7 +94,15 @@ MP_IDS, BULK_FORMULAE, VACANT_CATIONS = get_hoverdata()
 
 @pytest.fixture  # cache outputs
 def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
-    preference_energy_threshold = 0  # TODO: confirm
+    """
+    Iterate through bulk-cation pairs calculating results.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float], dict[str, float]]
+        Tuple of metrics.
+    """
+    # preference_energy_threshold = 0  # TODO: confirm
 
     result_formation_energy = {"ref": []} | {
         mlip: [] for mlip in MODELS
@@ -98,14 +129,13 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
             ]  # skip pristine supercell.xyz files if present (not used)
 
             for cation_dir in tqdm(cation_dirs, leave=False):
-                cation = cation_dir.stem
+                # cation = cation_dir.stem TODO: save structures for visualization
 
                 nv_xyz_path = cation_dir / "normal_vacancy.xyz.gz"
                 sv_xyz_path = cation_dir / "split_vacancy.xyz.gz"
 
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
                     raise ValueError  # TODO: remove
-                # sv_from_nv_xyz_path = cation_dir / "normal_vacancy_to_split_vac.xyz.gz"
 
                 nv_atoms_list = read(nv_xyz_path, ":")
                 sv_atoms_list = read(sv_xyz_path, ":")
@@ -121,32 +151,43 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
                     ref_sv_formation_energy = min(ref_sv_energies) - min(
                         ref_nv_energies
                     )
-                    ref_sv_preferred = (
-                        ref_sv_formation_energy < preference_energy_threshold
-                    )
+                    # ref_sv_preferred = (
+                    #     ref_sv_formation_energy < preference_energy_threshold
+                    # ) # TODO: F1 score
 
                     result_formation_energy["ref"].append(ref_sv_formation_energy)
-                    
-                    ref_cation_dir = CALC_PATH / 'ref' / material_dir.stem / cation_dir.stem
-                    ref_nv_atoms_list = read(ref_cation_dir / "normal_vacancy.xyz.gz", ':')
-                    ref_sv_atoms_list = read(ref_cation_dir / "split_vacancy.xyz.gz", ':')
 
+                    ref_cation_dir = (
+                        CALC_PATH / "ref" / material_dir.stem / cation_dir.stem
+                    )
+                    ref_nv_atoms_list = read(
+                        ref_cation_dir / "normal_vacancy.xyz.gz", ":"
+                    )
+                    ref_sv_atoms_list = read(
+                        ref_cation_dir / "split_vacancy.xyz.gz", ":"
+                    )
 
                 nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
                 sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
 
                 # calculate metrics
                 sv_formation_energy = min(sv_energies) - min(nv_energies)
-                sv_preferred = sv_formation_energy < preference_energy_threshold
+                # sv_preferred = sv_formation_energy < preference_energy_threshold
 
                 spearmans_coefficient = spearmanr(
-                    nv_energies + sv_energies, ref_sv_energies + ref_nv_energies
+                    [float(at.info["initial_energy"]) for at in nv_atoms_list]
+                    + [float(at.info["initial_energy"]) for at in sv_atoms_list],
+                    ref_sv_energies + ref_nv_energies,
                 ).statistic
 
                 rmsd_list = []
-                for ref_atoms, mlip_atoms in  zip(ref_nv_atoms_list, nv_atoms_list):
+                for ref_atoms, mlip_atoms in zip(
+                    ref_nv_atoms_list, nv_atoms_list, strict=False
+                ):
                     rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
-                for ref_atoms, mlip_atoms in zip(ref_sv_atoms_list, sv_atoms_list):
+                for ref_atoms, mlip_atoms in zip(
+                    ref_sv_atoms_list, sv_atoms_list, strict=False
+                ):
                     rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
 
                 # add metrics to dicts
@@ -154,11 +195,7 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
                 result_rmsd[model_name].extend(rmsd_list)
 
-        # print(result_formation_energy)
-        # print(result_spearmans_coefficient)
-        # print(result_rmsd)
         ref_stored = False
-        # print(result_formation_energy)
     return result_formation_energy, result_spearmans_coefficient, result_rmsd
 
 
@@ -176,12 +213,17 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
 )
 def formation_energies_dft(build_results) -> dict[str, list]:
     """
-    Get DFT and predicted lattice constant for all crystals.
+    Get DFT and predicted formation energies.
+
+    Parameters
+    ----------
+    build_results
+        Tuple of results dictionaries.
 
     Returns
     -------
     dict[str, list]
-        Dictionary of DFT and predicted lattice constants.
+        Dictionary of DFT and predicted formation energies.
     """
     result_formation_energies, _, _ = build_results
     return result_formation_energies
@@ -194,13 +236,13 @@ def formation_energy_dft_mae(formation_energies_dft) -> dict[str, float]:
 
     Parameters
     ----------
-    lattice_constants_dft
-        Dictionary of DFT and predicted lattice constants.
+    formation_energies_dft
+        Dictionary of DFT and predicted formation energies.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted lattice constant errors for all models.
+        Dictionary of formation energy MAEs for all models.
     """
     results = {}
     for model_name in MODELS:
@@ -213,17 +255,17 @@ def formation_energy_dft_mae(formation_energies_dft) -> dict[str, float]:
 @pytest.fixture
 def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
     """
-    Get mean spearmans coefficient between DFT and MLIP relaxed structures..
+    Get mean spearmans coefficient between DFT and MLIP relaxed structures.
 
     Parameters
     ----------
     build_results
-        Dictionary of DFT and predicted lattice constants.
+        Tuple of results dictionaries.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted lattice constant errors for all models.
+        Dictionary of mean Spearman's coefficients for all models.
     """
     _, result_spearmans_coefficient, _ = build_results
 
@@ -231,6 +273,7 @@ def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
     for model_name in MODELS:
         results[model_name] = float(np.mean(result_spearmans_coefficient[model_name]))
     return results
+
 
 @pytest.fixture
 def rmsd_dft_mean(build_results) -> dict[str, float]:
@@ -240,12 +283,12 @@ def rmsd_dft_mean(build_results) -> dict[str, float]:
     Parameters
     ----------
     build_results
-        Dictionary of DFT and predicted lattice constants.
+        Tuple of results dictionaries.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted lattice constant errors for all models.
+        Dictionary of mean relaxed structure RMSDs for all models.
     """
     _, _, result_rmsd = build_results
 
@@ -271,10 +314,12 @@ def metrics(
 
     Parameters
     ----------
-    metric_1
-        Metric 1 value for all models.
-    metric_2
-        Metric 2 value for all models.
+    formation_energy_dft_mae
+        Split vancancy formation energy MAE for all models.
+    spearmans_coefficient_dft_mean
+        Spearman's coefficient mean for all models.
+    rmsd_dft_mean
+        RMSD for all models.
 
     Returns
     -------

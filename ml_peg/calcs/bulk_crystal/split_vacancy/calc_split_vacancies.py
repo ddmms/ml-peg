@@ -1,4 +1,4 @@
-"""Run calculations for elasticity benchmark."""
+"""Run calculations for split vacancy benchmark."""
 
 from __future__ import annotations
 

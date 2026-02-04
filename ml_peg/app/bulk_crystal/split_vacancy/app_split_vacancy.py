@@ -1,4 +1,4 @@
-"""Run lattice constants benchmark app."""
+"""Run split vacancy benchmark app."""
 
 from __future__ import annotations
 
@@ -15,12 +15,13 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Split vacancy"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants"  # TODO: change
+# TODO: change DOCS_URL
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
 
 
 class SplitVacancyApp(BaseApp):
-    """Lattice constants benchmark app layout and callbacks."""
+    """Split vacancy benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -28,21 +29,6 @@ class SplitVacancyApp(BaseApp):
             DATA_PATH / "figure_formation_energies_dft.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
-
-        # structs_dir = DATA_PATH / MODELS[0]
-        # structs = []
-        # for struct_file in sorted(structs_dir.glob("*.xyz")):
-        #     if struct_file.stem == "SiC":
-        #         structs.extend(
-        #             [
-        #                 f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
-        #             ]
-        #             * 2
-        #         )
-        #     else:
-        #         structs.append(
-        #             f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
-        #         )
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -54,28 +40,21 @@ class SplitVacancyApp(BaseApp):
             },
         )
 
-        # struct_from_scatter(
-        #     scatter_id=f"{BENCHMARK_NAME}-figure",
-        #     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-        #     structs=structs,
-        #     mode="struct",
-        # )
-
 
 def get_app() -> SplitVacancyApp:
     """
-    Get lattice constants benchmark app layout and callback registration.
+    Get split vacancy benchmark app layout and callback registration.
 
     Returns
     -------
-    LatticeConstantsApp
+    SplitVacancyApp
         Benchmark layout and callback registration.
     """
     return SplitVacancyApp(
         name=BENCHMARK_NAME,
         description=(
-            "Performance when predicting lattice constants for 23 solids, including "
-            "pure elements, binary compounds and semiconductors."
+            "Performance predicting the formation energy of split "
+            "vacancies from regular vacancies in XX systems."  # TODO: add number
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "split_vacancy_metrics_table.json",
