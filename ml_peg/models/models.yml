@@ -8,16 +8,16 @@
 #  kwargs:
 #    model: "medium"
 #
-#mace-mp-0a-small:
-#  module: mace.calculators
-#  class_name: mace_mp
-#  device: "auto"
-#  default_dtype: float32
-#  trained_on_d3: false
-#  level_of_theory: PBE
-#  kwargs:
-#    model: "small"
-#
+mace-mp-0a-small:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  default_dtype: float32
+  trained_on_d3: false
+  level_of_theory: PBE
+  kwargs:
+    model: "small"
+
 #mace-mp-0b3:
 #  module: mace.calculators
 #  class_name: mace_mp

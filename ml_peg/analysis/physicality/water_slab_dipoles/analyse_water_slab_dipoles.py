@@ -49,6 +49,8 @@ def get_dipoles() -> dict[str, np.ndarray]:
     results = {}
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
+        print("Trying to open: ", model_dir)
+        print("Exists: ", model_dir.exists())
         if model_dir.exists():
             if (model_dir / "dipoles.npy").is_file():
                 results[model_name] = np.load(model_dir / "dipoles.npy")
@@ -65,6 +67,7 @@ def get_dipoles() -> dict[str, np.ndarray]:
                 dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
                 results[model_name] = dipoles_unit_area
                 np.save(model_dir / "dipoles.npy", dipoles_unit_area)
+        print("Results: ", results)
     return results
 
 
@@ -113,7 +116,9 @@ def dipole_std() -> dict[str, float]:
     dipoles = get_dipoles()
     results = {}
     for model_name in MODELS:
+        print("Searching for dipole key: ", model_name)
         if model_name in dipoles.keys():
+            print("Found it")
             plot_distribution(model_name)
             results[model_name] = np.std(dipoles[model_name])
         else:
@@ -150,7 +155,6 @@ def n_bad() -> dict[str, float]:
     filename=OUT_PATH / "water_slab_dipoles_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(dipole_std: dict[str, float], n_bad: dict[str, float]) -> dict[str, dict]:
     """
