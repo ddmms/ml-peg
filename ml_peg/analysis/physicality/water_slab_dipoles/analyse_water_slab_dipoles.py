@@ -85,6 +85,7 @@ def plot_distribution(model: str) -> None:
         filename=OUT_PATH / f"figure_{model}_dipoledistr.json",
         title=f"Dipole Distribution {model}",
         x_label="Total z-Dipole per unit area [e/A]",
+        y_label="Probability Density",
         good=-DIPOLE_BAD_THRESHOLD,
         bad=DIPOLE_BAD_THRESHOLD,
         bins=20,

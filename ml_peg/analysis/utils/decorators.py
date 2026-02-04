@@ -433,6 +433,7 @@ def plot_hist(
     bad: float | None = None,
     title: str | None = None,
     x_label: str | None = None,
+    y_label: str | None = None,
     filename: str | Path,
 ) -> Callable:
     """
@@ -452,7 +453,8 @@ def plot_hist(
         Graph title.
     x_label
         Label for x-axis. Default is `None`.
-
+    y_label
+        Label for y axis. Default is `None`.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
 
@@ -546,7 +548,7 @@ def plot_hist(
                 fig.update_layout(
                     title={"text": title},
                     xaxis={"title": {"text": x_label}},
-                    # yaxis={"title": {"text": y_label}},
+                    yaxis={"title": {"text": y_label}},
                     # no label, y axis is probability density
                 )
 
