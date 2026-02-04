@@ -2,7 +2,7 @@ metrics:
   # 0 GPa
   Volume MAE (0 GPa):
     good: 0.05
-    bad: 0.15
+    bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 0 GPa compared to PBE"
     level_of_theory: PBE
@@ -21,7 +21,7 @@ metrics:
 
   # 25 GPa
   Volume MAE (25 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 25 GPa compared to PBE"
@@ -41,7 +41,7 @@ metrics:
 
   # 50 GPa
   Volume MAE (50 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 50 GPa compared to PBE"
@@ -61,7 +61,7 @@ metrics:
 
   # 75 GPa
   Volume MAE (75 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 75 GPa compared to PBE"
@@ -81,7 +81,7 @@ metrics:
 
   # 100 GPa
   Volume MAE (100 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 100 GPa compared to PBE"
@@ -101,7 +101,7 @@ metrics:
 
   # 125 GPa
   Volume MAE (125 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 125 GPa compared to PBE"
@@ -121,7 +121,7 @@ metrics:
 
   # 150 GPa
   Volume MAE (150 GPa):
-    good: 0.02
+    good: 0.05
     bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 150 GPa compared to PBE"
