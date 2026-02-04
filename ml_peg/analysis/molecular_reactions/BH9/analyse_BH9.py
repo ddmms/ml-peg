@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
 import pytest
 
@@ -29,6 +30,8 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+EV_TO_KCAL = units.mol / units.kcal
 
 
 def get_system_names() -> list[str]:
@@ -90,8 +93,8 @@ def get_structure_numbers() -> list[int]:
 @plot_parity(
     filename=OUT_PATH / "figure_bh9_barriers.json",
     title="Reaction barriers",
-    x_label="Predicted barrier / eV",
-    y_label="Reference barrier / eV",
+    x_label="Predicted barrier / kcal/mol",
+    y_label="Reference barrier / kcal/mol",
     hoverdata={
         "Reaction": get_reaction_numbers(),
         "Structure": get_structure_numbers(),
@@ -137,8 +140,8 @@ def barrier_heights() -> dict[str, list]:
                     atoms = read(fname)
                     model_forward_barrier -= atoms.info["model_energy"]
                     write(structs_dir / f"{fname.stem}.xyz", atoms)
-            model_barriers.append(model_forward_barrier)
-            ref_barriers.append(ref_forward_barrier)
+            model_barriers.append(model_forward_barrier * EV_TO_KCAL)
+            ref_barriers.append(ref_forward_barrier * EV_TO_KCAL)
 
         results[model_name] = model_barriers
         if not ref_stored:
