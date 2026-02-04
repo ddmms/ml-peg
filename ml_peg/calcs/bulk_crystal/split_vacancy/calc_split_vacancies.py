@@ -21,9 +21,6 @@ DATA_PATH = Path("/Users/tw/Downloads/out")
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-# def rmsd(atoms_1, atoms_2):
-
-
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     """
@@ -57,6 +54,18 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             for atoms_path in tqdm(atoms_paths, leave=False):
                 relaxed_atoms = []
                 atoms_list = read(atoms_path, ":")
+
+                ref_atoms_out_path = (
+                    OUT_PATH
+                    / "ref"
+                    / material_dir.stem
+                    / cation_dir.stem
+                    / f"{atoms_path.stem}.xyz.gz"
+                )
+                # Copy ref structures once; subsequent runs skip if already present.
+                if not ref_atoms_out_path.exists():
+                    ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
+                    write(ref_atoms_out_path, atoms_list)
 
                 for atoms in tqdm(atoms_list, leave=False):
                     atoms.calc = deepcopy(calc)
