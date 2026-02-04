@@ -50,12 +50,14 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             sv_xyz_path = cation_dir / "split_vacancy.xyz"
             sv_from_nv_xyz_path = cation_dir / "normal_vacancy_to_split_vac.xyz"
 
-            for atoms_path in tqdm(
-                [nv_xyz_path, sv_xyz_path, sv_from_nv_xyz_path], leave=False
-            ):
-                if not atoms_path.exists():
-                    continue
+            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                continue
 
+            atoms_paths = [nv_xyz_path, sv_xyz_path]
+            if sv_from_nv_xyz_path.exists():
+                atoms_paths += sv_from_nv_xyz_path
+
+            for atoms_path in tqdm(atoms_paths, leave=False):
                 relaxed_atoms = []
                 atoms_list = read(atoms_path, ":")
 
