@@ -115,3 +115,62 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+High-Pressure Relaxation
+========================
+
+Summary
+-------
+
+Performance in relaxing bulk crystal structures under high-pressure conditions.
+3000 structures from the Alexandria database are relaxed at 7 pressure conditions
+(0, 25, 50, 75, 100, 125, 150 GPa) and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+For each pressure condition (0, 25, 50, 75, 100, 125, 150 GPa):
+
+(1) Volume MAE
+
+Mean absolute error of volume per atom compared to PBE reference.
+
+(2) Energy MAE
+
+Mean absolute error of enthalpy per atom compared to PBE reference. The enthalpy is
+calculated as H = E + PV, where E is the potential energy, P is the applied pressure,
+and V is the volume.
+
+(3) Convergence
+
+Percentage of structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
+applied to preserve crystallographic symmetry analogously to DFT. Starting from P000 (0 GPa) structures, each structure is relaxed at the target pressure using the FrechetCellFilter with the
+specified scalar pressure. Relaxation continues until the maximum force component is
+below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is
+repeated up from the last structure of the previous relaxation up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of
+structures and pressure conditions tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database pressure benchmark dataset
+* URL: https://alexandria.icams.rub.de/data/pbe/benchmarks/pressure
+* 3000 structures randomly sampled from the full datasets at each pressure
+
+Reference data:
+
+* PBE calculations from the Alexandria database
+* Loew et al 2026 J. Phys. Mater. 9 015010 https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8
