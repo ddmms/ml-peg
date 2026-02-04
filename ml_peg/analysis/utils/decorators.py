@@ -276,6 +276,156 @@ def plot_parity(
     return plot_parity_decorator
 
 
+def cell_to_scatter(
+    *,
+    filename: str | Path,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    title_template: str = "{model} - {metric}",
+) -> Callable:
+    """
+    Pre-generate scatter plots for each table cell (model-metric pair).
+
+    Use this for benchmarks where each table CELL generates its own scatter plot
+    (e.g., clicking MACE's ω_max shows a scatter for that specific model-metric
+    pair). For benchmarks where clicking a COLUMN shows all models on one scatter
+    (like S24 or OC157), use @plot_parity instead.
+
+    This decorator generates complete Plotly figures during analysis instead of
+    saving raw points for the app to process on-the-fly.
+
+    Parameters
+    ----------
+    filename
+        Path where JSON data with pre-made figures will be saved.
+    x_label
+        Label for x-axis (typically "Predicted"). Default is None.
+    y_label
+        Label for y-axis (typically "Reference"). Default is None.
+    title_template
+        Template for plot titles with {model} and {metric} placeholders.
+        Default is "{model} - {metric}".
+
+    Returns
+    -------
+    Callable
+        Decorator that wraps analysis functions to pre-generate scatter figures.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """
+        Wrap the decorated callable to pre-generate scatter figures.
+
+        Parameters
+        ----------
+        func
+            Analysis function returning the dataset consumed by the Dash app.
+
+        Returns
+        -------
+        Callable
+            Wrapped function that runs ``func`` and emits Plotly figures.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Execute func and generate scatter plots for each model-metric pair.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to ``func``.
+            **kwargs
+                Keyword arguments forwarded to ``func``.
+
+            Returns
+            -------
+            dict
+                The dataset produced by ``func`` (with ``figures`` entries).
+            """
+            data_bundle = func(*args, **kwargs)
+
+            # Extract metadata
+            metric_labels = data_bundle.get("metrics", {})
+            models_data = data_bundle.get("models", {})
+
+            # Create figures for each model-metric pair
+            for model_name, model_data in models_data.items():
+                model_data["figures"] = {}
+                metrics_data = model_data.get("metrics", {})
+
+                for metric_key, metric_info in metrics_data.items():
+                    points = metric_info.get("points", [])
+                    if not points:
+                        continue
+
+                    # Extract ref and pred values
+                    refs = [p["ref"] for p in points]
+                    preds = [p["pred"] for p in points]
+                    ids = [p.get("id", "") for p in points]
+
+                    # Build hovertemplate
+                    hovertemplate = (
+                        "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>"
+                        "<b>ID: </b>%{customdata[0]}<br>"
+                    )
+                    customdata = [[id_val] for id_val in ids]
+
+                    # Create figure
+                    fig = go.Figure()
+                    fig.add_trace(
+                        go.Scatter(
+                            x=preds,
+                            y=refs,
+                            mode="markers",
+                            customdata=customdata,
+                            hovertemplate=hovertemplate,
+                            showlegend=False,
+                        )
+                    )
+
+                    # Add parity line
+                    full_fig = fig.full_figure_for_development()
+                    x_range = full_fig.layout.xaxis.range
+                    y_range = full_fig.layout.yaxis.range
+                    lims = [
+                        np.min([x_range, y_range]),
+                        np.max([x_range, y_range]),
+                    ]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=lims,
+                            y=lims,
+                            mode="lines",
+                            showlegend=False,
+                        )
+                    )
+
+                    # Update layout
+                    metric_label = metric_labels.get(metric_key, metric_key)
+                    title = title_template.format(model=model_name, metric=metric_label)
+                    fig.update_layout(
+                        title={"text": title},
+                        xaxis={"title": {"text": x_label}},
+                        yaxis={"title": {"text": y_label}},
+                    )
+
+                    # Store figure as JSON-serializable dict
+                    model_data["figures"][metric_key] = json.loads(fig.to_json())
+
+            # Save to file
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            with open(filename, "w", encoding="utf8") as f:
+                dump(data_bundle, f)
+
+            return data_bundle
+
+        return wrapper
+
+    return decorator
+
+
 def plot_scatter(
     title: str | None = None,
     x_label: str | None = None,
@@ -394,6 +544,8 @@ def plot_density_scatter(
     grid_size: int = 80,
     max_points_per_cell: int = 5,
     seed: int = 0,
+    hover_metadata: dict[str, str] | None = None,
+    annotation_metadata: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot density-coloured parity scatter with legend-based model toggling.
@@ -421,6 +573,15 @@ def plot_density_scatter(
         Maximum number of examples plotted per cell to keep renders responsive.
     seed
         Seed for deterministic sub-sampling. Default is 0.
+    hover_metadata
+        Dictionary mapping metadata keys to display labels for hover tooltips.
+        Keys are used to look up values in each point's metadata; labels are shown
+        in the hover text. Pass ``None`` (default) to omit additional hover metadata.
+    annotation_metadata
+        Dictionary mapping metadata keys to display labels for model-level
+        annotations (shown in the text box on the plot). Keys are used to look up
+        values in the model's metadata dict; labels are shown in the annotation.
+        Pass ``None`` (default) to omit additional annotation metadata.
 
     Returns
     -------
@@ -537,23 +698,49 @@ def plot_density_scatter(
             global_max = -np.inf
             processed = {}
             annotations = []
+            annotation_fields = annotation_metadata or {}
+            hover_fields = hover_metadata or {}
+
             for model in results:
                 data = results[model]
                 ref_vals = np.asarray(data.get("ref", []), dtype=float)
                 pred_vals = np.asarray(data.get("pred", []), dtype=float)
                 meta = data.get("meta") or {}
-                excluded = meta.get("excluded")
-                excluded_text = str(excluded) if excluded is not None else "n/a"
+
+                # Extract annotation metadata values (for text box)
+                annotation_values: list[str] = []
+                for meta_key in annotation_fields:
+                    meta_raw = meta.get(meta_key)
+                    annotation_values.append(
+                        "n/a" if meta_raw is None else str(meta_raw)
+                    )
+
+                # Extract hover metadata values (for tooltips)
+                hover_values: list[str] = []
+                for meta_key in hover_fields:
+                    meta_raw = meta.get(meta_key)
+                    hover_values.append("n/a" if meta_raw is None else str(meta_raw))
+
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
                 else:
                     sampled = _downsample(ref_vals, pred_vals)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
-                # Top left corner annotation for each model with exclusion info
+
+                # Build annotation text from annotation metadata
+                summary_text = ""
+                if annotation_fields:
+                    summary_text = " | ".join(
+                        f"{label}: {value}"
+                        for value, label in zip(
+                            annotation_values, annotation_fields.values(), strict=True
+                        )
+                    )
                 annotations.append(
                     {
-                        "text": f"{model} | Excluded: {excluded_text}",
+                        "text": f"{model}"
+                        + (f" | {summary_text}" if summary_text else ""),
                         "xref": "paper",
                         "yref": "paper",
                         "x": 0.02,
@@ -567,7 +754,7 @@ def plot_density_scatter(
                 processed[model] = {
                     "samples": sampled,
                     "counts": len(ref_vals),
-                    "meta": excluded_text,
+                    "meta": hover_values if hover_fields else None,
                 }
 
             if not np.isfinite(global_min) or not np.isfinite(global_max):
@@ -580,12 +767,15 @@ def plot_density_scatter(
             line_end = global_max + padding
 
             fig = go.Figure()
-            hovertemplate = (
-                "<b>Reference:</b> %{x:.3f}<br>"
-                "<b>Predicted:</b> %{y:.3f}<br>"
-                "<b>Density:</b> %{customdata[0]:.0f}<br>"
-                "<b>Excluded:</b> %{meta[0]}<extra></extra>"
-            )
+            hover_lines = [
+                "<b>Reference:</b> %{x:.3f}",
+                "<b>Predicted:</b> %{y:.3f}",
+                "<b>Density:</b> %{customdata[0]:.0f}",
+            ]
+            if hover_fields:
+                for idx, label in enumerate(hover_fields.values()):
+                    hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
+            hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
             for idx, model in enumerate(results):
                 sample_x, sample_y, density = processed[model]["samples"]
@@ -606,7 +796,7 @@ def plot_density_scatter(
                         customdata=np.array(density, dtype=float)[:, None]
                         if density
                         else None,
-                        meta=[processed[model]["meta"]],
+                        meta=processed[model]["meta"],
                         hovertemplate=hovertemplate,
                     )
                 )
@@ -633,7 +823,7 @@ def plot_density_scatter(
                 title={"text": title} if title else None,
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
-                annotations=[annotations[0]],
+                annotations=[annotations[0]] if annotations else [],
                 meta=layout_meta,
                 showlegend=True,
                 legend_title_text="Model",
@@ -1415,7 +1605,9 @@ def build_table(
                 row_data = {"MLIP": display_name}
                 for key, value in results.items():
                     row_data[key] = value.get(mlip, None)
-                row_data["id"] = display_name
+                # Store the original model name in the row ID for callbacks, instead of
+                # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
+                row_data["id"] = mlip
                 metrics_data.append(row_data)
 
             summary_tooltips = {
@@ -1477,8 +1669,8 @@ def build_table(
 
             # Save dict of table to be loaded
             model_name_map = {
-                display_name: canonical
-                for canonical, display_name in display_names.items()
+                display_name: original_name
+                for original_name, display_name in display_names.items()
             }
 
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
