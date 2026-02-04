@@ -49,6 +49,9 @@ RANDOM_SEED = 42
 # Number of structures to use for testing
 N_STRUCTURES = 3000
 
+# Vacuum padding for non-periodic directions (Angstrom)
+VACUUM_PADDING = 100.0
+
 # Dimensionality configurations
 # For 2D: mask allows in-plane cell relaxation only (fix z)
 # For 1D: mask allows along-chain relaxation only (fix y and z)
@@ -133,6 +136,62 @@ def get_length_per_atom(atoms: Atoms) -> float:
     cell = atoms.get_cell()
     length = np.linalg.norm(cell[0])
     return length / len(atoms)
+
+
+def set_vacuum_padding(
+    atoms: Atoms, dimensionality: str, vacuum: float = VACUUM_PADDING
+) -> Atoms:
+    """
+    Set lattice constants in non-periodic directions to specified vacuum padding.
+
+    For 2D materials, sets the c lattice vector magnitude to the vacuum value.
+    For 1D materials, sets both b and c lattice vector magnitudes to the vacuum value.
+    The direction of each lattice vector is preserved.
+
+    Parameters
+    ----------
+    atoms
+        ASE Atoms object.
+    dimensionality
+        Either "2D" or "1D".
+    vacuum
+        Target length for non-periodic lattice vectors in Angstrom.
+
+    Returns
+    -------
+    Atoms
+        Modified atoms object with updated cell.
+    """
+    cell = np.array(atoms.get_cell())
+
+    if dimensionality == "2D":
+        # Set c vector magnitude to vacuum while preserving direction
+        c_vec = cell[2]
+        c_norm = np.linalg.norm(c_vec)
+        if c_norm > 0:
+            cell[2] = c_vec / c_norm * vacuum
+        else:
+            # If c vector is zero, set it along z direction
+            cell[2] = np.array([0.0, 0.0, vacuum])
+    else:  # 1D
+        # Set b vector magnitude to vacuum while preserving direction
+        b_vec = cell[1]
+        b_norm = np.linalg.norm(b_vec)
+        if b_norm > 0:
+            cell[1] = b_vec / b_norm * vacuum
+        else:
+            cell[1] = np.array([0.0, vacuum, 0.0])
+
+        # Set c vector magnitude to vacuum while preserving direction
+        c_vec = cell[2]
+        c_norm = np.linalg.norm(c_vec)
+        if c_norm > 0:
+            cell[2] = c_vec / c_norm * vacuum
+        else:
+            cell[2] = np.array([0.0, 0.0, vacuum])
+
+    atoms.set_cell(cell, scale_atoms=False)
+    return atoms
 
 
 def load_structures(
@@ -287,6 +346,8 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
         structures, desc=f"{model_name} {dimensionality}", leave=False
     ):
         atoms = struct_data["atoms"].copy()
+        # Set vacuum padding in non-periodic directions
+        atoms = set_vacuum_padding(atoms, dimensionality)
         atoms.calc = copy(calc)
         mat_id = struct_data["mat_id"]
 
