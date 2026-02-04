@@ -30,7 +30,7 @@ import pytest
 from ml_peg.calcs.utils.iron_utils import (
     EV_PER_A2_TO_J_PER_M2,
     EV_PER_A3_TO_GPA,
-    apply_strain,
+    apply_voigt_strain,
     calculate_surface_energy,
     create_bain_cell,
     create_bcc_supercell,
@@ -43,7 +43,7 @@ from ml_peg.calcs.utils.iron_utils import (
     create_ts_100_structure,
     create_ts_110_structure,
     fit_eos,
-    get_voigt_strain,
+    relax_volume_isotropic,
 )
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -65,6 +65,7 @@ ELASTIC_STRAIN = 1.0e-5
 ELASTIC_SUPERCELL_SIZE = (4, 4, 4)
 ELASTIC_FMAX = 1e-10
 ELASTIC_MAX_ITER = 100
+ELASTIC_ATOM_JIGGLE = 1.0e-5  # Random perturbation to prevent saddle points
 
 # Bain path parameters
 BAIN_NUM_POINTS = 65
@@ -118,6 +119,11 @@ def run_eos_calculation(calc: Any) -> dict[str, Any]:
     for lat in lattice_params:
         atoms = bulk("Fe", "bcc", a=lat, cubic=True)
         atoms.calc = calc
+
+        # Relax atomic positions at fixed cell volume
+        # (matches LAMMPS minimize behavior)
+        opt = BFGS(atoms, logfile=None)
+        opt.run(fmax=1e-5, steps=1000)
 
         energy = atoms.get_potential_energy()
         volume = atoms.get_volume()
@@ -174,36 +180,42 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     opt = BFGS(ecf, logfile=None)
     opt.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
 
+    # Apply random jiggle to atoms to prevent staying on saddle points
+    rng = np.random.default_rng(seed=87287)
+    jiggle = rng.uniform(
+        -ELASTIC_ATOM_JIGGLE, ELASTIC_ATOM_JIGGLE, atoms_ref.positions.shape
+    )
+    atoms_ref.positions += jiggle
+
     # Elastic constant matrix
     C = np.zeros((6, 6))  # noqa: N806
 
     for i in range(6):
         direction = i + 1
 
-        # Positive strain
-        strain_pos = get_voigt_strain(direction, ELASTIC_STRAIN)
-        atoms_pos = apply_strain(atoms_ref.copy(), strain_pos)
+        # Positive strain with off-diagonal cell adjustment
+        atoms_pos = apply_voigt_strain(atoms_ref.copy(), direction, ELASTIC_STRAIN)
         atoms_pos.calc = calc
 
         opt_pos = BFGS(atoms_pos, logfile=None)
         opt_pos.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
-        stress_pos = -atoms_pos.get_stress(voigt=True)
+        stress_pos = atoms_pos.get_stress(voigt=True)
 
-        # Negative strain
-        strain_neg = get_voigt_strain(direction, -ELASTIC_STRAIN)
-        atoms_neg = apply_strain(atoms_ref.copy(), strain_neg)
+        # Negative strain with off-diagonal cell adjustment
+        atoms_neg = apply_voigt_strain(atoms_ref.copy(), direction, -ELASTIC_STRAIN)
         atoms_neg.calc = calc
 
         opt_neg = BFGS(atoms_neg, logfile=None)
         opt_neg.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
-        stress_neg = -atoms_neg.get_stress(voigt=True)
+        stress_neg = atoms_neg.get_stress(voigt=True)
 
-        # Compute elastic constants
+        # Compute elastic constants using stress differences
+        # C_ij = dσ_i / dε_j = (σ_pos - σ_neg) / (2 * ε)
         delta_stress = stress_pos - stress_neg
         delta_strain = 2 * ELASTIC_STRAIN
 
         for j in range(6):
-            C[j, i] = -delta_stress[j] / delta_strain * EV_PER_A3_TO_GPA
+            C[j, i] = delta_stress[j] / delta_strain * EV_PER_A3_TO_GPA
 
     # Symmetrize
     C_sym = 0.5 * (C + C.T)  # noqa: N806
@@ -233,6 +245,15 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
     """
     Calculate the Bain path energy curve.
 
+    For each target c/a ratio, creates a tetragonally distorted cell and performs
+    isotropic volume relaxation (uniform scaling only) to find the minimum energy
+    while maintaining the c/a ratio. This matches the LAMMPS behavior where
+    'fix box/relax aniso 0.0 couple xyz' is used.
+
+    The 'couple xyz' constraint in LAMMPS couples all three diagonal stress
+    components together, meaning x, y, and z dimensions can only change by the
+    same fractional amount. This preserves the c/a ratio during relaxation.
+
     Parameters
     ----------
     calc
@@ -252,30 +273,30 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
     energies = []
 
     for ratio in ca_ratios_target:
+        # Create tetragonally distorted cell at target c/a ratio
         atoms = create_bain_cell(lattice_parameter, ratio)
         atoms.calc = calc
 
-        # Box relaxation
-        ecf = ExpCellFilter(atoms, scalar_pressure=0.0)
-        opt = BFGS(ecf, logfile=None)
+        # Step 1: Isotropic volume relaxation (maintains c/a ratio)
+        # This is equivalent to LAMMPS: fix box/relax aniso 0.0 couple xyz
+        # Only uniform scaling is allowed, preserving the cell shape
+        atoms_relaxed = relax_volume_isotropic(atoms, calc)
 
+        # Step 2: Atomic position relaxation at fixed cell
+        # This matches LAMMPS second minimize after 'unfix relaxB'
+        # For atoms at high-symmetry positions (0,0,0) and (½,½,½),
+        # this should be essentially a no-op, but included for completeness
+        opt = BFGS(atoms_relaxed, logfile=None)
         try:
-            opt.run(fmax=1e-5, steps=10000)
+            opt.run(fmax=1e-5, steps=1000)
         except Exception:
             pass
 
-        # Additional atomic relaxation
-        opt2 = BFGS(atoms, logfile=None)
-        try:
-            opt2.run(fmax=1e-5, steps=10000)
-        except Exception:
-            pass
-
-        energy = atoms.get_potential_energy()
-        cell = atoms.get_cell()
+        energy = atoms_relaxed.get_potential_energy()
+        cell = atoms_relaxed.get_cell()
         ca_actual = cell[2, 2] / cell[1, 1]
 
-        n_atoms = len(atoms)
+        n_atoms = len(atoms_relaxed)
         ca_ratios.append(ca_actual)
         energies.append(energy / n_atoms)
 

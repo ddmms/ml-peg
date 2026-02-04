@@ -11,7 +11,7 @@ from typing import Any
 from ase import Atoms
 from ase.build import bulk
 import numpy as np
-from scipy.optimize import leastsq
+from scipy.optimize import leastsq, minimize_scalar
 
 # =============================================================================
 # Unit Conversion Constants
@@ -135,6 +135,90 @@ def fit_eos(
     a0 = (V0 * 2) ** (1.0 / 3.0)
 
     return {"E0": E0, "B0": B0_GPa, "Bp": Bp, "V0": V0, "a0": a0}
+
+
+# =============================================================================
+# Isotropic Volume Relaxation
+# =============================================================================
+
+
+def relax_volume_isotropic(
+    atoms: Atoms,
+    calc: Any,
+    scale_bounds: tuple[float, float] = (0.9, 1.1),
+    xtol: float = 1e-8,
+) -> Atoms:
+    """
+    Relax cell volume isotropically (uniform scaling) to minimize energy.
+
+    This maintains cell shape (all ratios between cell dimensions) while finding
+    the optimal volume. This is equivalent to LAMMPS 'fix box/relax aniso 0.0
+    couple xyz' which couples all three diagonal stress components together,
+    allowing only uniform scaling during relaxation.
+
+    For a tetragonal cell with c/a ratio, this preserves c/a while optimizing
+    the volume.
+
+    Parameters
+    ----------
+    atoms : Atoms
+        ASE Atoms object (will be copied, not modified).
+    calc : Any
+        ASE calculator.
+    scale_bounds : tuple[float, float], optional
+        Bounds for the scale factor search (min, max). Default: (0.9, 1.1).
+    xtol : float, optional
+        Tolerance for the scale factor optimization. Default: 1e-8.
+
+    Returns
+    -------
+    Atoms
+        New Atoms object at optimal volume with same cell shape.
+
+    Notes
+    -----
+    This function matches the LAMMPS behavior for Bain path calculations where
+    'couple xyz' is used to maintain the c/a ratio during volume relaxation.
+    The optimization finds the uniform scale factor that minimizes the total
+    energy of the system.
+    """
+    atoms = atoms.copy()
+    original_cell = atoms.cell.array.copy()
+
+    def energy_at_scale(scale: float) -> float:
+        """
+        Calculate energy at a given uniform scale factor.
+
+        Parameters
+        ----------
+        scale : float
+            Uniform scale factor to apply to the cell.
+
+        Returns
+        -------
+        float
+            Potential energy of the system at the given scale.
+        """
+        test_atoms = atoms.copy()
+        test_atoms.set_cell(original_cell * scale, scale_atoms=True)
+        test_atoms.calc = calc
+        return test_atoms.get_potential_energy()
+
+    # Find optimal scale factor that minimizes energy
+    result = minimize_scalar(
+        energy_at_scale,
+        bounds=scale_bounds,
+        method="bounded",
+        options={"xatol": xtol},
+    )
+    optimal_scale = result.x
+
+    # Create relaxed structure at optimal volume
+    relaxed_atoms = atoms.copy()
+    relaxed_atoms.set_cell(original_cell * optimal_scale, scale_atoms=True)
+    relaxed_atoms.calc = calc
+
+    return relaxed_atoms
 
 
 # =============================================================================
@@ -338,12 +422,18 @@ def create_surface_110(
     positions = []
     d110 = a * np.sqrt(2) / 2
 
+    # Each (110) plane in a cell of a x a*sqrt(2) contains 2 atoms.
+    # The BCC (110) surface has a centered rectangular structure.
     for k in range(layers * 2):
         z = k * d110
         if k % 2 == 0:
+            # Even planes: atoms at (0, 0) and (a/2, ly/2)
             positions.append([0, 0, z])
-        else:
             positions.append([0.5 * a, 0.5 * ly, z])
+        else:
+            # Odd planes: atoms at (0, ly/2) and (a/2, 0)
+            positions.append([0, 0.5 * ly, z])
+            positions.append([0.5 * a, 0, z])
 
     atoms = Atoms(
         symbols=[symbol] * len(positions), positions=positions, cell=cell, pbc=True
@@ -631,6 +721,69 @@ def apply_strain(atoms: Atoms, strain_matrix: np.ndarray) -> Atoms:
     F = np.eye(3) + strain_matrix  # noqa: N806
     new_cell = atoms_strained.cell @ F.T
     atoms_strained.set_cell(new_cell, scale_atoms=True)
+    return atoms_strained
+
+
+def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
+    """
+    Apply Voigt strain with off-diagonal cell adjustment (LAMMPS-style).
+
+    For normal strains (directions 1-3), this scales the entire cell vector
+    rather than just the diagonal component. This maintains cell vector ratios
+    and is important for triclinic cells or pre-strained configurations.
+
+    LAMMPS equivalent for direction 1 (xx):
+        change_box all x delta 0 ${delta} xy delta ${deltaxy} xz delta ${deltaxz}
+    where deltaxy = up * xy, deltaxz = up * xz
+
+    For cubic/orthogonal cells (xy=xz=yz=0), this is equivalent to apply_strain().
+
+    Parameters
+    ----------
+    atoms : Atoms
+        ASE Atoms object.
+    direction : int
+        Voigt direction (1-6):
+        1=xx, 2=yy, 3=zz, 4=yz, 5=xz, 6=xy.
+    magnitude : float
+        Strain magnitude (e.g., 1e-5).
+
+    Returns
+    -------
+    Atoms
+        Strained ASE Atoms object.
+    """
+    atoms_strained = atoms.copy()
+    cell = atoms_strained.cell.array.copy()
+
+    if direction == 1:
+        # Scale entire x cell vector (a1): maintains xy/lx and xz/lx ratios
+        # LAMMPS: x -> x + delta, xy -> xy + up*xy, xz -> xz + up*xz
+        cell[0, :] *= 1 + magnitude
+    elif direction == 2:
+        # Scale entire y cell vector (a2): maintains yz/ly ratio
+        # LAMMPS: y -> y + delta, yz -> yz + up*yz
+        cell[1, :] *= 1 + magnitude
+    elif direction == 3:
+        # Scale entire z cell vector (a3)
+        # LAMMPS: z -> z + delta
+        cell[2, :] *= 1 + magnitude
+    elif direction == 4:
+        # yz shear: LAMMPS changes yz tilt only
+        # For LAMMPS compatibility: simple shear (not symmetric)
+        # cell[1, 2] is the yz tilt component
+        lz = cell[2, 2]
+        cell[1, 2] += magnitude * lz
+    elif direction == 5:
+        # xz shear: LAMMPS changes xz tilt only
+        lz = cell[2, 2]
+        cell[0, 2] += magnitude * lz
+    elif direction == 6:
+        # xy shear: LAMMPS changes xy tilt only
+        ly = cell[1, 1]
+        cell[0, 1] += magnitude * ly
+
+    atoms_strained.set_cell(cell, scale_atoms=True)
     return atoms_strained
 
 
