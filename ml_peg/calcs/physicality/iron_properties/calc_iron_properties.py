@@ -77,9 +77,7 @@ VACANCY_SUPERCELL_SIZE = (4, 4, 4)
 SURFACE_VACUUM = 10.0  # Angstroms
 
 # Stacking fault calculation parameters
-SFE_110_STEPS = 63
-SFE_112_STEPS = 100
-SFE_STEP_SIZE = 0.04  # Angstroms
+SFE_STEPS = 16  # Number of steps to cover one Burgers vector
 
 # Traction-separation parameters
 TS_MAX_SEPARATION = 5.0  # Angstroms
@@ -454,10 +452,10 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
 # Stacking Fault Energy Calculations
 # =============================================================================
 
-# SFE configuration: create_fn, number of steps, displacement axis
+# SFE configuration: create_fn, displacement axis
 SFE_CONFIG = {
-    "110": {"create_fn": create_sfe_110_structure, "steps": SFE_110_STEPS, "axis": 1},
-    "112": {"create_fn": create_sfe_112_structure, "steps": SFE_112_STEPS, "axis": 2},
+    "110": {"create_fn": create_sfe_110_structure, "axis": 1},
+    "112": {"create_fn": create_sfe_112_structure, "axis": 2},
 }
 
 
@@ -485,6 +483,10 @@ def run_sfe_calculation(
     atoms = config["create_fn"](lattice_parameter)
     atoms.calc = calc
 
+    # Calculate Burgers vector magnitude: b = a * sqrt(3) / 2
+    burgers_vector = lattice_parameter * np.sqrt(3) / 2
+    step_size = burgers_vector / SFE_STEPS
+
     cell = atoms.get_cell()
     ly = cell[1, 1]
     lz = cell[2, 2]
@@ -505,9 +507,9 @@ def run_sfe_calculation(
     constraints = [FixedLine(idx, direction=[1, 0, 0]) for idx in range(len(atoms))]
     displacement_axis = config["axis"]
 
-    for step in range(1, config["steps"] + 1):
+    for step in range(1, SFE_STEPS + 1):
         positions = atoms.get_positions()
-        positions[upper_indices, displacement_axis] += SFE_STEP_SIZE
+        positions[upper_indices, displacement_axis] += step_size
         atoms.set_positions(positions)
 
         atoms.set_constraint(constraints)
@@ -522,7 +524,7 @@ def run_sfe_calculation(
         energy = atoms.get_potential_energy()
         sfe = (energy - e0) / (2 * area) * EV_PER_A2_TO_J_PER_M2
 
-        displacements.append(step * SFE_STEP_SIZE)
+        displacements.append(step * step_size)
         sfe_j_per_m2.append(sfe)
 
     return {

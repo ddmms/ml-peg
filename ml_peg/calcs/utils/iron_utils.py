@@ -758,6 +758,10 @@ def load_dft_curve(
             y_min = np.min(y_values)
             y_values = y_values - y_min
 
+        # Scale x values if scale factor provided (for relative -> absolute conversion)
+        if dft_config.get("x_scale"):
+            x_values = x_values * dft_config["x_scale"]
+
         return x_values, y_values
     except Exception:
         return None

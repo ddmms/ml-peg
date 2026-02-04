@@ -8,6 +8,7 @@ from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -93,12 +94,22 @@ DFT_CURVE_CONFIG = {
         "normalize_energy_mev": True,
     },
     "sfe_110": {
-        "file": "sfe_iron_110.csv",
-        "sep": r"\s+",
+        "file": "sfe_110_dft.csv",
+        "sep": ",",
         "decimal": ".",
-        "header": 0,
-        "x_col": "displacement",
-        "y_col": "energy(J/m^2)",
+        "header": None,
+        "x_col": 0,
+        "y_col": 1,
+        "x_scale": 2.831 * 1.7320508 / 2,  # Burgers vector: a * sqrt(3) / 2
+    },
+    "sfe_112": {
+        "file": "sfe_112_dft.csv",
+        "sep": ",",
+        "decimal": ".",
+        "header": None,
+        "x_col": 0,
+        "y_col": 1,
+        "x_scale": 2.831 * 1.7320508 / 2,  # Burgers vector: a * sqrt(3) / 2
     },
     "ts_100": {
         "file": "ts_100_dft.csv",
@@ -172,10 +183,20 @@ def _create_figure(df: pd.DataFrame, curve_type: str, model_name: str) -> go.Fig
 
     fig = go.Figure()
 
+    # Get model data x-range for limiting DFT reference
+    model_x_max = df[config["x"]].max() if config.get("x") else None
+
     # Add DFT reference curve if available
     dft_data = load_dft_curve(curve_type, DFT_DATA_PATH, DFT_CURVE_CONFIG)
     if dft_data is not None:
         x_dft, y_dft = dft_data
+
+        # For SFE curves, limit DFT data to model x-range (data is periodic)
+        if curve_type.startswith("sfe_") and model_x_max is not None:
+            mask = x_dft <= model_x_max
+            x_dft = np.array(x_dft)[mask]
+            y_dft = np.array(y_dft)[mask]
+
         fig.add_trace(
             go.Scatter(
                 x=x_dft,

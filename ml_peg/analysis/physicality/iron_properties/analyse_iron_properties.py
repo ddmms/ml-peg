@@ -41,6 +41,10 @@ DFT_REFERENCE = {
     "a0": 2.831,  # Lattice parameter (Å)
     "B0": 178.0,  # Bulk modulus (GPa)
     "E_bcc_fcc": 83.5,  # BCC-FCC energy difference (meV/atom)
+    # Elastic constants (GPa)
+    "C11": 296.7,
+    "C12": 151.4,
+    "C44": 104.7,
     # Defect properties
     "E_vac": 2.02,  # Vacancy formation energy (eV)
     "gamma_100": 2.41,  # Surface energy (J/m²)
