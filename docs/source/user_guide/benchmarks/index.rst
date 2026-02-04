@@ -13,3 +13,4 @@ Benchmarks
     molecular
     bulk_crystal
     interstitial
+    non_covalent_interactions
