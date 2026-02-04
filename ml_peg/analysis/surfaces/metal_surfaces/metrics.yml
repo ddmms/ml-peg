@@ -1,0 +1,13 @@
+metrics:
+    MAE:
+        good: 0.0
+        bad: 100.0
+        unit: eV
+        tooltip: "Mean Absolute Error for all systems"
+        level_of_theory: PBE
+    Displacement:
+        good: 0.0
+        bad: 1.0
+        unit: $\AA$
+        tooltip: "Mean Atom displacement"
+        level_of_theory: PBE
