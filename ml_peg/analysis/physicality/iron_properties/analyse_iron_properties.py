@@ -155,11 +155,20 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     # ==========================================================================
     elastic = results.get("elastic", {})
     if "C11" in elastic:
-        metrics["C11 (GPa)"] = elastic["C11"]
+        C11_error = (  # noqa: N806
+            abs(elastic["C11"] - DFT_REFERENCE["C11"]) / DFT_REFERENCE["C11"] * 100
+        )
+        metrics["C11 error (%)"] = C11_error
     if "C12" in elastic:
-        metrics["C12 (GPa)"] = elastic["C12"]
+        C12_error = (  # noqa: N806
+            abs(elastic["C12"] - DFT_REFERENCE["C12"]) / DFT_REFERENCE["C12"] * 100
+        )
+        metrics["C12 error (%)"] = C12_error
     if "C44" in elastic:
-        metrics["C44 (GPa)"] = elastic["C44"]
+        C44_error = (  # noqa: N806
+            abs(elastic["C44"] - DFT_REFERENCE["C44"]) / DFT_REFERENCE["C44"] * 100
+        )
+        metrics["C44 error (%)"] = C44_error
 
     # ==========================================================================
     # Vacancy metrics
@@ -217,11 +226,21 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     # ==========================================================================
     ts_100 = results.get("ts_100", {})
     if "max_traction" in ts_100:
-        metrics["Max traction (100) (GPa)"] = ts_100["max_traction"]
+        traction_100_error = (
+            abs(ts_100["max_traction"] - DFT_REFERENCE["max_traction_100"])
+            / DFT_REFERENCE["max_traction_100"]
+            * 100
+        )
+        metrics["Max traction (100) error (%)"] = traction_100_error
 
     ts_110 = results.get("ts_110", {})
     if "max_traction" in ts_110:
-        metrics["Max traction (110) (GPa)"] = ts_110["max_traction"]
+        traction_110_error = (
+            abs(ts_110["max_traction"] - DFT_REFERENCE["max_traction_110"])
+            / DFT_REFERENCE["max_traction_110"]
+            * 100
+        )
+        metrics["Max traction (110) error (%)"] = traction_110_error
 
     return metrics
 

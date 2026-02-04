@@ -6,6 +6,7 @@ This module provides structure creation and EOS fitting functions for iron bench
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ase import Atoms
@@ -604,58 +605,13 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
 
 
 # =============================================================================
-# Traction-Separation Structure Functions
-# =============================================================================
-
-
-def create_ts_110_structure(
-    lattice_parameter: float, layers: int = 10, symbol: str = "Fe"
-) -> Atoms:
-    """
-    Create structure for (110) traction-separation calculation.
-
-    Orientation: x=[100], y=[01-1], z=[011]
-    Slab: 1x1xlayers lattice units
-    Cleavage plane: perpendicular to z (which is [011])
-
-    Parameters
-    ----------
-    lattice_parameter : float
-        BCC lattice parameter in Angstroms.
-    layers : int, optional
-        Number of layers in z direction (default: 10).
-    symbol : str, optional
-        Chemical symbol (default: 'Fe').
-
-    Returns
-    -------
-    Atoms
-        ASE Atoms object for T-S calculation.
-    """
-    a = lattice_parameter
-
-    # Rotation matrix for T-S 110 orientation
-    ex = np.array([1, 0, 0])
-    ey = np.array([0, 1, -1]) / np.sqrt(2)
-    ez = np.array([0, 1, 1]) / np.sqrt(2)
-    rotation = np.array([ex, ey, ez])
-
-    cell_dims = (a, a * np.sqrt(2), a * np.sqrt(2) * layers)
-    max_range = int(layers * 2 + 5)
-
-    return _create_oriented_bcc_structure(
-        lattice_parameter, rotation, cell_dims, max_range, symbol
-    )
-
-
-# =============================================================================
 # Elastic Calculation Utilities
 # =============================================================================
 
 
 def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
     """
-    Apply Voigt strain with off-diagonal cell adjustment (LAMMPS-style).
+    Apply Voigt strain with off-diagonal cell adjustment.
 
     For normal strains (directions 1-3), this scales the entire cell vector
     rather than just the diagonal component. This maintains cell vector ratios
@@ -740,3 +696,68 @@ def calculate_surface_energy(
     """
     delta_E = E_slab - E_bulk  # noqa: N806
     return delta_E * EV_TO_J / (2 * area * ANGSTROM_TO_M**2)
+
+
+# =============================================================================
+# DFT Reference Curve Loading
+# =============================================================================
+
+
+def load_dft_curve(
+    curve_type: str,
+    dft_data_path: Path,
+    dft_curve_config: dict,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """
+    Load DFT reference curve data.
+
+    Parameters
+    ----------
+    curve_type : str
+        Type of curve to load (e.g., 'bain', 'sfe_110', 'ts_100', 'ts_110').
+    dft_data_path : Path
+        Path to the directory containing DFT data files.
+    dft_curve_config : dict
+        Configuration dict mapping curve types to file info.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray] or None
+        Tuple of (x_values, y_values) arrays, or None if not available.
+    """
+    import pandas as pd
+
+    dft_config = dft_curve_config.get(curve_type)
+    if not dft_config:
+        return None
+
+    dft_path = dft_data_path / dft_config["file"]
+    if not dft_path.exists():
+        return None
+
+    try:
+        df = pd.read_csv(
+            dft_path,
+            sep=dft_config["sep"],
+            decimal=dft_config["decimal"],
+            header=dft_config["header"],
+        )
+
+        x_col = dft_config["x_col"]
+        y_col = dft_config["y_col"]
+
+        x_values = (
+            df.iloc[:, x_col].values if isinstance(x_col, int) else df[x_col].values
+        )
+        y_values = (
+            df.iloc[:, y_col].values if isinstance(y_col, int) else df[y_col].values
+        )
+
+        # Normalize energy relative to minimum (data already in meV)
+        if dft_config.get("normalize_energy_mev"):
+            y_min = np.min(y_values)
+            y_values = y_values - y_min
+
+        return x_values, y_values
+    except Exception:
+        return None

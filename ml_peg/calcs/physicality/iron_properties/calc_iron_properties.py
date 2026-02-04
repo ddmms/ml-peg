@@ -40,7 +40,6 @@ from ml_peg.calcs.utils.iron_utils import (
     create_surface_110,
     create_surface_111,
     create_surface_112,
-    create_ts_110_structure,
     fit_eos,
     relax_volume_isotropic,
 )
@@ -59,11 +58,13 @@ OUT_PATH = Path(__file__).parent / "outputs"
 # EOS calculation parameters
 EOS_NUM_POINTS = 30
 
+# BFGS optimization parameters
+BFGS_FMAX = 1e-5
+BFGS_MAX_ITER = 100
+
 # Elastic constants parameters
 ELASTIC_STRAIN = 1.0e-5
 ELASTIC_SUPERCELL_SIZE = (4, 4, 4)
-ELASTIC_FMAX = 1e-10
-ELASTIC_MAX_ITER = 100
 ELASTIC_ATOM_JIGGLE = 1.0e-5  # Random perturbation to prevent saddle points
 
 # Bain path parameters
@@ -71,17 +72,14 @@ BAIN_NUM_POINTS = 65
 
 # Vacancy calculation parameters
 VACANCY_SUPERCELL_SIZE = (4, 4, 4)
-VACANCY_FMAX = 1e-5
 
 # Surface calculation parameters
 SURFACE_VACUUM = 10.0  # Angstroms
-SURFACE_FMAX = 1e-5
 
 # Stacking fault calculation parameters
 SFE_110_STEPS = 63
 SFE_112_STEPS = 100
 SFE_STEP_SIZE = 0.04  # Angstroms
-SFE_FMAX = 1e-5
 
 # Traction-separation parameters
 TS_MAX_SEPARATION = 5.0  # Angstroms
@@ -122,7 +120,7 @@ def run_eos_calculation(calc: Any) -> dict[str, Any]:
         # Relax atomic positions at fixed cell volume
         # (matches LAMMPS minimize behavior)
         opt = BFGS(atoms, logfile=None)
-        opt.run(fmax=1e-5, steps=1000)
+        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
 
         energy = atoms.get_potential_energy()
         volume = atoms.get_volume()
@@ -177,7 +175,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     # Box relaxation
     ecf = ExpCellFilter(atoms_ref)
     opt = BFGS(ecf, logfile=None)
-    opt.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
+    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
 
     # Apply random jiggle to atoms to prevent staying on saddle points
     rng = np.random.default_rng(seed=87287)
@@ -197,7 +195,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
         atoms_pos.calc = calc
 
         opt_pos = BFGS(atoms_pos, logfile=None)
-        opt_pos.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
+        opt_pos.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         stress_pos = atoms_pos.get_stress(voigt=True)
 
         # Negative strain with off-diagonal cell adjustment
@@ -205,7 +203,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
         atoms_neg.calc = calc
 
         opt_neg = BFGS(atoms_neg, logfile=None)
-        opt_neg.run(fmax=ELASTIC_FMAX, steps=ELASTIC_MAX_ITER)
+        opt_neg.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         stress_neg = atoms_neg.get_stress(voigt=True)
 
         # Compute elastic constants using stress differences
@@ -287,7 +285,7 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
         # this should be essentially a no-op, but included for completeness
         opt = BFGS(atoms_relaxed, logfile=None)
         try:
-            opt.run(fmax=1e-5, steps=1000)
+            opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         except Exception:
             pass
 
@@ -356,7 +354,7 @@ def run_vacancy_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     atoms_defect.calc = calc
 
     opt = BFGS(atoms_defect, logfile=None)
-    opt.run(fmax=VACANCY_FMAX, steps=10000)
+    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
     E_defect = atoms_defect.get_potential_energy()  # noqa: N806
     E_vac = (E_defect - E_perfect) + E_coh  # noqa: N806
 
@@ -420,6 +418,7 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
     surfaces = {}
 
     for name, cfg in SURFACE_CONFIG.items():
+        print(f"Running surface calculation for {name}...")
         create_fn = cfg["create_fn"]
         area_axes = cfg["area_axes"]
         vacuum = cfg["vacuum"]
@@ -443,7 +442,7 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
         atoms_slab = create_fn(lattice_parameter, **slab_kwargs)
         atoms_slab.calc = calc
         opt = BFGS(atoms_slab, logfile=None)
-        opt.run(fmax=SURFACE_FMAX, steps=10000)
+        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         e_slab = atoms_slab.get_potential_energy()
 
         surfaces[name] = calculate_surface_energy(e_slab, e_bulk, area)
@@ -492,7 +491,7 @@ def run_sfe_calculation(
     area = ly * lz
 
     opt = BFGS(atoms, logfile=None)
-    opt.run(fmax=SFE_FMAX, steps=10000)
+    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
     e0 = atoms.get_potential_energy()
 
     positions = atoms.get_positions()
@@ -515,7 +514,7 @@ def run_sfe_calculation(
 
         opt = BFGS(atoms, logfile=None)
         try:
-            opt.run(fmax=SFE_FMAX, steps=10000)
+            opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         except Exception:
             pass
 
@@ -540,7 +539,7 @@ def run_sfe_calculation(
 # T-S configuration: structure creation function
 TS_CONFIG = {
     "100": lambda a: create_surface_100(a, layers=36, vacuum=0.0),
-    "110": create_ts_110_structure,
+    "110": lambda a: create_surface_110(a, layers=10, vacuum=0.0),
 }
 
 
@@ -614,7 +613,9 @@ def run_ts_calculation(
         fz_upper = np.sum(forces[upper_indices, 2])
 
         # Convert to stress (GPa): σ = F / A
-        sig_upper = EV_PER_A3_TO_GPA * fz_upper / area
+        # Negate because forces on upper atoms point downward (negative z)
+        # but traction (tensile stress) should be positive
+        sig_upper = -EV_PER_A3_TO_GPA * fz_upper / area
 
         separations.append(dd)
         energies.append(energy)

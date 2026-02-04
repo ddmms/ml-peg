@@ -18,23 +18,24 @@ metrics:
     unit: "meV"
     tooltip: "Error in BCC-FCC energy difference along Bain path"
     level_of_theory: PBE
-  C11 (GPa):
-    good: 243.0
-    bad: 150.0
-    unit: "GPa"
-    tooltip: "Elastic constant C11"
+  # Elastic constants
+  C11 error (%):
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "Elastic constant C11 error relative to DFT (ref: 243 GPa)"
     level_of_theory: PBE
-  C12 (GPa):
-    good: 145.0
-    bad: 100.0
-    unit: "GPa"
-    tooltip: "Elastic constant C12"
+  C12 error (%):
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "Elastic constant C12 error relative to DFT (ref: 145 GPa)"
     level_of_theory: PBE
-  C44 (GPa):
-    good: 116.0
-    bad: 80.0
-    unit: "GPa"
-    tooltip: "Elastic constant C44 (shear modulus)"
+  C44 error (%):
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "Elastic constant C44 error relative to DFT (ref: 116 GPa)"
     level_of_theory: PBE
   # Defect properties
   E_vac error (%):
@@ -62,15 +63,15 @@ metrics:
     tooltip: "Error in maximum stacking fault energy for {112}<111> slip system"
     level_of_theory: PBE
   # Traction-separation properties
-  Max traction (100) (GPa):
-    good: 35.0
-    bad: 20.0
-    unit: "GPa"
-    tooltip: "Maximum traction stress for (100) cleavage plane"
-    level_of_theory: DFT
-  Max traction (110) (GPa):
-    good: 30.0
-    bad: 18.0
-    unit: "GPa"
-    tooltip: "Maximum traction stress for (110) cleavage plane"
-    level_of_theory: DFT
+  Max traction (100) error (%):
+    good: 0.0
+    bad: 30.0
+    unit: "%"
+    tooltip: "Maximum traction error relative to DFT (ref: 35 GPa)"
+    level_of_theory: PBE
+  Max traction (110) error (%):
+    good: 0.0
+    bad: 30.0
+    unit: "%"
+    tooltip: "Maximum traction error relative to DFT (ref: 30 GPa)"
+    level_of_theory: PBE
