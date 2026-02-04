@@ -1566,7 +1566,7 @@ def build_table(
                 for key, value in results.items():
                     row_data[key] = value.get(mlip, None)
                 # Store the original model name in the row ID for callbacks, instead of
-                # the display name (e.g. store m)
+                # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
                 row_data["id"] = mlip
                 metrics_data.append(row_data)
 
