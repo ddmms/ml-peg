@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.calcs.utils.iron_utils import (
+from ml_peg.calcs.physicality.iron_properties.iron_utils import (
     EV_PER_A2_TO_J_PER_M2,
     EV_PER_A3_TO_GPA,
     apply_voigt_strain,
@@ -278,9 +278,6 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
         atoms_relaxed = relax_volume_isotropic(atoms, calc)
 
         # Step 2: Atomic position relaxation at fixed cell
-        # This matches LAMMPS second minimize after 'unfix relaxB'
-        # For atoms at high-symmetry positions (0,0,0) and (½,½,½),
-        # this should be essentially a no-op, but included for completeness
         opt = BFGS(atoms_relaxed, logfile=None)
         try:
             opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)

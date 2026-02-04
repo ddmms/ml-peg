@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.iron_utils import load_dft_curve
+from ml_peg.calcs.physicality.iron_properties.iron_utils import load_dft_curve
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
