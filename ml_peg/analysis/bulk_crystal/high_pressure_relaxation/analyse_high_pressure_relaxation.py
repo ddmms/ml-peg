@@ -9,10 +9,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
-from sklearn.metrics import mean_absolute_error
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -34,24 +33,34 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+# Energy outlier thresholds (eV/atom)
+ENERGY_OUTLIER_MIN = -25
+ENERGY_OUTLIER_MAX = 25
 
-def mae(ref: list, pred: list) -> float:
+
+def _filter_energy_outliers(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate Mean Absolute Error.
+    Mark structures with extreme predicted energies as unconverged.
+
+    Structures with predicted energy per atom outside [-25, 25] eV/atom
+    are considered outliers and marked as unconverged.
 
     Parameters
     ----------
-    ref
-        Reference values.
-    pred
-        Predicted values.
+    df
+        Results dataframe with 'pred_energy_per_atom' and 'converged' columns.
 
     Returns
     -------
-    float
-        Mean absolute error.
+    pd.DataFrame
+        Dataframe with outliers marked as unconverged.
     """
-    return mean_absolute_error(ref, pred)
+    df.loc[
+        (df["pred_energy_per_atom"] <= ENERGY_OUTLIER_MIN)
+        | (df["pred_energy_per_atom"] >= ENERGY_OUTLIER_MAX),
+        "converged",
+    ] = False
+    return df
 
 
 def load_results_for_pressure(model_name: str, pressure_label: str) -> pd.DataFrame:
@@ -99,11 +108,7 @@ def get_converged_data_for_pressure(
         return [], [], [], []
 
     # Filter converged structures and remove NaN values
-    # set outliers with less than -25 eV/atom or more than 25 eV/atom to unconverged
-    df.loc[
-        (df["pred_energy_per_atom"] <= -25) | (df["pred_energy_per_atom"] >= 25),
-        "converged",
-    ] = False
+    df = _filter_energy_outliers(df)
     df_conv = df[df["converged"]].copy()
     df_conv = df_conv.dropna(subset=["pred_volume_per_atom", "pred_energy_per_atom"])
 
@@ -134,14 +139,9 @@ def get_convergence_rate_for_pressure(
         Convergence rate (%) or None if no data.
     """
     df = load_results_for_pressure(model_name, pressure_label)
-    # set outliers with less than -25 eV/atom or more than 25 eV/atom to unconverged
     if df.empty:
         return None
-    df.loc[
-        (df["pred_energy_per_atom"] <= -25) | (df["pred_energy_per_atom"] >= 25),
-        "converged",
-    ] = False
-    # set energies of unconverged to NaN
+    df = _filter_energy_outliers(df)
     return (df["converged"].sum() / len(df)) * 100
 
 

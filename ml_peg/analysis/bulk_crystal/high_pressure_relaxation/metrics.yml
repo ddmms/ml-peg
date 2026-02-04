@@ -1,8 +1,8 @@
 metrics:
   # 0 GPa
   Volume MAE (0 GPa):
-    good: 0.2
-    bad: 0.1
+    good: 0.05
+    bad: 0.15
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of volume per atom at 0 GPa compared to PBE"
     level_of_theory: PBE
@@ -14,7 +14,7 @@ metrics:
     level_of_theory: PBE
   Convergence (0 GPa):
     good: 100.0
-    bad: 80.0
+    bad: 99.9
     unit: "%"
     tooltip: "Percentage of structures that converged at 0 GPa"
     level_of_theory: PBE
