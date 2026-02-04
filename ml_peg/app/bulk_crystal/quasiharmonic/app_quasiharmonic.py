@@ -23,51 +23,25 @@ class QuasiharmonicApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        # Load pre-generated scatter plots
-        scatter_lattice = None
-        scatter_volume = None
-        scatter_thermal_expansion = None
-        scatter_bulk_modulus = None
-
-        lattice_path = DATA_PATH / "figure_qha_lattice_constants.json"
-        volume_path = DATA_PATH / "figure_qha_volume.json"
-        thermal_expansion_path = DATA_PATH / "figure_qha_thermal_expansion.json"
-        bulk_modulus_path = DATA_PATH / "figure_qha_bulk_modulus.json"
-
-        if lattice_path.exists():
-            scatter_lattice = read_plot(
-                lattice_path,
-                id=f"{BENCHMARK_NAME}-figure-lattice",
-            )
-
-        if volume_path.exists():
-            scatter_volume = read_plot(
-                volume_path,
-                id=f"{BENCHMARK_NAME}-figure-volume",
-            )
-
-        if thermal_expansion_path.exists():
-            scatter_thermal_expansion = read_plot(
-                thermal_expansion_path,
-                id=f"{BENCHMARK_NAME}-figure-thermal-expansion",
-            )
-
-        if bulk_modulus_path.exists():
-            scatter_bulk_modulus = read_plot(
-                bulk_modulus_path,
-                id=f"{BENCHMARK_NAME}-figure-bulk-modulus",
-            )
+        # Define plot paths and their metric mappings
+        plot_configs = [
+            ("figure_qha_lattice_constants.json", "Lattice constant MAE", "lattice"),
+            ("figure_qha_volume_per_atom.json", "Volume per atom MAE", "volume"),
+            ("figure_qha_thermal_expansion.json", "Thermal expansion MAE", "thermal"),
+            ("figure_qha_bulk_modulus.json", "Bulk modulus MAE", "bulk-modulus"),
+            ("figure_qha_heat_capacity.json", "Heat capacity MAE", "heat-capacity"),
+        ]
 
         # Build column-to-plot mapping
         column_to_plot = {}
-        if scatter_lattice is not None:
-            column_to_plot["Lattice constant MAE"] = scatter_lattice
-        if scatter_volume is not None:
-            column_to_plot["Volume MAE"] = scatter_volume
-        if scatter_thermal_expansion is not None:
-            column_to_plot["Thermal expansion MAE"] = scatter_thermal_expansion
-        if scatter_bulk_modulus is not None:
-            column_to_plot["Bulk modulus MAE"] = scatter_bulk_modulus
+        for filename, metric_name, plot_id_suffix in plot_configs:
+            plot_path = DATA_PATH / filename
+            if plot_path.exists():
+                scatter = read_plot(
+                    plot_path,
+                    id=f"{BENCHMARK_NAME}-figure-{plot_id_suffix}",
+                )
+                column_to_plot[metric_name] = scatter
 
         if column_to_plot:
             plot_from_table_column(
@@ -92,8 +66,7 @@ def get_app() -> QuasiharmonicApp:
             "Temperature-dependent thermodynamic properties using the "
             "quasiharmonic approximation (QHA). Evaluates MLIP predictions of "
             "lattice constants, volume, thermal expansion, bulk modulus, "
-            "heat capacity, entropy, and Gruneisen parameter as a function "
-            "of temperature and pressure."
+            "and heat capacity as a function of temperature and pressure."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "quasiharmonic_metrics_table.json",

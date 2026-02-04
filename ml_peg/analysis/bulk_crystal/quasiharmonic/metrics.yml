@@ -1,6 +1,6 @@
 metrics:
   Lattice constant MAE:
-    good: 0.0
+    good: 0.02
     bad: 0.1
     unit: "\u00c5"
     tooltip: "Mean Absolute Error of lattice constants at target (structure, T, P) conditions from QHA"
@@ -9,7 +9,7 @@ metrics:
 
   Volume per atom MAE:
     good: 0.02
-    bad: 0.5
+    bad: 0.1
     unit: "Å³/atom"
     tooltip: "Mean Absolute Error of equilibrium volume per atom at target (structure, T, P) conditions"
     level_of_theory: Experimental

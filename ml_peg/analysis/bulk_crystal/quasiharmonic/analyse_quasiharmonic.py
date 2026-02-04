@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -23,30 +24,29 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Hover data for interactive plots
-HOVERDATA_LATTICE = {
-    "Material": [],
-    "Temperature (K)": [],
-    "Pressure (GPa)": [],
-}
 
-HOVERDATA_VOLUME = {
-    "Material": [],
-    "Temperature (K)": [],
-    "Pressure (GPa)": [],
-}
+def _make_hoverdata() -> dict[str, list]:
+    """
+    Create empty hoverdata dictionary for QHA plots.
 
-HOVERDATA_THERMAL_EXPANSION = {
-    "Material": [],
-    "Temperature (K)": [],
-    "Pressure (GPa)": [],
-}
+    Returns
+    -------
+    dict[str, list]
+        Empty hoverdata with Material, Temperature, and Pressure keys.
+    """
+    return {
+        "Material": [],
+        "Temperature (K)": [],
+        "Pressure (GPa)": [],
+    }
 
-HOVERDATA_BULK_MODULUS = {
-    "Material": [],
-    "Temperature (K)": [],
-    "Pressure (GPa)": [],
-}
+
+# Hover data for interactive plots (populated during fixture execution)
+HOVERDATA_LATTICE = _make_hoverdata()
+HOVERDATA_VOLUME = _make_hoverdata()
+HOVERDATA_THERMAL_EXPANSION = _make_hoverdata()
+HOVERDATA_BULK_MODULUS = _make_hoverdata()
+HOVERDATA_HEAT_CAPACITY = _make_hoverdata()
 
 
 def _load_results(model_name: str) -> pd.DataFrame:
@@ -75,6 +75,79 @@ def _load_results(model_name: str) -> pd.DataFrame:
     )
 
 
+def _gather_parity_data(
+    ref_col: str,
+    pred_col: str,
+    hoverdata: dict[str, list],
+) -> dict[str, list]:
+    """
+    Gather reference and predicted values for parity plotting.
+
+    Parameters
+    ----------
+    ref_col
+        Column name for reference values.
+    pred_col
+        Column name for predicted values.
+    hoverdata
+        Hoverdata dictionary to populate (mutated in place).
+
+    Returns
+    -------
+    dict[str, list]
+        Dictionary of reference and predicted values per model.
+    """
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+    results: dict[str, list] = {"ref": []} | {mlip: [] for mlip in MODELS}
+    ref_stored = False
+
+    for model_name in MODELS:
+        df = _load_results(model_name)
+        if df.empty:
+            continue
+
+        if ref_col not in df.columns or pred_col not in df.columns:
+            continue
+
+        valid_df = df.dropna(subset=[pred_col, ref_col])
+        results[model_name] = valid_df[pred_col].tolist()
+
+        if not ref_stored and not valid_df.empty:
+            results["ref"] = valid_df[ref_col].tolist()
+            hoverdata["Material"] = valid_df["material"].tolist()
+            hoverdata["Temperature (K)"] = valid_df["temperature_K"].tolist()
+            hoverdata["Pressure (GPa)"] = valid_df["pressure_GPa"].tolist()
+            ref_stored = True
+
+    return results
+
+
+def _calculate_mae(parity_data: dict[str, list]) -> dict[str, float | None]:
+    """
+    Calculate MAE for each model from parity data.
+
+    Parameters
+    ----------
+    parity_data
+        Dictionary with 'ref' key and model name keys containing lists.
+
+    Returns
+    -------
+    dict[str, float | None]
+        MAE values for each model, None if data is missing or mismatched.
+    """
+    results: dict[str, float | None] = {}
+    ref = parity_data.get("ref", [])
+    for model_name in MODELS:
+        pred = parity_data.get(model_name, [])
+        if not ref or not pred or len(ref) != len(pred):
+            results[model_name] = None
+        else:
+            results[model_name] = mae(ref, pred)
+    return results
+
+
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_qha_lattice_constants.json",
@@ -92,32 +165,7 @@ def qha_lattice_constants() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted values per model.
     """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-
-    results: dict[str, list] = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
-
-    for model_name in MODELS:
-        df = _load_results(model_name)
-        if df.empty:
-            continue
-
-        if "pred_lattice_a" not in df.columns:
-            continue
-
-        # Filter valid predictions
-        valid_df = df.dropna(subset=["pred_lattice_a", "ref_lattice_a"])
-
-        results[model_name] = valid_df["pred_lattice_a"].tolist()
-
-        if not ref_stored and not valid_df.empty:
-            results["ref"] = valid_df["ref_lattice_a"].tolist()
-            HOVERDATA_LATTICE["Material"] = valid_df["material"].tolist()
-            HOVERDATA_LATTICE["Temperature (K)"] = valid_df["temperature_K"].tolist()
-            HOVERDATA_LATTICE["Pressure (GPa)"] = valid_df["pressure_GPa"].tolist()
-            ref_stored = True
-
-    return results
+    return _gather_parity_data("ref_lattice_a", "pred_lattice_a", HOVERDATA_LATTICE)
 
 
 @pytest.fixture
@@ -137,33 +185,9 @@ def qha_volume_per_atom() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted values per model.
     """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-
-    results: dict[str, list] = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
-
-    for model_name in MODELS:
-        df = _load_results(model_name)
-        if df.empty:
-            continue
-
-        ref_col = "ref_volume_per_atom"
-        pred_col = "pred_volume_per_atom"
-
-        if ref_col not in df.columns or pred_col not in df.columns:
-            continue
-
-        valid_df = df.dropna(subset=[pred_col, ref_col])
-        results[model_name] = valid_df[pred_col].tolist()
-
-        if not ref_stored and not valid_df.empty:
-            results["ref"] = valid_df[ref_col].tolist()
-            HOVERDATA_VOLUME["Material"] = valid_df["material"].tolist()
-            HOVERDATA_VOLUME["Temperature (K)"] = valid_df["temperature_K"].tolist()
-            HOVERDATA_VOLUME["Pressure (GPa)"] = valid_df["pressure_GPa"].tolist()
-            ref_stored = True
-
-    return results
+    return _gather_parity_data(
+        "ref_volume_per_atom", "pred_volume_per_atom", HOVERDATA_VOLUME
+    )
 
 
 @pytest.fixture
@@ -183,37 +207,11 @@ def qha_thermal_expansion() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted values per model.
     """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-
-    results: dict[str, list] = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
-
-    for model_name in MODELS:
-        df = _load_results(model_name)
-        if df.empty:
-            continue
-
-        ref_col = "ref_thermal_expansion_1e6_K"
-        pred_col = "pred_thermal_expansion_1e6_K"
-
-        if ref_col not in df.columns or pred_col not in df.columns:
-            continue
-
-        valid_df = df.dropna(subset=[ref_col, pred_col])
-        results[model_name] = valid_df[pred_col].tolist()
-
-        if not ref_stored and not valid_df.empty:
-            results["ref"] = valid_df[ref_col].tolist()
-            HOVERDATA_THERMAL_EXPANSION["Material"] = valid_df["material"].tolist()
-            HOVERDATA_THERMAL_EXPANSION["Temperature (K)"] = valid_df[
-                "temperature_K"
-            ].tolist()
-            HOVERDATA_THERMAL_EXPANSION["Pressure (GPa)"] = valid_df[
-                "pressure_GPa"
-            ].tolist()
-            ref_stored = True
-
-    return results
+    return _gather_parity_data(
+        "ref_thermal_expansion_1e6_K",
+        "pred_thermal_expansion_1e6_K",
+        HOVERDATA_THERMAL_EXPANSION,
+    )
 
 
 @pytest.fixture
@@ -233,35 +231,33 @@ def qha_bulk_modulus() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted values per model.
     """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    return _gather_parity_data(
+        "ref_bulk_modulus_GPa", "pred_bulk_modulus_GPa", HOVERDATA_BULK_MODULUS
+    )
 
-    results: dict[str, list] = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
 
-    for model_name in MODELS:
-        df = _load_results(model_name)
-        if df.empty:
-            continue
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "figure_qha_heat_capacity.json",
+    title="QHA Heat Capacity",
+    x_label="Predicted heat capacity / J/(mol·K)",
+    y_label="Reference heat capacity / J/(mol·K)",
+    hoverdata=HOVERDATA_HEAT_CAPACITY,
+)
+def qha_heat_capacity() -> dict[str, list]:
+    """
+    Gather reference and predicted heat capacity values.
 
-        ref_col = "ref_bulk_modulus_GPa"
-        pred_col = "pred_bulk_modulus_GPa"
-
-        if ref_col not in df.columns or pred_col not in df.columns:
-            continue
-
-        valid_df = df.dropna(subset=[ref_col, pred_col])
-        results[model_name] = valid_df[pred_col].tolist()
-
-        if not ref_stored and not valid_df.empty:
-            results["ref"] = valid_df[ref_col].tolist()
-            HOVERDATA_BULK_MODULUS["Material"] = valid_df["material"].tolist()
-            HOVERDATA_BULK_MODULUS["Temperature (K)"] = valid_df[
-                "temperature_K"
-            ].tolist()
-            HOVERDATA_BULK_MODULUS["Pressure (GPa)"] = valid_df["pressure_GPa"].tolist()
-            ref_stored = True
-
-    return results
+    Returns
+    -------
+    dict[str, list]
+        Dictionary of reference and predicted values per model.
+    """
+    return _gather_parity_data(
+        "ref_heat_capacity_J_mol_K",
+        "pred_heat_capacity_J_mol_K",
+        HOVERDATA_HEAT_CAPACITY,
+    )
 
 
 @pytest.fixture
@@ -281,15 +277,7 @@ def lattice_constant_mae(
     dict[str, float | None]
         MAE values for each model.
     """
-    results: dict[str, float | None] = {}
-    ref = qha_lattice_constants.get("ref", [])
-    for model_name in MODELS:
-        pred = qha_lattice_constants.get(model_name, [])
-        if not ref or not pred or len(ref) != len(pred):
-            results[model_name] = None
-        else:
-            results[model_name] = mae(ref, pred)
-    return results
+    return _calculate_mae(qha_lattice_constants)
 
 
 @pytest.fixture
@@ -309,15 +297,7 @@ def volume_per_atom_mae(
     dict[str, float | None]
         MAE values for each model.
     """
-    results: dict[str, float | None] = {}
-    ref = qha_volume_per_atom.get("ref", [])
-    for model_name in MODELS:
-        pred = qha_volume_per_atom.get(model_name, [])
-        if not ref or not pred or len(ref) != len(pred):
-            results[model_name] = None
-        else:
-            results[model_name] = mae(ref, pred)
-    return results
+    return _calculate_mae(qha_volume_per_atom)
 
 
 @pytest.fixture
@@ -337,15 +317,7 @@ def thermal_expansion_mae(
     dict[str, float | None]
         MAE values for each model.
     """
-    results: dict[str, float | None] = {}
-    ref = qha_thermal_expansion.get("ref", [])
-    for model_name in MODELS:
-        pred = qha_thermal_expansion.get(model_name, [])
-        if not ref or not pred or len(ref) != len(pred):
-            results[model_name] = None
-        else:
-            results[model_name] = mae(ref, pred)
-    return results
+    return _calculate_mae(qha_thermal_expansion)
 
 
 @pytest.fixture
@@ -363,61 +335,25 @@ def bulk_modulus_mae(qha_bulk_modulus: dict[str, list]) -> dict[str, float | Non
     dict[str, float | None]
         MAE values for each model.
     """
-    results: dict[str, float | None] = {}
-    ref = qha_bulk_modulus.get("ref", [])
-    for model_name in MODELS:
-        pred = qha_bulk_modulus.get(model_name, [])
-        if not ref or not pred or len(ref) != len(pred):
-            results[model_name] = None
-        else:
-            results[model_name] = mae(ref, pred)
-    return results
+    return _calculate_mae(qha_bulk_modulus)
 
 
 @pytest.fixture
-def heat_capacity_mae() -> dict[str, float | None]:
+def heat_capacity_mae(qha_heat_capacity: dict[str, list]) -> dict[str, float | None]:
     """
     Mean absolute error for heat capacity at constant pressure.
+
+    Parameters
+    ----------
+    qha_heat_capacity
+        Reference and predicted heat capacity.
 
     Returns
     -------
     dict[str, float | None]
         MAE values for each model.
     """
-    results: dict[str, float | None] = {}
-
-    # Collect reference and predictions
-    ref_values: list[float] = []
-    pred_values: dict[str, list[float]] = {m: [] for m in MODELS}
-    ref_collected = False
-
-    for model_name in MODELS:
-        df = _load_results(model_name)
-        if df.empty:
-            continue
-
-        ref_col = "ref_heat_capacity_J_mol_K"
-        pred_col = "pred_heat_capacity_J_mol_K"
-
-        if ref_col not in df.columns or pred_col not in df.columns:
-            continue
-
-        valid_df = df.dropna(subset=[ref_col, pred_col])
-
-        if not ref_collected and not valid_df.empty:
-            ref_values = valid_df[ref_col].tolist()
-            ref_collected = True
-
-        pred_values[model_name] = valid_df[pred_col].tolist()
-
-    for model_name in MODELS:
-        pred = pred_values.get(model_name, [])
-        if not ref_values or not pred or len(ref_values) != len(pred):
-            results[model_name] = None
-        else:
-            results[model_name] = mae(ref_values, pred)
-
-    return results
+    return _calculate_mae(qha_heat_capacity)
 
 
 @pytest.fixture
@@ -467,11 +403,12 @@ def metrics(
 
 
 def test_quasiharmonic(
-    metrics: dict[str, dict],
+    metrics: dict[str, dict[str, Any]],
     qha_lattice_constants: dict[str, list],
     qha_volume_per_atom: dict[str, list],
     qha_thermal_expansion: dict[str, list],
     qha_bulk_modulus: dict[str, list],
+    qha_heat_capacity: dict[str, list],
 ) -> None:
     """
     Run quasiharmonic analysis test.
@@ -488,5 +425,7 @@ def test_quasiharmonic(
         Thermal expansion parity data.
     qha_bulk_modulus
         Bulk modulus parity data.
+    qha_heat_capacity
+        Heat capacity parity data.
     """
     return

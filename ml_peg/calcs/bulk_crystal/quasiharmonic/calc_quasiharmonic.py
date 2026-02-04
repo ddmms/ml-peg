@@ -24,10 +24,8 @@ from maggma.stores import MemoryStore
 import pandas as pd
 from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
-import yaml
 
-from ml_peg.models import MODELS_ROOT
-from ml_peg.models.get_models import get_model_names
+from ml_peg.models.get_models import get_model_names, load_model_configs
 from ml_peg.models.models import current_models
 
 if TYPE_CHECKING:
@@ -40,22 +38,6 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # Load reference data
 REFERENCE_FILE = DATA_PATH / "quasiharmonic_reference.json"
-
-# Mapping from ml-peg model names to atomate2 force field configuration
-# Each entry provides the force_field_name and calculator_kwargs needed
-
-
-def _load_model_configs() -> dict[str, Any]:
-    """
-    Load model configurations from models.yml.
-
-    Returns
-    -------
-    dict[str, Any]
-        Model configurations dictionary.
-    """
-    with open(MODELS_ROOT / "models.yml", encoding="utf8") as f:
-        return yaml.safe_load(f) or {}
 
 
 def get_atomate2_config(model_name: str) -> dict[str, Any]:
@@ -79,11 +61,10 @@ def get_atomate2_config(model_name: str) -> dict[str, Any]:
     """
     from atomate2.forcefields import MLFF
 
-    all_configs = _load_model_configs()
-    if model_name not in all_configs:
+    configs, _ = load_model_configs((model_name,))
+    cfg = configs.get(model_name, {})
+    if not cfg:
         raise ValueError(f"Model '{model_name}' not found in models.yml")
-
-    cfg = all_configs[model_name]
     class_name = cfg.get("class_name", "")
     kwargs = cfg.get("kwargs", {})
 
