@@ -31,10 +31,10 @@ ALEXANDRIA_URLS = {
     "1D": "https://alexandria.icams.rub.de/data/pbe_1d",
 }
 
-# Default data files for each dimensionality
-DEFAULT_DATA_FILES = {
-    "2D": "alexandria_2d_001.json.bz2",
-    "1D": "alexandria_1d_001.json.bz2",
+# Default data files for each dimensionality (list of files)
+DEFAULT_DATA_FILES: dict[str, list[str]] = {
+    "2D": ["alexandria_2d_001.json.bz2", "alexandria_2d_002.json.bz2"],
+    "1D": ["alexandria_1d_001.json.bz2"],
 }
 
 # Local cache directory for downloaded data
@@ -61,25 +61,22 @@ CELL_MASKS = {
 }
 
 
-def download_data(dimensionality: str, filename: str | None = None) -> Path:
+def download_data(dimensionality: str, filename: str) -> Path:
     """
-    Download structure data from Alexandria database if not already cached.
+    Download a single structure data file from Alexandria database if not cached.
 
     Parameters
     ----------
     dimensionality
         Either "2D" or "1D".
     filename
-        Name of the file to download. If None, uses default for dimensionality.
+        Name of the file to download.
 
     Returns
     -------
     Path
         Path to the downloaded/cached file.
     """
-    if filename is None:
-        filename = DEFAULT_DATA_FILES[dimensionality]
-
     DATA_PATH.mkdir(parents=True, exist_ok=True)
     local_path = DATA_PATH / filename
 
@@ -90,6 +87,30 @@ def download_data(dimensionality: str, filename: str | None = None) -> Path:
         print(f"Downloaded to {local_path}")
 
     return local_path
+
+
+def download_all_data(
+    dimensionality: str, filenames: list[str] | None = None
+) -> list[Path]:
+    """
+    Download all structure data files for a dimensionality.
+
+    Parameters
+    ----------
+    dimensionality
+        Either "2D" or "1D".
+    filenames
+        List of filenames to download. If None, uses defaults for dimensionality.
+
+    Returns
+    -------
+    list[Path]
+        Paths to the downloaded/cached files.
+    """
+    if filenames is None:
+        filenames = DEFAULT_DATA_FILES[dimensionality]
+
+    return [download_data(dimensionality, f) for f in filenames]
 
 
 def get_area_per_atom(atoms: Atoms) -> float:
@@ -237,20 +258,21 @@ def set_vacuum_padding(
 
 def load_structures(
     dimensionality: str = "2D",
-    filename: str | None = None,
+    filenames: list[str] | None = None,
     n_structures: int = N_STRUCTURES,
 ) -> list[dict]:
     """
     Load structures from Alexandria database.
 
-    Downloads data if not already cached locally.
+    Downloads data if not already cached locally. When multiple files are provided,
+    structures are pooled together and randomly sampled from the combined set.
 
     Parameters
     ----------
     dimensionality
         Either "2D" or "1D".
-    filename
-        Name of the data file to load. If None, uses default for dimensionality.
+    filenames
+        List of data filenames to load. If None, uses defaults for dimensionality.
     n_structures
         Number of structures to load. Default is N_STRUCTURES.
 
@@ -259,24 +281,27 @@ def load_structures(
     list[dict]
         List of structure dictionaries with atoms, mat_id, and reference values.
     """
-    json_path = download_data(dimensionality, filename)
+    json_paths = download_all_data(dimensionality, filenames)
 
-    with bz2.open(json_path, "rt") as f:
-        data = json.load(f)
+    # Load all entries from all files
+    all_entries = []
+    for json_path in json_paths:
+        with bz2.open(json_path, "rt") as f:
+            data = json.load(f)
+        all_entries.extend(data["entries"])
+
+    if n_structures > len(all_entries):
+        n_structures = len(all_entries)
+        print(f"Only {len(all_entries)} structures available, using all of them")
+
+    rng = random.Random(RANDOM_SEED)
+    selected_indices = sorted(rng.sample(range(len(all_entries)), k=n_structures))
 
     adaptor = AseAtomsAdaptor()
     structures = []
 
-    entries = data["entries"]
-    if n_structures > len(entries):
-        n_structures = len(entries)
-        print(f"Only {len(entries)} structures available, using all of them")
-
-    rng = random.Random(RANDOM_SEED)
-    selected_indices = sorted(rng.sample(range(len(entries)), k=n_structures))
-
     for idx in selected_indices:
-        entry_dict = entries[idx]
+        entry_dict = all_entries[idx]
         entry = ComputedStructureEntry.from_dict(entry_dict)
         mat_id = entry.data.get("mat_id", f"struct_{idx}")
 
