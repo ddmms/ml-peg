@@ -7,11 +7,8 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
-    struct_from_scatter,
-)
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -29,32 +26,20 @@ class NCIASH250x10App(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_ncia_sh250x10.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        density_plots: dict[str, dict] = {}
+        for model in MODELS:
+            density_graph = read_density_plot_for_model(
+                filename=DATA_PATH / "figure_ncia_sh250x10_density.json",
+                model=model,
+                id=f"{BENCHMARK_NAME}-{model}-density",
+            )
+            if density_graph is not None:
+                density_plots[model] = {"MAE": density_graph}
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
-            structs = [
-                f"assets/non_covalent_interactions/NCIA_SH250x10/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
-
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
-        )
-
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
+            cell_to_plot=density_plots,
         )
 
 
@@ -78,7 +63,6 @@ def get_app() -> NCIASH250x10App:
         table_path=DATA_PATH / "ncia_sh250x10_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
