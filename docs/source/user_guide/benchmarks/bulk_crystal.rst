@@ -115,3 +115,95 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Quasiharmonic Approximation
+===========================
+
+Summary
+-------
+
+Performance in evaluating temperature-dependent thermodynamic properties using the
+quasiharmonic approximation (QHA). Each data point is a (structure, temperature, pressure)
+triple with experimental reference values.
+
+The QHA extends the harmonic approximation by accounting for volume-dependent phonon
+frequencies, enabling prediction of thermal expansion and bulk properties at temperature.
+
+
+Metrics
+-------
+
+(1) Lattice constant MAE (Experimental)
+
+Mean absolute error of equilibrium lattice constants at target temperature and pressure
+conditions.
+
+(2) Volume per atom MAE (Experimental)
+
+Mean absolute error of equilibrium volume per atom at target (structure, T, P) conditions.
+
+(3) Thermal expansion MAE (Experimental)
+
+Mean absolute error of thermal expansion coefficient (in 10⁻⁶ K⁻¹) at target conditions.
+
+(4) Bulk modulus MAE (Experimental)
+
+Mean absolute error of isothermal bulk modulus (in GPa) at target temperature and pressure.
+
+(5) Heat capacity MAE (Experimental)
+
+Mean absolute error of heat capacity at constant pressure (in J/mol·K) at target conditions.
+
+
+Methodology
+-----------
+
+The benchmark uses atomate2's ``ForceFieldQhaMaker`` workflow, which performs:
+
+1. **Initial relaxation**: The input structure is fully relaxed (cell + positions) using
+   the MLIP. We use an fmax of 0.0005 eV/Å.
+
+2. **Equation of state (EOS) sampling**: Multiple strained structures are generated around
+   the equilibrium volume (default: ±5% strain, 10 volumes).
+
+3. **Phonon calculations**: For each strained volume, phonon frequencies are computed using
+   the finite displacement method with a supercell approach using the default strategy in atomate2.
+
+4. **Free energy fitting**: The Helmholtz free energy F(V,T) is computed at each volume and
+   temperature using phonopy by combining:
+
+   - Electronic energy E(V) from the EOS
+   - Vibrational free energy F_vib(V,T) from phonon calculations
+
+5. **QHA analysis**: Temperature-dependent equilibrium properties are extracted by minimizing
+   F(V,T) at each temperature:
+
+   - V(T): equilibrium volume vs temperature
+   - α(T): thermal expansion coefficient
+   - B(T): isothermal bulk modulus
+   - C_p(T): heat capacity at constant pressure
+
+The workflow uses the Vinet equation of state for fitting and supports pressure-dependent
+calculations.
+
+
+Computational cost
+------------------
+
+High: Each QHA calculation requires multiple phonon calculations (one per volume point).
+The cost depends strongly on the size and symmetry of the structure. As a rough guide, Silicon
+in the diamond structure takes around a minute on gpu.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* CIF files for bulk crystals (e.g., Si in diamond structure)
+
+Reference data:
+
+* Experimental thermophysical properties from TPRC Data Series (Thermophysical properties
+  of matter, Vol. 12-13)

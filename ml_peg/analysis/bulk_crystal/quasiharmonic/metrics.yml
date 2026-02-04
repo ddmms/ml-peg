@@ -1,0 +1,40 @@
+metrics:
+  Lattice constant MAE:
+    good: 0.0
+    bad: 0.1
+    unit: "\u00c5"
+    tooltip: "Mean Absolute Error of lattice constants at target (structure, T, P) conditions from QHA"
+    level_of_theory: Experimental
+    weight: 2.0
+
+  Volume per atom MAE:
+    good: 0.02
+    bad: 0.5
+    unit: "Å³/atom"
+    tooltip: "Mean Absolute Error of equilibrium volume per atom at target (structure, T, P) conditions"
+    level_of_theory: Experimental
+    weight: 1.5
+
+  Thermal expansion MAE:
+    good: 0.0
+    bad: 2.0
+    unit: "10\u207b\u2076 K\u207b\u00b9"
+    tooltip: "Mean Absolute Error of thermal expansion coefficient at target (structure, T, P) conditions"
+    level_of_theory: Experimental
+    weight: 1.0
+
+  Bulk modulus MAE:
+    good: 0.0
+    bad: 10.0
+    unit: GPa
+    tooltip: "Mean Absolute Error of bulk modulus at target (structure, T, P) conditions"
+    level_of_theory: Experimental
+    weight: 1.0
+
+  Heat capacity MAE:
+    good: 0.0
+    bad: 5.0
+    unit: "J/(mol\u00b7K)"
+    tooltip: "Mean Absolute Error of heat capacity at constant pressure at target (structure, T, P) conditions"
+    level_of_theory: Experimental
+    weight: 1.0
