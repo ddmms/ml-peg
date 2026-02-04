@@ -8,7 +8,10 @@ from ase import units
 from ase.io import read, write
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    plot_density_scatter,
+)
 from ml_peg.analysis.utils.utils import (
     build_d3_name_map,
     load_metrics_config,
@@ -48,15 +51,6 @@ def labels() -> list:
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_ncia_d1200.json",
-    title="Interaction energies",
-    x_label="Predicted energy / kcal/mol",
-    y_label="Reference energy / kcal/mol",
-    hoverdata={
-        "Labels": labels(),
-    },
-)
 def interaction_energies() -> dict[str, list]:
     """
     Get interaction energies for all systems.
@@ -85,6 +79,40 @@ def interaction_energies() -> dict[str, list]:
 
         ref_stored = True
     return results
+
+
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_ncia_d1200_density.json",
+    title="Interaction energy density plot",
+    x_label="Reference energy / kcal/mol",
+    y_label="Predicted energy / kcal/mol",
+    annotation_metadata={"system_count": "Systems"},
+)
+def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Build density scatter inputs for interaction energies.
+
+    Parameters
+    ----------
+    interaction_energies
+        Reference and predicted interaction energies per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model names to density-plot payloads.
+    """
+    ref_vals = interaction_energies["ref"]
+    density_inputs: dict[str, dict] = {}
+    for model_name in MODELS:
+        preds = interaction_energies.get(model_name, [])
+        density_inputs[model_name] = {
+            "ref": ref_vals,
+            "pred": preds,
+            "meta": {"system_count": len([val for val in preds if val is not None])},
+        }
+    return density_inputs
 
 
 @pytest.fixture
@@ -136,7 +164,10 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
-def test_ncia_d1200(metrics: dict[str, dict]) -> None:
+def test_ncia_d1200(
+    metrics: dict[str, dict],
+    interaction_density: dict[str, dict],
+) -> None:
     """
     Run NCIA D1200 test.
 
@@ -144,5 +175,7 @@ def test_ncia_d1200(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All new benchmark metric names and dictionary of values for each model.
+    interaction_density
+        Density-scatter inputs for all models (drives saved plots).
     """
     return
