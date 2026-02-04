@@ -70,7 +70,6 @@ def get_app() -> RDB7App:
         table_path=DATA_PATH / "rdb7_barriers_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            # Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 

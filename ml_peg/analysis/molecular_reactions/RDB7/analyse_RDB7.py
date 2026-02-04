@@ -11,7 +11,6 @@ https://doi.org/10.1038/s41597-022-01529-6
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ase import units
 from ase.io import read, write
@@ -21,7 +20,6 @@ from tqdm import tqdm
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_d3_name_map,
-    build_density_inputs,
     load_metrics_config,
     mae,
 )
@@ -95,8 +93,9 @@ def barrier_heights() -> dict[str, list]:
     title="Reaction barrier density plot",
     x_label="Reference reaction barrier / kcal/mol",
     y_label="Predicted reaction barrier / kcal/mol",
+    annotation_metadata={"system_count": "Systems"},
 )
-def barrier_density(barrier_heights: dict[str, dict[str, Any]]) -> dict[str, dict]:
+def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
     """
     Density scatter inputs for reaction barrier.
 
@@ -110,17 +109,16 @@ def barrier_density(barrier_heights: dict[str, dict[str, Any]]) -> dict[str, dic
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    stats_dict = {
-        model_name: {
-            "barrier": {
-                "ref": barrier_heights["ref"],
-                "pred": barrier_heights[model_name],
-            }
+    ref_vals = barrier_heights["ref"]
+    density_inputs: dict[str, dict] = {}
+    for model_name in MODELS:
+        preds = barrier_heights.get(model_name, [])
+        density_inputs[model_name] = {
+            "ref": ref_vals,
+            "pred": preds,
+            "meta": {"system_count": len([val for val in preds if val is not None])},
         }
-        for model_name in MODELS
-    }
-
-    return build_density_inputs(MODELS, stats_dict, "barrier", metric_fn=mae)
+    return density_inputs
 
 
 @pytest.fixture
