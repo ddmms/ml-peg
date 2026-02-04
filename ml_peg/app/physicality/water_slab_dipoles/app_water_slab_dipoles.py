@@ -27,15 +27,22 @@ class WaterSlabDipolesApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
+        print(" Registering callbacks to app")
         hists = {
             model: {
-                "Dipole Distribution": read_plot(
+                "sigma": read_plot(
+                    DATA_PATH / f"figure_{model}_dipoledistr.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                ),
+                "Fraction Breakdown Candidates": read_plot(
                     DATA_PATH / f"figure_{model}_dipoledistr.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure",
                 ),
             }
             for model in MODELS
         }
+        for model in MODELS:
+            print("Read plot from ", DATA_PATH / f"figure_{model}_dipoledistr.json")
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
@@ -52,6 +59,7 @@ def get_app() -> WaterSlabDipolesApp:
     WaterSlabDipolesApp
         Benchmark layout and callback registration.
     """
+    print("Id of extra components: ", f"{BENCHMARK_NAME}-figure-placeholder")
     return WaterSlabDipolesApp(
         name=BENCHMARK_NAME,
         description="Dipole distribution of a 38 A water slab",
@@ -65,7 +73,7 @@ def get_app() -> WaterSlabDipolesApp:
 
 if __name__ == "__main__":
     # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
+    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
 
     # Construct layout and register callbacks
     dipole_app = get_app()

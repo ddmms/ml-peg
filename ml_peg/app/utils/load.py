@@ -226,6 +226,10 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
         Loaded plotly Graph.
     """
     figure = read_json(filename) if Path(filename).exists() else None
+    print(f"Opening plot from {filename}")
+    print(f"exists: {Path(filename).exists()}")
+    print("Figure: ", figure)
+    print("id: ", id)
     return Graph(id=id, figure=figure)
 
 

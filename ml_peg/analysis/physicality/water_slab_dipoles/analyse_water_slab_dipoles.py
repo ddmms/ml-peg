@@ -68,6 +68,38 @@ def get_dipoles() -> dict[str, np.ndarray]:
     return results
 
 
+def plot_distribution(model: str) -> None:
+    """
+    Plot Dipole Distribution.
+
+    Parameters
+    ----------
+    model
+        Name of MLIP.
+    """
+
+    @plot_hist(
+        filename=OUT_PATH / f"figure_{model}_dipoledistr.json",
+        title=f"Dipole Distribution {model}",
+        x_label="Total z-Dipole per unit area [e/A]",
+        good=-DIPOLE_BAD_THRESHOLD,
+        bad=DIPOLE_BAD_THRESHOLD,
+        bins=20,
+    )
+    def plot_distr() -> dict[str, np.ndarray]:
+        """
+        Plot a NEB and save the structure file.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Dictionary of array with all dipoles for each model.
+        """
+        return get_dipoles()  # {'sigma': get_dipoles(), 'n_bad': get_dipoles()}
+
+    plot_distr()
+
+
 @pytest.fixture
 def dipole_std() -> dict[str, float]:
     """
@@ -82,6 +114,7 @@ def dipole_std() -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         if model_name in dipoles.keys():
+            plot_distribution(model_name)
             results[model_name] = np.std(dipoles[model_name])
         else:
             results[model_name] = None
@@ -110,37 +143,6 @@ def n_bad() -> dict[str, float]:
         else:
             results[model_name] = None
     return results
-
-
-def plot_distribution(model: str) -> None:
-    """
-    Plot NEB paths and save all structure files.
-
-    Parameters
-    ----------
-    model
-        Name of MLIP.
-    """
-
-    @plot_hist(
-        filename=OUT_PATH / f"figure_{model}_dipoledistr.json",
-        title=f"Dipole Distribution {model}",
-        x_label="Total z-Dipole per unit area [e/A]",
-        good=-DIPOLE_BAD_THRESHOLD,
-        bad=DIPOLE_BAD_THRESHOLD,
-    )
-    def plot_distr() -> dict[str, np.ndarray]:
-        """
-        Plot a NEB and save the structure file.
-
-        Returns
-        -------
-        dict[str, np.ndarray]
-            Dictionary of array with all dipoles for each model.
-        """
-        return get_dipoles()
-
-    plot_distr()
 
 
 @pytest.fixture
