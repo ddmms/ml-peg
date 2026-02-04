@@ -1,0 +1,9 @@
+for i in {1..20}
+do
+
+react=`paste $i/react/energy-mace | awk '{print $1}'`
+ts=`paste $i/ts/energy-mace | awk '{print $1}'`
+
+
+echo $react $ts | awk -v i=$i '{printf"%d  %1.4lf\n", i, $2-$1}'
+done
