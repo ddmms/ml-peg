@@ -69,9 +69,7 @@ def rebuild_table(
 
     # model_name_map stores: display_name -> original model name
     # We need the inverse for lookups: original name -> display name
-    original_to_display = {}
-    for display_name, original_name in model_name_map.items():
-        original_to_display[original_name] = display_name
+    original_to_display = {v: k for k, v in model_name_map.items()}
 
     # Determine which metrics exist (excluding MLIP, Score, id)
     metric_columns = [
