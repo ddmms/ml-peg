@@ -40,14 +40,30 @@ except FileNotFoundError:
     DEFAULT_WEIGHTS = {}
 
 # --- Reference Data (Appendix B.5 of arXiv:2401.00096) ---
-# Units: kcal/mol
+# The paper compares MACE against these specific DFT (r2SCAN) values.
+# Original unit was eV. Converted here to kcal/mol (1 eV = 23.0605 kcal/mol)
 REF_BARRIERS_KCAL = {
-    1: 10.53, 2: 20.44, 3: 13.14, 4: 19.88, 5: 11.29,
-    6: 11.63, 7: 13.39, 8: 10.73, 9: 11.29, 10: 12.57,
-    11: 16.88, 12: 7.89,  13: 10.09, 14: 10.32, 15: 12.37,
-    16: 8.16,  17: 8.88,  18: 21.74, 19: 33.92, 20: 22.62
+    1:  1.7194 * 23.0605,
+    2:  1.9241 * 23.0605,
+    3:  1.7499 * 23.0605,
+    4:  1.8238 * 23.0605,
+    5:  1.7237 * 23.0605,
+    6:  1.5653 * 23.0605,
+    7:  1.0911 * 23.0605,
+    8:  1.8983 * 23.0605,
+    9:  1.5477 * 23.0605,
+    10: 1.7115 * 23.0605,
+    11: 1.7379 * 23.0605,
+    12: 2.0361 * 23.0605,
+    13: 1.8739 * 23.0605,
+    14: 1.9760 * 23.0605,
+    15: 1.8865 * 23.0605,
+    16: 1.5741 * 23.0605,
+    17: 1.2587 * 23.0605,
+    18: 1.7497 * 23.0605,
+    19: 1.6989 * 23.0605,
+    20: 1.7654 * 23.0605
 }
-
 def get_reaction_ids() -> list[str]:
     """
     Get list of Reaction IDs for plotting hover data.
@@ -83,6 +99,10 @@ def reaction_barriers() -> dict[str, list]:
         Dictionary of reference and predicted barriers in kcal/mol.
         Format: {'ref': [10.53, ...], 'mace-mp-0b3': [10.2, ...]}
     """
+    # --- DEBUGGING START ---
+    print(f"\nDEBUG: CALC_PATH is set to: {CALC_PATH.resolve()}")
+    print(f"DEBUG: OUT_PATH is set to:  {OUT_PATH.resolve()}")
+    # --- DEBUGGING END ---
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
     
@@ -92,6 +112,13 @@ def reaction_barriers() -> dict[str, list]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
+        # --- DEBUGGING START ---
+        print(f"Checking for model: {model_name:<20}", end="")
+        if not model_dir.exists():
+            print(f"[MISSING] -> Skipped {model_dir}")
+            continue
+        print(f"[FOUND]")
+        # --- DEBUGGING END ---
         if not model_dir.exists():
             continue
 
