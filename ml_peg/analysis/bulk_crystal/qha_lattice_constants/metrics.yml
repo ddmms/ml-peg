@@ -1,7 +1,0 @@
-metrics:
-  Lattice constant MAE (QHA):
-    good: 0.01
-    bad: 0.05
-    unit: "Å"
-    tooltip: "Mean absolute error of QHA lattice constants versus reference."
-    level_of_theory: QHA
