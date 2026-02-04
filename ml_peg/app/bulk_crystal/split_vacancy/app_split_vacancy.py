@@ -7,7 +7,7 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
+from ml_peg.app.utils.build_callbacks import plot_from_table_column
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -15,7 +15,7 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Split vacancy"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants" # TODO: change
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants"  # TODO: change
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
 
 
@@ -25,7 +25,8 @@ class SplitVacancyApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         scatter_dft = read_plot(
-            DATA_PATH / "figure_formation_energies_dft.json", id=f"{BENCHMARK_NAME}-figure"
+            DATA_PATH / "figure_formation_energies_dft.json",
+            id=f"{BENCHMARK_NAME}-figure",
         )
 
         # structs_dir = DATA_PATH / MODELS[0]
@@ -47,8 +48,8 @@ class SplitVacancyApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "Metric 1": scatter_dft,
-                # "MAE (PBE)": scatter_dft,
+                "MAE": scatter_dft,
+                "Mean Spearman's Coefficient": scatter_dft,
             },
         )
 

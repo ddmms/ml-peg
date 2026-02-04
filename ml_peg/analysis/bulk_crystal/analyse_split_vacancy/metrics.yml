@@ -1,0 +1,13 @@
+metrics:
+  Mean Spearman's Coefficient:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    tooltip: Measure of the accuracy of the energy ranking of DFT relaxed structures by MLIPs.
+    level_of_theory: PBE
+  MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV
+    tooltip: Formation energy of split vacancy, considering lowest energy relaxed structures.
+    level_of_theory: PBE
