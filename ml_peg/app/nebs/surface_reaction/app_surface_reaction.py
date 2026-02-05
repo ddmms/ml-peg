@@ -21,6 +21,11 @@ BENCHMARK_NAME = "Surface reaction"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#surface-reactionn"
 DATA_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
 
+REACTIONS = [
+    "desorption_ood_87_9841_0_111-1",
+    "dissociation_ood_268_6292_46_211-5",
+    "transfer_id_601_1482_1_211-5"
+]
 
 class SurfaceReactionApp(BaseApp):
     """Surface reaction benchmark app layout and callbacks."""
@@ -29,14 +34,11 @@ class SurfaceReactionApp(BaseApp):
         """Register callbacks to app."""
         scatter_plots = {
             model: {
-                "Forward Barrier Error": read_plot(
-                    DATA_PATH / f"figure_{model}_neb_transfer_id_601_1482_1_211-5.json",
-                    id=f"{BENCHMARK_NAME}-{model}-figure-transfer_id_601_1482_1_211-5",
-                ),
-#                "Path C error": read_plot(
-#                    DATA_PATH / f"figure_{model}_neb_c.json",
-#                    id=f"{BENCHMARK_NAME}-{model}-figure-c",
-#                ),
+                f"{reaction} barrier error": read_plot(
+                    DATA_PATH / f"figure_{model}_neb_{reaction}.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}"
+                ) 
+                for reaction in REACTIONS
             }
             for model in MODELS
         }
@@ -45,9 +47,9 @@ class SurfaceReactionApp(BaseApp):
         assets_dir = "assets/nebs/surface_reaction"
         structs = {
             model: {
-                "Forward Barrier Error": f"{assets_dir}/{model}/{model}-transfer_id_601_1482_1_211-5.xyz",
-#                "Path C error": f"{assets_dir}/{model}/{model}-c-neb-band.extxyz",
-            }
+                f"{reaction} barrier error": f"{assets_dir}/{model}/{model}-{reaction}.xyz"
+                for reaction in REACTIONS
+		    }
             for model in MODELS
         }
 
@@ -58,11 +60,11 @@ class SurfaceReactionApp(BaseApp):
         )
 
         for model in MODELS:
-            for path in ("transfer_id_601_1482_1_211-5", ):
+            for reaction in REACTIONS:
                 struct_from_scatter(
-                    scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{path}",
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=structs[model][f"Forward Barrier Error"],
+                    structs=structs[model][f"{reaction} barrier error"],
                     mode="traj",
                 )
 
