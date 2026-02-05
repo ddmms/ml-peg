@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
@@ -12,10 +10,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from ml_peg.analysis.physicality.iron_properties.analyse_iron_properties import (
+    DFT_CURVES,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.physicality.iron_properties.iron_utils import load_dft_curve
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -25,10 +25,6 @@ BENCHMARK_NAME = "Iron Properties"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "iron_properties"
 CALC_PATH = CALCS_ROOT / "physicality" / "iron_properties" / "outputs"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#iron-properties"
-
-# Path to DFT reference data
-DFT_DATA_PATH = Path(__file__).parent.parent.parent.parent / "data" / "iron_properties"
-
 
 # Curve configuration: file name, x column, y column, title, x label, y label
 CURVE_CONFIG = {
@@ -79,53 +75,6 @@ CURVE_CONFIG = {
         "title": "Traction-Separation Curve (110)",
         "x_label": "Separation (Å)",
         "y_label": "Traction (GPa)",
-    },
-}
-
-# DFT reference curve configuration
-DFT_CURVE_CONFIG = {
-    "bain": {
-        "file": "BainPath_DFT.csv",
-        "sep": ",",
-        "decimal": ".",
-        "header": None,
-        "x_col": 0,
-        "y_col": 1,
-        "normalize_energy_mev": True,
-    },
-    "sfe_110": {
-        "file": "sfe_110_dft.csv",
-        "sep": ",",
-        "decimal": ".",
-        "header": None,
-        "x_col": 0,
-        "y_col": 1,
-        "x_scale": 2.831 * 1.7320508 / 2,  # Burgers vector: a * sqrt(3) / 2
-    },
-    "sfe_112": {
-        "file": "sfe_112_dft.csv",
-        "sep": ",",
-        "decimal": ".",
-        "header": None,
-        "x_col": 0,
-        "y_col": 1,
-        "x_scale": 2.831 * 1.7320508 / 2,  # Burgers vector: a * sqrt(3) / 2
-    },
-    "ts_100": {
-        "file": "ts_100_dft.csv",
-        "sep": r"\s+",
-        "decimal": ".",
-        "header": None,
-        "x_col": 0,
-        "y_col": 1,
-    },
-    "ts_110": {
-        "file": "ts_110_dft.csv",
-        "sep": r"\s+",
-        "decimal": ".",
-        "header": None,
-        "x_col": 0,
-        "y_col": 1,
     },
 }
 
@@ -187,9 +136,9 @@ def _create_figure(df: pd.DataFrame, curve_type: str, model_name: str) -> go.Fig
     model_x_max = df[config["x"]].max() if config.get("x") else None
 
     # Add DFT reference curve if available
-    dft_data = load_dft_curve(curve_type, DFT_DATA_PATH, DFT_CURVE_CONFIG)
+    dft_data = DFT_CURVES.get(curve_type)
     if dft_data is not None:
-        x_dft, y_dft = dft_data
+        x_dft, y_dft = dft_data[0].copy(), dft_data[1].copy()
 
         # For SFE curves, limit DFT data to model x-range (data is periodic)
         if curve_type.startswith("sfe_") and model_x_max is not None:
@@ -252,7 +201,8 @@ class IronPropertiesApp(BaseApp):
             Input(model_dropdown_id, "value"),
             Input(curve_dropdown_id, "value"),
         )
-        def update_figure(model_name: str, curve_type: str) -> go.Figure:
+        def update_figure(model_name: str, curve_type: str) -> go.Figure:  # noqa: F811
+            # Invoked by Dash's callback system, not called directly.
             """
             Update figure based on model and curve selection.
 
