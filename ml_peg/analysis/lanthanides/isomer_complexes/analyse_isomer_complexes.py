@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
 import pytest
 
@@ -23,19 +24,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# r2SCAN-3c references (kcal/mol) from Table S4 (lanthanides only)
-# These are relative energies (relative to lowest energy isomer for each system)
-R2SCAN_REF: dict[str, dict[str, float]] = {
-    "Ac_f1a50d": {"iso1": 0.02, "iso2": 0.0, "iso3": 3.52},
-    "Ce_1d271a": {"iso1": 0.0, "iso2": 2.2, "iso3": 1.67},
-    "Ce_ff6372": {"iso1": 2.47, "iso2": 7.13, "iso3": 0.0, "iso4": 2.17},
-    "Eu_ff6372": {"iso1": 0.0, "iso2": 6.74},
-    "La_f1a50d": {"iso1": 0.23, "iso2": 0.0, "iso3": 3.11},
-    "Lu_ff6372": {"iso1": 2.15, "iso2": 12.96, "iso3": 0.0, "iso4": 2.08},
-    "Nd_c5f44a": {"iso1": 0.0, "iso2": 1.61, "iso3": 0.82},
-    "Sm_ed79e8": {"iso1": 2.99, "iso2": 8.97, "iso3": 0.0},
-    "Th_ff6372": {"iso1": 2.13, "iso2": 8.03, "iso3": 0.0, "iso4": 1.23},
-}
+EV_TO_KCAL = units.mol / units.kcal
 
 
 def get_system_names() -> list[str]:
@@ -45,12 +34,20 @@ def get_system_names() -> list[str]:
     Returns
     -------
     list[str]
-        Sorted list of system names from R2SCAN_REF.
+        Sorted list of system names.
     """
-    return sorted(R2SCAN_REF.keys())
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            # Get unique labels without _iso1.xyz suffix
+            return sorted(
+                {path.stem.split("_iso")[0] for path in model_dir.glob("*.xyz")}
+            )
+
+    return []
 
 
-def get_reference_keys() -> list[tuple[str, str]]:
+def get_labels() -> list[tuple[str, str]]:
     """
     Get sorted list of (system, isomer) tuples for consistent ordering.
 
@@ -59,25 +56,18 @@ def get_reference_keys() -> list[tuple[str, str]]:
     list[tuple[str, str]]
         List of (system, isomer) tuples sorted by system then isomer.
     """
-    system_names = get_system_names()
-    return [
-        (system, isomer)
-        for system in system_names
-        for isomer in sorted(R2SCAN_REF[system].keys())
-    ]
-
-
-def get_reference_values() -> list[float]:
-    """
-    Get reference relative energies in sorted order.
-
-    Returns
-    -------
-    list[float]
-        Reference relative energies matching the order of get_reference_keys().
-    """
-    reference_keys = get_reference_keys()
-    return [R2SCAN_REF[system][isomer] for system, isomer in reference_keys]
+    labels = {}
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            for system in get_system_names():
+                labels[system] = sorted(
+                    [
+                        path.stem.split("_")[2]
+                        for path in model_dir.glob(f"{system}_iso*.xyz")
+                    ]
+                )
+    return labels
 
 
 def build_hoverdata() -> dict[str, list[str]]:
@@ -89,10 +79,10 @@ def build_hoverdata() -> dict[str, list[str]]:
     dict[str, list[str]]
         Dictionary with "System" and "Isomer" keys for hover information.
     """
-    reference_keys = get_reference_keys()
+    labels = get_labels()
     return {
-        "System": [system for system, _ in reference_keys],
-        "Isomer": [isomer for _, isomer in reference_keys],
+        "System": [key for key, values in labels.items() for _ in values],
+        "Isomer": [value for values in labels.values() for value in values],
     }
 
 
@@ -113,47 +103,44 @@ def isomer_relative_energies() -> dict[str, list]:
     dict[str, list]
         Reference and per-model relative energies.
     """
-    results = {"ref": get_reference_values()} | {mlip: [] for mlip in MODELS}
+    results = {"ref": []} | {mlip: [] for mlip in MODELS}
+    ref_stored = False
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if not model_dir.exists():
             # Model directory doesn't exist, fill with None
-            results[model_name] = [None] * len(get_reference_keys())
+            results[model_name] = [None] * len(get_labels())
             continue
 
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Process each system separately to compute relative energies
-        preds: list[float | None] = []
-        for system_name in get_system_names():
-            # Collect all isomers for this system
-            isomer_data: dict[str, tuple[float, object]] = {}
-            for isomer in sorted(R2SCAN_REF[system_name].keys()):
-                xyz_path = model_dir / f"{system_name}_{isomer}.xyz"
-                if xyz_path.exists():
-                    atoms = read(xyz_path)
-                    energy_kcal = atoms.info.get("energy_kcal")
-                    if energy_kcal is not None:
-                        isomer_data[isomer] = (energy_kcal, atoms)
+        labels = get_labels()
+        for system in labels:
+            pred_energies = []
+            ref_energies = []
+            for isomer in labels[system]:
+                xyz_path = model_dir / f"{system}_{isomer}.xyz"
+                atoms = read(xyz_path)
+
+                pred_energies.append(atoms.info.get("model_energy") * EV_TO_KCAL)
+                ref_energies.append(atoms.info.get("ref_energy") * EV_TO_KCAL)
+
+                # Copy structure to app directory
+                write(structs_dir / f"{system}_{isomer}.xyz", atoms)
 
             # Compute relative energies
-            min_energy = min(energy for energy, _ in isomer_data.values())
+            min_pred_energy = min(pred_energies)
+            pred_energies = [energy - min_pred_energy for energy in pred_energies]
+            results[model_name].extend(pred_energies)
 
-            # Add predictions in sorted isomer order
-            for isomer in sorted(R2SCAN_REF[system_name].keys()):
-                if isomer in isomer_data:
-                    energy_kcal, atoms = isomer_data[isomer]
-                    rel_energy = energy_kcal - min_energy
-                    preds.append(rel_energy)
+            if not ref_stored:
+                min_ref_energy = min(ref_energies)
+                ref_energies = [energy - min_ref_energy for energy in ref_energies]
+                results["ref"].extend(ref_energies)
 
-                    # Copy structure to app directory
-                    write(structs_dir / f"{system_name}_{isomer}.xyz", atoms)
-                else:
-                    preds.append(None)
-
-        results[model_name] = preds
+        ref_stored = True
 
     return results
 

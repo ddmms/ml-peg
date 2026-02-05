@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -18,21 +19,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 OUT_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
-KCAL_PER_EV = units.mol / units.kcal
 
-
-# r2SCAN-3c references (kcal/mol) from Table S4 (lanthanides only)
-R2SCAN_REF: dict[str, dict[str, float]] = {
-    "Ac_f1a50d": {"iso1": 0.02, "iso2": 0.0, "iso3": 3.52},
-    "Ce_1d271a": {"iso1": 0.0, "iso2": 2.2, "iso3": 1.67},
-    "Ce_ff6372": {"iso1": 2.47, "iso2": 7.13, "iso3": 0.0, "iso4": 2.17},
-    "Eu_ff6372": {"iso1": 0.0, "iso2": 6.74},
-    "La_f1a50d": {"iso1": 0.23, "iso2": 0.0, "iso3": 3.11},
-    "Lu_ff6372": {"iso1": 2.15, "iso2": 12.96, "iso3": 0.0, "iso4": 2.08},
-    "Nd_c5f44a": {"iso1": 0.0, "iso2": 1.61, "iso3": 0.82},
-    "Sm_ed79e8": {"iso1": 2.99, "iso2": 8.97, "iso3": 0.0},
-    "Th_ff6372": {"iso1": 2.13, "iso2": 8.03, "iso3": 0.0, "iso4": 1.23},
-}
+EXCLUDE_ELEMENTS = (89, 90)
 
 
 def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
@@ -53,8 +41,6 @@ def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
     for system_dir in sorted(struct_root.glob("*")):
         if not system_dir.is_dir():
             continue
-        if system_dir.name not in R2SCAN_REF:
-            continue
         for iso_dir in sorted(system_dir.glob("iso*")):
             xyz_path = iso_dir / "orca.xyz"
             if not xyz_path.exists():
@@ -73,6 +59,32 @@ def _load_isomer_entries(struct_root: Path) -> list[dict[str, Any]]:
                 }
             )
     return entries
+
+
+def get_ref_energy(data_path: Path) -> float:
+    """
+    Get reference energy from an xyz file.
+
+    Files have info of the form "Coordinates from ORCA-job orca E -1221"
+
+    Parameters
+    ----------
+    data_path
+        Path to data.
+
+    Returns
+    -------
+    float
+        Loaded reference energy.
+    """
+    with open(data_path) as lines:
+        # Skip header
+        next(lines)
+        line = next(lines)
+        if "E" == line.split()[-2]:
+            return float(line.split()[-1]) * units.Hartree
+
+    raise ValueError("Unable to extract energy")
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -101,25 +113,25 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    # results: list[dict[str, Any]] = []
     for entry in tqdm(entries, desc=f"Calculating energies for {model_name}"):
         atoms = read(entry["xyz"])
+
+        if any(element in EXCLUDE_ELEMENTS for element in atoms.numbers):
+            print(f"Skipping {entry['xyz']}")
+            continue
+
+        atoms.info = {}
         atoms.info["charge"] = entry["charge"]
         atoms.info["spin_multiplicity"] = entry["multiplicity"]
         atoms.info["spin"] = entry["multiplicity"]
-        atoms.calc = calc
-        energy_ev = float(atoms.get_potential_energy())
-        energy_kcal = energy_ev * KCAL_PER_EV
+        atoms.calc = copy(calc)
+        atoms.info["model_energy"] = atoms.get_potential_energy()
 
         atoms.info["model"] = model_name
-        atoms.info["energy_ev"] = energy_ev
-        atoms.info["energy_kcal"] = energy_kcal
         atoms.info["system"] = entry["system"]
         atoms.info["isomer"] = entry["isomer"]
 
-        atoms.info["ref_energy_kcal"] = R2SCAN_REF.get(entry["system"], {}).get(
-            entry["isomer"]
-        )
+        atoms.info["ref_energy"] = get_ref_energy(entry["xyz"])
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
