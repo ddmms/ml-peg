@@ -46,9 +46,8 @@ def get_system_names() -> list[str]:
     for model_name in sorted(CALC_PATH.glob("*")):
         if model_name.is_dir():
             # Note: sorting different to rxn_count order in calc
-            xyz_paths = sorted((CALC_PATH / model_name).glob("*TS.xyz"))
-            if xyz_paths:
-                return [path.stem.replace("TS", "") for path in xyz_paths]
+            xyz_paths = sorted((CALC_PATH / model_name).glob("*.xyz"))
+            return [path.stem for path in xyz_paths]
     return []
 
 
@@ -131,16 +130,15 @@ def barrier_heights() -> dict[str, list]:
             structs_dir.mkdir(parents=True, exist_ok=True)
 
             for fname in model_dir.glob(f"{system_name}*"):
-                if "TS" in fname.stem:
-                    atoms = read(fname)
-                    model_forward_barrier += atoms.info["model_energy"]
-                    ref_forward_barrier = atoms.info["ref_forward_barrier"]
-                    write(structs_dir / f"{fname.stem}.xyz", atoms)
+                atoms = read(fname, index=":")
+                model_forward_barrier += atoms[0].info["model_energy"]
+                for struct in atoms[1:]:
+                    model_forward_barrier -= struct.info["model_energy"]
 
-                if "R" in fname.stem:
-                    atoms = read(fname)
-                    model_forward_barrier -= atoms.info["model_energy"]
-                    write(structs_dir / f"{fname.stem}.xyz", atoms)
+                ref_forward_barrier = atoms[0].info["ref_forward_barrier"]
+
+                write(structs_dir / f"{fname.stem}.xyz", atoms)
+
             model_barriers.append(model_forward_barrier * EV_TO_KCAL)
             ref_barriers.append(ref_forward_barrier * EV_TO_KCAL)
 
@@ -152,7 +150,7 @@ def barrier_heights() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_mae(barrier_heights) -> dict[str, float]:
+def get_mae(barrier_heights: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for barrier heights.
 

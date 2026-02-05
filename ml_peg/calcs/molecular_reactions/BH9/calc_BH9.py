@@ -7,6 +7,7 @@ DOI: 10.1021/acs.jctc.1c00694
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -158,18 +159,25 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    # sort_labels not required here as we have the correct labels
-    for fname in tqdm(sorted((data_path / "BH9_SI" / "XYZ_files").glob("*TS.xyz"))):
-        atoms = process_atoms(fname)
-        atoms.calc = calc
-        atoms.info["model_energy"] = atoms.get_potential_energy()
+    xyz_path = data_path / "BH9_SI" / "XYZ_files"
+    for label in tqdm(ref_energies):
+        # Create list for TS and reactant atoms
+        structs = [process_atoms(xyz_path / f"{label}TS.xyz")]
+        structs[0].calc = calc
+        structs[0].info["model_energy"] = structs[0].get_potential_energy()
+        structs[0].info["label"] = label
 
         # Write both forward and reverse barriers, only forward used in analysis here
-        label = fname.stem
-        label = label.replace("TS", "")
-        atoms.info["ref_forward_barrier"] = ref_energies[label]["forward"]
-        atoms.info["ref_reverse_barrier"] = ref_energies[label]["reverse"]
+        structs[0].info["ref_forward_barrier"] = ref_energies[label]["forward"]
+        structs[0].info["ref_reverse_barrier"] = ref_energies[label]["reverse"]
+
+        for file in xyz_path.glob(f"{label}R*.xyz"):
+            reactant_atoms = process_atoms(file)
+            reactant_atoms.calc = copy(calc)
+            reactant_atoms.info["model_energy"] = reactant_atoms.get_potential_energy()
+            reactant_atoms.info["label"] = label
+            structs.append(reactant_atoms)
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir / f"{fname.stem}.xyz", atoms)
+        write(write_dir / f"{label}.xyz", structs)
