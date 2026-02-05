@@ -43,8 +43,6 @@ class WaterSlabDipolesApp(BaseApp):
             }
             for model in MODELS
         }
-        for model in MODELS:
-            print("Read plot from ", DATA_PATH / f"figure_{model}_dipoledistr.json")
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",

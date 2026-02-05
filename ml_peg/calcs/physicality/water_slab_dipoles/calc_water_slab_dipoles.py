@@ -43,9 +43,12 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
 
     out_name = "slab"
 
+    # One could consider increasing the length of simulation,
+    # so far I only reduced the printing intervals to get more
+    # samples.
     md_t = 200000  # number of timesteps, here dt = 1fs
-    md_dt = 500  # intervals for printing energy, T, etc
-    th_dt = 500  # intervals for printing structures
+    md_dt = 100  # intervals for printing energy, T, etc
+    th_dt = 100  # intervals for printing structures
     temp = 300  # Kelvin
     pres = 1.013  # bar
 
@@ -72,9 +75,6 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
         pfactor=None,
     )
 
-    # start_config_positions = start_config.positions.copy()
-    # start_config_com = start_config.get_center_of_mass().copy()
-
     # Write output structures
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
@@ -94,15 +94,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
         """
         calc_time = md.get_time() / units.fs
         calc_temp = a.get_temperature()
-        # calc_dens = np.sum(a.get_masses())/a.get_volume()*densfact
-        # calc_pres = - \
-        #    np.trace(a.get_stress(
-        #        include_ideal_gas=True, voigt=False))/3/units.bar
         calc_epot = a.get_potential_energy()
-        # calc_msd = (((a.positions-a.get_center_of_mass()) -
-        #            (start_config_positions-start_config_com))**2).mean(0).sum(0)
-        # calc_drft = ((a.get_center_of_mass()-start_config_com)**2).sum(0)
-        # calc_tens = -a.get_stress(include_ideal_gas=True, voigt=True)/units.bar
         if md.nsteps % th_dt == 0:
             thermo_traj.write(
                 ("%12d" + " %17.6f" * 2 + "\n") % (calc_time, calc_temp, calc_epot)

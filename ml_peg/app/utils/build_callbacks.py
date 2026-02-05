@@ -111,30 +111,21 @@ def plot_from_table_cell(
             Message explaining interactivity, or plot on cell click.
         """
         if not active_cell:
-            print("Not active cell; active_cell = ", active_cell)
             return Div("Click on a metric to view plot.")
         column_id = active_cell.get("column_id", None)
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
-        print("Active cell: ", column_id, row_id, row_index)
-        print("Current table data: ", current_table_data)
 
         # Check if cell value is None (no data for this model)
         if current_table_data and row_index is not None:
-            print("Trying to get cell_value")
             try:
                 cell_value = current_table_data[row_index].get(column_id)
-                print("cell_value = ", cell_value)
                 if cell_value is None:
                     return Div("No data available for this model.")
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
 
-        print("Cell to plot: ", cell_to_plot)
-        print(f"Want to plot: cell_to_plot[{row_id}][{column_id}] = ")
-        print(f"{cell_to_plot[row_id][column_id]}")
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
-            print(f"Plotting {cell_to_plot[row_id][column_id]}")
             return Div(cell_to_plot[row_id][column_id])
         return Div("Click on a metric to view plot.")
 

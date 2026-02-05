@@ -511,7 +511,6 @@ def plot_hist(
             data_all = []
             for model_name, hist_data in results.items():
                 # Create figure
-                # counts, np_bins = np.histogram(hist_data[model_name], bins = bins)
                 for point in hist_data:
                     data_all.append(point)
                 if bins is None or isinstance(bins, int) or isinstance(bins, float):
@@ -551,14 +550,12 @@ def plot_hist(
                         colors[i] = bins["end"]
                 if not bad_exists:
                     colors = "#276419"
-                print("colors = ", colors)
                 fig.update_traces(marke_color=colors)
             # Update layout
             fig.update_layout(
                 title={"text": title},
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
-                # no label, y axis is probability density
             )
 
             fig.update_traces()
