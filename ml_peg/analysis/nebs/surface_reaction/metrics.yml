@@ -1,7 +1,19 @@
 metrics:
-  Forward Barrier Error:
+  desorption_ood_87_9841_0_111-1 barrier error:
     good: 0.1
     bad: 0.8
     unit: eV
-    tooltip: "Forward barrier error"
+    tooltip: "desorption_ood_87_9841_0_111-1 barrier error"
+    level_of_theory: RPBE
+  dissociation_ood_268_6292_46_211-5 barrier error:
+    good: 0.1
+    bad: 0.8
+    unit: eV
+    tooltip: "dissociation_ood_268_6292_46_211-5 barrier error"
+    level_of_theory: RPBE
+  transfer_id_601_1482_1_211-5 barrier error:
+    good: 0.1
+    bad: 0.8
+    unit: eV
+    tooltip: "transfer_id_601_1482_1_211-5 barrier error"
     level_of_theory: RPBE
