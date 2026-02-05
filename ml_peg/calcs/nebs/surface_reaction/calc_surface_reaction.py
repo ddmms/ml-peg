@@ -27,6 +27,13 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 structs = DATA_PATH.glob("*")
 
+REACTIONS = [
+    "desorption_ood_87_9841_0_111-1",
+    "dissociation_ood_268_6292_46_211-5",
+    "transfer_id_601_1482_1_211-5"
+]
+
+
 @pytest.fixture(scope="module")
 def make_interpolation() -> dict[str, Atoms]:
     """
@@ -70,8 +77,8 @@ def make_interpolation() -> dict[str, Atoms]:
      'transfer_id_601_1482_1_211-5']
     interpolations = {}
 
-    for struct_name in struct_names:
-        print(f"{struct_name = }")
+    for reaction in REACTIONS:
+        print(f"{reaction = }")
         for model_name, calc in MODELS.items():
             print(f"{model_name = }")
     
@@ -79,7 +86,7 @@ def make_interpolation() -> dict[str, Atoms]:
 #            model.device = "cuda"
             calc = calc.get_calculator()
     
-            traj = read(DATA_PATH / f"{struct_name}.xyz", ":")
+            traj = read(DATA_PATH / f"{reaction}.xyz", ":")
             initial, final = traj[0], traj[-1]
             fix_indices = [i for i, tag in enumerate(initial.arrays["tags"]) if tag == 0]
     
@@ -97,15 +104,15 @@ def make_interpolation() -> dict[str, Atoms]:
             for struct in images:
                 struct.calc = calc
 
-            interpolations[f"{struct_name}-{model_name}"] = images
+            interpolations[f"{reaction}-{model_name}"] = images
     return interpolations
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODELS)
-def test_surface_reaction(make_interpolation: dict[str, Atoms], model_name: str) -> None:
+def test_surface_reaction1(make_interpolation: dict[str, Atoms], model_name: str) -> None:
     """
-    Run calculations required for lithium diffusion along path B.
+    Run calculations required for surface reactions with desorption_ood_87_9841_0_111-1.
 
     Parameters
     ----------
@@ -114,6 +121,81 @@ def test_surface_reaction(make_interpolation: dict[str, Atoms], model_name: str)
     model_name
         Name of model to use.
     """
+    
+    images = make_interpolation[f"desorption_ood_87_9841_0_111-1-{model_name}"]
+    neb = DyNEB(images, k=1.0, climb=False, method="eb",
+                allow_shared_calculator=True, scale_fmax=1.0)
+    opt = BFGS(neb)
+    conv = opt.run(fmax=0.05+0.4, steps=200)
+    if conv:
+        neb.climb = True
+        conv = opt.run(fmax=0.05, steps=300)
+
+    if conv:
+        converged = True
+    else:
+        converged = False
+
+    for at in neb.images:
+        at.info["converged"] = converged
+        at.info["mlip_energy"] = at.get_potential_energy()
+        at.arrays["mlip_forces"] = at.get_forces()
+   
+    OUT_PATH.mkdir(exist_ok=True, parents=True)    
+    write(OUT_PATH / f"desorption_ood_87_9841_0_111-1_{model_name}.xyz", neb.images)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", MODELS)
+def test_surface_reaction2(make_interpolation: dict[str, Atoms], model_name: str) -> None:
+    """
+    Run calculations required for surface reactions with dissociation_ood_268_6292_46_211-5.
+
+    Parameters
+    ----------
+    relaxed_structs
+        Relaxed input structures, indexed by structure name and model name.
+    model_name
+        Name of model to use.
+    """
+    
+    images = make_interpolation[f"dissociation_ood_268_6292_46_211-5-{model_name}"]
+    neb = DyNEB(images, k=1.0, climb=False, method="eb",
+                allow_shared_calculator=True, scale_fmax=1.0)
+    opt = BFGS(neb)
+    conv = opt.run(fmax=0.05+0.4, steps=200)
+    if conv:
+        neb.climb = True
+        conv = opt.run(fmax=0.05, steps=300)
+
+    if conv:
+        converged = True
+    else:
+        converged = False
+
+    for at in neb.images:
+        at.info["converged"] = converged
+        at.info["mlip_energy"] = at.get_potential_energy()
+        at.arrays["mlip_forces"] = at.get_forces()
+   
+    OUT_PATH.mkdir(exist_ok=True, parents=True)    
+    write(OUT_PATH / f"dissociation_ood_268_6292_46_211-5_{model_name}.xyz", neb.images)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", MODELS)
+def test_surface_reaction3(make_interpolation: dict[str, Atoms], model_name: str) -> None:
+    """
+    Run calculations required for surface reactions with transfer_id_601_1482_1_211-5.
+
+    Parameters
+    ----------
+    relaxed_structs
+        Relaxed input structures, indexed by structure name and model name.
+    model_name
+        Name of model to use.
+    """
+    
     images = make_interpolation[f"transfer_id_601_1482_1_211-5-{model_name}"]
     neb = DyNEB(images, k=1.0, climb=False, method="eb",
                 allow_shared_calculator=True, scale_fmax=1.0)
@@ -134,5 +216,5 @@ def test_surface_reaction(make_interpolation: dict[str, Atoms], model_name: str)
         at.arrays["mlip_forces"] = at.get_forces()
    
     OUT_PATH.mkdir(exist_ok=True, parents=True)    
-    write(OUT_PATH / f"{struct_name}_{model_name}.xyz", neb.images)
+    write(OUT_PATH / f"transfer_id_601_1482_1_211-5_{model_name}.xyz", neb.images)
 
