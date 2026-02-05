@@ -80,6 +80,7 @@ def plot_distribution(model: str) -> None:
     bins_start = -1.5 * DIPOLE_BAD_THRESHOLD
     bins_stop = 1.5 * DIPOLE_BAD_THRESHOLD
     bins_size = 3 * DIPOLE_BAD_THRESHOLD / 40
+    # one might want to consider reducing the bin size further...
 
     @plot_hist(
         filename=OUT_PATH / f"figure_{model}_dipoledistr.json",

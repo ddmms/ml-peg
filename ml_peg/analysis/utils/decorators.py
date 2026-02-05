@@ -464,7 +464,6 @@ def plot_hist(
     Callable
         Decorator to wrap function.
     """
-    print(f"bins = {bins}")
 
     def plot_hist_decorator(func: Callable) -> Callable:
         """
@@ -534,7 +533,6 @@ def plot_hist(
                     )
 
             if good is not None and bad is not None and isinstance(bins, dict):
-                print("Using coloring")
                 actual_bins = [min(data_all)]
                 point = actual_bins[0]
                 while point < max(data_all):
@@ -550,7 +548,7 @@ def plot_hist(
                         colors[i] = bins["end"]
                 if not bad_exists:
                     colors = "#276419"
-                fig.update_traces(marke_color=colors)
+                fig.update_traces(marker_color=colors)
             # Update layout
             fig.update_layout(
                 title={"text": title},

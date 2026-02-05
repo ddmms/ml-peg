@@ -59,7 +59,6 @@ def get_app() -> WaterSlabDipolesApp:
     WaterSlabDipolesApp
         Benchmark layout and callback registration.
     """
-    print("Id of extra components: ", f"{BENCHMARK_NAME}-figure-placeholder")
     return WaterSlabDipolesApp(
         name=BENCHMARK_NAME,
         description="Dipole distribution of a 38 A water slab",
