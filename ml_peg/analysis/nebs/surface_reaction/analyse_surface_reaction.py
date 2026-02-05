@@ -88,27 +88,27 @@ def energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def reaction_energy_error(energies: dict[str, list]) -> dict[str, float]:
-    """
-    Get error in path B energy barrier.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of predicted barrier errors for all models.
-    """
-#    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    results = {}
-    for model_name in MODELS:
-#        plot_nebs(model_name, "transfer_id_601_1482_1_211-5")
-
-        pred_reaction_energy = energies[model_name][-1] - energies[model_name][0]
-        ref_reaction_energy = energies["ref"][-1] - energies["ref"][0]
-#        pred_barrier = np.max(energy) - energy[0]
-        results[model_name] = np.abs(pred_reaction_energy - ref_reaction_energy)
-
-    return results
+#@pytest.fixture
+#def reaction_energy_error(energies: dict[str, list]) -> dict[str, float]:
+#    """
+#    Get error in path B energy barrier.
+#
+#    Returns
+#    -------
+#    dict[str, float]
+#        Dictionary of predicted barrier errors for all models.
+#    """
+##    OUT_PATH.mkdir(parents=True, exist_ok=True)
+#    results = {}
+#    for model_name in MODELS:
+##        plot_nebs(model_name, "transfer_id_601_1482_1_211-5")
+#
+#        pred_reaction_energy = energies[model_name][-1] - energies[model_name][0]
+#        ref_reaction_energy = energies["ref"][-1] - energies["ref"][0]
+##        pred_barrier = np.max(energy) - energy[0]
+#        results[model_name] = np.abs(pred_reaction_energy - ref_reaction_energy)
+#
+#    return results
 
 @pytest.fixture
 def forward_barrier_error(energies: dict[str, list]) -> dict[str, float]:
@@ -139,7 +139,8 @@ def forward_barrier_error(energies: dict[str, list]) -> dict[str, float]:
 	thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
-    reaction_energy_error: dict[str, float], forward_barrier_error: dict[str, float]
+#    reaction_energy_error: dict[str, float], forward_barrier_error: dict[str, float]
+    forward_barrier_error: dict[str, float]
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -157,7 +158,7 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "Reaction Energy Error": reaction_energy_error,
+#        "Reaction Energy Error": reaction_energy_error,
         "Forward Barrier Error": forward_barrier_error,
     }
 
