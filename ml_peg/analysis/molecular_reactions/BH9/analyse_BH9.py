@@ -129,15 +129,14 @@ def barrier_heights() -> dict[str, list]:
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
 
-            for fname in model_dir.glob(f"{system_name}*"):
-                atoms = read(fname, index=":")
-                model_forward_barrier += atoms[0].info["model_energy"]
-                for struct in atoms[1:]:
-                    model_forward_barrier -= struct.info["model_energy"]
+            atoms = read(model_dir / f"{system_name}.xyz", index=":")
+            model_forward_barrier += atoms[0].info["model_energy"]
+            for struct in atoms[1:]:
+                model_forward_barrier -= struct.info["model_energy"]
 
-                ref_forward_barrier = atoms[0].info["ref_forward_barrier"]
+            ref_forward_barrier = atoms[0].info["ref_forward_barrier"]
 
-                write(structs_dir / f"{fname.stem}.xyz", atoms)
+            write(structs_dir / f"{system_name}.xyz", atoms)
 
             model_barriers.append(model_forward_barrier * EV_TO_KCAL)
             ref_barriers.append(ref_forward_barrier * EV_TO_KCAL)
