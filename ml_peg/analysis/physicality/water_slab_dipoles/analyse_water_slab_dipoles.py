@@ -80,6 +80,9 @@ def plot_distribution(model: str) -> None:
     model
         Name of MLIP.
     """
+    bins_start = -1.5 * DIPOLE_BAD_THRESHOLD
+    bins_stop = 1.5 * DIPOLE_BAD_THRESHOLD
+    bins_size = 3 * DIPOLE_BAD_THRESHOLD / 40
 
     @plot_hist(
         filename=OUT_PATH / f"figure_{model}_dipoledistr.json",
@@ -88,7 +91,7 @@ def plot_distribution(model: str) -> None:
         y_label="Probability Density",
         good=-DIPOLE_BAD_THRESHOLD,
         bad=DIPOLE_BAD_THRESHOLD,
-        bins=20,
+        bins={"start": bins_start, "end": bins_stop, "size": bins_size},
     )
     def plot_distr() -> dict[str, np.ndarray]:
         """
@@ -99,7 +102,9 @@ def plot_distribution(model: str) -> None:
         dict[str, np.ndarray]
             Dictionary of array with all dipoles for each model.
         """
-        return get_dipoles()  # {'sigma': get_dipoles(), 'n_bad': get_dipoles()}
+        return {
+            model: get_dipoles()[model]
+        }  # {'sigma': get_dipoles(), 'n_bad': get_dipoles()}
 
     plot_distr()
 

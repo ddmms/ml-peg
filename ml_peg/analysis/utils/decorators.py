@@ -442,12 +442,13 @@ def plot_hist(
     Parameters
     ----------
     bins
-        Bins for histogram. Default is None.
+        Bins for histogram. Either int or directory
+        with start, end, size. Default is None.
     good
-        Minimum threshold for good values to draw line at.
+        Minimum threshold for good values. Requires bins dict.
         Default is None.
     bad
-        Maximum threshold for good values to draw line at.
+        Maximum threshold for good values. Requires bins dict.
         Default is None.
     title
         Graph title.
@@ -463,6 +464,7 @@ def plot_hist(
     Callable
         Decorator to wrap function.
     """
+    print(f"bins = {bins}")
 
     def plot_hist_decorator(func: Callable) -> Callable:
         """
@@ -506,51 +508,58 @@ def plot_hist(
             #    customdata = list(zip(*hoverdata.values(), strict=True))
 
             fig = go.Figure()
+            data_all = []
             for model_name, hist_data in results.items():
                 # Create figure
                 # counts, np_bins = np.histogram(hist_data[model_name], bins = bins)
-                fig.add_trace(
-                    go.Histogram(
-                        x=hist_data,
-                        histnorm="probability density",
-                        nbinsx=bins,
-                        name=model_name,
+                for point in hist_data:
+                    data_all.append(point)
+                if bins is None or isinstance(bins, int) or isinstance(bins, float):
+                    fig.add_trace(
+                        go.Histogram(
+                            x=hist_data,
+                            histnorm="probability density",
+                            nbinsx=bins,
+                            name=model_name,
+                        )
                     )
-                )
+                else:
+                    fig.add_trace(
+                        go.Histogram(
+                            x=hist_data,
+                            histnorm="probability density",
+                            xbins=bins,
+                            autobinx=False,
+                            name=model_name,
+                        )
+                    )
 
-            # Add good & bad threshold line
-            full_fig = fig.full_figure_for_development()
-            y_range = full_fig.layout.yaxis.range
-            if good is not None:
-                x = [0, y_range]
-                y = [good, good]
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        showlegend=False,
-                    )
-                )
-            if bad is not None:
-                x = [0, y_range]
-                y = [bad, bad]
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        showlegend=False,
-                    )
-                )
-
-                # Update layout
-                fig.update_layout(
-                    title={"text": title},
-                    xaxis={"title": {"text": x_label}},
-                    yaxis={"title": {"text": y_label}},
-                    # no label, y axis is probability density
-                )
+            if good is not None and bad is not None and isinstance(bins, dict):
+                print("Using coloring")
+                actual_bins = [min(data_all)]
+                point = actual_bins[0]
+                while point < max(data_all):
+                    point += bins["size"]
+                    actual_bins.append(point)
+                colors = np.zeros_like(actual_bins)
+                bad_exists = False
+                for i, point in enumerate(actual_bins):
+                    if point < good or point > bad:
+                        bad_exists = True
+                        colors[i] = bins["start"]
+                    else:
+                        colors[i] = bins["end"]
+                if not bad_exists:
+                    colors = "#276419"
+                print("colors = ", colors)
+                fig.update_traces(marke_color=colors)
+            # Update layout
+            fig.update_layout(
+                title={"text": title},
+                xaxis={"title": {"text": x_label}},
+                yaxis={"title": {"text": y_label}},
+                # no label, y axis is probability density
+            )
 
             fig.update_traces()
 
