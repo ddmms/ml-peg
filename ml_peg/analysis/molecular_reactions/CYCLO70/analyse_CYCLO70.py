@@ -48,11 +48,10 @@ def labels() -> list:
         List of all system names.
     """
     for model_name in MODELS:
-        labels_list = [
-            path.stem for path in sorted((CALC_PATH / model_name).glob("TS_*.xyz"))
-        ]
-        break
-    return labels_list
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            return [path.stem for path in sorted(model_dir.glob("*.xyz"))]
+    return []
 
 
 @pytest.fixture
@@ -79,19 +78,20 @@ def barrier_heights() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in labels():
-            atoms_ts = read(CALC_PATH / model_name / f"{label}.xyz")
+            atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
 
-            results[model_name].append(atoms_ts.info["model_forward_bh"] * EV_TO_KCAL)
-            results[model_name].append(atoms_ts.info["model_reverse_bh"] * EV_TO_KCAL)
+            # Atoms includes reactants, products, and TS
+            results[model_name].append(atoms[-1].info["model_forward_bh"] * EV_TO_KCAL)
+            results[model_name].append(atoms[-1].info["model_reverse_bh"] * EV_TO_KCAL)
 
             if not ref_stored:
-                results["ref"].append(atoms_ts.info["ref_forward_bh"] * EV_TO_KCAL)
-                results["ref"].append(atoms_ts.info["ref_reverse_bh"] * EV_TO_KCAL)
+                results["ref"].append(atoms[-1].info["ref_forward_bh"] * EV_TO_KCAL)
+                results["ref"].append(atoms[-1].info["ref_reverse_bh"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms_ts)
+            write(structs_dir / f"{label}.xyz", atoms)
         ref_stored = True
     return results
 

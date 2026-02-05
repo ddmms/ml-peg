@@ -82,6 +82,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)
 
+            structs = []
+
             for atoms_label in r_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
                 atoms.calc = calc
@@ -94,7 +96,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                 else:
                     atoms.info["charge"] = 0
                 bh_forward_model -= atoms.get_potential_energy()
-                write(write_dir / f"{atoms_label}.xyz", atoms)
+                atoms.info["label"] = atoms_label
+                structs.append(atoms)
 
             for atoms_label in p_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
@@ -108,7 +111,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                 else:
                     atoms.info["charge"] = 0
                 bh_reverse_model -= atoms.get_potential_energy()
-                write(write_dir / f"{atoms_label}.xyz", atoms)
+                atoms.info["label"] = atoms_label
+                structs.append(atoms)
 
             for atoms_label in ts_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
@@ -128,4 +132,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                 atoms.info["ref_reverse_bh"] = bh_reverse_ref
                 atoms.info["model_forward_bh"] = bh_forward_model
                 atoms.info["model_reverse_bh"] = bh_reverse_model
-                write(write_dir / f"{atoms_label}.xyz", atoms)
+                atoms.info["label"] = atoms_label
+                structs.append(atoms)
+
+            # Write out all structures
+            write(write_dir / f"{atoms_label.replace('TS_', '')}.xyz", structs)
