@@ -45,8 +45,8 @@ def plot_nebs(model: str, reaction:str) -> None:
     ----------
     model
         Name of MLIP.
-    path
-        Path "b" or "c" for NEB.
+    reaction
+        reaction id for NEB.
     """
 
     @plot_scatter(
@@ -85,44 +85,9 @@ def plot_nebs(model: str, reaction:str) -> None:
 
 
 @pytest.fixture
-def energies() -> dict[str, list]:
-    ref_traj = read(DATA_PATH / "transfer_id_601_1482_1_211-5.xyz", ":")
-    results = {"ref": [at.info["DFT_energy"] for at in ref_traj]} | {mlip: [] for mlip in MODELS}
-
-    for model_name in MODELS:
-        structs = read(CALC_PATH / f"transfer_id_601_1482_1_211-5_{model_name}.xyz", ":")
-
-        results[model_name] = [struct.info["mlip_energy"] for struct in structs] 
-
-    return results
-
-
-#@pytest.fixture
-#def reaction_energy_error(energies: dict[str, list]) -> dict[str, float]:
-#    """
-#    Get error in path B energy barrier.
-#
-#    Returns
-#    -------
-#    dict[str, float]
-#        Dictionary of predicted barrier errors for all models.
-#    """
-##    OUT_PATH.mkdir(parents=True, exist_ok=True)
-#    results = {}
-#    for model_name in MODELS:
-##        plot_nebs(model_name, "transfer_id_601_1482_1_211-5")
-#
-#        pred_reaction_energy = energies[model_name][-1] - energies[model_name][0]
-#        ref_reaction_energy = energies["ref"][-1] - energies["ref"][0]
-##        pred_barrier = np.max(energy) - energy[0]
-#        results[model_name] = np.abs(pred_reaction_energy - ref_reaction_energy)
-#
-#    return results
-
-@pytest.fixture
 def forward_barrier_error() -> dict[str, dict[str, float]]:
     """
-    Get error in path B energy barrier.
+    Get error in energy barrier for all reactions.
 
     Returns
     -------
@@ -151,18 +116,15 @@ def forward_barrier_error() -> dict[str, dict[str, float]]:
 	thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
-#    reaction_energy_error: dict[str, float], forward_barrier_error: dict[str, float]
     forward_barrier_error: dict[str, dict[str, float]]
 ) -> dict[str, dict]:
     """
-    Get all new benchmark metrics.
+    Get all surface reactions metrics.
 
     Parameters
     ----------
-    metric_1
-        Metric 1 value for all models.
-    metric_2
-        Metric 2 value for all models.
+    barriers_errors
+        activation barriers for all reactions and all models
 
     Returns
     -------
@@ -179,11 +141,11 @@ def metrics(
 
 def test_surface_reaction(metrics: dict[str, dict]) -> None:
     """
-    Run OC157 test.
+    Run surface reaction test.
 
     Parameters
     ----------
     metrics
-        All OC157 metrics.
+        All surface reaction metrics.
     """
     return

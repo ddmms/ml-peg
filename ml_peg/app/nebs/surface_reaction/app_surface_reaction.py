@@ -75,7 +75,7 @@ def get_app() -> SurfaceReactionApp:
 
     Returns
     -------
-    LiDiffusionApp
+    SurfaceReactionApp
         Benchmark layout and callback registration.
     """
     return SurfaceReactionApp(
