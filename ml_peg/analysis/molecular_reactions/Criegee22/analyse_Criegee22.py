@@ -43,8 +43,7 @@ def labels() -> list:
     """
     for model_name in MODELS:
         labels_list = [
-            path.stem.replace("_ts", "")
-            for path in sorted((CALC_PATH / model_name).glob("*ts.xyz"))
+            path.stem for path in sorted((CALC_PATH / model_name).glob("*.xyz"))
         ]
         break
     return labels_list
@@ -74,24 +73,22 @@ def barrier_heights() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in labels():
-            atoms_rct = read(CALC_PATH / model_name / f"{label}_rct.xyz")
-            atoms_ts = read(CALC_PATH / model_name / f"{label}_ts.xyz")
+            structs = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
 
             results[model_name].append(
-                (atoms_ts.info["model_energy"] - atoms_rct.info["model_energy"])
+                (structs[1].info["model_energy"] - structs[0].info["model_energy"])
                 * EV_TO_KCAL
             )
             if not ref_stored:
                 results["ref"].append(
-                    (atoms_ts.info["ref_energy"] - atoms_rct.info["ref_energy"])
+                    (structs[1].info["ref_energy"] - structs[0].info["ref_energy"])
                     * EV_TO_KCAL
                 )
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}_rct.xyz", atoms_rct)
-            write(structs_dir / f"{label}_ts.xyz", atoms_ts)
+            write(structs_dir / f"{label}_rct.xyz", structs)
         ref_stored = True
     return results
 

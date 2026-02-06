@@ -75,5 +75,4 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
 
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir / f"{label}_rct.xyz", atoms_reac)
-            write(write_dir / f"{label}_ts.xyz", atoms_ts)
+            write(write_dir / f"{label}.xyz", [atoms_reac, atoms_ts])
