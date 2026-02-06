@@ -36,6 +36,7 @@ dependencies = [
     "MDAnalysis",
     "openpyxl",
     "tqdm",
+    "aseMolec @ https://github.com/imagdau/aseMolec.git"
 ]
 
 [project.optional-dependencies]
