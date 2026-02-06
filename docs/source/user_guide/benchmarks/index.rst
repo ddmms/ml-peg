@@ -13,3 +13,4 @@ Benchmarks
     molecular
     bulk_crystal
     lanthanides
+    non_covalent_interactions
