@@ -18,14 +18,17 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Surface reaction"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#surface-reactionn"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#surface-reactionn"
+)
 DATA_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
 
 REACTIONS = [
     "desorption_ood_87_9841_0_111-1",
     "dissociation_ood_268_6292_46_211-5",
-    "transfer_id_601_1482_1_211-5"
+    "transfer_id_601_1482_1_211-5",
 ]
+
 
 class SurfaceReactionApp(BaseApp):
     """Surface reaction benchmark app layout and callbacks."""
@@ -36,8 +39,8 @@ class SurfaceReactionApp(BaseApp):
             model: {
                 f"{reaction} barrier error": read_plot(
                     DATA_PATH / f"figure_{model}_neb_{reaction}.json",
-                    id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}"
-                ) 
+                    id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}",
+                )
                 for reaction in REACTIONS
             }
             for model in MODELS
@@ -47,9 +50,9 @@ class SurfaceReactionApp(BaseApp):
         assets_dir = "assets/nebs/surface_reaction"
         structs = {
             model: {
-                f"{reaction} barrier error": f"{assets_dir}/{model}/{model}-{reaction}.xyz"
-                for reaction in REACTIONS
-		    }
+                f"{rxn} barrier error": f"{assets_dir}/{model}/{model}-{rxn}.xyz"
+                for rxn in REACTIONS
+            }
             for model in MODELS
         }
 

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from ase.io import read, write
-import pytest
 import numpy as np
+import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
@@ -27,17 +26,18 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 REF_VALUES = {
-	"desorption_ood_87_9841_0_111-1" : 2.061,
-	"dissociation_ood_268_6292_46_211-5" : 1.505, 
-	"transfer_id_601_1482_1_211-5": 0.868,
+    "desorption_ood_87_9841_0_111-1": 2.061,
+    "dissociation_ood_268_6292_46_211-5": 1.505,
+    "transfer_id_601_1482_1_211-5": 0.868,
 }
 REACTIONS = [
     "desorption_ood_87_9841_0_111-1",
-	"dissociation_ood_268_6292_46_211-5",
-	"transfer_id_601_1482_1_211-5"
+    "dissociation_ood_268_6292_46_211-5",
+    "transfer_id_601_1482_1_211-5",
 ]
 
-def plot_nebs(model: str, reaction:str) -> None:
+
+def plot_nebs(model: str, reaction: str) -> None:
     """
     Plot NEB paths and save all structure files.
 
@@ -46,7 +46,7 @@ def plot_nebs(model: str, reaction:str) -> None:
     model
         Name of MLIP.
     reaction
-        reaction id for NEB.
+        Reaction id for NEB.
     """
 
     @plot_scatter(
@@ -67,7 +67,7 @@ def plot_nebs(model: str, reaction:str) -> None:
         """
         results = {}
         structs = read(
-#            CALC_PATH / f"surface_reaction_{reaction}-{model}.xyz",
+            #            CALC_PATH / f"surface_reaction_{reaction}-{model}.xyz",
             CALC_PATH / f"{reaction}_{model}.xyz",
             index=":",
         )
@@ -85,7 +85,7 @@ def plot_nebs(model: str, reaction:str) -> None:
 
 
 @pytest.fixture
-def forward_barrier_error() -> dict[str, dict[str, float]]:
+def barrier_error() -> dict[str, dict[str, float]]:
     """
     Get error in energy barrier for all reactions.
 
@@ -94,7 +94,7 @@ def forward_barrier_error() -> dict[str, dict[str, float]]:
     dict[str, float]
         Dictionary of predicted barrier errors for all models.
     """
-#    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    #    OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
         reaction_dict = {}
@@ -103,7 +103,9 @@ def forward_barrier_error() -> dict[str, dict[str, float]]:
             structs = read(CALC_PATH / f"{reaction}_{model_name}.xyz", ":")
             energies = [struct.info["mlip_energy"] for struct in structs]
             pred_forward_barrier = np.max(energies) - energies[0]
-            reaction_dict[reaction] = np.abs(pred_forward_barrier - REF_VALUES[reaction])
+            reaction_dict[reaction] = np.abs(
+                pred_forward_barrier - REF_VALUES[reaction]
+            )
         results[model_name] = reaction_dict
 
     return results
@@ -113,18 +115,16 @@ def forward_barrier_error() -> dict[str, dict[str, float]]:
 @build_table(
     filename=OUT_PATH / "surface_reaction_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
-	thresholds=DEFAULT_THRESHOLDS,
+    thresholds=DEFAULT_THRESHOLDS,
 )
-def metrics(
-    forward_barrier_error: dict[str, dict[str, float]]
-) -> dict[str, dict]:
+def metrics(barrier_error: dict[str, dict[str, float]]) -> dict[str, dict]:
     """
     Get all surface reactions metrics.
 
     Parameters
     ----------
-    barriers_errors
-        activation barriers for all reactions and all models
+    barrier_error
+        Activation barriers for all reactions and all models.
 
     Returns
     -------
@@ -134,8 +134,8 @@ def metrics(
     metrics_dict = {}
     for reaction in REACTIONS:
         metrics_dict[f"{reaction} barrier error"] = {
-            model : forward_barrier_error[model][reaction] for model in MODELS
-		}
+            model: barrier_error[model][reaction] for model in MODELS
+        }
     return metrics_dict
 
 
