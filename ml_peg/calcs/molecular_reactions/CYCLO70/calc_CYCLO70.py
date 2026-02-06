@@ -82,7 +82,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)
 
-            structs = []
+            structs_forward = []
+            structs_reverse = []
 
             for atoms_label in r_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
@@ -97,7 +98,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                     atoms.info["charge"] = 0
                 bh_forward_model -= atoms.get_potential_energy()
                 atoms.info["label"] = atoms_label
-                structs.append(atoms)
+                atoms.calc = None
+                structs_forward.append(atoms)
 
             for atoms_label in p_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
@@ -112,7 +114,8 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                     atoms.info["charge"] = 0
                 bh_reverse_model -= atoms.get_potential_energy()
                 atoms.info["label"] = atoms_label
-                structs.append(atoms)
+                atoms.calc = None
+                structs_reverse.append(atoms)
 
             for atoms_label in ts_labels:
                 atoms = read(data_path / "XYZ_CYCLO70" / rxn / f"{atoms_label}.xyz")
@@ -133,7 +136,16 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                 atoms.info["model_forward_bh"] = bh_forward_model
                 atoms.info["model_reverse_bh"] = bh_reverse_model
                 atoms.info["label"] = atoms_label
-                structs.append(atoms)
+                atoms.calc = None
+                structs_forward.append(atoms)
+                structs_reverse.append(atoms)
 
             # Write out all structures
-            write(write_dir / f"{atoms_label.replace('TS_', '')}.xyz", structs)
+            write(
+                write_dir / f"{atoms_label.replace('TS_', '')}_forward.xyz",
+                structs_forward,
+            )
+            write(
+                write_dir / f"{atoms_label.replace('TS_', '')}_reverse.xyz",
+                structs_reverse,
+            )

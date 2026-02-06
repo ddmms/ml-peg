@@ -50,7 +50,10 @@ def labels() -> list:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
-            return [path.stem for path in sorted(model_dir.glob("*.xyz"))]
+            return [
+                path.stem.split("_")[0]
+                for path in sorted(model_dir.glob("*_forward.xyz"))
+            ]
     return []
 
 
@@ -61,7 +64,9 @@ def labels() -> list:
     x_label="Predicted barrier / kcal/mol",
     y_label="Reference barrier / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": [
+            f"{label}_{dir}" for label in labels() for dir in ("forward", "reverse")
+        ],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -77,21 +82,24 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
+        structs_dir = OUT_PATH / model_name
+        structs_dir.mkdir(parents=True, exist_ok=True)
+
         for label in labels():
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
+            for dir in ("forward", "reverse"):
+                atoms = read(CALC_PATH / model_name / f"{label}_{dir}.xyz", index=":")
 
-            # Atoms includes reactants, products, and TS
-            results[model_name].append(atoms[-1].info["model_forward_bh"] * EV_TO_KCAL)
-            results[model_name].append(atoms[-1].info["model_reverse_bh"] * EV_TO_KCAL)
+                # Atoms includes reactants/products and TS
+                results[model_name].append(
+                    atoms[-1].info[f"model_{dir}_bh"] * EV_TO_KCAL
+                )
 
-            if not ref_stored:
-                results["ref"].append(atoms[-1].info["ref_forward_bh"] * EV_TO_KCAL)
-                results["ref"].append(atoms[-1].info["ref_reverse_bh"] * EV_TO_KCAL)
+                if not ref_stored:
+                    results["ref"].append(atoms[-1].info[f"ref_{dir}_bh"] * EV_TO_KCAL)
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
+                # Write structures for app
+                write(structs_dir / f"{label}_{dir}.xyz", atoms)
+
         ref_stored = True
     return results
 

@@ -33,10 +33,11 @@ class CYCLO70App(BaseApp):
 
         model_dir = DATA_PATH / MODELS[0]
         if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
+            labels = sorted([f.stem for f in model_dir.glob("*_forward.xyz")])
             structs = [
-                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}.xyz"
+                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{dir}.xyz"
                 for label in labels
+                for dir in ("forward", "reverse")
             ]
         else:
             structs = []
