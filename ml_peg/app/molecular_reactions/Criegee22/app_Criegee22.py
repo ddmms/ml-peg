@@ -33,10 +33,12 @@ class Criegee22App(BaseApp):
 
         model_dir = DATA_PATH / MODELS[0]
         if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
+            base_labels = sorted(
+                [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_rct.xyz")]
+            )
             structs = [
-                f"assets/molecular_reactions/Criegee22/{MODELS[0]}/{label}.xyz"
-                for label in labels
+                f"assets/molecular_reactions/Criegee22/{MODELS[0]}/{label}_rct.xyz"
+                for label in base_labels
             ]
         else:
             structs = []
