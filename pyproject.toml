@@ -36,6 +36,7 @@ dependencies = [
     "MDAnalysis",
     "openpyxl",
     "tqdm",
+    "molify>=0.2.2",
 ]
 
 [project.optional-dependencies]
