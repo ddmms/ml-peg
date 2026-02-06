@@ -54,22 +54,25 @@ Surface reaction
 Summary
 -------
 
-Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset. 
+Performance in running NEB for three surface reactions (adsorption/desorption, dissociation, transfer) from OC20NEB dataset.
 
 Metrics
 -------
 
-1. Convergence 
+1. Activation barrier error
 
-2. Reaction energy and activation barrier difference compared to DFT reference
+Initial and final geometries are from OC20NEB dataset and relaxed with each model with several layers of slab fixed. And interpolation is generated with 10 images including initial and final images. Following NEB setting from original paper, initially it runs without climbing image until fmax=0.45 eV/A or max steps 200 and converts to climbing image mode with fmax=0.05 eV/A or max steps 300. Barrier is measured between the highest energy point and initial image.
 
-3. Sanity of NEB results (in terms of connectivity etc...)
+The benchmark includes following reactions:
+
+- desorption_ood_87_9841_0_111-1
+- dissociation_ood_268_6292_46_211-5
+- transfer_id_601_1482_1_211-5
 
 Computational cost
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
-Or Long: 
+Slow: tests are likely to take more than 2 hours to run on single GPU.
 
 Data availability
 -----------------
