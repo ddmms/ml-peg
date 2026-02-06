@@ -1,0 +1,14 @@
+metrics:
+  Absolute MAE:
+    good: 0.0
+    bad: 100.0
+    unit: kJ/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of all crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE:
+    good: 0.0
+    bad: 100.0
+    unit: kJ/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of all crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+
