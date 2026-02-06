@@ -42,12 +42,11 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     # Load data
-    # lattice_energy_dir = (download_s3_data(
-    #     key="inputs/molecular_crystal/CPOSS209/CPOSS209.zip",
-    #     filename="CPOSS209.zip",  
-    # ) / "lattice_energy")
+    lattice_energy_dir = (download_s3_data(
+        key="inputs/molecular_crystal/CPOSS209/CPOSS209.zip",
+        filename="CPOSS209.zip",  
+    ) / "lattice_energy")
 
-    lattice_energy_dir = Path("/home/mjgawkowski/ml-peg/ml_peg/calcs/molecular_crystal/CPOSS209/lattice_energy/")
 
     with open(lattice_energy_dir / "list") as f:
         systems = f.read().splitlines()
@@ -71,7 +70,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         for crystal_file, ref_crystal, num_mol in zip(crystals, ref_energies_path, num_molecules):
             crystal_path = Path(lattice_energy_dir) / system / crystal_file
 
-            # Read crystal structures
+            # Read crystal structure
             solid = read(crystal_path, index=0)
             solid.calc = copy(calc)
             solid_energy = solid.get_potential_energy()
@@ -80,9 +79,9 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
             solid.info["num_molecules"] = num_mol
             solid.info["system"] = system
             
-            # Extract shortened name (e.g., ACR01 from data_ACR01_PsiCrys)
+            # Extract shortened name
             crystal_short_name = crystal_file.replace('crystal_', '').split('.')[0]
-            # Remove prefix and suffix (data_ and _PsiCrys or similar)
+            # Remove prefix and suffix
             if '_' in crystal_short_name:
                 parts = crystal_short_name.split('_')
                 # Extract the middle part (e.g., ACR01 from data_ACR01_PsiCrys)
