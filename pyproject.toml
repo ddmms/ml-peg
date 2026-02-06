@@ -24,6 +24,7 @@ classifiers = [
 readme = "README.md"
 
 dependencies = [
+    "aseMolec @ https://github.com/imagdau/aseMolec.git",
     "boto3<2,>=1.40.49",
     "dash<5,>=4.0.0",
     "janus-core<1.0.0,>=0.8.6",
@@ -54,7 +55,11 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch @ https://github.com/ACEsuit/mace.git",
+    "cuequivariance==0.8.1",
+    "cuequivariance-ops-cu12==0.8.1",
+    "cuequivariance-ops-torch-cu12==0.8.1",
+    "cuequivariance-torch==0.8.1",
 ]
 
 mattersim = [

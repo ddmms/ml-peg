@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read
+from aseMolec import anaAtoms
 from janus_core.calculations.md import NPT
+import numpy as np
 import pytest
 
 from ml_peg.models.get_models import load_models
@@ -20,7 +22,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
 
 
-@pytest.mark.slow
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
     """
@@ -29,9 +31,13 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
     Parameters
     ----------
     mlip
-        Name of model use and model to get calculator.
+        Name of model use and model.
     """
     model_name, model = mlip
+    model.device = "cuda"
+    model.default_dtype = "float32"
+    model.kwargs["enable_cueq"] = True
+
     calc = model.get_calculator()
 
     # Add D3 calculator for this test
@@ -44,18 +50,43 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
 
         npt = NPT(
             struct=struct,
-            steps=200,
+            steps=40000,
             timestep=0.5,
-            stats_every=100,
-            traj_every=200,
+            stats_every=50,
+            traj_every=100,
             traj_append=True,
             thermostat_time=50,
-            bulk_modulus=10,
             barostat_time=None,
-            # pressure=pressure,
             file_prefix=OUT_PATH / f"{salt}_{model_name}",
-            # restart=True,
-            # restart_auto=True,
-            # post_process_kwargs={"rdf_compute": True, "rdf_rmax": 6, "rdf_bins": 120},
         )
         npt.run()
+
+
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
+    """
+    Calculate Fe-O RDFs from MLMD for oxidation states tests.
+
+    Parameters
+    ----------
+    mlip
+        Name of model used and model.
+    """
+    model_name, model = mlip
+    fct = {"Fe": 0.1, "O": 0.7, "H": 0.7, "Cl": 0.1}
+
+    for salt in IRON_SALTS:
+        md_path = OUT_PATH / f"{salt}_{model_name}-traj.extxyz"
+        traj = read(md_path, ":")
+        rdfs, radii = anaAtoms.compute_rdfs_traj_avg(
+            traj, rmax=6.0, nbins=100, fct=fct
+        )  # need to skip initial equilibration frames
+
+        rdf_data = np.column_stack((radii, rdfs["OFe_inter"]))
+
+        rdf_path = OUT_PATH / f"OFe_inter_{salt}_{model_name}.rdf"
+        np.savetxt(
+            rdf_path,
+            rdf_data,
+            header="r g(r)",
+        )
