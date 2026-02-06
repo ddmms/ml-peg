@@ -1,0 +1,11 @@
+metrics:
+  Fe-O RDF Peak Split:
+    good: 0.5
+    bad: 0.0
+    unit: null
+    tooltip: Whether there is a split between Fe-O RDF peaks for different iron oxidation states
+  Peak Within DFT Ref:
+    good: 0.5
+    bad: 0.0
+    unit: null
+    tooltip: Whether the RDF peak positions match PBE peaks

@@ -503,6 +503,32 @@ wheels = [
 ]
 
 [[package]]
+name = "ase-ga"
+version = "1.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ase" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/3f/0cb20510b115ac2eef57cca0551e8e59c439c1617daaeba352b161faa28b/ase_ga-1.0.3.tar.gz", hash = "sha256:48997ca75ac0db5aeb9cdee4c7c0f406dbb0921e173272360bdbb73cdab3c767", size = 237296, upload-time = "2025-11-06T14:47:53.317Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/55/cb27ae7f78e44ad95f572cb0cc2997af85855cfc3cfc058ec7cdc946b5f4/ase_ga-1.0.3-py3-none-any.whl", hash = "sha256:fdc247fcebd5bf6982ae4cfba3d48c5ec1a76e01997d1b0aa18533b727935048", size = 94604, upload-time = "2025-11-06T14:47:52.446Z" },
+]
+
+[[package]]
+name = "asemolec"
+version = "1.0.0"
+source = { git = "https://github.com/imagdau/aseMolec.git#7dad6334392aa23c27ffb18a6d7d718b16ce9240" }
+dependencies = [
+    { name = "ase" },
+    { name = "ase-ga" },
+    { name = "matplotlib" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13' or extra != 'extra-6-ml-peg-grace' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+]
+
+[[package]]
 name = "asn1crypto"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1884,6 +1910,72 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ac/97/a538654732974a94ff96c1db621fa464f455c02d4bb7d2652f4edc21d600/cryptography-46.0.5-pp311-pypy311_pp73-manylinux_2_34_aarch64.whl", hash = "sha256:d861ee9e76ace6cf36a6a89b959ec08e7bc2493ee39d07ffe5acb23ef46d27da", size = 4217990, upload-time = "2026-02-10T19:18:25.957Z" },
     { url = "https://files.pythonhosted.org/packages/ae/11/7e500d2dd3ba891197b9efd2da5454b74336d64a7cc419aa7327ab74e5f6/cryptography-46.0.5-pp311-pypy311_pp73-manylinux_2_34_x86_64.whl", hash = "sha256:2b7a67c9cd56372f3249b39699f2ad479f6991e62ea15800973b956f4b73e257", size = 4381252, upload-time = "2026-02-10T19:18:27.496Z" },
     { url = "https://files.pythonhosted.org/packages/bc/58/6b3d24e6b9bc474a2dcdee65dfd1f008867015408a271562e4b690561a4d/cryptography-46.0.5-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:8456928655f856c6e1533ff59d5be76578a7157224dbd9ce6872f25055ab9ab7", size = 3407605, upload-time = "2026-02-10T19:18:29.233Z" },
+]
+
+[[package]]
+name = "cuequivariance"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.13' and extra == 'extra-6-ml-peg-mace') or (python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "opt-einsum" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/17/63/e63833fd8947757a68bac3ca503efb6befcaba388c36876edfc231f8c2c9/cuequivariance-0.8.1.tar.gz", hash = "sha256:f398dd0b61f80894994ef12a6ac7dd844e3d301a5486b99ff17d0082f1e22b4c", size = 235530, upload-time = "2026-01-09T19:28:42.368Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/a1/22835460a403d4eab4d8a434d0b07755d21a0948cafbdf6c77bd61948110/cuequivariance-0.8.1-py3-none-any.whl", hash = "sha256:96a3d7208952f07d09f3559aab7f726a650cc7c7e62c0790d612ef632c2c3f62", size = 266717, upload-time = "2026-01-09T19:28:40.85Z" },
+]
+
+[[package]]
+name = "cuequivariance-ops-cu12"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-ml-py" },
+    { name = "platformdirs" },
+    { name = "tqdm" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/5d/4c1cfc9d28f3fc06321fd0846c62f407a348c6152ada694277a9c93be5f9/cuequivariance_ops_cu12-0.8.1-py3-none-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:418b593c7a43849c300988a19a8202e52ca6d47271bf1603cceb6f3ab5e4aa5a", size = 30578954, upload-time = "2026-01-09T19:25:14.416Z" },
+    { url = "https://files.pythonhosted.org/packages/27/2e/0086a4637606b2f94b085f53ccf327a8de4f1dc516c8abb9ad5787a2e5ce/cuequivariance_ops_cu12-0.8.1-py3-none-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7bbdf5802748dbfecdf01dc886a406840eed81296f83e119222a5ec99421f917", size = 30685508, upload-time = "2026-01-09T19:25:17.591Z" },
+]
+
+[[package]]
+name = "cuequivariance-ops-torch-cu12"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cuequivariance-ops-cu12" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-6-ml-peg-mace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/1c/167058404d0a9c3ca0885c31c2897916bacc3f2115d7c1a6831b0b9d24ad/cuequivariance_ops_torch_cu12-0.8.1-cp310-cp310-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:91965c60fcd681cc7e9e9141a326fd396ba31853bb628b514c6f35bd05565eec", size = 400862, upload-time = "2026-01-09T19:25:29.863Z" },
+    { url = "https://files.pythonhosted.org/packages/83/5a/0e5616175972739620025f362bec17cced39820cb6fc86caebaab83ab4ad/cuequivariance_ops_torch_cu12-0.8.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:02de02bc1c9d442397606e1434a32eed58cc43204b609a5956c43cc1b0d7c4cf", size = 407839, upload-time = "2026-01-09T19:25:31.291Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/df/cbf1e553f37d2d612b9d5782142e18c9b757600c3862975bc7db1b2e2970/cuequivariance_ops_torch_cu12-0.8.1-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:22416efb38221213bd4ae1c3b1611798d4430d174254f3c937dd7b3e3ab22de2", size = 401169, upload-time = "2026-01-09T19:25:32.54Z" },
+    { url = "https://files.pythonhosted.org/packages/17/67/2e0e332f1d964b5821b41e2c8e0ad3a749f4036a9499ec71898311c4c983/cuequivariance_ops_torch_cu12-0.8.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:908cf67cb891b523c1a52c202ca91117eba382d79271ee377a4ad9373beb8762", size = 408070, upload-time = "2026-01-09T19:25:33.986Z" },
+    { url = "https://files.pythonhosted.org/packages/16/0c/2f7039fb0a5a1b4ed31c312bb820e2391580678498737c065ff6ba97b105/cuequivariance_ops_torch_cu12-0.8.1-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4770c4e730cd19abaa1e9b2e18845b25fccb2df0a195d132d01e428980804cf2", size = 400538, upload-time = "2026-01-09T19:25:35.228Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/d9/2d44de226657495a643f08a40fbeb1f6b0d87fcb620ce73209dba7ea148e/cuequivariance_ops_torch_cu12-0.8.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:839a262c6bb461684e7d929f5bf4b96c2fa58a5308e64c213ec7835fb1c3907e", size = 407390, upload-time = "2026-01-09T19:25:36.755Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/e6/aa11c26eab43e1a0bf83ba86caee56de04ab8a11a3fc235852a82b07002b/cuequivariance_ops_torch_cu12-0.8.1-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5e6ec8b97d328bedc34fdf7830ac0972951ecb18e18179f675cbf810e15d72f3", size = 400360, upload-time = "2026-01-09T19:25:38.194Z" },
+    { url = "https://files.pythonhosted.org/packages/04/0a/58086adb770eb87a87caff491b4150c0e5f059e1a25146edb77665b2b385/cuequivariance_ops_torch_cu12-0.8.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e842a26a61b45bd37276d0da658cadb94fec980279f5510b14723f1bc1d1cac9", size = 407256, upload-time = "2026-01-09T19:25:39.519Z" },
+]
+
+[[package]]
+name = "cuequivariance-torch"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cuequivariance" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ae/ec/2a2c4574abadce861b4e115ba9963c16c7799c846c070455fe2d84e49e07/cuequivariance_torch-0.8.1.tar.gz", hash = "sha256:03a924b7a4c57bed87ca3d0345218eb805d8d2e848f5f5c57192a2e4a8ebc3db", size = 201925, upload-time = "2026-01-09T19:28:47.61Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/44/c34a2bd31a15a67c8e681edd7ff916f0777fc40de4c9280f734e666bd58a/cuequivariance_torch-0.8.1-py3-none-any.whl", hash = "sha256:bd9c6f326427714dd4df2d769811b70efec1cde3196485f13e888d814d53a756", size = 216832, upload-time = "2026-01-09T19:28:46.638Z" },
 ]
 
 [[package]]
@@ -4724,8 +4816,8 @@ wheels = [
 
 [[package]]
 name = "mace-torch"
-version = "0.3.14"
-source = { registry = "https://pypi.org/simple" }
+version = "0.3.15"
+source = { git = "https://github.com/ACEsuit/mace.git#f58fe364493b6ec42d3c924ce147118fd23d0313" }
 dependencies = [
     { name = "ase" },
     { name = "configargparse" },
@@ -4748,10 +4840,6 @@ dependencies = [
     { name = "torch-ema" },
     { name = "torchmetrics" },
     { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/c5/41fcb72b386e4b864501430ca2075f0797a5915adca3c0f3022a20427d1a/mace_torch-0.3.14.tar.gz", hash = "sha256:7e05372b50b5ee3da2973d7da860bde0facbc0934bb672af264af303d3596d05", size = 206925, upload-time = "2025-08-06T17:30:15.272Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/53/7d7b1de354a43e11cb19b370f81833f078f931aff4555b24e869013eea1a/mace_torch-0.3.14-py3-none-any.whl", hash = "sha256:9a7a00a79b3fa3448a13961e2a4af616ff10466fa193aeb4579dc83be9da1b00", size = 237087, upload-time = "2025-08-06T17:30:11.377Z" },
 ]
 
 [[package]]
@@ -5992,6 +6080,7 @@ name = "ml-peg"
 version = "0.2.2"
 source = { editable = "." }
 dependencies = [
+    { name = "asemolec" },
     { name = "boto3" },
     { name = "dash" },
     { name = "janus-core" },
@@ -6023,6 +6112,10 @@ grace = [
     { name = "tensorpotential", marker = "python_full_version < '3.13'" },
 ]
 mace = [
+    { name = "cuequivariance" },
+    { name = "cuequivariance-ops-cu12" },
+    { name = "cuequivariance-ops-torch-cu12" },
+    { name = "cuequivariance-torch" },
     { name = "mace-torch" },
 ]
 mattersim = [
@@ -6070,14 +6163,19 @@ prod = [
 
 [package.metadata]
 requires-dist = [
+    { name = "asemolec", git = "https://github.com/imagdau/aseMolec.git" },
     { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
+    { name = "cuequivariance", marker = "extra == 'mace'", specifier = "==0.8.1" },
+    { name = "cuequivariance-ops-cu12", marker = "extra == 'mace'", specifier = "==0.8.1" },
+    { name = "cuequivariance-ops-torch-cu12", marker = "extra == 'mace'", specifier = "==0.8.1" },
+    { name = "cuequivariance-torch", marker = "extra == 'mace'", specifier = "==0.8.1" },
     { name = "dash", specifier = ">=3.1.1" },
     { name = "deepmd-kit", marker = "extra == 'dpa3'", specifier = "==3.1.0" },
     { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.10.0" },
     { name = "janus-core", specifier = ">=0.8.2,<1.0.0" },
     { name = "kaleido", specifier = ">=1.0.0" },
-    { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.14" },
+    { name = "mace-torch", marker = "extra == 'mace'", git = "https://github.com/ACEsuit/mace.git" },
     { name = "matcalc" },
     { name = "matminer" },
     { name = "mattersim", marker = "extra == 'mattersim'", specifier = "==1.2.0" },
