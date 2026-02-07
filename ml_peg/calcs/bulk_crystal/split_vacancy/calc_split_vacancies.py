@@ -17,7 +17,7 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 # TODO: DATA_PATH = download_github_data(filename, github_uri)
-DATA_PATH = Path("/Users/tw/Downloads/out")
+DATA_PATH = Path("/Users/tw/Downloads/split_vacancy_data")
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -38,53 +38,56 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     fmax = 0.03
     steps = 200
 
-    for material_dir in tqdm(list(DATA_PATH.iterdir())):
-        cation_dirs = [
-            p for p in material_dir.iterdir() if p.is_dir()
-        ]  # skip pristine supercell.xyz files (not used)
-        for cation_dir in tqdm(cation_dirs, leave=False):
-            nv_xyz_path = cation_dir / "normal_vacancy.xyz"
-            sv_xyz_path = cation_dir / "split_vacancy.xyz"
+    for functional in ["pbe", "pbesol"]:
+        for material_dir in tqdm(list((DATA_PATH / functional).iterdir())):
+            cation_dirs = [
+                p for p in material_dir.iterdir() if p.is_dir()
+            ]  # skip pristine supercell.xyz files (not used)
+            for cation_dir in tqdm(cation_dirs, leave=False):
+                nv_xyz_path = cation_dir / "normal_vacancy.xyz"
+                sv_xyz_path = cation_dir / "split_vacancy.xyz"
 
-            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
-                continue
+                if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                    continue
 
-            atoms_paths = [nv_xyz_path, sv_xyz_path]
+                atoms_paths = [nv_xyz_path, sv_xyz_path]
 
-            for atoms_path in tqdm(atoms_paths, leave=False):
-                relaxed_atoms = []
-                atoms_list = read(atoms_path, ":")
+                for atoms_path in tqdm(atoms_paths, leave=False):
+                    relaxed_atoms = []
+                    atoms_list = read(atoms_path, ":")
 
-                ref_atoms_out_path = (
-                    OUT_PATH
-                    / "ref"
-                    / material_dir.stem
-                    / cation_dir.stem
-                    / f"{atoms_path.stem}.xyz.gz"
-                )
-                # Copy ref structures once; subsequent runs skip if already present.
-                if not ref_atoms_out_path.exists():
-                    ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
-                    write(ref_atoms_out_path, atoms_list)
+                    ref_atoms_out_path = (
+                        OUT_PATH
+                        / functional
+                        / "ref"
+                        / material_dir.stem
+                        / cation_dir.stem
+                        / f"{atoms_path.stem}.xyz.gz"
+                    )
+                    # Copy ref structures once; subsequent runs skip if already present.
+                    if not ref_atoms_out_path.exists():
+                        ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
+                        write(ref_atoms_out_path, atoms_list)
 
-                for atoms in tqdm(atoms_list, leave=False):
-                    atoms.calc = deepcopy(calc)
-                    atoms.info["initial_energy"] = atoms.get_potential_energy()
+                    for atoms in tqdm(atoms_list, leave=False):
+                        atoms.calc = deepcopy(calc)
+                        atoms.info["initial_energy"] = atoms.get_potential_energy()
 
-                    opt = LBFGS(atoms, logfile=None)
-                    opt.run(fmax=fmax, steps=steps)
+                        opt = LBFGS(atoms, logfile=None)
+                        opt.run(fmax=fmax, steps=steps)
 
-                    atoms.info["relaxed_energy"] = atoms.get_potential_energy()
+                        atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
-                    relaxed_atoms.append(atoms)
+                        relaxed_atoms.append(atoms)
 
-                atoms_out_path = (
-                    OUT_PATH
-                    / model_name
-                    / material_dir.stem
-                    / cation_dir.stem
-                    / f"{atoms_path.stem}.xyz.gz"
-                )
-                atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
+                    atoms_out_path = (
+                        OUT_PATH
+                        / functional
+                        / model_name
+                        / material_dir.stem
+                        / cation_dir.stem
+                        / f"{atoms_path.stem}.xyz.gz"
+                    )
+                    atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
 
-                write(atoms_out_path, relaxed_atoms)
+                    write(atoms_out_path, relaxed_atoms)
