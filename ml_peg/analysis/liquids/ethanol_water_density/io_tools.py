@@ -79,6 +79,8 @@ def read_ref_curve() -> tuple[list[float], list[float]]:
     """
     Load densities given on a uniform weight-fraction grid
     and convert to mole fraction.
+    Densities from:
+    M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook, 9th Edition. McGraw-Hill Education, 2018.
 
     Assumes:
       - 101 evenly spaced points
