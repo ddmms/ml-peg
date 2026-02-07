@@ -53,6 +53,7 @@ grace = [
 ]
 mace = [
     "mace-torch==0.3.14",
+    "torch==2.6.0"
 ]
 
 mattersim = [
