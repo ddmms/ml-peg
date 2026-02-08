@@ -69,8 +69,8 @@ def get_relative_energy(
     system_names = get_system_names(calc_path=calc_path, dataset=dataset)
 
     @plot_parity(
-        filename=out_path / f"figure_gscdb138_isomers_{dataset}.json",
-        title=f"GSCDB138 isomer {dataset} relative energies",
+        filename=out_path / f"figure_gscdb138_{dataset}.json",
+        title=f"GSCDB138 {dataset} relative energies",
         x_label="Predicted relative energy / kcal/mol",
         y_label="Reference relative energy / kcal/mol",
         hoverdata={"System": system_names},
