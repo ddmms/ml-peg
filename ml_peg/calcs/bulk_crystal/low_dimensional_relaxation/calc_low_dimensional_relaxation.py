@@ -33,8 +33,8 @@ ALEXANDRIA_URLS = {
 
 # Default data files for each dimensionality (list of files)
 DEFAULT_DATA_FILES: dict[str, list[str]] = {
-    "2D": ["alexandria_2d_001.json.bz2", "alexandria_2d_002.json.bz2"],
-    "1D": ["alexandria_1d_001.json.bz2"],
+    "2D": ["alexandria_2d_001.json.bz2", "alexandria_2d_000.json.bz2"],
+    "1D": ["alexandria_1d_000.json.bz2"],
 }
 
 # Local cache directory for downloaded data
