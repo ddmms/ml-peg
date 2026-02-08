@@ -26,15 +26,25 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 # Energy outlier thresholds (eV/atom)
-ENERGY_OUTLIER_MIN = -25
-ENERGY_OUTLIER_MAX = 25
+ENERGY_OUTLIER_MIN = -40
+ENERGY_OUTLIER_MAX = 40
+
+# Dimensionality-specific configuration
+DIM_CONFIGS = {
+    "2D": {"geom_col": "area_per_atom", "geom_label": "Area", "geom_unit": "Å²/atom"},
+    "1D": {
+        "geom_col": "length_per_atom",
+        "geom_label": "Length",
+        "geom_unit": "Å/atom",
+    },
+}
 
 
 def _filter_energy_outliers(df: pd.DataFrame) -> pd.DataFrame:
     """
     Mark structures with extreme predicted energies as unconverged.
 
-    Structures with predicted energy per atom outside [-25, 25] eV/atom
+    Structures with predicted energy per atom outside [-40, 40] eV/atom
     are considered outliers and marked as unconverged.
 
     Parameters
@@ -97,16 +107,10 @@ def get_converged_data(model_name: str, dimensionality: str = "2D") -> dict[str,
     if df.empty:
         return {"ref_geom": [], "pred_geom": [], "ref_energy": [], "pred_energy": []}
 
-    # Filter converged structures and remove NaN values
     df = _filter_energy_outliers(df)
     df_conv = df[df["converged"]].copy()
 
-    # Determine geometric column based on dimensionality
-    if dimensionality == "2D":
-        geom_col = "area_per_atom"
-    else:  # 1D
-        geom_col = "length_per_atom"
-
+    geom_col = DIM_CONFIGS[dimensionality]["geom_col"]
     df_conv = df_conv.dropna(subset=[f"pred_{geom_col}", "pred_energy_per_atom"])
 
     return {
@@ -171,13 +175,12 @@ def create_parity_plot(
     ref_values = []
     pred_values = []
 
-    # Collect data from all models
     for model_name in MODELS:
         data = get_converged_data(model_name, dimensionality)
         if data_type == "geom":
             ref_values.extend(data["ref_geom"])
             pred_values.extend(data["pred_geom"])
-        else:  # energy
+        else:
             ref_values.extend(data["ref_energy"])
             pred_values.extend(data["pred_energy"])
 
@@ -198,7 +201,6 @@ def create_parity_plot(
             )
         )
 
-    # Add diagonal line (y=x)
     all_values = []
     for trace in fig.data:
         all_values.extend(trace.x)
@@ -225,68 +227,21 @@ def create_parity_plot(
         hovermode="closest",
     )
 
-    # Save to JSON
     filename.parent.mkdir(parents=True, exist_ok=True)
     with open(filename, "w") as f:
         json.dump(fig.to_dict(), f)
 
 
-@pytest.fixture
-def area_predictions_2d() -> None:
-    """Create area parity plot for 2D structures."""
-    create_parity_plot(
-        data_type="geom",
-        title="Area per atom (2D)",
-        x_label="Predicted area / Å²/atom",
-        y_label="Reference area / Å²/atom",
-        filename=OUT_PATH / "figure_area_2d.json",
-        dimensionality="2D",
-    )
-
-
-@pytest.fixture
-def energy_predictions_2d() -> None:
-    """Create energy parity plot for 2D structures."""
-    create_parity_plot(
-        data_type="energy",
-        title="Energy per atom (2D)",
-        x_label="Predicted energy / eV/atom",
-        y_label="Reference energy / eV/atom",
-        filename=OUT_PATH / "figure_energy_2d.json",
-        dimensionality="2D",
-    )
-
-
-@pytest.fixture
-def length_predictions_1d() -> None:
-    """Create length parity plot for 1D structures."""
-    create_parity_plot(
-        data_type="geom",
-        title="Length per atom (1D)",
-        x_label="Predicted length / Å/atom",
-        y_label="Reference length / Å/atom",
-        filename=OUT_PATH / "figure_length_1d.json",
-        dimensionality="1D",
-    )
-
-
-@pytest.fixture
-def energy_predictions_1d() -> None:
-    """Create energy parity plot for 1D structures."""
-    create_parity_plot(
-        data_type="energy",
-        title="Energy per atom (1D)",
-        x_label="Predicted energy / eV/atom",
-        y_label="Reference energy / eV/atom",
-        filename=OUT_PATH / "figure_energy_1d.json",
-        dimensionality="1D",
-    )
-
-
-@pytest.fixture
-def area_mae_2d() -> dict[str, float]:
+def _compute_mae(dimensionality: str, data_key: str) -> dict[str, float]:
     """
-    Calculate MAE for area predictions (2D).
+    Compute MAE across all models for a given dimensionality and data key.
+
+    Parameters
+    ----------
+    dimensionality
+        Either "2D" or "1D".
+    data_key
+        Either "geom" or "energy".
 
     Returns
     -------
@@ -294,35 +249,23 @@ def area_mae_2d() -> dict[str, float]:
         {model_name: mae_value}.
     """
     results = {}
+    ref_key = f"ref_{data_key}"
+    pred_key = f"pred_{data_key}"
     for model_name in MODELS:
-        data = get_converged_data(model_name, "2D")
-        if data["ref_geom"] and data["pred_geom"]:
-            results[model_name] = mae(data["ref_geom"], data["pred_geom"])
+        data = get_converged_data(model_name, dimensionality)
+        if data[ref_key] and data[pred_key]:
+            results[model_name] = mae(data[ref_key], data[pred_key])
     return results
 
 
-@pytest.fixture
-def energy_mae_2d() -> dict[str, float]:
+def _compute_convergence(dimensionality: str) -> dict[str, float]:
     """
-    Calculate MAE for energy predictions (2D).
+    Compute convergence rates across all models for a given dimensionality.
 
-    Returns
-    -------
-    dict[str, float]
-        {model_name: mae_value}.
-    """
-    results = {}
-    for model_name in MODELS:
-        data = get_converged_data(model_name, "2D")
-        if data["ref_energy"] and data["pred_energy"]:
-            results[model_name] = mae(data["ref_energy"], data["pred_energy"])
-    return results
-
-
-@pytest.fixture
-def convergence_2d() -> dict[str, float]:
-    """
-    Calculate convergence rate for 2D structures.
+    Parameters
+    ----------
+    dimensionality
+        Either "2D" or "1D".
 
     Returns
     -------
@@ -331,64 +274,41 @@ def convergence_2d() -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        conv_rate = get_convergence_rate(model_name, "2D")
+        conv_rate = get_convergence_rate(model_name, dimensionality)
         if conv_rate is not None:
             results[model_name] = conv_rate
     return results
 
 
-@pytest.fixture
-def length_mae_1d() -> dict[str, float]:
-    """
-    Calculate MAE for length predictions (1D).
+def _generate_all_plots() -> None:
+    """Generate all parity plots for each dimensionality."""
+    for dim, cfg in DIM_CONFIGS.items():
+        geom_label = cfg["geom_label"]
+        geom_unit = cfg["geom_unit"]
+        dim_lower = dim.lower()
 
-    Returns
-    -------
-    dict[str, float]
-        {model_name: mae_value}.
-    """
-    results = {}
-    for model_name in MODELS:
-        data = get_converged_data(model_name, "1D")
-        if data["ref_geom"] and data["pred_geom"]:
-            results[model_name] = mae(data["ref_geom"], data["pred_geom"])
-    return results
-
-
-@pytest.fixture
-def energy_mae_1d() -> dict[str, float]:
-    """
-    Calculate MAE for energy predictions (1D).
-
-    Returns
-    -------
-    dict[str, float]
-        {model_name: mae_value}.
-    """
-    results = {}
-    for model_name in MODELS:
-        data = get_converged_data(model_name, "1D")
-        if data["ref_energy"] and data["pred_energy"]:
-            results[model_name] = mae(data["ref_energy"], data["pred_energy"])
-    return results
+        create_parity_plot(
+            data_type="geom",
+            title=f"{geom_label} per atom ({dim})",
+            x_label=f"Predicted {geom_label.lower()} / {geom_unit}",
+            y_label=f"Reference {geom_label.lower()} / {geom_unit}",
+            filename=OUT_PATH / f"figure_{geom_label.lower()}_{dim_lower}.json",
+            dimensionality=dim,
+        )
+        create_parity_plot(
+            data_type="energy",
+            title=f"Energy per atom ({dim})",
+            x_label="Predicted energy / eV/atom",
+            y_label="Reference energy / eV/atom",
+            filename=OUT_PATH / f"figure_energy_{dim_lower}.json",
+            dimensionality=dim,
+        )
 
 
 @pytest.fixture
-def convergence_1d() -> dict[str, float]:
-    """
-    Calculate convergence rate for 1D structures.
-
-    Returns
-    -------
-    dict[str, float]
-        {model_name: convergence_rate}.
-    """
-    results = {}
-    for model_name in MODELS:
-        conv_rate = get_convergence_rate(model_name, "1D")
-        if conv_rate is not None:
-            results[model_name] = conv_rate
-    return results
+def parity_plots() -> None:
+    """Generate all parity plots for 2D and 1D structures."""
+    _generate_all_plots()
 
 
 @pytest.fixture
@@ -397,53 +317,27 @@ def convergence_1d() -> dict[str, float]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
-def metrics(
-    area_mae_2d: dict[str, float],
-    energy_mae_2d: dict[str, float],
-    convergence_2d: dict[str, float],
-    length_mae_1d: dict[str, float],
-    energy_mae_1d: dict[str, float],
-    convergence_1d: dict[str, float],
-) -> dict[str, dict]:
+def metrics() -> dict[str, dict]:
     """
-    Get all low-dimensional relaxation metrics.
-
-    Parameters
-    ----------
-    area_mae_2d
-        Area MAE for 2D structures.
-    energy_mae_2d
-        Energy MAE for 2D structures.
-    convergence_2d
-        Convergence rate for 2D structures.
-    length_mae_1d
-        Length MAE for 1D structures.
-    energy_mae_1d
-        Energy MAE for 1D structures.
-    convergence_1d
-        Convergence rate for 1D structures.
+    Compute all low-dimensional relaxation metrics.
 
     Returns
     -------
     dict[str, dict]
         All metrics for all models.
     """
-    return {
-        "Area MAE (2D)": area_mae_2d,
-        "Energy MAE (2D)": energy_mae_2d,
-        "Convergence (2D)": convergence_2d,
-        "Length MAE (1D)": length_mae_1d,
-        "Energy MAE (1D)": energy_mae_1d,
-        "Convergence (1D)": convergence_1d,
-    }
+    result = {}
+    for dim, cfg in DIM_CONFIGS.items():
+        geom_label = cfg["geom_label"]
+        result[f"{geom_label} MAE ({dim})"] = _compute_mae(dim, "geom")
+        result[f"Energy MAE ({dim})"] = _compute_mae(dim, "energy")
+        result[f"Convergence ({dim})"] = _compute_convergence(dim)
+    return result
 
 
 def test_low_dimensional_relaxation(
     metrics: dict[str, dict],
-    area_predictions_2d: None,
-    energy_predictions_2d: None,
-    length_predictions_1d: None,
-    energy_predictions_1d: None,
+    parity_plots: None,
 ) -> None:
     """
     Run low-dimensional relaxation analysis test.
@@ -452,13 +346,7 @@ def test_low_dimensional_relaxation(
     ----------
     metrics
         All low-dimensional relaxation metrics.
-    area_predictions_2d
-        Triggers 2D area plot generation.
-    energy_predictions_2d
-        Triggers 2D energy plot generation.
-    length_predictions_1d
-        Triggers 1D length plot generation.
-    energy_predictions_1d
-        Triggers 1D energy plot generation.
+    parity_plots
+        Triggers parity plot generation for all dimensionalities.
     """
     return
