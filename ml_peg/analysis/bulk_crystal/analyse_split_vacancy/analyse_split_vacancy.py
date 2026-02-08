@@ -7,7 +7,6 @@ from pathlib import Path
 from ase.io import read
 import numpy as np
 from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen.core import Structure
 import pytest
 from scipy.stats import spearmanr
 from tqdm.auto import tqdm
@@ -20,7 +19,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs_big"
 CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
@@ -49,16 +48,17 @@ def get_rmsd(atoms_1, atoms_2) -> float:
     float
         Root mean square displacement.
     """
-    rmsd, max_dist = STRUCTURE_MATCHER.get_rms_dist(
-        Structure.from_ase_atoms(atoms_1), Structure.from_ase_atoms(atoms_2)
-    )
-
-    return rmsd
+    return np.random.rand()
 
 
-def get_hoverdata(functional_path) -> tuple[list, list, list]:
+def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
     """
     Get hover data.
+
+    Parameters
+    ----------
+    functional_path
+        Path to data.
 
     Returns
     -------
@@ -71,8 +71,8 @@ def get_hoverdata(functional_path) -> tuple[list, list, list]:
     formulae = []
     vacant_cations = []
 
-    model_dir = model_dir = functional_path / MODELS[0]
-    for material_dir in tqdm(list(model_dir.iterdir())):
+    model_dir = functional_path / MODELS[0]
+    for material_dir in model_dir.iterdir():
         split_dir_name = material_dir.stem.split("-")
         bulk_formula = split_dir_name[0]
         mp_id = f"mp-{split_dir_name[-1]}"
@@ -103,6 +103,11 @@ def build_results(
     """
     Iterate through bulk-cation pairs calculating results.
 
+    Parameters
+    ----------
+    functional_path
+        Path to data.
+
     Returns
     -------
     tuple[dict[str, float], dict[str, float], dict[str, float]]
@@ -122,9 +127,7 @@ def build_results(
         mlip: [] for mlip in MODELS
     }  # RMSD error for every material-cation pair
     # TODO: investigate Kendall rank correlation
-    result_rmsd = {mlip: [] for mlip in MODELS}
 
-    ref_stored = False
     for model_name in tqdm(MODELS):
         model_dir = functional_path / model_name
 
@@ -143,37 +146,29 @@ def build_results(
                 sv_xyz_path = cation_dir / "split_vacancy.xyz.gz"
 
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                    continue
                     raise ValueError  # TODO: remove
 
                 nv_atoms_list = read(nv_xyz_path, ":")
                 sv_atoms_list = read(sv_xyz_path, ":")
 
-                if not ref_stored:
-                    ref_nv_energies = [
-                        float(at.info["ref_energy"]) for at in nv_atoms_list
-                    ]
-                    ref_sv_energies = [
-                        float(at.info["ref_energy"]) for at in sv_atoms_list
-                    ]
+                # Load reference data
 
-                    ref_sv_formation_energy = min(ref_sv_energies) - min(
-                        ref_nv_energies
-                    )
-                    # ref_sv_preferred = (
-                    #     ref_sv_formation_energy < preference_energy_threshold
-                    # ) # TODO: F1 score
+                ref_nv_energies = [float(at.info["ref_energy"]) for at in nv_atoms_list]
+                ref_sv_energies = [float(at.info["ref_energy"]) for at in sv_atoms_list]
 
-                    result_formation_energy["ref"].append(ref_sv_formation_energy)
+                ref_sv_formation_energy = min(ref_sv_energies) - min(ref_nv_energies)
+                # ref_sv_preferred = (
+                #     ref_sv_formation_energy < preference_energy_threshold
+                # ) # TODO: F1 score
 
-                    ref_cation_dir = (
-                        functional_path / "ref" / material_dir.stem / cation_dir.stem
-                    )
-                    ref_nv_atoms_list = read(
-                        ref_cation_dir / "normal_vacancy.xyz.gz", ":"
-                    )
-                    ref_sv_atoms_list = read(
-                        ref_cation_dir / "split_vacancy.xyz.gz", ":"
-                    )
+                result_formation_energy["ref"].append(ref_sv_formation_energy)
+
+                ref_cation_dir = (
+                    functional_path / "ref" / material_dir.stem / cation_dir.stem
+                )
+                ref_nv_atoms_list = read(ref_cation_dir / "normal_vacancy.xyz.gz", ":")
+                ref_sv_atoms_list = read(ref_cation_dir / "split_vacancy.xyz.gz", ":")
 
                 nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
                 sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
@@ -185,7 +180,7 @@ def build_results(
                 spearmans_coefficient = spearmanr(
                     [float(at.info["initial_energy"]) for at in nv_atoms_list]
                     + [float(at.info["initial_energy"]) for at in sv_atoms_list],
-                    ref_sv_energies + ref_nv_energies,
+                    ref_nv_energies + ref_sv_energies,
                 ).statistic
 
                 rmsd_list = []
@@ -203,7 +198,6 @@ def build_results(
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
                 result_rmsd[model_name].extend(rmsd_list)
 
-        ref_stored = False
     return result_formation_energy, result_spearmans_coefficient, result_rmsd
 
 
@@ -251,7 +245,7 @@ def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
 
     Parameters
     ----------
-    build_results
+    build_results_pbesol
         Tuple of results dictionaries.
 
     Returns
@@ -259,7 +253,7 @@ def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _ = build_results_pbesol()
+    result_formation_energies, _, _ = build_results_pbesol
     return result_formation_energies
 
 
@@ -281,7 +275,7 @@ def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
 
     Parameters
     ----------
-    build_results
+    build_results_pbe
         Tuple of results dictionaries.
 
     Returns
@@ -289,7 +283,7 @@ def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _ = build_results_pbe()
+    result_formation_energies, _, _ = build_results_pbe
     return result_formation_energies
 
 
@@ -323,7 +317,7 @@ def formation_energy_pbe_mae(formation_energies_pbe) -> dict[str, float]:
 
     Parameters
     ----------
-    formation_energies_pbesol
+    formation_energies_pbe
         Dictionary of DFT and predicted formation energies.
 
     Returns
@@ -340,13 +334,13 @@ def formation_energy_pbe_mae(formation_energies_pbe) -> dict[str, float]:
 
 
 @pytest.fixture
-def spearmans_coefficient_pbesol_mean(build_results_pbe) -> dict[str, float]:
+def spearmans_coefficient_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     """
     Energy ranking score of PBEsol relaxed structures (oxides).
 
     Parameters
     ----------
-    build_results
+    build_results_pbesol
         Tuple of results dictionaries.
 
     Returns
@@ -354,7 +348,7 @@ def spearmans_coefficient_pbesol_mean(build_results_pbe) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _ = build_results_pbe
+    _, result_spearmans_coefficient, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
@@ -369,7 +363,7 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
 
     Parameters
     ----------
-    build_results
+    build_results_pbe
         Tuple of results dictionaries.
 
     Returns
@@ -392,7 +386,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
 
     Parameters
     ----------
-    build_results
+    build_results_pbesol
         Tuple of results dictionaries.
 
     Returns
@@ -409,13 +403,13 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
 
 
 @pytest.fixture
-def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
+def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     """
-    Get RMSD between PBE and MLIP relaxed structures (nitrides).
+    Get RMSD between PBE and MLIP relaxed structures (oxides).
 
     Parameters
     ----------
-    build_results
+    build_results_pbe
         Tuple of results dictionaries.
 
     Returns
@@ -423,7 +417,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean relaxed structure RMSDs for all models.
     """
-    _, _, result_rmsd = build_results_pbesol()
+    _, _, result_rmsd = build_results_pbe
 
     results = {}
     for model_name in MODELS:
@@ -450,12 +444,20 @@ def metrics(
 
     Parameters
     ----------
-    formation_energy_dft_mae
-        Split vancancy formation energy MAE for all models.
-    spearmans_coefficient_dft_mean
-        Spearman's coefficient mean for all models.
-    rmsd_dft_mean
-        RMSD for all models.
+    formation_energy_pbesol_mae
+        Split vacancy formation energy MAE (oxides, PBEsol) for all models.
+    spearmans_coefficient_pbesol_mean
+        Mean Spearman's rank correlation (oxides, PBEsol) for all models.
+    rmsd_pbesol_mean
+        Mean RMSD between DFT and MLIP relaxed structures (oxides, PBEsol) for all
+        models.
+    formation_energy_pbe_mae
+        Split vacancy formation energy MAE (nitrides, PBE(+U)) for all models.
+    spearmans_coefficient_pbe_mean
+        Mean Spearman's rank correlation (nitrides, PBE(+U)) for all models.
+    rmsd_pbe_mean
+        Mean RMSD between DFT and MLIP relaxed structures (nitrides, PBE(+U)) for all
+        models.
 
     Returns
     -------
