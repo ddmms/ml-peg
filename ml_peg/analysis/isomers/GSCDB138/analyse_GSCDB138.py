@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
-import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
@@ -30,127 +30,138 @@ DATASETS = [
     "AlkIsomer11",
     "Amino20x4",
     "BUT14DIOL",
-    "C20C246",
-    "C60ISO7",
+    # "C20C246",
+    # "C60ISO7",
     "DIE60",
     "EIE22",
-    "H2O16Rel4",
-    "H2O20Rel9",
+    # "H2O16Rel4",
+    # "H2O20Rel9",
     "ICONF",
     "IDISP",
     "ISO34",
-    "ISOL23",
+    # "ISOL23",
     "ISOMERIZATION20",
     "MCONF",
     "PArel",
     "PCONF21",
-    "Pentane13",
+    # "Pentane13",
     "S66Rel7",
     "SCONF",
-    "Styrene42",
-    "SW49Rel28",
+    # "Styrene42",
+    # "SW49Rel28",
     "TAUT15",
     "UPU23",
 ]
 
+EV_TO_KCAL = units.mol / units.kcal
 
-def get_system_names() -> list[str]:
+
+def get_system_names(calc_path: Path, dataset: str) -> list[str]:
     """
-    Get list of reaction system names from the first available model.
+    Get list of system names from the first available model for a dataset.
+
+    Parameters
+    ----------
+    calc_path
+        Path to calculation outputs.
+    dataset
+        Dataset to get relative energies for.
 
     Returns
     -------
     list[str]
-        List of base system names (without suffixes).
+        List of systems in the dataset.
     """
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
+        model_dir = calc_path / model_name
         if model_dir.exists():
             system_names = []
-            for system_path in sorted(model_dir.glob("*_ts.xyz")):
-                system_names.append(system_path.stem.replace("_ts", ""))
+            for system_path in sorted(model_dir.glob(f"{dataset}*.xyz")):
+                system_names.append(system_path.stem.split("_")[1])
             if system_names:
                 return system_names
     return []
 
 
-def get_barrier_labels() -> list[str]:
+def get_relative_energy(
+    dataset: str, calc_path: Path, out_path: Path
+) -> dict[str, list]:
     """
-    Get list of barrier labels for plotting (two per reaction system).
+    Get all relative energies for a specific dataset.
 
-    Returns
-    -------
-    list[str]
-        List of barrier labels with reaction context.
-    """
-    return [
-        label
-        for system in get_system_names()
-        for label in [f"{system} (TS-Reactants)", f"{system} (TS-Products)"]
-    ]
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_gscdb138_isomers.json",
-    title="Reaction barriers",
-    x_label="Predicted relative energy / eV",
-    y_label="Reference relative energy / eV",
-    hoverdata={
-        "System": [
-            system_name
-            for system_name in get_system_names()
-            for _ in range(2)  # Duplicate each system name for both barriers
-        ],
-        "Barrier Type": [
-            barrier_type
-            for _ in get_system_names()
-            for barrier_type in ["TS-Reactants", "TS-Products"]
-        ],
-    },
-)
-def relative_energies() -> dict[str, list]:
-    """
-    Get relative energies for all systems.
+    Parameters
+    ----------
+    dataset
+        Dataset to get relative energies for.
+    calc_path
+        Path to calculation outputs.
+    out_path
+        Path to write outputs to.
 
     Returns
     -------
     dict[str, list]
-        Dictionary of all reference and predicted relative energies.
+        Dictionary of all reference and predicted relative energies for a dataset.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS} | {"dataset": []}
-    ref_stored = False
+    system_names = get_system_names(calc_path=calc_path, dataset=dataset)
 
-    # system_names = get_system_names()
-    for model_name in MODELS:
-        for xyz_path in (CALC_PATH / model_name).glob("*.xyz"):
-            atoms_list = read(xyz_path, ":")
-            results["dataset"].append(atoms_list[0].info["dataset"])
-            results[model_name].append(atoms_list[0].info["model_rel_energy"])
-            if not ref_stored:
-                results["ref"].append(atoms_list[0].info["ref_rel_energy"])
+    @plot_parity(
+        filename=out_path / f"figure_gscdb138_isomers_{dataset}.json",
+        title=f"GSCDB138 isomer {dataset} relative energies",
+        x_label="Predicted relative energy / kcal/mol",
+        y_label="Reference relative energy / kcal/mol",
+        hoverdata={"System": system_names},
+    )
+    def relative_energies() -> dict[str, list]:
+        """
+        Get relative energies for all systems.
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
+        Returns
+        -------
+        dict[str, list]
+            Dictionary of all reference and predicted relative energies.
+        """
+        results = {"ref": []} | {mlip: [] for mlip in MODELS}
+        ref_stored = False
 
-            # Write individual structures
-            write(structs_dir / f"{xyz_path.stem}.xyz", atoms_list)
-            ref_stored = True  # Ensure reference energies are only stored once.
-    return results
+        for model_name in MODELS:
+            model_dir = calc_path / model_name
+            for system_name in system_names:
+                xyz_path = model_dir / f"{dataset}_{system_name}.xyz"
+                atoms_list = read(xyz_path, ":")
+
+                results[model_name].append(
+                    atoms_list[0].info["model_rel_energy"] * EV_TO_KCAL
+                )
+
+                # Only store ref and dataset info once (from first model)
+                if not ref_stored:
+                    results["ref"].append(
+                        atoms_list[0].info["ref_rel_energy"] * EV_TO_KCAL
+                    )
+
+                # Write structures for app
+                structs_dir = out_path / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{system_name}.xyz", atoms_list)
+            ref_stored = True
+        return results
+
+    return relative_energies()
 
 
-# @pytest.fixture
-def get_mae(relative_energies, dataset) -> dict[str, float]:
+def get_mae(dataset: str, calc_path: Path, out_path: Path) -> dict[str, float]:
     """
-    Get mean absolute error for relative energies.
+    Get mean absolute error for relative energies for a specific dataset.
 
     Parameters
     ----------
-    relative_energies
-        Dictionary of reference and predicted relative energies.
     dataset
-        Datasets to use.
+        Dataset name to filter by.
+    calc_path
+        Path to calculation outputs.
+    out_path
+        Path to write outputs to.
 
     Returns
     -------
@@ -158,49 +169,55 @@ def get_mae(relative_energies, dataset) -> dict[str, float]:
         Dictionary of predicted relative energy errors for all models.
     """
     results = {}
+    relative_energies = get_relative_energy(
+        dataset=dataset, calc_path=calc_path, out_path=out_path
+    )
     for model_name in MODELS:
-        ref_energies = [
-            relative_energies["ref"][i]
-            for i, d in enumerate(relative_energies["dataset"])
-            if d == dataset
-        ]
-        pred_energies = [
-            relative_energies[model_name][i]
-            for i, d in enumerate(relative_energies["dataset"])
-            if d == dataset
-        ]
-        results[model_name] = mae(ref_energies, pred_energies)
+        results[model_name] = mae(
+            relative_energies["ref"], relative_energies[model_name]
+        )
     return results
 
 
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "gscdb138_isomers_metrics_table.json",
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
-)
-def metrics() -> dict[str, dict]:
+def get_metrics(datasets: list[str], calc_path: Path, out_path: Path) -> None:
     """
-    Get all metrics.
-
-    Returns
-    -------
-    dict[str, dict]
-        Metric names and values for all models.
-    """
-    return {
-        f"{dataset} MAE": get_mae(relative_energies, dataset) for dataset in DATASETS
-    }
-
-
-def test_gscdb138(metrics: dict[str, dict]) -> None:
-    """
-    Run GSCDB138 test.
+    Get metrics.
 
     Parameters
     ----------
-    metrics
-        All new benchmark metric names and dictionary of values for each model.
+    datasets
+        List of dataset name to filter by.
+    calc_path
+        Path to calculation outputs.
+    out_path
+        Path to write outputs to.
     """
-    return
+
+    @build_table(
+        filename=out_path / "gscdb138_metrics_table.json",
+        metric_tooltips=DEFAULT_TOOLTIPS,
+        thresholds=DEFAULT_THRESHOLDS,
+        mlip_name_map=D3_MODEL_NAMES,
+    )
+    def metrics() -> dict[str, dict]:
+        """
+        Get a metric for each dataset.
+
+        Returns
+        -------
+        dict[str, dict]
+            Metric names and values for all models.
+        """
+        return {
+            f"{dataset} MAE": get_mae(
+                dataset=dataset, calc_path=calc_path, out_path=out_path
+            )
+            for dataset in datasets
+        }
+
+    metrics()
+
+
+def test_gscdb138() -> None:
+    """Run GSCDB138 test."""
+    get_metrics(datasets=DATASETS, calc_path=CALC_PATH, out_path=OUT_PATH)
