@@ -1,0 +1,109 @@
+metrics:
+  A19Rel6 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  ACONF MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  AlkIsomer11 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  Amino20x4 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  BUT14DIOL MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  DIE60 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  EIE22 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  ICONF MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  IDISP MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  ISO34 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  ISOMERIZATION20 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  MCONF MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  PArel MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  PCONF21 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  S66Rel7 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  SCONF MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  TAUT15 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+  UPU23 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS

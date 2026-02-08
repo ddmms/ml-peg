@@ -1,0 +1,63 @@
+metrics:
+  3d4dIPSS MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  CUAGAU83 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  DAPD MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  MME52 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  MOBH28 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  ROST61 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  TMD10 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  MOR13 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
+metrics:
+  TMB11 MAE:
+    good: 0.0
+    bad: 20
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: CCSD(T)/CBS
