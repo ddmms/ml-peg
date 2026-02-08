@@ -7,7 +7,6 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 0
 
-
   HR46:
     good: 0.5
     bad: 50.0
