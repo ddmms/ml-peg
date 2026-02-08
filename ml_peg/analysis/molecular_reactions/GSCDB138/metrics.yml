@@ -1,0 +1,96 @@
+metrics:
+  BH28:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  BH46:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  BH876:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  BHDIV7:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  BHPERI11:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  BHROT27:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  CRBH14:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  DBH22:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  INV23:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  ORBH35:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  PX9:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+
+  WCPT26:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
