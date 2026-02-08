@@ -21,6 +21,8 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs"
+CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
+CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -54,7 +56,7 @@ def get_rmsd(atoms_1, atoms_2) -> float:
     return rmsd
 
 
-def get_hoverdata() -> tuple[list, list, list]:
+def get_hoverdata(functional_path) -> tuple[list, list, list]:
     """
     Get hover data.
 
@@ -69,7 +71,7 @@ def get_hoverdata() -> tuple[list, list, list]:
     formulae = []
     vacant_cations = []
 
-    model_dir = model_dir = CALC_PATH / MODELS[0]
+    model_dir = model_dir = functional_path / MODELS[0]
     for material_dir in tqdm(list(model_dir.iterdir())):
         split_dir_name = material_dir.stem.split("-")
         bulk_formula = split_dir_name[0]
@@ -89,11 +91,15 @@ def get_hoverdata() -> tuple[list, list, list]:
     return mp_ids, formulae, vacant_cations
 
 
-MP_IDS, BULK_FORMULAE, VACANT_CATIONS = get_hoverdata()
+MP_IDS_PBE, BULK_FORMULAE_PBE, VACANT_CATIONS_PBE = get_hoverdata(CALC_PATH_PBE)
+MP_IDS_PBESOL, BULK_FORMULAE_PBESOL, VACANT_CATIONS_PBESOL = get_hoverdata(
+    CALC_PATH_PBESOL
+)
 
 
-@pytest.fixture  # cache outputs
-def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
+def build_results(
+    functional_path,
+) -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
     """
     Iterate through bulk-cation pairs calculating results.
 
@@ -103,6 +109,8 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
         Tuple of metrics.
     """
     # preference_energy_threshold = 0  # TODO: confirm
+
+    print(f"Analysing {functional_path.stem} calculations.")
 
     result_formation_energy = {"ref": []} | {
         mlip: [] for mlip in MODELS
@@ -117,13 +125,13 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
     result_rmsd = {mlip: [] for mlip in MODELS}
 
     ref_stored = False
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
+    for model_name in tqdm(MODELS):
+        model_dir = functional_path / model_name
 
         if not model_dir.exists():
             continue
 
-        for material_dir in tqdm(list(model_dir.iterdir())):
+        for material_dir in tqdm(list(model_dir.iterdir()), leave=False):
             cation_dirs = [
                 p for p in material_dir.iterdir() if p.is_dir()
             ]  # skip pristine supercell.xyz files if present (not used)
@@ -158,7 +166,7 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
                     result_formation_energy["ref"].append(ref_sv_formation_energy)
 
                     ref_cation_dir = (
-                        CALC_PATH / "ref" / material_dir.stem / cation_dir.stem
+                        functional_path / "ref" / material_dir.stem / cation_dir.stem
                     )
                     ref_nv_atoms_list = read(
                         ref_cation_dir / "normal_vacancy.xyz.gz", ":"
@@ -199,21 +207,47 @@ def build_results() -> tuple[dict[str, list], dict[str, list], dict[str, list]]:
     return result_formation_energy, result_spearmans_coefficient, result_rmsd
 
 
+@pytest.fixture  # cache outputs
+def build_results_pbesol():
+    """
+    Get PBEsol (oxide) results.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float], dict[str, float]]
+        Tuple of metrics.
+    """
+    return build_results(CALC_PATH_PBESOL)
+
+
+@pytest.fixture  # cache outputs
+def build_results_pbe():
+    """
+    Get PBE (nitride) results.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float], dict[str, float]]
+        Tuple of metrics.
+    """
+    return build_results(CALC_PATH_PBE)
+
+
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_formation_energies_dft.json",
-    title="Split vacancy",
+    filename=OUT_PATH / "figure_formation_energies_pbesol.json",
+    title="Split vacancy (Oxides, PBEsol)",
     x_label="Predicted Split Vacancy Formation Energy / eV",
     y_label="DFT Split Vacancy Formation Energy / eV",
     hoverdata={
-        "Materials Project ID": MP_IDS,
-        "Formula": BULK_FORMULAE,
-        "Vacant Cation": VACANT_CATIONS,
+        "Materials Project ID": MP_IDS_PBESOL,
+        "Formula": BULK_FORMULAE_PBESOL,
+        "Vacant Cation": VACANT_CATIONS_PBESOL,
     },
 )
-def formation_energies_dft(build_results) -> dict[str, list]:
+def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     """
-    Get DFT and predicted formation energies.
+    Get DFT and predicted formation energies for oxides (PBEsol).
 
     Parameters
     ----------
@@ -225,18 +259,48 @@ def formation_energies_dft(build_results) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _ = build_results
+    result_formation_energies, _, _ = build_results_pbesol()
     return result_formation_energies
 
 
 @pytest.fixture
-def formation_energy_dft_mae(formation_energies_dft) -> dict[str, float]:
+@plot_parity(
+    filename=OUT_PATH / "figure_formation_energies_pbe.json",
+    title="Split vacancy (Nitrides, PBE(+U))",
+    x_label="Predicted Split Vacancy Formation Energy / eV",
+    y_label="DFT Split Vacancy Formation Energy / eV",
+    hoverdata={
+        "Materials Project ID": MP_IDS_PBE,
+        "Formula": BULK_FORMULAE_PBE,
+        "Vacant Cation": VACANT_CATIONS_PBE,
+    },
+)
+def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
     """
-    Get mean absolute error for split-vancacy formation energies compared to DFT.
+    Get DFT and predicted formation energies for nitrides (PBE(+U)).
 
     Parameters
     ----------
-    formation_energies_dft
+    build_results
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, list]
+        Dictionary of DFT and predicted formation energies.
+    """
+    result_formation_energies, _, _ = build_results_pbe()
+    return result_formation_energies
+
+
+@pytest.fixture
+def formation_energy_pbesol_mae(formation_energies_pbesol) -> dict[str, float]:
+    """
+    Get mean absolute error for split-vancacy formation energies compared to PBEsol.
+
+    Parameters
+    ----------
+    formation_energies_pbesol
         Dictionary of DFT and predicted formation energies.
 
     Returns
@@ -247,15 +311,38 @@ def formation_energy_dft_mae(formation_energies_dft) -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         results[model_name] = mae(
-            formation_energies_dft["ref"], formation_energies_dft[model_name]
+            formation_energies_pbesol["ref"], formation_energies_pbesol[model_name]
         )
     return results
 
 
 @pytest.fixture
-def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
+def formation_energy_pbe_mae(formation_energies_pbe) -> dict[str, float]:
     """
-    Get mean spearmans coefficient between DFT and MLIP relaxed structures.
+    Get mean absolute error for split-vancacy formation energies compared to PBE(+U).
+
+    Parameters
+    ----------
+    formation_energies_pbesol
+        Dictionary of DFT and predicted formation energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of formation energy MAEs for all models.
+    """
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = mae(
+            formation_energies_pbe["ref"], formation_energies_pbe[model_name]
+        )
+    return results
+
+
+@pytest.fixture
+def spearmans_coefficient_pbesol_mean(build_results_pbe) -> dict[str, float]:
+    """
+    Energy ranking score of PBEsol relaxed structures (oxides).
 
     Parameters
     ----------
@@ -267,7 +354,7 @@ def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _ = build_results
+    _, result_spearmans_coefficient, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
@@ -276,9 +363,32 @@ def spearmans_coefficient_dft_mean(build_results) -> dict[str, float]:
 
 
 @pytest.fixture
-def rmsd_dft_mean(build_results) -> dict[str, float]:
+def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
     """
-    Get RMSD between DFT and MLIP relaxed structures.
+    Energy ranking score of PBE relaxed structures (nitrides).
+
+    Parameters
+    ----------
+    build_results
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of mean Spearman's coefficients for all models.
+    """
+    _, result_spearmans_coefficient, _ = build_results_pbe
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = float(np.mean(result_spearmans_coefficient[model_name]))
+    return results
+
+
+@pytest.fixture
+def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
+    """
+    Get RMSD between PBEsol and MLIP relaxed structures (oxides).
 
     Parameters
     ----------
@@ -290,7 +400,30 @@ def rmsd_dft_mean(build_results) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean relaxed structure RMSDs for all models.
     """
-    _, _, result_rmsd = build_results
+    _, _, result_rmsd = build_results_pbesol
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = float(np.mean(result_rmsd[model_name]))
+    return results
+
+
+@pytest.fixture
+def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
+    """
+    Get RMSD between PBE and MLIP relaxed structures (nitrides).
+
+    Parameters
+    ----------
+    build_results
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of mean relaxed structure RMSDs for all models.
+    """
+    _, _, result_rmsd = build_results_pbesol()
 
     results = {}
     for model_name in MODELS:
@@ -305,9 +438,12 @@ def rmsd_dft_mean(build_results) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(
-    formation_energy_dft_mae: dict[str, float],
-    spearmans_coefficient_dft_mean: dict[str, float],
-    rmsd_dft_mean: dict[str, float],
+    formation_energy_pbesol_mae: dict[str, float],
+    spearmans_coefficient_pbesol_mean: dict[str, float],
+    rmsd_pbesol_mean: dict[str, float],
+    formation_energy_pbe_mae: dict[str, float],
+    spearmans_coefficient_pbe_mean: dict[str, float],
+    rmsd_pbe_mean: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -328,9 +464,12 @@ def metrics(
     """
     # print(formation_energy_dft_mae)
     return {
-        "MAE": formation_energy_dft_mae,
-        "Mean Spearman's Coefficient": spearmans_coefficient_dft_mean,
-        "RMSD": rmsd_dft_mean,
+        "MAE (PBEsol)": formation_energy_pbesol_mae,
+        "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
+        "RMSD (PBEsol)": rmsd_pbesol_mean,
+        "MAE (PBE)": formation_energy_pbe_mae,
+        "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
+        "RMSD (PBE)": rmsd_pbe_mean,
     }
 
 
