@@ -133,4 +133,4 @@ def run_gscdb138(
             atoms_list[0].info["ref_rel_energy"] = e_rel_ref
             # Write dataset name to first atoms for bookkeeping.
             atoms_list[0].info["dataset"] = dataset
-            write(write_dir / f"{identifier}.xyz", atoms_list)
+            write(write_dir / f"{dataset}_{identifier}.xyz", atoms_list)
