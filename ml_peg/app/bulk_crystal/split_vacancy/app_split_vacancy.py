@@ -25,8 +25,12 @@ class SplitVacancyApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter_dft = read_plot(
-            DATA_PATH / "figure_formation_energies_dft.json",
+        scatter_pbesol = read_plot(
+            DATA_PATH / "figure_formation_energies_pbesol.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        scatter_pbe = read_plot(
+            DATA_PATH / "figure_formation_energies_pbe.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
 
@@ -34,9 +38,12 @@ class SplitVacancyApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "MAE": scatter_dft,
-                "Mean Spearman's Coefficient": scatter_dft,
-                "RMSD": scatter_dft,
+                "MAE (PBEsol)": scatter_pbesol,
+                "Spearman's (PBEsol)": scatter_pbesol,
+                "RMSD (PBEsol)": scatter_pbesol,
+                "MAE (PBE)": scatter_pbe,
+                "Spearman's (PBE)": scatter_pbe,
+                "RMSD (PBE)": scatter_pbe,
             },
         )
 

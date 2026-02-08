@@ -128,6 +128,8 @@ def build_results(
     }  # RMSD error for every material-cation pair
     # TODO: investigate Kendall rank correlation
 
+    ref_stored = False
+
     for model_name in tqdm(MODELS):
         model_dir = functional_path / model_name
 
@@ -146,7 +148,7 @@ def build_results(
                 sv_xyz_path = cation_dir / "split_vacancy.xyz.gz"
 
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
-                    continue
+                    # continue
                     raise ValueError  # TODO: remove
 
                 nv_atoms_list = read(nv_xyz_path, ":")
@@ -157,18 +159,15 @@ def build_results(
                 ref_nv_energies = [float(at.info["ref_energy"]) for at in nv_atoms_list]
                 ref_sv_energies = [float(at.info["ref_energy"]) for at in sv_atoms_list]
 
-                ref_sv_formation_energy = min(ref_sv_energies) - min(ref_nv_energies)
-                # ref_sv_preferred = (
-                #     ref_sv_formation_energy < preference_energy_threshold
-                # ) # TODO: F1 score
+                if not ref_stored:
+                    ref_sv_formation_energy = min(ref_sv_energies) - min(
+                        ref_nv_energies
+                    )
+                    # ref_sv_preferred = (
+                    #     ref_sv_formation_energy < preference_energy_threshold
+                    # ) # TODO: F1 score
 
-                result_formation_energy["ref"].append(ref_sv_formation_energy)
-
-                ref_cation_dir = (
-                    functional_path / "ref" / material_dir.stem / cation_dir.stem
-                )
-                ref_nv_atoms_list = read(ref_cation_dir / "normal_vacancy.xyz.gz", ":")
-                ref_sv_atoms_list = read(ref_cation_dir / "split_vacancy.xyz.gz", ":")
+                    result_formation_energy["ref"].append(ref_sv_formation_energy)
 
                 nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
                 sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
@@ -183,20 +182,15 @@ def build_results(
                     ref_nv_energies + ref_sv_energies,
                 ).statistic
 
-                rmsd_list = []
-                for ref_atoms, mlip_atoms in zip(
-                    ref_nv_atoms_list, nv_atoms_list, strict=False
-                ):
-                    rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
-                for ref_atoms, mlip_atoms in zip(
-                    ref_sv_atoms_list, sv_atoms_list, strict=False
-                ):
-                    rmsd_list.append(get_rmsd(ref_atoms, mlip_atoms))
-
                 # add metrics to dicts
                 result_formation_energy[model_name].append(sv_formation_energy)
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
+                rmsd_list = [
+                    -1 for i in range(len(ref_nv_energies) + len(ref_sv_energies))
+                ]
                 result_rmsd[model_name].extend(rmsd_list)
+
+        ref_stored = True
 
     return result_formation_energy, result_spearmans_coefficient, result_rmsd
 
