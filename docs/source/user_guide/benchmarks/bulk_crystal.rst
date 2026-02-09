@@ -115,3 +115,58 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Diamond phonons
+===============
+
+Summary
+-------
+
+Performance in predicting the phonon dispersion of bulk diamond (carbon).
+
+The benchmark evaluates the accuracy of phonon frequencies along a fixed
+high-symmetry path in the Brillouin zone for a single reference crystal
+structure of diamond.
+
+
+Metrics
+-------
+
+1. Band MAE
+
+Mean absolute error (MAE) between predicted and reference phonon frequencies.
+
+For bulk diamond, the phonon band structure is computed for each model along the same
+q-point path as the reference calculation. At each q-point, the six phonon frequencies
+are compared to the reference frequencies after sorting the modes to avoid branch
+labelling ambiguities. The MAE is evaluated over all q-points and all phonon branches.
+
+
+2. Band RMSE
+
+Root mean squared error (RMSE) between predicted and reference phonon frequencies.
+
+The RMSE is computed using the same sorted, mode-unlabelled comparison procedure as in
+(1), over all q-points and all phonon branches.
+
+
+Computational cost
+------------------
+
+Medium: tests typically take a few minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* A primitive bulk diamond unit cell containing two carbon atoms, used to generate a
+  phonopy displacement dataset on a 4×4×4 supercell.
+
+Reference data:
+
+* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, provided
+  as ``dft_band.npz``.
+* RSCAN.
