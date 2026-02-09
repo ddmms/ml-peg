@@ -104,15 +104,15 @@ Metrics
 
 Accuracy of the absolute lattice energy predictions.
 
-For each molecular crystal, lattice energy is calculated by taking the difference between the energy of the solid molecular crystal divided by the number of molecules it comprises, 
+For each molecular crystal, lattice energy is calculated by taking the difference between the energy of the solid molecular crystal divided by the number of molecules it comprises,
 and the energy of the isolated molecule. This is compared to the reference lattice energy.
 
 2. Relative lattice energy MAE
 
 Accuracy of the reltive lattice energy predictions.
 
-We compute the lattice energies in the same way as before, but this time we compute the relative error. 
-The relative error is computed by identifying the most stable polymorphs and, for each crystal, subtracting the lattice energy of the most stable polymorph. 
+We compute the lattice energies in the same way as before, but this time we compute the relative error.
+The relative error is computed by identifying the most stable polymorphs and, for each crystal, subtracting the lattice energy of the most stable polymorph.
 This metric cares more about the ranking of the crystal polymorphs rather than reproducing the reference values of the lattice energies.
 
 
@@ -136,4 +136,3 @@ Reference data:
 
 * Same as input data
 * wb97md3 with 1b CCSD(T) corrections
-  

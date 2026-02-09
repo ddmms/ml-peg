@@ -29,9 +29,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-# Set data path
-DATA_PATH = CALC_PATH
-
 
 def get_system_names() -> list[str]:
     """
@@ -58,7 +55,7 @@ def get_system_names() -> list[str]:
 def get_system_names_with_polymorphs() -> list[str]:
     """
     Get system names repeated for each crystal polymorph.
-    
+
     Returns a list where each system name appears once for each of its crystal
     polymorphs, matching the data structure in lattice_energies.
 
@@ -68,7 +65,7 @@ def get_system_names_with_polymorphs() -> list[str]:
         List of system names repeated for each polymorph.
     """
     system_names_expanded = []
-    
+
     # Find the first available model to get the structure
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -77,23 +74,26 @@ def get_system_names_with_polymorphs() -> list[str]:
                 if system_dir.is_dir():
                     system_name = system_dir.name
                     # Count crystal files (polymorphs) for this system
-                    crystal_files = sorted([
-                        f for f in (DATA_PATH / model_name / system_name).iterdir() 
-                        if f.name.startswith("crystal") and f.name.endswith(".xyz")
-                    ])
+                    crystal_files = sorted(
+                        [
+                            f
+                            for f in (CALC_PATH / model_name / system_name).iterdir()
+                            if f.name.startswith("crystal") and f.name.endswith(".xyz")
+                        ]
+                    )
                     # Add system name once for each crystal polymorph
                     for _ in crystal_files:
                         system_names_expanded.append(system_name)
             # Only process one model to get the structure
             break
-    
+
     return system_names_expanded
 
 
 def get_crystal_file_names() -> list[str]:
     """
     Get shortened crystal names for each polymorph.
-    
+
     Returns a list of shortened crystal names (three-letter code + polymorph number)
     in the same order as the lattice energies are processed.
 
@@ -103,27 +103,32 @@ def get_crystal_file_names() -> list[str]:
         List of shortened crystal names for each polymorph (e.g., "ACR1", "ACR2").
     """
     crystal_file_names = []
-    
+
     # Find the first available model to get the structure
     for model_name in MODELS:
-        model_dir = DATA_PATH / model_name
+        model_dir = CALC_PATH / model_name
         if model_dir.exists():
             for system_dir in sorted(model_dir.iterdir()):
                 if system_dir.is_dir():
                     system_name = system_dir.name
                     # Get crystal files (polymorphs) for this system
-                    crystal_files = sorted([
-                        f for f in (DATA_PATH / model_name / system_name).iterdir() 
-                        if f.name.startswith("crystal") and f.name.endswith(".xyz")
-                    ])
+                    crystal_files = sorted(
+                        [
+                            f
+                            for f in (CALC_PATH / model_name / system_name).iterdir()
+                            if f.name.startswith("crystal") and f.name.endswith(".xyz")
+                        ]
+                    )
                     # Get shortened name for each crystal file
                     for crystal_file in crystal_files:
-                        crystal = read(DATA_PATH / model_name / system_name / crystal_file, 0)
+                        crystal = read(
+                            CALC_PATH / model_name / system_name / crystal_file, 0
+                        )
                         short_name = crystal.info["polymorph_name"]
                         crystal_file_names.append(short_name)
             # Only process one model to get the structure
             break
-    
+
     return crystal_file_names
 
 
@@ -131,7 +136,7 @@ def get_crystal_file_names() -> list[str]:
 def systems() -> list[str]:
     """
     Get list of CPOSS209 system names as a fixture.
-    
+
     Returns
     -------
     list[str]
@@ -144,12 +149,12 @@ def systems() -> list[str]:
 def lattice_energies_raw(systems):
     """
     Calculate absolute and relative lattice energies for CPOSS209 benchmark systems.
-    
+
     Parameters
     ----------
     systems : list[str]
         List of CPOSS209 system names to analyze.
-    
+
     Returns
     -------
     tuple[dict[str, list[float]], dict[str, list[float]], list[str]]
@@ -158,8 +163,9 @@ def lattice_energies_raw(systems):
           Keys are model names and "ref", values are lists of lattice energies.
         - Second dict: Relative lattice energies in kJ/mol (relative to minimum energy
           polymorph within each system). Same structure as first dict.
-        - Third list: Crystal names (shortened format: three-letter code + polymorph number).
-    
+        - Third list: Crystal names (shortened format: three-letter code + polymorph
+          number).
+
     Notes
     -----
     - Lattice energy = (crystal_energy / num_molecules) - min(molecule_energies)
@@ -167,11 +173,10 @@ def lattice_energies_raw(systems):
     - Reference energies are stored from crystal.info["ref"]
     - Structure files are written to OUT_PATH for each model and system
     """
-
     # Initialize result dictionaries: absolute and relative lattice energies
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     results_relative = {"ref": []} | {mlip: [] for mlip in MODELS}
-    
+
     # List to store crystal names for hover data
     crystal_names = []
 
@@ -189,14 +194,22 @@ def lattice_energies_raw(systems):
         # Process each system in the benchmark
         for system in systems:
             # Find all crystal polymorph structure files
-            crystal_files = [file for file in (DATA_PATH / model_name / system).iterdir() if file.name.startswith("crystal") and file.name.endswith(".xyz")]
+            crystal_files = [
+                file
+                for file in (CALC_PATH / model_name / system).iterdir()
+                if file.name.startswith("crystal") and file.name.endswith(".xyz")
+            ]
             crystal_files = sorted(crystal_files)
 
             if not crystal_files:
                 continue
 
             # Find all gas-phase molecule structure files
-            molecule_files = [file for file in (DATA_PATH / model_name / system).iterdir() if file.name.startswith("gas") and file.name.endswith(".xyz")]
+            molecule_files = [
+                file
+                for file in (CALC_PATH / model_name / system).iterdir()
+                if file.name.startswith("gas") and file.name.endswith(".xyz")
+            ]
             molecule_files = sorted(molecule_files)
 
             # Skip system if no gas-phase molecules found
@@ -207,7 +220,7 @@ def lattice_energies_raw(systems):
             molecule_energies = []
             for molecule_file in molecule_files:
                 # Read molecule structure
-                molecule = read(DATA_PATH / model_name / system / molecule_file, 0)
+                molecule = read(CALC_PATH / model_name / system / molecule_file, 0)
 
                 # Write molecule files to output directory for reference
                 dir = OUT_PATH / model_name / system
@@ -224,32 +237,35 @@ def lattice_energies_raw(systems):
             # Calculate lattice energies for all polymorphs (only read files once)
             lattice_energies_list = []
             reference_lattice_energies = []
-            
+
             for crystal_file in crystal_files:
                 # Read crystal structure once
-                crystal = read(DATA_PATH / model_name / system / crystal_file, 0)
-                
+                crystal = read(CALC_PATH / model_name / system / crystal_file, 0)
+
                 short_name = crystal.info["polymorph_name"]
-                
+
                 # Store crystal name only once (same for all models)
                 if not ref_stored:
                     crystal_names.append(short_name)
-                
+
                 # Write crystal files to output directory for reference
                 dir = OUT_PATH / model_name / system
                 dir.mkdir(parents=True, exist_ok=True)
                 write(dir / crystal_file.name, crystal)
-                
+
                 # Get crystal energy and number of molecules per unit cell
                 crystal_energy = crystal.get_potential_energy()
                 num_molecules = crystal.info["num_molecules"]
 
-                # Calculate lattice energy: E_lattice = (E_crystal / n_molecules) - E_molecule
-                lattice_energy = (crystal_energy / num_molecules) - lowest_molecule_energy
+                # Calculate lattice energy
+                # E_lattice = (E_crystal / n_molecules) - E_molecule
+                lattice_energy = (
+                    crystal_energy / num_molecules
+                ) - lowest_molecule_energy
 
                 # Convert from eV to kJ/mol
                 lattice_energy_kj = lattice_energy * EV_TO_KJ_PER_MOL
-                
+
                 # Store for absolute energies
                 results[model_name].append(lattice_energy_kj)
                 lattice_energies_list.append(lattice_energy_kj)
@@ -266,12 +282,12 @@ def lattice_energies_raw(systems):
             # Calculate relative energies: E_rel = E_polymorph - E_most_stable
             for le in lattice_energies_list:
                 results_relative[model_name].append(le - min_mlip_lattice_energy)
-            
+
             # Process reference relative energies only once
             if not ref_stored:
                 # Find most stable reference polymorph
                 min_ref_lattice_energy = min(reference_lattice_energies)
-                
+
                 # Calculate relative energies for reference data
                 for rle in reference_lattice_energies:
                     results_relative["ref"].append(rle - min_ref_lattice_energy)
@@ -286,10 +302,10 @@ def lattice_energies_raw(systems):
 def lattice_energies(lattice_energies_raw):
     """
     Get absolute lattice energies for all crystal polymorphs.
-    
+
     Returns absolute lattice energies for all crystal structures,
     including all polymorphs for each system.
-    
+
     Returns
     -------
     dict
@@ -313,7 +329,7 @@ def lattice_energies(lattice_energies_raw):
 def lattice_energies_plot(lattice_energies):
     """
     Plot absolute lattice energies with crystal names in hover data.
-    
+
     Returns
     -------
     dict
@@ -331,7 +347,8 @@ def cposs209_errors(lattice_energies_raw) -> tuple[dict[str, float], dict[str, f
     Parameters
     ----------
     lattice_energies_raw
-        Tuple of (absolute, relative, crystal_names) dictionaries of reference and predicted lattice energies.
+        Tuple of (absolute, relative, crystal_names) dictionaries of reference and
+        predicted lattice energies.
 
     Returns
     -------
@@ -348,7 +365,7 @@ def cposs209_errors(lattice_energies_raw) -> tuple[dict[str, float], dict[str, f
 
         else:
             results[model_name] = None
-    
+
     results_relative = {}
     for model_name in MODELS:
         if relative_lattice_energies[model_name]:
@@ -369,14 +386,17 @@ def cposs209_errors(lattice_energies_raw) -> tuple[dict[str, float], dict[str, f
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(cposs209_errors: tuple[dict[str, float], dict[str, float]]) -> dict[str, dict]:
+def metrics(
+    cposs209_errors: tuple[dict[str, float], dict[str, float]],
+) -> dict[str, dict]:
     """
     Get all CPOSS209 metrics.
 
     Parameters
     ----------
     cposs209_errors
-        Tuple of (absolute_errors, relative_errors) mean absolute errors for all systems.
+        Tuple of (absolute_errors, relative_errors) mean absolute errors for all
+        systems.
 
     Returns
     -------

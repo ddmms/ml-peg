@@ -18,10 +18,9 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CPOSS209 Lattice Energies"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#cposs209"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#cposs209"
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "CPOSS209"
+
 
 class CPOSS209App(BaseApp):
     """CPOSS209 benchmark app layout and callbacks."""
@@ -35,12 +34,11 @@ class CPOSS209App(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / MODELS[0]
-        
+
         structs = [
             f"assets/molecular_crystal/CPOSS209/{MODELS[0]}/{struct_file.relative_to(structs_dir)}"
             for struct_file in sorted(structs_dir.glob("**/crystal*.xyz"))
         ]
-
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -67,7 +65,9 @@ def get_app() -> CPOSS209App:
     """
     return CPOSS209App(
         name=BENCHMARK_NAME,
-        description="Absolute and relative lattice energies for 209 organic molecular crystals.",
+        description=(
+            "Absolute and relative lattice energies for 209 organic molecular crystals."
+        ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "cposs209_metrics_table.json",
         extra_components=[
@@ -88,4 +88,3 @@ if __name__ == "__main__":
 
     # Run app
     full_app.run(port=8053, debug=True)
-
