@@ -159,27 +159,6 @@ def get_length_per_atom(atoms: Atoms) -> float:
     return length / len(atoms)
 
 
-def symmetrize_structure(atoms: Atoms, symprec: float = 1e-5) -> Atoms:
-    """
-    Symmetrize atomic positions and cell using ASE's refine_symmetry.
-
-    Parameters
-    ----------
-    atoms
-        ASE Atoms object.
-    symprec
-        Symmetry precision for spglib.
-
-    Returns
-    -------
-    Atoms
-        Symmetrized atoms object.
-    """
-    atoms = atoms.copy()
-    refine_symmetry(atoms, symprec=symprec)
-    return atoms
-
-
 def set_vacuum_padding(
     atoms: Atoms, dimensionality: str, vacuum: float = VACUUM_PADDING
 ) -> Atoms:
@@ -392,7 +371,7 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
     ):
         atoms = struct_data["atoms"].copy()
         # Symmetrize structure before relaxation
-        atoms = symmetrize_structure(atoms)
+        refine_symmetry(atoms)
         # Set vacuum padding in non-periodic directions
         atoms = set_vacuum_padding(atoms, dimensionality)
         atoms.calc = copy(calc)
@@ -431,3 +410,17 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
     out_dir.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(results)
     df.to_csv(out_dir / f"results_{dimensionality}.csv", index=False)
+
+
+def test_get_area_per_atom() -> None:
+    """Test get_area_per_atom for a simple 2D structure."""
+    # 2-atom structure with 3x4 in-plane cell → area = 12, area/atom = 6
+    atoms = Atoms("H2", positions=[[0, 0, 0], [1.5, 0, 0]], cell=[3, 4, 20], pbc=True)
+    assert get_area_per_atom(atoms) == pytest.approx(6.0)
+
+
+def test_get_length_per_atom() -> None:
+    """Test get_length_per_atom for a simple 1D structure."""
+    # 2-atom chain with a=5 Å → length/atom = 2.5
+    atoms = Atoms("H2", positions=[[0, 0, 0], [2.5, 0, 0]], cell=[5, 20, 20], pbc=True)
+    assert get_length_per_atom(atoms) == pytest.approx(2.5)
