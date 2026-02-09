@@ -13,4 +13,5 @@ Benchmarks
     molecular
     bulk_crystal
     interstitial
+    lanthanides
     non_covalent_interactions
