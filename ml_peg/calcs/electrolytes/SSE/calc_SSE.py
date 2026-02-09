@@ -29,8 +29,7 @@ MODELS: dict[str, Any] = load_models(models=current_models)
 OUT_PATH: Path = Path(__file__).parent / "outputs"
 
 # Benchmark parameters
-# TOTAL_TIME_NS: float = 1.0 # ns
-TOTAL_TIME_NS: float = 0.001 # ns
+TOTAL_TIME_NS: float = 1.0 # ns
 DELTA_T_FS: float = 0.5 # fs
 SEED: int = 0
 FRAME_FREQUENCY: int = 15
@@ -94,7 +93,11 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
     # )
     from ml_peg.calcs.utils.utils import extract_zip
 
-    data_dir: Path = (extract_zip(filename=(Path(os.getenv("SCRATCH", ".")) / ".cache" / "ml-peg" / "SSEs_data.zip")) / "SSEs_data")
+    scratch_dir: Path = Path(os.getenv("SCRATCH", "."))
+    data_dir: Path = (
+        extract_zip(filename=(scratch_dir / ".cache" / "ml-peg" / "SSEs_data.zip")) 
+        / "SSEs_data"
+    )
 
     for poscar_dir, temperature, system_name in get_systems(data_dir=data_dir):
         poscar_file: Path = poscar_dir / "POSCAR"
