@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from copy import copy
+import os
 from pathlib import Path
 from typing import Any
 
@@ -27,16 +29,17 @@ MODELS: dict[str, Any] = load_models(models=current_models)
 OUT_PATH: Path = Path(__file__).parent / "outputs"
 
 # Benchmark parameters
-NSTEPS: int = 1000
-DELTA_T: float = 0.5
+# TOTAL_TIME_NS: float = 1.0 # ns
+TOTAL_TIME_NS: float = 0.001 # ns
+DELTA_T_FS: float = 0.5 # fs
 SEED: int = 0
-BIN_SIZE: float = 0.05
-FRAME_FREQUENCY: int = 5
-N_EQUI_FRAMES: int = 20
+FRAME_FREQUENCY: int = 15
+NSTEPS: int = int(TOTAL_TIME_NS * 1e6 / DELTA_T_FS)
+N_EQUI_FRAMES: int = int(5e3 / FRAME_FREQUENCY) # equilibration time of 5 ps
 TCHAIN: int = 10
 
 
-def get_systems(data_dir: Path) -> list[tuple[Path, float, str]]:
+def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None]:
     """
     Discover all SSE RDF systems from the extracted data directory.
 
@@ -50,19 +53,16 @@ def get_systems(data_dir: Path) -> list[tuple[Path, float, str]]:
 
     Returns
     -------
-    list[tuple[Path, float, str]]
-        List of (poscar_dir, temperature, system_name) for each system.
+    Generator[tuple[Path, float, str], None, None]
+        Generator yielding (poscar_dir, temperature, system_name) for each system.
     """
-    systems: list[tuple[Path, float, str]] = []
     for poscar_file in sorted(data_dir.rglob(pattern="POSCAR")):
         temp_dir: Path = poscar_file.parent
         compound_dir: Path = temp_dir.parent.parent
 
         temperature = float(temp_dir.name.rstrip("K"))
         system_name = f"{compound_dir.name}_{temp_dir.parent.name}_{temp_dir.name}"
-        systems.append((temp_dir, temperature, system_name))
-
-    return systems
+        yield temp_dir, temperature, system_name
 
 
 @pytest.mark.parametrize(argnames="mlip", argvalues=MODELS.items())
@@ -81,7 +81,7 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc: Calculator = model.get_calculator()
 
-    timestep: float = DELTA_T * units.fs
+    timestep: float = DELTA_T_FS * units.fs
     tdamp: float = 100 * timestep
 
     # TODO: switch back to S3 download for production
@@ -94,14 +94,9 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
     # )
     from ml_peg.calcs.utils.utils import extract_zip
 
-    data_dir: Path = (
-        extract_zip(filename=Path.home() / ".cache" / "ml-peg" / "SSEs_data.zip")
-        / "SSEs_data"
-    )
+    data_dir: Path = (extract_zip(filename=(Path(os.getenv("SCRATCH", ".")) / ".cache" / "ml-peg" / "SSEs_data.zip")) / "SSEs_data")
 
-    systems: list[tuple[Path, int | float, str]] = get_systems(data_dir)
-
-    for poscar_dir, temperature, system_name in systems:
+    for poscar_dir, temperature, system_name in get_systems(data_dir=data_dir):
         poscar_file: Path = poscar_dir / "POSCAR"
         atoms_initial: Atoms | list[Atoms] = io.read(
             filename=poscar_file, format="vasp"
@@ -111,9 +106,7 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
         atoms.calc = copy(calc)
 
         rng = np.random.RandomState(seed=SEED)
-        MaxwellBoltzmannDistribution(
-            atoms, temperature_K=temperature, force_temp=True, rng=rng
-        )
+        MaxwellBoltzmannDistribution(atoms, temperature_K=temperature, force_temp=True, rng=rng)
         Stationary(atoms)
         ZeroRotation(atoms)
 
@@ -136,7 +129,7 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
         )
 
         traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
-        md_nvt.attach(function=traj.write, interval=10)
+        md_nvt.attach(function=traj.write, interval=1)
 
         md_nvt.run(steps=NSTEPS)
 
@@ -149,7 +142,7 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
         for frame in ase_traj:
             frame.info["system"] = system_name
             frame.info["temperature"] = temperature
-            frame.info["delta_t"] = DELTA_T
+            frame.info["delta_t"] = DELTA_T_FS
             frame.info["nsteps"] = NSTEPS
 
         # Write trajectory frames as XYZ
