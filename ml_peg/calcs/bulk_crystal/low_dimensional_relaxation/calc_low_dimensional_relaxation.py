@@ -11,13 +11,13 @@ from typing import Any
 import urllib.request
 
 from ase import Atoms
+from ase.spacegroup.symmetrize import refine_symmetry
 from janus_core.calculations.geom_opt import GeomOpt
 import numpy as np
 import pandas as pd
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
-import spglib
 from tqdm import tqdm
 
 from ml_peg.models.get_models import load_models
@@ -161,7 +161,7 @@ def get_length_per_atom(atoms: Atoms) -> float:
 
 def symmetrize_structure(atoms: Atoms, symprec: float = 1e-5) -> Atoms:
     """
-    Symmetrize atomic positions and cell using spglib.
+    Symmetrize atomic positions and cell using ASE's refine_symmetry.
 
     Parameters
     ----------
@@ -175,29 +175,9 @@ def symmetrize_structure(atoms: Atoms, symprec: float = 1e-5) -> Atoms:
     Atoms
         Symmetrized atoms object.
     """
-    # Convert to spglib format
-    cell = (
-        atoms.get_cell().array,
-        atoms.get_scaled_positions(),
-        atoms.get_atomic_numbers(),
-    )
-
-    # Get symmetrized cell
-    symmetrized = spglib.standardize_cell(cell, to_primitive=False, symprec=symprec)
-
-    if symmetrized is None:
-        # If symmetrization fails, return original structure
-        return atoms
-
-    lattice, scaled_positions, numbers = symmetrized
-
-    # Create new atoms object with symmetrized structure
-    return Atoms(
-        numbers=numbers,
-        scaled_positions=scaled_positions,
-        cell=lattice,
-        pbc=atoms.pbc,
-    )
+    atoms = atoms.copy()
+    refine_symmetry(atoms, symprec=symprec)
+    return atoms
 
 
 def set_vacuum_padding(
