@@ -117,64 +117,6 @@ Reference data:
 * PBE
 
 
-High-Pressure Relaxation
-========================
-
-Summary
--------
-
-Performance in relaxing bulk crystal structures under high-pressure conditions.
-3000 structures from the Alexandria database are relaxed at 7 pressure conditions
-(0, 25, 50, 75, 100, 125, 150 GPa) and compared to PBE reference calculations.
-
-
-Metrics
--------
-
-For each pressure condition (0, 25, 50, 75, 100, 125, 150 GPa):
-
-(1) Volume MAE
-
-Mean absolute error of volume per atom compared to PBE reference.
-
-(2) Energy MAE
-
-Mean absolute error of enthalpy per atom compared to PBE reference. The enthalpy is
-calculated as H = E + PV, where E is the potential energy, P is the applied pressure,
-and V is the volume.
-
-(3) Convergence
-
-Percentage of structures that successfully converged during relaxation.
-
-Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
-applied to preserve crystallographic symmetry analogously to DFT. Starting from P000 (0 GPa) structures, each structure is relaxed at the target pressure using the FrechetCellFilter with the
-specified scalar pressure. Relaxation continues until the maximum force component is
-below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is
-repeated up from the last structure of the previous relaxation up to 3 times.
-
-
-Computational cost
-------------------
-
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures and pressure conditions tested.
-
-
-Data availability
------------------
-
-Input structures:
-
-* Alexandria database pressure benchmark dataset
-* URL: https://alexandria.icams.rub.de/data/pbe/benchmarks/pressure
-* 3000 structures randomly sampled from the full datasets at each pressure
-
-Reference data:
-
-* PBE calculations from the Alexandria database
-* Loew et al 2026 J. Phys. Mater. 9 015010 https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8
-
 
 Low-Dimensional Relaxation
 ==========================
@@ -194,8 +136,7 @@ Metrics
 
 (1) Area MAE (2D)
 
-Mean absolute error of area per atom compared to PBE reference. The area is
-calculated as the magnitude of the cross product of the two in-plane lattice vectors.
+Mean absolute error of area per atom compared to PBE reference.
 
 (2) Energy MAE (2D)
 
@@ -209,8 +150,7 @@ Percentage of 2D structures that successfully converged during relaxation.
 
 (4) Length MAE (1D)
 
-Mean absolute error of chain length per atom compared to PBE reference. The length
-is the magnitude of the first lattice vector (the chain direction).
+Mean absolute error of chain length per atom compared to PBE reference.
 
 (5) Energy MAE (1D)
 
@@ -220,22 +160,19 @@ Mean absolute error of energy per atom compared to PBE reference.
 
 Percentage of 1D structures that successfully converged during relaxation.
 
-Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
-applied to preserve crystallographic symmetry. Cell relaxation is constrained using
+Structures are relaxed using janus-core's GeomOpt after calling from `ase.spacegroup.symmetrize.refine_symmetry`. Cell relaxation is constrained using
 cell masks:
 
 * 2D: Only in-plane cell components (a, b, and γ) are allowed to relax
 * 1D: Only the chain direction (a) is allowed to relax
 
-Relaxation continues until the maximum force component is below 0.0002 eV/Å or until
-500 steps are reached. If not converged, relaxation is repeated up to 3 times.
+Relaxation continues until the maximum force component is below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is repeated up to 3 times.
 
 
 Computational cost
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures tested.
+High: tests are likely to take hours-days to run on GPU, depending on the number of structures tested.
 
 
 Data availability
@@ -249,4 +186,5 @@ Input structures:
 
 Reference data:
 
-* PBE calculations from the Alexandria database
+* Hai-Chen Wang et al 2023 2D Mater. 10 035007
+* Jonathan Schmidt et al 2024, Mater. Tod. Phys, 48, 101560
