@@ -21,7 +21,7 @@ from ase.optimize import FIRE
 from ase.units import bar, fs
 import numpy as np
 
-from ml_peg.calcs.liquids.ethanol_water_density.io_tools import DensityTimeseriesLogger
+from ml_peg.calcs.liquids.ethanol_water_density._io_tools import DensityTimeseriesLogger
 
 
 def total_mass_kg(atoms):

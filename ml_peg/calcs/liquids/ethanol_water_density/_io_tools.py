@@ -12,6 +12,7 @@ def write_density_timeseries_checkpointed(
     rho_series: Iterable[float],
     *,
     min_match_fraction: float = 0.8,
+    do_not_raise: bool = False,
 ) -> None:
     """
     Write density_timeseries.csv with checkpoint validation.
@@ -54,7 +55,7 @@ def write_density_timeseries_checkpointed(
 
             frac = matches / n if n else 0.0
 
-            if frac < min_match_fraction:
+            if frac < min_match_fraction and not do_not_raise:
                 raise AssertionError(
                     f"{ts_path}: only {frac:.1%} of checkpoint values match "
                     f"(expected ≥ {min_match_fraction:.0%}). "

@@ -9,16 +9,16 @@ from typing import Any
 import numpy as np
 import pytest
 
-from ml_peg.calcs.liquids.ethanol_water_density.compositions import (
+from ml_peg.calcs.liquids.ethanol_water_density._compositions import (
     BENCH_ROOT,
     DATA_PATH,
     load_compositions,
 )
-from ml_peg.calcs.liquids.ethanol_water_density.fake_data import (
+from ml_peg.calcs.liquids.ethanol_water_density._fake_data import (
     make_fake_curve,
     make_fake_density_timeseries,
 )
-from ml_peg.calcs.liquids.ethanol_water_density.io_tools import (
+from ml_peg.calcs.liquids.ethanol_water_density._io_tools import (
     write_density_timeseries_checkpointed,
 )
 from ml_peg.calcs.liquids.ethanol_water_density.md_code import run_one_case
@@ -100,7 +100,7 @@ def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> No
     )
 
     ts_path = case_dir / "density_timeseries.csv"
-    write_density_timeseries_checkpointed(ts_path, rho_series)
+    write_density_timeseries_checkpointed(ts_path, rho_series, do_not_raise=True)
 
 
 if __name__ == "__main__":  # TODO: delete this

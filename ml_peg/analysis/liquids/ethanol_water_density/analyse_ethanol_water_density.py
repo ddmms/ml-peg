@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ml_peg.analysis.liquids.ethanol_water_density.analysis import (
+from ml_peg.analysis.liquids.ethanol_water_density._analysis import (
     _excess_curve,
     _interp_1d,
     _peak_x_quadratic,

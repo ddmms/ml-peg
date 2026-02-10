@@ -9,7 +9,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 import numpy as np
 
-from ml_peg.analysis.liquids.ethanol_water_density.analysis import (
+from ml_peg.analysis.liquids.ethanol_water_density._analysis import (
     weight_to_mole_fraction,
 )
 from ml_peg.app import APP_ROOT
