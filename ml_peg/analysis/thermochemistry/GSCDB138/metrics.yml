@@ -27,7 +27,14 @@ metrics:
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
     weight: 0
-  AlkAtom19ALKBDE10 MAE:
+  AlkAtom19 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+  ALKBDE10 MAE:
     good: 0.5
     bad: 50.0
     unit: kcal/mol
@@ -202,7 +209,21 @@ metrics:
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
     weight: 0
-  P34 MAE:
+  P34AE MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+  P34EA MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 0
+  P34IP MAE:
     good: 0.5
     bad: 50.0
     unit: kcal/mol
@@ -216,14 +237,7 @@ metrics:
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
     weight: 0
-  PlatonicID6 MAE:
-    good: 0.5
-    bad: 50.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 0
-  PlatonicIG6 MAE:
+  PlatonicRE18 MAE:
     good: 0.5
     bad: 50.0
     unit: kcal/mol
