@@ -12,7 +12,16 @@ DATA_PATH = BENCH_ROOT / "data"
 
 @dataclass(frozen=True)
 class CompositionCase:
-    """Map composition to file."""
+    """
+    Map composition value to structure filename.
+
+    Attributes
+    ----------
+    x_ethanol : float
+        Ethanol mole fraction for the case.
+    filename : str
+        Structure filename associated with the composition.
+    """
 
     x_ethanol: float
     filename: str
@@ -20,9 +29,12 @@ class CompositionCase:
 
 def load_compositions() -> list[CompositionCase]:
     """
-    Load composition grid.
+    Load composition grid from ``compositions.csv``.
 
-    Expected CSV columns: x_ethanol, filename
+    Returns
+    -------
+    list[CompositionCase]
+        Parsed composition cases ordered as in the CSV file.
     """
     comps_file = DATA_PATH / "compositions.csv"
     cases: list[CompositionCase] = []

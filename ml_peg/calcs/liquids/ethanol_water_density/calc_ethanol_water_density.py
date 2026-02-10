@@ -1,4 +1,4 @@
-"""calculate ethanol-water density curves."""
+"""Calculate ethanol-water density curves."""
 
 from __future__ import annotations
 
@@ -36,6 +36,19 @@ COMPOSITIONS = load_compositions()
 
 
 def _case_id(composition) -> str:
+    """
+    Build a readable test identifier for a composition case.
+
+    Parameters
+    ----------
+    composition : Any
+        Composition object with an ``x_ethanol`` attribute.
+
+    Returns
+    -------
+    str
+        Case identifier shown in pytest output.
+    """
     # nicer test ids in `pytest -vv`
     return f"x={composition.x_ethanol:.2f}"
 
@@ -45,7 +58,21 @@ def _case_id(composition) -> str:
     "composition", COMPOSITIONS, ids=[_case_id(c) for c in COMPOSITIONS]
 )
 def test_water_ethanol_density_curve(mlip: tuple[str, Any], composition) -> None:
-    """Either run the md simulation or fake the data."""
+    """
+    Generate one density-curve case for a model and composition.
+
+    Parameters
+    ----------
+    mlip : tuple[str, Any]
+        Pair of model name and model object.
+    composition : Any
+        Composition case input.
+
+    Returns
+    -------
+    None
+        This test writes output files for a single case.
+    """
     if not FAKE_DATA:
         water_ethanol_density_curve_one_case(mlip, composition)
     else:
@@ -53,7 +80,21 @@ def test_water_ethanol_density_curve(mlip: tuple[str, Any], composition) -> None
 
 
 def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
-    """Run an md simulation."""
+    """
+    Run one MD simulation case and write its density time series.
+
+    Parameters
+    ----------
+    mlip : tuple[str, Any]
+        Pair of model name and model object.
+    case : Any
+        Composition case containing ``x_ethanol`` and ``filename``.
+
+    Returns
+    -------
+    None
+        This function writes outputs for one composition.
+    """
     model_name, model = mlip  # TODO: dispersion ???
 
     model_out = OUT_PATH / model_name
@@ -77,7 +118,21 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
 
 
 def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> None:
-    """Generate fake data for debugging instead of running the test."""
+    """
+    Generate one synthetic density time series for debugging.
+
+    Parameters
+    ----------
+    mlip : tuple[str, Any]
+        Pair of model name and model object.
+    case : Any
+        Composition case containing ``x_ethanol``.
+
+    Returns
+    -------
+    None
+        This function writes a fake density time series.
+    """
     model_name, model = mlip
 
     model_out = OUT_PATH / model_name
