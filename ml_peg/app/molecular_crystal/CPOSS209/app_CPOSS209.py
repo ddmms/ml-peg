@@ -27,8 +27,12 @@ class CPOSS209App(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_lattice_energies.json",
+        absolute_scatter = read_plot(
+            DATA_PATH / "figure_absolute_lattice_energies.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        relative_scatter = read_plot(
+            DATA_PATH / "figure_relative_lattice_energies.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
 
@@ -43,7 +47,10 @@ class CPOSS209App(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Absolute MAE": scatter},
+            column_to_plot={
+                "Absolute MAE": absolute_scatter,
+                "Relative MAE": relative_scatter,
+            },
         )
 
         struct_from_scatter(
