@@ -1,96 +1,96 @@
 metrics:
   BH28:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight:
 
   BH46:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   BH876:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   BHDIV7:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   BHPERI11:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   BHROT27:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   CRBH14:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   DBH22:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   INV23:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   ORBH35:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   PX9:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   WCPT26:
     good: 0.5
-    bad: 50.0
+    bad: 20.0
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
