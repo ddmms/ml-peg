@@ -5,7 +5,7 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   HR46:
     good: 0.5
@@ -13,7 +13,7 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   OEEF:
     good: 0.5
@@ -21,7 +21,7 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   Pol130:
     good: 0.5
@@ -29,7 +29,7 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   T144:
     good: 0.5
@@ -37,7 +37,7 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
 
   V30:
     good: 0.5
@@ -45,4 +45,4 @@ metrics:
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
-    weight: 0
+    weight: 1
