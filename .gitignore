@@ -53,3 +53,4 @@ profiles/
 
 # Local element-coverage probe logs
 dev/element_coverage/model_supported_elements_errors.jsonl
+ml_peg/calcs/surfaces/copper_water_interface/data/
