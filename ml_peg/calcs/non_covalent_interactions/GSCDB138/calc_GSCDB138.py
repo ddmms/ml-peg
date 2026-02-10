@@ -23,6 +23,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 DATASETS = [
     "3B-69",
     "3BHET",
+    "A19Rel6",
     "A24",
     "ADIM6",
     "AHB21",
@@ -33,8 +34,10 @@ DATASETS = [
     "CT20",
     "DS14",
     "FmH2O10",
-    "HB49",
+    "H2O16Rel4",
+    "H2O20Rel9",
     "HB262",
+    "HB49",
     "HCP32",
     "He3",
     "HEAVY28",
@@ -54,14 +57,15 @@ DATASETS = [
     "RG18",
     "S22",
     "S66",
+    "S66Rel7",
     "Shields38",
     "SW49Bind22",
+    "SW49Rel28",
     "TA13",
     "WATER27",
     "X40",
     "X40x5",
-    "XB8",
-    "XB20",
+    "XB25",
 ]
 
 

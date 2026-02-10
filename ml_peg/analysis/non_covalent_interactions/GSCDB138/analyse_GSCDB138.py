@@ -1,4 +1,4 @@
-"""Analyse the isomer energy benchmarks within the GSCDB138 collection."""
+"""Analyse the non covalent interaction benchmarks within the GSCDB138 collection."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-CALC_PATH = CALCS_ROOT / "isomers" / "GSCDB138" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "isomers" / "GSCDB138"
+CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "GSCDB138" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "GSCDB138"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -18,32 +18,51 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 DATASETS = [
+    "3B-69",
+    "3BHET",
     "A19Rel6",
-    "ACONF",
-    "AlkIsomer11",
-    "Amino20x4",
-    "BUT14DIOL",
-    "C20C246",
-    "C60ISO7",
-    "DIE60",
-    "EIE22",
+    "A24",
+    "ADIM6",
+    "AHB21",
+    "Bauza30",
+    "BzDC215",
+    "CARBHB8",
+    "CHB6",
+    "CT20",
+    "DS14",
+    "FmH2O10",
     "H2O16Rel4",
     "H2O20Rel9",
-    "ICONF",
-    "IDISP",
-    "ISO34",
-    "ISOL23",
-    "ISOMERIZATION20",
-    "MCONF",
-    "PArel",
-    "PCONF21",
-    "Pentane13",
+    "HB262",
+    "HB49",
+    "HCP32",
+    "He3",
+    "HEAVY28",
+    "HSG",
+    "HW30",
+    "HW6Cl5",
+    "HW6F",
+    "IHB100",
+    "IHB100x2",
+    "IL16",
+    "NBC10",
+    "NC11",
+    "O24",
+    "O24x4",
+    "PNICO23",
+    "RG10N",
+    "RG18",
+    "S22",
+    "S66",
     "S66Rel7",
-    "SCONF",
-    "Styrene42",
+    "Shields38",
+    "SW49Bind22",
     "SW49Rel28",
-    "TAUT15",
-    "UPU23",
+    "TA13",
+    "WATER27",
+    "X40",
+    "X40x5",
+    "XB25",
 ]
 
 
