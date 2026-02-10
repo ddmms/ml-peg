@@ -28,6 +28,9 @@ def process_atoms(atoms: Atoms) -> Atoms:
     ASE.Atoms
         Same Atoms object with integer charge and spin multiplicity.
     """
+    # Remove the barycnter of the positions to atoms for translation invariance.
+    atoms.positions -= np.mean(atoms.positions, axis=0)
+
     if "charge" in atoms.info:
         atoms.info["charge"] = int(np.rint(atoms.info["charge"]))
     else:
@@ -49,8 +52,7 @@ def process_atoms(atoms: Atoms) -> Atoms:
             x = units.Hartree / units.Bohr * field_dict.get("X", 0.0)
             y = units.Hartree / units.Bohr * field_dict.get("Y", 0.0)
             z = units.Hartree / units.Bohr * field_dict.get("Z", 0.0)
-            # Remove the barycnter of the positions to atoms for translation invariance.
-            atoms.positions -= np.mean(atoms.positions, axis=0)
+
             atoms.info["external_field"] = np.array([x, y, z])  # in V/Å
         except Exception:
             atoms.info["external_field"] = np.array([0.0, 0.0, 0.0])

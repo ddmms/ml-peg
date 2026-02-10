@@ -1,4 +1,4 @@
-"""Analyse the isomer energy benchmarks within the GSCDB138 collection."""
+"""Analyse the reaction barriers datasets within the GSCDB138 collection."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-CALC_PATH = CALCS_ROOT / "isomers" / "GSCDB138" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "isomers" / "GSCDB138"
+CALC_PATH = CALCS_ROOT / "molecular_reactions" / "GSCDB138" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "GSCDB138"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -34,7 +34,7 @@ DATASETS = [
 
 
 def test_gscdb138() -> None:
-    """Run isomer GSCDB138 test."""
+    """Run analysis for reaction barriers datasets within GSCDB138."""
     get_gscdb138_metrics(
         datasets=DATASETS,
         calc_path=CALC_PATH,
