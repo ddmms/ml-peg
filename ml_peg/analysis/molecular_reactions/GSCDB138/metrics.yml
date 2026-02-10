@@ -1,5 +1,5 @@
 metrics:
-  BH28:
+  BH28 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -7,7 +7,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  BH46:
+  BH46 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -15,7 +15,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  BH876:
+  BH876 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -23,7 +23,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  BHDIV7:
+  BHDIV7 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -31,7 +31,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  BHPERI11:
+  BHPERI11 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -39,7 +39,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  BHROT27:
+  BHROT27 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -47,7 +47,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  CRBH14:
+  CRBH14 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -55,7 +55,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  DBH22:
+  DBH22 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -63,7 +63,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  INV23:
+  INV23 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -71,7 +71,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  ORBH35:
+  ORBH35 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -79,7 +79,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  PX9:
+  PX9 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -87,7 +87,7 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
 
-  WCPT26:
+  WCPT26 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
