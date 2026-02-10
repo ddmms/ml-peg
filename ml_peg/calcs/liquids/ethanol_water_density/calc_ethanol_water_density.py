@@ -15,6 +15,7 @@ from ml_peg.calcs.liquids.ethanol_water_density.fake_data import (
     make_fake_curve,
     make_fake_density_timeseries,
 )
+from ml_peg.calcs.liquids.ethanol_water_density.io_tools import write_density_timeseries_checkpointed
 from ml_peg.calcs.liquids.ethanol_water_density.md_code import run_one_case
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -61,11 +62,7 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     rho_series = run_one_case(struct_path, calc, workdir=case_dir)
 
     ts_path = case_dir / "density_timeseries.csv"
-    with ts_path.open("w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["step", "rho_g_cm3"])
-        for i, rho in enumerate(rho_series):
-            w.writerow([i, f"{rho:.8f}"])
+    write_density_timeseries_checkpointed(ts_path, rho_series)
 
 
 def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> None:
@@ -91,16 +88,12 @@ def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> No
     )
 
     ts_path = case_dir / "density_timeseries.csv"
-    with ts_path.open("w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["step", "rho_g_cm3"])
-        for i, rho in enumerate(rho_series):
-            w.writerow([i, f"{rho:.8f}"])
+    write_density_timeseries_checkpointed(ts_path, rho_series)
 
 
 if __name__ == "__main__":  # TODO: delete this
     # run a very small simulation to see if it does something reasonable
     from mace.calculators import mace_mp
     calc = mace_mp("data_old/mace-omat-0-small.model")
-    rho = run_one_case("data/mix_xe_0.00.extxyz", calc, nvt_stabilise_steps=3000, npt_settle_steps=1000, nvt_thermalise_steps=250, npt_equil_steps=1000, npt_prod_steps=1000, log_every=50, workdir=Path("debug"))
+    rho = run_one_case("data/mix_xe_0.00.extxyz", calc, nvt_stabilise_steps=200, npt_settle_steps=1000, nvt_thermalise_steps=250, npt_equil_steps=1000, npt_prod_steps=1000, log_every=50, workdir=Path("debug"))
     print(rho)
