@@ -1,4 +1,4 @@
-"""Analyse the non covalent interaction benchmarks within the GSCDB138 collection."""
+"""Analyse the non covalent interactions benchmarks within the GSCDB138 collection."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ DATASETS = [
 
 
 def test_gscdb138() -> None:
-    """Run isomer GSCDB138 test."""
+    """Run non covalent interactions GSCDB138 test."""
     get_gscdb138_metrics(
         datasets=DATASETS,
         calc_path=CALC_PATH,
