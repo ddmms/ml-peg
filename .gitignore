@@ -41,3 +41,4 @@ __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 certs/
+ml_peg/calcs/surfaces/copper_water_interface/data/
