@@ -1,4 +1,4 @@
-"""i/o tools for analysis of ethanol-water densities."""
+"""I/O tools for analysis of ethanol-water densities."""
 
 from __future__ import annotations
 
@@ -23,11 +23,29 @@ DATA_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "data"
 
 
 def _debug_plot_enabled() -> bool:
+    """
+    Return whether debug plots are enabled via environment variable.
+
+    Returns
+    -------
+    bool
+        ``True`` when ``DEBUG_PLOTS`` is set to a truthy value.
+    """
     # Turn on plots by: DEBUG_PLOTS=1 pytest ...
     return os.environ.get("DEBUG_PLOTS", "0") not in ("0", "", "false", "False")
 
 
 def _savefig(fig, outpath: Path) -> None:
+    """
+    Save and close a Matplotlib figure.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure object to save.
+    outpath : pathlib.Path
+        Output path.
+    """
     outpath.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(outpath, dpi=200)
@@ -36,11 +54,17 @@ def _savefig(fig, outpath: Path) -> None:
 
 def _read_model_curve(model_name: str) -> tuple[list[float], list[float]]:
     """
-    Read model density curve by computing averages from raw time series.
+    Read a model density curve by averaging per-case time series.
 
-    Expects per-composition files:
-      x_ethanol_XX/density_timeseries.csv
-    with columns: step, rho_g_cm3
+    Parameters
+    ----------
+    model_name : str
+        Name of model output directory under calculation outputs.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Mole-fraction values and corresponding mean densities.
     """
     model_dir = CALC_PATH / model_name
     xs: list[float] = []
@@ -86,17 +110,12 @@ def _read_model_curve(model_name: str) -> tuple[list[float], list[float]]:
 
 def read_ref_curve() -> tuple[list[float], list[float]]:
     """
-    Load densities given on a uniform weight-fraction grid.
+    Load the reference density curve and convert to mole fraction.
 
-    And convert to mole fraction.
-    Densities from:
-    M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook,
-    9th Edition. McGraw-Hill Education, 2018.
-
-    Assumes:
-      - 101 evenly spaced points
-      - first line = 0 wt% ethanol
-      - last line  = 100 wt%
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Mole-fraction x-values and reference densities in g/cm^3.
     """
     ref_file = DATA_PATH / "densities_293.15.txt"
     rho_ref = np.loadtxt(ref_file)

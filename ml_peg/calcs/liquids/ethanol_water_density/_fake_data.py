@@ -1,4 +1,4 @@
-"""for debugging, to verify that metrics actually do something reasonable."""
+"""Generate fake data for debugging density-curve metrics."""
 
 from __future__ import annotations
 
@@ -11,7 +11,32 @@ from ml_peg.analysis.liquids.ethanol_water_density.io_tools import read_ref_curv
 
 @dataclass(frozen=True)
 class FakeCurveParams:
-    """Class for fake curve parameters."""
+    """
+    Parameters controlling synthetic curve perturbations.
+
+    Attributes
+    ----------
+    severity : float
+        Global scaling of all enabled perturbation components.
+    bias : float
+        Additive offset magnitude.
+    scale : float
+        Multiplicative distortion magnitude.
+    tilt : float
+        Linear-in-composition additive distortion magnitude.
+    warp : float
+        Smooth nonlinear distortion magnitude.
+    noise_sigma : float
+        Standard deviation for additive white noise.
+    corr_len : float
+        Correlation length for correlated noise component.
+    bump_amp : float
+        Localized bump amplitude.
+    bump_center : float
+        Composition location for localized bump.
+    bump_width : float
+        Width of localized bump in composition units.
+    """
 
     # Master knob: 0 -> perfect match, 1 -> very poor
     severity: float = 0.0
@@ -33,7 +58,23 @@ class FakeCurveParams:
 def _smooth_random_field(
     xs: np.ndarray, corr_len: float, rng: np.random.Generator
 ) -> np.ndarray:
-    """Create a zero-mean, ~unit-std smooth random field along xs."""
+    """
+    Create a smooth random field along the composition grid.
+
+    Parameters
+    ----------
+    xs : numpy.ndarray
+        Composition grid.
+    corr_len : float
+        Correlation length in composition units.
+    rng : numpy.random.Generator
+        Random number generator.
+
+    Returns
+    -------
+    numpy.ndarray
+        Approximately zero-mean, unit-variance correlated field.
+    """
     if corr_len <= 0:
         return np.zeros_like(xs)
 
@@ -55,10 +96,25 @@ def make_fake_curve_from_ref(
     clip: tuple[float | None, float | None] = (None, None),
 ) -> tuple[list[float], list[float]]:
     """
-    Return (xs, ys_fake) using the same xs as the reference.
+    Build a synthetic curve from reference data and perturbation settings.
 
-    `severity` scales *all* enabled components. For example, if bias=10 and
-    severity=0.2, you get ~2 units of bias (with a tiny randomization).
+    Parameters
+    ----------
+    xs_ref : list[float]
+        Reference x-grid.
+    ys_ref : list[float]
+        Reference y-values.
+    params : FakeCurveParams
+        Perturbation parameters controlling distortion type and magnitude.
+    seed : int | None, optional
+        Seed for deterministic random perturbations.
+    clip : tuple[float | None, float | None], optional
+        Optional ``(min, max)`` clipping bounds for generated y values.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Synthetic x and y arrays.
     """
     sev = float(np.clip(params.severity, 0.0, 1.0))
     rng = np.random.default_rng(seed)
@@ -73,6 +129,14 @@ def make_fake_curve_from_ref(
     # Small randomization so multiple models with same severity aren’t identical
     # (but still deterministic for a given seed).
     def jitter():
+        """
+        Return a small random multiplier around unity.
+
+        Returns
+        -------
+        float
+            Random scale factor in a narrow range near 1.
+        """
         return 0.85 + 0.30 * rng.random()
 
     # 1) multiplicative scale error
@@ -124,7 +188,21 @@ def make_fake_curve(
     kind: str | int,
     seed: int | None = 0,
 ) -> tuple[list[float], list[float]]:
-    """Make a fake density curve based on a reference."""
+    """
+    Generate a synthetic density curve with predefined quality level.
+
+    Parameters
+    ----------
+    kind : str | int
+        Quality label or index (perfect/good/medium/bad or 0-3).
+    seed : int | None, optional
+        Seed for deterministic randomness.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Synthetic x and y arrays.
+    """
     xs_ref, ys_ref = read_ref_curve()
 
     kind = kind.lower().strip() if isinstance(kind, str) else kind
@@ -182,7 +260,29 @@ def make_fake_density_timeseries(
     tau: float = 0.15,  # relaxation rate (bigger -> faster)
     noise_sigma: float = 0.001,  # per-step noise
 ) -> list[float]:
-    """Make a time series of fake density values."""
+    """
+    Generate a fake density time series with relaxation dynamics.
+
+    Parameters
+    ----------
+    rho_eq : float
+        Equilibrium density target.
+    n_steps : int
+        Number of time steps to generate.
+    seed : int
+        Seed for deterministic random noise.
+    start_offset : float, optional
+        Magnitude of initial offset from equilibrium.
+    tau : float, optional
+        Relaxation factor per step.
+    noise_sigma : float, optional
+        Standard deviation of additive Gaussian noise per step.
+
+    Returns
+    -------
+    list[float]
+        Generated density values.
+    """
     rng = np.random.default_rng(seed)
     rho0 = rho_eq + start_offset * (2 * rng.random() - 1)
 
