@@ -1,4 +1,7 @@
-import csv
+"""calculate ethanol-water density curves."""
+
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Any
@@ -15,7 +18,9 @@ from ml_peg.calcs.liquids.ethanol_water_density.fake_data import (
     make_fake_curve,
     make_fake_density_timeseries,
 )
-from ml_peg.calcs.liquids.ethanol_water_density.io_tools import write_density_timeseries_checkpointed
+from ml_peg.calcs.liquids.ethanol_water_density.io_tools import (
+    write_density_timeseries_checkpointed,
+)
 from ml_peg.calcs.liquids.ethanol_water_density.md_code import run_one_case
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -35,9 +40,12 @@ def _case_id(composition) -> str:
     return f"x={composition.x_ethanol:.2f}"
 
 
-@pytest.mark.parametrize("mlip", MODELS.items(), ids=[n for n in MODELS.keys()])
-@pytest.mark.parametrize("composition", COMPOSITIONS, ids=[_case_id(c) for c in COMPOSITIONS])
+@pytest.mark.parametrize("mlip", MODELS.items(), ids=list(MODELS.keys()))
+@pytest.mark.parametrize(
+    "composition", COMPOSITIONS, ids=[_case_id(c) for c in COMPOSITIONS]
+)
 def test_water_ethanol_density_curve(mlip: tuple[str, Any], composition) -> None:
+    """Either run the md simulation or fake the data."""
     if not FAKE_DATA:
         water_ethanol_density_curve_one_case(mlip, composition)
     else:
@@ -45,6 +53,7 @@ def test_water_ethanol_density_curve(mlip: tuple[str, Any], composition) -> None
 
 
 def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
+    """Run an md simulation."""
     model_name, model = mlip  # TODO: dispersion ???
 
     model_out = OUT_PATH / model_name
@@ -54,7 +63,9 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
 
     struct_path = DATA_PATH / case.filename
     if not struct_path.exists():
-        raise FileNotFoundError(f"Missing structure for x={case.x_ethanol}: {struct_path}")
+        raise FileNotFoundError(
+            f"Missing structure for x={case.x_ethanol}: {struct_path}"
+        )
 
     case_dir = model_out / f"x_ethanol_{case.x_ethanol:.2f}"
     case_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +77,7 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
 
 
 def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> None:
+    """Generate fake data for debugging instead of running the test."""
     model_name, model = mlip
 
     model_out = OUT_PATH / model_name
@@ -94,6 +106,17 @@ def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> No
 if __name__ == "__main__":  # TODO: delete this
     # run a very small simulation to see if it does something reasonable
     from mace.calculators import mace_mp
+
     calc = mace_mp("data_old/mace-omat-0-small.model")
-    rho = run_one_case("data/mix_xe_0.00.extxyz", calc, nvt_stabilise_steps=200, npt_settle_steps=1000, nvt_thermalise_steps=250, npt_equil_steps=1000, npt_prod_steps=1000, log_every=50, workdir=Path("debug"))
+    rho = run_one_case(
+        "data/mix_xe_0.00.extxyz",
+        calc,
+        nvt_stabilise_steps=200,
+        npt_settle_steps=1000,
+        nvt_thermalise_steps=250,
+        npt_equil_steps=1000,
+        npt_prod_steps=1000,
+        log_every=50,
+        workdir=Path("debug"),
+    )
     print(rho)

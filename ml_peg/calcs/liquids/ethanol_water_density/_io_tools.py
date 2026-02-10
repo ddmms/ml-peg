@@ -1,6 +1,10 @@
+"""i/o tools for calculations."""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
 import csv
 from pathlib import Path
-from typing import Iterable
 
 
 def write_density_timeseries_checkpointed(
@@ -46,10 +50,7 @@ def write_density_timeseries_checkpointed(
         if old_vals:
             n = min(len(old_vals), len(rho_series))
 
-            matches = sum(
-                abs(old_vals[i] - rho_series[i]) < 1e-6
-                for i in range(n)
-            )
+            matches = sum(abs(old_vals[i] - rho_series[i]) < 1e-6 for i in range(n))
 
             frac = matches / n if n else 0.0
 
@@ -68,9 +69,6 @@ def write_density_timeseries_checkpointed(
         w.writerow(["step", "rho_g_cm3"])
         for i, rho in enumerate(rho_series):
             w.writerow([i, f"{rho:.8f}"])
-
-
-
 
 
 class DensityTimeseriesLogger:
@@ -95,6 +93,7 @@ class DensityTimeseriesLogger:
     # context manager API
     # ---------------------
     def __enter__(self):
+        """Open the file."""
         if self.overwrite and self.path.exists():
             self.path.unlink()
 
@@ -107,6 +106,7 @@ class DensityTimeseriesLogger:
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        """Close the file."""
         if self._f:
             self._f.close()
 

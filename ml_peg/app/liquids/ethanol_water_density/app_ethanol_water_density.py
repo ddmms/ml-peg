@@ -1,6 +1,9 @@
-#TODO: This does not work. Fix this
+# TODO: This does not work. Fix this
 
 """Run ethanol–water density (decomposition curves) app."""
+
+from __future__ import annotations
+
 from dash import Dash
 from dash.html import Div
 
@@ -16,9 +19,7 @@ from ml_peg.app.utils.load import read_plot
 CATEGORY = "liquids"
 BENCHMARK_NAME = "ethanol_water_density"
 
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"  # TODO: update to the right anchor
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
 
 DATA_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK_NAME
 
@@ -28,11 +29,11 @@ class EthanolWaterDecompositionCurvesApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        parity = read_plot(DATA_PATH / "density_parity.json", id=f"{BENCHMARK_NAME}-figure")
+        parity = read_plot(
+            DATA_PATH / "density_parity.json", id=f"{BENCHMARK_NAME}-figure"
+        )
 
         # When the user clicks a metric column in the table, show the parity plot.
-        # (This mirrors the GMTKN55 pattern: different columns can map to different plots;
-        # here they all map to the same parity plot artifact.)
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",

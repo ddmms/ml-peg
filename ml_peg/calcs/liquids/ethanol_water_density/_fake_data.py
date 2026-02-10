@@ -1,46 +1,49 @@
-# for debugging, to verify that metrics actually do something reasonable
+"""for debugging, to verify that metrics actually do something reasonable."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
+
 import numpy as np
 
 from ml_peg.analysis.liquids.ethanol_water_density.io_tools import read_ref_curve
 
+
 @dataclass(frozen=True)
 class FakeCurveParams:
+    """Class for fake curve parameters."""
+
     # Master knob: 0 -> perfect match, 1 -> very poor
     severity: float = 0.0
 
     # Individual error components (interpreted as "max at severity=1")
-    bias: float = 0.0              # additive offset in y-units
-    scale: float = 0.0             # multiplicative: y *= (1 + scale*...)
-    tilt: float = 0.0              # linear-in-x additive distortion
-    warp: float = 0.0              # smooth nonlinear additive distortion
+    bias: float = 0.0  # additive offset in y-units
+    scale: float = 0.0  # multiplicative: y *= (1 + scale*...)
+    tilt: float = 0.0  # linear-in-x additive distortion
+    warp: float = 0.0  # smooth nonlinear additive distortion
 
-    noise_sigma: float = 0.0       # iid gaussian noise in y-units
-    corr_len: float = 0.0          # if >0, adds correlated noise along x
+    noise_sigma: float = 0.0  # iid gaussian noise in y-units
+    corr_len: float = 0.0  # if >0, adds correlated noise along x
 
-    bump_amp: float = 0.0          # amplitude of local bump(s)
-    bump_center: float = 0.5       # x location of bump
-    bump_width: float = 0.08       # bump width (in x units)
+    bump_amp: float = 0.0  # amplitude of local bump(s)
+    bump_center: float = 0.5  # x location of bump
+    bump_width: float = 0.08  # bump width (in x units)
 
 
-def _smooth_random_field(xs: np.ndarray, corr_len: float, rng: np.random.Generator) -> np.ndarray:
-    """
-    Create a zero-mean, ~unit-std smooth random field along xs using
-    a Gaussian kernel in x-distance. O(N^2) but tiny N here (6 points).
-    """
+def _smooth_random_field(
+    xs: np.ndarray, corr_len: float, rng: np.random.Generator
+) -> np.ndarray:
+    """Create a zero-mean, ~unit-std smooth random field along xs."""
     if corr_len <= 0:
         return np.zeros_like(xs)
 
     dx = xs[:, None] - xs[None, :]
-    K = np.exp(-0.5 * (dx / corr_len) ** 2)
+    k = np.exp(-0.5 * (dx / corr_len) ** 2)
     # sample correlated normal: K^(1/2) z via cholesky (add jitter for stability)
-    L = np.linalg.cholesky(K + 1e-12 * np.eye(len(xs)))
     z = rng.standard_normal(len(xs))
-    field = L @ z
+    field = np.linalg.cholesky(k + 1e-12 * np.eye(len(xs))) @ z
     field = field - field.mean()
-    field = field / (field.std() + 1e-12)
-    return field
+    return field / (field.std() + 1e-12)
 
 
 def make_fake_curve_from_ref(
@@ -53,7 +56,6 @@ def make_fake_curve_from_ref(
 ) -> tuple[list[float], list[float]]:
     """
     Return (xs, ys_fake) using the same xs as the reference.
-    Designed for density-like curves but works generically.
 
     `severity` scales *all* enabled components. For example, if bias=10 and
     severity=0.2, you get ~2 units of bias (with a tiny randomization).
@@ -70,15 +72,16 @@ def make_fake_curve_from_ref(
 
     # Small randomization so multiple models with same severity aren’t identical
     # (but still deterministic for a given seed).
-    jitter = lambda: (0.85 + 0.30 * rng.random())
+    def jitter():
+        return 0.85 + 0.30 * rng.random()
 
     # 1) multiplicative scale error
     if params.scale != 0.0 and sev > 0:
-        y *= (1.0 + (params.scale * sev * jitter()))
+        y *= 1.0 + (params.scale * sev * jitter())
 
     # 2) additive bias
     if params.bias != 0.0 and sev > 0:
-        y += (params.bias * sev * jitter())
+        y += params.bias * sev * jitter()
 
     # 3) linear tilt (additive)
     if params.tilt != 0.0 and sev > 0:
@@ -87,14 +90,16 @@ def make_fake_curve_from_ref(
     # 4) smooth nonlinear warp (additive): use a low-order smooth basis
     if params.warp != 0.0 and sev > 0:
         # cubic-ish shape distortion with zero mean
-        w = (xpm**3 - xpm * np.mean(xpm**2))
+        w = xpm**3 - xpm * np.mean(xpm**2)
         w = w - w.mean()
         w = w / (np.std(w) + 1e-12)
         y += (params.warp * sev * jitter()) * w
 
     # 5) local bump to simulate specific composition failure
     if params.bump_amp != 0.0 and sev > 0:
-        bump = np.exp(-0.5 * ((xs - params.bump_center) / (params.bump_width + 1e-12)) ** 2)
+        bump = np.exp(
+            -0.5 * ((xs - params.bump_center) / (params.bump_width + 1e-12)) ** 2
+        )
         bump = bump / (bump.max() + 1e-12)
         y += (params.bump_amp * sev * jitter()) * bump
 
@@ -115,11 +120,11 @@ def make_fake_curve_from_ref(
     return xs, y
 
 
-# Convenience presets: "good", "medium", "bad"
 def make_fake_curve(
-    kind: str|int,
+    kind: str | int,
     seed: int | None = 0,
 ) -> tuple[list[float], list[float]]:
+    """Make a fake density curve based on a reference."""
     xs_ref, ys_ref = read_ref_curve()
 
     kind = kind.lower().strip() if isinstance(kind, str) else kind
@@ -174,15 +179,16 @@ def make_fake_density_timeseries(
     *,
     seed: int,
     start_offset: float = 0.02,  # initial deviation from eq
-    tau: float = 0.15,           # relaxation rate (bigger -> faster)
+    tau: float = 0.15,  # relaxation rate (bigger -> faster)
     noise_sigma: float = 0.001,  # per-step noise
 ) -> list[float]:
+    """Make a time series of fake density values."""
     rng = np.random.default_rng(seed)
     rho0 = rho_eq + start_offset * (2 * rng.random() - 1)
 
     series = []
     rho = rho0
-    for t in range(n_steps):
+    for _ in range(n_steps):
         # exponential-ish relaxation to rho_eq
         rho += tau * (rho_eq - rho)
         # add noise

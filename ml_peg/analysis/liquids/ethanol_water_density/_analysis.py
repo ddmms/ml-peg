@@ -1,30 +1,38 @@
+"""analyse ethanol-water density curves."""
+
+from __future__ import annotations
+
 import numpy as np
 
-M_WATER = 18.01528   # g/mol
-M_ETOH  = 46.06844   # g/mol
+M_WATER = 18.01528  # g/mol
+M_ETOH = 46.06844  # g/mol
 
 # Pick densities consistent with your reference conditions (T,P!)
 # If your ref curve is at ~20°C, these are around:
-RHO_WATER_PURE = 0.9982   # g/cm^3
-RHO_ETH_PURE   = 0.7893   # g/cm^3
+RHO_WATER_PURE = 0.9982  # g/cm^3
+RHO_ETH_PURE = 0.7893  # g/cm^3
 
-def x_to_phi_ethanol(x, rho_mix,
-                     *, M_eth=M_ETOH, M_water=M_WATER,
-                     rho_eth=RHO_ETH_PURE, rho_water=RHO_WATER_PURE):
-    """
-    Convert ethanol mole fraction x to ethanol volume fraction phi using
-    mixture density rho_mix and pure-component densities as volume proxies.
-    """
+
+def x_to_phi_ethanol(
+    x,
+    rho_mix,
+    *,
+    m_eth=M_ETOH,
+    m_water=M_WATER,
+    rho_eth=RHO_ETH_PURE,
+    rho_water=RHO_WATER_PURE,
+):  # TODO: double check formula
+    """Convert ethanol mole fraction x to ethanol volume fraction phi."""
     x = np.asarray(x, dtype=float)
     rho_mix = np.asarray(rho_mix, dtype=float)
 
-    m_eth = x * M_eth
-    m_wat = (1.0 - x) * M_water
+    m_eth = x * m_eth
+    m_wat = (1.0 - x) * m_water
 
-    V_mix = (m_eth + m_wat) / rho_mix         # cm^3 per "1 mol mixture basis"
-    V_eth = m_eth / rho_eth                   # cm^3 (proxy)
-    phi = V_eth / V_mix
-    return phi
+    v_mix = (m_eth + m_wat) / rho_mix  # cm^3 per "1 mol mixture basis"
+    v_eth = m_eth / rho_eth  # cm^3 (proxy)
+    return v_eth / v_mix
+
 
 def weight_to_mole_fraction(w):
     """
@@ -44,17 +52,19 @@ def _rmse(a: np.ndarray, b: np.ndarray) -> float:
 
 def _interp_1d(x_src: np.ndarray, y_src: np.ndarray, x_tgt: np.ndarray) -> np.ndarray:
     """
-    Linear interpolation. Requires x_tgt within [min(x_src), max(x_src)].
+    Linear interpolation.
+
+    Requires x_tgt within [min(x_src), max(x_src)].
     """
     if np.any(x_tgt < x_src.min() - 1e-12) or np.any(x_tgt > x_src.max() + 1e-12):
         raise ValueError("Target x values fall outside reference interpolation range.")
     return np.interp(x_tgt, x_src, y_src)
 
 
-def _endpoints_at_0_1(x: np.ndarray, y: np.ndarray, tol: float = 1e-8) -> tuple[float, float]:
-    """
-    Return y(x=0) and y(x=1). Requires that x includes (approximately) 0 and 1.
-    """
+def _endpoints_at_0_1(
+    x: np.ndarray, y: np.ndarray, tol: float = 1e-8
+) -> tuple[float, float]:
+    """Return y(x=0) and y(x=1). Requires that x includes (approximately) 0 and 1."""
     i0 = np.where(np.isclose(x, 0.0, atol=tol))[0]
     i1 = np.where(np.isclose(x, 1.0, atol=tol))[0]
     if len(i0) != 1 or len(i1) != 1:
@@ -67,9 +77,7 @@ def _linear_baseline(x: np.ndarray, y0: float, y1: float) -> np.ndarray:
 
 
 def _excess_curve(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    """
-    Excess relative to the dataset's own pure endpoints (x=0 and x=1).
-    """
+    """Excess relative to the dataset's own pure endpoints (x=0 and x=1)."""
     y0, y1 = _endpoints_at_0_1(x, y)
     return y - _linear_baseline(x, y0, y1)
 
@@ -77,6 +85,7 @@ def _excess_curve(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 def _peak_x_quadratic(x: np.ndarray, y: np.ndarray) -> float:
     """
     Estimate x position of minimum y.
+
     - If min is interior and we have neighbors, fit quadratic through 3 points.
     - Otherwise fall back to argmin x.
     """
@@ -99,5 +108,4 @@ def _peak_x_quadratic(x: np.ndarray, y: np.ndarray) -> float:
     xv = -b / (2.0 * a)
 
     # Clamp to local bracket so we don't get silly extrapolation
-    xv = float(np.clip(xv, xs.min(), xs.max()))
-    return xv
+    return float(np.clip(xv, xs.min(), xs.max()))

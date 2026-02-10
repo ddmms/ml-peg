@@ -1,11 +1,17 @@
+"""i/o tools for analysis of ethanol-water densities."""
+
+from __future__ import annotations
+
 import csv
 import os
 from pathlib import Path
 
-import numpy as np
 from matplotlib import pyplot as plt
+import numpy as np
 
-from ml_peg.analysis.liquids.ethanol_water_density.analysis import weight_to_mole_fraction
+from ml_peg.analysis.liquids.ethanol_water_density.analysis import (
+    weight_to_mole_fraction,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
@@ -13,7 +19,7 @@ CATEGORY = "liquids"
 BENCHMARK = "ethanol_water_density"
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "outputs"
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK
-DATA_PATH =  CALCS_ROOT / CATEGORY / BENCHMARK / "data"
+DATA_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "data"
 
 
 def _debug_plot_enabled() -> bool:
@@ -70,17 +76,22 @@ def _read_model_curve(model_name: str) -> tuple[list[float], list[float]]:
             ax.set_xlabel("step")
             ax.set_ylabel("rho / g cm$^{-3}$")
 
-            _savefig(fig, OUT_PATH / "debug" / model_name / f"x_{x_ethanol:.2f}_timeseries.svg")
+            _savefig(
+                fig,
+                OUT_PATH / "debug" / model_name / f"x_{x_ethanol:.2f}_timeseries.svg",
+            )
 
     return xs, rhos
 
 
 def read_ref_curve() -> tuple[list[float], list[float]]:
     """
-    Load densities given on a uniform weight-fraction grid
-    and convert to mole fraction.
+    Load densities given on a uniform weight-fraction grid.
+
+    And convert to mole fraction.
     Densities from:
-    M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook, 9th Edition. McGraw-Hill Education, 2018.
+    M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook,
+    9th Edition. McGraw-Hill Education, 2018.
 
     Assumes:
       - 101 evenly spaced points

@@ -1,3 +1,7 @@
+"""Load composition data."""
+
+from __future__ import annotations
+
 import csv
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,6 +12,8 @@ DATA_PATH = BENCH_ROOT / "data"
 
 @dataclass(frozen=True)
 class CompositionCase:
+    """Map composition to file."""
+
     x_ethanol: float
     filename: str
 

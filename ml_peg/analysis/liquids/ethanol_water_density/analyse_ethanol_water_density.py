@@ -1,19 +1,32 @@
+"""analyse ethanol-water density curves."""
+
 # TODO: remove hardcoded things?
+from __future__ import annotations
+
 from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 
-from ml_peg.analysis.liquids.ethanol_water_density.analysis import _rmse, _interp_1d, \
-    _excess_curve, _peak_x_quadratic, x_to_phi_ethanol
-from ml_peg.analysis.liquids.ethanol_water_density.io_tools import OUT_PATH, _debug_plot_enabled, _savefig, \
-    _read_model_curve, read_ref_curve
+from ml_peg.analysis.liquids.ethanol_water_density.analysis import (
+    _excess_curve,
+    _interp_1d,
+    _peak_x_quadratic,
+    _rmse,
+    x_to_phi_ethanol,
+)
+from ml_peg.analysis.liquids.ethanol_water_density.io_tools import (
+    OUT_PATH,
+    _debug_plot_enabled,
+    _read_model_curve,
+    _savefig,
+    read_ref_curve,
+)
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
-
 
 MODELS = get_model_names(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}  # duplicate in calc
@@ -29,6 +42,7 @@ OUT_PATH.mkdir(parents=True, exist_ok=True)
 
 @pytest.fixture(scope="session")
 def ref_curve() -> tuple[np.ndarray, np.ndarray]:
+    """Return reference density curve."""
     x_ref, rho_ref = read_ref_curve()
     x = np.asarray(x_ref, dtype=float)
     rho = np.asarray(rho_ref, dtype=float)
@@ -40,6 +54,7 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
 
 @pytest.fixture
 def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """Return simulated density curves."""
     curves: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for model_name in MODELS:
         xs, rhos = _read_model_curve(model_name)
@@ -57,11 +72,12 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     title="Ethanol–water density (293.15 K)",
     x_label="Reference density / g cm⁻³",
     y_label="Predicted density / g cm⁻³",
-    #hoverdata={
+    # hoverdata={
     #    "x_ethanol": [],  # filled in fixture
-    #},
+    # },
 )  # TODO: read docs!!! doesn't seem to work yet.
 def densities_parity(ref_curve, model_curves) -> dict[str, list]:
+    """Parity plot of simulated and reference density."""
     x_ref, rho_ref = ref_curve
 
     # Use the first model's x grid for hover labels (parity requires same-length lists)
@@ -84,15 +100,14 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
             rho_m_on_grid = rho_m
         results[m] = list(rho_m_on_grid)
 
-    ## Patch hoverdata list in-place (decorator reads the dict)
-    ## NOTE: if your decorator captures hoverdata at decoration time,
-    ## switch to hoverdata={"x_ethanol": x_labels()} fixture pattern like the docs.
-    #densities_parity.__wrapped__.__dict__.setdefault("hoverdata", {})["x_ethanol"] = list(x_grid)
-
     return results
 
+
 @pytest.fixture
-def debug_curve_plots(ref_curve, model_curves) -> None:  # TODO should I remove or use a different format?
+def debug_curve_plots(
+    ref_curve, model_curves
+) -> None:  # TODO should I remove or use a different format?
+    """Plot density curves."""
     if not _debug_plot_enabled():
         return
     print("plotting curves")
@@ -120,7 +135,9 @@ def debug_curve_plots(ref_curve, model_curves) -> None:  # TODO should I remove 
         fig, ax = plt.subplots()
         ax.plot(x_ref, _excess_curve(x_ref, rho_ref), label="ref (dense)")
         ax.plot(x_m, _excess_curve(x_m, rho_m), marker="o", label=f"{m} (model)")
-        ax.plot(x_m, _excess_curve(x_m, rho_ref_m), marker="x", label="ref on model grid")
+        ax.plot(
+            x_m, _excess_curve(x_m, rho_ref_m), marker="x", label="ref on model grid"
+        )
         ax.set_title(f"Density curve: {m}")
         ax.set_xlabel("x_ethanol")
         ax.set_ylabel("rho / g cm$^{-3}$")
@@ -131,7 +148,7 @@ def debug_curve_plots(ref_curve, model_curves) -> None:  # TODO should I remove 
 
         # volume fraction plot
         phi_ref = x_to_phi_ethanol(x_ref, rho_ref)
-        phi_m   = x_to_phi_ethanol(x_m, rho_m)
+        phi_m = x_to_phi_ethanol(x_m, rho_m)
 
         fig, ax = plt.subplots()
         ax.plot(phi_ref, rho_ref, label="ref (dense)")
@@ -150,6 +167,7 @@ def debug_curve_plots(ref_curve, model_curves) -> None:  # TODO should I remove 
 
 @pytest.fixture
 def rmse_density(ref_curve, model_curves) -> dict[str, float]:
+    """RMSE of the density vs reference density."""
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
     for m, (x_m, rho_m) in model_curves.items():
@@ -160,9 +178,7 @@ def rmse_density(ref_curve, model_curves) -> dict[str, float]:
 
 @pytest.fixture
 def rmse_excess_density(ref_curve, model_curves) -> dict[str, float]:
-    """
-    RMSE of excess density (detrended by each dataset's own pure endpoints).
-    """
+    """RMSE of excess density (detrended by each dataset's own pure endpoints)."""
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
 
@@ -198,9 +214,11 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
 
     return out
 
+
 # -----------------------------------------------------------------------------
 # Table
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 @build_table(
@@ -208,9 +226,11 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
     filename=OUT_PATH / "density_metrics_table.json",
     metric_tooltips={
         "Model": "Name of the model",
-        "RMSE density": "RMSE between model and reference density at model compositions (g cm⁻³).",
+        "RMSE density": "RMSE between model and reference density"
+        "at model compositions (g cm⁻³).",
         "RMSE excess density": (
-            "RMSE after subtracting each curve’s linear baseline between pure endpoints (g cm⁻³)."
+            "RMSE after subtracting each curve’s linear baseline"
+            "between pure endpoints (g cm⁻³)."
         ),
         "Peak x error": (
             "Absolute difference in mole-fraction location of maximum excess density."
@@ -222,6 +242,7 @@ def metrics(
     rmse_excess_density: dict[str, float],
     peak_x_error: dict[str, float],
 ) -> dict[str, dict]:
+    """Return metric data."""
     return {
         "RMSE density": rmse_density,
         "RMSE excess density": rmse_excess_density,
@@ -229,10 +250,17 @@ def metrics(
     }
 
 
-def test_ethanol_water_density(metrics: dict[str, dict], densities_parity: dict[str, list], debug_curve_plots) -> None:
-    """
-    Launch analysis (decorators handle writing JSON artifacts for the app).
-    """
-    print(MODEL_INDEX)  # TODO: these print statements may be useful for debugging, but should I remove?
-    print({key0:{MODEL_INDEX[name]: value for name, value in value0.items()} for key0, value0 in metrics.items()})
+def test_ethanol_water_density(
+    metrics: dict[str, dict], densities_parity: dict[str, list], debug_curve_plots
+) -> None:
+    """Launch analysis."""
+    print(
+        MODEL_INDEX
+    )  # TODO: these print statements may be useful for debugging, but should I remove?
+    print(
+        {
+            key0: {MODEL_INDEX[name]: value for name, value in value0.items()}
+            for key0, value0 in metrics.items()
+        }
+    )
     return
