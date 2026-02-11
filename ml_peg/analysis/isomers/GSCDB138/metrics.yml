@@ -1,11 +1,4 @@
 metrics:
-  A19Rel6 MAE:
-    good: 0.5
-    bad: 20.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 1
   ACONF MAE:
     good: 0.5
     bad: 20.0
@@ -56,20 +49,6 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
   EIE22 MAE:
-    good: 0.5
-    bad: 20.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 1
-  H2O16Rel4 MAE:
-    good: 0.5
-    bad: 20.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 1
-  H2O20Rel9 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol
@@ -139,13 +118,6 @@ metrics:
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
     weight: 1
-  S66Rel7 MAE:
-    good: 0.5
-    bad: 20.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 1
   SCONF MAE:
     good: 0.5
     bad: 20.0
@@ -154,13 +126,6 @@ metrics:
     level_of_theory: CCSD(T)
     weight: 1
   Styrene42 MAE:
-    good: 0.5
-    bad: 20.0
-    unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
-    level_of_theory: CCSD(T)
-    weight: 1
-  SW49Rel28 MAE:
     good: 0.5
     bad: 20.0
     unit: kcal/mol

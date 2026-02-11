@@ -18,7 +18,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 DATASETS = [
-    "A19Rel6",
     "ACONF",
     "AlkIsomer11",
     "Amino20x4",
@@ -27,8 +26,6 @@ DATASETS = [
     "C60ISO7",
     "DIE60",
     "EIE22",
-    "H2O16Rel4",
-    "H2O20Rel9",
     "ICONF",
     "IDISP",
     "ISO34",
@@ -38,10 +35,8 @@ DATASETS = [
     "PArel",
     "PCONF21",
     "Pentane13",
-    "S66Rel7",
     "SCONF",
     "Styrene42",
-    "SW49Rel28",
     "TAUT15",
     "UPU23",
 ]
