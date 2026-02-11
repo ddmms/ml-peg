@@ -13,7 +13,7 @@ DESCRIPTION = (
     "Performance in predicting relative energies for the 26 isomer and conformer "
     "datasets in the GSCDB138 collection, benchmarked against CCSD(T) references."
 )
-DATA_PATH = APP_ROOT / "data" / "isomers" / "GSCDB138"
+DATA_PATH = APP_ROOT / "data" / "isomers" / "GSCDB138_isomers"
 
 DATASETS = [
     "ACONF",

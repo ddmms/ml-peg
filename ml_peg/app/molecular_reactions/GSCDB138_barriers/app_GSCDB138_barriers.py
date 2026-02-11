@@ -13,7 +13,7 @@ DESCRIPTION = (
     "Performance in predicting barrier heights for the 12 datasets in the GSCDB138"
     "collection, benchmarked against CCSD(T) references."
 )
-DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "GSCDB138"
+DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "GSCDB138_barriers"
 
 DATASETS = [
     "BH28",

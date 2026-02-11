@@ -9,8 +9,8 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-CALC_PATH = CALCS_ROOT / "tm_complexes" / "GSCDB138" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "tm_complexes" / "GSCDB138"
+CALC_PATH = CALCS_ROOT / "tm_complexes" / "GSCDB138_tm_complexes" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "tm_complexes" / "GSCDB138_tm_complexes"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(

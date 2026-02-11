@@ -16,7 +16,7 @@ DESCRIPTION = (
     "Performance in predicting transition metal complex energy "
     "datasets in the GSCDB138 collection, benchmarked against CCSD(T) references."
 )
-DATA_PATH = APP_ROOT / "data" / "tm_complexes" / "GSCDB138"
+DATA_PATH = APP_ROOT / "data" / "tm_complexes" / "GSCDB138_tm_complexes"
 
 DATASETS = [
     "3d4dIPSS",

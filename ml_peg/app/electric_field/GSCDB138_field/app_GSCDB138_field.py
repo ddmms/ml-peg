@@ -16,7 +16,7 @@ DESCRIPTION = (
     "Performance in predicting electric field properties for the 6 electric field "
     "datasets in the GSCDB138 collection, benchmarked against CCSD(T) references."
 )
-DATA_PATH = APP_ROOT / "data" / "electric_field" / "GSCDB138"
+DATA_PATH = APP_ROOT / "data" / "electric_field" / "GSCDB138_field"
 
 DATASETS = ["Dip146", "HR46", "OEEF", "Pol130", "T144", "V30"]
 
