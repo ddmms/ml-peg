@@ -12,4 +12,6 @@ Benchmarks
     molecular_crystal
     molecular
     bulk_crystal
-    MOFs
+    mofs
+    lanthanides
+    non_covalent_interactions
