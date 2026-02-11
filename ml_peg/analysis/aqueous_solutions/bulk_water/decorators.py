@@ -1,4 +1,4 @@
-"""Fixtures for MLIP results analysis for copper_water_interface."""
+"""Fixtures for MLIP results analysis for bulk_water."""
 
 from __future__ import annotations
 

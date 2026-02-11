@@ -1,4 +1,4 @@
-"""Run calculations for copper water interface benchmark."""
+"""Run calculations for ice benchmark."""
 
 from __future__ import annotations
 
