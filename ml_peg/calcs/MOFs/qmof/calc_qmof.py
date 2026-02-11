@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 from typing import Any
-from copy import copy
 
 from ase.io import read, write
 from janus_core.calculations.single_point import SinglePoint
@@ -36,12 +36,12 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     model.default_dtype = "float64"
-    #model.kwargs['enable_cueq']=True
-    model.device = 'cuda'
+    # model.kwargs['enable_cueq']=True
+    model.device = "cuda"
     calc = model.get_calculator()
 
     # Add D3 calculator for this test (for models where applicable)
-    #calc = model.add_d3_calculator(calc)
+    calc = model.add_d3_calculator(calc)
 
     qmof_energy_dir = (
         download_s3_data(

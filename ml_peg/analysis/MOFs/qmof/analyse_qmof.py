@@ -24,6 +24,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+
 def get_system_names() -> list[str]:
     """
     Get list of qmof system names.
@@ -38,8 +39,8 @@ def get_system_names() -> list[str]:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             xyz_file = "qmof_valid_structures.xyz"
-            mofs = read(model_dir/xyz_file,index=":")
-            for mof in mofs:         
+            mofs = read(model_dir / xyz_file, index=":")
+            for mof in mofs:
                 system_names.append(mof.info["qmof_id"])
             break
     return system_names
@@ -74,17 +75,16 @@ def qmof_energies() -> dict[str, list]:
             continue
 
         xyz_file = "qmof_valid_structures.xyz"
-        mofs = read(model_dir/xyz_file, index=":")
+        mofs = read(model_dir / xyz_file, index=":")
         for mof in mofs:
             mof_energy = mof.get_potential_energy()
 
             results[model_name].append(mof_energy)
 
-
             # Store reference energies (only once)
             if not ref_stored:
                 results["ref"].append(mof.info["dft_energy"])
-            
+
         # Copy individual structure files to app data directory
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
@@ -93,6 +93,7 @@ def qmof_energies() -> dict[str, list]:
         ref_stored = True
 
     return results
+
 
 @pytest.fixture
 def qmof_errors(qmof_energies) -> dict[str, float]:
@@ -112,9 +113,7 @@ def qmof_errors(qmof_energies) -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         if qmof_energies[model_name]:
-            results[model_name] = mae(
-                qmof_energies["ref"], qmof_energies[model_name]
-            )
+            results[model_name] = mae(qmof_energies["ref"], qmof_energies[model_name])
         else:
             results[model_name] = None
     return results
@@ -127,7 +126,6 @@ def qmof_errors(qmof_energies) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-
 def metrics(qmof_errors: dict[str, float]) -> dict[str, dict]:
     """
     Get all qmof metrics.
@@ -145,6 +143,7 @@ def metrics(qmof_errors: dict[str, float]) -> dict[str, dict]:
     return {
         "MAE": qmof_errors,
     }
+
 
 def test_qmof(metrics: dict[str, dict]) -> None:
     """
