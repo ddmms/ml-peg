@@ -11,7 +11,6 @@ from typing import Any
 from ase.io import Trajectory, read, write
 from ase.md import Langevin, MDLogger
 from ase.md.langevinbaoab import LangevinBAOAB
-from ase.md.nptberendsen import NPTBerendsen
 from ase.md.velocitydistribution import (
     MaxwellBoltzmannDistribution,
     Stationary,
@@ -91,11 +90,8 @@ def run_one_case(
     temperature: float = 298.15,
     p_bar: float = 1.0,
     dt_fs: float = 0.5,
-    nvt_stabilise_steps: int = 4_000,
-    npt_settle_steps=7_500,
-    nvt_thermalise_steps: int = 1_000,
-    npt_equil_steps: int = 10_000,
-    npt_prod_steps: int = 25_000,
+    nvt_steps: int = 10_000,
+    npt_steps: int = 50_000,
     sample_every: int = 20,
     log_every: int = 200,
     log_trajectory_every: int = 400,
@@ -110,7 +106,7 @@ def run_one_case(
     ts_path = workdir / "density_timeseries.csv"
     if dummy_data:
         rho_series = np.random.normal(
-            loc=0.9, scale=0.05, size=npt_prod_steps // sample_every
+            loc=0.9, scale=0.05, size=npt_steps // sample_every
         )
         with DensityTimeseriesLogger(ts_path) as density_log:
             for rho in rho_series:
@@ -132,55 +128,29 @@ def run_one_case(
 
     dt = dt_fs * fs
     t0 = time.time()
-
-    # the used pre-relax is not good enough
-    # do some Langevin NVT steps before starting NPT
-    dyn = Langevin(atoms, timestep=dt, temperature_K=temperature, friction=0.02)
-    attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
-    with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        dyn.run(nvt_stabilise_steps)
-
-    # quick Berendsen settle close to target density
     ps = 1000 * fs
-    dyn = NPTBerendsen(
-        atoms,
-        timestep=dt,
-        temperature_K=temperature,
-        pressure_au=p_bar * bar,
-        taut=0.07 * ps,
-        taup=0.4 * ps,
-        compressibility=4.5e-5,
-    )
+    T_tau = 0.5 * ps
+
+    dyn = Langevin(atoms, timestep=dt, temperature_K=temperature, friction=1 / (T_tau))
     attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
     with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        dyn.run(npt_settle_steps)
-
-    # thermalise
-    MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
-    Stationary(atoms)
-    ZeroRotation(atoms)
-    dyn = Langevin(atoms, timestep=dt, temperature_K=temperature, friction=0.03)
-    attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
-    with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        dyn.run(nvt_thermalise_steps)
-
+        dyn.run(nvt_steps)
     # real NPT
-    dyn = LangevinBAOAB(  # MTK
+    dyn = LangevinBAOAB(  # use MTK?
         atoms,
         timestep=dt,
         temperature_K=temperature,
         externalstress=p_bar * bar,
-        T_tau=0.1 * ps,
-        P_tau=1 * ps,
+        T_tau=T_tau,
+        P_tau=0.5
+        * ps,  # same timeconstants for baro/thermostat is fine for stochastic ones
         hydrostatic=True,
         rng=0,
     )
     attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
     with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        dyn.run(npt_equil_steps)
-
         rhos = []
-        n_samples = npt_prod_steps // sample_every
+        n_samples = npt_steps // sample_every
         with DensityTimeseriesLogger(ts_path) as density_log:
             for _ in range(n_samples):
                 dyn.run(sample_every)

@@ -111,11 +111,8 @@ if __name__ == "__main__":  # TODO: delete this
     rho = run_one_case(
         "data/mix_xe_0.00.extxyz",
         calc,
-        nvt_stabilise_steps=200,
-        npt_settle_steps=1000,
-        nvt_thermalise_steps=250,
-        npt_equil_steps=1000,
-        npt_prod_steps=1000,
+        nvt_steps=1000,
+        npt_steps=3000,
         log_every=50,
         workdir=Path("debug"),
     )
