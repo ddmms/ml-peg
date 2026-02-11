@@ -51,8 +51,6 @@ def get_atom_counts() -> list[int]:
     list[int]
         List of complex atom counts from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -75,8 +73,6 @@ def get_charges() -> list[int]:
     list[int]
         List of complex charges from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -99,8 +95,6 @@ def get_protein_atom_counts() -> list[int]:
     list[int]
         List of protein atom counts from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -123,8 +117,6 @@ def get_ligand_atom_counts() -> list[int]:
     list[int]
         List of ligand atom counts from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -147,8 +139,6 @@ def get_protein_charges() -> list[int]:
     list[int]
         List of protein charges from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -171,8 +161,6 @@ def get_ligand_charges() -> list[int]:
     list[int]
         List of ligand charges from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -195,8 +183,6 @@ def get_interaction_types() -> list[str]:
     list[str]
         List of interaction types from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -238,8 +224,6 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted interaction energies.
     """
-    from ase.io import read
-
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
