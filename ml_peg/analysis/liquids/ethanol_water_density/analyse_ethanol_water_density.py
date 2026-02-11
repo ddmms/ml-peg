@@ -1,4 +1,4 @@
-"""analyse ethanol-water density curves."""
+"""Analyse ethanol-water density curves."""
 
 # TODO: remove hardcoded things?
 from __future__ import annotations
@@ -42,7 +42,14 @@ OUT_PATH.mkdir(parents=True, exist_ok=True)
 
 @pytest.fixture(scope="session")
 def ref_curve() -> tuple[np.ndarray, np.ndarray]:
-    """Return reference density curve."""
+    """
+    Return the reference density curve on a sorted mole-fraction grid.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        Sorted mole fractions and reference densities.
+    """
     x_ref, rho_ref = read_ref_curve()
     x = np.asarray(x_ref, dtype=float)
     rho = np.asarray(rho_ref, dtype=float)
@@ -54,7 +61,14 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
 
 @pytest.fixture
 def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    """Return simulated density curves."""
+    """
+    Return simulated model density curves on sorted composition grids.
+
+    Returns
+    -------
+    dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Mapping from model name to x-grid and density values.
+    """
     curves: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for model_name in MODELS:
         xs, rhos = _read_model_curve(model_name)
@@ -77,7 +91,21 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     # },
 )  # TODO: read docs!!! doesn't seem to work yet.
 def densities_parity(ref_curve, model_curves) -> dict[str, list]:
-    """Parity plot of simulated and reference density."""
+    """
+    Build parity-plot payload for model and reference densities.
+
+    Parameters
+    ----------
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Per-model composition and density arrays.
+
+    Returns
+    -------
+    dict[str, list]
+        Reference and model densities sampled on a common grid.
+    """
     x_ref, rho_ref = ref_curve
 
     # Use the first model's x grid for hover labels (parity requires same-length lists)
@@ -107,7 +135,21 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
 def debug_curve_plots(
     ref_curve, model_curves
 ) -> None:  # TODO should I remove or use a different format?
-    """Plot density curves."""
+    """
+    Generate optional debug plots for densities and excess properties.
+
+    Parameters
+    ----------
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Per-model composition and density arrays.
+
+    Returns
+    -------
+    None
+        Plots are written to disk when debug plotting is enabled.
+    """
     if not _debug_plot_enabled():
         return
     print("plotting curves")
@@ -167,7 +209,21 @@ def debug_curve_plots(
 
 @pytest.fixture
 def rmse_density(ref_curve, model_curves) -> dict[str, float]:
-    """RMSE of the density vs reference density."""
+    """
+    Compute density RMSE versus interpolated reference values.
+
+    Parameters
+    ----------
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Per-model composition and density arrays.
+
+    Returns
+    -------
+    dict[str, float]
+        RMSE values in g/cm^3 keyed by model name.
+    """
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
     for m, (x_m, rho_m) in model_curves.items():
@@ -178,7 +234,21 @@ def rmse_density(ref_curve, model_curves) -> dict[str, float]:
 
 @pytest.fixture
 def rmse_excess_density(ref_curve, model_curves) -> dict[str, float]:
-    """RMSE of excess density (detrended by each dataset's own pure endpoints)."""
+    """
+    Compute RMSE of excess density curves.
+
+    Parameters
+    ----------
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Per-model composition and density arrays.
+
+    Returns
+    -------
+    dict[str, float]
+        Excess-density RMSE values keyed by model name.
+    """
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
 
@@ -196,10 +266,19 @@ def rmse_excess_density(ref_curve, model_curves) -> dict[str, float]:
 @pytest.fixture
 def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
     """
-    Absolute error in the x-position of the maximum excess density.
+    Compute absolute error in composition of maximum excess density.
 
-    Ref peak is computed on the dense reference curve.
-    Model peak is computed on its (coarse) grid with a local quadratic refinement.
+    Parameters
+    ----------
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
+        Per-model composition and density arrays.
+
+    Returns
+    -------
+    dict[str, float]
+        Absolute peak-position error keyed by model name.
     """
     x_ref, rho_ref = ref_curve
     ex_ref_dense = _excess_curve(x_ref, rho_ref)
@@ -242,7 +321,23 @@ def metrics(
     rmse_excess_density: dict[str, float],
     peak_x_error: dict[str, float],
 ) -> dict[str, dict]:
-    """Return metric data."""
+    """
+    Combine individual metrics into the table payload.
+
+    Parameters
+    ----------
+    rmse_density : dict[str, float]
+        Density RMSE values.
+    rmse_excess_density : dict[str, float]
+        Excess-density RMSE values.
+    peak_x_error : dict[str, float]
+        Peak-position errors.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric-name to per-model mapping.
+    """
     return {
         "RMSE density": rmse_density,
         "RMSE excess density": rmse_excess_density,
@@ -253,7 +348,23 @@ def metrics(
 def test_ethanol_water_density(
     metrics: dict[str, dict], densities_parity: dict[str, list], debug_curve_plots
 ) -> None:
-    """Launch analysis."""
+    """
+    Execute density analysis fixtures and emit debug output.
+
+    Parameters
+    ----------
+    metrics : dict[str, dict]
+        Metrics table payload.
+    densities_parity : dict[str, list]
+        Parity plot payload.
+    debug_curve_plots : None
+        Side-effect fixture for debug plotting.
+
+    Returns
+    -------
+    None
+        The test validates fixture execution and writes artifacts.
+    """
     print(
         MODEL_INDEX
     )  # TODO: these print statements may be useful for debugging, but should I remove?

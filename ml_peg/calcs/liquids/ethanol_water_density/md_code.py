@@ -1,4 +1,4 @@
-"""code for md simulation."""
+"""Code for molecular-dynamics simulation workflows."""
 
 from __future__ import annotations
 
@@ -24,13 +24,37 @@ from ml_peg.calcs.liquids.ethanol_water_density._io_tools import DensityTimeseri
 
 
 def total_mass_kg(atoms):
-    """Return the mass in kg for ase atoms."""
+    """
+    Return atomic-system mass in kilograms.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms
+        Atomic configuration.
+
+    Returns
+    -------
+    float
+        Total mass in kilograms.
+    """
     amu_to_kg = 1.66053906660e-27
     return atoms.get_masses().sum() * amu_to_kg
 
 
 def density_g_cm3(atoms):
-    """Return density in g/cm^3."""
+    """
+    Return density in g/cm^3.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms
+        Atomic configuration with periodic cell volume.
+
+    Returns
+    -------
+    float
+        Density in g/cm^3.
+    """
     v_a3 = atoms.get_volume()
     v_m3 = v_a3 * 1e-30
     m_kg = total_mass_kg(atoms)
@@ -39,7 +63,27 @@ def density_g_cm3(atoms):
 
 
 def attach_basic_logging(dyn, atoms, md_logfile, log_every, t0):
-    """Attach a logger to an ase md simulation."""
+    """
+    Attach text and progress loggers to an ASE dynamics object.
+
+    Parameters
+    ----------
+    dyn : ase.md.md.MolecularDynamics
+        Dynamics object to attach callbacks to.
+    atoms : ase.Atoms
+        Current atomic system.
+    md_logfile : str | pathlib.Path
+        Path to ASE MD log file.
+    log_every : int
+        Logging interval in MD steps.
+    t0 : float
+        Start timestamp from ``time.time()``.
+
+    Returns
+    -------
+    None
+        This function mutates ``dyn`` by attaching callbacks.
+    """
     logger = MDLogger(
         dyn,
         atoms,
@@ -52,6 +96,7 @@ def attach_basic_logging(dyn, atoms, md_logfile, log_every, t0):
     dyn.attach(logger, interval=log_every)
 
     def progress():
+        """Print one progress line with thermodynamic state."""
         step = dyn.get_number_of_steps()
         rho = density_g_cm3(atoms)
         volume = atoms.get_volume()
@@ -71,7 +116,27 @@ def attach_basic_logging(dyn, atoms, md_logfile, log_every, t0):
 
 @contextmanager
 def traj_logging(dyn, atoms, workdir, traj_every: int, name="md.traj"):
-    """Context manager for logging trajectory."""
+    """
+    Attach trajectory logging inside a context manager.
+
+    Parameters
+    ----------
+    dyn : ase.md.md.MolecularDynamics
+        Dynamics object receiving callback.
+    atoms : ase.Atoms
+        Atomic system written to trajectory.
+    workdir : pathlib.Path
+        Output directory.
+    traj_every : int
+        Trajectory write interval in steps.
+    name : str, optional
+        Trajectory filename within ``workdir``.
+
+    Yields
+    ------
+    ase.io.trajectory.Trajectory | None
+        Open trajectory handle when enabled, otherwise ``None``.
+    """
     traj = None
     if traj_every and traj_every > 0:
         traj = Trajectory(str(workdir / name), "a", atoms)
@@ -99,9 +164,45 @@ def run_one_case(
     workdir: Path,
 ) -> Iterable[float]:
     """
-    Run NPT and return (mean_density, std_density).
+    Run the full MD workflow for one composition case.
 
-    TODO: use lammps? Though I would guess GPU is the bottleneck so it wouldn't matter?
+    Parameters
+    ----------
+    struct_path : pathlib.Path
+        Input structure path.
+    calc : Any
+        ASE-compatible calculator.
+    temperature : float, optional
+        Target temperature in kelvin.
+    p_bar : float, optional
+        Target pressure in bar.
+    dt_fs : float, optional
+        Time step in femtoseconds.
+    nvt_stabilise_steps : int, optional
+        Initial NVT stabilization steps.
+    npt_settle_steps : int, optional
+        Berendsen NPT settling steps.
+    nvt_thermalise_steps : int, optional
+        NVT thermalization steps after settling.
+    npt_equil_steps : int, optional
+        BAOAB NPT equilibration steps.
+    npt_prod_steps : int, optional
+        Production NPT steps.
+    sample_every : int, optional
+        Sampling interval for density collection.
+    log_every : int, optional
+        Logging interval in MD steps.
+    log_trajectory_every : int, optional
+        Trajectory write interval in MD steps.
+    dummy_data : bool, optional
+        If ``True``, skip simulation and generate synthetic data.
+    workdir : pathlib.Path
+        Output directory for logs and trajectories.
+
+    Returns
+    -------
+    collections.abc.Iterable[float]
+        Density time series in g/cm^3.
     """
     ts_path = workdir / "density_timeseries.csv"
     if dummy_data:

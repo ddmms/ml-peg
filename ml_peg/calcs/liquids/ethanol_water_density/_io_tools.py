@@ -1,4 +1,4 @@
-"""i/o tools for calculations."""
+"""I/O tools for calculations."""
 
 from __future__ import annotations
 
@@ -15,20 +15,23 @@ def write_density_timeseries_checkpointed(
     do_not_raise: bool = False,
 ) -> None:
     """
-    Write density_timeseries.csv with checkpoint validation.
+    Write ``density_timeseries.csv`` with checkpoint validation.
 
-    Behavior
-    --------
-    If file exists:
-        - read existing values
-        - verify >= min_match_fraction already match rho_series
-        - overwrite anyway
-        - raise AssertionError if insufficient match
+    Parameters
+    ----------
+    ts_path : pathlib.Path
+        Output CSV path.
+    rho_series : collections.abc.Iterable[float]
+        Density samples in g/cm^3.
+    min_match_fraction : float, optional
+        Required fraction of matching values versus existing checkpoint.
+    do_not_raise : bool, optional
+        If ``True``, skip assertion failures when checkpoint mismatches.
 
-    If file does not exist:
-        - just write
-
-    Helps detect broken resume logic while still allowing overwrite.
+    Returns
+    -------
+    None
+        This function writes the file in-place.
     """
     rho_series = list(rho_series)
 
@@ -76,14 +79,25 @@ class DensityTimeseriesLogger:
     """
     Streaming CSV logger for density time series.
 
-    - deletes existing file on start (optional)
-    - writes header once
-    - append rows as simulation runs
-    - flushes every write (crash-safe)
-    - usable as context manager
+    Parameters
+    ----------
+    path : pathlib.Path
+        Output CSV file path.
+    overwrite : bool, optional
+        Whether to delete pre-existing output when opening.
     """
 
     def __init__(self, path: Path, *, overwrite: bool = True):
+        """
+        Initialize the logger.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            Path to CSV output file.
+        overwrite : bool, optional
+            If ``True``, delete existing file when opening.
+        """
         self.path = Path(path)
         self.overwrite = overwrite
         self._f = None
@@ -94,7 +108,14 @@ class DensityTimeseriesLogger:
     # context manager API
     # ---------------------
     def __enter__(self):
-        """Open the file."""
+        """
+        Open the output file and return logger instance.
+
+        Returns
+        -------
+        DensityTimeseriesLogger
+            Logger ready to write rows.
+        """
         if self.overwrite and self.path.exists():
             self.path.unlink()
 
@@ -107,7 +128,23 @@ class DensityTimeseriesLogger:
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        """Close the file."""
+        """
+        Close the output file.
+
+        Parameters
+        ----------
+        exc_type : type | None
+            Exception type, if raised inside context.
+        exc : BaseException | None
+            Exception instance, if raised inside context.
+        tb : traceback | None
+            Traceback, if raised inside context.
+
+        Returns
+        -------
+        None
+            This method performs cleanup only.
+        """
         if self._f:
             self._f.close()
 
@@ -115,7 +152,19 @@ class DensityTimeseriesLogger:
     # logging
     # ---------------------
     def write(self, rho: float):
-        """Write one density value."""
+        """
+        Write one density value to the CSV file.
+
+        Parameters
+        ----------
+        rho : float
+            Density in g/cm^3 for the current sample.
+
+        Returns
+        -------
+        None
+            This method appends one row to disk.
+        """
         self._writer.writerow([self._step, f"{rho:.8f}"])
         self._f.flush()  # critical for crash safety
         self._step += 1
