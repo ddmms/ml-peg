@@ -7,7 +7,7 @@ from dash import Dash
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.gscdb138 import GSCDB138BenchmarkApp
 
-BENCHMARK_NAME = "GSCDB138"
+BENCHMARK_NAME = "GSCDB138 Electric Field"
 CATEGORY = "electric_field"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#gscdb138"

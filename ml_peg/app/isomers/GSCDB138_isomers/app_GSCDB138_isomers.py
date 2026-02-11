@@ -7,7 +7,7 @@ from dash import Dash
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.gscdb138 import GSCDB138BenchmarkApp
 
-BENCHMARK_NAME = "GSCDB138"
+BENCHMARK_NAME = "GSCDB138 Isomers"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/isomers.html#gscdb138"
 DESCRIPTION = (
     "Performance in predicting relative energies for the 26 isomer and conformer "

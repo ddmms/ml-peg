@@ -7,7 +7,7 @@ from dash import Dash
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.gscdb138 import GSCDB138BenchmarkApp
 
-BENCHMARK_NAME = "GSCDB138"
+BENCHMARK_NAME = "GSCDB138 Non-Covalent Interactions"
 CATEGORY = "non_covalent_interactions"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#gscdb138"
 DESCRIPTION = (
