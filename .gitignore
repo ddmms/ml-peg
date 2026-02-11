@@ -42,3 +42,5 @@ ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 certs/
 ml_peg/calcs/surfaces/copper_water_interface/data/
+ml_peg/calcs/aqueous_solutions/bulk_water/data/
+ml_peg/calcs/aqueous_solutions/ice/data/
