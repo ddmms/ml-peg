@@ -39,7 +39,7 @@ def get_system_names(calc_path: Path, dataset: str) -> list[str]:
         model_dir = calc_path / model_name
         if model_dir.exists():
             system_names = []
-            for system_path in sorted(model_dir.glob(f"{dataset}*.xyz")):
+            for system_path in sorted(model_dir.glob(f"{dataset}_*.xyz")):
                 system_name = system_path.stem[len(dataset) + 1 :]
                 system_names.append(system_name)
             if system_names:

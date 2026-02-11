@@ -88,7 +88,7 @@ class GSCDB138BenchmarkApp(BaseApp):
         for model_name in MODELS:
             model_dir = self.data_path / model_name
             if model_dir.exists():
-                system_paths = sorted(model_dir.glob(f"{dataset}*.xyz"))
+                system_paths = sorted(model_dir.glob(f"{dataset}_*.xyz"))
                 if system_paths:
                     # Get path starting from assets directory
                     return [
