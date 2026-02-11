@@ -156,7 +156,7 @@ def run_one_case(
     p_bar: float = 1.0,
     dt_fs: float = 0.5,
     nvt_steps: int = 10_000,
-    npt_steps: int = 50_000,
+    npt_steps: int = 200_000,
     sample_every: int = 20,
     log_every: int = 200,
     log_trajectory_every: int = 400,
@@ -178,16 +178,10 @@ def run_one_case(
         Target pressure in bar.
     dt_fs : float, optional
         Time step in femtoseconds.
-    nvt_stabilise_steps : int, optional
-        Initial NVT stabilization steps.
-    npt_settle_steps : int, optional
-        Berendsen NPT settling steps.
-    nvt_thermalise_steps : int, optional
-        NVT thermalization steps after settling.
-    npt_equil_steps : int, optional
-        BAOAB NPT equilibration steps.
-    npt_prod_steps : int, optional
-        Production NPT steps.
+    nvt_steps : int, optional
+        Initial NVT stabilisation and mixing steps.
+    npt_steps : int, optional
+        NPT steps.
     sample_every : int, optional
         Sampling interval for density collection.
     log_every : int, optional
@@ -230,9 +224,14 @@ def run_one_case(
     dt = dt_fs * fs
     t0 = time.time()
     ps = 1000 * fs
-    T_tau = 0.5 * ps
+    thermostat_tau = 0.5 * ps
 
-    dyn = Langevin(atoms, timestep=dt, temperature_K=temperature, friction=1 / (T_tau))
+    dyn = Langevin(
+        atoms,
+        timestep=dt,
+        temperature_K=temperature,
+        friction=1 / thermostat_tau,
+    )
     attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
     with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
         dyn.run(nvt_steps)
@@ -242,7 +241,7 @@ def run_one_case(
         timestep=dt,
         temperature_K=temperature,
         externalstress=p_bar * bar,
-        T_tau=T_tau,
+        T_tau=thermostat_tau,
         P_tau=0.5
         * ps,  # same timeconstants for baro/thermostat is fine for stochastic ones
         hydrostatic=True,
