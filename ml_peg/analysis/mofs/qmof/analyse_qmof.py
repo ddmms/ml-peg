@@ -16,8 +16,8 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "MOFs" / "qmof" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "MOFs" / "qmof"
+CALC_PATH = CALCS_ROOT / "mofs" / "qmof" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "mofs" / "qmof"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
