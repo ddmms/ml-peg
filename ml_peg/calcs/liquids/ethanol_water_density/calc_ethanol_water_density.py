@@ -95,12 +95,13 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     None
         This function writes outputs for one composition.
     """
-    model_name, model = mlip  # TODO: dispersion ???
+    model_name, model = mlip
 
     model_out = OUT_PATH / model_name
     model_out.mkdir(parents=True, exist_ok=True)
 
     calc = model.get_calculator()
+    calc = model.add_d3_calculator(calc)
 
     struct_path = DATA_PATH / case.filename
     if not struct_path.exists():
@@ -162,7 +163,7 @@ if __name__ == "__main__":  # TODO: delete this
     # run a very small simulation to see if it does something reasonable
     from mace.calculators import mace_mp
 
-    calc = mace_mp("data_old/mace-omat-0-small.model")
+    calc = mace_mp("data_old/mace-omat-0-small.model", dispersion=True)
     rho = run_one_case(
         "data/mix_xe_0.00.extxyz",
         calc,
