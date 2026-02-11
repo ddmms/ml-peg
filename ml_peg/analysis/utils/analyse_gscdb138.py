@@ -91,7 +91,8 @@ def get_relative_energy(
         for model_name in MODELS:
             model_dir = calc_path / model_name
             for system_name in system_names:
-                xyz_path = model_dir / f"{dataset}_{system_name}.xyz"
+                xyz_name = f"{dataset}_{system_name}.xyz"
+                xyz_path = model_dir / xyz_name
                 atoms_list = read(xyz_path, ":")
 
                 results[model_name].append(
@@ -107,7 +108,7 @@ def get_relative_energy(
                 # Write structures for app
                 structs_dir = out_path / model_name
                 structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{system_name}.xyz", atoms_list)
+                write(structs_dir / xyz_name, atoms_list)
             ref_stored = True
         return results
 
