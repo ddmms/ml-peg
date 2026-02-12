@@ -1,0 +1,7 @@
+metrics:
+    RMSD:
+        good: 0.0
+        bad: 30.0
+        unit: eV
+        tooltip: "Root Mean Square Deviation of formation energies"
+        level_of_theory: DFT
