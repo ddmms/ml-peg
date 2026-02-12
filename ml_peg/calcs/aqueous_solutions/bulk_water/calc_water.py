@@ -93,7 +93,7 @@ def run_md_water(
 
         if dyn.nsteps % th_dt == 0:
             thermo_traj.write(
-                ("%17.2f" + " %17.6f" * 4 + "\n")
+                ("%17.2f" + " %17.6f" * 3 + "\n")
                 % (calc_time, calc_temp, calc_epot, calc_walltime)
             )
             thermo_traj.flush()
