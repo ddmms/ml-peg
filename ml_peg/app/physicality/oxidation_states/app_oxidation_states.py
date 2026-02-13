@@ -14,7 +14,7 @@ from ml_peg.app.utils.load import read_plot
 from ml_peg.calcs import CALCS_ROOT
 
 # MODELS = get_model_names(current_models)
-MODELS = ["mace-mp-0b3", "omol", "0totchrg_2L_fl32_new"]
+MODELS = ["mace-mp-0b3", "omol"]
 
 BENCHMARK_NAME = "Iron Oxidation States"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
@@ -32,7 +32,7 @@ class FeOxidationStatesApp(BaseApp):
                     DATA_PATH / f"Fe-O_{model}_RDF_scatter.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-Fe-O-RDF",
                 ),
-                "Peak Within DFT Ref": read_plot(
+                "Peak Within Experimental Ref": read_plot(
                     DATA_PATH / f"Fe-O_{model}_RDF_scatter.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-Fe-O-RDF",
                 ),

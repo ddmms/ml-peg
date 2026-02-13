@@ -14,7 +14,7 @@ from ml_peg.calcs import CALCS_ROOT
 
 # MODELS = get_model_names(current_models)
 
-MODELS = ["mace-mp-0b3", "0totchrg_2L_fl32_new"]
+MODELS = ["mace-mp-0b3", "omol"]
 
 CALC_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
@@ -23,7 +23,7 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
-TESTS = ["Fe-O RDF Peak Split", "Peak Within DFT Ref"]
+TESTS = ["Fe-O RDF Peak Split", "Peak Within Experimental Ref"]
 REF_PEAK_RANGE = {
     "Fe<sup>+2</sup><br>Ref": [2.0, 2.2],
     "Fe<sup>+3</sup><br>Ref": [1.9, 2.0],
@@ -49,7 +49,7 @@ def get_rdf_results(
     results = {salt: [] for salt in IRON_SALTS}
 
     for salt in IRON_SALTS:
-        rdf_file = CALC_PATH / f"OFe_inter_{salt}_{model}.rdf"
+        rdf_file = CALC_PATH / f"O-Fe_{salt}_{model}.rdf"
 
         fe_o_rdf = np.loadtxt(rdf_file)
         r = list(fe_o_rdf[:, 0])
@@ -113,32 +113,28 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
     fe_3_ref = [1.9, 2.0]
 
     for model in MODELS:
-        peak_positions = {}
+        peak_position = {}
         results = get_rdf_results(model)
         plot_rdfs(model, results)
 
         for salt in IRON_SALTS:
             r = results[salt][0]
             g_r = results[salt][1]
-            peak_positions[salt] = r[g_r.index(max(g_r))]
+            peak_position[salt] = r[g_r.index(max(g_r))]
 
-        peak_difference = abs(peak_positions["Fe2Cl"] - peak_positions["Fe3Cl"])
+        peak_difference = abs(peak_position["Fe2Cl"] - peak_position["Fe3Cl"])
 
-        if peak_difference > 0.05:
+        oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 0.0
+        oxidation_state_passfail["Peak Within Experimental Ref"][model] = 0.0
+
+        if peak_difference > 0.1:
             oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 1.0
 
-            if (
-                fe_2_ref[0] <= peak_positions["Fe2Cl"] <= fe_2_ref[1]
-                and fe_3_ref[0] <= peak_positions["Fe3Cl"] <= fe_3_ref[1]
-            ):
-                oxidation_state_passfail["Peak Within DFT Ref"][model] = 1.0
+            if fe_2_ref[0] <= peak_position["Fe2Cl"] <= fe_2_ref[1]:
+                oxidation_state_passfail["Peak Within Experimental Ref"][model] += 0.5
 
-            else:
-                oxidation_state_passfail["Peak Within DFT Ref"][model] = 1.0
-
-        else:
-            oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 0.0
-            oxidation_state_passfail["Peak Within DFT Ref"][model] = 0.0
+            if fe_3_ref[0] <= peak_position["Fe3Cl"] <= fe_3_ref[1]:
+                oxidation_state_passfail["Peak Within Experimental Ref"][model] += 0.5
 
     return oxidation_state_passfail
 
