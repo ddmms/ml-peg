@@ -31,17 +31,26 @@ class PLA15App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        structs_dir = DATA_PATH / MODELS[0]
-        # Assets dir will be parent directory - individual files for each system
-        structs = [
-            f"assets/supramolecular/PLA15/{MODELS[0]}/{i}.xyz"
-            for i in range(len(list(structs_dir.glob("*.xyz"))))
-        ]
+        for model_name in MODELS:
+            model_dir = DATA_PATH / model_name
+            if model_dir.exists():
+                files = sorted(model_dir.glob("*.xyz"))
+                if files:
+                    structs = [
+                        f"assets/supramolecular/PLA15/{model_name}/{path.name}"
+                        for path in files
+                    ]
+                    break
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={
+                "MAE": scatter,
+                "Ion-Ion MAE": scatter,
+                "Ion-Neutral MAE": scatter,
+                "R²": scatter,
+            },
         )
 
         struct_from_scatter(
