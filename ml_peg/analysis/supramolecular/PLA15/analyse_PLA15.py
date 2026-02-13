@@ -152,7 +152,7 @@ def pla15_r2(interaction_energies) -> dict[str, float]:
             )
             results[model_name] = r**2
         else:
-            results[model_name] = 0.0
+            results[model_name] = None
     return results
 
 
