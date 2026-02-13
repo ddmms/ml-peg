@@ -10,7 +10,7 @@ from typing import Any
 
 from ase import Atoms, io, units
 from ase.calculators.calculator import Calculator
-from ase.io import Trajectory, write
+from ase.io import Trajectory
 from ase.md.nose_hoover_chain import NoseHooverChainNVT
 from ase.md.velocitydistribution import (
     MaxwellBoltzmannDistribution,
@@ -29,12 +29,15 @@ MODELS: dict[str, Any] = load_models(models=current_models)
 OUT_PATH: Path = Path(__file__).parent / "outputs"
 
 # Benchmark parameters
-TOTAL_TIME_NS: float = 1.0 # ns
-DELTA_T_FS: float = 0.5 # fs
+TOTAL_TIME_NS: float = 0.01 # 1.0 # ns
+DELTA_T_FS: float = 0.5
 SEED: int = 0
 FRAME_FREQUENCY: int = 15
 NSTEPS: int = int(TOTAL_TIME_NS * 1e6 / DELTA_T_FS)
-N_EQUI_FRAMES: int = int(5e3 / FRAME_FREQUENCY) # equilibration time of 5 ps
+
+EQUI_TIME_NS: float = 0.005 # 5 ps
+N_EQUI_STEPS: int = int(EQUI_TIME_NS * 1e6 / DELTA_T_FS)
+N_EQUI_FRAMES: int = N_EQUI_STEPS // FRAME_FREQUENCY
 TCHAIN: int = 10
 
 
@@ -65,7 +68,7 @@ def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None
 
 
 @pytest.mark.parametrize(argnames="mlip", argvalues=MODELS.items())
-def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
+def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
     """
     Run SSE RDF benchmark test.
 
@@ -95,10 +98,11 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
 
     scratch_dir: Path = Path(os.getenv("SCRATCH", "."))
     data_dir: Path = (
-        extract_zip(filename=(scratch_dir / ".cache" / "ml-peg" / "SSEs_data.zip")) 
+        extract_zip(filename=(scratch_dir / ".cache" / "ml-peg" / "SSEs_data.zip"))
         / "SSEs_data"
     )
 
+    # TODO: Check if it is possible to parallelize over systems
     for poscar_dir, temperature, system_name in get_systems(data_dir=data_dir):
         poscar_file: Path = poscar_dir / "POSCAR"
         atoms_initial: Atoms | list[Atoms] = io.read(
@@ -109,7 +113,9 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
         atoms.calc = copy(calc)
 
         rng = np.random.RandomState(seed=SEED)
-        MaxwellBoltzmannDistribution(atoms, temperature_K=temperature, force_temp=True, rng=rng)
+        MaxwellBoltzmannDistribution(
+            atoms, temperature_K=temperature, force_temp=True, rng=rng
+        )
         Stationary(atoms)
         ZeroRotation(atoms)
 
@@ -133,6 +139,7 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
 
         traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
         md_nvt.attach(function=traj.write, interval=1)
+        # TODO: Implement TQDM progress bar for MD loop
 
         md_nvt.run(steps=NSTEPS)
 
@@ -148,5 +155,3 @@ def test_rdf_benchmark(mlip: tuple[str, Any]) -> None:
             frame.info["delta_t"] = DELTA_T_FS
             frame.info["nsteps"] = NSTEPS
 
-        # Write trajectory frames as XYZ
-        write(filename=write_dir / f"{file_name}.xyz", images=ase_traj)
