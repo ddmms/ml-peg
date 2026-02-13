@@ -2,200 +2,77 @@
 
 from __future__ import annotations
 
-from ase.io import read
+from pathlib import Path
+
+from ase import units
+from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae
+from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 CALC_PATH = CALCS_ROOT / "supramolecular" / "PLA15" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
 
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
-def get_system_identifiers() -> list[str]:
+EV_TO_KCAL = units.mol / units.kcal
+
+
+def get_info() -> dict[str, list[int]]:
     """
-    Get list of PLA15 system identifiers.
+    Get dictionary of info for PLA15 structures.
 
     Returns
     -------
-    list[str]
-        List of system identifiers from structure files.
+    dict[str, list[int]]
+        Dictionary of info.
     """
-    system_identifiers = []
+    info = {
+        "identifiers": [],
+        "complex_atoms": [],
+        "complex_charges": [],
+        "ligand_atoms": [],
+        "ligand_charges": [],
+        "protein_atoms": [],
+        "protein_charges": [],
+        "interaction_types": [],
+    }
+
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             xyz_files = sorted(model_dir.glob("*.xyz"))
             if xyz_files:
                 for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_identifiers.append(
-                        atoms.info.get("identifier", f"system_{xyz_file.stem}")
-                    )
-                break
-    return system_identifiers
+                    atoms = read(xyz_file, index=":")
+                    info["identifiers"].append(atoms[0].info["identifier"])
+                    info["interaction_types"].append(atoms[0].info["interaction_type"])
+
+                    info["complex_atoms"].append(len(atoms[0]))
+                    info["complex_charges"].append(atoms[0].info["charge"])
+
+                    info["ligand_atoms"].append(len(atoms[1]))
+                    info["ligand_charges"].append(atoms[1].info["charge"])
+
+                    info["protein_atoms"].append(len(atoms[2]))
+                    info["protein_charges"].append(atoms[2].info["charge"])
+
+                return info
+    return info
 
 
-def get_atom_counts() -> list[int]:
-    """
-    Get complex atom counts for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of complex atom counts from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                atom_counts = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    atom_counts.append(len(atoms))
-                return atom_counts
-    return []
-
-
-def get_charges() -> list[int]:
-    """
-    Get complex charges for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of complex charges from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                charges = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    charges.append(atoms.info.get("complex_charge", 0))
-                return charges
-    return []
-
-
-def get_protein_atom_counts() -> list[int]:
-    """
-    Get protein atom counts for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of protein atom counts from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                protein_counts = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    protein_counts.append(atoms.info.get("protein_atoms", 0))
-                return protein_counts
-    return []
-
-
-def get_ligand_atom_counts() -> list[int]:
-    """
-    Get ligand atom counts for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of ligand atom counts from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                ligand_counts = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    ligand_counts.append(atoms.info.get("ligand_atoms", 0))
-                return ligand_counts
-    return []
-
-
-def get_protein_charges() -> list[int]:
-    """
-    Get protein fragment charges for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of protein charges from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                protein_charges = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    protein_charges.append(atoms.info.get("protein_charge", 0))
-                return protein_charges
-    return []
-
-
-def get_ligand_charges() -> list[int]:
-    """
-    Get ligand charges for PLA15.
-
-    Returns
-    -------
-    list[int]
-        List of ligand charges from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                ligand_charges = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    ligand_charges.append(atoms.info.get("ligand_charge", 0))
-                return ligand_charges
-    return []
-
-
-def get_interaction_types() -> list[str]:
-    """
-    Get interaction types for PLA15.
-
-    Returns
-    -------
-    list[str]
-        List of interaction types from structure files.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                interaction_types = []
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    interaction_types.append(
-                        atoms.info.get("interaction_type", "unknown")
-                    )
-                return interaction_types
-    return []
+INFO = get_info()
 
 
 @pytest.fixture
@@ -205,14 +82,14 @@ def get_interaction_types() -> list[str]:
     x_label="Predicted interaction energy / kcal/mol",
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
-        "System": get_system_identifiers(),
-        "Complex Atoms": get_atom_counts(),
-        "Protein Atoms": get_protein_atom_counts(),
-        "Ligand Atoms": get_ligand_atom_counts(),
-        "Total Charge": get_charges(),
-        "Protein Charge": get_protein_charges(),
-        "Ligand Charge": get_ligand_charges(),
-        "Interaction Type": get_interaction_types(),
+        "System": INFO["identifiers"],
+        "Complex Atoms": INFO["complex_atoms"],
+        "Ligand Atoms": INFO["ligand_atoms"],
+        "Protein Atoms": INFO["protein_atoms"],
+        "Complex Charge": INFO["complex_charges"],
+        "Ligand Charge": INFO["ligand_charges"],
+        "Protein Charge": INFO["protein_charges"],
+        "Interaction Type": INFO["interaction_types"],
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -229,42 +106,24 @@ def interaction_energies() -> dict[str, list]:
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
-
         if not model_dir.exists():
             results[model_name] = []
             continue
 
-        xyz_files = sorted(model_dir.glob("*.xyz"))
-        if not xyz_files:
-            results[model_name] = []
-            continue
+        for struct_path in sorted(model_dir.glob("*.xyz")):
+            atoms = read(struct_path, index=0)
 
-        model_energies = []
-        ref_energies = []
-
-        for xyz_file in xyz_files:
-            atoms = read(xyz_file)
-            model_energies.append(atoms.info["E_int_model_kcal"])
             if not ref_stored:
-                ref_energies.append(atoms.info["E_int_ref_kcal"])
+                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
-        results[model_name] = model_energies
+            results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
-        # Store reference energies (only once)
-        if not ref_stored:
-            results["ref"] = ref_energies
-            ref_stored = True
+            # Write structures for app
+            structs_dir = OUT_PATH / model_name
+            structs_dir.mkdir(parents=True, exist_ok=True)
+            write(structs_dir / f"{struct_path.stem}.xyz", atoms)
 
-        # Copy individual structure files to app data directory
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-
-        # Copy individual structure files
-        import shutil
-
-        for i, xyz_file in enumerate(xyz_files):
-            shutil.copy(xyz_file, structs_dir / f"{i}.xyz")
-
+        ref_stored = True
     return results
 
 
@@ -319,7 +178,7 @@ def pla15_mae(interaction_energies) -> dict[str, float]:
                 interaction_energies["ref"], interaction_energies[model_name]
             )
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
@@ -339,7 +198,7 @@ def pla15_ion_ion_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for ion-ion systems.
     """
     # Get interaction types for filtering
-    interaction_types = get_interaction_types()
+    interaction_types = INFO["interaction_types"]
     ion_ion_indices = [
         i for i, itype in enumerate(interaction_types) if itype == "ion-ion"
     ]
@@ -353,7 +212,7 @@ def pla15_ion_ion_mae(interaction_energies) -> dict[str, float]:
             ]
             results[model_name] = mae(ref_ion_ion, pred_ion_ion)
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
@@ -373,7 +232,7 @@ def pla15_ion_neutral_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for ion-neutral systems.
     """
     # Get interaction types for filtering
-    interaction_types = get_interaction_types()
+    interaction_types = INFO["interaction_types"]
     ion_neutral_indices = [
         i for i, itype in enumerate(interaction_types) if itype == "ion-neutral"
     ]
@@ -389,20 +248,17 @@ def pla15_ion_neutral_mae(interaction_energies) -> dict[str, float]:
             ]
             results[model_name] = mae(ref_ion_neutral, pred_ion_neutral)
         else:
-            results[model_name] = float("nan")
+            results[model_name] = None
     return results
 
 
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "pla15_metrics_table.json",
-    metric_tooltips={
-        "Model": "Name of the model",
-        "MAE": "Mean Absolute Error for all systems (kcal/mol)",
-        "R²": "Pearson's r² (squared correlation coefficient)",
-        "Ion-Ion MAE": "MAE for ion-ion interactions (kcal/mol)",
-        "Ion-Neutral MAE": "MAE for ion-neutral interactions (kcal/mol)",
-    },
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     pla15_mae: dict[str, float],
