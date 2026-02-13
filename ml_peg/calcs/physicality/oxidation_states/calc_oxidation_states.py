@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ase.geometry.rdf import get_rdf
 from ase.io import read
-from aseMolec import anaAtoms
 from janus_core.calculations.md import NPT
 import numpy as np
 import pytest
@@ -34,9 +34,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
         Name of model use and model.
     """
     model_name, model = mlip
-    model.device = "cuda"
     model.default_dtype = "float32"
-    model.kwargs["enable_cueq"] = True
 
     calc = model.get_calculator()
 
@@ -65,7 +63,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
     """
-    Calculate Fe-O RDFs from MLMD for oxidation states tests.
+    Calculate Fe-O RDFs from NVT MLMD for oxidation states tests.
 
     Parameters
     ----------
@@ -73,18 +71,25 @@ def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
         Name of model used and model.
     """
     model_name, model = mlip
-    fct = {"Fe": 0.1, "O": 0.7, "H": 0.7, "Cl": 0.1}
 
+    rmax = 6.0
+    nbins = 200
     for salt in IRON_SALTS:
+        rdf_list = []
         md_path = OUT_PATH / f"{salt}_{model_name}-traj.extxyz"
         traj = read(md_path, ":")
-        rdfs, radii = anaAtoms.compute_rdfs_traj_avg(
-            traj, rmax=6.0, nbins=100, fct=fct
-        )  # need to skip initial equilibration frames
+        for atoms in traj:
+            rdf, r = get_rdf(
+                atoms,
+                rmax=rmax,
+                nbins=nbins,
+                elements=(26, 8),  # Fe (26), O (8)
+            )
+            rdf_list.append(rdf)
+        g_mean = np.mean(rdf_list, axis=0)  # NVT so this is ok
 
-        rdf_data = np.column_stack((radii, rdfs["OFe_inter"]))
-
-        rdf_path = OUT_PATH / f"OFe_inter_{salt}_{model_name}.rdf"
+        rdf_data = np.column_stack((r, g_mean))
+        rdf_path = OUT_PATH / f"O-Fe_{salt}_{model_name}.rdf"
         np.savetxt(
             rdf_path,
             rdf_data,
