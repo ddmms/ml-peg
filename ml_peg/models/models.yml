@@ -72,6 +72,16 @@ orb-v3-consv-inf-omat:
   kwargs:
     name: "orb_v3_conservative_inf_omat"
 
+orb-v3-consv-inf-mpa:
+  module: orb_models.forcefield
+  class_name: OrbCalc
+  device: "cpu"
+  default_dtype: float32-high
+  trained_on_d3: false
+  level_of_theory: PBE
+  kwargs:
+    name: "orb_v3_conservative_inf_mpa"
+
 # mattersim-5M:
 #   module: mattersim.forcefield
 #   class_name: MatterSimCalculator
