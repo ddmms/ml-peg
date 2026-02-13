@@ -1,0 +1,13 @@
+metrics:
+    sigma:
+        good: 0.007
+        bad: 0.015
+        unit: e/A
+        tooltip: Standard deviation of total dipole in z direction
+        level of theory: null
+    Fraction Breakdown Candidates:
+        good: 0
+        bad: 1
+        unit: null
+        tooltip: Fraction of structures with dipole larger than band gap
+        level of theory: revPBE-D3

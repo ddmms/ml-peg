@@ -426,6 +426,149 @@ def cell_to_scatter(
     return decorator
 
 
+def plot_hist(
+    *,
+    bins: Any | None = None,
+    good: float | None = None,
+    bad: float | None = None,
+    title: str | None = None,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    filename: str | Path,
+) -> Callable:
+    """
+    Plot scatter plot of MLIP results.
+
+    Parameters
+    ----------
+    bins
+        Bins for histogram. Either int or directory
+        with start, end, size. Default is None.
+    good
+        Minimum threshold for good values. Requires bins dict.
+        Default is None.
+    bad
+        Maximum threshold for good values. Requires bins dict.
+        Default is None.
+    title
+        Graph title.
+    x_label
+        Label for x-axis. Default is `None`.
+    y_label
+        Label for y axis. Default is `None`.
+    filename
+        Filename to save plot as JSON. Default is "scatter.json".
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_hist_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot scatter.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_hist_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot scatter.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            # hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            # customdata = []
+            # if hoverdata:
+            #    for i, key in enumerate(hoverdata):
+            #        hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
+            #    customdata = list(zip(*hoverdata.values(), strict=True))
+
+            fig = go.Figure()
+            data_all = []
+            for model_name, hist_data in results.items():
+                # Create figure
+                for point in hist_data:
+                    data_all.append(point)
+                if bins is None or isinstance(bins, int) or isinstance(bins, float):
+                    fig.add_trace(
+                        go.Histogram(
+                            x=hist_data,
+                            histnorm="probability density",
+                            nbinsx=bins,
+                            name=model_name,
+                        )
+                    )
+                else:
+                    fig.add_trace(
+                        go.Histogram(
+                            x=hist_data,
+                            histnorm="probability density",
+                            xbins=bins,
+                            autobinx=False,
+                            name=model_name,
+                        )
+                    )
+
+            if good is not None and bad is not None and isinstance(bins, dict):
+                actual_bins = [min(data_all)]
+                point = actual_bins[0]
+                while point < max(data_all):
+                    point += bins["size"]
+                    actual_bins.append(point)
+                colors = np.zeros_like(actual_bins)
+                bad_exists = False
+                for i, point in enumerate(actual_bins):
+                    if point < good or point > bad:
+                        bad_exists = True
+                        colors[i] = bins["start"]
+                    else:
+                        colors[i] = bins["end"]
+                if not bad_exists:
+                    colors = "#276419"
+                fig.update_traces(marker_color=colors)
+            # Update layout
+            fig.update_layout(
+                title={"text": title},
+                xaxis={"title": {"text": x_label}},
+                yaxis={"title": {"text": y_label}},
+            )
+
+            fig.update_traces()
+
+            # Write to file
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_hist_wrapper
+
+    return plot_hist_decorator
+
+
 def plot_scatter(
     title: str | None = None,
     x_label: str | None = None,
