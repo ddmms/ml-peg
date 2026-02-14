@@ -117,6 +117,7 @@ def build_category(
     # Take all tables in category, build new table, and set layout
     category_layouts = {}
     category_tables = {}
+    category_weights = {}
 
     # `category` corresponds to the category's directory name
     # We will use the loaded `category_title` for IDs/dictionary keys returned
@@ -127,9 +128,11 @@ def build_category(
                 category_info = safe_load(file)
                 category_title = category_info.get("title", category)
                 category_descrip = category_info.get("description", "")
+                category_weight = category_info.get("weight", 1)
         except FileNotFoundError:
             category_title = category
             category_descrip = ""
+            category_weight = 1
 
         # Build category summary table
         summary_table = build_summary_table(
@@ -138,6 +141,7 @@ def build_category(
             description=category_descrip,
         )
         category_tables[category_title] = summary_table
+        category_weights[f"{category_title} Score"] = category_weight
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
@@ -184,7 +188,7 @@ def build_category(
                 model_name_map=getattr(benchmark_table, "model_name_map", None),
             )
 
-    return category_layouts, category_tables
+    return category_layouts, category_tables, category_weights
 
 
 def build_summary_table(
@@ -403,14 +407,15 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     # Combine tests into categories and create category summary
-    category_layouts, category_tables = build_category(all_layouts, all_tables)
+    cat_layouts, cat_tables, cat_weights = build_category(all_layouts, all_tables)
     # Build overall summary table
-    summary_table = build_summary_table(category_tables)
+    summary_table = build_summary_table(cat_tables)
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
         column_widths=getattr(summary_table, "column_widths", None),
+        weights=cat_weights,
     )
     # Build summary and category tabs
-    build_tabs(full_app, category_layouts, summary_table, weight_components)
+    build_tabs(full_app, cat_layouts, summary_table, weight_components)
     register_onboarding_callbacks()
