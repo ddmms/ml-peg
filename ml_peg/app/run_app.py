@@ -10,6 +10,7 @@ from dash import Dash
 from ml_peg.app.build_app import build_full_app
 
 DATA_PATH = Path(__file__).parent / "data"
+ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
 
 
 def _build_full_app(app: Dash, category: str):
@@ -23,7 +24,7 @@ def _build_full_app(app: Dash, category: str):
     category
         Category to build application for.
     """
-    build_full_app(app, category)
+    build_full_app(app, category, analytics_id=ANALYTICS_ID)
 
 
 # Make server accessible for gunicorn
