@@ -31,7 +31,7 @@ EV_TO_KCAL = units.mol / units.kcal
 
 def get_info() -> dict[str, list[int]]:
     """
-    Get dictionary of S30L info.
+    Get dictionary of info for PLF547 structures.
 
     Returns
     -------
