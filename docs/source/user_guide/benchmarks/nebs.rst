@@ -46,3 +46,42 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1149/1.1633511.
 * Meta-GGA (Perdew-Wang) exchange correlation functional
+
+
+Surface reaction
+============
+
+Summary
+-------
+
+Performance in running NEB for three surface reactions (adsorption/desorption, dissociation, transfer) from OC20NEB dataset.
+
+Metrics
+-------
+
+1. Activation barrier error
+
+Initial and final geometries are from OC20NEB dataset and relaxed with each model with several layers of slab fixed. And interpolation is generated with 10 images including initial and final images. Following NEB setting from original paper, initially it runs without climbing image until fmax=0.45 eV/A or max steps 200 and converts to climbing image mode with fmax=0.05 eV/A or max steps 300. Barrier is measured between the highest energy point and initial image.
+
+The benchmark includes following reactions:
+
+- desorption_ood_87_9841_0_111-1
+- dissociation_ood_268_6292_46_211-5
+- transfer_id_601_1482_1_211-5
+
+Computational cost
+------------------
+
+Slow: tests are likely to take more than 2 hours to run on single GPU.
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
