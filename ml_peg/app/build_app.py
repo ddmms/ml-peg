@@ -129,10 +129,12 @@ def build_category(
                 category_title = category_info.get("title", category)
                 category_descrip = category_info.get("description", "")
                 category_weight = category_info.get("weight", 1)
+                benchmark_weights = category_info.get("benchmark_weights", {})
         except FileNotFoundError:
             category_title = category
             category_descrip = ""
             category_weight = 1
+            benchmark_weights = {}
 
         # Build category summary table
         summary_table = build_summary_table(
@@ -142,12 +144,16 @@ def build_category(
         )
         category_tables[category_title] = summary_table
         category_weights[f"{category_title} Score"] = category_weight
+        benchmark_weights = {
+            f"{key} Score": value for key, value in benchmark_weights.items()
+        }
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
             header="Benchmark weights",
             table=summary_table,
             column_widths=getattr(summary_table, "column_widths", None),
+            weights=benchmark_weights,
         )
 
         # Build full layout with summary table, weight controls, and test layouts
