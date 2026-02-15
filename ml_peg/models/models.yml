@@ -118,15 +118,26 @@ orb-v3-consv-inf-omat:
 #   kwargs:
 #     name: large
 
-# mace-omol:
-#   module: mace.calculators
-#   class_name: mace_omol
-#   device: "auto"
-#   trained_on_d3: true
-#   level_of_theory: ωB97M-V/def2-TZVPD
-#   default_dtype: float64
-#   kwargs:
-#     model: "extra_large"
+omol:
+  module: mace.calculators
+  class_name: mace_omol
+  device: "auto"
+  trained_on_d3: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  default_dtype: float64
+  kwargs:
+    model: "extra_large"
+
+
+0totchrg_2L_fl32_new:
+  module: mace.calculators
+  class_name: mace_omol
+  device: "auto"
+  trained_on_d3: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  default_dtype: float64
+  kwargs:
+    model: "extra_large"
 
 # mace-mh-1-omol:
 #   module: mace.calculators
