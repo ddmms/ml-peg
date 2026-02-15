@@ -303,6 +303,7 @@ def build_summary_table(
         persistence_type="session",
         persisted_props=["data"],
         tooltip_header=tooltip_header,
+        editable=False,
     )
     table.column_widths = column_widths
     table.description = description
