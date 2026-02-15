@@ -72,6 +72,16 @@ orb-v3-consv-inf-omat:
   kwargs:
     name: "orb_v3_conservative_inf_omat"
 
+# orb-v3-consv-omol:
+#   module: orb_models.forcefield
+#   class_name: OrbCalc
+#   device: "cpu"
+#   default_dtype: float32-high
+#   trained_on_d3: true
+#   level_of_theory: PBE
+#   kwargs:
+#     name: "orb_v3_conservative_omol"
+
 # mattersim-5M:
 #   module: mattersim.forcefield
 #   class_name: MatterSimCalculator
@@ -79,16 +89,6 @@ orb-v3-consv-inf-omat:
 #   load_path: "mattersim-v1.0.0-5m"
 #   trained_on_d3: false
 #   level_of_theory: PBE
-
-# uma-m-1p1-omat:
-#   module: fairchem.core
-#   class_name: FAIRChemCalculator
-#   device: "cpu"
-#   level_of_theory: PBE
-#   trained_on_d3: false
-#   kwargs:
-#     model_name: "uma-m-1p1"
-#     task_name: "omat"
 
 # uma-s-1p1-omat:
 #   module: fairchem.core
@@ -98,6 +98,16 @@ orb-v3-consv-inf-omat:
 #   trained_on_d3: false
 #   kwargs:
 #     model_name: "uma-s-1p1"
+#     task_name: "omat"
+
+# uma-m-1p1-omat:
+#   module: fairchem.core
+#   class_name: FAIRChemCalculator
+#   device: "cpu"
+#   level_of_theory: PBE
+#   trained_on_d3: false
+#   kwargs:
+#     model_name: "uma-m-1p1"
 #     task_name: "omat"
 
 # GRACE-2L-OAM:
@@ -113,7 +123,7 @@ orb-v3-consv-inf-omat:
 #   module: mace.calculators
 #   class_name: mace_off
 #   device: "auto"
-#   default_dtype: float64
+#   default_dtype: float32
 #   trained_on_d3: true
 #   kwargs:
 #     name: large
@@ -124,7 +134,7 @@ orb-v3-consv-inf-omat:
 #   device: "auto"
 #   trained_on_d3: true
 #   level_of_theory: ωB97M-V/def2-TZVPD
-#   default_dtype: float64
+#   default_dtype: float32
 #   kwargs:
 #     model: "extra_large"
 
@@ -132,22 +142,12 @@ orb-v3-consv-inf-omat:
 #   module: mace.calculators
 #   class_name: mace_mp
 #   device: "auto"
-#   default_dtype: float64
+#   default_dtype: float32
 #   trained_on_d3: true
 #   level_of_theory: ωB97M-V/def2-TZVPD
 #   kwargs:
 #     model: "mh-1"
 #     head: omol
-
-# uma-m-1p1-omol:
-#   module: fairchem.core
-#   class_name: FAIRChemCalculator
-#   device: "cpu"
-#   trained_on_d3: true
-#   level_of_theory: ωB97M-V/def2-TZVPD
-#   kwargs:
-#     model_name: "uma-m-1p1"
-#     task_name: "omol"
 
 # uma-s-1p1-omol:
 #   module: fairchem.core
@@ -157,6 +157,16 @@ orb-v3-consv-inf-omat:
 #   level_of_theory: ωB97M-V/def2-TZVPD
 #   kwargs:
 #     model_name: "uma-s-1p1"
+#     task_name: "omol"
+
+# uma-m-1p1-omol:
+#   module: fairchem.core
+#   class_name: FAIRChemCalculator
+#   device: "cpu"
+#   trained_on_d3: true
+#   level_of_theory: ωB97M-V/def2-TZVPD
+#   kwargs:
+#     model_name: "uma-m-1p1"
 #     task_name: "omol"
 
 pet-mad:
