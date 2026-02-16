@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import io
 import json
 import math
@@ -23,6 +23,8 @@ from ml_peg.analysis.utils.decorators import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
+from ml_peg.analysis.utils.element_filters import normalize_element_set_key
+from ml_peg.app.utils.load import read_plot
 from ml_peg.app.utils.weas import generate_weas_html
 
 
@@ -185,6 +187,234 @@ def struct_from_scatter(
         return Div(
             Iframe(
                 srcDoc=generate_weas_html(struct, mode, index),
+                style={
+                    "height": "550px",
+                    "width": "100%",
+                    "border": "1px solid #ddd",
+                    "borderRadius": "5px",
+                },
+            )
+        )
+
+
+def _resolve_element_set_file_path(
+    data_path: Path,
+    element_set_key: str,
+    filename: str,
+) -> Path:
+    """
+    Resolve a set-specific file path with fallback to ``all`` then top-level file.
+
+    Parameters
+    ----------
+    data_path
+        Benchmark data directory under ``app/data``.
+    element_set_key
+        Selected element-set key.
+    filename
+        Benchmark file name to load.
+
+    Returns
+    -------
+    Path
+        Existing path to a set-specific or fallback file.
+    """
+    requested = data_path / "element_sets" / element_set_key / filename
+    if requested.exists():
+        return requested
+
+    fallback = data_path / "element_sets" / "all" / filename
+    if fallback.exists():
+        return fallback
+
+    return data_path / filename
+
+
+def _load_element_set_structure_indices(
+    element_set_index_file: Path,
+    default_structure_count: int,
+) -> dict[str, list[int]]:
+    """
+    Load structure-index mapping for each element set from ``element_sets.json``.
+
+    Parameters
+    ----------
+    element_set_index_file
+        Path to ``element_sets.json`` for one benchmark.
+    default_structure_count
+        Number of structures in the unfiltered benchmark.
+
+    Returns
+    -------
+    dict[str, list[int]]
+        Mapping of set key to original structure indices.
+    """
+    default_indices = list(range(default_structure_count))
+    if not element_set_index_file.exists():
+        return {"all": default_indices}
+
+    with open(element_set_index_file) as f:
+        data = json.load(f)
+
+    element_sets = data.get("element_sets") or {}
+    element_set_indices: dict[str, list[int]] = {}
+    for key, value in element_sets.items():
+        raw_indices = value.get("indices", [])
+        element_set_indices[normalize_element_set_key(key)] = [
+            int(index) for index in raw_indices
+        ]
+
+    if "all" not in element_set_indices:
+        element_set_indices["all"] = default_indices
+
+    return element_set_indices
+
+
+def plot_from_table_column_for_element_set(
+    table_id: str,
+    plot_id: str,
+    figure_id: str,
+    data_path: str | Path,
+    plot_filename: str,
+    metric_columns: Sequence[str],
+    selector_store_id: str = "global-element-set-store",
+) -> None:
+    """
+    Attach callback to show a set-specific plot when a metric cell is clicked.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being clicked.
+    plot_id
+        ID for Dash plot placeholder Div.
+    figure_id
+        ID for Dash graph component.
+    data_path
+        Benchmark data directory under ``app/data``.
+    plot_filename
+        Plot JSON file name, e.g. ``figure_interaction_energies.json``.
+    metric_columns
+        Table columns that should trigger this plot.
+    selector_store_id
+        Store ID that keeps selected element-set key.
+    """
+    data_dir = Path(data_path)
+    metric_column_set = set(metric_columns)
+
+    @callback(
+        Output(plot_id, "children"),
+        Input(table_id, "active_cell"),
+        Input(selector_store_id, "data", allow_optional=True),
+    )
+    def show_plot(active_cell, selected_set) -> Div:
+        """
+        Show set-specific plot for selected metric and element set.
+
+        Parameters
+        ----------
+        active_cell
+            Clicked cell in Dash table.
+        selected_set
+            Selected element-set key from shared store.
+
+        Returns
+        -------
+        Div
+            Message explaining interactivity, or plot on table click.
+        """
+        if not active_cell:
+            return Div("Click on a metric to view plot.")
+
+        column_id = active_cell.get("column_id")
+        if column_id not in metric_column_set:
+            raise PreventUpdate
+
+        set_key = normalize_element_set_key(selected_set or "all")
+        plot_path = _resolve_element_set_file_path(data_dir, set_key, plot_filename)
+        scatter = read_plot(plot_path, id=figure_id)
+        return Div(scatter)
+
+
+def struct_from_scatter_for_element_set(
+    scatter_id: str,
+    struct_id: str,
+    data_path: str | Path,
+    structure_path_template: str,
+    default_structure_count: int,
+    selector_store_id: str = "global-element-set-store",
+    mode: Literal["struct", "traj"] = "struct",
+) -> None:
+    """
+    Attach callback to show a structure for clicked set-filtered scatter points.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    struct_id
+        ID for Dash placeholder Div where structures are visualised.
+    data_path
+        Benchmark data directory under ``app/data``.
+    structure_path_template
+        Structure path template with ``{index}``, e.g.
+        ``assets/.../{index}.xyz``.
+    default_structure_count
+        Number of structures in the unfiltered benchmark.
+    selector_store_id
+        Store ID that keeps selected element-set key.
+    mode
+        Whether to display a single structure (``"struct"``) or trajectory
+        (``"traj"``). Default is ``"struct"``.
+    """
+    data_dir = Path(data_path)
+    element_set_index_file = data_dir / "element_sets.json"
+    element_set_indices = _load_element_set_structure_indices(
+        element_set_index_file=element_set_index_file,
+        default_structure_count=default_structure_count,
+    )
+
+    @callback(
+        Output(struct_id, "children", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        State(selector_store_id, "data", allow_optional=True),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_structure(click_data, selected_set) -> Div:
+        """
+        Show structure for clicked scatter point and selected element set.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+        selected_set
+            Selected element-set key from shared store.
+
+        Returns
+        -------
+        Div
+            Message explaining interactivity, or visualised structure.
+        """
+        if not click_data:
+            return Div("Click on a metric to view the structure.")
+
+        point_index = click_data["points"][0]["pointNumber"]
+        set_key = normalize_element_set_key(selected_set or "all")
+        allowed_indices = element_set_indices.get(
+            set_key,
+            element_set_indices.get("all", []),
+        )
+        if allowed_indices and point_index >= len(allowed_indices):
+            raise PreventUpdate
+
+        structure_index = (
+            allowed_indices[point_index] if allowed_indices else point_index
+        )
+        structure_path = structure_path_template.format(index=structure_index)
+        return Div(
+            Iframe(
+                srcDoc=generate_weas_html(structure_path, mode, 0),
                 style={
                     "height": "550px",
                     "width": "100%",

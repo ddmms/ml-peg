@@ -8,10 +8,9 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
-    struct_from_scatter,
+    plot_from_table_column_for_element_set,
+    struct_from_scatter_for_element_set,
 )
-from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -29,27 +28,22 @@ class LNCI16App(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_interaction_energies.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
-
-        # Assets dir will be parent directory - individual files for each system
-        structs = [
-            f"assets/supramolecular/LNCI16/{MODELS[0]}/{i}.xyz"
-            for i in range(16)  # LNCI16 has 16 systems
-        ]
-
-        plot_from_table_column(
+        plot_from_table_column_for_element_set(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            figure_id=f"{BENCHMARK_NAME}-figure",
+            data_path=DATA_PATH,
+            plot_filename="figure_interaction_energies.json",
+            metric_columns=("MAE",),
         )
-
-        struct_from_scatter(
+        struct_from_scatter_for_element_set(
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
+            data_path=DATA_PATH,
+            structure_path_template=(
+                f"assets/supramolecular/LNCI16/{MODELS[0]}/{{index}}.xyz"
+            ),
+            default_structure_count=16,
             mode="struct",
         )
 
