@@ -8,6 +8,7 @@ import warnings
 from dash import Dash, Input, Output, callback
 from dash.dash_table import DataTable
 from dash.dcc import Store, Tab, Tabs
+from dash.development.base_component import Component
 from dash.html import H1, H3, Div
 from yaml import safe_load
 
@@ -21,6 +22,7 @@ from ml_peg.app.utils.onboarding import (
 )
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
+    build_analytics_components,
     build_level_of_theory_warnings,
     calculate_column_widths,
     load_model_registry_configs,
@@ -317,6 +319,7 @@ def build_tabs(
     layouts: dict[str, list[Div]],
     summary_table: DataTable,
     weight_components: Div,
+    analytics_components: list[Component] | None = None,
 ) -> None:
     """
     Build tab layouts and summary tab.
@@ -331,6 +334,8 @@ def build_tabs(
         Summary table with score from each category.
     weight_components
         Weight sliders, text boxes and reset button.
+    analytics_components
+        Optional script tags (e.g., GA) appended to the root layout.
     """
     all_tabs = [Tab(label="Summary", value="summary-tab", id="summary-tab")] + [
         Tab(label=category_name, value=category_name) for category_name in layouts
@@ -349,6 +354,9 @@ def build_tabs(
         ),
         build_footer(),
     ]
+
+    if analytics_components:
+        tabs_layout.extend(analytics_components)
 
     full_app.layout = Div(
         tabs_layout,
@@ -385,7 +393,11 @@ def build_tabs(
         return Div([layouts[tab]])
 
 
-def build_full_app(full_app: Dash, category: str = "*") -> None:
+def build_full_app(
+    full_app: Dash,
+    category: str = "*",
+    analytics_id: str | None = None,
+) -> None:
     """
     Build full app layout and register callbacks.
 
@@ -395,6 +407,8 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         Full application with all sub-apps.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    analytics_id
+        Measurement identifier used to inject analytics scripts (optional).
     """
     # Get layouts and tables for each test, grouped by categories
     all_layouts, all_tables = get_all_tests(category=category)
@@ -412,5 +426,12 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         column_widths=getattr(summary_table, "column_widths", None),
     )
     # Build summary and category tabs
-    build_tabs(full_app, category_layouts, summary_table, weight_components)
+    analytics_components = build_analytics_components(analytics_id)
+    build_tabs(
+        full_app,
+        category_layouts,
+        summary_table,
+        weight_components,
+        analytics_components=analytics_components,
+    )
     register_onboarding_callbacks()
