@@ -13,7 +13,11 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.build_components import build_footer, build_weight_components
+from ml_peg.app.utils.build_components import (
+    build_faqs,
+    build_footer,
+    build_weight_components,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     build_tutorial_button,
@@ -390,6 +394,7 @@ def build_tabs(
                         id="summary-table-scores-store",
                         storage_type="session",
                     ),
+                    build_faqs(),
                 ]
             )
         return Div([layouts[tab]])
