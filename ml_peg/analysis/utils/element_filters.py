@@ -192,12 +192,12 @@ def write_element_sets_summary_file(
     element_set_masks
         Mapping of set key to structure-selection mask.
     """
-    element_sets_payload: dict[str, dict[str, Any]] = {}
+    element_sets_data: dict[str, dict[str, Any]] = {}
     for key, set_info in element_sets.items():
         mask = element_set_masks[key]
         indices = np.flatnonzero(mask).astype(int).tolist()
         elements = set_info.get("elements")
-        element_sets_payload[key] = {
+        element_sets_data[key] = {
             "name": set_info.get("label", key),
             "description": set_info.get("description", ""),
             "elements": sorted(elements) if elements is not None else None,
@@ -205,11 +205,11 @@ def write_element_sets_summary_file(
             "indices": indices,
         }
 
-    summary_payload = {"element_sets": element_sets_payload}
+    summary_data = {"element_sets": element_sets_data}
     output_path = Path(out_path) / "element_sets.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as fp:
-        json.dump(summary_payload, fp, indent=2)
+        json.dump(summary_data, fp, indent=2)
         fp.write("\n")
 
 
@@ -234,13 +234,13 @@ def load_element_sets(config_path: str | Path) -> dict[str, dict]:
     raw_sets = config.get("element_sets") or {}
     element_sets: dict[str, dict] = {}
 
-    for raw_key, payload in raw_sets.items():
+    for raw_key, set_config in raw_sets.items():
         key = normalize_element_set_key(raw_key)
-        payload = payload or {}
-        raw_elements = payload.get("elements")
+        set_config = set_config or {}
+        raw_elements = set_config.get("elements")
         element_sets[key] = {
-            "label": payload.get("name", raw_key),
-            "description": payload.get("description", ""),
+            "label": set_config.get("name", raw_key),
+            "description": set_config.get("description", ""),
             "elements": set(raw_elements) if raw_elements is not None else None,
         }
 

@@ -202,7 +202,7 @@ def register_element_set_table_callbacks(
             Returns
             -------
             tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]
-                Updated table payload and associated stores.
+                Updated table data and associated stores.
             """
             set_key = normalize_element_set_key(selected_set or "all")
             resolved_path = _resolve_element_set_table_path(table_path, set_key)
@@ -260,7 +260,7 @@ def register_summary_scores_from_files_callback(
         Returns
         -------
         dict[str, dict[str, float]]
-            Summary score-store payload keyed by ``<category title> Score``.
+            Summary score-store data keyed by ``<category title> Score``.
         """
         set_key = normalize_element_set_key(selected_set or "all")
         summary_scores: dict[str, dict[str, float]] = {}

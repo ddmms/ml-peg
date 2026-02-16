@@ -512,8 +512,8 @@ def register_image_gallery_callbacks(
     manifest_dir
         Directory containing per-model ``manifest.json`` files.
     curve_dir
-        Directory of per-model curve JSON payloads. Element selections are rendered on
-        the fly from these payloads instead of relying on pre-generated element images.
+        Directory of per-model curve JSON files. Element selections are rendered on
+        the fly from these files instead of relying on pre-generated element images.
     overview_label
         Dropdown label representing the overview image. Default is ``"All"``.
     """
@@ -691,10 +691,10 @@ def register_image_gallery_callbacks(
         if model_curve_dir.exists():
             for curve_file in model_curve_dir.glob("*.json"):
                 try:
-                    payload = json.loads(curve_file.read_text())
+                    curve_data = json.loads(curve_file.read_text())
                 except Exception:
                     continue
-                pair = payload.get("pair") or curve_file.stem
+                pair = curve_data.get("pair") or curve_file.stem
                 try:
                     first, second = pair.split("-")
                 except ValueError:
@@ -738,11 +738,11 @@ def register_image_gallery_callbacks(
         curves: dict[str, dict] = {}
         for curve_file in model_curve_dir.glob("*.json"):
             try:
-                payload = json.loads(curve_file.read_text())
+                curve_data = json.loads(curve_file.read_text())
             except Exception:
                 continue
-            pair = payload.get("pair") or curve_file.stem
-            curves[pair] = payload
+            pair = curve_data.get("pair") or curve_file.stem
+            curves[pair] = curve_data
 
         if not curves:
             raise PreventUpdate
@@ -751,17 +751,17 @@ def register_image_gallery_callbacks(
         # all pairs involving the selected element.
         selected_element = None if element_value == overview_label else element_value
         filtered: dict[str, dict] = {}
-        for pair, payload in curves.items():
+        for pair, curve_data in curves.items():
             try:
                 first, second = pair.split("-")
             except ValueError:
                 first = second = pair
             if selected_element is None:
                 if first == second:
-                    filtered[pair] = payload
+                    filtered[pair] = curve_data
             else:
                 if selected_element in (first, second):
-                    filtered[pair] = payload
+                    filtered[pair] = curve_data
 
         if not filtered:
             raise PreventUpdate
@@ -785,14 +785,14 @@ def register_image_gallery_callbacks(
             ax.axis("off")
 
         has_data = False
-        for pair, payload in filtered.items():
+        for pair, curve_data in filtered.items():
             first, second = pair.split("-") if "-" in pair else (pair, pair)
             other = second if selected_element == first else first
             pos = PERIODIC_TABLE_POSITIONS.get(other)
             if pos is None:
                 continue
-            x_vals = payload.get("distance") or []
-            y_vals = payload.get("energy") or []
+            x_vals = curve_data.get("distance") or []
+            y_vals = curve_data.get("energy") or []
             if not x_vals or not y_vals:
                 continue
             try:
