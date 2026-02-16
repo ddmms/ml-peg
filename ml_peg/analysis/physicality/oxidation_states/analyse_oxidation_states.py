@@ -12,7 +12,7 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-MODELS = get_model_names(current_models)
+MODELS = ["mace-mp-0b3", "mace-omol"]  # get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
@@ -78,7 +78,6 @@ def plot_rdfs(model: str, results: dict[str, tuple[list[float], list[float]]]) -
         y_label="Fe-O G(r)",
         show_line=True,
         show_markers=False,
-        highlight_area=True,
         highlight_range=REF_PEAK_RANGE,
     )
     def plot_result() -> dict[str, tuple[list[float], list[float]]]:
