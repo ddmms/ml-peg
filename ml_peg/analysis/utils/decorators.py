@@ -435,7 +435,6 @@ def plot_scatter(
     show_markers: bool = True,
     hoverdata: dict | None = None,
     filename: str = "scatter.json",
-    highlight_area: bool = False,
     highlight_range: dict = None,
 ) -> Callable:
     """
@@ -457,8 +456,6 @@ def plot_scatter(
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
-    highlight_area
-        Whether to add a highlighted rectangle to the plot.
     highlight_range
         Dictionary of rectangle title and x-axis endpoints.
 
@@ -533,7 +530,7 @@ def plot_scatter(
 
                 colors = pc.qualitative.Plotly
 
-                if highlight_area:
+                if highlight_range:
                     for i, (title, range) in enumerate(highlight_range.items()):
                         fig.add_vrect(
                             x0=range[0],
