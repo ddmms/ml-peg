@@ -6,7 +6,6 @@ from pathlib import Path
 
 from ase.io import read
 import numpy as np
-from pymatgen.analysis.structure_matcher import StructureMatcher
 import pytest
 from scipy.stats import spearmanr
 from tqdm.auto import tqdm
@@ -19,7 +18,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs_big"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs"
 CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
@@ -28,27 +27,6 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
-
-# same setting as MatBench
-# https://github.com/janosh/matbench-discovery/blob/93cc6907ac08b4adaa8391ccc4adf9c015c0dd61/matbench_discovery/structure/symmetry.py#L124
-STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False)
-
-
-def get_rmsd(atoms_1, atoms_2) -> float:
-    """
-    Calculate the RMSD between two ASE Atoms objects.
-
-    Parameters
-    ----------
-    atoms_1, atoms_2
-        ASE Atoms objects.
-
-    Returns
-    -------
-    float
-        Root mean square displacement.
-    """
-    return np.random.rand()
 
 
 def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
@@ -126,6 +104,7 @@ def build_results(
     result_rmsd = {
         mlip: [] for mlip in MODELS
     }  # RMSD error for every material-cation pair
+    result_match = {mlip: [] for mlip in MODELS}  # if structures relaxing to same state
     # TODO: investigate Kendall rank correlation
 
     ref_stored = False
@@ -169,30 +148,55 @@ def build_results(
 
                     result_formation_energy["ref"].append(ref_sv_formation_energy)
 
-                nv_energies = [float(at.info["relaxed_energy"]) for at in nv_atoms_list]
-                sv_energies = [float(at.info["relaxed_energy"]) for at in sv_atoms_list]
+                match_list = []
+                rmsd_list = []
 
-                # calculate metrics
-                sv_formation_energy = min(sv_energies) - min(nv_energies)
-                # sv_preferred = sv_formation_energy < preference_energy_threshold
+                nv_initial_energies = []
+                nv_relaxed_energies = []
+                for nv_atoms in nv_atoms_list:
+                    if nv_atoms.info["ref_structure_match"]:
+                        rmsd_list.append(nv_atoms.info["ref_rmsd"])
+                        nv_relaxed_energies.append(nv_atoms.info["relaxed_energy"])
+                    else:
+                        rmsd_list.append(np.nan)
 
+                    match_list.append(nv_atoms.info["ref_structure_match"])
+                    nv_initial_energies.append(nv_atoms.info["initial_energy"])
+
+                sv_initial_energies = []
+                sv_relaxed_energies = []
+                for sv_atoms in sv_atoms_list:
+                    if sv_atoms.info["ref_structure_match"]:
+                        rmsd_list.append(sv_atoms.info["ref_rmsd"])
+                        sv_relaxed_energies.append(sv_atoms.info["relaxed_energy"])
+                    else:
+                        rmsd_list.append(np.nan)
+
+                    match_list.append(sv_atoms.info["ref_structure_match"])
+                    sv_initial_energies.append(sv_atoms.info["initial_energy"])
+
+                sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
+                    nv_relaxed_energies, default=np.nan
+                )
                 spearmans_coefficient = spearmanr(
-                    [float(at.info["initial_energy"]) for at in nv_atoms_list]
-                    + [float(at.info["initial_energy"]) for at in sv_atoms_list],
+                    nv_initial_energies + sv_initial_energies,
                     ref_nv_energies + ref_sv_energies,
                 ).statistic
 
                 # add metrics to dicts
                 result_formation_energy[model_name].append(sv_formation_energy)
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
-                rmsd_list = [
-                    -1 for i in range(len(ref_nv_energies) + len(ref_sv_energies))
-                ]
                 result_rmsd[model_name].extend(rmsd_list)
+                result_match[model_name].extend(match_list)
 
         ref_stored = True
 
-    return result_formation_energy, result_spearmans_coefficient, result_rmsd
+    return (
+        result_formation_energy,
+        result_spearmans_coefficient,
+        result_rmsd,
+        result_match,
+    )
 
 
 @pytest.fixture  # cache outputs
@@ -247,7 +251,7 @@ def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _ = build_results_pbesol
+    result_formation_energies, _, _, _ = build_results_pbesol
     return result_formation_energies
 
 
@@ -277,7 +281,7 @@ def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _ = build_results_pbe
+    result_formation_energies, _, _, _ = build_results_pbe
     return result_formation_energies
 
 
@@ -342,7 +346,7 @@ def spearmans_coefficient_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _ = build_results_pbesol
+    _, result_spearmans_coefficient, _, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
@@ -365,7 +369,7 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _ = build_results_pbe
+    _, result_spearmans_coefficient, _, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
@@ -386,13 +390,13 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Dictionary of mean relaxed structure RMSDs for all models.
+        Mean RMSD between MLIP and DFT relaxed structure that match.
     """
-    _, _, result_rmsd = build_results_pbesol
+    _, _, result_rmsd, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_rmsd[model_name]))
+        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
 
 
@@ -409,13 +413,59 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Dictionary of mean relaxed structure RMSDs for all models.
+        Mean RMSD between MLIP and DFT relaxed structures that match.
     """
-    _, _, result_rmsd = build_results_pbe
+    _, _, result_rmsd, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_rmsd[model_name]))
+        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
+    return results
+
+
+@pytest.fixture
+def match_pbesol_rate(build_results_pbesol) -> dict[str, float]:
+    """
+    Get RMSD between PBEsol and MLIP relaxed structures (oxides).
+
+    Parameters
+    ----------
+    build_results_pbesol
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Rate of MLIP relaxing to same structure as DFT.
+    """
+    _, _, _, result_match = build_results_pbesol
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = np.mean(result_match[model_name])
+    return results
+
+
+@pytest.fixture
+def match_pbe_rate(build_results_pbe) -> dict[str, float]:
+    """
+    Get RMSD between PBE and MLIP relaxed structures (oxides).
+
+    Parameters
+    ----------
+    build_results_pbe
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Rate of MLIP relaxing to same structure as DFT.
+    """
+    _, _, _, result_match = build_results_pbe
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = np.mean(result_match[model_name])
     return results
 
 
@@ -429,9 +479,11 @@ def metrics(
     formation_energy_pbesol_mae: dict[str, float],
     spearmans_coefficient_pbesol_mean: dict[str, float],
     rmsd_pbesol_mean: dict[str, float],
+    match_pbesol_rate: dict[str, float],
     formation_energy_pbe_mae: dict[str, float],
     spearmans_coefficient_pbe_mean: dict[str, float],
     rmsd_pbe_mean: dict[str, float],
+    match_pbe_rate: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -443,29 +495,32 @@ def metrics(
     spearmans_coefficient_pbesol_mean
         Mean Spearman's rank correlation (oxides, PBEsol) for all models.
     rmsd_pbesol_mean
-        Mean RMSD between DFT and MLIP relaxed structures (oxides, PBEsol) for all
-        models.
+        Mean RMSD between MLIP and PBEsol relaxed structure that match.
+    match_pbesol_rate
+        Rate of MLIP relaxing to same structure as PBEsol.
     formation_energy_pbe_mae
         Split vacancy formation energy MAE (nitrides, PBE(+U)) for all models.
     spearmans_coefficient_pbe_mean
         Mean Spearman's rank correlation (nitrides, PBE(+U)) for all models.
     rmsd_pbe_mean
-        Mean RMSD between DFT and MLIP relaxed structures (nitrides, PBE(+U)) for all
-        models.
+        Mean RMSD between MLIP and PBE relaxed structure that match.
+    match_pbe_rate
+        Rate of MLIP relaxing to same structure as PBE.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    # print(formation_energy_dft_mae)
     return {
         "MAE (PBEsol)": formation_energy_pbesol_mae,
         "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
         "RMSD (PBEsol)": rmsd_pbesol_mean,
+        "Match Rate (PBEsol)": match_pbesol_rate,
         "MAE (PBE)": formation_energy_pbe_mae,
         "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
         "RMSD (PBE)": rmsd_pbe_mean,
+        "Match Rate (PBE)": match_pbe_rate,
     }
 
 
