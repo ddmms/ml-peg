@@ -27,7 +27,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 # Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
+EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
 
 def get_info() -> dict[str, list[str]]:
@@ -98,15 +98,15 @@ def lattice_energies_raw(
     -------
     tuple[dict[str, list[float]], dict[str, list[float]]]
         A tuple containing:
-        - First dict: Absolute lattice energies in kJ/mol for each model and reference.
+        - First dict: Absolute lattice energies in kcal/mol for each model and reference.
           Keys are model names and "ref", values are lists of lattice energies.
-        - Second dict: Relative lattice energies in kJ/mol (relative to minimum energy
+        - Second dict: Relative lattice energies in kcal/mol (relative to minimum energy
           polymorph within each system). Same structure as first dict.
 
     Notes
     -----
     - Lattice energy = (crystal_energy / num_molecules) - min(molecule_energies)
-    - Energies are converted from eV to kJ/mol
+    - Energies are converted from eV to kcal/mol
     - Reference energies are stored from crystal.info["ref"]
     - Structure files are written to OUT_PATH for each model and system
     """
@@ -175,12 +175,12 @@ def lattice_energies_raw(
                     crystal_energy / num_molecules
                 ) - lowest_molecule_energy
 
-                # Convert from eV to kJ/mol
-                lattice_energy_kj = lattice_energy * EV_TO_KJ_PER_MOL
+                # Convert from eV to kcal/mol
+                lattice_energy_kcal = lattice_energy * EV_TO_KCAL_PER_MOL
 
                 # Store for absolute energies
-                results[model_name].append(lattice_energy_kj)
-                lattice_energies_list.append(lattice_energy_kj)
+                results[model_name].append(lattice_energy_kcal)
+                lattice_energies_list.append(lattice_energy_kcal)
 
                 # Store reference data only once (same for all models)
                 if not ref_stored:
@@ -214,8 +214,8 @@ def lattice_energies_raw(
 @plot_parity(
     filename=OUT_PATH / "figure_absolute_lattice_energies.json",
     title="CPOSS209 Absolute Lattice Energies (All Polymorphs)",
-    x_label="Predicted lattice energy / kJ/mol",
-    y_label="Reference lattice energy / kJ/mol",
+    x_label="Predicted lattice energy / kcal/mol",
+    y_label="Reference lattice energy / kcal/mol",
     hoverdata={
         "Crystal": INFO["polymorphs"],
     },
@@ -248,8 +248,8 @@ def absolute_lattice_energies(
 @plot_parity(
     filename=OUT_PATH / "figure_relative_lattice_energies.json",
     title="CPOSS209 Relative Lattice Energies (All Polymorphs)",
-    x_label="Predicted relative lattice energy / kJ/mol",
-    y_label="Reference relative lattice energy / kJ/mol",
+    x_label="Predicted relative lattice energy / kcal/mol",
+    y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
         "Crystal": INFO["polymorphs"],
     },
