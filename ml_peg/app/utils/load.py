@@ -186,6 +186,21 @@ def rebuild_table(
         id=id,
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         sort_action="native",
         persistence=True,
         persistence_type="session",

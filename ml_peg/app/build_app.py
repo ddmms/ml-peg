@@ -283,7 +283,7 @@ def build_summary_table(
 
     # Calculate column widths based on column names
     calculated_widths = calculate_column_widths(columns_headers)
-    # Limit max width to 200px for better wrapping on long column names
+    # Limit max width to 150px for better wrapping on long column names
     column_widths = {
         col_id: min(width, 150) for col_id, width in calculated_widths.items()
     }
