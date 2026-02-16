@@ -12,9 +12,7 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-# MODELS = get_model_names(current_models)
-
-MODELS = ["mace-mp-0b3", "omol"]
+MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
