@@ -73,7 +73,7 @@ def download_pressure_data(pressure_label: str) -> Path:
 
 
 def load_structures(
-    pressure_label: str, n_structures: int = N_STRUCTURES
+    pressure_label: str, n_structures: int = N_STRUCTURES, random_select: bool = True
 ) -> list[dict]:
     """
     Load structures using P000 starting structures and pressure-specific references.
@@ -86,6 +86,9 @@ def load_structures(
         Pressure label (e.g., "P000", "P025") used for reference values.
     n_structures
         Number of structures to load. Default is N_STRUCTURES.
+    random_select
+        Whether to randomly select structures from the available pool.
+        Default is True. Set to False for regression testing.
 
     Returns
     -------
@@ -117,7 +120,10 @@ def load_structures(
         )
 
     rng = random.Random(RANDOM_SEED)
-    selected_indices = sorted(rng.sample(range(len(start_entries)), k=n_structures))
+    if random_select:
+        selected_indices = rng.sample(range(len(start_entries)), n_structures)
+    else:
+        selected_indices = list(range(n_structures))
 
     for idx in selected_indices:
         entry_dict = start_entries[idx]

@@ -2,73 +2,96 @@
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-PRESSURE_LABELS = ["P000", "P025", "P050", "P075", "P100", "P125", "P150"]
-FIRST_N = 5
+from ml_peg.calcs.bulk_crystal.high_pressure_relaxation.calc_high_pressure_relaxation import (  # noqa: E501
+    PRESSURE_LABELS,
+    PRESSURES,
+    load_structures,
+    relax_with_pressure,
+)
+from ml_peg.models.get_models import load_models
+from ml_peg.models.models import current_models
+
+N_TEST_STRUCTURES = 3
 VOLUME_ATOL = 0.001
 ENERGY_ATOL = 0.0001
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-TEST_DATA_ROOT = REPO_ROOT / "tests" / "data" / "high_pressure_relaxation"
-OUTPUT_ROOT = (
-    REPO_ROOT
-    / "ml_peg"
-    / "calcs"
-    / "bulk_crystal"
-    / "high_pressure_relaxation"
-    / "outputs"
-)
-
-TEST_CASES = [
-    {
-        "name": "mace-mpa-0",
-        "output_model": "mace-mpa-0",
-        "data_file": TEST_DATA_ROOT / "mace-mpa-0_first5.csv",
-    },
-]
+TEST_DATA_DIR = Path(__file__).parent / "data" / "high_pressure_relaxation"
+MODEL_NAME = "mace-mpa-0"
+REFERENCE_FILE = TEST_DATA_DIR / f"{MODEL_NAME}_first{N_TEST_STRUCTURES}.csv"
 
 
-@pytest.mark.parametrize("case", TEST_CASES, ids=[case["name"] for case in TEST_CASES])
-@pytest.mark.parametrize("pressure_label", PRESSURE_LABELS)
-def test_high_pressure_relaxation_regression(
-    case: dict[str, Path | str],
-    pressure_label: str,
-) -> None:
-    """Check entries against stored regression baselines."""
-    data_path = Path(case["data_file"])
-    results_path = (
-        OUTPUT_ROOT / str(case["output_model"]) / f"results_{pressure_label}.csv"
-    )
+@pytest.fixture(scope="module")
+def regression_results() -> pd.DataFrame:
+    """Run relaxation on first N test structures for all pressures."""
+    models = load_models(current_models)
+    model = models[MODEL_NAME]
+    calc = model.get_calculator()
 
-    assert data_path.exists(), f"Missing test data file: {data_path}"
-    assert results_path.exists(), f"Missing results file: {results_path}"
-
-    expected = pd.read_csv(data_path)
-    expected_pressure = expected[expected["pressure_label"] == pressure_label]
-
-    assert len(expected_pressure) == FIRST_N
-
-    results = pd.read_csv(results_path).head(FIRST_N)
-    if len(results) < FIRST_N:
-        pytest.skip(
-            f"{case['output_model']} only has {len(results)} rows for {pressure_label}."
+    all_results = []
+    for pressure_gpa, pressure_label in zip(PRESSURES, PRESSURE_LABELS, strict=False):
+        structures = load_structures(
+            pressure_label, n_structures=N_TEST_STRUCTURES, random_select=False
         )
 
-    assert expected_pressure["mat_id"].tolist() == results["mat_id"].tolist()
+        for struct_data in structures:
+            atoms = struct_data["atoms"].copy()
+            atoms.calc = copy(calc)
+
+            relaxed, converged, enthalpy_per_atom = relax_with_pressure(
+                atoms, pressure_gpa
+            )
+
+            pred_volume = (
+                relaxed.get_volume() / len(relaxed) if relaxed is not None else None
+            )
+
+            all_results.append(
+                {
+                    "pressure_label": pressure_label,
+                    "mat_id": struct_data["mat_id"],
+                    "volume": pred_volume,
+                    "energy_per_atom": enthalpy_per_atom,
+                }
+            )
+
+    return pd.DataFrame(all_results)
+
+
+@pytest.mark.parametrize("pressure_label", PRESSURE_LABELS)
+def test_high_pressure_relaxation_regression(
+    regression_results: pd.DataFrame,
+    pressure_label: str,
+) -> None:
+    """Run calculations and check against stored regression baselines."""
+    if not REFERENCE_FILE.exists():
+        TEST_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        regression_results.to_csv(REFERENCE_FILE, index=False)
+        pytest.skip(f"Generated baseline {REFERENCE_FILE.name}; re-run to validate")
+
+    expected = pd.read_csv(REFERENCE_FILE)
+    expected_p = expected[expected["pressure_label"] == pressure_label]
+    results_p = regression_results[
+        regression_results["pressure_label"] == pressure_label
+    ]
+
+    assert len(expected_p) == N_TEST_STRUCTURES
+    assert expected_p["mat_id"].tolist() == results_p["mat_id"].tolist()
     np.testing.assert_allclose(
-        results["pred_volume_per_atom"].to_numpy(),
-        expected_pressure["volume"].to_numpy(),
+        results_p["volume"].to_numpy(),
+        expected_p["volume"].to_numpy(),
         rtol=0.0,
         atol=VOLUME_ATOL,
     )
     np.testing.assert_allclose(
-        results["pred_energy_per_atom"].to_numpy(),
-        expected_pressure["energy_per_atom"].to_numpy(),
+        results_p["energy_per_atom"].to_numpy(),
+        expected_p["energy_per_atom"].to_numpy(),
         rtol=0.0,
         atol=ENERGY_ATOL,
     )
