@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
+from ml_peg.analysis.utils.element_filters import normalize_element_set_key
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
     calc_table_scores,
     get_table_style,
     update_score_style,
 )
+from ml_peg.app.utils.load import rebuild_table
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
@@ -50,7 +53,7 @@ def register_summary_table_callbacks(
         ),  # Needed to display model config & level of theory tooltips
         Input("all-tabs", "value"),
         Input("summary-table-weight-store", "data"),
-        State("summary-table-scores-store", "data"),
+        Input("summary-table-scores-store", "data"),
         State("summary-table", "data"),
         prevent_initial_call=False,
     )
@@ -95,6 +98,218 @@ def register_summary_table_callbacks(
         return updated_rows, style_with_warnings, tooltip_rows
 
 
+def _resolve_element_set_table_path(
+    table_path: str | Path, element_set_key: str
+) -> Path:
+    """
+    Resolve set-specific table path with fallback to ``all`` then baseline table.
+
+    Parameters
+    ----------
+    table_path
+        Baseline benchmark metrics table path.
+    element_set_key
+        Requested element-set key.
+
+    Returns
+    -------
+    Path
+        Existing path to load table JSON from.
+    """
+    base_path = Path(table_path)
+    candidate = base_path.parent / "element_sets" / element_set_key / base_path.name
+    if candidate.exists():
+        return candidate
+    fallback = base_path.parent / "element_sets" / "all" / base_path.name
+    if fallback.exists():
+        return fallback
+    return base_path
+
+
+def register_element_set_table_callbacks(
+    benchmark_tables: list[Any],
+    selector_id: str = "global-element-set-store",
+) -> None:
+    """
+    Register callbacks to switch benchmark tables across configured element sets.
+
+    Parameters
+    ----------
+    benchmark_tables
+        List of benchmark ``DataTable`` instances.
+    selector_id
+        ID of global element-set dropdown component.
+    """
+    table_specs: list[dict[str, Any]] = []
+    for table in benchmark_tables:
+        table_path = getattr(table, "source_table_path", None)
+        table_id = getattr(table, "id", None)
+        if not table_id or not table_path:
+            continue
+        table_specs.append(
+            {
+                "id": table_id,
+                "path": table_path,
+                "description": getattr(table, "description", None),
+            }
+        )
+
+    if not table_specs:
+        return
+
+    for spec in table_specs:
+        table_id = spec["id"]
+
+        @callback(
+            Output(table_id, "data", allow_duplicate=True),
+            Output(table_id, "columns", allow_duplicate=True),
+            Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(table_id, "tooltip_data", allow_duplicate=True),
+            Output(table_id, "tooltip_header", allow_duplicate=True),
+            Output(f"{table_id}-raw-data-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-raw-tooltip-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
+            Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
+            Input(selector_id, "data", allow_optional=True),
+            Input(table_id, "id", allow_optional=True),
+            prevent_initial_call="initial_duplicate",
+        )
+        def switch_single_table(
+            selected_set: str,
+            _mounted_table_id: str,
+            *,
+            table_id: str = table_id,
+            table_path: str = spec["path"],
+            description: str | None = spec["description"],
+        ) -> tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]:
+            """
+            Load one benchmark table for the selected element set.
+
+            Parameters
+            ----------
+            selected_set
+                Selected element-set key.
+            _mounted_table_id
+                Mounted table ID (unused, triggers refresh when table appears).
+            table_id
+                Benchmark table component ID.
+            table_path
+                Baseline JSON table path.
+            description
+                Optional table description.
+
+            Returns
+            -------
+            tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]
+                Updated table payload and associated stores.
+            """
+            set_key = normalize_element_set_key(selected_set or "all")
+            resolved_path = _resolve_element_set_table_path(table_path, set_key)
+            rebuilt_table = rebuild_table(
+                filename=resolved_path,
+                id=table_id,
+                description=description,
+            )
+            return (
+                rebuilt_table.data,
+                rebuilt_table.columns,
+                rebuilt_table.style_data_conditional,
+                rebuilt_table.tooltip_data,
+                rebuilt_table.tooltip_header,
+                rebuilt_table.data,
+                rebuilt_table.data,
+                rebuilt_table.tooltip_header,
+                getattr(rebuilt_table, "thresholds", {}),
+                getattr(rebuilt_table, "weights", {}),
+            )
+
+
+def register_summary_scores_from_files_callback(
+    all_tables: dict[str, dict[str, Any]],
+    category_title_map: dict[str, str],
+    selector_store_id: str = "global-element-set-store",
+) -> None:
+    """
+    Recompute summary score-store directly from benchmark table JSON files.
+
+    Parameters
+    ----------
+    all_tables
+        Nested mapping of category -> benchmark name -> benchmark DataTable.
+    category_title_map
+        Mapping of category directory names to displayed category titles.
+    selector_store_id
+        Store ID containing the selected element-set key.
+    """
+
+    @callback(
+        Output("summary-table-scores-store", "data", allow_duplicate=True),
+        Input(selector_store_id, "data"),
+        prevent_initial_call=True,
+    )
+    def recompute_summary_scores(selected_set: str) -> dict[str, dict[str, float]]:
+        """
+        Recompute category scores for the selected element set.
+
+        Parameters
+        ----------
+        selected_set
+            Selected element-set key.
+
+        Returns
+        -------
+        dict[str, dict[str, float]]
+            Summary score-store payload keyed by ``<category title> Score``.
+        """
+        set_key = normalize_element_set_key(selected_set or "all")
+        summary_scores: dict[str, dict[str, float]] = {}
+
+        for category_dir, benchmarks in all_tables.items():
+            benchmark_columns: list[str] = []
+            model_scores: dict[str, dict[str, float | None]] = {}
+
+            for benchmark_name, benchmark_table in benchmarks.items():
+                benchmark_column = benchmark_name + " Score"
+                benchmark_columns.append(benchmark_column)
+
+                source_path = getattr(benchmark_table, "source_table_path", None)
+                if not source_path:
+                    continue
+                table_path = _resolve_element_set_table_path(source_path, set_key)
+                rebuilt_table = rebuild_table(
+                    filename=table_path,
+                    id=getattr(benchmark_table, "id", "metrics"),
+                    description=getattr(benchmark_table, "description", None),
+                )
+                name_map = getattr(rebuilt_table, "model_name_map", {}) or {}
+                for row in rebuilt_table.data:
+                    display_name = row.get("MLIP")
+                    original_name = name_map.get(display_name, display_name)
+                    if original_name is None:
+                        continue
+                    model_scores.setdefault(original_name, {})
+                    model_scores[original_name][benchmark_column] = row.get("Score")
+
+            if not benchmark_columns:
+                continue
+
+            category_rows: list[dict[str, Any]] = []
+            for model_name, model_row_scores in model_scores.items():
+                category_row: dict[str, Any] = {"MLIP": model_name}
+                for column in benchmark_columns:
+                    category_row[column] = model_row_scores.get(column, None)
+                category_rows.append(category_row)
+
+            category_rows = calc_table_scores(category_rows)
+            category_title = category_title_map.get(category_dir, category_dir)
+            summary_scores[category_title + " Score"] = {
+                row["MLIP"]: row["Score"] for row in category_rows
+            }
+
+        return summary_scores
+
+
 def register_category_table_callbacks(
     table_id: str,
     use_thresholds: bool = False,
@@ -133,7 +348,6 @@ def register_category_table_callbacks(
             Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
-            Input("all-tabs", "value"),
             Input(f"{table_id}-normalized-toggle", "value"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
@@ -144,7 +358,6 @@ def register_category_table_callbacks(
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
-            _tabs_value: str,
             toggle_value: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
@@ -168,8 +381,6 @@ def register_category_table_callbacks(
                 Stored weights dictionary for table metrics.
             stored_threshold
                 Stored thresholds dictionary for table metric thresholds.
-            _tabs_value
-                Current tab identifier (unused, required to trigger on tab change).
             toggle_value
                 Value of toggle to show normalised values.
             stored_raw_data
@@ -194,12 +405,8 @@ def register_category_table_callbacks(
                 tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
                 return combined_style, tooltip_data
 
-            # Tab switches and toggle flips reuse the cached scored rows rather than
-            # recalculating scores, we only re-score when weights/thresholds change.
-            if (
-                trigger_id in ("all-tabs", f"{table_id}-normalized-toggle")
-                and stored_computed_data
-            ):
+            # Toggle flips reuse cached scored rows; weight/threshold edits rescore.
+            if trigger_id == f"{table_id}-normalized-toggle" and stored_computed_data:
                 display_rows = get_scores(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
@@ -256,19 +463,13 @@ def register_category_table_callbacks(
             Output(table_id, "tooltip_data", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
-            Input("all-tabs", "value"),
             State(table_id, "data"),
-            State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
-            _tabs_value: str,
             table_data: list[dict] | None,
-            computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
-            trigger_id = ctx.triggered_id
-
             def apply_levels(
                 rows: list[dict], base_style: list[dict]
             ) -> tuple[list[dict], list[dict]]:
@@ -278,11 +479,6 @@ def register_category_table_callbacks(
                 combined_style = base_style + warning_styles
                 tooltips = tooltip_rows if tooltip_rows else [{} for _ in rows]
                 return combined_style, tooltips
-
-            if trigger_id == "all-tabs" and computed_store:
-                style = get_table_style(computed_store)
-                style, tooltip_data = apply_levels(computed_store, style)
-                return computed_store, style, tooltip_data, computed_store
 
             if not table_data:
                 raise PreventUpdate
