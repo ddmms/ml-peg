@@ -282,7 +282,12 @@ def build_summary_table(
     style_with_warnings = style + warning_styles
 
     # Calculate column widths based on column names
-    column_widths = calculate_column_widths(columns_headers)
+    calculated_widths = calculate_column_widths(columns_headers)
+    # Limit max width to 200px for better wrapping on long column names
+    column_widths = {
+        col_id: min(width, 150) for col_id, width in calculated_widths.items()
+    }
+
     style_cell_conditional = []
     for column_id, width in column_widths.items():
         col_width = f"{width}px"
@@ -306,6 +311,21 @@ def build_summary_table(
         sort_action="native",
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         tooltip_data=tooltip_rows,
         tooltip_delay=100,
         tooltip_duration=None,
