@@ -63,6 +63,7 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        self.table.source_table_path = str(self.table_path)
         self.layout = self.build_layout()
 
     def build_layout(self) -> Div:

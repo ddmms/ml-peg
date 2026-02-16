@@ -1,0 +1,9 @@
+element_sets:
+  all:
+    name: All elements
+    description: Include every structure regardless of composition.
+    elements: null
+  hcno:
+    name: HCNO
+    description: Structures composed exclusively of hydrogen, carbon, nitrogen, or oxygen.
+    elements: [H, C, N, O]

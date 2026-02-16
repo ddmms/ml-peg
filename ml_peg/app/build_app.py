@@ -5,12 +5,13 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, State, callback
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
+from dash.dcc import Dropdown, Store, Tab, Tabs
 from dash.html import H1, H3, Div
 from yaml import safe_load
 
+from ml_peg.analysis.utils.element_filters import load_element_sets
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_footer, build_weight_components
@@ -19,7 +20,11 @@ from ml_peg.app.utils.onboarding import (
     build_tutorial_button,
     register_onboarding_callbacks,
 )
-from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
+from ml_peg.app.utils.register_callbacks import (
+    register_benchmark_to_category_callback,
+    register_element_set_table_callbacks,
+    register_summary_scores_from_files_callback,
+)
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
@@ -31,6 +36,18 @@ from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
+ELEMENT_SETS_CONFIG_PATH = APP_ROOT.parent / "analysis" / "element_sets.yml"
+
+try:
+    ELEMENT_SETS = load_element_sets(ELEMENT_SETS_CONFIG_PATH)
+except (FileNotFoundError, ValueError):
+    ELEMENT_SETS = {
+        "all": {
+            "label": "All elements",
+            "description": "Include every structure regardless of composition.",
+            "elements": None,
+        }
+    }
 
 
 def get_all_tests(
@@ -336,6 +353,13 @@ def build_tabs(
         Tab(label=category_name, value=category_name) for category_name in layouts
     ]
 
+    element_set_options = [
+        {"label": value.get("label", key), "value": key}
+        for key, value in ELEMENT_SETS.items()
+    ]
+    default_element_set = (
+        "all" if "all" in ELEMENT_SETS else element_set_options[0]["value"]
+    )
     tabs_layout = [
         build_onboarding_modal(),
         build_tutorial_button(),
@@ -344,6 +368,11 @@ def build_tabs(
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
                 Div(id="tabs-content"),
+                Store(
+                    id="global-element-set-store",
+                    storage_type="session",
+                    data=default_element_set,
+                ),
             ],
             style={"flex": "1", "marginBottom": "40px"},
         ),
@@ -355,8 +384,36 @@ def build_tabs(
         style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
     )
 
-    @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
-    def select_tab(tab) -> Div:
+    @callback(
+        Output("global-element-set-store", "data"),
+        Input("global-element-set-dropdown", "value", allow_optional=True),
+        State("global-element-set-store", "data"),
+        prevent_initial_call=True,
+    )
+    def store_element_set(selected_set: str, current_set: str) -> str:
+        """
+        Persist selected element-set key in a top-level Store.
+
+        Parameters
+        ----------
+        selected_set
+            Selected element-set value from summary-tab dropdown.
+        current_set
+            Current store value.
+
+        Returns
+        -------
+        str
+            Updated store value.
+        """
+        return selected_set if selected_set is not None else current_set
+
+    @callback(
+        Output("tabs-content", "children"),
+        Input("all-tabs", "value"),
+        State("global-element-set-store", "data"),
+    )
+    def select_tab(tab, selected_element_set) -> Div:
         """
         Select tab contents to be displayed.
 
@@ -364,6 +421,8 @@ def build_tabs(
         ----------
         tab
             Name of tab selected.
+        selected_element_set
+            Selected element-set key from session store.
 
         Returns
         -------
@@ -371,9 +430,24 @@ def build_tabs(
             Summary or tab contents to be displayed.
         """
         if tab == "summary-tab":
+            summary_element_set = selected_element_set or default_element_set
+            summary_controls = Div(
+                [
+                    H3("Element Set"),
+                    Dropdown(
+                        id="global-element-set-dropdown",
+                        options=element_set_options,
+                        value=summary_element_set,
+                        clearable=False,
+                        style={"maxWidth": "320px"},
+                    ),
+                ],
+                style={"marginBottom": "12px"},
+            )
             return Div(
                 [
                     H1("Benchmarks Summary"),
+                    summary_controls,
                     summary_table,
                     weight_components,
                     Store(
@@ -398,6 +472,22 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     """
     # Get layouts and tables for each test, grouped by categories
     all_layouts, all_tables = get_all_tests(category=category)
+    category_title_map = {}
+    for category_name in all_tables:
+        try:
+            with open(APP_ROOT / category_name / f"{category_name}.yml") as file:
+                category_info = safe_load(file)
+                category_title_map[category_name] = category_info.get(
+                    "title", category_name
+                )
+        except FileNotFoundError:
+            category_title_map[category_name] = category_name
+
+    benchmark_tables = [
+        table
+        for category_tables in all_tables.values()
+        for table in category_tables.values()
+    ]
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
@@ -413,4 +503,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     )
     # Build summary and category tabs
     build_tabs(full_app, category_layouts, summary_table, weight_components)
+    register_summary_scores_from_files_callback(all_tables, category_title_map)
+    register_element_set_table_callbacks(benchmark_tables)
     register_onboarding_callbacks()
