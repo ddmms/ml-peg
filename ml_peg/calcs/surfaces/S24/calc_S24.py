@@ -109,6 +109,11 @@ class S24Benchmark(zntrack.Node):
         """
         for atoms in atoms_list:
             atoms.calc = copy(calc)
+
+            # Set default charge and spin
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
+
             atoms.get_potential_energy()
 
     def run(self):
