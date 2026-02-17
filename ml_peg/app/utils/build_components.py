@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from importlib import metadata
+from pathlib import Path
 import time
 
 from dash import html
@@ -11,6 +12,7 @@ from dash.dcc import Checklist, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
+import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
@@ -320,6 +322,110 @@ def build_weight_components(
         )
 
     return Div(layout)
+
+
+def build_faqs() -> Div:
+    """
+    Build FAQ section with collapsible dropdowns from YAML file.
+
+    Returns
+    -------
+    Div
+        Styled FAQ section with questions as dropdown titles and answers inside.
+    """
+    # Load FAQs from YAML file
+    faqs_path = Path(__file__).parent / "faqs.yml"
+
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            faqs_data = yaml.safe_load(f)
+    except FileNotFoundError:
+        return Div(
+            "FAQs file not found",
+            style={
+                "color": "#dc3545",
+                "padding": "10px",
+                "fontStyle": "italic",
+            },
+        )
+
+    if not faqs_data or not isinstance(faqs_data, list):
+        return Div("No FAQs available")
+
+    # Build FAQ dropdowns
+    faq_components = []
+
+    for faq in faqs_data:
+        question = faq.get("question", "")
+        answer = faq.get("answer", "")
+        docs_url = faq.get("docs_url")
+
+        if not question or not answer:
+            continue
+
+        # Build answer content with optional docs link
+        answer_content = [answer]
+        if docs_url:
+            answer_content.append(
+                Div(
+                    html.A(
+                        "View documentation →",
+                        href=docs_url,
+                        target="_blank",
+                        style={
+                            "color": "#0d6efd",
+                            "textDecoration": "none",
+                            "fontWeight": "600",
+                            "fontSize": "13px",
+                        },
+                    ),
+                    style={"marginTop": "8px"},
+                )
+            )
+
+        faq_components.append(
+            Details(
+                [
+                    Summary(
+                        question,
+                        style={
+                            "cursor": "pointer",
+                            "fontWeight": "bold",
+                            "padding": "10px",
+                            "backgroundColor": "#f8f9fa",
+                            "border": "1px solid #dee2e6",
+                            "borderRadius": "4px",
+                            "marginBottom": "8px",
+                        },
+                    ),
+                    Div(
+                        answer_content,
+                        style={
+                            "padding": "10px 15px",
+                            "backgroundColor": "#ffffff",
+                            "border": "1px solid #dee2e6",
+                            "borderTop": "none",
+                            "borderRadius": "0 0 4px 4px",
+                            "marginTop": "-8px",
+                            "marginBottom": "8px",
+                        },
+                    ),
+                ],
+                style={
+                    "marginBottom": "8px",
+                },
+            )
+        )
+
+    return Div(
+        [
+            H2(
+                "Frequently Asked Questions",
+                style={"color": "black", "marginTop": "30px"},
+            ),
+            Div(faq_components),
+        ]
+    )
 
 
 def build_footer() -> html.Footer:
