@@ -182,7 +182,7 @@ def rebuild_table(
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
-        editable=True,
+        editable=False,
         id=id,
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
