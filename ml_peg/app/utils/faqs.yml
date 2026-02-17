@@ -1,5 +1,5 @@
 - question: "What is ML-PEG?"
-  answer: "ML-PEG (Machine Learning PErformance Guide) is a comprehensive benchmarking framework and interactive performance guide for evaluating Machine Learning Interatomic Potentials (MLIPs) across diverse systems and properties beyond only energies and forces. The website you are currently using is the interactive performance guide, allowing users to explore and compare MLIP performance and deep dive into errors, connecting performance (or the lack of) to the underlying chemistry and physics."
+  answer: "ML-PEG (Machine Learning Performance Guide) is a comprehensive benchmarking framework and interactive performance guide for evaluating Machine Learning Interatomic Potentials (MLIPs) across diverse systems and properties beyond only energies and forces. The website you are currently using is the interactive performance guide, allowing users to explore and compare MLIP performance and deep dive into errors, connecting performance (or the lack of) to the underlying chemistry and physics."
   docs_url: "https://github.com/ddmms/ml-peg"
 
 - question: "Why are some boxes greyed out?"
