@@ -35,6 +35,48 @@ FAKE_DATA = os.getenv("FAKE_DENSITY_DATA", "") == "1"
 COMPOSITIONS = load_compositions()
 
 
+def add_shorter_d3_calculator(model, calcs):
+    """
+    Add D3 dispersion to calculator(s).
+
+    Parameters
+    ----------
+    model
+        Model to add the dispersion.
+    calcs
+        Calculator, or list of calculators, to add D3 dispersion to via a
+        SumCalculator.
+
+    Returns
+    -------
+    SumCalculator | Calculator
+        Calculator(s) with D3 dispersion added, or the original calculator when
+        the model is already trained with D3 corrections.
+    """
+    if model.trained_on_d3:
+        return calcs
+    from ase import units
+    from ase.calculators.mixing import SumCalculator
+    import torch
+    from torch_dftd.torch_dftd3_calculator import TorchDFTD3Calculator
+
+    if not isinstance(calcs, list):
+        calcs = [calcs]
+
+    d3_calc = TorchDFTD3Calculator(
+        device=model.d3_kwargs.get("device", "cpu"),
+        damping=model.d3_kwargs.get("damping", "bj"),
+        xc=model.d3_kwargs.get("xc", "pbe"),
+        dtype=getattr(torch, model.d3_kwargs.get("dtype", "float32")),
+        cutoff=model.d3_kwargs.get(
+            "cutoff", 25.0 * units.Bohr
+        ),  # shortened to make run more manageable.
+    )
+    calcs.append(d3_calc)
+
+    return SumCalculator(calcs)
+
+
 def _case_id(composition) -> str:
     """
     Build a readable test identifier for a composition case.
@@ -101,7 +143,7 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     model_out.mkdir(parents=True, exist_ok=True)
 
     calc = model.get_calculator()
-    calc = model.add_d3_calculator(calc)
+    calc = add_shorter_d3_calculator(model, calc)  # TODO: don't forget to change back
 
     struct_path = DATA_PATH / case.filename
     if not struct_path.exists():
@@ -161,9 +203,14 @@ def water_ethanol_density_dummy_data_one_case(mlip: tuple[str, Any], case) -> No
 
 if __name__ == "__main__":  # TODO: delete this
     # run a very small simulation to see if it does something reasonable
+    from ase import units
     from mace.calculators import mace_mp
 
-    calc = mace_mp("data_old/mace-omat-0-small.model", dispersion=True)
+    calc = mace_mp(
+        "data_old/mace-omat-0-small.model",
+        dispersion=True,
+        dispersion_cutoff=25 * units.Bohr,
+    )
     rho = run_one_case(
         "data/mix_xe_0.00.extxyz",
         calc,
