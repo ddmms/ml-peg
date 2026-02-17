@@ -15,7 +15,7 @@
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
 
 - question: "What do the warning icons mean?"
-  answer: "Warning icons indicate level of theory mismatches between the training data of the MLIP and the benchmark reference data. The colours of the warning sign classify the type of mismatch: red indicates a mismatch in the exchange-correlation functional, yellow indicates a mismatch between DFT and higher-level reference data (e.g. MP2, CCSD(T)), and green indcates the reference data is experimental. These indications are designed to help users interpret the scores in the context."
+  answer: "Warning icons indicate level of theory mismatches between the training data of the MLIP and the benchmark reference data. The colours of the warning sign classify the type of mismatch: red indicates a mismatch in the exchange-correlation functional, yellow indicates a mismatch between DFT and higher-level reference data (e.g. MP2, CCSD(T)), and green indicates the reference data is experimental. These indications are designed to help users interpret the scores in the context."
   docs_url: null
 
 - question: "How can I add my model?"
