@@ -118,6 +118,11 @@ class OC157Benchmark(zntrack.Node):
         """
         for atoms in triplet:
             atoms.calc = copy(calc)
+
+            # Set default charge and spin
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
+
             atoms.get_potential_energy()
 
     def run(self):
