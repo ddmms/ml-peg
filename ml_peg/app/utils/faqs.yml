@@ -7,7 +7,7 @@
   docs_url: null
 
 - question: "How are scores calculated?"
-  answer: "There are many different types of scores calculated in ML-PEG: Total score, category score and benchmark score. The total score is a weighted average of the category scores, where each category score is a weighted average of the benchmark scores within that category. Each benchmark score is calculated based on the performance of the MLIP on that benchmark, normalised between 'good' and 'bad' thresholds defined by the benchmark contributor. The overall scoring system is designed to be flexible to the users needs, allowing them to adjust the thresholds and weightings to reflect what is important for their specific use case."
+  answer: "There are many different types of scores calculated in ML-PEG: Total score, category score and benchmark score. The total score is a weighted average of the category scores, where each category score is a weighted average of the benchmark scores within that category. Each benchmark score is calculated based on the performance of the MLIP on that benchmark, normalised between 'good' and 'bad' thresholds defined by the benchmark contributor. The overall scoring system is designed to be flexible to the users' needs, allowing them to adjust the thresholds and weightings to reflect what is important for their specific use case."
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
 
 - question: "How do the thresholds work?"
