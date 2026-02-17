@@ -87,7 +87,19 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
                 crystal_short_name = parts[1] if len(parts) > 1 else crystal_short_name
             solid.info["polymorph_name"] = crystal_short_name
 
+            # Assign molecular family based on the shortened name
+            if "CRN" in crystal_short_name or "ACR" in crystal_short_name or "PTH" in crystal_short_name or "SAC" in crystal_short_name or "FLU" in crystal_short_name:
+                solid.info["molecular_family"] = "Small_rigid_molecules"
+            elif "CBZ" in crystal_short_name or "DHC" in crystal_short_name or "CYH" in crystal_short_name or "CYT" in crystal_short_name or "OXC" in crystal_short_name:
+                solid.info["molecular_family"] = "Carbamazepine_family"
+            elif "FEA" in crystal_short_name or "MFA" in crystal_short_name or "TFA" in crystal_short_name or "FFA" in crystal_short_name or "NFA" in crystal_short_name:
+                solid.info["molecular_family"] = "Fenamate_family"
+            else:
+                solid.info["molecular_family"] = "Small_drug_molecules"
+
+
             # Write output structures
+            solid.info["comment"] = solid.info["molecular_family"]
             write_dir = OUT_PATH / model_name / system
             write_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,3 +122,4 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
             write_dir.mkdir(parents=True, exist_ok=True)
 
             write(write_dir / f"{molecule_file}", molecule)
+

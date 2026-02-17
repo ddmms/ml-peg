@@ -35,6 +35,38 @@ class CPOSS209App(BaseApp):
             DATA_PATH / "figure_relative_lattice_energies.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
+        absolute_small_rigid_molecule_scatter = read_plot(
+            DATA_PATH / "figure_absolute_lattice_energies_small_rigid_molecules.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        relative_small_rigid_molecule_scatter = read_plot(
+            DATA_PATH / "figure_relative_lattice_energies_small_rigid_molecules.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        absolute_carbamazepine_scatter = read_plot(
+            DATA_PATH / "figure_absolute_lattice_energies_carbamazepine_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        relative_carbamazepine_scatter = read_plot(
+            DATA_PATH / "figure_relative_lattice_energies_carbamazepine_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        absolute_fenamate_scatter = read_plot(
+            DATA_PATH / "figure_absolute_lattice_energies_fenamate_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        relative_fenamate_scatter = read_plot(
+            DATA_PATH / "figure_relative_lattice_energies_fenamate_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        absolute_small_drug_molecule_scatter = read_plot(
+            DATA_PATH / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        relative_small_drug_molecule_scatter = read_plot(
+            DATA_PATH / "figure_relative_lattice_energies_small_drug_molecule_family.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
 
         # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / MODELS[0]
@@ -50,6 +82,14 @@ class CPOSS209App(BaseApp):
             column_to_plot={
                 "Absolute MAE": absolute_scatter,
                 "Relative MAE": relative_scatter,
+                "Absolute MAE small rigid molecules": absolute_small_rigid_molecule_scatter,
+                "Relative MAE small rigid molecules": relative_small_rigid_molecule_scatter,
+                "Absolute MAE carbamazepine family": absolute_carbamazepine_scatter,
+                "Relative MAE carbamazepine family": relative_carbamazepine_scatter,
+                "Absolute MAE fenamate family": absolute_fenamate_scatter,
+                "Relative MAE fenamate family": relative_fenamate_scatter,
+                "Absolute MAE small drug molecules": absolute_small_drug_molecule_scatter,
+                "Relative MAE small drug molecules": relative_small_drug_molecule_scatter,
             },
         )
 
