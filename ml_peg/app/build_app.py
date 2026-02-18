@@ -145,19 +145,19 @@ def build_category(
             all_tables[category],
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
+            weights={f"{key} Score": value for key, value in benchmark_weights.items()},
         )
-        category_tables[category_title] = summary_table
+
+        # Store category weight for overall summary
         category_weights[f"{category_title} Score"] = category_weight
-        benchmark_weights = {
-            f"{key} Score": value for key, value in benchmark_weights.items()
-        }
+
+        category_tables[category_title] = summary_table
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
             header="Benchmark weights",
             table=summary_table,
             column_widths=getattr(summary_table, "column_widths", None),
-            weights=benchmark_weights,
         )
 
         # Build full layout with summary table, weight controls, and test layouts
@@ -205,6 +205,7 @@ def build_summary_table(
     tables: dict[str, DataTable],
     table_id: str = "summary-table",
     description: str | None = None,
+    weights: dict[str, float] | None = None,
 ) -> DataTable:
     """
     Build summary table from a set of tables.
@@ -217,6 +218,8 @@ def build_summary_table(
         ID of table being built. Default is 'summary-table'.
     description
         Description of summary table. Default is None.
+    weights
+        Weights for each column. Default is `None`, which sets all weights to 1.
 
     Returns
     -------
@@ -344,6 +347,7 @@ def build_summary_table(
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
+    table.weights = weights
     return table
 
 
@@ -441,12 +445,11 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     # Combine tests into categories and create category summary
     cat_layouts, cat_tables, cat_weights = build_category(all_layouts, all_tables)
     # Build overall summary table
-    summary_table = build_summary_table(cat_tables)
+    summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
-        column_widths=getattr(summary_table, "column_widths", None),
-        weights=cat_weights,
+        column_widths=summary_table.column_widths,
     )
     # Build summary and category tabs
     build_tabs(full_app, cat_layouts, summary_table, weight_components)

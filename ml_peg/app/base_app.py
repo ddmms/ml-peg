@@ -82,7 +82,6 @@ class BaseApp(ABC):
             docs_url=self.docs_url,
             table=self.table,
             thresholds=getattr(self.table, "thresholds", None),
-            weights=getattr(self.table, "weights", None),
             extra_components=self.extra_components,
         )
 
