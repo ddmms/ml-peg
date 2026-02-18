@@ -114,7 +114,8 @@ def build_weight_input(
             id=input_id,
             type="number",
             value=default_value,
-            step=0.1,
+            step=0.01,
+            debounce=True,
             style={
                 "width": "60px",
                 "fontSize": "12px",
@@ -222,6 +223,15 @@ def build_weight_components(
                             "borderRadius": "3px",
                             "width": "fit-content",
                             "cursor": "pointer",
+                        },
+                    ),
+                    Div(
+                        "Press Enter or click away to apply new weights or thresholds",
+                        style={
+                            "fontSize": "11px",
+                            "color": "#6c757d",
+                            "fontStyle": "italic",
+                            "marginTop": "2px",
                         },
                     ),
                 ],
@@ -807,7 +817,8 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-good-threshold",
                 type="number",
                 value=good_val,
-                step=0.01,
+                step=0.001,
+                debounce=True,
                 style={
                     "width": "60px",
                     "fontSize": "12px",
@@ -853,7 +864,8 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-bad-threshold",
                 type="number",
                 value=bad_val,
-                step=0.01,
+                step=0.001,
+                debounce=True,
                 style={
                     "width": "60px",
                     "fontSize": "12px",
