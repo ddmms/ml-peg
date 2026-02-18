@@ -132,7 +132,6 @@ def build_weight_input(
 def build_weight_components(
     header: str,
     table: DataTable,
-    weights: dict[str, float] | None = None,
     *,
     use_thresholds: bool = False,
     column_widths: dict[str, int] | None = None,
@@ -147,9 +146,6 @@ def build_weight_components(
         Header for above sliders.
     table
         DataTable to build weight components for.
-    weights
-        Optional weights for each metric, usually set during analysis. Default is
-        `None`, which sets all weights to 1.
     use_thresholds
         Whether this table also exposes normalization thresholds. When True,
         weight callbacks will reuse the raw-data store and normalization store to
@@ -179,7 +175,7 @@ def build_weight_components(
     input_ids = [f"{table.id}-{col}" for col in columns]
 
     # Set default weights
-    weights = weights if weights else {}
+    weights = table.weights if table.weights else {}
     for column in columns:
         weights.setdefault(column, 1.0)
 
@@ -524,7 +520,6 @@ def build_test_layout(
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
-    weights: dict[str, float] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -536,7 +531,8 @@ def build_test_layout(
     description
         Description of test.
     table
-        Dash Table with metric results.
+        Dash Table with metric results. Can include a `weights` attribute to be used by
+        `build_weight_components`.
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
@@ -548,9 +544,6 @@ def build_test_layout(
         Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
         analysis pipeline. When provided, inline threshold controls are rendered
         automatically.
-    weights
-        Optional weights for each metric, usually set during analysis. Default is
-        `None`, which sets all weights to 1.
 
     Returns
     -------
@@ -628,7 +621,6 @@ def build_test_layout(
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
-        weights=weights,
         use_thresholds=True,
         column_widths=column_widths,
         thresholds=thresholds,
