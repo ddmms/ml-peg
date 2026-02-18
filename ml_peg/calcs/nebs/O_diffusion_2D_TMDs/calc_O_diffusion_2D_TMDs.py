@@ -11,6 +11,7 @@ from janus_core.calculations.neb import NEB  # type: ignore
 import matplotlib.pyplot as plt
 import pytest  # type: ignore
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -34,11 +35,19 @@ def relaxed_structs() -> dict[str, Atoms]:
     """
     relaxed_structs = {}
 
+    structure_dir = (
+        download_s3_data(
+            key="inputs/nebs/O_diffusion_2D_TMDs/O_diffusion_2D_TMDs.zip",
+            filename="O_diffusion_2D_TMDs.zip",
+        )
+        / "O_diffusion_2D_TMDs"
+    )
+
     for model_name, calc in MODELS.items():
         for compound in COMPOUNDS:
             for state in ["initial", "end"]:
                 struct_name = f"{compound}_{state}.xyz"
-                struct = read(DATA_PATH / struct_name)
+                struct = read(structure_dir / struct_name)
                 struct.calc = calc.get_calculator()
 
                 geomopt = GeomOpt(
