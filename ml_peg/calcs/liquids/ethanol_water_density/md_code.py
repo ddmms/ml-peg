@@ -161,6 +161,7 @@ def run_one_case(
     log_every: int = 200,
     log_trajectory_every: int = 400,
     dummy_data=False,
+    continue_running=False,
     workdir: Path,
 ) -> Iterable[float]:
     """
@@ -190,6 +191,8 @@ def run_one_case(
         Trajectory write interval in MD steps.
     dummy_data : bool, optional
         If ``True``, skip simulation and generate synthetic data.
+    continue_running : bool, optional
+        If ``True``, continue running from the previous trajectory.
     workdir : pathlib.Path
         Output directory for logs and trajectories.
 
@@ -199,6 +202,8 @@ def run_one_case(
         Density time series in g/cm^3.
     """
     ts_path = workdir / "density_timeseries.csv"
+    traj_path = workdir / "md.traj"
+
     if dummy_data:
         rho_series = np.random.normal(
             loc=0.9, scale=0.05, size=npt_steps // sample_every
@@ -207,52 +212,107 @@ def run_one_case(
             for rho in rho_series:
                 density_log.write(rho)
         return rho_series
-    atoms = read(struct_path)
-    atoms.set_pbc(True)
-    atoms.wrap()
-    atoms.calc = calc
 
-    # fast pre-relax
-    opt = FIRE(atoms, logfile=str(workdir / "opt.log"))
-    opt.run(fmax=0.15)
-
-    # velocities
-    MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
-    Stationary(atoms)
-    ZeroRotation(atoms)
+    workdir.mkdir(parents=True, exist_ok=True)
 
     dt = dt_fs * fs
     t0 = time.time()
     ps = 1000 * fs
     thermostat_tau = 0.5 * ps
 
-    dyn = Langevin(
-        atoms,
-        timestep=dt,
-        temperature_K=temperature,
-        friction=1 / thermostat_tau,
-    )
-    attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
-    with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        dyn.run(nvt_steps)
-    # real NPT
-    dyn = LangevinBAOAB(  # use MTK?
+    target_samples = npt_steps // sample_every
+
+    if continue_running:
+        # 1) Load last saved state (positions + cell + momenta if stored)
+        if traj_path.exists():
+            with Trajectory(str(traj_path), "r") as tr:
+                if len(tr) == 0:
+                    raise RuntimeError(f"{traj_path} exists but contains no frames.")
+                atoms = tr[-1]
+        else:
+            raise RuntimeError(f"No traj path at {traj_path}. Cannot continue running")
+
+        # 2) Count how many samples are already present
+        if ts_path.exists():
+            # assume one rho per non-empty line; ignore a header if present
+            n_lines = 0
+            with open(ts_path, encoding="utf-8") as f:
+                for line in f:
+                    s = line.strip()
+                    if not s:
+                        continue
+                    # skip header-ish lines
+                    if any(c.isalpha() for c in s):
+                        continue
+                    n_lines += 1
+            already_samples = n_lines
+        else:
+            raise RuntimeError(f"no ts_path at {ts_path}. Cannot continue running")
+
+        # If we've already finished, just return what we have
+        if already_samples >= target_samples:
+            # load and return existing rhos
+            rhos_existing = []
+            if ts_path.exists():
+                with open(ts_path, encoding="utf-8") as f:
+                    for line in f:
+                        s = line.strip()
+                        if not s or any(c.isalpha() for c in s):
+                            continue
+                        # tolerate csv with extra columns
+                        rhos_existing.append(float(s.split(",")[0]))
+            return np.array(rhos_existing)
+        atoms.calc = calc
+    else:
+        already_samples = 0
+        atoms = read(struct_path)
+        atoms.set_pbc(True)
+        atoms.wrap()
+        atoms.calc = calc
+
+        # fast pre-relax
+        opt = FIRE(atoms, logfile=str(workdir / "opt.log"))
+        opt.run(fmax=0.15)
+
+        # velocities
+        MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
+        Stationary(atoms)
+        ZeroRotation(atoms)
+
+        # NVT
+        dyn = Langevin(
+            atoms,
+            timestep=dt,
+            temperature_K=temperature,
+            friction=1 / thermostat_tau,
+        )
+        attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
+        with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
+            dyn.run(nvt_steps)
+
+    # NPT
+    dyn = LangevinBAOAB(
         atoms,
         timestep=dt,
         temperature_K=temperature,
         externalstress=p_bar * bar,
         T_tau=thermostat_tau,
-        P_tau=0.5
-        * ps,  # same timeconstants for baro/thermostat is fine for stochastic ones
+        P_tau=0.5 * ps,
         hydrostatic=True,
         rng=0,
     )
+    dyn.nsteps = already_samples * sample_every  # seems public enough to me
+
     attach_basic_logging(dyn, atoms, str(workdir / "md.log"), log_every, t0)
+
+    remaining_samples = target_samples - already_samples
+    rhos = []
+
     with traj_logging(dyn, atoms, workdir, traj_every=log_trajectory_every):
-        rhos = []
-        n_samples = npt_steps // sample_every
-        with DensityTimeseriesLogger(ts_path) as density_log:
-            for _ in range(n_samples):
+        with DensityTimeseriesLogger(
+            ts_path, overwrite=not continue_running
+        ) as density_log:
+            for _ in range(remaining_samples):
                 dyn.run(sample_every)
                 rho = density_g_cm3(atoms)
                 rhos.append(rho)
@@ -260,5 +320,16 @@ def run_one_case(
 
     # save final structure for debugging/repro
     write(workdir / "final.extxyz", atoms)
+
+    # If resuming, return the whole series (existing + new) for convenience
+    if continue_running and ts_path.exists():
+        rhos_all = []
+        with open(ts_path, encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if not s or any(c.isalpha() for c in s):
+                    continue
+                rhos_all.append(float(s.split(",")[0]))
+        return np.array(rhos_all)
 
     return np.array(rhos)

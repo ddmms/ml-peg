@@ -104,9 +104,6 @@ class DensityTimeseriesLogger:
         self._writer = None
         self._step = 0
 
-    # ---------------------
-    # context manager API
-    # ---------------------
     def __enter__(self):
         """
         Open the output file and return logger instance.
@@ -117,13 +114,35 @@ class DensityTimeseriesLogger:
             Logger ready to write rows.
         """
         if self.overwrite and self.path.exists():
+            mode = "w"
             self.path.unlink()
+        elif not self.path.exists():
+            mode = "w"
+        else:
+            mode = "a"
+            # If appending, recover last step index
+            try:
+                with self.path.open("r", newline="") as f:
+                    last_step = -1
+                    for row in csv.reader(f):
+                        if not row or row[0] == "step":
+                            continue
+                        try:
+                            last_step = int(row[0])
+                        except ValueError:
+                            continue
+                    self._step = last_step + 1
+            except Exception:
+                # If file is corrupted or empty, just continue from 0
+                self._step = 0
 
-        self._f = self.path.open("w", newline="")
+        self._f = self.path.open(mode, newline="")
         self._writer = csv.writer(self._f)
 
-        self._writer.writerow(["step", "rho_g_cm3"])
-        self._f.flush()
+        # Only write header if creating new file
+        if mode == "w":
+            self._writer.writerow(["step", "rho_g_cm3"])
+            self._f.flush()
 
         return self
 
@@ -148,9 +167,6 @@ class DensityTimeseriesLogger:
         if self._f:
             self._f.close()
 
-    # ---------------------
-    # logging
-    # ---------------------
     def write(self, rho: float):
         """
         Write one density value to the CSV file.
@@ -166,5 +182,5 @@ class DensityTimeseriesLogger:
             This method appends one row to disk.
         """
         self._writer.writerow([self._step, f"{rho:.8f}"])
-        self._f.flush()  # critical for crash safety
+        self._f.flush()
         self._step += 1

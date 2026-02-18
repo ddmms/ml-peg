@@ -30,6 +30,7 @@ OUT_PATH = BENCH_ROOT / "outputs"
 MODELS = load_models(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}
 FAKE_DATA = os.getenv("FAKE_DENSITY_DATA", "") == "1"
+CONTINUE_RUNNING = os.getenv("CONTINUE_RUNNING", "") == "1"
 
 # IMPORTANT: create the list once for parametrization
 COMPOSITIONS = load_compositions()
@@ -143,6 +144,7 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     model_out.mkdir(parents=True, exist_ok=True)
 
     calc = model.get_calculator()
+    # calc = model.add_d3_calculator(calc)
     calc = add_shorter_d3_calculator(model, calc)  # TODO: don't forget to change back
 
     struct_path = DATA_PATH / case.filename
@@ -154,7 +156,9 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     case_dir = model_out / f"x_ethanol_{case.x_ethanol:.2f}"
     case_dir.mkdir(parents=True, exist_ok=True)
 
-    rho_series = run_one_case(struct_path, calc, workdir=case_dir)
+    rho_series = run_one_case(
+        struct_path, calc, workdir=case_dir, continue_running=CONTINUE_RUNNING
+    )
 
     ts_path = case_dir / "density_timeseries.csv"
     write_density_timeseries_checkpointed(ts_path, rho_series)
@@ -215,8 +219,9 @@ if __name__ == "__main__":  # TODO: delete this
         "data/mix_xe_0.00.extxyz",
         calc,
         nvt_steps=1000,
-        npt_steps=3000,
+        npt_steps=4000,
         log_every=50,
         workdir=Path("debug"),
+        continue_running=True,
     )
     print(rho)
