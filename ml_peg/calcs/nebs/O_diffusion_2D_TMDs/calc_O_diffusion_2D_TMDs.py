@@ -6,10 +6,9 @@ from pathlib import Path
 
 from ase import Atoms
 from ase.io import read
-from janus_core.calculations.geom_opt import GeomOpt  # type: ignore
-from janus_core.calculations.neb import NEB  # type: ignore
-import matplotlib.pyplot as plt
-import pytest  # type: ignore
+from janus_core.calculations.geom_opt import GeomOpt
+from janus_core.calculations.neb import NEB
+import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
@@ -80,11 +79,9 @@ def test_o_diffusion_mos2(relaxed_structs: dict[str, Atoms], model_name: str) ->
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_MoS2-{model_name}",
     ).run()
-    plt.close("all")
 
 
 @pytest.mark.slow
@@ -106,11 +103,9 @@ def test_o_diffusion_mose2(relaxed_structs: dict[str, Atoms], model_name: str) -
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_MoSe2-{model_name}",
     ).run()
-    plt.close("all")
 
 
 @pytest.mark.slow
@@ -132,11 +127,9 @@ def test_o_diffusion_mote2(relaxed_structs: dict[str, Atoms], model_name: str) -
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_MoTe2-{model_name}",
     ).run()
-    plt.close("all")
 
 
 @pytest.mark.slow
@@ -158,11 +151,9 @@ def test_o_diffusion_ws2(relaxed_structs: dict[str, Atoms], model_name: str) -> 
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_WS2-{model_name}",
     ).run()
-    plt.close("all")
 
 
 @pytest.mark.slow
@@ -184,11 +175,9 @@ def test_o_diffusion_wse2(relaxed_structs: dict[str, Atoms], model_name: str) ->
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_WSe2-{model_name}",
     ).run()
-    plt.close("all")
 
 
 @pytest.mark.slow
@@ -210,8 +199,6 @@ def test_o_diffusion_wte2(relaxed_structs: dict[str, Atoms], model_name: str) ->
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
-        plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"O_diffusion_WTe2-{model_name}",
     ).run()
-    plt.close("all")
