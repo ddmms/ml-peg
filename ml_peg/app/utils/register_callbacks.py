@@ -18,6 +18,7 @@ from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
     clean_thresholds,
+    filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
     get_scores,
@@ -48,18 +49,23 @@ def register_summary_table_callbacks(
         Output(
             "summary-table", "tooltip_data"
         ),  # Needed to display model config & level of theory tooltips
+        Output("summary-table-computed-store", "data", allow_duplicate=True),
         Input("all-tabs", "value"),
         Input("summary-table-weight-store", "data"),
+        Input("selected-models-store", "data"),
         State("summary-table-scores-store", "data"),
         State("summary-table", "data"),
-        prevent_initial_call=False,
+        State("summary-table-computed-store", "data"),
+        prevent_initial_call="initial_duplicate",
     )
     def update_summary_table(
         tabs_value: str,
         stored_weights: dict[str, float],
+        selected_models: list[str] | None,
         stored_scores: dict[str, dict[str, float]],
         summary_data: list[dict],
-    ) -> tuple[list[dict], list[dict], list[dict]]:
+        computed_store: list[dict] | None,
+    ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
         """
         Update summary table when scores/weights change, and sync on tab change.
 
@@ -69,30 +75,42 @@ def register_summary_table_callbacks(
             Value of selected tab. Parameter unused, but required to register Input.
         stored_weights
             Stored summary weights dictionary.
+        selected_models
+            List of model names currently selected in the model filter.
         stored_scores
             Stored scores for table scores.
         summary_data
-            Data from summary table to be updated.
+            Data from summary table to be updated (may be filtered).
+        computed_store
+            Full unfiltered summary rows used as the source of truth.
 
         Returns
         -------
-        tuple[list[dict], list[dict], list[dict]]
-            Updated rows, conditional styling rules, and tooltip rows.
+        tuple[list[dict], list[dict], list[dict], list[dict]]
+            Updated rows, conditional styling rules, tooltip rows, and full rows
+            written back to the computed store.
         """
+        # Use the full unfiltered store as source so re-selecting models works.
+        # Fall back to summary_data only before the store is first populated.
+        source_data = computed_store or summary_data
+
         # Update table from stored scores
         if stored_scores:
-            for row in summary_data:
+            for row in source_data:
                 for tab, values in stored_scores.items():
-                    row[tab] = values[row["MLIP"]]
+                    if row["MLIP"] in values:
+                        row[tab] = values[row["MLIP"]]
 
-        # Update table contents
-        updated_rows, base_style = update_score_style(summary_data, stored_weights)
+        # Score all rows, write full rows back to store, then filter for display
+        updated_rows, _ = update_score_style(source_data, stored_weights)
+        filtered_rows = filter_rows_by_models(updated_rows, selected_models)
 
         warning_styles, tooltip_rows = build_level_of_theory_warnings(
-            updated_rows, model_levels, metric_levels, model_configs
+            filtered_rows, model_levels, metric_levels, model_configs
         )
+        base_style = get_table_style(filtered_rows) if filtered_rows else []
         style_with_warnings = base_style + warning_styles
-        return updated_rows, style_with_warnings, tooltip_rows
+        return filtered_rows, style_with_warnings, tooltip_rows, updated_rows
 
 
 def register_category_table_callbacks(
@@ -135,6 +153,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-thresholds-store", "data"),
             Input("all-tabs", "value"),
             Input(f"{table_id}-normalized-toggle", "value"),
+            Input("selected-models-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
@@ -146,6 +165,7 @@ def register_category_table_callbacks(
             stored_threshold: dict | None,
             _tabs_value: str,
             toggle_value: list[str] | None,
+            selected_models: list[str] | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
@@ -172,6 +192,8 @@ def register_category_table_callbacks(
                 Current tab identifier (unused, required to trigger on tab change).
             toggle_value
                 Value of toggle to show normalised values.
+            selected_models
+                List of model names currently selected in the model filter.
             stored_raw_data
                 Table data.
             stored_computed_data
@@ -204,8 +226,14 @@ def register_category_table_callbacks(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
-                style = get_table_style(display_rows, scored_data=scored_rows)
-                style, tooltip_data = apply_levels_of_theory(display_rows, style)
+                filtered_rows = filter_rows_by_models(display_rows, selected_models)
+                filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+                style = (
+                    get_table_style(filtered_rows, scored_data=filtered_scores)
+                    if filtered_rows
+                    else []
+                )
+                style, tooltip_data = apply_levels_of_theory(filtered_rows, style)
                 columns = format_metric_columns(
                     current_columns, thresholds, show_normalized
                 )
@@ -213,7 +241,7 @@ def register_category_table_callbacks(
                     raw_tooltips, thresholds, show_normalized
                 )
                 return (
-                    display_rows,
+                    filtered_rows,
                     style,
                     tooltip_data,
                     columns,
@@ -232,14 +260,20 @@ def register_category_table_callbacks(
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
-            style = get_table_style(display_rows, scored_data=scored_rows)
-            style, tooltip_data = apply_levels_of_theory(display_rows, style)
+            filtered_rows = filter_rows_by_models(display_rows, selected_models)
+            filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+            style = (
+                get_table_style(filtered_rows, scored_data=filtered_scores)
+                if filtered_rows
+                else []
+            )
+            style, tooltip_data = apply_levels_of_theory(filtered_rows, style)
             columns = format_metric_columns(
                 current_columns, thresholds, show_normalized
             )
             tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
             return (
-                display_rows,
+                filtered_rows,
                 style,
                 tooltip_data,
                 columns,
@@ -257,6 +291,7 @@ def register_category_table_callbacks(
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
             Input("all-tabs", "value"),
+            Input("selected-models-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
@@ -264,11 +299,10 @@ def register_category_table_callbacks(
         def update_table_scores(
             stored_weights: dict[str, float] | None,
             _tabs_value: str,
+            selected_models: list[str] | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
-            trigger_id = ctx.triggered_id
-
             def apply_levels(
                 rows: list[dict], base_style: list[dict]
             ) -> tuple[list[dict], list[dict]]:
@@ -279,27 +313,30 @@ def register_category_table_callbacks(
                 tooltips = tooltip_rows if tooltip_rows else [{} for _ in rows]
                 return combined_style, tooltips
 
-            if trigger_id == "all-tabs" and computed_store:
-                style = get_table_style(computed_store)
-                style, tooltip_data = apply_levels(computed_store, style)
-                return computed_store, style, tooltip_data, computed_store
-
-            if not table_data:
+            # Always use computed_store (full unfiltered rows) as the source so
+            # that re-selecting a model restores it. Fall back to table_data only
+            # on first load before the store is populated.
+            source_data = computed_store or table_data
+            if not source_data:
                 raise PreventUpdate
 
-            scored_rows, style = update_score_style(table_data, stored_weights)
-            style, tooltip_data = apply_levels(scored_rows, style)
-            return scored_rows, style, tooltip_data, scored_rows
+            scored_rows, _ = update_score_style(source_data, stored_weights)
+            filtered_rows = filter_rows_by_models(scored_rows, selected_models)
+            style = get_table_style(filtered_rows) if filtered_rows else []
+            style, tooltip_data = apply_levels(filtered_rows, style)
+            return filtered_rows, style, tooltip_data, scored_rows
 
     @callback(
         Output("summary-table-scores-store", "data", allow_duplicate=True),
         Input(table_id, "data"),
         State("summary-table-scores-store", "data"),
+        State(f"{table_id}-computed-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_scores_store(
         table_data: list[dict],
         scores_data: dict[str, dict[str, float]],
+        computed_rows: list[dict] | None,
     ) -> dict[str, dict[str, float]]:
         """
         Update stored scores values when weights update.
@@ -310,6 +347,8 @@ def register_category_table_callbacks(
             Data from `table_id` to be updated.
         scores_data
             Dictionary of scores for each tab.
+        computed_rows
+            Cached unfiltered rows for the category summary.
 
         Returns
         -------
@@ -320,12 +359,16 @@ def register_category_table_callbacks(
         if not table_id.endswith("-summary-table"):
             return scores_data
 
+        source_rows = computed_rows or table_data
+        if not source_rows:
+            return scores_data
+
         if not scores_data:
             scores_data = {}
         # Update scores store. Category table IDs are of form "[category]-summary-table"
         # Table headings are of the form "[category] Score"
         scores_data[table_id.removesuffix("-summary-table") + " Score"] = {
-            row["MLIP"]: row["Score"] for row in table_data
+            row["MLIP"]: row["Score"] for row in source_rows if row.get("MLIP")
         }
         return scores_data
 
@@ -363,6 +406,7 @@ def register_benchmark_to_category_callback(
         Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
         Input(f"{benchmark_table_id}-computed-store", "data"),
         Input("all-tabs", "value"),
+        Input("selected-models-store", "data"),
         State(category_table_id, "data"),
         State(f"{category_table_id}-weight-store", "data"),
         State(f"{category_table_id}-computed-store", "data"),
@@ -371,6 +415,7 @@ def register_benchmark_to_category_callback(
     def update_category_from_benchmark(
         benchmark_computed_store: list[dict] | None,
         _tabs_value: str,
+        selected_models: list[str] | None,
         category_data: list[dict] | None,
         category_weights: dict[str, float] | None,
         category_computed_store: list[dict] | None,
@@ -384,6 +429,8 @@ def register_benchmark_to_category_callback(
             Latest scored benchmark rows emitted by the benchmark table.
         _tabs_value
             Current tab identifier (unused, required to trigger on tab change).
+        selected_models
+            List of model names currently selected in the model filter.
         category_data
             Existing category table rows shown to the user.
         category_weights
@@ -399,6 +446,8 @@ def register_benchmark_to_category_callback(
         # Default to pre-computed category data to avoid multiple updates on tab change
         category_rows = category_computed_store or category_data
         if not category_rows:
+            raise PreventUpdate
+        if not benchmark_computed_store:
             raise PreventUpdate
 
         benchmark_scores: dict[str, float] = {}
@@ -416,7 +465,9 @@ def register_benchmark_to_category_callback(
                 row[benchmark_column] = benchmark_scores[mlip]
 
         category_rows, style = update_score_style(category_rows, category_weights)
-        return category_rows, style, category_rows
+        filtered_rows = filter_rows_by_models(category_rows, selected_models)
+        filtered_style = get_table_style(filtered_rows) if filtered_rows else []
+        return filtered_rows, filtered_style, category_rows
 
 
 def register_weight_callbacks(
