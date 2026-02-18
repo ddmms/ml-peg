@@ -60,11 +60,13 @@ class CPOSS209App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
         absolute_small_drug_molecule_scatter = read_plot(
-            DATA_PATH / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
+            DATA_PATH
+            / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
         relative_small_drug_molecule_scatter = read_plot(
-            DATA_PATH / "figure_relative_lattice_energies_small_drug_molecule_family.json",
+            DATA_PATH
+            / "figure_relative_lattice_energies_small_drug_molecule_family.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
 
@@ -82,14 +84,22 @@ class CPOSS209App(BaseApp):
             column_to_plot={
                 "Absolute MAE": absolute_scatter,
                 "Relative MAE": relative_scatter,
-                "Absolute MAE small rigid molecules": absolute_small_rigid_molecule_scatter,
-                "Relative MAE small rigid molecules": relative_small_rigid_molecule_scatter,
-                "Absolute MAE carbamazepine family": absolute_carbamazepine_scatter,
-                "Relative MAE carbamazepine family": relative_carbamazepine_scatter,
-                "Absolute MAE fenamate family": absolute_fenamate_scatter,
-                "Relative MAE fenamate family": relative_fenamate_scatter,
-                "Absolute MAE small drug molecules": absolute_small_drug_molecule_scatter,
-                "Relative MAE small drug molecules": relative_small_drug_molecule_scatter,
+                "Absolute MAE small rigid molecules": (
+                    absolute_small_rigid_molecule_scatter
+                ),
+                "Relative MAE small rigid molecules": (
+                    relative_small_rigid_molecule_scatter
+                ),
+                "Absolute MAE carbamazepine family": (absolute_carbamazepine_scatter),
+                "Relative MAE carbamazepine family": (relative_carbamazepine_scatter),
+                "Absolute MAE fenamate family": (absolute_fenamate_scatter),
+                "Relative MAE fenamate family": (relative_fenamate_scatter),
+                "Absolute MAE small drug molecules": (
+                    absolute_small_drug_molecule_scatter
+                ),
+                "Relative MAE small drug molecules": (
+                    relative_small_drug_molecule_scatter
+                ),
             },
         )
 

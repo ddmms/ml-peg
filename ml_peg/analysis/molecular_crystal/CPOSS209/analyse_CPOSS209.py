@@ -26,8 +26,10 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Unit conversion 
+# Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
+KJ_PER_MOL_TO_KCAL_PER_MOL = units.kJ / units.kcal
+
 
 def get_info() -> dict[str, list[str]]:
     """
@@ -131,8 +133,12 @@ def lattice_energies_raw(
     results_relative_carbamazepine_family = {"ref": []} | {mlip: [] for mlip in MODELS}
     results_absolute_fenamate_family = {"ref": []} | {mlip: [] for mlip in MODELS}
     results_relative_fenamate_family = {"ref": []} | {mlip: [] for mlip in MODELS}
-    results_absolute_small_drug_molecule_family = {"ref": []} | {mlip: [] for mlip in MODELS}
-    results_relative_small_drug_molecule_family = {"ref": []} | {mlip: [] for mlip in MODELS}
+    results_absolute_small_drug_molecule_family = {"ref": []} | {
+        mlip: [] for mlip in MODELS
+    }
+    results_relative_small_drug_molecule_family = {"ref": []} | {
+        mlip: [] for mlip in MODELS
+    }
 
     # Flag to ensure reference data is stored only once (same for all models)
     ref_stored = False
@@ -206,42 +212,53 @@ def lattice_energies_raw(
 
                 # Track family for later per-family relative calculations
                 family = crystal.info["molecular_family"]
-                ref_energy = crystal.info["ref"]
+                ref_energy = crystal.info["ref"] * KJ_PER_MOL_TO_KCAL_PER_MOL
                 lattice_energies_families.append(family)
                 reference_lattice_energies_families.append(family)
 
                 # Store by-family absolute energies (reference once)
                 if family == "Small_rigid_molecules":
-                    results_absolute_small_rigid_molecules[model_name].append(lattice_energy_kcal)
+                    results_absolute_small_rigid_molecules[model_name].append(
+                        lattice_energy_kcal
+                    )
                     if not ref_stored:
                         results_absolute_small_rigid_molecules["ref"].append(ref_energy)
 
                 elif family == "Carbamazepine_family":
-                    results_absolute_carbamazepine_family[model_name].append(lattice_energy_kcal)
+                    results_absolute_carbamazepine_family[model_name].append(
+                        lattice_energy_kcal
+                    )
                     if not ref_stored:
                         results_absolute_carbamazepine_family["ref"].append(ref_energy)
 
                 elif family == "Fenamate_family":
-                    results_absolute_fenamate_family[model_name].append(lattice_energy_kcal)
+                    results_absolute_fenamate_family[model_name].append(
+                        lattice_energy_kcal
+                    )
                     if not ref_stored:
                         results_absolute_fenamate_family["ref"].append(ref_energy)
 
                 elif family == "Small_drug_molecules":
-                    results_absolute_small_drug_molecule_family[model_name].append(lattice_energy_kcal)
+                    results_absolute_small_drug_molecule_family[model_name].append(
+                        lattice_energy_kcal
+                    )
                     if not ref_stored:
-                        results_absolute_small_drug_molecule_family["ref"].append(ref_energy)
+                        results_absolute_small_drug_molecule_family["ref"].append(
+                            ref_energy
+                        )
 
                 # Store reference data only once (same for all models)
                 if not ref_stored:
                     results["ref"].append(ref_energy)
                     reference_lattice_energies.append(ref_energy)
 
-
             # Find most stable polymorph (minimum lattice energy) for this model
             min_mlip_lattice_energy = min(lattice_energies_list)
 
             # Calculate relative energies: E_rel = E_polymorph - E_most_stable
-            for le, fam in zip(lattice_energies_list, lattice_energies_families):
+            for le, fam in zip(
+                lattice_energies_list, lattice_energies_families, strict=False
+            ):
                 rel_val = le - min_mlip_lattice_energy
                 results_relative[model_name].append(rel_val)
                 if fam == "Small_rigid_molecules":
@@ -251,7 +268,9 @@ def lattice_energies_raw(
                 elif fam == "Fenamate_family":
                     results_relative_fenamate_family[model_name].append(rel_val)
                 elif fam == "Small_drug_molecules":
-                    results_relative_small_drug_molecule_family[model_name].append(rel_val)
+                    results_relative_small_drug_molecule_family[model_name].append(
+                        rel_val
+                    )
 
             # Process reference relative energies only once
             if not ref_stored:
@@ -259,23 +278,41 @@ def lattice_energies_raw(
                 min_ref_lattice_energy = min(reference_lattice_energies)
 
                 # Calculate relative energies for reference data
-                for rle, fam in zip(reference_lattice_energies, reference_lattice_energies_families):
+                for rle, fam in zip(
+                    reference_lattice_energies,
+                    reference_lattice_energies_families,
+                    strict=False,
+                ):
                     rel_ref_val = rle - min_ref_lattice_energy
                     results_relative["ref"].append(rel_ref_val)
                     if fam == "Small_rigid_molecules":
-                        results_relative_small_rigid_molecules["ref"].append(rel_ref_val)
+                        results_relative_small_rigid_molecules["ref"].append(
+                            rel_ref_val
+                        )
                     elif fam == "Carbamazepine_family":
                         results_relative_carbamazepine_family["ref"].append(rel_ref_val)
                     elif fam == "Fenamate_family":
                         results_relative_fenamate_family["ref"].append(rel_ref_val)
                     elif fam == "Small_drug_molecules":
-                        results_relative_small_drug_molecule_family["ref"].append(rel_ref_val)
-            
+                        results_relative_small_drug_molecule_family["ref"].append(
+                            rel_ref_val
+                        )
 
         # Mark reference data as stored after processing first model
         ref_stored = True
 
-    return results, results_relative, results_absolute_small_rigid_molecules, results_relative_small_rigid_molecules, results_absolute_carbamazepine_family, results_relative_carbamazepine_family, results_absolute_fenamate_family, results_relative_fenamate_family, results_absolute_small_drug_molecule_family, results_relative_small_drug_molecule_family
+    return (
+        results,
+        results_relative,
+        results_absolute_small_rigid_molecules,
+        results_relative_small_rigid_molecules,
+        results_absolute_carbamazepine_family,
+        results_relative_carbamazepine_family,
+        results_absolute_fenamate_family,
+        results_relative_fenamate_family,
+        results_absolute_small_drug_molecule_family,
+        results_relative_small_drug_molecule_family,
+    )
 
 
 @pytest.fixture
@@ -367,6 +404,7 @@ def relative_lattice_energies(
     # Return absolute lattice energies (index 0), which includes all crystal polymorphs
     return lattice_energies_raw[1]
 
+
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_absolute_lattice_energies_small_rigid_molecules.json",
@@ -378,7 +416,18 @@ def relative_lattice_energies(
     },
 )
 def absolute_lattice_energies_small_rigid_molecules(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get absolute lattice energies for all crystal polymorphs.
@@ -397,8 +446,10 @@ def absolute_lattice_energies_small_rigid_molecules(
         Dictionary of absolute lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return absolute lattice energies by family (index 2), which includes all crystal polymorphs
+    # Return absolute lattice energies by family (index 2).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[2]
+
 
 @pytest.fixture
 @plot_parity(
@@ -411,7 +462,18 @@ def absolute_lattice_energies_small_rigid_molecules(
     },
 )
 def relative_lattice_energies_small_rigid_molecules(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get relative lattice energies for all crystal polymorphs.
@@ -430,8 +492,10 @@ def relative_lattice_energies_small_rigid_molecules(
         Dictionary of relative lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return relative lattice energies by family (index 3), which includes all crystal polymorphs
+    # Return relative lattice energies by family (index 3).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[3]
+
 
 @pytest.fixture
 @plot_parity(
@@ -444,7 +508,18 @@ def relative_lattice_energies_small_rigid_molecules(
     },
 )
 def absolute_lattice_energies_carbamazepine_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get absolute lattice energies for all crystal polymorphs.
@@ -463,8 +538,10 @@ def absolute_lattice_energies_carbamazepine_family(
         Dictionary of absolute lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return absolute lattice energies by family (index 4), which includes all crystal polymorphs
+    # Return absolute lattice energies by family (index 4).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[4]
+
 
 @pytest.fixture
 @plot_parity(
@@ -477,7 +554,18 @@ def absolute_lattice_energies_carbamazepine_family(
     },
 )
 def relative_lattice_energies_carbamazepine_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get relative lattice energies for all crystal polymorphs.
@@ -496,8 +584,10 @@ def relative_lattice_energies_carbamazepine_family(
         Dictionary of relative lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return relative lattice energies by family (index 5), which includes all crystal polymorphs
+    # Return relative lattice energies by family (index 5).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[5]
+
 
 @pytest.fixture
 @plot_parity(
@@ -510,7 +600,18 @@ def relative_lattice_energies_carbamazepine_family(
     },
 )
 def absolute_lattice_energies_fenamate_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get absolute lattice energies for all crystal polymorphs.
@@ -529,8 +630,10 @@ def absolute_lattice_energies_fenamate_family(
         Dictionary of absolute lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return absolute lattice energies by family (index 6), which includes all crystal polymorphs
+    # Return absolute lattice energies by family (index 6).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[6]
+
 
 @pytest.fixture
 @plot_parity(
@@ -543,7 +646,18 @@ def absolute_lattice_energies_fenamate_family(
     },
 )
 def relative_lattice_energies_fenamate_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get relative lattice energies for all crystal polymorphs.
@@ -562,12 +676,15 @@ def relative_lattice_energies_fenamate_family(
         Dictionary of relative lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return relative lattice energies by family (index 7), which includes all crystal polymorphs
+    # Return relative lattice energies by family (index 7).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[7]
+
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
+    filename=OUT_PATH
+    / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
     title="CPOSS209 Absolute Lattice Energies by Molecular Family (All Polymorphs)",
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
@@ -576,7 +693,18 @@ def relative_lattice_energies_fenamate_family(
     },
 )
 def absolute_lattice_energies_small_drug_molecule_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get absolute lattice energies for all crystal polymorphs.
@@ -595,12 +723,15 @@ def absolute_lattice_energies_small_drug_molecule_family(
         Dictionary of absolute lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return absolute lattice energies by family (index 8), which includes all crystal polymorphs
+    # Return absolute lattice energies by family (index 8).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[8]
+
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_relative_lattice_energies_small_drug_molecule_family.json",
+    filename=OUT_PATH
+    / "figure_relative_lattice_energies_small_drug_molecule_family.json",
     title="CPOSS209 Relative Lattice Energies by Molecular Family (All Polymorphs)",
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
@@ -609,7 +740,18 @@ def absolute_lattice_energies_small_drug_molecule_family(
     },
 )
 def relative_lattice_energies_small_drug_molecule_family(
-    lattice_energies_raw: tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]],
+    lattice_energies_raw: tuple[
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+        dict[str, list[float]],
+    ],
 ) -> dict[str, list[float]]:
     """
     Get relative lattice energies for all crystal polymorphs.
@@ -628,12 +770,9 @@ def relative_lattice_energies_small_drug_molecule_family(
         Dictionary of relative lattice energies with "ref" and model names as keys.
         Each entry contains lattice energy values for all crystal polymorphs.
     """
-    # Return relative lattice energies by family (index 9), which includes all crystal polymorphs
+    # Return relative lattice energies by family (index 9).
+    # Includes all crystal polymorphs
     return lattice_energies_raw[9]
-    
-
-
-
 
 
 @pytest.fixture
@@ -648,7 +787,18 @@ def cposs209_errors(
     relative_lattice_energies_fenamate_family: dict[str, list[float]],
     absolute_lattice_energies_small_drug_molecule_family: dict[str, list[float]],
     relative_lattice_energies_small_drug_molecule_family: dict[str, list[float]],
-) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
+) -> tuple[
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+    dict[str, float],
+]:
     """
     Get mean absolute error for absolute and relative lattice energies.
 
@@ -659,21 +809,29 @@ def cposs209_errors(
     relative_lattice_energies
         Dictionary of relative reference and predicted lattice energies.
     absolute_lattice_energies_small_rigid_molecules
-        Dictionary of absolute reference and predicted lattice energies for small rigid molecule family.
+        Dictionary of absolute reference and predicted lattice energies for the
+        small rigid molecule family.
     relative_lattice_energies_small_rigid_molecules
-        Dictionary of relative reference and predicted lattice energies for small rigid molecule family.
+        Dictionary of relative reference and predicted lattice energies for the
+        small rigid molecule family.
     absolute_lattice_energies_carbamazepine_family
-        Dictionary of absolute reference and predicted lattice energies for carbamazepine family.
+        Dictionary of absolute reference and predicted lattice energies for the
+        carbamazepine family.
     relative_lattice_energies_carbamazepine_family
-        Dictionary of relative reference and predicted lattice energies for carbamazepine family.
+        Dictionary of relative reference and predicted lattice energies for the
+        carbamazepine family.
     absolute_lattice_energies_fenamate_family
-        Dictionary of absolute reference and predicted lattice energies for fenamate family.
+        Dictionary of absolute reference and predicted lattice energies for the
+        fenamate family.
     relative_lattice_energies_fenamate_family
-        Dictionary of relative reference and predicted lattice energies for fenamate family.
+        Dictionary of relative reference and predicted lattice energies for the
+        fenamate family.
     absolute_lattice_energies_small_drug_molecule_family
-        Dictionary of absolute reference and predicted lattice energies for small drug molecule family.
+        Dictionary of absolute reference and predicted lattice energies for the
+        small drug molecule family.
     relative_lattice_energies_small_drug_molecule_family
-        Dictionary of relative reference and predicted lattice energies for small drug molecule family.
+        Dictionary of relative reference and predicted lattice energies for the
+        small drug molecule family.
 
     Returns
     -------
@@ -684,7 +842,7 @@ def cposs209_errors(
         3-4) Absolute and relative MAE for small rigid molecules
         5-6) Absolute and relative MAE for the carbamazepine family
         7-8) Absolute and relative MAE for the fenamate family
-        9-10) Absolute and relative MAE for small drug molecules
+        9-10) Absolute and relative MAE for small drug molecules.
     """
     results_absolute = {}
     for model_name in MODELS:
@@ -710,7 +868,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if absolute_lattice_energies_small_rigid_molecules[model_name]:
             results_absolute_small_rigid_molecules[model_name] = mae(
-                absolute_lattice_energies_small_rigid_molecules["ref"], absolute_lattice_energies_small_rigid_molecules[model_name]
+                absolute_lattice_energies_small_rigid_molecules["ref"],
+                absolute_lattice_energies_small_rigid_molecules[model_name],
             )
 
         else:
@@ -720,7 +879,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if relative_lattice_energies_small_rigid_molecules[model_name]:
             results_relative_small_rigid_molecules[model_name] = mae(
-                relative_lattice_energies_small_rigid_molecules["ref"], relative_lattice_energies_small_rigid_molecules[model_name]
+                relative_lattice_energies_small_rigid_molecules["ref"],
+                relative_lattice_energies_small_rigid_molecules[model_name],
             )
 
         else:
@@ -730,7 +890,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if absolute_lattice_energies_carbamazepine_family[model_name]:
             results_absolute_carbamazepine_family[model_name] = mae(
-                absolute_lattice_energies_carbamazepine_family["ref"], absolute_lattice_energies_carbamazepine_family[model_name]
+                absolute_lattice_energies_carbamazepine_family["ref"],
+                absolute_lattice_energies_carbamazepine_family[model_name],
             )
 
         else:
@@ -740,7 +901,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if relative_lattice_energies_carbamazepine_family[model_name]:
             results_relative_carbamazepine_family[model_name] = mae(
-                relative_lattice_energies_carbamazepine_family["ref"], relative_lattice_energies_carbamazepine_family[model_name]
+                relative_lattice_energies_carbamazepine_family["ref"],
+                relative_lattice_energies_carbamazepine_family[model_name],
             )
 
         else:
@@ -750,7 +912,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if absolute_lattice_energies_fenamate_family[model_name]:
             results_absolute_fenamate_family[model_name] = mae(
-                absolute_lattice_energies_fenamate_family["ref"], absolute_lattice_energies_fenamate_family[model_name]
+                absolute_lattice_energies_fenamate_family["ref"],
+                absolute_lattice_energies_fenamate_family[model_name],
             )
 
         else:
@@ -760,7 +923,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if relative_lattice_energies_fenamate_family[model_name]:
             results_relative_fenamate_family[model_name] = mae(
-                relative_lattice_energies_fenamate_family["ref"], relative_lattice_energies_fenamate_family[model_name]
+                relative_lattice_energies_fenamate_family["ref"],
+                relative_lattice_energies_fenamate_family[model_name],
             )
 
         else:
@@ -770,7 +934,8 @@ def cposs209_errors(
     for model_name in MODELS:
         if absolute_lattice_energies_small_drug_molecule_family[model_name]:
             results_absolute_small_drug_molecule_family[model_name] = mae(
-                absolute_lattice_energies_small_drug_molecule_family["ref"], absolute_lattice_energies_small_drug_molecule_family[model_name]
+                absolute_lattice_energies_small_drug_molecule_family["ref"],
+                absolute_lattice_energies_small_drug_molecule_family[model_name],
             )
 
         else:
@@ -780,14 +945,25 @@ def cposs209_errors(
     for model_name in MODELS:
         if relative_lattice_energies_small_drug_molecule_family[model_name]:
             results_relative_small_drug_molecule_family[model_name] = mae(
-                relative_lattice_energies_small_drug_molecule_family["ref"], relative_lattice_energies_small_drug_molecule_family[model_name]
+                relative_lattice_energies_small_drug_molecule_family["ref"],
+                relative_lattice_energies_small_drug_molecule_family[model_name],
             )
 
         else:
             results_relative_small_drug_molecule_family[model_name] = None
 
-
-    return results_absolute, results_relative, results_absolute_small_rigid_molecules, results_relative_small_rigid_molecules, results_absolute_carbamazepine_family, results_relative_carbamazepine_family, results_absolute_fenamate_family, results_relative_fenamate_family, results_absolute_small_drug_molecule_family, results_relative_small_drug_molecule_family
+    return (
+        results_absolute,
+        results_relative,
+        results_absolute_small_rigid_molecules,
+        results_relative_small_rigid_molecules,
+        results_absolute_carbamazepine_family,
+        results_relative_carbamazepine_family,
+        results_absolute_fenamate_family,
+        results_relative_fenamate_family,
+        results_absolute_small_drug_molecule_family,
+        results_relative_small_drug_molecule_family,
+    )
 
 
 @pytest.fixture
@@ -796,6 +972,7 @@ def cposs209_errors(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     cposs209_errors: tuple[
@@ -825,7 +1002,18 @@ def metrics(
     dict[str, dict]
         Metric names and values for all models.
     """
-    absolute_errors, relative_errors, small_rigid_family_absolute_errors, small_rigid_family_relative_errors, carbamazepine_family_absolute_errors, carbamazepine_family_relative_errors, fenamate_family_absolute_errors, fenamate_family_relative_errors, small_drug_molecule_family_absolute_errors, small_drug_molecule_family_relative_errors = cposs209_errors
+    (
+        absolute_errors,
+        relative_errors,
+        small_rigid_family_absolute_errors,
+        small_rigid_family_relative_errors,
+        carbamazepine_family_absolute_errors,
+        carbamazepine_family_relative_errors,
+        fenamate_family_absolute_errors,
+        fenamate_family_relative_errors,
+        small_drug_molecule_family_absolute_errors,
+        small_drug_molecule_family_relative_errors,
+    ) = cposs209_errors
     return {
         "Absolute MAE": absolute_errors,
         "Relative MAE": relative_errors,
@@ -837,7 +1025,6 @@ def metrics(
         "Relative MAE fenamate family": fenamate_family_relative_errors,
         "Absolute MAE small drug molecules": small_drug_molecule_family_absolute_errors,
         "Relative MAE small drug molecules": small_drug_molecule_family_relative_errors,
-
     }
 
 
