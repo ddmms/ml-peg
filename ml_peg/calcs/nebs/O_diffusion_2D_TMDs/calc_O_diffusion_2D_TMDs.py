@@ -73,15 +73,26 @@ def test_o_diffusion_mos2(relaxed_structs: dict[str, Atoms], model_name: str) ->
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"MoS2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"MoS2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_MoS2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"MoS2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoS2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoS2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"MoS2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoS2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoS2-{model_name}",
+        ).run()
 
 
 @pytest.mark.slow
@@ -97,15 +108,26 @@ def test_o_diffusion_mose2(relaxed_structs: dict[str, Atoms], model_name: str) -
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"MoSe2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"MoSe2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_MoSe2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"MoSe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoSe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoSe2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"MoSe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoSe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoSe2-{model_name}",
+        ).run()
 
 
 @pytest.mark.slow
@@ -121,15 +143,26 @@ def test_o_diffusion_mote2(relaxed_structs: dict[str, Atoms], model_name: str) -
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"MoTe2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"MoTe2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_MoTe2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"MoTe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoTe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoTe2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"MoTe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"MoTe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_MoTe2-{model_name}",
+        ).run()
 
 
 @pytest.mark.slow
@@ -145,15 +178,26 @@ def test_o_diffusion_ws2(relaxed_structs: dict[str, Atoms], model_name: str) -> 
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"WS2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"WS2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_WS2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"WS2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WS2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WS2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"WS2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WS2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WS2-{model_name}",
+        ).run()
 
 
 @pytest.mark.slow
@@ -169,15 +213,26 @@ def test_o_diffusion_wse2(relaxed_structs: dict[str, Atoms], model_name: str) ->
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"WSe2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"WSe2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_WSe2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"WSe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WSe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WSe2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"WSe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WSe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WSe2-{model_name}",
+        ).run()
 
 
 @pytest.mark.slow
@@ -193,12 +248,23 @@ def test_o_diffusion_wte2(relaxed_structs: dict[str, Atoms], model_name: str) ->
     model_name
         Name of model to use.
     """
-    NEB(
-        init_struct=relaxed_structs[f"WTe2_initial.xyz-{model_name}"],
-        final_struct=relaxed_structs[f"WTe2_end.xyz-{model_name}"],
-        n_images=11,
-        interpolator="pymatgen",
-        minimize=True,
-        write_band=True,
-        file_prefix=OUT_PATH / f"O_diffusion_WTe2-{model_name}",
-    ).run()
+    try:
+        NEB(
+            init_struct=relaxed_structs[f"WTe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WTe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="pymatgen",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WTe2-{model_name}",
+        ).run()
+    except Exception:
+        NEB(
+            init_struct=relaxed_structs[f"WTe2_initial.xyz-{model_name}"],
+            final_struct=relaxed_structs[f"WTe2_end.xyz-{model_name}"],
+            n_images=11,
+            interpolator="ase",
+            minimize=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"O_diffusion_WTe2-{model_name}",
+        ).run()
