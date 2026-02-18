@@ -115,3 +115,76 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+
+Low-Dimensional Relaxation
+==========================
+
+Summary
+-------
+
+Performance in relaxing low-dimensional (2D and 1D) crystal structures.
+Structures from the Alexandria database are relaxed with cell masks to constrain
+relaxation to the appropriate dimensions and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+**2D Structures:**
+
+(1) Area MAE (2D)
+
+Mean absolute error of area per atom compared to PBE reference.
+
+(2) Energy MAE (2D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(3) Convergence (2D)
+
+Percentage of 2D structures that successfully converged during relaxation.
+
+**1D Structures:**
+
+(4) Length MAE (1D)
+
+Mean absolute error of chain length per atom compared to PBE reference.
+
+(5) Energy MAE (1D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(6) Convergence (1D)
+
+Percentage of 1D structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt after calling from `ase.spacegroup.symmetrize.refine_symmetry`. Cell relaxation is constrained using
+cell masks:
+
+* 2D: Only in-plane cell components (a, b, and γ) are allowed to relax
+* 1D: Only the chain direction (a) is allowed to relax
+
+Relaxation continues until the maximum force component is below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is repeated up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of structures tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database 2D structures: https://alexandria.icams.rub.de/data/pbe_2d
+* Alexandria database 1D structures: https://alexandria.icams.rub.de/data/pbe_1d
+* 3000 structures randomly sampled from each dataset
+
+Reference data:
+
+* Hai-Chen Wang et al 2023 2D Mater. 10 035007
+* Jonathan Schmidt et al 2024, Mater. Tod. Phys, 48, 101560
