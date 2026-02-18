@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ase.io import read, write
@@ -75,6 +74,18 @@ def plot_nebs(model: str, compound: str) -> None:
             list(range(len(structs))),
             energies,
         )
+
+        # Add horizontal line for reference barrier
+        y_ref = energies[0] + REF_VALUES[compound]
+        results["horizontal_lines"] = [
+            {
+                "y": y_ref,
+                "name": "Reference barrier",
+                "color": "red",
+                "dash": "dash",
+                "width": 1,
+            }
+        ]
         structs_dir = OUT_PATH / model
         structs_dir.mkdir(parents=True, exist_ok=True)
         write(structs_dir / f"{model}-{compound}-neb-band.extxyz", structs)
@@ -82,54 +93,6 @@ def plot_nebs(model: str, compound: str) -> None:
         return results
 
     plot_neb()
-
-    # Add a horizontal reference line at initial energy + ref barrier
-    fig_path = OUT_PATH / f"figure_{model}_O_diffusion_{compound}.json"
-    if fig_path.exists():
-        with open(fig_path, encoding="utf8") as f:
-            fig = json.load(f)
-
-        structs = read(
-            CALC_PATH / f"O_diffusion_{compound}-{model}-neb-band.extxyz",
-            index=":",
-        )
-        y0 = structs[0].get_potential_energy()
-        y_ref = y0 + REF_VALUES[compound]
-
-        layout = fig.setdefault("layout", {})
-        shapes = layout.setdefault("shapes", [])
-        shapes.append(
-            {
-                "type": "line",
-                "xref": "paper",
-                "yref": "y",
-                "x0": 0,
-                "x1": 1,
-                "y0": y_ref,
-                "y1": y_ref,
-                "line": {"color": "red", "width": 1, "dash": "dash"},
-            }
-        )
-
-        # Add legend entry for the reference line
-        data = fig.setdefault("data", [])
-        data.append(
-            {
-                "type": "scatter",
-                "mode": "lines",
-                "name": "Reference barrier",
-                "x": [0, 1],
-                "y": [y_ref, y_ref],
-                "line": {"color": "red", "width": 1, "dash": "dash"},
-                "hoverinfo": "skip",
-                "showlegend": True,
-                "xaxis": "x",
-                "yaxis": "y",
-            }
-        )
-
-        with open(fig_path, "w", encoding="utf8") as f:
-            json.dump(fig, f)
 
 
 @pytest.fixture
