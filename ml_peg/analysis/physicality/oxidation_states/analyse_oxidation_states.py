@@ -11,8 +11,10 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
-MODELS = ["mace-mp-0b3", "mace-omol"]  # get_model_names(current_models)
+MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
@@ -46,8 +48,10 @@ def get_rdf_results(
     """
     results = {salt: [] for salt in IRON_SALTS}
 
+    model_calc_path = CALC_PATH / model
+
     for salt in IRON_SALTS:
-        rdf_file = CALC_PATH / f"O-Fe_{salt}_{model}.rdf"
+        rdf_file = model_calc_path / f"O-Fe_{salt}_{model}.rdf"
 
         fe_o_rdf = np.loadtxt(rdf_file)
         r = list(fe_o_rdf[:, 0])
