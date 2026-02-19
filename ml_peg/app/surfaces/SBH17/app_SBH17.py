@@ -18,10 +18,9 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "SBH17 chemisorption barriers"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#SBH17"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#SBH17"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "SBH17"
+
 
 class SBH17App(BaseApp):
     """SBH17 benchmark app layout and callbacks."""
@@ -53,6 +52,7 @@ class SBH17App(BaseApp):
             mode="struct",
         )
 
+
 def get_app() -> SBH17App:
     """
     Get SBH17 benchmark app layout and callback registration.
@@ -64,7 +64,8 @@ def get_app() -> SBH17App:
     """
     return SBH17App(
         name=BENCHMARK_NAME,
-        description="Barriers to dissociative chemisorption for 16 combinations of adsorbates and transition metal surfaces.",
+        description="Barriers to dissociative chemisorption for 16 \
+            combinations of adsorbates and transition metal surfaces.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "SBH17_metrics_table.json",
         extra_components=[
@@ -72,6 +73,7 @@ def get_app() -> SBH17App:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
+
 
 if __name__ == "__main__":
     # Create Dash app

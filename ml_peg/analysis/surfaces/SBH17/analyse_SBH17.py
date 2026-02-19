@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -24,6 +23,7 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
 
 def get_system_names() -> list[str]:
     """
@@ -45,6 +45,7 @@ def get_system_names() -> list[str]:
                     system_names.append(atoms.info["system"])
                 break
     return system_names
+
 
 @pytest.fixture
 @plot_parity(
@@ -101,14 +102,15 @@ def surface_barriers() -> dict[str, list]:
 
     return results
 
+
 @pytest.fixture
-def SBH17_errors(surface_barriers) -> dict[str, float]:
+def sbh17_errors(surface_barriers) -> dict[str, float]:
     """
     Get mean absolute error for surface barriers.
 
     Parameters
     ----------
-    barriers
+    surface_barriers
         Dictionary of reference and predicted surface barriers.
 
     Returns
@@ -126,6 +128,7 @@ def SBH17_errors(surface_barriers) -> dict[str, float]:
             results[model_name] = None
     return results
 
+
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "SBH17_metrics_table.json",
@@ -133,13 +136,13 @@ def SBH17_errors(surface_barriers) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     # mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(SBH17_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(sbh17_errors: dict[str, float]) -> dict[str, dict]:
     """
     Get all SBH17 metrics.
 
     Parameters
     ----------
-    SBH17_errors
+    sbh17_errors
         Mean absolute errors for all systems.
 
     Returns
@@ -148,10 +151,11 @@ def metrics(SBH17_errors: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": SBH17_errors,
+        "MAE": sbh17_errors,
     }
 
-def test_SBH17(metrics: dict[str, dict]) -> None:
+
+def test_sbh17(metrics: dict[str, dict]) -> None:
     """
     Run SBH17 test.
 
