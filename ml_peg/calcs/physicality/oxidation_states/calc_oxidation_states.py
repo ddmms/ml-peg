@@ -17,10 +17,11 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = download_s3_data(
+DATA_PATH =  download_s3_data(
     filename="oxidation_states.zip",
     key="inputs/physicality/oxidation_states/oxidation_states.zip",
-)
+) / Path("oxidation_states")
+print(DATA_PATH)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
@@ -83,7 +84,7 @@ def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
     for salt in IRON_SALTS:
         rdf_list = []
         md_path = out_dir / f"{salt}_{model_name}-traj.extxyz"
-
+        
         if not md_path.exists():
             pytest.skip(
                 "MD trajectory data missing, please check for "
