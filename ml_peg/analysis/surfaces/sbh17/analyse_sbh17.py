@@ -27,7 +27,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 def get_system_names() -> list[str]:
     """
-    Get list of X23 system names.
+    Get list of SBH17 system names.
 
     Returns
     -------
