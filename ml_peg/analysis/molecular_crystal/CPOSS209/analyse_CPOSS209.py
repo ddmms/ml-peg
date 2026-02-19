@@ -408,7 +408,7 @@ def relative_lattice_energies(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_absolute_lattice_energies_small_rigid_molecules.json",
-    title="CPOSS209 Absolute Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Absolute Lattice Energies for Small Rigid Molecules",
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
@@ -454,7 +454,7 @@ def absolute_lattice_energies_small_rigid_molecules(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_relative_lattice_energies_small_rigid_molecules.json",
-    title="CPOSS209 Relative Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Relative Lattice Energies for Small Rigid Molecules",
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
@@ -500,7 +500,7 @@ def relative_lattice_energies_small_rigid_molecules(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_absolute_lattice_energies_carbamazepine_family.json",
-    title="CPOSS209 Absolute Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Absolute Lattice Energies for Carbamazepine Family",
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
@@ -546,7 +546,7 @@ def absolute_lattice_energies_carbamazepine_family(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_relative_lattice_energies_carbamazepine_family.json",
-    title="CPOSS209 Relative Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Relative Lattice Energies for Carbamazepine Family",
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
@@ -592,7 +592,7 @@ def relative_lattice_energies_carbamazepine_family(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_absolute_lattice_energies_fenamate_family.json",
-    title="CPOSS209 Absolute Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Absolute Lattice Energies for Fenamate Family",
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
@@ -638,7 +638,7 @@ def absolute_lattice_energies_fenamate_family(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_relative_lattice_energies_fenamate_family.json",
-    title="CPOSS209 Relative Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Relative Lattice Energies for Fenamate Family",
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
@@ -685,7 +685,7 @@ def relative_lattice_energies_fenamate_family(
 @plot_parity(
     filename=OUT_PATH
     / "figure_absolute_lattice_energies_small_drug_molecule_family.json",
-    title="CPOSS209 Absolute Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Absolute Lattice Energies for Small Drug Molecule Family",
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
@@ -732,7 +732,7 @@ def absolute_lattice_energies_small_drug_molecule_family(
 @plot_parity(
     filename=OUT_PATH
     / "figure_relative_lattice_energies_small_drug_molecule_family.json",
-    title="CPOSS209 Relative Lattice Energies by Molecular Family (All Polymorphs)",
+    title="CPOSS209 Relative Lattice Energies for Small Drug Molecule Family",
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
