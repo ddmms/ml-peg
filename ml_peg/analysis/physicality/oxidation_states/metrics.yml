@@ -8,6 +8,6 @@ metrics:
   Peak Within Experimental Ref:
     good: 1.0
     bad: 0.0
-    unit: null
+    unit: Yes(1)/No(0)
     tooltip: Whether the RDF peak positions match experimental peaks
     level_of_theory: Experimental
