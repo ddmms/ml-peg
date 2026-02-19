@@ -15,8 +15,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
-# MODELS = get_model_names(current_models)
-# MODELS = ["mace-mp-0b3", "mace-omol"]
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Iron Oxidation States"
