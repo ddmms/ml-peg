@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "SBH17 chemisorption barriers"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#SBH17"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#sbh17"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "SBH17"
 
 
