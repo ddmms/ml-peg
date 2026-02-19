@@ -35,11 +35,12 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     model.default_dtype = "float32"
-
     calc = model.get_calculator()
-
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
+
+    out_dir = OUT_PATH / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     for salt in IRON_SALTS:
         struct_path = DATA_PATH / f"{salt}_start.xyz"
@@ -55,7 +56,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
             traj_append=True,
             thermostat_time=50,
             barostat_time=None,
-            file_prefix=OUT_PATH / f"{salt}_{model_name}",
+            file_prefix=out_dir / f"{salt}_{model_name}",
         )
         npt.run()
 
@@ -71,12 +72,21 @@ def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
         Name of model used and model.
     """
     model_name, model = mlip
+    out_dir = OUT_PATH / model_name
 
     rmax = 6.0
     nbins = 200
     for salt in IRON_SALTS:
         rdf_list = []
-        md_path = OUT_PATH / f"{salt}_{model_name}-traj.extxyz"
+        md_path = out_dir / f"{salt}_{model_name}-traj.extxyz"
+
+        if not md_path.exists():
+            pytest.skip(
+                "MD trajectory data missing, please check for "
+                "already existing data on S3 or run"
+                "test_iron_oxidation_state_md with -m very_slow"
+            )
+
         traj = read(md_path, ":")
         for atoms in traj:
             rdf, r = get_rdf(
@@ -89,7 +99,7 @@ def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
         g_mean = np.mean(rdf_list, axis=0)  # NVT so this is ok
 
         rdf_data = np.column_stack((r, g_mean))
-        rdf_path = OUT_PATH / f"O-Fe_{salt}_{model_name}.rdf"
+        rdf_path = out_dir / f"O-Fe_{salt}_{model_name}.rdf"
         np.savetxt(
             rdf_path,
             rdf_data,
