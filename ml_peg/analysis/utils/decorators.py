@@ -531,11 +531,11 @@ def plot_scatter(
                 colors = pc.qualitative.Plotly
 
                 if highlight_range:
-                    for i, (title, range) in enumerate(highlight_range.items()):
+                    for i, (h_text, range) in enumerate(highlight_range.items()):
                         fig.add_vrect(
                             x0=range[0],
                             x1=range[1],
-                            annotation_text=title,
+                            annotation_text=h_text,
                             annotation_position="top",
                             fillcolor=colors[i],
                             opacity=0.25,
