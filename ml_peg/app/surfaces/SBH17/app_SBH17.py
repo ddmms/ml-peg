@@ -19,9 +19,9 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "SBH17 chemisorption barriers"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#sbh17"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#SBH17"
 )
-DATA_PATH = APP_ROOT / "data" / "surfaces" / "sbh17"
+DATA_PATH = APP_ROOT / "data" / "surfaces" / "SBH17"
 
 class SBH17App(BaseApp):
     """SBH17 benchmark app layout and callbacks."""
@@ -36,7 +36,7 @@ class SBH17App(BaseApp):
         # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"assets/surfaces/sbh17/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"assets/surfaces/SBH17/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -66,7 +66,7 @@ def get_app() -> SBH17App:
         name=BENCHMARK_NAME,
         description="Barriers to dissociative chemisorption for 16 combinations of adsorbates and transition metal surfaces.",
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "sbh17_metrics_table.json",
+        table_path=DATA_PATH / "SBH17_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
@@ -78,9 +78,9 @@ if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
 
     # Construct layout and register callbacks
-    sbh17_app = get_app()
-    full_app.layout = sbh17_app.layout
-    sbh17_app.register_callbacks()
+    SBH17_app = get_app()
+    full_app.layout = SBH17_app.layout
+    SBH17_app.register_callbacks()
 
     # Run app
     full_app.run(port=8055, debug=True)

@@ -10,6 +10,7 @@ from ase import units
 from ase.io import read, write
 import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
@@ -39,21 +40,21 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator()
 
     # Download SBH17 dataset
-    sbh17_dir = (
+    SBH17_dir = (
         download_s3_data(
             key="inputs/surfaces/SBH17/SBH17.zip",
-            filename="sbh17.zip",
+            filename="SBH17.zip",
         )
-        / "sbh17"
+        / "SBH17"
     )
 
-    with open(sbh17_dir / "list") as f:
+    with open(SBH17_dir / "list") as f:
         systems = f.read().splitlines()
 
-    for system in systems:
-        gp_path = sbh17_dir / system / "POSCAR-gp"
-        ts_path = sbh17_dir / system / "POSCAR-ts"
-        ref_path = sbh17_dir / system / "barrier_pbe"
+    for system in tqdm(systems, desc="Evaluating models on SBH17 structures"):
+        gp_path = SBH17_dir / system / "POSCAR-gp"
+        ts_path = SBH17_dir / system / "POSCAR-ts"
+        ref_path = SBH17_dir / system / "barrier_pbe"
 
         gp = read(gp_path, index=0, format="vasp")
         gp.calc = calc

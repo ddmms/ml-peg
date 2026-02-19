@@ -17,8 +17,8 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "surfaces" / "sbh17" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "surfaces" / "sbh17"
+CALC_PATH = CALCS_ROOT / "surfaces" / "SBH17" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "surfaces" / "SBH17"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -102,7 +102,7 @@ def surface_barriers() -> dict[str, list]:
     return results
 
 @pytest.fixture
-def sbh17_errors(surface_barriers) -> dict[str, float]:
+def SBH17_errors(surface_barriers) -> dict[str, float]:
     """
     Get mean absolute error for surface barriers.
 
@@ -128,18 +128,18 @@ def sbh17_errors(surface_barriers) -> dict[str, float]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "sbh17_metrics_table.json",
+    filename=OUT_PATH / "SBH17_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     # mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(sbh17_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(SBH17_errors: dict[str, float]) -> dict[str, dict]:
     """
     Get all SBH17 metrics.
 
     Parameters
     ----------
-    sbh17_errors
+    SBH17_errors
         Mean absolute errors for all systems.
 
     Returns
@@ -148,10 +148,10 @@ def metrics(sbh17_errors: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": sbh17_errors,
+        "MAE": SBH17_errors,
     }
 
-def test_sbh17(metrics: dict[str, dict]) -> None:
+def test_SBH17(metrics: dict[str, dict]) -> None:
     """
     Run SBH17 test.
 
