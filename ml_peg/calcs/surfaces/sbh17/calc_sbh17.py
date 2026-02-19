@@ -35,20 +35,17 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Do not want D3 as references here are dispersionless PBE
     calc = model.get_calculator()
 
-    # Do not want D3 as references here are dispersionless PBE
-    # calc = model.add_d3_calculator(calc)
-
     # Download SBH17 dataset
-    # sbh17_dir = (
-    #     download_s3_data(
-    #         key="inputs/surfaces/sbh17/sbh17.zip",
-    #         filename="sbh17.zip",
-    #     )
-    #     / "sbh17"
-    # )
-    sbh17_dir=Path("/home/gk504/localCodeFolder/proj-other/ml-peg-contrib/sbh17")
+    sbh17_dir = (
+        download_s3_data(
+            key="inputs/surfaces/SBH17/SBH17.zip",
+            filename="sbh17.zip",
+        )
+        / "sbh17"
+    )
 
     with open(sbh17_dir / "list") as f:
         systems = f.read().splitlines()
