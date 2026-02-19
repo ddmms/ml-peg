@@ -146,8 +146,9 @@ Reference data:
 
 * Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
 
+
 SBH17
-================================
+=====
 
 Summary
 -------
