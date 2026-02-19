@@ -11,12 +11,16 @@ from janus_core.calculations.md import NPT
 import numpy as np
 import pytest
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
+DATA_PATH = download_s3_data(
+    filename="oxidation_states.zip",
+    key="inputs/physicality/oxidation_states/oxidation_states.zip",
+)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
