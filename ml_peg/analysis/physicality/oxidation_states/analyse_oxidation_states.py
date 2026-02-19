@@ -49,7 +49,7 @@ def get_rdf_results(
     results = {salt: [] for salt in IRON_SALTS}
 
     model_calc_path = CALC_PATH / model
-
+    
     for salt in IRON_SALTS:
         rdf_file = model_calc_path / f"O-Fe_{salt}_{model}.rdf"
 
@@ -77,8 +77,8 @@ def plot_rdfs(model: str, results: dict[str, tuple[list[float], list[float]]]) -
 
     @plot_scatter(
         filename=OUT_PATH / f"Fe-O_{model}_RDF_scatter.json",
-        title="Fe-O RDF",
-        x_label="R / &Aring;",
+        title=f"<b>{model} MD</b>",
+        x_label="r [Å]",
         y_label="Fe-O G(r)",
         show_line=True,
         show_markers=False,
@@ -128,7 +128,7 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
         oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 0.0
         oxidation_state_passfail["Peak Within Experimental Ref"][model] = 0.0
 
-        if peak_difference > 0.1:
+        if peak_difference > 0.07:
             oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 1.0
 
             if fe_2_ref[0] <= peak_position["Fe2Cl"] <= fe_2_ref[1]:
