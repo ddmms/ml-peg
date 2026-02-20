@@ -54,6 +54,8 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     cl = molify.smiles2atoms("[Cl-]")
     ion_pair = molify.pack(data=[[bmim], [cl]], counts=[1, 1], density=900)
     box = molify.pack(data=[[ion_pair]], counts=[N_ION_PAIRS], density=DENSITY)
+    box.info["charge"] = 0
+    box.info["spin"] = 1
     box.calc = calc
 
     opt = LBFGS(box)
