@@ -4,4 +4,4 @@ metrics:
     bad: 0.0
     unit: null
     tooltip: "Minimum RDF similarity score across all systems and element pairs"
-    level_of_theory: AIMD
+    level_of_theory: PBE
