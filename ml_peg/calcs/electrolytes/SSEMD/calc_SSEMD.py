@@ -29,7 +29,7 @@ MODELS: dict[str, Any] = load_models(models=current_models)
 OUT_PATH: Path = Path(__file__).parent / "outputs"
 
 # Benchmark parameters
-TOTAL_TIME_NS: float = 0.01 # 1.0 # ns
+TOTAL_TIME_NS: float = 1.0  # ns
 DELTA_T_FS: float = 0.5
 SEED: int = 0
 FRAME_FREQUENCY: int = 15
