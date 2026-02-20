@@ -1,6 +1,6 @@
 [project]
 name = "ml-peg"
-version = "0.2.2"
+version = "0.3.0"
 description = "ML Performance and Extrapolation Guide"
 authors = [
     { name = "Elliott Kasoar" },
