@@ -23,7 +23,9 @@ CALC_PATH = CALCS_ROOT / "molecular" / "BMIMCl_RDF" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "BMIMCl_RDF"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 # RDF parameters
 ELEMENT1 = "Cl"
@@ -164,6 +166,7 @@ def bond_formation(rdf_data: dict[str, list]) -> dict[str, int]:
     filename=str(OUT_PATH / "bmimcl_metrics_table.json"),
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(bond_formation: dict[str, int]) -> dict[str, dict]:
     """
