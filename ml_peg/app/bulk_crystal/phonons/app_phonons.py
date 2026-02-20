@@ -8,6 +8,7 @@ from pathlib import Path
 
 import ase
 from dash import Dash, dcc, html
+from dash.dcc import Loading
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -161,10 +162,13 @@ def get_app() -> PhononApp:
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
-                    html.Div(
-                        "Click on a scatter point to view the dispersion plot.",
-                        id=DISPERSION_CONTAINER_ID,
-                        style={"flex": "1", "minWidth": 0},
+                    Loading(
+                        html.Div(
+                            "Click on a scatter point to view the dispersion plot.",
+                            id=DISPERSION_CONTAINER_ID,
+                            style={"flex": "1", "minWidth": 0},
+                        ),
+                        type="circle",
                     ),
                 ],
                 style={
