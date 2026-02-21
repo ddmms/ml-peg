@@ -1,0 +1,25 @@
+metrics:
+  Overall MAE:
+    good: 0.0
+    bad: 50
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: ph-AFQMC
+  SR MAE:
+    good: 0.0
+    bad: 50
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: ph-AFQMC
+  MR MAE:
+    good: 0.0
+    bad: 50
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: ph-AFQMC
+  SR/MR MAE:
+    good: 0.0
+    bad: 50
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: ph-AFQMC
