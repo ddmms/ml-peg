@@ -61,8 +61,10 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
                 ref_rel_energy = float(items[7]) * KCAL_TO_EV
                 atoms = read(data_path / atoms_label / "struc.xyz")
                 atoms.calc = calc
+                atoms.info.update({"charge": 0, "spin": 1})
                 zero_atoms = read(data_path / zero_atoms_label / "struc.xyz")
                 zero_atoms.calc = calc
+                zero_atoms.info.update({"charge": 0, "spin": 1})
                 atoms.info["model_rel_energy"] = (
                     atoms.get_potential_energy() - zero_atoms.get_potential_energy()
                 )
