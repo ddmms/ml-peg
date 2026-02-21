@@ -135,3 +135,8 @@ Data availability
 -----------------
 
 None required; diatomics are generated in ASE.
+
+.. toctree::
+    :maxdepth: 2
+
+    iron_properties
