@@ -1,0 +1,22 @@
+metrics:
+  All Adsorption Energies MAE:
+    good: 40.0
+    bad: 1000.0
+    unit: meV
+    weight: 1.0
+    tooltip: Mean Absolute Error across all orientations, distances, and strains
+    level_of_theory: PBE
+  Binding Energies MAE:
+    good: 40.0
+    bad: 1000.0
+    unit: meV
+    weight: 1.0
+    tooltip: Mean Absolute Error of binding energies across all orientations and strains
+    level_of_theory: PBE
+  Binding Lengths MAE:
+    good: 0.0
+    bad: 1.0
+    unit: Å
+    weight: 1.0
+    tooltip: Mean Absolute Error of binding lengths across all orientations and strains
+    level_of_theory: PBE
