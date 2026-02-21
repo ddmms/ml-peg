@@ -1,0 +1,23 @@
+# TODO: the 'bad' defaults are quite arbitrary so pick decent ones; should I log rescale?
+# TODO: add more metrics? e.g. radial distribution (or diffusion).
+metrics:
+  RMSE density:
+    good: 0.0003  # approximate error of the reference on the coarse, sampled grid
+    bad: 0.02
+    unit: g cm^-3
+    tooltip: "RMSE between model and reference densities at the sampled compositions"
+    level_of_theory: experiment
+
+  RMSE excess density:
+    good: 0.0003  # approximate error of the reference on the coarse, sampled grid
+    bad: 0.01
+    unit: g cm^-3
+    tooltip: "RMSE of excess (non-ideal) density after subtracting linear mixing baseline"
+    level_of_theory: experiment
+
+  Peak x error:
+    good: 0.005  # approximate error of the reference on the coarse, sampled grid
+    bad: 0.20
+    unit: mole fraction
+    tooltip: "Absolute error in the mole-fraction location of maximum excess density"
+    level_of_theory: experiment
