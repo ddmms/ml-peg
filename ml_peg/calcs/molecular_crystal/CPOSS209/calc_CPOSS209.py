@@ -70,6 +70,9 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
             # Read crystal structure
             solid = read(crystal_path, index=0)
+            # Set default charge and spin
+            solid.info.setdefault("charge", 0)
+            solid.info.setdefault("spin", 1)
             solid.calc = copy(calc)
             solid.get_potential_energy()
 
@@ -126,6 +129,8 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
             # Read gas phases
             molecule = read(molecule_path, index=0)
+            molecule.info.setdefault("charge", 0)
+            molecule.info.setdefault("spin", 1)
             molecule.calc = copy(calc)
             molecule.get_potential_energy()
 
