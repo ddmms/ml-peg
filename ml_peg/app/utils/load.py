@@ -330,7 +330,7 @@ def read_density_plot_for_model(
     # Check if model has actual data (not just the reference line)
     # If only 1 trace (the y=x line) or 0 traces, model has no data
     if len(filtered_fig.get("data", [])) <= 1:
-        warn("No model data found", stacklevel=2)
+        warn(f"No model data found for {model}", stacklevel=2)
         return None
 
     return Graph(id=id, figure=filtered_fig)
