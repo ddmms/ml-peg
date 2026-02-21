@@ -432,6 +432,7 @@ def plot_scatter(
     y_label: str | None = None,
     show_line: bool = False,
     hoverdata: dict | None = None,
+    horizontal_lines: list[float | dict[str, Any]] | None = None,
     filename: str = "scatter.json",
 ) -> Callable:
     """
@@ -449,6 +450,10 @@ def plot_scatter(
         Whether to show line between points. Default is False.
     hoverdata
         Hover data dictionary. Default is `{}`.
+    horizontal_lines
+        Optional horizontal reference lines. Each entry can be either a float ``y``
+        value or a dict with keys ``y`` (required), ``name``, ``color``, ``dash``,
+        and ``width``. Default is ``None``.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
 
@@ -491,6 +496,11 @@ def plot_scatter(
                 Results dictionary.
             """
             results = func(*args, **kwargs)
+            dynamic_horizontal_lines: list[float | dict[str, Any]] = []
+            if isinstance(results, dict) and "horizontal_lines" in results:
+                dynamic = results.pop("horizontal_lines")
+                if isinstance(dynamic, list):
+                    dynamic_horizontal_lines = dynamic
 
             hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
             customdata = []
@@ -520,6 +530,86 @@ def plot_scatter(
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+
+            all_horizontal_lines = (
+                list(horizontal_lines or []) + dynamic_horizontal_lines
+            )
+            for i, line in enumerate(all_horizontal_lines):
+                if isinstance(line, dict):
+                    if "y" not in line:
+                        continue
+                    y_val = line["y"]
+                    name = line.get("name", "Reference line")
+                    color = line.get("color", "red")
+                    dash = line.get("dash", "dash")
+                    width = line.get("width", 1)
+                else:
+                    y_val = line
+                    name = f"Reference line {i + 1}"
+                    color = "red"
+                    dash = "dash"
+                    width = 1
+
+                fig.add_shape(
+                    type="line",
+                    xref="paper",
+                    yref="y",
+                    x0=0,
+                    x1=1,
+                    y0=y_val,
+                    y1=y_val,
+                    line={"color": color, "width": width, "dash": dash},
+                )
+                # Dummy trace to expose the horizontal line in the legend.
+                fig.add_trace(
+                    go.Scatter(
+                        x=[None],
+                        y=[None],
+                        mode="lines",
+                        name=name,
+                        line={"color": color, "width": width, "dash": dash},
+                        hoverinfo="skip",
+                        showlegend=True,
+                    )
+                )
+
+            # When horizontal reference lines are present, expand y-limits with
+            # padding so an extreme reference line does not sit on the boundary.
+            if all_horizontal_lines:
+
+                def _as_finite_float(v: Any) -> float | None:
+                    try:
+                        out = float(v)
+                    except (TypeError, ValueError):
+                        return None
+                    return out if np.isfinite(out) else None
+
+                y_values = [
+                    y_float
+                    for value in results.values()
+                    if isinstance(value, tuple | list)
+                    and len(value) >= 2
+                    and isinstance(value[1], list | tuple | np.ndarray)
+                    for y in value[1]
+                    for y_float in [_as_finite_float(y)]
+                    if y_float is not None
+                ]
+                y_values.extend(
+                    y_float
+                    for line in all_horizontal_lines
+                    for y_float in [
+                        _as_finite_float(
+                            line.get("y") if isinstance(line, dict) else line
+                        )
+                    ]
+                    if y_float is not None
+                )
+
+                if y_values:
+                    y_min, y_max = min(y_values), max(y_values)
+                    span = y_max - y_min
+                    pad = 0.05 * (span if span > 0 else max(abs(y_min), 1.0))
+                    fig.update_yaxes(range=[y_min - pad, y_max + pad])
 
             fig.update_traces()
 
