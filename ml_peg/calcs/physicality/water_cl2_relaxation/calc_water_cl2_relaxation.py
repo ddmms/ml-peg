@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ase import units
-from ase.io import read
+from ase.io import read, write
 from ase.optimize import LBFGS
 import pytest
 
@@ -57,3 +57,5 @@ def test_water_cl2(mlip: tuple[str, Any]) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
     opt = LBFGS(atoms, trajectory=str(write_dir / "relaxation.traj"))
     opt.run(fmax=0.01, steps=1000)
+    atoms_list = read(write_dir / "relaxation.traj", ":")
+    write(write_dir / "relaxation.xyz", atoms_list)
