@@ -115,3 +115,43 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Elemental TM Vacancy Formation Energies
+=======================================
+
+Summary
+-------
+
+Performance in predicting vacancy formation energies for 42 fcc or hcp elemental transition metal structures.
+
+Metrics
+-------
+
+1. MAE
+
+Mean absolute error (MAE) between predicted and reference (PBE) vacancy formation energies values.
+
+For each elemental transition metal structure, the vacancy formation enthalpy is determined by evaluating the total energy of the cell containing the monovacancy and evaluating the total energy of the undefected cell and comparing these. Note: the undefected cell energy is scaled by a fraction in order to conserve the appropriate number of atoms.
+
+From the reference paper providing the structures, the elemental transition metals are a subset. Note:
+    * For magnetic structures, the reference spin-polarized calculations only is used.
+    * Unstable element-structure combinations are not included.
+
+Computational cost
+------------------
+
+Low: tests are likely to take a couple of minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+
+Reference data:
+
+* Same as input data
+* PBE
