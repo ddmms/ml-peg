@@ -1,0 +1,7 @@
+metrics:
+  MAE:
+      good: 0.0
+      bad: 100.0
+      unit: kJ/mol
+      tooltip: "Mean Absolute Error for all BDEs"
+      level of theory: B3LYP-D3BJ/def2-SV(P)

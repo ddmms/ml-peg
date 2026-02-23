@@ -174,3 +174,45 @@ Input structures:
   Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
   N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654
+
+
+
+BDEs
+=========
+
+Summary
+-------
+
+Performance in [for now] predicting energies of 60 CYP substrates and derived radicals.
+Only [CHO] elements
+
+
+Metrics
+-------
+
+1. Energy RMSE
+
+Accuracy of energy prediction. Measured as binding energy per atom.
+
+2. Force RMSE
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take less than a minute to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* TODO Input structures were evaluated as part of "Gelzinyte et al., Journal of Chemical Theory and Computation
+  2024 20 (1), 164-177, DOI: 10.1021/acs.jctc.3c00710" but I didn't include the xyzs there... Just the SMILES strings.
+
+
+Reference data:
+
+* (TODO ??Same as input data)
+* B3LYP-D3BJ/def2-SV(P)
