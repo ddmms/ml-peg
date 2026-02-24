@@ -1,17 +1,8 @@
-"""
-Analyse diamond phonon dispersion benchmark (bands only).
-
-Notes
------
-This analysis produces two JSON artifacts used by the diamond phonon Dash app:
-
-- ``diamond_phonons_bands_table.json``: metrics table for the Dash table component.
-- ``diamond_phonons_bands_interactive.json``: interactive scatter dataset consumed by
-  the PhononApp callbacks.
-"""
+"""Analyse diamond phonon dispersion benchmark (bands only)."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -20,10 +11,24 @@ import pytest
 import yaml  # type: ignore
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
+
+GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
+
+EXTRACTED_ROOT = Path(
+    download_github_data(
+        filename="diamond_data/data.zip",
+        github_uri=GITHUB_BASE,
+    )
+)
+
+CALC_DATA = EXTRACTED_ROOT / "data"
+
 
 MODELS = get_model_names(current_models)
 
@@ -31,38 +36,36 @@ CATEGORY = "bulk_crystal"
 BENCH = "diamond_phonons"
 
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCH / "outputs"
-CALC_DATA = CALCS_ROOT / CATEGORY / BENCH / "data"
+
+# CALC_DATA = CALCS_ROOT / CATEGORY / BENCH / "data"
+
+
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCH
 
+# cm^-1 per THz (to convert the DFT reference to THz)
 THZ_TO_CM1 = 33.35640951981521
 NBANDS = 6
 
 SCATTER_FILENAME = OUT_PATH / "diamond_phonons_bands_interactive.json"
 
-# Internal keys used in the interactive dataset (not shown to user)
 METRIC_KEY_MAE = "band_mae"
 METRIC_KEY_RMSE = "band_rmse"
 
-# Visible labels (must match the table column headers exactly)
 METRIC_LABEL_MAE = "Band MAE"
 METRIC_LABEL_RMSE = "Band RMSE"
 
+
 METRICS_YML = Path(__file__).with_name("metrics.yml")
-with METRICS_YML.open("r", encoding="utf8") as f:
-    _cfg = yaml.safe_load(f) or {}
+THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-_metric_specs = _cfg.get("metrics", {})
-if not isinstance(_metric_specs, dict) or not _metric_specs:
-    raise ValueError(f"{METRICS_YML} must contain a 'metrics:' mapping.")
-
-THRESHOLDS = {
-    name: {
-        "good": spec.get("good"),
-        "bad": spec.get("bad"),
-        "unit": spec.get("unit", "cm-1"),
-    }
-    for name, spec in _metric_specs.items()
-}
+_expected_metric_labels = {METRIC_LABEL_MAE, METRIC_LABEL_RMSE}
+_yaml_metric_labels = set(THRESHOLDS.keys())
+missing = _expected_metric_labels - _yaml_metric_labels
+if missing:
+    raise ValueError(
+        f"{METRICS_YML}: missing metrics for labels {sorted(missing)}. "
+        f"Found: {sorted(_yaml_metric_labels)}"
+    )
 
 
 def _load_reference_npz(path: Path) -> dict[str, Any]:
@@ -80,8 +83,8 @@ def _load_reference_npz(path: Path) -> dict[str, Any]:
     dict[str, Any]
         Mapping with keys:
 
-        - ``freqs``: array of shape ``(Nq, NBANDS)`` in cm-1
-        - ``units``: ``"cm-1"``
+        - ``freqs``: array of shape ``(Nq, NBANDS)`` in THz
+        - ``units``: ``"THz"``
         - ``path``: input path
     """
     if not path.exists():
@@ -93,7 +96,6 @@ def _load_reference_npz(path: Path) -> dict[str, Any]:
 
     freqs_cm1 = np.asarray(d["frequencies"], dtype=float)
 
-    # Allow legacy (1, Nq, NBANDS) storage
     if freqs_cm1.ndim == 3 and freqs_cm1.shape[0] == 1:
         freqs_cm1 = freqs_cm1[0]
 
@@ -104,7 +106,9 @@ def _load_reference_npz(path: Path) -> dict[str, Any]:
     if not np.isfinite(freqs_cm1).all():
         raise ValueError(f"{path}: contains non-finite reference frequencies.")
 
-    return {"freqs": freqs_cm1, "units": "cm-1", "path": path}
+    freqs_thz = freqs_cm1 / THZ_TO_CM1
+
+    return {"freqs": freqs_thz, "units": "THz", "path": path}
 
 
 def _load_band_yaml(path: Path) -> dict[str, Any]:
@@ -148,33 +152,6 @@ def _load_band_yaml(path: Path) -> dict[str, Any]:
     return {"freqs": freqs, "units": "THz", "path": path}
 
 
-def _convert_units(freqs: np.ndarray, src: str, dst: str) -> np.ndarray:
-    """
-    Convert between THz and cm-1.
-
-    Parameters
-    ----------
-    freqs
-        Frequency array.
-    src
-        Source unit (``"THz"`` or ``"cm-1"``).
-    dst
-        Destination unit (``"THz"`` or ``"cm-1"``).
-
-    Returns
-    -------
-    numpy.ndarray
-        Converted frequencies.
-    """
-    if src == dst:
-        return freqs
-    if src == "THz" and dst == "cm-1":
-        return freqs * THZ_TO_CM1
-    if src == "cm-1" and dst == "THz":
-        return freqs / THZ_TO_CM1
-    raise ValueError(f"Unsupported unit conversion {src} -> {dst}")
-
-
 def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
     """
     Sort each q-point's bands then flatten.
@@ -198,38 +175,38 @@ def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
 
 def _mae(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Compute mean absolute error.
+    Compute mean absolute error (THz).
 
     Parameters
     ----------
     a
-        Predicted values.
+        Predicted values (THz), same shape as ``b``.
     b
-        Reference values.
+        Reference values (THz), same shape as ``a``.
 
     Returns
     -------
     float
-        Mean absolute error.
+        Mean absolute error in THz.
     """
     return float(np.mean(np.abs(a - b)))
 
 
 def _rmse(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Compute root mean squared error.
+    Compute root mean squared error (THz).
 
     Parameters
     ----------
     a
-        Predicted values.
+        Predicted values (THz), same shape as ``b``.
     b
-        Reference values.
+        Reference values (THz), same shape as ``a``.
 
     Returns
     -------
     float
-        Root mean squared error.
+        Root mean squared error in THz.
     """
     d = a - b
     return float(np.sqrt(np.mean(d * d)))
@@ -243,31 +220,28 @@ def reference() -> dict[str, Any]:
     Returns
     -------
     dict[str, Any]
-        Reference data mapping returned by :func:`_load_reference_npz`.
+        Reference mapping as returned by :func:`_load_reference_npz`.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     return _load_reference_npz(CALC_DATA / "dft_band.npz")
 
 
-def _model_flat(model_name: str, ref_units: str) -> np.ndarray:
+def _model_flat(model_name: str) -> np.ndarray:
     """
-    Load, unit-convert, and flatten one model's predicted bands.
+    Load and flatten one model's predicted bands (THz).
 
     Parameters
     ----------
     model_name
-        Model name under ``outputs/``.
-    ref_units
-        Reference unit string.
+        Model identifier used to locate ``{CALC_PATH}/{model_name}/band.yaml``.
 
     Returns
     -------
     numpy.ndarray
-        Flattened predicted frequencies.
+        Flattened frequencies of shape ``(Nq * NBANDS,)`` in THz.
     """
     pred = _load_band_yaml(CALC_PATH / model_name / "band.yaml")
-    freqs = _convert_units(pred["freqs"], pred["units"], ref_units)
-    return _sorted_flat(freqs)
+    return _sorted_flat(np.asarray(pred["freqs"], dtype=float))
 
 
 @pytest.fixture
@@ -278,20 +252,19 @@ def flat_bands(reference: dict[str, Any]) -> tuple[np.ndarray, dict[str, np.ndar
     Parameters
     ----------
     reference
-        Reference mapping from the ``reference`` fixture.
+        Reference mapping as returned by :func:`reference`.
 
     Returns
     -------
-    tuple
-        ``(ref_flat, pred_flats)`` where ``ref_flat`` is a 1D array and
-        ``pred_flats`` maps model name to a 1D array.
+    tuple[numpy.ndarray, dict[str, numpy.ndarray]]
+        ``(ref_flat, pred_flats)`` where ``ref_flat`` has shape ``(Nq * NBANDS,)``
+        and ``pred_flats`` maps model name to an array of the same shape.
     """
-    ref_flat = _sorted_flat(reference["freqs"])
-    ref_units = reference["units"]
+    ref_flat = _sorted_flat(np.asarray(reference["freqs"], dtype=float))
 
     pred_flats: dict[str, np.ndarray] = {}
     for model_name in MODELS:
-        pred_flat = _model_flat(model_name, ref_units)
+        pred_flat = _model_flat(model_name)
         if pred_flat.shape != ref_flat.shape:
             raise ValueError(
                 f"{model_name}: prediction and reference flattened shapes differ "
@@ -307,17 +280,17 @@ def band_errors(
     flat_bands: tuple[np.ndarray, dict[str, np.ndarray]],
 ) -> dict[str, dict[str, float]]:
     """
-    Compute MAE and RMSE for each model.
+    Compute MAE and RMSE for each model (THz).
 
     Parameters
     ----------
     flat_bands
-        Output of the ``flat_bands`` fixture.
+        Tuple ``(ref_flat, pred_flats)`` as returned by :func:`flat_bands`.
 
     Returns
     -------
     dict[str, dict[str, float]]
-        Mapping ``model -> {"mae": ..., "rmse": ...}``.
+        Mapping ``model_name -> {"mae": float, "rmse": float}`` in THz.
     """
     ref_flat, pred_flats = flat_bands
 
@@ -335,10 +308,8 @@ def band_errors(
 @build_table(
     filename=OUT_PATH / "diamond_phonons_bands_table.json",
     thresholds=THRESHOLDS,
-    metric_tooltips={
-        "Band MAE": "Mean absolute error over all q-points and phonon branches",
-        "Band RMSE": "Root mean squared error over all q-points and phonon branches",
-    },
+    metric_tooltips=METRIC_TOOLTIPS,
+    weights=WEIGHTS,
 )
 def metrics(band_errors: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
     """
@@ -347,12 +318,12 @@ def metrics(band_errors: dict[str, dict[str, float]]) -> dict[str, dict[str, flo
     Parameters
     ----------
     band_errors
-        Output of the ``band_errors`` fixture.
+        Per-model MAE/RMSE mapping as returned by :func:`band_errors`.
 
     Returns
     -------
     dict[str, dict[str, float]]
-        Mapping from metric label to per-model values.
+        Mapping from visible metric label to per-model values.
     """
     return {
         METRIC_LABEL_MAE: {m: band_errors[m]["mae"] for m in MODELS},
@@ -371,14 +342,15 @@ def band_stats(
     Parameters
     ----------
     flat_bands
-        Output of the ``flat_bands`` fixture.
+        Tuple ``(ref_flat, pred_flats)`` as returned by :func:`flat_bands`.
     band_errors
-        Output of the ``band_errors`` fixture.
+        Per-model MAE/RMSE mapping as returned by :func:`band_errors`.
 
     Returns
     -------
     dict[str, dict[str, Any]]
-        Per-model mapping containing scatter points and scalar metrics.
+        Per-model structures containing points and metric values used to build the
+        interactive scatter dataset.
     """
     ref_flat, pred_flats = flat_bands
 
@@ -418,8 +390,8 @@ def band_stats(
 @pytest.fixture
 @cell_to_scatter(
     filename=SCATTER_FILENAME,
-    x_label="Predicted frequency (cm-1)",
-    y_label="DFT frequency (cm-1)",
+    x_label="Predicted frequency (THz)",
+    y_label="DFT frequency (THz)",
 )
 def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
@@ -428,12 +400,12 @@ def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
     Parameters
     ----------
     band_stats
-        Output of the ``band_stats`` fixture.
+        Per-model point/metric structures as returned by :func:`band_stats`.
 
     Returns
     -------
     dict[str, Any]
-        Interactive dataset written to JSON by the decorator.
+        Interactive dataset payload written to JSON by the decorator.
     """
     dataset: dict[str, Any] = {
         "metrics": {
@@ -459,21 +431,41 @@ def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
     return dataset
 
 
-def test_diamond_phonons_analysis(metrics, interactive_dataset) -> None:
+def test_diamond_phonons_analysis(
+    metrics: dict[str, Any], interactive_dataset: dict[str, Any]
+) -> None:
     """
     Generate JSON artifacts for the diamond phonons benchmark.
 
     Parameters
     ----------
     metrics
-        Table metrics fixture output (decorator writes JSON).
+        Table fixture output (decorator writes JSON).
     interactive_dataset
-        Scatter dataset fixture output (decorator writes JSON).
-
-    Returns
-    -------
-    None
-        This test passes if fixtures execute successfully.
+        Scatter fixture output (decorator writes JSON).
     """
-    _ = metrics
-    _ = interactive_dataset
+    assert isinstance(metrics, dict)
+    assert isinstance(interactive_dataset, dict)
+
+    table_path = OUT_PATH / "diamond_phonons_bands_table.json"
+    assert table_path.exists()
+
+    table_payload = json.loads(table_path.read_text(encoding="utf8"))
+    rows = table_payload.get("data", [])
+    ids = {row.get("id") for row in rows if isinstance(row, dict)}
+    missing_rows = [m for m in MODELS if m not in ids]
+    assert not missing_rows, f"Table missing model rows: {missing_rows}"
+
+    assert SCATTER_FILENAME.exists()
+    scatter_payload = json.loads(SCATTER_FILENAME.read_text(encoding="utf8"))
+    models = scatter_payload.get("models", {})
+    missing_models = [m for m in MODELS if m not in models]
+    assert not missing_models, f"Interactive dataset missing models: {missing_models}"
+
+    # Ensure each model has both metrics and some points.
+    for model_name in MODELS:
+        model_metrics = (models.get(model_name) or {}).get("metrics", {})
+        for key in (METRIC_KEY_MAE, METRIC_KEY_RMSE):
+            assert key in model_metrics, f"{model_name}: missing metric '{key}'"
+            points = model_metrics[key].get("points", [])
+            assert points, f"{model_name}: empty points for '{key}'"

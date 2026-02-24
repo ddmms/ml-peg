@@ -22,17 +22,24 @@ import numpy as np
 from phonopy.structure.atoms import PhonopyAtoms
 import pytest
 
+from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
-HERE = Path(__file__).parent
-DATA_PATH = HERE / "data"
-OUT_PATH = HERE / "outputs"
+GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 
+EXTRACTED_ROOT = Path(
+    download_github_data(
+        filename="diamond_data/data.zip",
+        github_uri=GITHUB_BASE,
+    )
+)
+
+DATA_PATH = EXTRACTED_ROOT / "data"
 DIAMOND_YAML = DATA_PATH / "diamond.yaml"
 DFT_BAND_NPZ = DATA_PATH / "dft_band.npz"
+OUT_PATH = Path(__file__).parent / "outputs"
 
-# Load all MLIP models to benchmark.
 MODELS = load_models(current_models)
 
 
@@ -236,6 +243,7 @@ def test_diamond_phonons_band(mlip) -> None:
         raise RuntimeError(f"No displaced supercells found in {DIAMOND_YAML}.")
 
     calc = model.get_calculator()
+
     forces = []
     for scp in scells:
         ase_sc = phonopy_atoms_to_ase(scp)

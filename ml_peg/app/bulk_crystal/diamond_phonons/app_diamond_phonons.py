@@ -21,20 +21,34 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.plot_helpers import build_serialized_scatter_content
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_github_data
 
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "diamond_phonons"
+GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
+
+EXTRACTED_ROOT = Path(
+    download_github_data(
+        filename="diamond_data/data.zip",
+        github_uri=GITHUB_BASE,
+    )
+)
+
+DATA_PATH = EXTRACTED_ROOT / "data"
+DFT_REF_PATH = DATA_PATH / "dft_band.npz"
+
+
+BENCHMARK_NAME = "diamond_phonons"
+
+DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
 TABLE_PATH = DATA_PATH / "diamond_phonons_bands_table.json"
 SCATTER_PATH = DATA_PATH / "diamond_phonons_bands_interactive.json"
 
-BENCHMARK_NAME = "diamond_phonons"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
-    "#diamond_phonons"
+    f"#{BENCHMARK_NAME}"
 )
 
-# IMPORTANT: must match how `data_paths` are built in analysis
-CALC_BASE = CALCS_ROOT / "bulk_crystal" / "diamond_phonons"
-DFT_REF_PATH = Path("data") / "dft_band.npz"
+CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
+# DFT_REF_PATH = Path("data") / "dft_band.npz"
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
@@ -79,7 +93,7 @@ def model_only_lookup(
     }
 
 
-class PhononApp(BaseApp):
+class DiamondPhononApp(BaseApp):
     """Bands-only phonon benchmark app wiring callbacks and layout."""
 
     def register_callbacks(self) -> None:
@@ -92,7 +106,9 @@ class PhononApp(BaseApp):
         metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
 
-        refresh_msg = "Click on a metric to view scatter plots."
+        refresh_msg = (
+            "Click on a metric to view DFT vs predicted frequency scatter plots."
+        )
 
         metric_handler = partial(
             build_serialized_scatter_content,
@@ -117,7 +133,7 @@ class PhononApp(BaseApp):
             render_dispersion_component,
             calc_root=calc_root,
             frequency_scale=1,
-            frequency_unit="cm⁻¹",
+            frequency_unit="THz",
             reference_label="RSCAN",
             reference_band_npz=DFT_REF_PATH,
         )
@@ -133,7 +149,7 @@ class PhononApp(BaseApp):
         )
 
 
-def get_app() -> PhononApp:
+def get_app() -> DiamondPhononApp:
     """
     Construct the diamond phonon PhononApp instance.
 
@@ -142,7 +158,7 @@ def get_app() -> PhononApp:
     PhononApp
         Configured application with table + scatter/dispersion panels.
     """
-    return PhononApp(
+    return DiamondPhononApp(
         name=BENCHMARK_NAME,
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions for Carbon diamond "
@@ -156,7 +172,8 @@ def get_app() -> PhononApp:
             html.Div(
                 [
                     html.Div(
-                        "Click on a metric to view scatter plots.",
+                        "Click on a metric to view DFT vs predicted frequency scatter "
+                        "plots.",
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
@@ -179,7 +196,7 @@ def get_app() -> PhononApp:
 
 if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    phonon_app = get_app()
-    full_app.layout = phonon_app.layout
-    phonon_app.register_callbacks()
+    diamond_phonon_app = get_app()
+    full_app.layout = diamond_phonon_app.layout
+    diamond_phonon_app.register_callbacks()
     full_app.run(port=8060, debug=True)
