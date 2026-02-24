@@ -279,6 +279,6 @@ Reference data:
 Computational environment
 -------------------------
 
-Ti64 phonon calculations were run locally as a single process on CPU on an
+Ti64 phonon calculations were run as a single process on CPU on an
 x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
 parallel execution (MPI or multiprocessing) was used in the benchmark driver.
