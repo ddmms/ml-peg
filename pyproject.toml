@@ -1,6 +1,6 @@
 [project]
 name = "ml-peg"
-version = "0.2.2"
+version = "0.3.0"
 description = "ML Performance and Extrapolation Guide"
 authors = [
     { name = "Elliott Kasoar" },
@@ -28,6 +28,7 @@ dependencies = [
     "dash>=3.1.1",
     "janus-core<1.0.0,>=0.8.2",
     "kaleido>=1.0.0",
+    "mdanalysis>=2.9.0",
     "mlipx<0.2,>=0.1.5",
     "scikit-learn>=1.7.1",
     "typer<1.0.0,>=0.19.1",

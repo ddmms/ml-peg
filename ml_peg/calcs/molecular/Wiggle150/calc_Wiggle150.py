@@ -82,6 +82,10 @@ def load_structures(data_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
         else:
             molecules[molecule]["conformers"].append(atoms)
 
+        # Set default charge and spin
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
+
     for mol, entries in molecules.items():
         if entries["ground"] is None:
             raise FileNotFoundError(f"Missing ground-state structure for {mol}.")

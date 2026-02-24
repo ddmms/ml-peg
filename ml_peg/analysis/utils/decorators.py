@@ -1605,7 +1605,9 @@ def build_table(
                 row_data = {"MLIP": display_name}
                 for key, value in results.items():
                     row_data[key] = value.get(mlip, None)
-                row_data["id"] = display_name
+                # Store the original model name in the row ID for callbacks, instead of
+                # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
+                row_data["id"] = mlip
                 metrics_data.append(row_data)
 
             summary_tooltips = {
@@ -1667,8 +1669,8 @@ def build_table(
 
             # Save dict of table to be loaded
             model_name_map = {
-                display_name: canonical
-                for canonical, display_name in display_names.items()
+                display_name: original_name
+                for original_name, display_name in display_names.items()
             }
 
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
