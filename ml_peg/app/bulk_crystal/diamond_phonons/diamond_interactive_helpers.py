@@ -1,9 +1,8 @@
 """
 Utilities for diamond phonon interactive assets (bands-only).
 
-This module only supports rendering a dispersion preview from:
-
-- Predicted phonopy band.yaml (THz)
+Supports rendering a dispersion preview from:
+- Predicted Phonopy band.yaml (THz)
 - Reference dft_band.npz with keys: distance, qpoints, frequencies (cm^-1)
 """
 
@@ -35,30 +34,27 @@ def render_dispersion_component(
     reference_band_npz: Path | None = None,
 ):
     """
-    Render a Matplotlib dispersion PNG (prediction + reference overlay).
+    Return a Dash component containing a dispersion PNG, or None.
 
     Parameters
     ----------
-    selection_context
-        Mapping containing the current selection. Must contain a ``selection`` entry
-        with a ``band_yaml`` path.
-    calc_root
-        Root directory for calculation outputs.
-    frequency_scale
-        Multiplicative scale applied to both predicted and reference frequencies.
-    frequency_unit
-        Unit label shown on the y-axis.
-    reference_label
-        Label used for the reference curve in the legend.
-    reference_band_npz
-        Optional path to the reference ``dft_band.npz`` file, relative to
-        ``calc_root``.
+    selection_context : Mapping[str, Any]
+        Selection context; expects selection["band_yaml"] and optional label/id.
+    calc_root : Path
+        Root directory used to resolve files.
+    frequency_scale : float
+        Multiplicative scale applied to frequencies.
+    frequency_unit : str
+        Y-axis unit label.
+    reference_label : str
+        Legend label for the reference overlay.
+    reference_band_npz : Path | None
+        Optional reference .npz (distance, qpoints, frequencies in cm^-1).
 
     Returns
     -------
-    dash.html.Div | None
-        A Dash component containing the rendered PNG, or ``None`` if no band file
-        is selected or rendering fails.
+    html.Div | None
+        Component with an embedded PNG (data URI), or None if unavailable.
     """
     model_display = selection_context.get("model")
     selected = selection_context.get("selection") or {}
@@ -73,7 +69,6 @@ def render_dispersion_component(
         calc_root=calc_root,
         band_yaml=str(band_yaml),
         reference_band_npz=reference_band_npz,
-        system_label=str(label),
         frequency_scale=float(frequency_scale),
         frequency_unit=str(frequency_unit),
         reference_label=str(reference_label),
@@ -87,10 +82,17 @@ def render_dispersion_component(
 
     return html.Div(
         [
-            html.H4(label),
+            html.H4(str(label)) if label else None,
             html.Img(
                 src=image_src,
-                style={"maxWidth": "100%", "border": "1px solid #ccc"},
+                style={
+                    "width": "100%",
+                    "maxWidth": "820px",
+                    "height": "auto",
+                    "display": "block",
+                    "borderRadius": "8px",
+                    "border": "1px solid #ddd",
+                },
             ),
         ]
     )
@@ -101,55 +103,52 @@ def render_band_yaml_png(
     calc_root: Path,
     band_yaml: str,
     reference_band_npz: Path | None,
-    system_label: str,
     frequency_scale: float,
     frequency_unit: str,
     reference_label: str,
     prediction_label: str,
 ) -> str | None:
     """
-    Render dispersion by parsing a phonopy band.yaml and overlaying a DFT reference.
+    Render a dispersion PNG from band.yaml with optional reference overlay.
 
     Parameters
     ----------
-    calc_root
-        Root directory for calculation outputs.
-    band_yaml
-        Path to the predicted phonopy ``band.yaml`` relative to ``calc_root``.
-    reference_band_npz
-        Optional path to the reference ``dft_band.npz`` relative to ``calc_root``.
-    system_label
-        Label identifying the system being plotted.
-    frequency_scale
-        Multiplicative scale applied to both predicted and reference frequencies.
-    frequency_unit
-        Unit label shown on the y-axis.
-    reference_label
-        Legend label for the reference curves.
-    prediction_label
-        Legend label for the prediction curves.
+    calc_root : Path
+        Root directory used to resolve files.
+    band_yaml : str
+        Predicted Phonopy band.yaml path (relative to calc_root).
+    reference_band_npz : Path | None
+        Optional reference .npz (distance, qpoints, frequencies in cm^-1).
+    frequency_scale : float
+        Multiplicative scale applied to frequencies.
+    frequency_unit : str
+        Y-axis unit label.
+    reference_label : str
+        Legend label for the reference overlay.
+    prediction_label : str
+        Legend label for the prediction.
 
     Returns
     -------
     str | None
-        A base64-encoded PNG image (``data:image/png;base64,...``), or ``None`` if
-        the input data could not be loaded.
+        Base64 PNG data URI, or None on failure.
     """
     import yaml  # type: ignore
 
     def _detect_symmetry_boundaries(q_ref: np.ndarray) -> list[int]:
         """
-        Detect symmetry-point boundaries along the reference q-point path.
+        Return indices of k-path corners (including first and last).
 
         Parameters
         ----------
-        q_ref
-            Reference q-point coordinates of shape ``(Nq, 3)``.
+        q_ref : np.ndarray
+            Array of q-points with shape (N, 3) along the band path.
 
         Returns
         -------
         list[int]
-            Indices of q-points corresponding to symmetry boundaries.
+            Sorted indices of symmetry boundaries (path corners), including
+            indices 0 and N-1.
         """
         dq = np.diff(q_ref, axis=0)
         dq_norm = np.linalg.norm(dq, axis=1)
@@ -160,10 +159,7 @@ def render_band_yaml_png(
 
         boundaries = [0]
         for i in cand:
-            if i + 1 < len(q_ref) and np.allclose(q_ref[i], q_ref[i + 1], atol=1e-10):
-                boundaries.append(int(i))
-            else:
-                boundaries.append(int(i))
+            boundaries.append(int(i))
 
         boundaries = sorted(set(boundaries))
         if boundaries[0] != 0:
@@ -186,80 +182,105 @@ def render_band_yaml_png(
     if not isinstance(phonon, list) or not phonon:
         return None
 
-    s_pred = np.asarray([p.get("distance", np.nan) for p in phonon], float)
+    s_pred = np.asarray([p.get("distance", np.nan) for p in phonon], dtype=float)
 
     freqs_pred_thz = np.asarray(
         [[b.get("frequency", np.nan) for b in p.get("band", [])] for p in phonon],
-        float,
+        dtype=float,
     )
     if freqs_pred_thz.ndim != 2 or not np.isfinite(freqs_pred_thz).all():
         return None
 
-    freqs_pred_cm1 = freqs_pred_thz * THZ_TO_CM1 * frequency_scale
+    freqs_pred_thz = freqs_pred_thz * float(frequency_scale)
 
-    s_ref = None
-    q_ref = None
-    freqs_ref_cm1 = None
-    sym_pos = None
+    s_ref: np.ndarray | None = None
+    q_ref: np.ndarray | None = None
+    freqs_ref_thz: np.ndarray | None = None
+    sym_pos: np.ndarray | None = None
 
     if reference_band_npz is not None:
         ref_path = Path(calc_root) / reference_band_npz
         if ref_path.exists():
             obj = np.load(ref_path, allow_pickle=False)
 
-            s_ref = np.asarray(obj["distance"], float)
-            q_ref = np.asarray(obj["qpoints"], float)
-            freqs_ref_cm1 = np.asarray(obj["frequencies"], float)
+            s_ref = np.asarray(obj["distance"], dtype=float)
+            q_ref = np.asarray(obj["qpoints"], dtype=float)
+            freqs_ref_cm1 = np.asarray(obj["frequencies"], dtype=float)
 
             if freqs_ref_cm1.ndim == 3 and freqs_ref_cm1.shape[0] == 1:
                 freqs_ref_cm1 = freqs_ref_cm1[0]
 
-            if freqs_ref_cm1.ndim != 2:
-                s_ref = q_ref = freqs_ref_cm1 = None
-            else:
-                freqs_ref_cm1 = freqs_ref_cm1 * frequency_scale
+            if freqs_ref_cm1.ndim == 2 and np.isfinite(freqs_ref_cm1).all():
+                freqs_ref_thz = (freqs_ref_cm1 / THZ_TO_CM1) * float(frequency_scale)
                 bounds = _detect_symmetry_boundaries(q_ref)
                 sym_pos = s_ref[bounds]
+            else:
+                s_ref = None
+                q_ref = None
+                freqs_ref_thz = None
+                sym_pos = None
 
     use_ref_x = s_ref is not None and len(s_ref) == len(s_pred)
     x = s_ref if use_ref_x else s_pred
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(10, 7))
 
-    for band in freqs_pred_cm1.T:
-        ax.plot(x, band, "--", lw=1.0, color="red")
+    for j in range(freqs_pred_thz.shape[1]):
+        ax.plot(
+            x,
+            freqs_pred_thz[:, j],
+            color="#1f77b4",
+            lw=2.0,
+            label=prediction_label if j == 0 else None,
+        )
 
-    if freqs_ref_cm1 is not None:
-        for band in freqs_ref_cm1.T:
-            ax.plot(x if use_ref_x else s_ref, band, "-", lw=1.0, color="blue")
+    if freqs_ref_thz is not None and s_ref is not None:
+        x_ref = x if use_ref_x else s_ref
+        for j in range(freqs_ref_thz.shape[1]):
+            ax.plot(
+                x_ref,
+                freqs_ref_thz[:, j],
+                color="k",
+                lw=2.0,
+                ls="--",
+                label=reference_label if j == 0 else None,
+            )
 
     if sym_pos is not None and len(sym_pos) == len(HS_LABELS):
         for xpos in sym_pos:
-            ax.axvline(float(xpos), color="k", lw=0.8)
+            ax.axvline(float(xpos), color="k", lw=1.0, alpha=0.6)
         ax.set_xticks(sym_pos)
         ax.set_xticklabels(HS_LABELS)
         ax.set_xlim(float(x[0]), float(x[-1]))
 
-    ax.set_xlabel("Wave vector")
-    ax.set_ylabel(rf"Frequency ({frequency_unit})")
-    ax.axhline(0.0, color="k", lw=0.8)
-    ax.grid(True, linestyle=":", linewidth=0.5)
-    ax.set_ylim(bottom=0.0)
-
-    from matplotlib.lines import Line2D
-
-    handles = []
-    if freqs_ref_cm1 is not None:
-        handles.append(
-            Line2D([0], [0], color="blue", lw=1.0, ls="-", label=reference_label)
-        )
-    handles.append(
-        Line2D([0], [0], color="red", lw=1.0, ls="--", label=prediction_label)
+    ax.set_xlabel("Wave vector", fontsize=18)
+    ax.set_ylabel(f"Frequency ({frequency_unit})", fontsize=18)
+    ax.axhline(0.0, color="k", lw=1.5)
+    ax.grid(axis="x")
+    ax.set_ylim(
+        float(
+            min(
+                np.nanmin(freqs_pred_thz),
+                np.nanmin(freqs_ref_thz) if freqs_ref_thz is not None else np.inf,
+            )
+        ),
+        float(
+            max(
+                np.nanmax(freqs_pred_thz),
+                np.nanmax(freqs_ref_thz) if freqs_ref_thz is not None else -np.inf,
+            )
+        ),
     )
-    ax.legend(handles=handles, frameon=False)
+
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles, strict=False))
+    if by_label:
+        ax.legend(by_label.values(), by_label.keys(), loc=1, fontsize=14)
+
+    fig.tight_layout()
 
     buffer = BytesIO()
-    fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+    fig.savefig(buffer, format="png", dpi=200)
     plt.close(fig)
 
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
