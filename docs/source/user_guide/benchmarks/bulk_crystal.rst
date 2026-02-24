@@ -255,7 +255,7 @@ Full details on the data and benchmark:
 * Allen, C. S. & Bartók, A. P. Multi-phase dataset for Ti and Ti-6Al-4V.
        Preprint at https://arxiv.org/abs/2501.06116 (2025).
 
-* Radova, M., Stark, W. G., Allen, C. S. et al.
+* Radova, M., Stark, W. G., Allen, C. S., Maurer, R.J. & Bartók, A. P.
        Fine-tuning foundation models of materials interatomic potentials
        with frozen transfer learning.
        npj Comput Mater 11, 237 (2025).
