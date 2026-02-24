@@ -230,7 +230,7 @@ Metrics
    (2000 points spanning 0–2000 K) and interpolated to the ML temperatures. The absolute
    difference between ML and reference free energy at 0 K is divided by the number of atoms
    and averaged across thermodynamics-enabled cases. Weights are taken directly from CASTEP;
-   no explicit renormalization is applied.
+   no explicit renormalisation is applied.
 
 5. ΔF (2000 K) mean
 
