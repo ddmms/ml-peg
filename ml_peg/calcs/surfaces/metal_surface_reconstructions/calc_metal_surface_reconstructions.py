@@ -41,15 +41,14 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator()
 
 
-    # Download metal_surface_reconstructions dataset #TODO
-    #lattice_energy_dir = (
-    #    download_s3_data(
-    #        key="inputs/molecular_crystal/metal_surface_reconstructions/metal_surface_reconstructions.zip",
-    #        filename="surface_configurations.zip",
-    #    )
-    #    / "surface_configurations"
-    #)
-    surface_configurations = Path(__file__).parent / "surface_configurations"
+    # Download metal_surface_reconstructions dataset
+    surface_configurations = (
+       download_s3_data(
+           key="inputs/surfaces/metal_surface_reconstructions/metal_surface_reconstructions.zip",
+           filename="metal_surface_reconstructions.zip",
+       )
+       / "metal_surface_reconstructions"
+    )
 
 
 
