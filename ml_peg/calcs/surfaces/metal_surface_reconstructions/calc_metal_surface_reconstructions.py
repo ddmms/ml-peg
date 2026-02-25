@@ -30,7 +30,7 @@ EV_TO_KJ_PER_MOL = units.mol / units.kJ
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     """
-    Run X23 lattice energy test.
+    Run Metal surface reconstructions lattice energy test.
 
     Parameters
     ----------
@@ -40,16 +40,14 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    # Add D3 calculator for this test (for models where applicable)
-    # calc = model.add_d3_calculator(calc)
 
-    # Download X23 dataset
+    # Download metal_surface_reconstructions dataset #TODO
     #lattice_energy_dir = (
     #    download_s3_data(
-    #        key="inputs/molecular_crystal/X23/X23.zip",
-    #        filename="lattice_energy.zip",
+    #        key="inputs/molecular_crystal/metal_surface_reconstructions/metal_surface_reconstructions.zip",
+    #        filename="surface_configurations.zip",
     #    )
-    #    / "lattice_energy"
+    #    / "surface_configurations"
     #)
     surface_configurations = Path(__file__).parent / "surface_configurations"
 
@@ -61,13 +59,20 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     for system in systems:
         slab = read(surface_configurations / f"{system}.xyz")
         slab.info["system"] = system
-        z_min = np.min(slab.positions[:,2])
-        c = FixAtoms(indices=[at.index for at in slab if at.position[2] < (z_min+0.1)])
-        slab.set_constraint(c)
-
         slab.calc = calc
-        opt = BFGS(slab)
-        opt.run(fmax=0.03)
+        
+        if not (system.startswith('gas_phase') and system.startswith('bulk')):
+            z_min = np.min(slab.positions[:,2])
+            c = FixAtoms(indices=[at.index for at in slab if at.position[2] < (z_min+0.1)])
+            slab.set_constraint(c)
+
+        if system.startswith('gas_phase'):
+            opt = BFGS(slab)
+            opt.run(fmax=0.01)
+        elif not system.startswith('bulk'):
+            opt = BFGS(slab)
+            opt.run(fmax=0.05,steps=300)
+
         slab.get_potential_energy()
 
         # Write output structures

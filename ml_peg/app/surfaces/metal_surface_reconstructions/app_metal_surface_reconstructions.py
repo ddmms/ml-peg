@@ -1,6 +1,6 @@
 
 
-"""Run X23 app."""
+"""Run Metal surface reconstructions app."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ DATA_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
 
 
 
-class X23App(BaseApp):
-    """X23 benchmark app layout and callbacks."""
+class Metal_surface_reconstructions(BaseApp):
+    """Metal surface reconstructions benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -60,16 +60,16 @@ class X23App(BaseApp):
 
 
 
-def get_app() -> X23App:
+def get_app() -> Metal_surface_reconstructions:
     """
-    Get X23 benchmark app layout and callback registration.
+    Get Metal surface reconstructions benchmark app layout and callback registration.
 
     Returns
     -------
-    X23App
+    Metal surface reconstructions App
         Benchmark layout and callback registration.
     """
-    return X23App(
+    return Metal_surface_reconstructions(
         name=BENCHMARK_NAME,
         description="Energies for two surface reconstuctions.",
         docs_url=DOCS_URL,
