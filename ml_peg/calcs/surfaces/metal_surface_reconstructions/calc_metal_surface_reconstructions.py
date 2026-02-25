@@ -70,7 +70,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
             opt.run(fmax=0.01)
         elif not system.startswith('bulk'):
             opt = BFGS(slab)
-            opt.run(fmax=0.05,steps=300)
+            opt.run(fmax=0.05,steps=500)
 
         slab.get_potential_energy()
 
