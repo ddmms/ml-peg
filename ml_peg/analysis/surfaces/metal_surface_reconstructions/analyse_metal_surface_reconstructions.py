@@ -32,7 +32,7 @@ EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 def get_system_names() -> list[str]:
     """
-    Get list of metal_surface system names.
+    Get list of metal surface system names.
 
     Returns
     -------
@@ -59,8 +59,8 @@ def get_system_names() -> list[str]:
 @plot_parity(
     filename=OUT_PATH / "slab_energies.json",
     title="Metal Slab Energies",
-    x_label="Predicted Energy / eV",
-    y_label="Reference Energy / eV",
+    x_label="Predicted Surface Free Energy / meV/Å²",
+    y_label="Reference EneSurface Free Energy / meV/Å²",
     hoverdata={
         "System": get_system_names(),
     },
@@ -77,6 +77,8 @@ def slab_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
+    ref_mu = {}
+
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
@@ -86,26 +88,47 @@ def slab_energies() -> dict[str, list]:
         xyz_files = sorted(model_dir.glob("*.xyz"))
         if not xyz_files:
             continue
+        
+        model_mu = {}
+        for xyz_file in xyz_files:
+            name = xyz_file.name
+            if name.startswith('bulk') or name.startswith('gas_phase'):
+                structs = read(xyz_file, index=":")[0]
+                model_mu[structs.get_chemical_symbols()[0]] = structs.get_potential_energy()/len(structs)
+                if not ref_stored:
+                    ref_mu[structs.get_chemical_symbols()[0]] = structs.info['DFT_energy']/len(structs)
+
+
 
         for xyz_file in xyz_files:
-            structs = read(xyz_file, index=":")
-            system = structs[0].info["system"]
-            results[model_name].append(structs[0].get_potential_energy())
+            name = xyz_file.name
+            if not (name.startswith('bulk') or name.startswith('gas_phase')):
+                structs = read(xyz_file, index=":")[0]
+                system = structs.info["system"]
+                symbols = structs.get_chemical_symbols()
+                cell = structs.cell
+                A = np.linalg.norm(np.cross(cell[0], cell[1]))
+
+                results[model_name].append((structs.get_potential_energy()-np.sum([model_mu[s] for s in symbols]))*1000/A)
 
 
 
-            # Copy individual structure files to app data directory
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", structs)
+                # Copy individual structure files to app data directory
+                structs_dir = OUT_PATH / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{system}.xyz", structs)
 
-            # Store reference energies (only once)
-            if not ref_stored:
-                results["ref"].append(structs[0].info["DFT_energy"])
+                # Store reference energies (only once)
+                if not ref_stored:
+                    results["ref"].append((structs.info["DFT_energy"]-np.sum([ref_mu[s] for s in symbols]))*1000/A)
 
         ref_stored = True
 
     return results
+
+
+
+
 
 
 
@@ -133,18 +156,64 @@ def slab_positions() -> dict[str, list]:
             continue
 
         for xyz_file in xyz_files:
-            structs = read(xyz_file, index=":")
-            z_min = np.min(structs[0].positions[:,2])
-            moving = structs[0].positions[:,2]>z_min+0.1
-            results[model_name].append(structs[0].positions[moving])
+            name = xyz_file.name
+            if not (name.startswith('bulk') or name.startswith('gas_phase')):
+                structs = read(xyz_file, index=":")[0]
+                z_min = np.min(structs.positions[:,2])
+                moving = structs.positions[:,2]>z_min+0.1
+                results[model_name].append(structs.positions[moving])
 
 
 
-            # Store reference energies (only once)
-            if not ref_stored:
-                results["ref"].append(structs[0].arrays["DFT_posittions"][moving])
+                # Store reference energies (only once)
+                if not ref_stored:
+                    results["ref"].append(structs.arrays["DFT_positions"][moving])
 
         ref_stored = True
+
+    return results
+
+
+@pytest.fixture
+def ranking_error(slab_energies) -> dict[str, float]:
+    """
+    Get ranking error across all triplets.
+
+    Parameters
+    ----------
+    relative_energies
+        Dictionary of reference and predicted relative energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted ranking errors for all models.
+    """
+    print(slab_energies.keys())
+    results = {}
+    ref_min = []
+    ref_max = []
+    for i in range(len(slab_energies["ref"]) // 3):
+        ref_energies = slab_energies["ref"][3 * i : 3 * i + 3]
+        ref_min.append(np.argmin(ref_energies))
+        ref_max.append(np.argmax(ref_energies))
+
+    for model_name in MODELS:
+        if slab_energies[model_name]:
+            pred_min = []
+            pred_max = []
+            for i in range(len(slab_energies[model_name]) // 3):
+                pred_energies = slab_energies[model_name][3 * i : 3 * i + 3]
+                pred_min.append(np.argmin(pred_energies))
+                pred_max.append(np.argmax(pred_energies))
+
+            results[model_name] = (
+                1
+                - 0.5 * np.mean(np.array(ref_min) == np.array(pred_min))
+                - 0.5 * np.mean(np.array(ref_max) == np.array(pred_max))
+            )
+        else:
+            results[model_name] = None
 
     return results
 
@@ -210,7 +279,7 @@ def metal_position_errors(slab_positions) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=None,
 )
-def metrics(metal_surfaces_errors: dict[str, float], metal_position_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(metal_surfaces_errors: dict[str, float], metal_position_errors: dict[str, float], ranking_error:  dict[str, float]) -> dict[str, dict]:
     """
     Get all metal surface metrics.
 
@@ -227,6 +296,7 @@ def metrics(metal_surfaces_errors: dict[str, float], metal_position_errors: dict
     return {
         "MAE": metal_surfaces_errors,
         "Displacement": metal_position_errors,
+        "Ranking Error": ranking_error,
     }
 
 def test_metal_surfaces(metrics: dict[str, dict]) -> None:
