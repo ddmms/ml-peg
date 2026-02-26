@@ -60,10 +60,16 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
         molecule = read(molecule_path, index=0, format="vasp")
         molecule.calc = calc
+        # Set default charge and spin
+        molecule.info.setdefault("charge", 0)
+        molecule.info.setdefault("spin", 1)
         molecule.get_potential_energy()
 
         solid = read(solid_path, index=0, format="vasp")
         solid.calc = copy(calc)
+        # Set default charge and spin
+        solid.info.setdefault("charge", 0)
+        solid.info.setdefault("spin", 1)
         solid.get_potential_energy()
 
         ref = np.loadtxt(ref_path)[0]

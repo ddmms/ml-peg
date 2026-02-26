@@ -13,7 +13,11 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.build_components import build_footer, build_weight_components
+from ml_peg.app.utils.build_components import (
+    build_faqs,
+    build_footer,
+    build_weight_components,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     build_tutorial_button,
@@ -117,6 +121,7 @@ def build_category(
     # Take all tables in category, build new table, and set layout
     category_layouts = {}
     category_tables = {}
+    category_weights = {}
 
     # `category` corresponds to the category's directory name
     # We will use the loaded `category_title` for IDs/dictionary keys returned
@@ -127,16 +132,25 @@ def build_category(
                 category_info = safe_load(file)
                 category_title = category_info.get("title", category)
                 category_descrip = category_info.get("description", "")
+                category_weight = category_info.get("weight", 1)
+                benchmark_weights = category_info.get("benchmark_weights", {})
         except FileNotFoundError:
             category_title = category
             category_descrip = ""
+            category_weight = 1
+            benchmark_weights = {}
 
         # Build category summary table
         summary_table = build_summary_table(
             all_tables[category],
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
+            weights={f"{key} Score": value for key, value in benchmark_weights.items()},
         )
+
+        # Store category weight for overall summary
+        category_weights[f"{category_title} Score"] = category_weight
+
         category_tables[category_title] = summary_table
 
         # Build weight components for category summary table
@@ -184,13 +198,14 @@ def build_category(
                 model_name_map=getattr(benchmark_table, "model_name_map", None),
             )
 
-    return category_layouts, category_tables
+    return category_layouts, category_tables, category_weights
 
 
 def build_summary_table(
     tables: dict[str, DataTable],
     table_id: str = "summary-table",
     description: str | None = None,
+    weights: dict[str, float] | None = None,
 ) -> DataTable:
     """
     Build summary table from a set of tables.
@@ -203,6 +218,8 @@ def build_summary_table(
         ID of table being built. Default is 'summary-table'.
     description
         Description of summary table. Default is None.
+    weights
+        Weights for each column. Default is `None`, which sets all weights to 1.
 
     Returns
     -------
@@ -272,7 +289,12 @@ def build_summary_table(
     style_with_warnings = style + warning_styles
 
     # Calculate column widths based on column names
-    column_widths = calculate_column_widths(columns_headers)
+    calculated_widths = calculate_column_widths(columns_headers)
+    # Limit max width to 150px for better wrapping on long column names
+    column_widths = {
+        col_id: min(width, 150) for col_id, width in calculated_widths.items()
+    }
+
     style_cell_conditional = []
     for column_id, width in column_widths.items():
         col_width = f"{width}px"
@@ -296,6 +318,21 @@ def build_summary_table(
         sort_action="native",
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         tooltip_data=tooltip_rows,
         tooltip_delay=100,
         tooltip_duration=None,
@@ -303,12 +340,14 @@ def build_summary_table(
         persistence_type="session",
         persisted_props=["data"],
         tooltip_header=tooltip_header,
+        editable=False,
     )
     table.column_widths = column_widths
     table.description = description
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
+    table.weights = weights
     return table
 
 
@@ -380,6 +419,7 @@ def build_tabs(
                         id="summary-table-scores-store",
                         storage_type="session",
                     ),
+                    build_faqs(),
                 ]
             )
         return Div([layouts[tab]])
@@ -403,14 +443,14 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     # Combine tests into categories and create category summary
-    category_layouts, category_tables = build_category(all_layouts, all_tables)
+    cat_layouts, cat_tables, cat_weights = build_category(all_layouts, all_tables)
     # Build overall summary table
-    summary_table = build_summary_table(category_tables)
+    summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
-        column_widths=getattr(summary_table, "column_widths", None),
+        column_widths=summary_table.column_widths,
     )
     # Build summary and category tabs
-    build_tabs(full_app, category_layouts, summary_table, weight_components)
+    build_tabs(full_app, cat_layouts, summary_table, weight_components)
     register_onboarding_callbacks()
