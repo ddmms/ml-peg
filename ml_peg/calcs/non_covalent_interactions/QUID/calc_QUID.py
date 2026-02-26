@@ -9,13 +9,13 @@ Nat Commun 16, 8583 (2025). https://doi.org/10.1038/s41467-025-63587-9
 
 from __future__ import annotations
 
-from copy import copy
 from pathlib import Path
 from typing import Any
 
 from ase import Atoms, units
-from ase.io import read, write
+from ase.io import write
 import h5py
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -39,6 +39,21 @@ REF_PRIORITY = [
 def choose_best_reference(
     eint: dict[str, float] | None, force_key: str | None = None
 ) -> tuple[str, float] | None:
+    """
+    Choose the best reference method and energy, given a dataset energies.
+
+    Parameters
+    ----------
+    eint
+        Dictionary of reference methods and interaction energies.
+    force_key
+        Whether to force one particular reference method key.
+
+    Returns
+    -------
+    Tuple[str, float]
+        Tuple containing the best method key and the interaction energy.
+    """
     if not eint:
         return None
     # Force a specific reference key if provided
@@ -51,7 +66,7 @@ def choose_best_reference(
                 break
         if fk is None:
             return None
-        return fk, float(eint[fk])
+        return fk, float(eint[fk][()])
     # case-insensitive scoring
     best_key = None
     for pref in REF_PRIORITY:
@@ -65,11 +80,57 @@ def choose_best_reference(
     if best_key is None:
         # fallback: return any single value
         try:
-            k = next(iter(eint.keys()))
-            return k, float(eint[k])
+            # k = next(iter(eint.keys()))
+            # return k, float(eint[k][()])
+            return "", np.nan
         except StopIteration:
             return None
-    return best_key, float(eint[best_key])
+    return best_key, float(eint[best_key][()])
+
+
+def compute_interaction_energy(dataset, label, calc):
+    """
+    Compute and return the energy of the complex with given label and calc.
+
+    Parameters
+    ----------
+    dataset
+        HDF5 dataset containing the systems.
+    label
+        Label of the system within the dataset.
+    calc
+        Calculator to use.
+
+    Returns
+    -------
+    list
+        List containing the dimer and monomer ASE Atoms objects.
+    """
+    best_reference, ref_int_energy = choose_best_reference(dataset[label]["Eint"])
+    if np.isnan(ref_int_energy):
+        return []
+    # List to store dimer and monomers.
+    atoms_list = []
+    model_int_energy = 0
+    for atoms_name, stoich in zip(
+        ["dimer", "small_monomer", "big_monomer"], [1, -1, -1], strict=False
+    ):
+        atomic_numbers = dataset[label]["atoms"][atoms_name][:]
+        positions = dataset[label]["positions"][atoms_name][:]
+        atoms = Atoms(numbers=atomic_numbers, positions=positions)
+        atoms.info.update({"charge": 0, "spin": 1})
+        atoms.calc = calc
+        model_int_energy += atoms.get_potential_energy() * stoich
+        atoms.calc = None
+        atoms_list.append(atoms)
+    atoms_list[0].info.update(
+        {
+            "ref_int_energy": ref_int_energy,
+            "model_int_energy": model_int_energy,
+            "reference_used": best_reference,
+        }
+    )
+    return atoms_list
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -94,37 +155,27 @@ def test_quid(mlip: tuple[str, Any]) -> None:
     )
 
     calc = model.get_calculator()
-    # Add D3 calculator for this test
+    # Add D3 calculator for this test.
     calc = model.add_d3_calculator(calc)
 
     dataset = h5py.File(data_path / "QUID.h5")
-    for label in dataset.keys():
-        # Get equilibrium config
-        _, ref_int_energy = choose_best_reference(dataset[label]["Eint"])
-        atomic_numbers = dataset[label]["atoms"][:]
-        positions = dataset[label]["positions"][:]
-        atoms = Atoms(numbers=atomic_numbers, positions=positions)
-        atoms.info.update({"charge": 0, "spin": 1})
-        atoms.calc = calc
-
-    for label, ref_energy in tqdm(ref_energies.items()):
-        xyz_fname = f"{label}.xyz"
-        atoms = read(data_path / "geometries" / xyz_fname)
-        atoms_a, atoms_b = get_monomers(atoms)
-        atoms.info["spin"] = 1
-        atoms.info["charge"] = int(atoms_a.info["charge"] + atoms_b.info["charge"])
-        atoms.calc = calc
-        atoms_a.calc = copy(calc)
-        atoms_b.calc = copy(calc)
-
-        atoms.info["model_int_energy"] = (
-            atoms.get_potential_energy()
-            - atoms_a.get_potential_energy()
-            - atoms_b.get_potential_energy()
-        )
-        atoms.info["ref_int_energy"] = ref_energy
-        atoms.calc = None
-
+    for eq_label in tqdm(dataset.keys(), "Equilibrium"):
+        # Get equilibrium config.
+        atoms_list = compute_interaction_energy(dataset, eq_label, calc)
+        if len(atoms_list) == 0:
+            continue
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir / f"{label}.xyz", atoms)
+        write(write_dir / f"{eq_label}.xyz", atoms_list)
+
+        if "dissociation" not in dataset[eq_label]:
+            continue
+        dissoc_dataset = dataset[eq_label]["dissociation"]
+        for dissoc_label in tqdm(dissoc_dataset.keys(), "Dissociation"):
+            # Get dissociation config.
+            atoms_list = compute_interaction_energy(dissoc_dataset, dissoc_label, calc)
+            if len(atoms_list) == 0:
+                continue
+            write_dir = OUT_PATH / model_name
+            write_dir.mkdir(parents=True, exist_ok=True)
+            write(write_dir / f"{dissoc_label}.xyz", atoms_list)
