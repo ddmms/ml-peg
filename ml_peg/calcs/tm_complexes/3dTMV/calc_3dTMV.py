@@ -122,7 +122,6 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
 
     data_path = (
         download_s3_data(
@@ -131,24 +130,21 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         )
         / "3dTMV"
     )
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
-
     for complex_id in tqdm(range(1, 29)):
         atoms = get_atoms(data_path, complex_id)
-        model_ion_energy = 0
-        # Get oxidized complex energy
-        atoms.info["charge"] = MOLECULAR_DATA[complex_id]["charge_ox"]
-        atoms.info["spin"] = MOLECULAR_DATA[complex_id]["mult_ox"]
-        atoms.calc = calc
-        model_ion_energy += atoms.get_potential_energy()
-        # Get initial complex energy
-        atoms.info["charge"] = MOLECULAR_DATA[complex_id]["charge_in"]
-        atoms.info["spin"] = MOLECULAR_DATA[complex_id]["mult_in"]
-        atoms.calc = calc
-        model_ion_energy -= atoms.get_potential_energy()
+        atoms_ox = atoms.copy()
+        atoms_ox.info["charge"] = MOLECULAR_DATA[complex_id]["charge_ox"]
+        atoms_ox.info["spin"] = MOLECULAR_DATA[complex_id]["mult_ox"]
+        atoms_ox.calc = model.add_d3_calculator(model.get_calculator())
+        oxidized_energy = atoms_ox.get_potential_energy()
+
+        atoms_in = atoms.copy()
+        atoms_in.info["charge"] = MOLECULAR_DATA[complex_id]["charge_in"]
+        atoms_in.info["spin"] = MOLECULAR_DATA[complex_id]["mult_in"]
+        atoms_in.calc = model.add_d3_calculator(model.get_calculator())
+        initial_energy = atoms_in.get_potential_energy()
+
+        model_ion_energy = oxidized_energy - initial_energy
 
         atoms.info.update(
             {
