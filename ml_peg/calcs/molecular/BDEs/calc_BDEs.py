@@ -11,7 +11,6 @@ from copy import copy
 from pathlib import Path
 from typing import Any
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -23,9 +22,6 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-
-# Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())

@@ -26,7 +26,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 # Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
+EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
 
 def into_dict_of_labels(atoms, key):
@@ -106,8 +106,8 @@ def get_hover_data_labels(key) -> list[str]:
 @plot_parity(
     filename=OUT_PATH / "figure.CYP3A4.dft_opt_geometry.BDEs.json",
     title="Bond Dissociation Energies on DFT Geometries",
-    x_label="Predicted BDE / kJ/mol",
-    y_label="Reference BDE / kJ/mol",
+    x_label="Predicted BDE / kcal/mol",
+    y_label="Reference BDE / kcal/mol",
     hoverdata={
         "Compound": get_hover_data_labels("compound"),
     },
@@ -188,7 +188,7 @@ def process_bdes(all_atoms, prefix):
                 rad_energy=rad_energy,
                 isolated_h_energy=isolated_h_energy,
             )
-            all_bdes.append(bde * EV_TO_KJ_PER_MOL)
+            all_bdes.append(bde * EV_TO_KCAL_PER_MOL)
 
     return all_bdes
 
