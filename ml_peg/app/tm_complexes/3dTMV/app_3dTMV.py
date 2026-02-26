@@ -37,7 +37,7 @@ class Benchmark3dTMVApp(BaseApp):
         model_dir = DATA_PATH / MODELS[0]
         if model_dir.exists():
             # Note: sorting different to rxn_count order in calc
-            ts_files = sorted(model_dir.glob("*.xyz"))
+            ts_files = sorted(model_dir.glob("*.xyz"), key=lambda path: int(path.stem))
             structs = [
                 f"assets/tm_complexes/3dTMV/{MODELS[0]}/{ts_file.name}"
                 for ts_file in ts_files
@@ -48,7 +48,12 @@ class Benchmark3dTMVApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={
+                "Overall MAE": scatter,
+                "SR MAE": scatter,
+                "MR MAE": scatter,
+                "SR/MR MAE": scatter,
+            },
         )
 
         struct_from_scatter(

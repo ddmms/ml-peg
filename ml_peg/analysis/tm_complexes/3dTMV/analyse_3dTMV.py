@@ -79,39 +79,6 @@ def labels():
 
 
 @pytest.fixture
-def interaction_energies() -> dict[str, list]:
-    """
-    Get interaction energies for all systems.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of all reference and predicted interaction energies.
-    """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-
-    ref_stored = False
-
-    for model_name in MODELS:
-        for label in range(1, 29):
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_ionization_energy"] * EV_TO_KCAL)
-
-            results[model_name].append(
-                atoms.info["model_ionization_energy"] * EV_TO_KCAL
-            )
-
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
-
-        ref_stored = True
-    return results
-
-
-@pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_3dtmv.json",
     title="Ionization energies",
@@ -150,13 +117,13 @@ def ionization_energies() -> dict[str, list]:
 
 
 @pytest.fixture
-def sr_mae(interaction_energies) -> dict[str, float]:
+def sr_mae(ionization_energies) -> dict[str, float]:
     """
     Get mean absolute error for SR subset.
 
     Parameters
     ----------
-    interaction_energies
+    ionization_energies
         Dictionary of reference and predicted energies.
 
     Returns
@@ -168,23 +135,25 @@ def sr_mae(interaction_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            interaction_energies["ref"][i] for i in labels() if SUBSETS[i] == "SR"
+            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "SR"
         ]
         subsampled_model_e = [
-            interaction_energies[model_name][i] for i in labels() if SUBSETS[i] == "SR"
+            ionization_energies[model_name][i - 1]
+            for i in labels()
+            if SUBSETS[i] == "SR"
         ]
         results[model_name] = mae(subsampled_ref_e, subsampled_model_e)
     return results
 
 
 @pytest.fixture
-def mr_mae(interaction_energies) -> dict[str, float]:
+def mr_mae(ionization_energies) -> dict[str, float]:
     """
     Get mean absolute error for MR subset.
 
     Parameters
     ----------
-    interaction_energies
+    ionization_energies
         Dictionary of reference and predicted energies.
 
     Returns
@@ -196,10 +165,10 @@ def mr_mae(interaction_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            interaction_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "MR"
+            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "MR"
         ]
         subsampled_model_e = [
-            interaction_energies[model_name][i - 1]
+            ionization_energies[model_name][i - 1]
             for i in labels()
             if SUBSETS[i] == "MR"
         ]
@@ -208,13 +177,13 @@ def mr_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def sr_mr_mae(interaction_energies) -> dict[str, float]:
+def sr_mr_mae(ionization_energies) -> dict[str, float]:
     """
     Get mean absolute error for SR/MR subset.
 
     Parameters
     ----------
-    interaction_energies
+    ionization_energies
         Dictionary of reference and predicted energies.
 
     Returns
@@ -226,10 +195,10 @@ def sr_mr_mae(interaction_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            interaction_energies["ref"][i] for i in labels() if SUBSETS[i] == "SR/MR"
+            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "SR/MR"
         ]
         subsampled_model_e = [
-            interaction_energies[model_name][i]
+            ionization_energies[model_name][i - 1]
             for i in labels()
             if SUBSETS[i] == "SR/MR"
         ]
@@ -238,13 +207,13 @@ def sr_mr_mae(interaction_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def total_mae(interaction_energies) -> dict[str, float]:
+def total_mae(ionization_energies) -> dict[str, float]:
     """
     Get mean absolute error for all conmplexes.
 
     Parameters
     ----------
-    interaction_energies
+    ionization_energies
         Dictionary of reference and predicted energies.
 
     Returns
@@ -256,7 +225,7 @@ def total_mae(interaction_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         results[model_name] = mae(
-            interaction_energies["ref"], interaction_energies[model_name]
+            ionization_energies["ref"], ionization_energies[model_name]
         )
     return results
 
