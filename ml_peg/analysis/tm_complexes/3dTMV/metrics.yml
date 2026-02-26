@@ -9,17 +9,17 @@ metrics:
     good: 0.0
     bad: 50
     unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
+    tooltip: Mean Absolute Error for the single reference (SR) subset
     level_of_theory: ph-AFQMC
   MR MAE:
     good: 0.0
     bad: 50
     unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
+    tooltip: Mean Absolute Error for the multireference (MR) subset
     level_of_theory: ph-AFQMC
   SR/MR MAE:
     good: 0.0
     bad: 50
     unit: kcal/mol
-    tooltip: Mean Absolute Error for all systems
+    tooltip: Mean Absolute Error for the SR/MR (intermediate category) subset
     level_of_theory: ph-AFQMC
