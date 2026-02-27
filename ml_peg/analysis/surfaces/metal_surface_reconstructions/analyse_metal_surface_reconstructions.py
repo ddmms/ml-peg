@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 print(MODELS)
 #D3_MODEL_NAMES = build_d3_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "surfaces" / "metal_surfaces" / "outputs"
+CALC_PATH = CALCS_ROOT / "surfaces" / "metal_surface_reconstructions" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
