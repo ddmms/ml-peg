@@ -266,7 +266,13 @@ def metal_position_errors(slab_positions) -> dict[str, float]:
     for model_name in MODELS:
         if slab_positions[model_name]:
             results[model_name] = (
-                np.mean(np.linalg.norm(np.concat(slab_positions["ref"])-np.concat(slab_positions[model_name]),axis=1))
+                np.mean(
+                    np.linalg.norm(
+                        np.concatenate(slab_positions["ref"])
+                        - np.concatenate(slab_positions[model_name]),
+                        axis=1,
+                    )
+                )
             )
         else:
             results[model_name] = None
