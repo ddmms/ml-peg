@@ -40,7 +40,7 @@ def test_puo2_parity(mlip: tuple[str, Any]) -> None:
     # Download data.
     puo2_data_dir = (
         download_s3_data(
-            key="inputs/actinides/isomer_complexes/puo2.zip",
+            key="inputs/actinides/plutonium_dioxide/puo2.zip",
             filename="puo2_data.zip",
         )
         / "puo2_data"
