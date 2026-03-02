@@ -53,7 +53,7 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.14",
+    "mace-torch==0.3.15",
 ]
 
 mattersim = [
