@@ -236,6 +236,7 @@ def total_mae(ionization_energies) -> dict[str, float]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     total_mae: dict[str, float],
