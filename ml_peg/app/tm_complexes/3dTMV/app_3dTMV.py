@@ -17,10 +17,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "3dTMV"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
-    "molecular.html#3dTMV-tm-complexes"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/tm_complexes.html#dtmv"
 DATA_PATH = APP_ROOT / "data" / "tm_complexes" / "3dTMV"
 
 
