@@ -30,10 +30,11 @@ Data availability
 
 Input structures:
 
-* Toward Benchmark-Quality Ab Initio Predictions for 3d Transition Metal Electrocatalysts: A Comparison of CCSD(T) and ph-AFQMC
-Hagen Neugebauer, Hung T. Vuong, John L. Weber, Richard A. Friesner, James Shee, and Andreas Hansen
-Journal of Chemical Theory and Computation 2023 19 (18), 6208-6225
-DOI: 10.1021/acs.jctc.3c00617
+* Toward Benchmark-Quality Ab Initio Predictions for 3d Transition Metal
+  Electrocatalysts: A Comparison of CCSD(T) and ph-AFQMC Hagen Neugebauer, Hung T.
+  Vuong, John L. Weber, Richard A. Friesner, James Shee, and Andreas Hansen Journal of
+  Chemical Theory and Computation 2023 19 (18), 6208-6225,
+  DOI: 10.1021/acs.jctc.3c00617
 
 Reference data:
 
