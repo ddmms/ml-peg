@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import Atoms, units
+from ase import Atoms
 from ase.io import write
 import h5py
 import numpy as np
@@ -24,8 +24,6 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-
-KCAL_TO_EV = units.kcal / units.mol
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -78,13 +76,7 @@ def choose_best_reference(
         if best_key is not None:
             break
     if best_key is None:
-        # fallback: return any single value
-        try:
-            # k = next(iter(eint.keys()))
-            # return k, float(eint[k][()])
-            return "", np.nan
-        except StopIteration:
-            return None
+        return "", np.nan
     return best_key, float(eint[best_key][()])
 
 
@@ -163,7 +155,7 @@ def test_quid(mlip: tuple[str, Any]) -> None:
         # Get equilibrium config.
         atoms_list = compute_interaction_energy(dataset, eq_label, calc)
         if len(atoms_list) == 0:
-            continue
+            raise ValueError("No structures found")
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
         write(write_dir / f"{eq_label}.xyz", atoms_list)
