@@ -180,3 +180,33 @@ pet-mad:
     version: "v1.0.2"
   d3_kwargs:
     xc: pbesol
+
+# mace-polar-1-s:
+#   module: mace.calculators
+#   class_name: mace_polar
+#   device: "cpu"
+#   default_dtype: float32
+#   trained_on_d3: true
+#   level_of_theory: ωB97M-V
+#   kwargs:
+#     model: "polar-1-s"
+
+# mace-polar-1-m:
+#   module: mace.calculators
+#   class_name: mace_polar
+#   device: "cpu"
+#   default_dtype: float32
+#   trained_on_d3: true
+#   level_of_theory: ωB97M-V
+#   kwargs:
+#     model: "polar-1-m"
+
+# mace-polar-1-l:
+#   module: mace.calculators
+#   class_name: mace_polar
+#   device: "cpu"
+#   default_dtype: float32
+#   trained_on_d3: true
+#   level_of_theory: ωB97M-V
+#   kwargs:
+#     model: "polar-1-l"
