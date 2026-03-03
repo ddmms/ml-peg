@@ -45,7 +45,11 @@ class QUIDApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={
+                "Overall MAE": scatter,
+                "Equilibrium MAE": scatter,
+                "Dissociation MAE": scatter,
+            },
         )
 
         struct_from_scatter(
