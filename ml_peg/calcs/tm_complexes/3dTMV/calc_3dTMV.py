@@ -6,6 +6,7 @@ Journal of Chemical Theory and Computation 2023 19 (18), 6208-6225
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +123,9 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -135,13 +139,13 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         atoms_ox = atoms.copy()
         atoms_ox.info["charge"] = MOLECULAR_DATA[complex_id]["charge_ox"]
         atoms_ox.info["spin"] = MOLECULAR_DATA[complex_id]["mult_ox"]
-        atoms_ox.calc = model.add_d3_calculator(model.get_calculator())
+        atoms_ox.calc = copy(calc)
         oxidized_energy = atoms_ox.get_potential_energy()
 
         atoms_in = atoms.copy()
         atoms_in.info["charge"] = MOLECULAR_DATA[complex_id]["charge_in"]
         atoms_in.info["spin"] = MOLECULAR_DATA[complex_id]["mult_in"]
-        atoms_in.calc = model.add_d3_calculator(model.get_calculator())
+        atoms_in.calc = copy(calc)
         initial_energy = atoms_in.get_potential_energy()
 
         model_ion_energy = oxidized_energy - initial_energy
