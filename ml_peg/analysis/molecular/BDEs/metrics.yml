@@ -1,7 +1,13 @@
 metrics:
-  MAE:
-      good: 0.0
-      bad: 100.0
-      unit: kcal/mol
-      tooltip: "Mean Absolute Error for all BDEs"
-      level of theory: B3LYP-D3BJ/def2-SV(P)
+  Direct BDE:
+    good: 0.0
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error on DFT-relaxed structures"
+    level of theory: B3LYP-D3BJ/def2-SV(P)
+  BDE rank:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "Mean Kendal rank correlation coefficient"
+    level of theory: B3LYP-D3BJ/def2-SV(P)

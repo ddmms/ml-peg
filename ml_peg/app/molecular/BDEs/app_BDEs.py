@@ -26,9 +26,13 @@ class BDEsApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
+        scatter_bdes = read_plot(
             DATA_PATH / "figure.CYP3A4.dft_opt_geometry.BDEs.json",
             id=f"{BENCHMARK_NAME}-figure",
+        )
+        scatter_ranks = read_plot(
+            DATA_PATH / "figure.CYP3A4.dft_opt_geometry.BDE_ranks.json",
+            id=f"{BENCHMARK_NAME}-ranks-figure",
         )
 
         # Assets dir will be parent directory - individual files for each system
@@ -41,7 +45,7 @@ class BDEsApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={"Direct BDE": scatter_bdes, "BDE rank": scatter_ranks},
         )
 
         struct_from_scatter(
