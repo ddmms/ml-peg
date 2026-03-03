@@ -1,13 +1,25 @@
 metrics:
   Direct BDE:
-    good: 0.0
+    good: 0.5
     bad: 50.0
     unit: kcal/mol
     tooltip: "Mean Absolute Error on DFT-relaxed structures"
     level of theory: B3LYP-D3BJ/def2-SV(P)
+  Direct BDE (MLFF opt):
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Mean Absolute Error on MLFF-relaxed structures"
+    level of theory: B3LYP-D3BJ/def2-SV(P)
   BDE rank:
     good: 1.0
-    bad: 0.0
+    bad: 0.5
     unit: null
     tooltip: "Mean Kendal rank correlation coefficient"
+    level of theory: B3LYP-D3BJ/def2-SV(P)
+  BDE rank (MLFF opt):
+    good: 1.0
+    bad: 0.5
+    unit: null
+    tooltip: "Mean Kendall rank correlation coefficient on MLFF-relaxed structures"
     level of theory: B3LYP-D3BJ/def2-SV(P)
