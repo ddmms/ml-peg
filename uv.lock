@@ -4724,7 +4724,7 @@ wheels = [
 
 [[package]]
 name = "mace-torch"
-version = "0.3.14"
+version = "0.3.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ase" },
@@ -4749,9 +4749,9 @@ dependencies = [
     { name = "torchmetrics" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/c5/41fcb72b386e4b864501430ca2075f0797a5915adca3c0f3022a20427d1a/mace_torch-0.3.14.tar.gz", hash = "sha256:7e05372b50b5ee3da2973d7da860bde0facbc0934bb672af264af303d3596d05", size = 206925, upload-time = "2025-08-06T17:30:15.272Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/a7/2a60120b15eca67d153e6b5a40cb4b70e4bbe00b9504df2c82a6cf38fda3/mace_torch-0.3.15.tar.gz", hash = "sha256:23f9bd7521db56ce91586c110089bdbd79ffd2475fec8fea2cae4780be495049", size = 230748, upload-time = "2026-02-22T23:35:03.411Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/53/7d7b1de354a43e11cb19b370f81833f078f931aff4555b24e869013eea1a/mace_torch-0.3.14-py3-none-any.whl", hash = "sha256:9a7a00a79b3fa3448a13961e2a4af616ff10466fa193aeb4579dc83be9da1b00", size = 237087, upload-time = "2025-08-06T17:30:11.377Z" },
+    { url = "https://files.pythonhosted.org/packages/01/6d/d5b578dce5c995ce8c9cbeb53871331e575a09bf11ca4739fac770665b6e/mace_torch-0.3.15-py3-none-any.whl", hash = "sha256:9e38df131667f4abdb3c0ab7b77927f217886cbca68c417dcc985465c4b9a53c", size = 264276, upload-time = "2026-02-22T23:35:01.73Z" },
 ]
 
 [[package]]
@@ -6077,7 +6077,7 @@ requires-dist = [
     { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.10.0" },
     { name = "janus-core", specifier = ">=0.8.2,<1.0.0" },
     { name = "kaleido", specifier = ">=1.0.0" },
-    { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.14" },
+    { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.15" },
     { name = "matcalc" },
     { name = "matminer" },
     { name = "mattersim", marker = "extra == 'mattersim'", specifier = "==1.2.0" },
