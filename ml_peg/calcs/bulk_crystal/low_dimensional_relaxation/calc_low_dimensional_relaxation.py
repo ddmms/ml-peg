@@ -11,6 +11,7 @@ from typing import Any
 import urllib.request
 
 from ase import Atoms
+from ase.io import write as ase_write
 from ase.spacegroup.symmetrize import refine_symmetry
 from janus_core.calculations.geom_opt import GeomOpt
 import numpy as np
@@ -381,32 +382,48 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
             atoms, dimensionality
         )
 
+        if relaxed_atoms is not None:
+            relaxed_atoms.info["mat_id"] = mat_id
+            relaxed_atoms.info["dimensionality"] = dimensionality
+
         result = {
             "mat_id": mat_id,
             "dimensionality": dimensionality,
             "ref_energy_per_atom": struct_data["ref_energy_per_atom"],
             "pred_energy_per_atom": energy_per_atom,
             "converged": converged,
+            "relaxed_atoms": relaxed_atoms,
         }
 
         # Add dimension-specific geometric metrics
         if dimensionality == "2D":
             result["ref_area_per_atom"] = struct_data["ref_area_per_atom"]
-            if relaxed_atoms is not None:
-                result["pred_area_per_atom"] = get_area_per_atom(relaxed_atoms)
-            else:
-                result["pred_area_per_atom"] = None
+            result["pred_area_per_atom"] = (
+                get_area_per_atom(relaxed_atoms) if relaxed_atoms is not None else None
+            )
         else:  # 1D
             result["ref_length_per_atom"] = struct_data["ref_length_per_atom"]
-            if relaxed_atoms is not None:
-                result["pred_length_per_atom"] = get_length_per_atom(relaxed_atoms)
-            else:
-                result["pred_length_per_atom"] = None
+            result["pred_length_per_atom"] = (
+                get_length_per_atom(relaxed_atoms)
+                if relaxed_atoms is not None
+                else None
+            )
 
         results.append(result)
 
     # Save results
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(
+        [{k: v for k, v in r.items() if k != "relaxed_atoms"} for r in results]
+    )
     df.to_csv(out_dir / f"results_{dimensionality}.csv", index=False)
+
+    # Write converged relaxed structures to xyz
+    relaxed_frames = [
+        r["relaxed_atoms"] for r in results if r["relaxed_atoms"] is not None
+    ]
+    if relaxed_frames:
+        for frame in relaxed_frames:
+            frame.calc = None
+        ase_write(out_dir / f"relaxed_{dimensionality}.xyz", relaxed_frames)
