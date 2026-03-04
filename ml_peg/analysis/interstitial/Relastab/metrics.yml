@@ -1,0 +1,13 @@
+metrics:
+    KendallTau:
+        good: 1.0
+        bad: 0.0
+        unit: au
+        tooltip: "Kendall rank correlation coefficient (1.0 is perfect agreement)"
+        level_of_theory: DFT
+    Spearman:
+        good: 1.0
+        bad: 0.0
+        unit: au
+        tooltip: "Spearman rank correlation coefficient"
+        level_of_theory: DFT
