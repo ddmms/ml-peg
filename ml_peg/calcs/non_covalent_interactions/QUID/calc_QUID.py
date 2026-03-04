@@ -146,6 +146,8 @@ def test_quid(mlip: tuple[str, Any]) -> None:
         / "QUID"
     )
 
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
     # Add D3 calculator for this test.
     calc = model.add_d3_calculator(calc)
