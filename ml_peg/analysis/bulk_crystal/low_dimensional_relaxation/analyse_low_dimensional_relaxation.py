@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.utils import build_density_inputs, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -144,92 +142,28 @@ def get_convergence_rate(model_name: str, dimensionality: str = "2D") -> float |
     return (df["converged"].sum() / len(df)) * 100
 
 
-def create_parity_plot(
-    data_type: str,
-    title: str,
-    x_label: str,
-    y_label: str,
-    filename: Path,
-    dimensionality: str = "2D",
-) -> None:
+def _build_stats(dimensionality: str) -> dict[str, dict]:
     """
-    Create a parity plot for low-dimensional structures.
+    Aggregate converged ref/pred data per model for a given dimensionality.
 
     Parameters
     ----------
-    data_type
-        Either "geom" (area for 2D, length for 1D) or "energy".
-    title
-        Plot title.
-    x_label
-        X-axis label.
-    y_label
-        Y-axis label.
-    filename
-        Path to save the plot JSON.
     dimensionality
         Either "2D" or "1D".
+
+    Returns
+    -------
+    dict[str, dict]
+        Per-model dicts with "geom" and "energy" ref/pred lists.
     """
-    fig = go.Figure()
-
-    ref_values = []
-    pred_values = []
-
+    stats = {}
     for model_name in MODELS:
         data = get_converged_data(model_name, dimensionality)
-        if data_type == "geom":
-            ref_values.extend(data["ref_geom"])
-            pred_values.extend(data["pred_geom"])
-        else:
-            ref_values.extend(data["ref_energy"])
-            pred_values.extend(data["pred_energy"])
-
-    if ref_values and pred_values:
-        fig.add_trace(
-            go.Scatter(
-                x=pred_values,
-                y=ref_values,
-                name=dimensionality,
-                mode="markers",
-                marker={"size": 6, "opacity": 0.7},
-                hovertemplate=(
-                    f"<b>{dimensionality}</b><br>"
-                    "<b>Pred: </b>%{x:.4f}<br>"
-                    "<b>Ref: </b>%{y:.4f}<br>"
-                    "<extra></extra>"
-                ),
-            )
-        )
-
-    all_values = []
-    for trace in fig.data:
-        all_values.extend(trace.x)
-        all_values.extend(trace.y)
-
-    if all_values:
-        min_val = min(all_values)
-        max_val = max(all_values)
-        fig.add_trace(
-            go.Scatter(
-                x=[min_val, max_val],
-                y=[min_val, max_val],
-                mode="lines",
-                name="y=x",
-                line={"color": "gray", "dash": "dash"},
-                showlegend=True,
-            )
-        )
-
-    fig.update_layout(
-        title=title,
-        xaxis_title=x_label,
-        yaxis_title=y_label,
-        hovermode="closest",
-    )
-
-    filename.parent.mkdir(parents=True, exist_ok=True)
-    with open(filename, "w") as f:
-        json.dump(fig.to_dict(), f)
+        stats[model_name] = {
+            "geom": {"ref": data["ref_geom"], "pred": data["pred_geom"]},
+            "energy": {"ref": data["ref_energy"], "pred": data["pred_energy"]},
+        }
+    return stats
 
 
 def _compute_mae(dimensionality: str, data_key: str) -> dict[str, float]:
@@ -280,35 +214,80 @@ def _compute_convergence(dimensionality: str) -> dict[str, float]:
     return results
 
 
-def _generate_all_plots() -> None:
-    """Generate all parity plots for each dimensionality."""
-    for dim, cfg in DIM_CONFIGS.items():
-        geom_label = cfg["geom_label"]
-        geom_unit = cfg["geom_unit"]
-        dim_lower = dim.lower()
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_area_2d.json",
+    title="Area per atom (2D)",
+    x_label="Reference area / Å²/atom",
+    y_label="Predicted area / Å²/atom",
+)
+def area_density_2d() -> dict[str, dict]:
+    """
+    Density scatter inputs for 2D area per atom.
 
-        create_parity_plot(
-            data_type="geom",
-            title=f"{geom_label} per atom ({dim})",
-            x_label=f"Predicted {geom_label.lower()} / {geom_unit}",
-            y_label=f"Reference {geom_label.lower()} / {geom_unit}",
-            filename=OUT_PATH / f"figure_{geom_label.lower()}_{dim_lower}.json",
-            dimensionality=dim,
-        )
-        create_parity_plot(
-            data_type="energy",
-            title=f"Energy per atom ({dim})",
-            x_label="Predicted energy / eV/atom",
-            y_label="Reference energy / eV/atom",
-            filename=OUT_PATH / f"figure_energy_{dim_lower}.json",
-            dimensionality=dim,
-        )
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    return build_density_inputs(MODELS, _build_stats("2D"), "geom", metric_fn=mae)
 
 
 @pytest.fixture
-def parity_plots() -> None:
-    """Generate all parity plots for 2D and 1D structures."""
-    _generate_all_plots()
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_energy_2d.json",
+    title="Energy per atom (2D)",
+    x_label="Reference energy / eV/atom",
+    y_label="Predicted energy / eV/atom",
+)
+def energy_density_2d() -> dict[str, dict]:
+    """
+    Density scatter inputs for 2D energy per atom.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    return build_density_inputs(MODELS, _build_stats("2D"), "energy", metric_fn=mae)
+
+
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_length_1d.json",
+    title="Length per atom (1D)",
+    x_label="Reference length / Å/atom",
+    y_label="Predicted length / Å/atom",
+)
+def length_density_1d() -> dict[str, dict]:
+    """
+    Density scatter inputs for 1D length per atom.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    return build_density_inputs(MODELS, _build_stats("1D"), "geom", metric_fn=mae)
+
+
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_energy_1d.json",
+    title="Energy per atom (1D)",
+    x_label="Reference energy / eV/atom",
+    y_label="Predicted energy / eV/atom",
+)
+def energy_density_1d() -> dict[str, dict]:
+    """
+    Density scatter inputs for 1D energy per atom.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    return build_density_inputs(MODELS, _build_stats("1D"), "energy", metric_fn=mae)
 
 
 @pytest.fixture
@@ -337,7 +316,10 @@ def metrics() -> dict[str, dict]:
 
 def test_low_dimensional_relaxation(
     metrics: dict[str, dict],
-    parity_plots: None,
+    area_density_2d: dict[str, dict],
+    energy_density_2d: dict[str, dict],
+    length_density_1d: dict[str, dict],
+    energy_density_1d: dict[str, dict],
 ) -> None:
     """
     Run low-dimensional relaxation analysis test.
@@ -346,7 +328,13 @@ def test_low_dimensional_relaxation(
     ----------
     metrics
         All low-dimensional relaxation metrics.
-    parity_plots
-        Triggers parity plot generation for all dimensionalities.
+    area_density_2d
+        Triggers 2D area density plot generation.
+    energy_density_2d
+        Triggers 2D energy density plot generation.
+    length_density_1d
+        Triggers 1D length density plot generation.
+    energy_density_1d
+        Triggers 1D energy density plot generation.
     """
     return
