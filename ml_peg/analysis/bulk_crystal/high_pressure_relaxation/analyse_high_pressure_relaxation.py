@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.utils import build_density_inputs, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -24,9 +22,6 @@ OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "high_pressure_relaxation"
 # Pressure conditions
 PRESSURES = [0, 25, 50, 75, 100, 125, 150]
 PRESSURE_LABELS = ["P000", "P025", "P050", "P075", "P100", "P125", "P150"]
-
-# Generate colors using viridis colorscale
-PRESSURE_COLORS = px.colors.sample_colorscale("viridis", len(PRESSURES))
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -87,7 +82,7 @@ def load_results_for_pressure(model_name: str, pressure_label: str) -> pd.DataFr
 
 def get_converged_data_for_pressure(
     model_name: str, pressure_label: str
-) -> tuple[list, list, list, list]:
+) -> dict[str, list]:
     """
     Get converged volume and energy data for a model at a specific pressure.
 
@@ -100,24 +95,49 @@ def get_converged_data_for_pressure(
 
     Returns
     -------
-    tuple[list, list, list, list]
-        Ref volumes, pred volumes, ref energies, pred energies for converged structures.
+    dict[str, list]
+        Lists of ref/pred volumes and energies for converged structures.
     """
     df = load_results_for_pressure(model_name, pressure_label)
     if df.empty:
-        return [], [], [], []
+        return {"ref_vol": [], "pred_vol": [], "ref_energy": [], "pred_energy": []}
 
-    # Filter converged structures and remove NaN values
     df = _filter_energy_outliers(df)
     df_conv = df[df["converged"]].copy()
     df_conv = df_conv.dropna(subset=["pred_volume_per_atom", "pred_energy_per_atom"])
 
-    return (
-        df_conv["ref_volume_per_atom"].tolist(),
-        df_conv["pred_volume_per_atom"].tolist(),
-        df_conv["ref_energy_per_atom"].tolist(),
-        df_conv["pred_energy_per_atom"].tolist(),
-    )
+    return {
+        "ref_vol": df_conv["ref_volume_per_atom"].tolist(),
+        "pred_vol": df_conv["pred_volume_per_atom"].tolist(),
+        "ref_energy": df_conv["ref_energy_per_atom"].tolist(),
+        "pred_energy": df_conv["pred_energy_per_atom"].tolist(),
+    }
+
+
+@pytest.fixture
+def high_pressure_stats() -> dict[str, dict[str, Any]]:
+    """
+    Load and aggregate converged volume/energy data across all pressures per model.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Per-model dicts with pooled "volume" and "energy" ref/pred lists.
+    """
+    stats: dict[str, dict[str, Any]] = {}
+    for model_name in MODELS:
+        ref_vol, pred_vol, ref_energy, pred_energy = [], [], [], []
+        for pressure_label in PRESSURE_LABELS:
+            data = get_converged_data_for_pressure(model_name, pressure_label)
+            ref_vol.extend(data["ref_vol"])
+            pred_vol.extend(data["pred_vol"])
+            ref_energy.extend(data["ref_energy"])
+            pred_energy.extend(data["pred_energy"])
+        stats[model_name] = {
+            "volume": {"ref": ref_vol, "pred": pred_vol},
+            "energy": {"ref": ref_energy, "pred": pred_energy},
+        }
+    return stats
 
 
 def get_convergence_rate_for_pressure(
@@ -145,126 +165,56 @@ def get_convergence_rate_for_pressure(
     return (df["converged"].sum() / len(df)) * 100
 
 
-def create_pressure_colored_parity_plot(
-    data_getter: str,
-    title: str,
-    x_label: str,
-    y_label: str,
-    filename: Path,
-) -> None:
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_volume_density.json",
+    title="Volume per atom (all pressures)",
+    x_label="Reference volume / Å³/atom",
+    y_label="Predicted volume / Å³/atom",
+)
+def volume_density(
+    high_pressure_stats: dict[str, dict[str, Any]],
+) -> dict[str, dict]:
     """
-    Create a parity plot with different colors for each pressure.
+    Density scatter inputs for volume per atom (pooled across all pressures).
 
     Parameters
     ----------
-    data_getter
-        Either "volume" or "energy" to select which data to plot.
-    title
-        Plot title.
-    x_label
-        X-axis label.
-    y_label
-        Y-axis label.
-    filename
-        Path to save the plot JSON.
+    high_pressure_stats
+        Aggregated volume/energy data per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
     """
-    fig = go.Figure()
-
-    # Add a trace for each pressure
-    for pressure, pressure_label, color in zip(
-        PRESSURES, PRESSURE_LABELS, PRESSURE_COLORS, strict=False
-    ):
-        ref_values = []
-        pred_values = []
-
-        # Collect data from all models for this pressure
-        for model_name in MODELS:
-            if data_getter == "volume":
-                ref_vol, pred_vol, _, _ = get_converged_data_for_pressure(
-                    model_name, pressure_label
-                )
-                ref_values.extend(ref_vol)
-                pred_values.extend(pred_vol)
-            else:  # energy
-                _, _, ref_energy, pred_energy = get_converged_data_for_pressure(
-                    model_name, pressure_label
-                )
-                ref_values.extend(ref_energy)
-                pred_values.extend(pred_energy)
-
-        if ref_values and pred_values:
-            fig.add_trace(
-                go.Scatter(
-                    x=pred_values,
-                    y=ref_values,
-                    name=f"{pressure} GPa",
-                    mode="markers",
-                    marker={"color": color, "size": 6, "opacity": 0.7},
-                    hovertemplate=(
-                        f"<b>{pressure} GPa</b><br>"
-                        "<b>Pred: </b>%{x:.4f}<br>"
-                        "<b>Ref: </b>%{y:.4f}<br>"
-                        "<extra></extra>"
-                    ),
-                )
-            )
-
-    # Add diagonal line (y=x)
-    all_values = []
-    for trace in fig.data:
-        all_values.extend(trace.x)
-        all_values.extend(trace.y)
-
-    if all_values:
-        min_val = min(all_values)
-        max_val = max(all_values)
-        fig.add_trace(
-            go.Scatter(
-                x=[min_val, max_val],
-                y=[min_val, max_val],
-                mode="lines",
-                name="y=x",
-                line={"color": "gray", "dash": "dash"},
-                showlegend=True,
-            )
-        )
-
-    fig.update_layout(
-        title=title,
-        xaxis_title=x_label,
-        yaxis_title=y_label,
-        legend_title="Pressure",
-        hovermode="closest",
-    )
-
-    # Save to JSON
-    filename.parent.mkdir(parents=True, exist_ok=True)
-    with open(filename, "w") as f:
-        json.dump(fig.to_dict(), f)
+    return build_density_inputs(MODELS, high_pressure_stats, "volume", metric_fn=mae)
 
 
 @pytest.fixture
-def volume_predictions() -> None:
-    """Create volume parity plot with different colors for each pressure."""
-    create_pressure_colored_parity_plot(
-        data_getter="volume",
-        title="Volume per atom",
-        x_label="Predicted volume / Å³/atom",
-        y_label="Reference volume / Å³/atom",
-        filename=OUT_PATH / "figure_volume.json",
-    )
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_energy_density.json",
+    title="Energy per atom (all pressures)",
+    x_label="Reference energy / eV/atom",
+    y_label="Predicted energy / eV/atom",
+)
+def energy_density(
+    high_pressure_stats: dict[str, dict[str, Any]],
+) -> dict[str, dict]:
+    """
+    Density scatter inputs for energy per atom (pooled across all pressures).
 
+    Parameters
+    ----------
+    high_pressure_stats
+        Aggregated volume/energy data per model.
 
-@pytest.fixture
-def energy_predictions() -> None:
-    """Create energy parity plot with different colors for each pressure."""
-    create_pressure_colored_parity_plot(
-        data_getter="energy",
-        title="Energy per atom",
-        x_label="Predicted energy / eV/atom",
-        y_label="Reference energy / eV/atom",
-        filename=OUT_PATH / "figure_energy.json",
-    )
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model name to density-scatter data.
+    """
+    return build_density_inputs(MODELS, high_pressure_stats, "energy", metric_fn=mae)
 
 
 @pytest.fixture
@@ -282,11 +232,11 @@ def volume_mae_per_pressure() -> dict[str, dict[str, float]]:
         pressure_key = f"Volume MAE ({pressure} GPa)"
         results[pressure_key] = {}
         for model_name in MODELS:
-            ref_vol, pred_vol, _, _ = get_converged_data_for_pressure(
-                model_name, pressure_label
-            )
-            if ref_vol and pred_vol:
-                results[pressure_key][model_name] = mae(ref_vol, pred_vol)
+            data = get_converged_data_for_pressure(model_name, pressure_label)
+            if data["ref_vol"] and data["pred_vol"]:
+                results[pressure_key][model_name] = mae(
+                    data["ref_vol"], data["pred_vol"]
+                )
     return results
 
 
@@ -305,11 +255,11 @@ def energy_mae_per_pressure() -> dict[str, dict[str, float]]:
         pressure_key = f"Energy MAE ({pressure} GPa)"
         results[pressure_key] = {}
         for model_name in MODELS:
-            _, _, ref_energy, pred_energy = get_converged_data_for_pressure(
-                model_name, pressure_label
-            )
-            if ref_energy and pred_energy:
-                results[pressure_key][model_name] = mae(ref_energy, pred_energy)
+            data = get_converged_data_for_pressure(model_name, pressure_label)
+            if data["ref_energy"] and data["pred_energy"]:
+                results[pressure_key][model_name] = mae(
+                    data["ref_energy"], data["pred_energy"]
+                )
     return results
 
 
@@ -371,8 +321,8 @@ def metrics(
 
 def test_high_pressure_relaxation(
     metrics: dict[str, dict],
-    volume_predictions: None,
-    energy_predictions: None,
+    volume_density: dict[str, dict],
+    energy_density: dict[str, dict],
 ) -> None:
     """
     Run high-pressure relaxation analysis test.
@@ -381,9 +331,9 @@ def test_high_pressure_relaxation(
     ----------
     metrics
         All high-pressure relaxation metrics.
-    volume_predictions
-        Triggers volume plot generation.
-    energy_predictions
-        Triggers energy plot generation.
+    volume_density
+        Triggers volume density plot generation.
+    energy_density
+        Triggers energy density plot generation.
     """
     return
