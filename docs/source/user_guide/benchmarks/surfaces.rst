@@ -145,3 +145,56 @@ Reference data:
   * S. P. Ong, W. D. Richards, A. Jain, G. Hautier, M. Kocher, S. Cholia, D. Gunter, V. Chevrier, K. A. Persson, G. Ceder, "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis," Comput. Mater. Sci., 2013, 68, 314–319. https://doi.org/10.1016/j.commatsci.2012.10.028
 
 * Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
+
+Cleavage Energy
+===============
+
+Summary
+-------
+
+Performance in predicting cleavage energies for 36,718 surface configurations
+across a wide range of materials and Miller indices.
+
+Metrics
+-------
+
+1. Cleavage energy MAE
+
+Accuracy of cleavage energy predictions compared to DFT reference values.
+
+For each surface, the cleavage energy is calculated as
+``(E_slab - thickness_ratio * E_bulk) / (2 * A)``, where ``E_slab`` and
+``E_bulk`` are single-point energies of the slab and the lattice-matched bulk
+unit cell, ``thickness_ratio`` is the number of bulk unit cells in the slab
+thickness, and ``A`` is the surface area. Results are reported in meV/A^2.
+The mean absolute error is computed over all 36,718 surfaces.
+
+2. Cleavage energy RMSE
+
+Root mean squared error of cleavage energy predictions across all surfaces.
+
+Computational cost
+------------------
+
+Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs.
+
+Data availability
+-----------------
+
+Input data:
+
+* Surface configurations were obtained from the Materials Project, covering
+  3,699 unique bulk materials with multiple Miller indices and terminations
+  per material. The original unfiltered data source is available at
+  Zenodo (DOI: 10.5281/zenodo.10381505).
+
+Reference data:
+
+* DFT cleavage energies calculated using PBE functional.
+
+Publication:
+
+* A. Mehdizadeh and P. Schindler, "Surface stability modeling with universal
+  machine learning interatomic potentials: a comprehensive cleavage energy
+  benchmarking study," Mach. Learn.: Sci. Technol., 2025.
+  https://iopscience.iop.org/article/10.1088/3050-287X/ae1408
