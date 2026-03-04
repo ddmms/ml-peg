@@ -25,7 +25,6 @@ class QuasiharmonicApp(BaseApp):
         """Register callbacks to app."""
         # Define plot paths and their metric mappings
         plot_configs = [
-            ("figure_qha_lattice_constants.json", "Lattice constant MAE", "lattice"),
             ("figure_qha_volume_per_atom.json", "Volume per atom MAE", "volume"),
         ]
 

@@ -22,6 +22,7 @@ import uuid
 from jobflow import JobStore, run_locally
 from maggma.stores import MemoryStore
 import pandas as pd
+from pymatgen.core import Structure
 import pytest
 
 from ml_peg.models.get_models import get_model_names, load_model_configs
@@ -181,34 +182,6 @@ def load_reference_data() -> dict[str, Any]:
         return json.load(f)
 
 
-def load_structure(material: dict[str, Any]) -> Structure:
-    """
-    Load a pymatgen Structure from material definition.
-
-    Parameters
-    ----------
-    material
-        Material dictionary with structure information.
-
-    Returns
-    -------
-    Structure
-        Pymatgen Structure object.
-    """
-    from pymatgen.core import Structure as PmgStructure
-
-    if "cif_file" in material:
-        cif_path = DATA_PATH / material["cif_file"]
-        if cif_path.exists():
-            return PmgStructure.from_file(str(cif_path))
-
-    from ase.build import bulk
-    from pymatgen.io.ase import AseAtomsAdaptor
-
-    atoms = bulk(material["symbols"], material["lattice_type"], a=material["a0"])
-    return AseAtomsAdaptor.get_structure(atoms)
-
-
 def run_qha_workflow(
     structure: Structure,
     model_name: str,
@@ -361,7 +334,6 @@ def _interpolate_at_temperature(
 def extract_qha_properties(
     qha_doc: Any,
     temperature: float,
-    n_atoms_conventional: int = 8,
 ) -> dict[str, float | None]:
     """
     Extract QHA properties at a specific temperature from PhononQHADoc.
@@ -372,9 +344,6 @@ def extract_qha_properties(
         PhononQHADoc from atomate2 workflow.
     temperature
         Target temperature in K.
-    n_atoms_conventional
-        Number of atoms in the conventional cell (for volume conversion).
-        Default is 8 for diamond structure.
 
     Returns
     -------
@@ -383,7 +352,6 @@ def extract_qha_properties(
     """
     properties: dict[str, float | None] = {
         "volume_per_atom": None,
-        "lattice_a": None,
     }
 
     if qha_doc is None:
@@ -398,8 +366,6 @@ def extract_qha_properties(
     vol_per_atom = _interpolate_at_temperature(temps, vol_t, temperature)
     if vol_per_atom is not None:
         properties["volume_per_atom"] = vol_per_atom
-        # Lattice constant from conventional cell volume
-        properties["lattice_a"] = (vol_per_atom * n_atoms_conventional) ** (1 / 3)
 
     return properties
 
@@ -444,7 +410,7 @@ def test_quasiharmonic(model_name: str) -> None:
         pressure = condition["pressure_GPa"]
 
         # Load structure
-        structure = load_structure(material)
+        structure = Structure.from_file(DATA_PATH / material["cif_file"])
 
         # Create unique temporary directory for this calculation
         calc_id = f"{material_name}_T{temperature}_P{pressure}_{uuid.uuid4().hex[:8]}"
@@ -470,9 +436,7 @@ def test_quasiharmonic(model_name: str) -> None:
                     "material": material_name,
                     "temperature_K": temperature,
                     "pressure_GPa": pressure,
-                    "ref_lattice_a": condition["ref_lattice_a"],
-                    "pred_lattice_a": properties["lattice_a"],
-                    "ref_volume_per_atom": condition.get("ref_volume_per_atom"),
+                    "ref_volume_per_atom": condition["ref_volume_per_atom"],
                     "pred_volume_per_atom": properties["volume_per_atom"],
                     "status": "success",
                 }
@@ -497,8 +461,6 @@ def test_quasiharmonic(model_name: str) -> None:
                     "material": material_name,
                     "temperature_K": temperature,
                     "pressure_GPa": pressure,
-                    "ref_lattice_a": condition["ref_lattice_a"],
-                    "pred_lattice_a": None,
                     "status": "failed",
                     "error": str(e),
                 }

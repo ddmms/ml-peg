@@ -11,24 +11,20 @@
       "material": "Si",
       "temperature_K": 300,
       "pressure_GPa": 0.0,
-      "ref_lattice_a": 5.431,
       "ref_volume_per_atom": 20.0225,
-      "ref_thermal_expansion_1e6_K": 2.6,
-      "ref_bulk_modulus_GPa": 97.8,
-      "ref_heat_capacity_J_mol_K": 20.0,
       "level_of_theory": "Experimental",
       "reference": "Thermophysical properties of matter, Vol. 12-13, TPRC Data Series"
     }
   ],
   "qha_settings": {
-    "temperature_range": [300],
-    "temperature_step": 0,
+    "temperature_range": [290, 320],
+    "temperature_step": 10,
     "volume_scale_range": [-0.05, 0.05],
     "n_volumes": 10,
     "eos_type": "vinet",
-    "supercell_matrix": [2, 2, 2],
+    "supercell_matrix": [5, 5, 5],
     "phonon_displacement": 0.01,
-    "phonon_mesh": [8, 8, 8],
+    "phonon_mesh": [10, 10, 10],
     "relax_fmax": 0.0005,
     "relax_steps": 500,
     "min_length": 10.0
@@ -38,11 +34,7 @@
     "description": "Benchmark for evaluating MLIP predictions of temperature-dependent thermodynamic properties using the quasiharmonic approximation (QHA). Each data point is a (structure, temperature, pressure) triple with experimental reference values.",
     "version": "1.0.0",
     "properties_computed": [
-      "lattice_constant",
-      "equilibrium_volume",
-      "thermal_expansion",
-      "bulk_modulus",
-      "heat_capacity"
+      "equilibrium_volume"
     ]
   }
 }

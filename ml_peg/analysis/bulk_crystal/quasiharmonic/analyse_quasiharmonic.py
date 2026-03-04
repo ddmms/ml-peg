@@ -42,7 +42,6 @@ def _make_hoverdata() -> dict[str, list]:
 
 
 # Hover data for interactive plots (populated during fixture execution)
-HOVERDATA_LATTICE = _make_hoverdata()
 HOVERDATA_VOLUME = _make_hoverdata()
 
 
@@ -147,26 +146,6 @@ def _calculate_mae(parity_data: dict[str, list]) -> dict[str, float | None]:
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_qha_lattice_constants.json",
-    title="QHA Lattice Constants",
-    x_label="Predicted lattice constant / Å",
-    y_label="Reference lattice constant / Å",
-    hoverdata=HOVERDATA_LATTICE,
-)
-def qha_lattice_constants() -> dict[str, list]:
-    """
-    Gather reference and predicted lattice constants for parity plotting.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of reference and predicted values per model.
-    """
-    return _gather_parity_data("ref_lattice_a", "pred_lattice_a", HOVERDATA_LATTICE)
-
-
-@pytest.fixture
-@plot_parity(
     filename=OUT_PATH / "figure_qha_volume_per_atom.json",
     title="QHA Volume per Atom",
     x_label="Predicted volume per atom / Å³/atom",
@@ -185,26 +164,6 @@ def qha_volume_per_atom() -> dict[str, list]:
     return _gather_parity_data(
         "ref_volume_per_atom", "pred_volume_per_atom", HOVERDATA_VOLUME
     )
-
-
-@pytest.fixture
-def lattice_constant_mae(
-    qha_lattice_constants: dict[str, list],
-) -> dict[str, float | None]:
-    """
-    Mean absolute error for lattice constants.
-
-    Parameters
-    ----------
-    qha_lattice_constants
-        Reference and predicted lattice constants.
-
-    Returns
-    -------
-    dict[str, float | None]
-        MAE values for each model.
-    """
-    return _calculate_mae(qha_lattice_constants)
 
 
 @pytest.fixture
@@ -235,7 +194,6 @@ def volume_per_atom_mae(
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    lattice_constant_mae: dict[str, float | None],
     volume_per_atom_mae: dict[str, float | None],
 ) -> dict[str, dict[str, float | None]]:
     """
@@ -245,8 +203,6 @@ def metrics(
 
     Parameters
     ----------
-    lattice_constant_mae
-        Lattice constant MAE per model.
     volume_per_atom_mae
         Volume per atom MAE per model.
 
@@ -256,14 +212,12 @@ def metrics(
         Metrics dictionary.
     """
     return {
-        "Lattice constant MAE": lattice_constant_mae,
         "Volume per atom MAE": volume_per_atom_mae,
     }
 
 
 def test_quasiharmonic(
     metrics: dict[str, dict[str, Any]],
-    qha_lattice_constants: dict[str, list],
     qha_volume_per_atom: dict[str, list],
 ) -> None:
     """
@@ -273,8 +227,6 @@ def test_quasiharmonic(
     ----------
     metrics
         Metrics dictionary.
-    qha_lattice_constants
-        Lattice constants parity data.
     qha_volume_per_atom
         Volume per atom parity data.
     """
