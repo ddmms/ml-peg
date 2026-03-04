@@ -283,4 +283,6 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         r["relaxed_atoms"] for r in results if r["relaxed_atoms"] is not None
     ]
     if relaxed_frames:
+        for frame in relaxed_frames:
+            frame.calc = None
         ase_write(out_dir / f"relaxed_{pressure_label}.xyz", relaxed_frames)
