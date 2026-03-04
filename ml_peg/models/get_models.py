@@ -137,7 +137,7 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                 trained_on_d3=cfg.get("trained_on_d3", False),
                 d3_kwargs=cfg.get("d3_kwargs", {}),
             )
-        elif cfg["class_name"] == "PETMADCalculator":
+        elif cfg["class_name"] == "UPETCalculator":
             loaded_models[name] = PetMadCalc(
                 module=cfg["module"],
                 class_name=cfg["class_name"],

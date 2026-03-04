@@ -96,7 +96,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
 @dataclasses.dataclass(kw_only=True)
 class PetMadCalc(GenericASECalc):
-    """Dataclass for PET-MAD calculator."""
+    """Dataclass for UPET calculator."""
 
     def get_calculator(self, **kwargs) -> Calculator:
         """
@@ -112,12 +112,13 @@ class PetMadCalc(GenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
-        if self.default_dtype is not None:
-            kwargs["dtype"] = self.default_dtype
-        else:
-            kwargs["dtype"] = self.default_dtype
+        from upet.calculator import UPETCalculator
 
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        calc_kwargs = {**self.kwargs}
+        if self.device:
+            calc_kwargs.setdefault("device", str(self.device))
+        calc = UPETCalculator(**calc_kwargs)
+        return self.add_d3_calculator(calc)
 
 
 # https://github.com/orbital-materials/orb-models

@@ -22,7 +22,6 @@ import uuid
 from jobflow import JobStore, run_locally
 from maggma.stores import MemoryStore
 import pandas as pd
-from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
 
 from ml_peg.models.get_models import get_model_names, load_model_configs
@@ -118,12 +117,12 @@ def get_atomate2_config(model_name: str) -> dict[str, Any]:
             },
         }
 
-    if class_name == "PETMADCalculator":
-        # PET-MAD - use monty dict format
+    if class_name == "UPETCalculator":
+        # UPET - use monty dict format
         return {
             "force_field_name": {
-                "@module": "pet_mad.calculator",
-                "@callable": "PETMADCalculator",
+                "@module": "upet.calculator",
+                "@callable": "UPETCalculator",
             },
             "calculator_kwargs": kwargs,
         }
@@ -184,33 +183,29 @@ def load_reference_data() -> dict[str, Any]:
 
 def load_structure(material: dict[str, Any]) -> Structure:
     """
-    Load a structure from the data directory.
+    Load a pymatgen Structure from material definition.
 
     Parameters
     ----------
     material
-        Material metadata with 'cif_file' or bulk parameters.
+        Material dictionary with structure information.
 
     Returns
     -------
     Structure
         Pymatgen Structure object.
     """
-    from pymatgen.core import Structure
+    from pymatgen.core import Structure as PmgStructure
 
     if "cif_file" in material:
         cif_path = DATA_PATH / material["cif_file"]
         if cif_path.exists():
-            return Structure.from_file(str(cif_path))
+            return PmgStructure.from_file(str(cif_path))
 
-    # Build from bulk parameters using ASE and convert
     from ase.build import bulk
+    from pymatgen.io.ase import AseAtomsAdaptor
 
-    atoms = bulk(
-        material["symbols"],
-        material["lattice_type"],
-        a=material["a0"],
-    )
+    atoms = bulk(material["symbols"], material["lattice_type"], a=material["a0"])
     return AseAtomsAdaptor.get_structure(atoms)
 
 
@@ -389,9 +384,6 @@ def extract_qha_properties(
     properties: dict[str, float | None] = {
         "volume_per_atom": None,
         "lattice_a": None,
-        "thermal_expansion": None,
-        "bulk_modulus": None,
-        "heat_capacity": None,
     }
 
     if qha_doc is None:
@@ -408,24 +400,6 @@ def extract_qha_properties(
         properties["volume_per_atom"] = vol_per_atom
         # Lattice constant from conventional cell volume
         properties["lattice_a"] = (vol_per_atom * n_atoms_conventional) ** (1 / 3)
-
-    # Thermal expansion (K^-1, convert to 10^-6 K^-1)
-    te = getattr(qha_doc, "thermal_expansion", None)
-    te_value = _interpolate_at_temperature(temps, te, temperature)
-    if te_value is not None:
-        properties["thermal_expansion"] = te_value * 1e6
-
-    # Bulk modulus (GPa)
-    bm = getattr(qha_doc, "bulk_modulus_temperature", None)
-    bm_value = _interpolate_at_temperature(temps, bm, temperature)
-    if bm_value is not None:
-        properties["bulk_modulus"] = bm_value
-
-    # Heat capacity (J/mol·K)
-    cp = getattr(qha_doc, "heat_capacity_p_numerical", None)
-    cp_value = _interpolate_at_temperature(temps, cp, temperature)
-    if cp_value is not None:
-        properties["heat_capacity"] = cp_value
 
     return properties
 
@@ -500,16 +474,6 @@ def test_quasiharmonic(model_name: str) -> None:
                     "pred_lattice_a": properties["lattice_a"],
                     "ref_volume_per_atom": condition.get("ref_volume_per_atom"),
                     "pred_volume_per_atom": properties["volume_per_atom"],
-                    "ref_thermal_expansion_1e6_K": condition.get(
-                        "ref_thermal_expansion_1e6_K"
-                    ),
-                    "pred_thermal_expansion_1e6_K": properties["thermal_expansion"],
-                    "ref_bulk_modulus_GPa": condition.get("ref_bulk_modulus_GPa"),
-                    "pred_bulk_modulus_GPa": properties["bulk_modulus"],
-                    "ref_heat_capacity_J_mol_K": condition.get(
-                        "ref_heat_capacity_J_mol_K"
-                    ),
-                    "pred_heat_capacity_J_mol_K": properties["heat_capacity"],
                     "status": "success",
                 }
             )

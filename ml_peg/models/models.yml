@@ -160,13 +160,13 @@ orb-v3-consv-inf-omat:
 #     task_name: "omol"
 
 pet-mad:
-  module: pet_mad.calculator
-  class_name: PETMADCalculator
+  module: upet.calculator
+  class_name: UPETCalculator
   device: "cpu"
   default_dtype: float32
   trained_on_d3: false
   level_of_theory: PBEsol
   kwargs:
-    version: "v1.0.2"
+    model: "pet-mad-s"
   d3_kwargs:
     xc: pbesol

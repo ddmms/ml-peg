@@ -44,9 +44,6 @@ def _make_hoverdata() -> dict[str, list]:
 # Hover data for interactive plots (populated during fixture execution)
 HOVERDATA_LATTICE = _make_hoverdata()
 HOVERDATA_VOLUME = _make_hoverdata()
-HOVERDATA_THERMAL_EXPANSION = _make_hoverdata()
-HOVERDATA_BULK_MODULUS = _make_hoverdata()
-HOVERDATA_HEAT_CAPACITY = _make_hoverdata()
 
 
 def _load_results(model_name: str) -> pd.DataFrame:
@@ -152,8 +149,8 @@ def _calculate_mae(parity_data: dict[str, list]) -> dict[str, float | None]:
 @plot_parity(
     filename=OUT_PATH / "figure_qha_lattice_constants.json",
     title="QHA Lattice Constants",
-    x_label="Predicted lattice constant / \u00c5",
-    y_label="Reference lattice constant / \u00c5",
+    x_label="Predicted lattice constant / Å",
+    y_label="Reference lattice constant / Å",
     hoverdata=HOVERDATA_LATTICE,
 )
 def qha_lattice_constants() -> dict[str, list]:
@@ -187,76 +184,6 @@ def qha_volume_per_atom() -> dict[str, list]:
     """
     return _gather_parity_data(
         "ref_volume_per_atom", "pred_volume_per_atom", HOVERDATA_VOLUME
-    )
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_qha_thermal_expansion.json",
-    title="QHA Thermal Expansion",
-    x_label="Predicted thermal expansion / 10\u207b\u2076 K\u207b\u00b9",
-    y_label="Reference thermal expansion / 10\u207b\u2076 K\u207b\u00b9",
-    hoverdata=HOVERDATA_THERMAL_EXPANSION,
-)
-def qha_thermal_expansion() -> dict[str, list]:
-    """
-    Gather reference and predicted thermal expansion coefficients.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of reference and predicted values per model.
-    """
-    return _gather_parity_data(
-        "ref_thermal_expansion_1e6_K",
-        "pred_thermal_expansion_1e6_K",
-        HOVERDATA_THERMAL_EXPANSION,
-    )
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_qha_bulk_modulus.json",
-    title="QHA Bulk Modulus",
-    x_label="Predicted bulk modulus / GPa",
-    y_label="Reference bulk modulus / GPa",
-    hoverdata=HOVERDATA_BULK_MODULUS,
-)
-def qha_bulk_modulus() -> dict[str, list]:
-    """
-    Gather reference and predicted bulk modulus values.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of reference and predicted values per model.
-    """
-    return _gather_parity_data(
-        "ref_bulk_modulus_GPa", "pred_bulk_modulus_GPa", HOVERDATA_BULK_MODULUS
-    )
-
-
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_qha_heat_capacity.json",
-    title="QHA Heat Capacity",
-    x_label="Predicted heat capacity / J/(mol·K)",
-    y_label="Reference heat capacity / J/(mol·K)",
-    hoverdata=HOVERDATA_HEAT_CAPACITY,
-)
-def qha_heat_capacity() -> dict[str, list]:
-    """
-    Gather reference and predicted heat capacity values.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of reference and predicted values per model.
-    """
-    return _gather_parity_data(
-        "ref_heat_capacity_J_mol_K",
-        "pred_heat_capacity_J_mol_K",
-        HOVERDATA_HEAT_CAPACITY,
     )
 
 
@@ -301,62 +228,6 @@ def volume_per_atom_mae(
 
 
 @pytest.fixture
-def thermal_expansion_mae(
-    qha_thermal_expansion: dict[str, list],
-) -> dict[str, float | None]:
-    """
-    Mean absolute error for thermal expansion coefficient.
-
-    Parameters
-    ----------
-    qha_thermal_expansion
-        Reference and predicted thermal expansion.
-
-    Returns
-    -------
-    dict[str, float | None]
-        MAE values for each model.
-    """
-    return _calculate_mae(qha_thermal_expansion)
-
-
-@pytest.fixture
-def bulk_modulus_mae(qha_bulk_modulus: dict[str, list]) -> dict[str, float | None]:
-    """
-    Mean absolute error for bulk modulus.
-
-    Parameters
-    ----------
-    qha_bulk_modulus
-        Reference and predicted bulk modulus.
-
-    Returns
-    -------
-    dict[str, float | None]
-        MAE values for each model.
-    """
-    return _calculate_mae(qha_bulk_modulus)
-
-
-@pytest.fixture
-def heat_capacity_mae(qha_heat_capacity: dict[str, list]) -> dict[str, float | None]:
-    """
-    Mean absolute error for heat capacity at constant pressure.
-
-    Parameters
-    ----------
-    qha_heat_capacity
-        Reference and predicted heat capacity.
-
-    Returns
-    -------
-    dict[str, float | None]
-        MAE values for each model.
-    """
-    return _calculate_mae(qha_heat_capacity)
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "quasiharmonic_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -366,9 +237,6 @@ def heat_capacity_mae(qha_heat_capacity: dict[str, list]) -> dict[str, float | N
 def metrics(
     lattice_constant_mae: dict[str, float | None],
     volume_per_atom_mae: dict[str, float | None],
-    thermal_expansion_mae: dict[str, float | None],
-    bulk_modulus_mae: dict[str, float | None],
-    heat_capacity_mae: dict[str, float | None],
 ) -> dict[str, dict[str, float | None]]:
     """
     Build metrics dictionary for quasiharmonic benchmark.
@@ -381,12 +249,6 @@ def metrics(
         Lattice constant MAE per model.
     volume_per_atom_mae
         Volume per atom MAE per model.
-    thermal_expansion_mae
-        Thermal expansion MAE per model.
-    bulk_modulus_mae
-        Bulk modulus MAE per model.
-    heat_capacity_mae
-        Heat capacity MAE per model.
 
     Returns
     -------
@@ -396,9 +258,6 @@ def metrics(
     return {
         "Lattice constant MAE": lattice_constant_mae,
         "Volume per atom MAE": volume_per_atom_mae,
-        "Thermal expansion MAE": thermal_expansion_mae,
-        "Bulk modulus MAE": bulk_modulus_mae,
-        "Heat capacity MAE": heat_capacity_mae,
     }
 
 
@@ -406,9 +265,6 @@ def test_quasiharmonic(
     metrics: dict[str, dict[str, Any]],
     qha_lattice_constants: dict[str, list],
     qha_volume_per_atom: dict[str, list],
-    qha_thermal_expansion: dict[str, list],
-    qha_bulk_modulus: dict[str, list],
-    qha_heat_capacity: dict[str, list],
 ) -> None:
     """
     Run quasiharmonic analysis test.
@@ -421,11 +277,5 @@ def test_quasiharmonic(
         Lattice constants parity data.
     qha_volume_per_atom
         Volume per atom parity data.
-    qha_thermal_expansion
-        Thermal expansion parity data.
-    qha_bulk_modulus
-        Bulk modulus parity data.
-    qha_heat_capacity
-        Heat capacity parity data.
     """
     return

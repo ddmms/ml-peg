@@ -27,9 +27,6 @@ class QuasiharmonicApp(BaseApp):
         plot_configs = [
             ("figure_qha_lattice_constants.json", "Lattice constant MAE", "lattice"),
             ("figure_qha_volume_per_atom.json", "Volume per atom MAE", "volume"),
-            ("figure_qha_thermal_expansion.json", "Thermal expansion MAE", "thermal"),
-            ("figure_qha_bulk_modulus.json", "Bulk modulus MAE", "bulk-modulus"),
-            ("figure_qha_heat_capacity.json", "Heat capacity MAE", "heat-capacity"),
         ]
 
         # Build column-to-plot mapping
@@ -63,10 +60,9 @@ def get_app() -> QuasiharmonicApp:
     return QuasiharmonicApp(
         name=BENCHMARK_NAME,
         description=(
-            "Temperature-dependent thermodynamic properties using the "
-            "quasiharmonic approximation (QHA). Evaluates MLIP predictions of "
-            "lattice constants, volume, thermal expansion, bulk modulus, "
-            "and heat capacity as a function of temperature and pressure."
+            "Temperature-dependent lattice constants and volume per atom using the "
+            "quasiharmonic approximation (QHA). Evaluates MLIP predictions against "
+            "experimental reference data at target temperature and pressure conditions."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "quasiharmonic_metrics_table.json",
