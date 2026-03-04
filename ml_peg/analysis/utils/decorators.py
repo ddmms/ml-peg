@@ -779,6 +779,12 @@ def plot_density_scatter(
 
             for idx, model in enumerate(results):
                 sample_x, sample_y, density = processed[model]["samples"]
+                # Sort ascending by density so high-density points render on top
+                if density:
+                    order = np.argsort(density)
+                    sample_x = [sample_x[i] for i in order]
+                    sample_y = [sample_y[i] for i in order]
+                    density = [density[i] for i in order]
                 fig.add_trace(
                     go.Scattergl(
                         x=sample_x,
