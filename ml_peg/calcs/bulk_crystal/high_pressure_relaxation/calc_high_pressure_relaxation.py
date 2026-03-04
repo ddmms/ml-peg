@@ -12,6 +12,7 @@ import urllib.request
 
 from ase import Atoms
 from ase.constraints import FixSymmetry
+from ase.io import write as ase_write
 from ase.units import GPa
 from janus_core.calculations.geom_opt import GeomOpt
 import pandas as pd
@@ -250,6 +251,9 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
 
         if relaxed_atoms is not None:
             pred_volume = relaxed_atoms.get_volume() / len(relaxed_atoms)
+            relaxed_atoms.info["mat_id"] = mat_id
+            relaxed_atoms.info["pressure_gpa"] = pressure_gpa
+
         else:
             pred_volume = None
 
@@ -262,11 +266,21 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
                 "pred_volume_per_atom": pred_volume,
                 "pred_energy_per_atom": enthalpy_per_atom,
                 "converged": converged,
+                "relaxed_atoms": relaxed_atoms,
             }
         )
 
     # Save results
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(
+        [{k: v for k, v in r.items() if k != "relaxed_atoms"} for r in results]
+    )
     df.to_csv(out_dir / f"results_{pressure_label}.csv", index=False)
+
+    # Write converged relaxed structures to xyz
+    relaxed_frames = [
+        r["relaxed_atoms"] for r in results if r["relaxed_atoms"] is not None
+    ]
+    if relaxed_frames:
+        ase_write(out_dir / f"relaxed_{pressure_label}.xyz", relaxed_frames)

@@ -28,10 +28,10 @@ class HighPressureRelaxationApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         scatter_volume = read_plot(
-            DATA_PATH / "figure_volume.json", id=f"{BENCHMARK_NAME}-figure"
+            DATA_PATH / "figure_volume_density.json", id=f"{BENCHMARK_NAME}-figure"
         )
         scatter_energy = read_plot(
-            DATA_PATH / "figure_energy.json", id=f"{BENCHMARK_NAME}-figure"
+            DATA_PATH / "figure_energy_density.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
         # Build column_to_plot mapping for all pressures
