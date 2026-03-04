@@ -7,8 +7,8 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -27,23 +27,34 @@ class HighPressureRelaxationApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter_volume = read_plot(
-            DATA_PATH / "figure_volume_density.json", id=f"{BENCHMARK_NAME}-figure"
-        )
-        scatter_energy = read_plot(
-            DATA_PATH / "figure_energy_density.json", id=f"{BENCHMARK_NAME}-figure"
-        )
+        density_plots: dict = {}
+        for model in MODELS:
+            plots = {
+                f"Volume MAE ({pressure} GPa)": read_density_plot_for_model(
+                    filename=DATA_PATH / "figure_volume_density.json",
+                    model=model,
+                    id=f"{BENCHMARK_NAME}-{model}-{pressure}-vol-figure",
+                )
+                for pressure in PRESSURES
+            }
+            plots.update(
+                {
+                    f"Energy MAE ({pressure} GPa)": read_density_plot_for_model(
+                        filename=DATA_PATH / "figure_energy_density.json",
+                        model=model,
+                        id=f"{BENCHMARK_NAME}-{model}-{pressure}-energy-figure",
+                    )
+                    for pressure in PRESSURES
+                }
+            )
+            model_plots = {k: v for k, v in plots.items() if v is not None}
+            if model_plots:
+                density_plots[model] = model_plots
 
-        # Build column_to_plot mapping for all pressures
-        column_to_plot = {}
-        for pressure in PRESSURES:
-            column_to_plot[f"Volume MAE ({pressure} GPa)"] = scatter_volume
-            column_to_plot[f"Energy MAE ({pressure} GPa)"] = scatter_energy
-
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot=column_to_plot,
+            cell_to_plot=density_plots,
         )
 
 
