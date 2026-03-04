@@ -100,6 +100,11 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
             atoms.calc = copy(calc)
             if len(atoms) == 1:
                 atoms.pbc = False
+
+            # Set default charge and spin
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
+
             atoms.get_potential_energy()
 
     def run(self):

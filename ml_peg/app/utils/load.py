@@ -182,10 +182,25 @@ def rebuild_table(
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
-        editable=True,
+        editable=False,
         id=id,
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         sort_action="native",
         persistence=True,
         persistence_type="session",
@@ -315,7 +330,7 @@ def read_density_plot_for_model(
     # Check if model has actual data (not just the reference line)
     # If only 1 trace (the y=x line) or 0 traces, model has no data
     if len(filtered_fig.get("data", [])) <= 1:
-        warn("No model data found", stacklevel=2)
+        warn(f"No model data found for {model}", stacklevel=2)
         return None
 
     return Graph(id=id, figure=filtered_fig)

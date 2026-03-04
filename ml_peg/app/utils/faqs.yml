@@ -1,0 +1,27 @@
+- question: "What is ML-PEG?"
+  answer: "ML-PEG (Machine Learning Performance Guide) is a comprehensive benchmarking framework and interactive performance guide for evaluating Machine Learning Interatomic Potentials (MLIPs) across diverse systems and properties beyond only energies and forces. The website you are currently using is the interactive performance guide, allowing users to explore and compare MLIP performance and deep dive into errors, connecting performance (or the lack of) to the underlying chemistry and physics."
+  docs_url: "https://github.com/ddmms/ml-peg"
+
+- question: "Why are some boxes greyed out?"
+  answer: "A greyed-out box means that the MLIP was not able to perform one of the benchmarks in a given category and therefore (under default weightings) a valid score cannot be calculated for that category. This may be due to i) the MLIP does not support an element in the benchmark set, ii) the MLIP was not able to converge the geometry optimisations required for the benchmark, iii) the MLIP exploded, or other reasons. We are working to provide more detailed information on why a benchmark was not successful in future releases. You can trace the failure back to the underlying benchmark by clicking on the category tab, and looking for which other boxes are greyed out. If you do not want to include this failed benchmark in the overall score, you can assign it a weight of 0 and the box will now show a valid score."
+  docs_url: null
+
+- question: "How are scores calculated?"
+  answer: "There are many different types of scores calculated in ML-PEG: Total score, category score and benchmark score. The total score is a weighted average of the category scores, where each category score is a weighted average of the benchmark scores within that category. Each benchmark score is calculated based on the performance of the MLIP on that benchmark, normalised between 'good' and 'bad' thresholds defined by the benchmark contributor. The overall scoring system is designed to be flexible to the users' needs, allowing them to adjust the thresholds and weightings to reflect what is important for their specific use case."
+  docs_url: "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
+
+- question: "How do the thresholds work?"
+  answer: "For benchmark tables, you can adjust the 'Good' and 'Bad' thresholds, where 'Good' is the performance above which further improvement does not give any further advantage (e.g. chemical accuracy, noise of the underlying reference method), and 'Bad' is the performance below which the MLIP is not fit for that specific application."
+  docs_url: "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
+
+- question: "What do the warning icons mean?"
+  answer: "Warning icons indicate level of theory mismatches between the training data of the MLIP and the benchmark reference data. The colours of the warning sign classify the type of mismatch: red indicates a mismatch in the exchange-correlation functional, yellow indicates a mismatch between DFT and higher-level reference data (e.g. MP2, CCSD(T)), and green indicates the reference data is experimental. These indications are designed to help users interpret the scores in the context."
+  docs_url: null
+
+- question: "How can I add my model?"
+  answer: "To add your MLIP model to the benchmark, please follow the instructions in our documentation."
+  docs_url: "https://ddmms.github.io/ml-peg/developer_guide/add_models.html"
+
+- question: "How can I add a new benchmark?"
+  answer: "To add a new benchmark to the ML-PEG framework, please follow the instructions in our documentation and our notebook tutorial. You'll need to provide details about the benchmark's reference data, and performance metrics."
+  docs_url: "https://ddmms.github.io/ml-peg/developer_guide/add_benchmarks.html"

@@ -1,0 +1,199 @@
+"""Analyse BMIMCl RDF benchmark for unphysical Cl-C bond formation."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from ase.data import atomic_numbers
+from ase.geometry.rdf import get_rdf
+import ase.io as aio
+import numpy as np
+import pytest
+from tqdm import tqdm
+
+from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
+
+MODELS = get_model_names(current_models)
+CALC_PATH = CALCS_ROOT / "molecular" / "BMIMCl_RDF" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular" / "BMIMCl_RDF"
+
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
+
+# RDF parameters
+ELEMENT1 = "Cl"
+ELEMENT2 = "C"
+Z1 = atomic_numbers[ELEMENT1]
+Z2 = atomic_numbers[ELEMENT2]
+BINS_PER_ANG = 50
+UNPHYSICAL_CUTOFF = 2.5
+# Angstrom - any Cl-C closer than this indicates
+# a bond which should not be there
+PEAK_THRESHOLD = 0.1  # g(r) threshold for bond detection
+
+
+def compute_rdf_from_trajectory(traj_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute Cl-C RDF from MD trajectory.
+
+    Parameters
+    ----------
+    traj_path
+        Path to trajectory xyz file.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        (r, rdf) arrays - distances and averaged g(r) values.
+    """
+    images = aio.read(traj_path, index=":")
+
+    # Infer rmax from cell (NVT)
+    cell_lengths = images[0].cell.lengths()
+    rmax = min(cell_lengths) / 2 - 0.01
+    nbins = int(rmax * BINS_PER_ANG)
+
+    # Compute RDFs with progress bar
+    rdfs = []
+    r = None
+    for atoms in tqdm(images, desc="Computing RDF"):
+        rdf_frame, distances = get_rdf(
+            atoms, rmax, nbins, elements=(Z1, Z2), no_dists=False
+        )
+        rdfs.append(rdf_frame)
+        if r is None:
+            r = distances
+
+    rdf = np.mean(rdfs, axis=0)
+
+    return r, rdf
+
+
+def check_bond_formation(r: np.ndarray, rdf: np.ndarray) -> int:
+    """
+    Check if Cl-C bonds formed based on RDF.
+
+    Parameters
+    ----------
+    r
+        Distance array.
+    rdf
+        The g(r) values.
+
+    Returns
+    -------
+    int
+        1 if bonds formed (bad), 0 if no bonds (good).
+    """
+    mask = r < UNPHYSICAL_CUTOFF
+    max_gr = rdf[mask].max() if mask.any() else 0.0
+    return 1 if max_gr > PEAK_THRESHOLD else 0
+
+
+@pytest.fixture
+@plot_scatter(
+    title="Cl-C Radial Distribution Function",
+    x_label="r / Å",
+    y_label="g(r)",
+    show_line=True,
+    filename=str(OUT_PATH / "figure_rdf.json"),
+)
+def rdf_data() -> dict[str, list]:
+    """
+    Compute RDF for all models.
+
+    Returns
+    -------
+    dict[str, list]
+        Dictionary mapping model names to [r, g(r)] arrays.
+    """
+    results = {}
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+    for model_name in MODELS:
+        traj_path = CALC_PATH / model_name / "md.xyz"
+        if not traj_path.exists():
+            continue
+
+        r, rdf = compute_rdf_from_trajectory(traj_path)
+        results[model_name] = [r.tolist(), rdf.tolist()]
+
+        rdf_out = OUT_PATH / model_name
+        rdf_out.mkdir(parents=True, exist_ok=True)
+        np.savetxt(
+            rdf_out / "rdf.dat",
+            np.column_stack([r, rdf]),
+            header="r/A g(r)",
+            fmt="%.6f",
+        )
+
+    return results
+
+
+@pytest.fixture
+def bond_formation(rdf_data: dict[str, list]) -> dict[str, int]:
+    """
+    Check bond formation for all models.
+
+    Parameters
+    ----------
+    rdf_data
+        Dictionary of RDF data per model.
+
+    Returns
+    -------
+    dict[str, int]
+        Dictionary mapping model names to bond formation flag (0 or 1).
+    """
+    results = {}
+    for model_name, (r, rdf) in rdf_data.items():
+        r_arr = np.array(r)
+        rdf_arr = np.array(rdf)
+        results[model_name] = check_bond_formation(r_arr, rdf_arr)
+    return results
+
+
+@pytest.fixture
+@build_table(
+    filename=str(OUT_PATH / "bmimcl_metrics_table.json"),
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
+)
+def metrics(bond_formation: dict[str, int]) -> dict[str, dict]:
+    """
+    Build metrics table.
+
+    Parameters
+    ----------
+    bond_formation
+        Bond formation flags per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metrics dictionary for table building.
+    """
+    return {
+        "Cl-C Bonds Formed": bond_formation,
+    }
+
+
+def test_bmimcl_rdf(metrics: dict[str, dict]) -> None:
+    """
+    Run BMIMCl RDF analysis.
+
+    Parameters
+    ----------
+    metrics
+        Benchmark metrics generated by fixtures.
+    """
+    return
