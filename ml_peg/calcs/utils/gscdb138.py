@@ -80,6 +80,8 @@ def run_gscdb138(
         Elements to exclude from calculations. Default is all elements.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     data_path = (

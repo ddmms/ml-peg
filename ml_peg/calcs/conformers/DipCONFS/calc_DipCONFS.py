@@ -73,7 +73,8 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         / "DipCONFS"
     )
 
-    # Read in data and attach calculator
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
