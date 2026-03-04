@@ -144,6 +144,9 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
 
             atoms_pred = atoms.copy()
             atoms_pred.calc = calc
+            # Set default charge and spin
+            atoms_pred.info.setdefault("charge", 0)
+            atoms_pred.info.setdefault("spin", 1)
 
             out_atoms = atoms.copy()
             out_atoms.info["ref_energy_ev"] = ref_energy_ev
