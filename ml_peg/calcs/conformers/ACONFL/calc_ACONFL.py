@@ -39,6 +39,7 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     data_path = (
