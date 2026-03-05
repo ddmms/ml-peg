@@ -105,6 +105,8 @@ def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
     # Use double precision
     model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -115,11 +117,6 @@ def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
     )
 
     ref_energies = get_ref_energies(data_path)
-
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     for molecule in tqdm(MOLECULES):
         model_abs_energies = []

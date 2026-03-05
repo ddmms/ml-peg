@@ -136,7 +136,11 @@ def test_quid(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -145,12 +149,6 @@ def test_quid(mlip: tuple[str, Any]) -> None:
         )
         / "QUID"
     )
-
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
-    # Add D3 calculator for this test.
-    calc = model.add_d3_calculator(calc)
 
     dataset = h5py.File(data_path / "QUID.h5")
     for eq_label in tqdm(dataset.keys(), "Equilibrium"):

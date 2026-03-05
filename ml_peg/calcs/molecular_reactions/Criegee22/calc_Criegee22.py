@@ -40,6 +40,8 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
     # Use double precision
     model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -49,11 +51,7 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
         / "Criegee22"
     )
 
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
-
+    # Read in data
     with open(data_path / "reference.txt") as lines:
         # Skip header
         next(lines)

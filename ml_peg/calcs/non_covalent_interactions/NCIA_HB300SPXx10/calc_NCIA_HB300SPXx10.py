@@ -108,7 +108,7 @@ def test_ncia_hb300spxx10(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    # Read in data and attach calculator
+    # Download data
     data_path = (
         download_s3_data(
             filename="NCIA_HB300SPXx10.zip",

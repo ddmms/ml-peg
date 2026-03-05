@@ -83,6 +83,8 @@ def run_gscdb138(
     # Use double precision
     model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -95,9 +97,6 @@ def run_gscdb138(
     xyz_dir = data_path / "xyz_files"
     write_dir = out_path / model_name
     write_dir.mkdir(exist_ok=True, parents=True)
-    calc = model.get_calculator()
-    # Add D3 calculator for this test.
-    calc = model.add_d3_calculator(calc)
 
     for dataset in datasets:
         # Load dataset information.
