@@ -39,8 +39,11 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
     model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -49,10 +52,6 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
         )
         / "ACONFL"
     )
-
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     progress = tqdm(total=50)
     with open(data_path / ".res") as lines:
