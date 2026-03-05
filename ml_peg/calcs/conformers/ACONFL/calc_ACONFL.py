@@ -15,6 +15,7 @@ from typing import Any
 from ase import units
 from ase.io import read, write
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
@@ -52,6 +53,7 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
+    progress = tqdm(total=50)
     with open(data_path / ".res") as lines:
         for line in lines:
             if "$tmer" in line:
@@ -74,3 +76,4 @@ def test_aconfl_conformer_energies(mlip: tuple[str, Any]) -> None:
                 write_dir.mkdir(parents=True, exist_ok=True)
 
                 write(write_dir / f"{atoms_label}.xyz", atoms)
+                progress.update()
