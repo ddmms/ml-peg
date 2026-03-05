@@ -99,8 +99,6 @@ def test_elasticity(mlip: tuple[str, Any]) -> None:
         Model entry containing name and object capable of providing a calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
     calc = model.get_calculator()
     run_elasticity_benchmark(
         calc=calc,
