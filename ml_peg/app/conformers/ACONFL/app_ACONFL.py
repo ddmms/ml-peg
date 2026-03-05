@@ -17,7 +17,7 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "ACONFL"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#ACONFL"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#aconfl"
 DATA_PATH = APP_ROOT / "data" / "conformers" / "ACONFL"
 
 
