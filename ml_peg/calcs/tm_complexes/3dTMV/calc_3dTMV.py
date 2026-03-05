@@ -123,6 +123,8 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)

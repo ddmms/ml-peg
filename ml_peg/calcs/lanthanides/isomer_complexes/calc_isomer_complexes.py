@@ -111,6 +111,8 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         pytest.skip(f"No isomer structures found under {isomer_complexes_dir}.")
 
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     for entry in tqdm(entries, desc=f"Calculating energies for {model_name}"):
