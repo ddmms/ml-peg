@@ -38,10 +38,12 @@ python3 -m pip install git+https://github.com/ddmms/ml-peg.git
 ```
 
 
-## Features
+## Tutorials
 
-Coming soon!
+The Jupyter Notebook tutorials introduce new devlopers to the ML-PEG framework, providing detailed step-by-step guides:
+- [Adding a New Benchmark](docs/source/tutorials/python/adding_benchmark.ipynb) [![badge](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ddmms/ml-peg/blob/main/docs/source/tutorials/python/adding_benchmark.ipynb)
 
+More coming soon!
 
 ## Development
 
