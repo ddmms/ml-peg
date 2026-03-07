@@ -384,8 +384,22 @@ def build_tabs(
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
                 Loading(
                     Div(id="tabs-content"),
-                    type="default",
+                    type="circle",
                     color="#119DFF",
+                    fullscreen=False,
+                    # dont trigger both start up load wheel + tab change load wheel
+                    # (when switching to summary tab)
+                    target_components={"tabs-content": "children"},
+                    style={
+                        # Pin near the top so the spinner is visible on long pages
+                        # (default is centre of page)
+                        "position": "fixed",
+                        "top": "300px",
+                        "left": "50%",
+                        "transform": "translateX(-50%)",
+                        "zIndex": "1100",
+                    },
+                    parent_style={"position": "relative"},
                 ),
             ],
             style={"flex": "1", "marginBottom": "40px"},
@@ -393,14 +407,9 @@ def build_tabs(
         build_footer(),
     ]
 
-    full_app.layout = Loading(
-        Div(
-            tabs_layout,
-            style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
-        ),
-        type="default",
-        fullscreen=True,
-        color="#119DFF",
+    full_app.layout = Div(
+        tabs_layout,
+        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
     )
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
