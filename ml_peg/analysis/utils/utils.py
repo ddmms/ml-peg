@@ -24,30 +24,31 @@ MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
 
 
-def build_d3_name_map(
+def build_dispersion_name_map(
     models: Iterable[str],
     suffix: str = "-D3",
 ) -> dict[str, str]:
     """
-    Return a suffix map for models requiring runtime D3 corrections.
+    Return a suffix map for models requiring runtime dispersion corrections.
 
     Parameters
     ----------
     models
         Iterable of model identifiers to inspect.
     suffix
-        String appended to model names that need the D3 indicator.
+        String appended to model names that need the dispersion correction indicator.
+        Defaults to "-D3" for D3 dispersion corrections.
 
     Returns
     -------
     dict[str, str]
-        Mapping of model -> display name for models not trained with D3 dispersion.
+        Mapping of model -> display name for models not trained with dispersion.
     """
     configs, _ = load_model_configs(tuple(models))
     return {
         model: f"{model}{suffix}"
         for model in models
-        if not configs[model]["trained_on_d3"]
+        if not configs[model]["trained_on_dispersion"]
     }
 
 

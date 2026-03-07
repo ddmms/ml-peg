@@ -116,8 +116,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                     task_name=kwargs.get("task_name", "omat"),
                     device=cfg.get("device", "cpu"),
                     overrides=kwargs.get("overrides", {}),
-                    trained_on_d3=cfg.get("trained_on_d3", False),
-                    d3_kwargs=cfg.get("d3_kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "OrbCalc":
                 kwargs = cfg.get("kwargs", {})
@@ -125,8 +125,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                     name=kwargs["name"],
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("default_dtype", "float32"),
-                    trained_on_d3=cfg.get("trained_on_d3", False),
-                    d3_kwargs=cfg.get("d3_kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "mace" | "mace_mp" | "mace_off" | "mace_omol" | "mace_polar":
                 loaded_models[name] = GenericASECalc(
@@ -135,8 +135,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                     device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("default_dtype", "float32"),
                     kwargs=cfg.get("kwargs", {}),
-                    trained_on_d3=cfg.get("trained_on_d3", False),
-                    d3_kwargs=cfg.get("d3_kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "PETMADCalculator":
                 loaded_models[name] = PetMadCalc(
@@ -145,8 +145,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("default_dtype", "float32"),
                     kwargs=cfg.get("kwargs", {}),
-                    trained_on_d3=cfg.get("trained_on_d3", False),
-                    d3_kwargs=cfg.get("d3_kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case _:
                 loaded_models[name] = GenericASECalc(
@@ -154,8 +154,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
-                    trained_on_d3=cfg.get("trained_on_d3", False),
-                    d3_kwargs=cfg.get("d3_kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
 
     return loaded_models
