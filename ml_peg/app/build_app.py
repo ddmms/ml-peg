@@ -5,10 +5,11 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
-from dash.html import H1, H3, Div
+from dash.dcc import Dropdown, Store, Tab, Tabs
+from dash.exceptions import PreventUpdate
+from dash.html import H1, H3, Button, Details, Div, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -375,6 +376,67 @@ def build_tabs(
         Tab(label=category_name, value=category_name) for category_name in layouts
     ]
 
+    model_options = [{"label": m, "value": m} for m in MODELS]
+
+    model_filter = Details(
+        [
+            Summary(
+                "Visible models",
+                style={"cursor": "pointer", "fontWeight": "bold", "padding": "5px"},
+            ),
+            Div(
+                [
+                    Dropdown(
+                        id="model-filter-checklist",
+                        options=model_options,
+                        value=MODELS,
+                        multi=True,
+                        placeholder="Select visible models",
+                        closeOnSelect=False,
+                        style={"fontSize": "13px"},
+                    ),
+                    Div(
+                        [
+                            Button(
+                                "Select all",
+                                id="model-filter-select-all",
+                                n_clicks=0,
+                                style={
+                                    "fontSize": "11px",
+                                    "padding": "4px 8px",
+                                    "backgroundColor": "#6c757d",
+                                    "color": "white",
+                                    "border": "none",
+                                    "borderRadius": "3px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                            Button(
+                                "Clear",
+                                id="model-filter-clear-all",
+                                n_clicks=0,
+                                style={
+                                    "fontSize": "11px",
+                                    "padding": "4px 8px",
+                                    "backgroundColor": "#6c757d",
+                                    "color": "white",
+                                    "border": "none",
+                                    "borderRadius": "3px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex", "gap": "8px", "marginTop": "8px"},
+                    ),
+                ],
+                style={"padding": "8px 12px"},
+            ),
+        ],
+        id="model-filter-details",
+        open=True,
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
     tabs_layout = [
         build_onboarding_modal(),
         build_tutorial_button(),
@@ -382,6 +444,17 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
+                model_filter,
+                Store(
+                    id="selected-models-store",
+                    storage_type="session",
+                    data=MODELS,
+                ),
+                Store(
+                    id="summary-table-computed-store",
+                    storage_type="session",
+                    data=summary_table.data,
+                ),
                 Div(id="tabs-content"),
             ],
             style={"flex": "1", "marginBottom": "40px"},
@@ -393,6 +466,76 @@ def build_tabs(
         tabs_layout,
         style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
     )
+
+    @callback(
+        Output("model-filter-checklist", "value"),
+        Output("selected-models-store", "data"),
+        Input("model-filter-checklist", "value"),
+        Input("model-filter-select-all", "n_clicks"),
+        Input("model-filter-clear-all", "n_clicks"),
+        Input("selected-models-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_model_filter(
+        checklist_value: list[str] | None,
+        _select_all: int,
+        _clear_all: int,
+        stored_selection: list[str] | None,
+    ) -> tuple[list[str], list[str] | object]:
+        """
+        Keep the model selector checklist and backing store synchronised.
+
+        Parameters
+        ----------
+        checklist_value
+            Current selection from the model filter control.
+        _select_all
+            Click count for the "Select all" button.
+        _clear_all
+            Click count for the "Clear" button.
+        stored_selection
+            Previously persisted selection from ``selected-models-store``.
+
+        Returns
+        -------
+        tuple[list[str], list[str] | object]
+            Updated checklist value and store payload. The second element may be
+            ``dash.no_update`` when only syncing from store to UI.
+        """
+        trigger_id = ctx.triggered_id
+        stored = stored_selection if stored_selection is not None else MODELS
+
+        if trigger_id in (None, "selected-models-store"):
+            return stored, no_update
+        if trigger_id == "model-filter-select-all":
+            return MODELS, MODELS
+        if trigger_id == "model-filter-clear-all":
+            return [], []
+        if trigger_id == "model-filter-checklist":
+            selected = checklist_value or []
+            return selected, selected
+        raise PreventUpdate
+
+    @callback(
+        Output("model-filter-details", "open"),
+        Input("all-tabs", "value"),
+        prevent_initial_call=False,
+    )
+    def toggle_filter_panel(tab: str) -> bool:
+        """
+        Expand the visible-models panel on the summary tab only.
+
+        Parameters
+        ----------
+        tab
+            Currently selected tab identifier.
+
+        Returns
+        -------
+        bool
+            ``True`` when the summary tab is active, otherwise ``False``.
+        """
+        return tab == "summary-tab"
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
