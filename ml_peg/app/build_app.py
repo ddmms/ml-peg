@@ -7,7 +7,7 @@ import warnings
 
 from dash import Dash, Input, Output, callback
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
+from dash.dcc import Loading, Store, Tab, Tabs
 from dash.html import H1, H3, Div
 from yaml import safe_load
 
@@ -382,16 +382,25 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                Div(id="tabs-content"),
+                Loading(
+                    Div(id="tabs-content"),
+                    type="default",
+                    color="#119DFF",
+                ),
             ],
             style={"flex": "1", "marginBottom": "40px"},
         ),
         build_footer(),
     ]
 
-    full_app.layout = Div(
-        tabs_layout,
-        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+    full_app.layout = Loading(
+        Div(
+            tabs_layout,
+            style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+        ),
+        type="default",
+        fullscreen=True,
+        color="#119DFF",
     )
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
