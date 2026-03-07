@@ -22,7 +22,7 @@ class SumCalc:
     """
     Base class that tracks whether a model already includes dispersion corrections.
 
-    ``add_d3_calculator`` only wraps calculators with an explicit dispersion
+    ``add_d3_calculator`` only wraps calculators with an explicit TorchDFTD3
     correction when ``trained_on_dispersion`` is ``False``; otherwise the original
     calculator is returned untouched.
     """
