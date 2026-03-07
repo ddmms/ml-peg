@@ -24,7 +24,7 @@ MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
 
 
-def build_d3_name_map(
+def build_dispersion_name_map(
     models: Iterable[str],
     suffix: str = "-D3",
 ) -> dict[str, str]:
@@ -37,6 +37,7 @@ def build_d3_name_map(
         Iterable of model identifiers to inspect.
     suffix
         String appended to model names that need the dispersion correction indicator.
+        Defaults to "-D3" for D3 dispersion corrections.
 
     Returns
     -------
