@@ -22,6 +22,7 @@ from ml_peg.analysis.utils.utils import (
     build_d3_name_map,
     load_metrics_config,
     mae,
+    write_density_trajectories,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -110,6 +111,7 @@ def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
         Mapping of model name to density-scatter data.
     """
     ref_vals = barrier_heights["ref"]
+    label_list = labels()
     density_inputs: dict[str, dict] = {}
     for model_name in MODELS:
         preds = barrier_heights.get(model_name, [])
@@ -118,6 +120,14 @@ def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
             "pred": preds,
             "meta": {"system_count": len([val for val in preds if val is not None])},
         }
+        write_density_trajectories(
+            labels_list=label_list,
+            ref_vals=ref_vals,
+            pred_vals=preds,
+            struct_dir=OUT_PATH / model_name,
+            traj_dir=OUT_PATH / model_name / "density_traj",
+            struct_filename_builder=lambda label: f"{label}_ts.xyz",
+        )
     return density_inputs
 
 

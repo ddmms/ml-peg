@@ -9,6 +9,7 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
     plot_from_table_cell,
+    struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
@@ -30,6 +31,7 @@ class RDB7App(BaseApp):
         # Build plots for models with data (read_density_plot_for_model
         # returns None for models without data)
         density_plots: dict[str, dict] = {}
+        struct_trajs: dict[str, list[str]] = {}
         for model in MODELS:
             plots = {
                 "MAE": read_density_plot_for_model(
@@ -42,12 +44,29 @@ class RDB7App(BaseApp):
             model_plots = {k: v for k, v in plots.items() if v is not None}
             if model_plots:
                 density_plots[model] = model_plots
+            traj_dir = DATA_PATH / model / "density_traj"
+            traj_files = sorted(
+                traj_dir.glob("*.extxyz"), key=lambda path: int(path.stem)
+            )
+            if traj_files:
+                struct_trajs[model] = [
+                    f"assets/molecular_reactions/RDB7/{model}/density_traj/{traj_file.name}"
+                    for traj_file in traj_files
+                ]
 
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             cell_to_plot=density_plots,
         )
+
+        for model in struct_trajs:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-barrier-figure",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=struct_trajs[model],
+                mode="traj",
+            )
 
 
 def get_app() -> RDB7App:
@@ -70,6 +89,7 @@ def get_app() -> RDB7App:
         table_path=DATA_PATH / "rdb7_barriers_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
