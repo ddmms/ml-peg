@@ -334,3 +334,49 @@ def read_density_plot_for_model(
         return None
 
     return Graph(id=id, figure=filtered_fig)
+
+
+def collect_traj_assets(
+    *,
+    data_path: Path,
+    assets_prefix: str,
+    models: list[str],
+    traj_dirname: str = "density_traj",
+    suffix: str = ".extxyz",
+) -> dict[str, list[str]]:
+    """
+    Collect trajectory asset paths for each model.
+
+    Parameters
+    ----------
+    data_path
+        Base data directory containing per-model folders.
+    assets_prefix
+        Assets URL prefix (e.g., ``"assets/molecular_reactions/RDB7"``).
+    models
+        Ordered list of model names to include.
+    traj_dirname
+        Subdirectory name containing trajectories (default: ``"density_traj"``).
+    suffix
+        File suffix to match (default: ``".extxyz"``).
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Mapping of model name to list of asset paths.
+    """
+    assets_base = assets_prefix.rstrip("/")
+    struct_trajs: dict[str, list[str]] = {}
+
+    for model in models:
+        traj_dir = data_path / model / traj_dirname
+        traj_files = sorted(
+            traj_dir.glob(f"*{suffix}"), key=lambda path: int(path.stem)
+        )
+        if traj_files:
+            struct_trajs[model] = [
+                f"{assets_base}/{model}/{traj_dirname}/{traj_file.name}"
+                for traj_file in traj_files
+            ]
+
+    return struct_trajs
