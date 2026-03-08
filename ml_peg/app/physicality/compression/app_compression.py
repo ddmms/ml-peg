@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -27,10 +29,63 @@ DOCS_URL = (
     "physicality.html#compression"
 )
 
+# Regex to strip the _RSS_<n> suffix to get the composition
+_RSS_SUFFIX = re.compile(r"_RSS_\d+$")
+# Regex to extract element symbols from a composition string
+_ELEMENT_RE = re.compile(r"[A-Z][a-z]?")
 
-def _available_structures(model_name: str) -> list[str]:
+
+def _composition_from_label(label: str) -> str:
     """
-    List structure labels available for a given model.
+    Extract the composition prefix from a structure label.
+
+    Parameters
+    ----------
+    label
+        Full structure label (e.g. ``"C2H3_RSS_0"``).
+
+    Returns
+    -------
+    str
+        Composition string (e.g. ``"C2H3"``).  If the label has no
+        ``_RSS_<n>`` suffix it is returned unchanged.
+    """
+    return _RSS_SUFFIX.sub("", label)
+
+
+def _element_group(composition: str) -> tuple[str, ...]:
+    """
+    Extract the sorted tuple of unique element symbols from a composition.
+
+    ``"C2H3"`` → ``("C", "H")``, ``"C3"`` → ``("C",)``.
+
+    Parameters
+    ----------
+    composition
+        Composition string (no ``_RSS_<n>`` suffix).
+
+    Returns
+    -------
+    tuple[str, ...]
+        Sorted unique elements.
+    """
+    return tuple(sorted(set(_ELEMENT_RE.findall(composition))))
+
+
+def _element_group_label(group: tuple[str, ...]) -> str:
+    """
+    Human-readable label for an element group, e.g. ``"C"`` or ``"C-H"``.
+    """
+    return "-".join(group)
+
+
+def _available_element_groups(model_name: str) -> list[tuple[str, ...]]:
+    """
+    List unique element groups available for a given model.
+
+    Structures whose compositions share the same *set* of elements are
+    placed into the same group.  For example ``"C"``, ``"C2"``, and
+    ``"C3"`` all belong to the group ``("C",)``.
 
     Parameters
     ----------
@@ -39,39 +94,147 @@ def _available_structures(model_name: str) -> list[str]:
 
     Returns
     -------
-    list[str]
-        Sorted list of structure labels with stored curve data.
+    list[tuple[str, ...]]
+        Sorted list of unique element groups.
     """
     model_dir = CURVE_PATH / model_name
     if not model_dir.exists():
         return []
-    return sorted(p.stem for p in model_dir.glob("*.json"))
+    groups: set[tuple[str, ...]] = set()
+    for p in model_dir.glob("*.json"):
+        groups.add(_element_group(_composition_from_label(p.stem)))
+    return sorted(groups)
 
 
-def _load_curve(model_name: str, structure: str) -> dict | None:
+def _load_curves_for_element_group(
+    model_name: str, group: tuple[str, ...]
+) -> list[tuple[str, dict]]:
     """
-    Load a single curve payload from disk.
+    Load all curve payloads whose element group matches *group*.
 
     Parameters
     ----------
     model_name
         Model identifier.
-    structure
-        Structure label (filename stem).
+    group
+        Target element group (e.g. ``("C",)`` or ``("C", "H")``).
 
     Returns
     -------
-    dict | None
-        Curve payload dict, or None if the file is missing / unreadable.
+    list[tuple[str, dict]]
+        List of ``(label, payload)`` tuples for every matching structure.
     """
-    filepath = CURVE_PATH / model_name / f"{structure}.json"
-    if not filepath.exists():
-        return None
-    try:
-        with filepath.open(encoding="utf8") as fh:
-            return json.load(fh)
-    except Exception:
-        return None
+    model_dir = CURVE_PATH / model_name
+    if not model_dir.exists():
+        return []
+    results: list[tuple[str, dict]] = []
+    for p in sorted(model_dir.glob("*.json")):
+        if _element_group(_composition_from_label(p.stem)) == group:
+            try:
+                with p.open(encoding="utf8") as fh:
+                    results.append((p.stem, json.load(fh)))
+            except Exception:
+                continue
+    return results
+
+
+# Fraction of the y-axis occupied by the linear region (±linthresh).
+LINEAR_FRAC: float = 0.6
+
+
+def _symlog(
+    values: list[float] | np.ndarray,
+    linthresh: float = 10.0,
+    linear_frac: float = LINEAR_FRAC,
+    decades: int = 4,
+) -> list[float]:
+    """
+    Apply a symmetric-log transform to *values*.
+
+    Linear within ``[-linthresh, linthresh]``, logarithmic outside.
+    The linear region is scaled so that it occupies *linear_frac* of the
+    total axis range (assuming *decades* log decades on each side).
+
+    Parameters
+    ----------
+    values
+        Raw data values.
+    linthresh
+        Linear threshold.
+    linear_frac
+        Fraction of the full axis height reserved for the linear region.
+    decades
+        Number of log decades shown on each side (used to compute the
+        compression factor for the logarithmic tails).
+
+    Returns
+    -------
+    list[float]
+        Transformed values.
+    """
+    lin_half = linear_frac / 2.0
+    log_scale = (1.0 - linear_frac) / (2.0 * max(decades, 1))
+
+    arr = np.asarray(values, dtype=float)
+    out = np.where(
+        np.abs(arr) <= linthresh,
+        lin_half * arr / linthresh,
+        np.sign(arr)
+        * (lin_half + log_scale * np.log10(np.abs(arr) / linthresh)),
+    )
+    return out.tolist()
+
+
+def _symlog_ticks(
+    linthresh: float = 10.0,
+    decades: int = 4,
+    linear_frac: float = LINEAR_FRAC,
+) -> tuple[list[float], list[str]]:
+    """
+    Generate tick positions and labels for a symlog axis.
+
+    Parameters
+    ----------
+    linthresh
+        Linear threshold matching ``_symlog``.
+    decades
+        Number of decades to show on each side of zero.
+    linear_frac
+        Must match the value passed to ``_symlog``.
+
+    Returns
+    -------
+    tuple[list[float], list[str]]
+        Tick values (in transformed space) and their display labels.
+    """
+    ticks_val: list[float] = []
+    ticks_txt: list[str] = []
+
+    kw = {"linthresh": linthresh, "linear_frac": linear_frac, "decades": decades}
+
+    # Negative decades
+    for d in range(decades, 0, -1):
+        raw = -(linthresh * 10 ** d)
+        ticks_val.append(_symlog([raw], **kw)[0])
+        ticks_txt.append(f"{raw:.0e}")
+    # Linear region
+    for v in [-linthresh, 0, linthresh]:
+        ticks_val.append(_symlog([v], **kw)[0])
+        ticks_txt.append(f"{v:g}")
+    # Positive decades
+    for d in range(1, decades + 1):
+        raw = linthresh * 10 ** d
+        ticks_val.append(_symlog([raw], **kw)[0])
+        ticks_txt.append(f"{raw:.0e}")
+
+    return ticks_val, ticks_txt
+
+
+# A palette for overlaid RSS curves
+_PALETTE = [
+    "royalblue", "firebrick", "seagreen", "darkorange", "mediumpurple",
+    "deeppink", "teal", "goldenrod", "slategray", "crimson",
+]
 
 
 class CompressionApp(BaseApp):
@@ -80,17 +243,17 @@ class CompressionApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register dropdown-driven compression curve callbacks."""
         model_dropdown_id = f"{BENCHMARK_NAME}-model-dropdown"
-        structure_dropdown_id = f"{BENCHMARK_NAME}-structure-dropdown"
+        composition_dropdown_id = f"{BENCHMARK_NAME}-composition-dropdown"
         figure_id = f"{BENCHMARK_NAME}-figure"
 
         @callback(
-            Output(structure_dropdown_id, "options"),
-            Output(structure_dropdown_id, "value"),
+            Output(composition_dropdown_id, "options"),
+            Output(composition_dropdown_id, "value"),
             Input(model_dropdown_id, "value"),
         )
-        def _update_structure_options(model_name: str):
+        def _update_composition_options(model_name: str):
             """
-            Populate structure dropdown for the selected model.
+            Populate composition dropdown for the selected model.
 
             Parameters
             ----------
@@ -100,49 +263,54 @@ class CompressionApp(BaseApp):
             Returns
             -------
             tuple[list[dict], str | None]
-                Structure dropdown options and default selection.
+                Composition dropdown options and default selection.
             """
             if not model_name:
                 raise PreventUpdate
-            structures = _available_structures(model_name)
-            options = [{"label": s, "value": s} for s in structures]
-            default = structures[0] if structures else None
+            groups = _available_element_groups(model_name)
+            options = [
+                {"label": _element_group_label(g), "value": _element_group_label(g)}
+                for g in groups
+            ]
+            default = options[0]["value"] if options else None
             return options, default
 
         @callback(
             Output(figure_id, "figure"),
             Input(model_dropdown_id, "value"),
-            Input(structure_dropdown_id, "value"),
+            Input(composition_dropdown_id, "value"),
         )
-        def _update_figure(model_name: str, structure: str | None):
+        def _update_figure(model_name: str, composition: str | None):
             """
-            Render energy-vs-volume and dE/dV curves for the selected structure.
+            Render energy-per-atom and pressure curves vs linear scale
+            factor for all structures sharing the selected composition,
+            using symlog y-axes.
 
             Parameters
             ----------
             model_name
                 Selected model identifier.
-            structure
-                Selected structure label.
+            composition
+                Selected composition label.
 
             Returns
             -------
             go.Figure
                 Plotly figure with two subplots.
             """
-            if not model_name or not structure:
+            if not model_name or not composition:
                 raise PreventUpdate
 
-            payload = _load_curve(model_name, structure)
-            if payload is None:
+            group = tuple(composition.split("-"))
+            curves = _load_curves_for_element_group(model_name, group)
+            if not curves:
                 raise PreventUpdate
 
-            volumes = payload.get("volume_per_atom", [])
-            energies = payload.get("energy_per_atom", [])
-            de_dv = payload.get("dEdV", [])
-
-            if not volumes or not energies:
-                raise PreventUpdate
+            linthresh = 10.0
+            decades = 4
+            tick_vals, tick_text = _symlog_ticks(
+                linthresh, decades=decades, linear_frac=LINEAR_FRAC,
+            )
 
             fig = make_subplots(
                 rows=2,
@@ -150,44 +318,79 @@ class CompressionApp(BaseApp):
                 shared_xaxes=True,
                 vertical_spacing=0.08,
                 subplot_titles=(
-                    "Energy per atom vs Volume per atom",
-                    "dE/dV vs Volume per atom",
+                    "Energy per atom vs Scale factor",
+                    "Pressure vs Scale factor",
                 ),
             )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=volumes,
-                    y=energies,
-                    mode="lines+markers",
-                    name="E/atom",
-                    line={"color": "royalblue"},
-                    marker={"size": 4},
-                ),
-                row=1,
-                col=1,
-            )
+            for idx, (label, payload) in enumerate(curves):
+                scales = payload.get("scale", [])
+                energies = payload.get("energy_per_atom", [])
+                pressures = payload.get("pressure", [])
+                color = _PALETTE[idx % len(_PALETTE)]
+                # Use the full composition + RSS index as the legend entry
+                short_label = label
 
-            if de_dv:
+                if not scales or not energies:
+                    continue
+
                 fig.add_trace(
                     go.Scatter(
-                        x=volumes,
-                        y=de_dv,
+                        x=scales,
+                        y=_symlog(energies, linthresh, LINEAR_FRAC, decades),
                         mode="lines+markers",
-                        name="dE/dV",
-                        line={"color": "firebrick"},
-                        marker={"size": 4},
+                        name=f"E — {short_label}",
+                        line={"color": color},
+                        marker={"size": 3},
+                        legendgroup=short_label,
+                        customdata=energies,
+                        hovertemplate=(
+                            "scale: %{x:.3f}<br>"
+                            "E/atom: %{customdata:.4f} eV<extra></extra>"
+                        ),
                     ),
-                    row=2,
+                    row=1,
                     col=1,
                 )
 
-            fig.update_xaxes(title_text="Volume per atom (ų)", row=2, col=1)
-            fig.update_yaxes(title_text="Energy per atom (eV)", row=1, col=1)
-            fig.update_yaxes(title_text="dE/dV (eV/ų)", row=2, col=1)
+                if pressures:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=scales,
+                            y=_symlog(pressures, linthresh, LINEAR_FRAC, decades),
+                            mode="lines+markers",
+                            name=f"P — {short_label}",
+                            line={"color": color},
+                            marker={"size": 3},
+                            legendgroup=short_label,
+                            showlegend=False,
+                            customdata=pressures,
+                            hovertemplate=(
+                                "scale: %{x:.3f}<br>"
+                                "P: %{customdata:.4f} eV/ų<extra></extra>"
+                            ),
+                        ),
+                        row=2,
+                        col=1,
+                    )
+
+            # Apply symlog tick formatting to both y-axes
+            fig.update_yaxes(
+                tickvals=tick_vals,
+                ticktext=tick_text,
+                title_text="Energy per atom (eV, symlog)",
+                row=1, col=1,
+            )
+            fig.update_yaxes(
+                tickvals=tick_vals,
+                ticktext=tick_text,
+                title_text="Pressure (eV/ų, symlog)",
+                row=2, col=1,
+            )
+            fig.update_xaxes(title_text="Scale factor", row=2, col=1)
 
             fig.update_layout(
-                title=f"{model_name} — {structure}",
+                title=f"{model_name} — {composition}",
                 height=700,
                 showlegend=True,
                 template="plotly_white",
@@ -219,9 +422,9 @@ def get_app() -> CompressionApp:
                     clearable=False,
                     style={"width": "300px", "marginBottom": "20px"},
                 ),
-                Label("Select structure:"),
+                Label("Select composition:"),
                 dcc.Dropdown(
-                    id=f"{BENCHMARK_NAME}-structure-dropdown",
+                    id=f"{BENCHMARK_NAME}-composition-dropdown",
                     options=[],
                     value=None,
                     clearable=False,
