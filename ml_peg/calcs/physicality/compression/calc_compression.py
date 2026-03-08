@@ -39,7 +39,7 @@ N_POINTS = 20
 ELEMENTS: list[str] = ["H", "C", "N", "O"]  # limit to common elements for testing
 PROTOTYPES: list[str] = ["sc", "bcc","fcc", "hcp", "diamond"]  # common crystal prototypes
 MAX_ATOMS_PER_CELL = 6  # limit to small cells for testing
-RANDOM_STRUCTURES: list[dict[str, int]] = [[1, 10, 10], [2, 10, 10]]  # [[Number of elements, number of compositions, repeats per composition], ...]
+RANDOM_STRUCTURES: list[dict[str, int]] = [[1, 2*len(ELEMENTS), 5], [2, 5, 10]]  # [[Number of elements, number of compositions, repeats per composition], ...]
 
 def _scale_grid(
     min_scale: float,
@@ -341,16 +341,29 @@ def _generate_all_random(
 
         while len(generated_compositions) < n_compositions and attempts < max_comp_attempts:
             attempts += 1
-            chosen_elements = sorted(
-                rng.choice(elements, size=n_elements, replace=False).tolist()
-            )
+            if n_elements == 1:
+                #pick the element which occurs least frequently in the already generated compositions to increase diversity
+                elem_counts = {elem: 0 for elem in elements}
+                for comp in generated_compositions:
+                    for elem in comp:
+                        elem_counts[elem] += comp[elem]
+                least_common = sorted(elem_counts, key=elem_counts.get)
+                chosen_elements = [least_common[0]]
+            else:
+                chosen_elements = sorted(
+                    rng.choice(elements, size=n_elements, replace=False).tolist()
+                )
             # Random atom counts that sum to at most max_atoms (each >= 1)
             counts = rng.integers(1, max(2, max_atoms - n_elements + 2), size=n_elements)
+            if len(counts) == 1:
+                counts = np.random.choice(range(max_atoms//2, max_atoms + 1), size=1)  # for single element, just pick a random count between max_atoms//2 and max_atoms
+            
             # Clip total to max_atoms
             total = int(counts.sum())
             if total > max_atoms:
                 counts = (counts * max_atoms / total).astype(int)
                 counts = np.maximum(counts, 1)
+            
 
             composition = dict(zip(chosen_elements, counts.tolist()))
             label = _composition_label(composition)
@@ -363,7 +376,7 @@ def _generate_all_random(
         for composition in generated_compositions:
             comp_label = _composition_label(composition)
             for i in range(repeats):
-                struct_label = f"{comp_label}_RSS_{i}"
+                struct_label = f"{comp_label}_pyxtal_{i}"
                 try:
                     atoms = _gen_random_structure(
                         composition,
@@ -610,7 +623,9 @@ def test_compression(model_name: str) -> None:
 
 
 if __name__ == "__main__":
-    #generate the random structures and save to data directory (only needs to be done once)
+    # generate the random structures and save to data directory 
+    # this only needs to be done once
+    # code included here so that the structures can be easily regenerated in the same way if needed, or more can be created etc.
     _generate_all_random(
         RANDOM_STRUCTURES,
         ELEMENTS,
