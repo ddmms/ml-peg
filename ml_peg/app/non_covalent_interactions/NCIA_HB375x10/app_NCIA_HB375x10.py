@@ -7,8 +7,11 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_cell,
+    struct_from_scatter,
+)
+from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -42,6 +45,21 @@ class NCIANHB375x10App(BaseApp):
             cell_to_plot=density_plots,
         )
 
+        struct_trajs = collect_traj_assets(
+            data_path=DATA_PATH,
+            assets_prefix="assets/non_covalent_interactions/NCIA_HB375x10",
+            models=MODELS,
+            traj_dirname="density_traj",
+            suffix=".extxyz",
+        )
+        for model in struct_trajs:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-density",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=struct_trajs[model],
+                mode="traj",
+            )
+
 
 def get_app() -> NCIANHB375x10App:
     """
@@ -63,6 +81,7 @@ def get_app() -> NCIANHB375x10App:
         table_path=DATA_PATH / "ncia_hb375x10_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
