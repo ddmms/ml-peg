@@ -11,7 +11,7 @@
 
 ## Contents
 - [Getting started](#getting-started)
-- [Features](#features)
+- [Tutorials](#tutorials)
 - [Development](#development)
 - [Docker/Podman images](#dockerpodman-images)
 - [License](#license)
