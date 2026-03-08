@@ -20,6 +20,7 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 import pyxtal #used for generating random crystal structures
+from pyxtal.tolerance import Tol_matrix
 
 MODELS = load_models(current_models)
 
@@ -173,6 +174,7 @@ def _gen_random_structure(
     dim: int = 3,
     seed: int | None = None,
     max_attempts: int = 230,
+    volume_factor: float = 0.35,
 ) -> Atoms:
     """
     Generate a random crystal structure using PyXtal.
@@ -224,25 +226,29 @@ def _gen_random_structure(
     while len(sg_candidates) < max_attempts:
         sg_candidates.append(int(rng.integers(1, 231)))
 
+    custom_tol = Tol_matrix(prototype="atomic", factor=1.0)
     for sg in sg_candidates:
-        try:
-            crystal = PyXtal()
-            crystal.from_random(
-                dim=dim,
-                group=sg,
-                species=species,
-                numIons=num_atoms,
-                random_state=int(rng.integers(0, 2**31)),
-            )
-            if not crystal.valid:
-                continue
-
-            atoms = crystal.to_ase()
-            atoms.pbc = True
-            atoms = _scale_using_isotropic_guess(atoms)
-            return atoms
-        except Exception:
+        crystal = PyXtal()
+        crystal.from_random(
+            dim=dim,
+            group=sg,
+            species=species,
+            numIons=num_atoms,
+            random_state=int(rng.integers(0, 2**31)),
+            tm=custom_tol,
+            max_count=100000,
+            factor=volume_factor
+        )
+        if not crystal.valid:
             continue
+
+        atoms = crystal.to_ase()
+        atoms.pbc = True
+        atoms = _scale_using_isotropic_guess(atoms)
+
+        return atoms
+        # except Exception:
+        #     continue
 
     raise RuntimeError(
         f"PyXtal failed to generate a valid structure for "
@@ -351,7 +357,8 @@ def _generate_all_random(
             if label not in seen_labels:
                 seen_labels.add(label)
                 generated_compositions.append(composition)
-
+        
+        print(f"Generated {len(generated_compositions)} unique compositions with {n_elements} elements: {generated_compositions}")
         # Generate structures for each composition
         for composition in generated_compositions:
             comp_label = _composition_label(composition)
