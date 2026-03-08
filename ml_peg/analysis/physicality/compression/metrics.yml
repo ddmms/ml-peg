@@ -1,0 +1,26 @@
+metrics:
+  Energy minima:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy-per-atom minima per structure
+  Energy inflections:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy curvature sign changes per structure
+  Pressure sign flips:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of hydrostatic-pressure sign changes per structure
+  ρ(E, compression):
+    good: 1.0
+    bad: -1.0
+    unit: null
+    tooltip: Spearman correlation between energy and volume in the compressed regime
+  ρ(E, expansion):
+    good: -1.0
+    bad: 1.0
+    unit: null
+    tooltip: Spearman correlation between energy and volume in the expanded regime
