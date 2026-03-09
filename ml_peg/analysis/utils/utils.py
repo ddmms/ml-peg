@@ -167,13 +167,18 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
+DENSITY_GRID_SIZE = 80
+DENSITY_MAX_POINTS_PER_CELL = 5
+DENSITY_SAMPLE_SEED = 0
+
+
 def sample_density_grid(
-    ref_vals: list[float],
-    pred_vals: list[float],
+    ref_vals: list[float] | np.ndarray,
+    pred_vals: list[float] | np.ndarray,
     *,
-    grid_size: int = 80,
-    max_points_per_cell: int = 5,
-    seed: int = 0,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
 ) -> tuple[list[int], list[int], list[list[int]]]:
     """
     Sample indices from a density grid, returning density and cell memberships.
@@ -189,11 +194,11 @@ def sample_density_grid(
     pred_vals
         Predicted (y-axis) values, same order as ``ref_vals``.
     grid_size
-        Number of bins per axis. Must match ``@plot_density_scatter`` default (80).
+        Number of bins per axis. Must match ``@plot_density_scatter`` default.
     max_points_per_cell
-        Maximum sampled points per cell. Must match decorator default (5).
+        Maximum sampled points per cell. Must match decorator default.
     seed
-        RNG seed for deterministic sampling. Must match decorator default (0).
+        RNG seed for deterministic sampling. Must match decorator default.
 
     Returns
     -------
@@ -296,9 +301,9 @@ def write_density_trajectories(
     struct_dir: Path,
     traj_dir: Path,
     struct_filename_builder: Callable[[str], str],
-    grid_size: int = 80,
-    max_points_per_cell: int = 5,
-    seed: int = 0,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
 ) -> None:
     """
     Write one extxyz trajectory per sampled density point for WEAS display.

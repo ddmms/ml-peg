@@ -14,7 +14,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_table_scores, sample_density_grid
+from ml_peg.analysis.utils.utils import (
+    DENSITY_GRID_SIZE,
+    DENSITY_MAX_POINTS_PER_CELL,
+    DENSITY_SAMPLE_SEED,
+    calc_table_scores,
+    sample_density_grid,
+)
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -540,9 +546,9 @@ def plot_density_scatter(
     y_label: str | None = None,
     filename: str = "density_scatter.json",
     colorbar_title: str = "Density",
-    grid_size: int = 80,
-    max_points_per_cell: int = 5,
-    seed: int = 0,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
     hover_metadata: dict[str, str] | None = None,
     annotation_metadata: dict[str, str] | None = None,
 ) -> Callable:
@@ -660,8 +666,8 @@ def plot_density_scatter(
                     sampled = ([], [], [])
                 else:
                     sampled_indices, sampled_density, _ = sample_density_grid(
-                        ref_vals.tolist(),
-                        pred_vals.tolist(),
+                        ref_vals,
+                        pred_vals,
                         grid_size=grid_size,
                         max_points_per_cell=max_points_per_cell,
                         seed=seed,
