@@ -47,11 +47,21 @@ def build_dispersion_name_map(
         Mapping of model -> display name for models not trained with dispersion.
     """
     configs, _ = load_model_configs(tuple(models))
-    return {
-        model: f"{model}{suffix}"
-        for model in models
-        if not configs[model]["trained_on_dispersion"]
-    }
+    name_map: dict[str, str] = {}
+
+    for model in models:
+        if configs[model]["trained_on_dispersion"]:
+            continue
+        dispersion_kwargs = configs[model].get("dispersion_kwargs") or {}
+        label = dispersion_kwargs.get("label")
+        suffix_to_use = (
+            label.strip() if isinstance(label, str) and label.strip() else suffix
+        )
+        if not suffix_to_use.startswith("-"):
+            suffix_to_use = f"-{suffix_to_use}"
+        name_map[model] = f"{model}{suffix_to_use}"
+
+    return name_map
 
 
 def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:

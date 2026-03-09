@@ -50,6 +50,7 @@ mace-matpes-r2scan:
     head: "matpes_pbe"
   dispersion_kwargs:
     xc: r2scan
+    label: D4
 
 # mace-mh-1-omat:
 #   module: mace.calculators
