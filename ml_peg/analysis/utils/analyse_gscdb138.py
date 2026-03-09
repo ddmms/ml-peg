@@ -8,13 +8,13 @@ from ase import units
 from ase.io import read, write
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, mae
+from ml_peg.analysis.utils.utils import build_dispersion_name_map, mae
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
 
@@ -176,7 +176,7 @@ def get_gscdb138_metrics(
         metric_tooltips=metric_tooltips,
         thresholds=thresholds,
         weights=weights,
-        mlip_name_map=D3_MODEL_NAMES,
+        mlip_name_map=DISPERSION_NAME_MAP,
     )
     def metrics() -> dict[str, dict]:
         """
