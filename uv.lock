@@ -1966,7 +1966,7 @@ wheels = [
 
 [[package]]
 name = "dash"
-version = "3.4.0"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flask" },
@@ -1979,9 +1979,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/3a/322a583ca3479ad2dc6a8bfbaf7f8e4d01e16cc5030d8e7b45445bc22502/dash-3.4.0.tar.gz", hash = "sha256:3944beb32000ee8b22cd7fbb33545a0a43e25916c63aa41ba59ee5611997815e", size = 7581177, upload-time = "2026-01-20T20:46:47.43Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/dd/3aed9bfd81dfd8f44b3a5db0583080ac9470d5e92ee134982bd5c69e286e/dash-4.0.0.tar.gz", hash = "sha256:c5f2bca497af288f552aea3ae208f6a0cca472559003dac84ac21187a1c3a142", size = 6943263, upload-time = "2026-02-03T19:42:27.92Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/2e/8fa7d095f7ab28649ece149118ccbde8286be52037b02ab02fbe52c34601/dash-3.4.0-py3-none-any.whl", hash = "sha256:62b1c2eca3cfbe05f5e6ed8666e2c9a204aa08e2ceef89f01ce9bcccb3c18e95", size = 7921864, upload-time = "2026-01-20T20:46:36.088Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/8c/dd63d210b28a7589f4bc1e84880525368147425c717d12834ab562f52d14/dash-4.0.0-py3-none-any.whl", hash = "sha256:e36b4b4eae9e1fa4136bf4f1450ed14ef76063bc5da0b10f8ab07bd57a7cb1ab", size = 7247521, upload-time = "2026-02-03T19:42:25.01Z" },
 ]
 
 [[package]]
@@ -4917,167 +4917,22 @@ sdist = { url = "https://files.pythonhosted.org/packages/6d/7b/89f7fe890fc17dd47
 name = "matminer"
 version = "0.9.3"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version < '3.11' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-]
 dependencies = [
-    { name = "monty", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pandas", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pymatgen", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pymongo", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "requests", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "monty" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13' or extra != 'extra-6-ml-peg-grace' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pandas" },
+    { name = "pymatgen" },
+    { name = "pymongo" },
+    { name = "requests" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "sympy", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "tqdm", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "sympy" },
+    { name = "tqdm" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/66/92/6095f5c06a90ba78b3e197c20bc1beafd75bedb3f7e35da4d87562021afd/matminer-0.9.3.tar.gz", hash = "sha256:e5f4e638434d58f8009b05d7cd402a9287ce619bdf67b417e8af78752ad7d2c2", size = 11707990, upload-time = "2024-10-06T12:46:07.969Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/33/aa/fb6549d287370add4c875659721b1963d2e26a07d3fa74c7cd832ce04756/matminer-0.9.3-py3-none-any.whl", hash = "sha256:d8bc4aed58f5799eb7c49f1f08ed88e39c066bc412b194c6a92e506c0c4171e3", size = 5501301, upload-time = "2024-10-06T12:46:05.419Z" },
-]
-
-[[package]]
-name = "matminer"
-version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra == 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version >= '3.14' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma') or (python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra != 'extra-6-ml-peg-mattersim' and extra != 'extra-6-ml-peg-uma')",
-]
-dependencies = [
-    { name = "monty", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13' or (python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pandas", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pymatgen", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pymongo", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "requests", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "sympy", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "tqdm", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/46/6e/61600908b8bcc5a9c446e0251ded4faccd851aa97f26e695444e20b3ef06/matminer-0.10.0.tar.gz", hash = "sha256:abd4fb61a74ee59448396149d0a4e3c19a74b12969b372ea05234b823c9d4499", size = 11673747, upload-time = "2026-01-22T21:11:11.442Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/85/a337fed8fa54d14fcd676405f910b84786111ee08767d72a4d1d507b5f0f/matminer-0.10.0-py3-none-any.whl", hash = "sha256:af5b58e1c38de36fa12736726795270269ed3338ff129f98ffe9b66359dbaa2e", size = 5252490, upload-time = "2026-01-22T21:11:09.307Z" },
 ]
 
 [[package]]
@@ -6002,8 +5857,7 @@ dependencies = [
     { name = "janus-core" },
     { name = "kaleido" },
     { name = "matcalc" },
-    { name = "matminer", version = "0.9.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "matminer", version = "0.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "matminer" },
     { name = "mdanalysis", version = "2.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "mdanalysis", version = "2.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "mlipx" },
@@ -6078,26 +5932,25 @@ prod = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
-    { name = "dash", specifier = ">=3.1.1" },
+    { name = "dash", specifier = ">=4.0.0,<5" },
     { name = "deepmd-kit", marker = "extra == 'dpa3'", specifier = "==3.1.0" },
     { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.10.0" },
-    { name = "janus-core", specifier = ">=0.8.2,<1.0.0" },
-    { name = "kaleido", specifier = ">=1.0.0" },
+    { name = "janus-core", specifier = ">=0.8.6,<1.0.0" },
+    { name = "kaleido", specifier = ">=1.0.0,<2" },
     { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.15" },
-    { name = "matcalc" },
-    { name = "matminer" },
+    { name = "matcalc", specifier = ">=0.4.5,<0.5" },
+    { name = "matminer", specifier = ">=0.9.3,<0.10" },
     { name = "mattersim", marker = "extra == 'mattersim'", specifier = "==1.2.0" },
-    { name = "mdanalysis" },
-    { name = "mdanalysis", specifier = ">=2.9.0" },
+    { name = "mdanalysis", specifier = ">=2.9.0,<3" },
     { name = "mlipx", specifier = ">=0.1.5,<0.2" },
-    { name = "molify", specifier = ">=0.2.2" },
-    { name = "openpyxl" },
+    { name = "molify", specifier = ">=0.2.2,<0.3" },
+    { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "orb-models", marker = "python_full_version < '3.13' and sys_platform != 'win32' and extra == 'orb'", specifier = "==0.5.5" },
     { name = "pet-mad", marker = "sys_platform != 'win32' and extra == 'pet-mad'", specifier = "==1.4.4" },
-    { name = "scikit-learn", specifier = ">=1.7.1" },
+    { name = "scikit-learn", specifier = ">=1.7.2,<2" },
     { name = "tensorpotential", marker = "python_full_version < '3.13' and extra == 'grace'", specifier = "==0.5.1" },
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
-    { name = "tqdm" },
+    { name = "tqdm", specifier = ">=4.67.3,<5" },
     { name = "typer", specifier = ">=0.19.1,<1.0.0" },
 ]
 provides-extras = ["chgnet", "d3", "dpa3", "grace", "mace", "mattersim", "orb", "pet-mad", "uma"]
@@ -11749,14 +11602,14 @@ wheels = [
 
 [[package]]
 name = "tqdm"
-version = "4.67.1"
+version = "4.67.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/a9/6ba95a270c6f1fbcd8dac228323f2777d886cb206987444e4bce66338dd4/tqdm-4.67.3.tar.gz", hash = "sha256:7d825f03f89244ef73f1d4ce193cb1774a8179fd96f31d7e1dcde62092b960bb", size = 169598, upload-time = "2026-02-03T17:35:53.048Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540, upload-time = "2024-11-24T20:12:19.698Z" },
+    { url = "https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl", hash = "sha256:ee1e4c0e59148062281c49d80b25b67771a127c85fc9676d3be5f243206826bf", size = 78374, upload-time = "2026-02-03T17:35:50.982Z" },
 ]
 
 [[package]]
