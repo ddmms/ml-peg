@@ -6,6 +6,8 @@ import json
 import re
 from pathlib import Path
 
+from ase.formula import Formula
+
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
@@ -13,6 +15,7 @@ from dash.html import Div, Label
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -29,64 +32,16 @@ DOCS_URL = (
     "physicality.html#compression"
 )
 
-# Regex to strip the _RSS_<n> suffix to get the composition
-_RSS_SUFFIX = re.compile(r"_RSS_\d+$")
-# Regex to extract element symbols from a composition string
-_ELEMENT_RE = re.compile(r"[A-Z][a-z]?")
+def _chemical_formula_from_label(label: str) -> str:
+    """convert a label like "C2H4_pyxtal_0" to a reduce chemical formula string like "CH2"."""
+    formula_str = label.split("_")[0]
+    f = Formula(formula_str)
+    return str(f.reduce()[0])
 
-
-def _composition_from_label(label: str) -> str:
+def _available_formulas(model_name: str) -> list[str]:
     """
-    Extract the composition prefix from a structure label.
-
-    Parameters
-    ----------
-    label
-        Full structure label (e.g. ``"C2H3_RSS_0"``).
-
-    Returns
-    -------
-    str
-        Composition string (e.g. ``"C2H3"``).  If the label has no
-        ``_RSS_<n>`` suffix it is returned unchanged.
-    """
-    return _RSS_SUFFIX.sub("", label)
-
-
-def _element_group(composition: str) -> tuple[str, ...]:
-    """
-    Extract the sorted tuple of unique element symbols from a composition.
-
-    ``"C2H3"`` → ``("C", "H")``, ``"C3"`` → ``("C",)``.
-
-    Parameters
-    ----------
-    composition
-        Composition string (no ``_RSS_<n>`` suffix).
-
-    Returns
-    -------
-    tuple[str, ...]
-        Sorted unique elements.
-    """
-    return tuple(sorted(set(_ELEMENT_RE.findall(composition))))
-
-
-def _element_group_label(group: tuple[str, ...]) -> str:
-    """
-    Human-readable label for an element group, e.g. ``"C"`` or ``"C-H"``.
-    """
-    return "-".join(group)
-
-
-def _available_element_groups(model_name: str) -> list[tuple[str, ...]]:
-    """
-    List unique element groups available for a given model.
-
-    Structures whose compositions share the same *set* of elements are
-    placed into the same group.  For example ``"C"``, ``"C2"``, and
-    ``"C3"`` all belong to the group ``("C",)``.
-
+    List unique formulas available for a given model.
+    
     Parameters
     ----------
     model_name
@@ -94,30 +49,29 @@ def _available_element_groups(model_name: str) -> list[tuple[str, ...]]:
 
     Returns
     -------
-    list[tuple[str, ...]]
-        Sorted list of unique element groups.
+    list[str]
+        Sorted list of unique formulas.
     """
     model_dir = CURVE_PATH / model_name
     if not model_dir.exists():
         return []
-    groups: set[tuple[str, ...]] = set()
+    groups: set[str] = set()
     for p in model_dir.glob("*.json"):
-        groups.add(_element_group(_composition_from_label(p.stem)))
+        groups.add(_chemical_formula_from_label(p.stem))
     return sorted(groups)
 
-
-def _load_curves_for_element_group(
-    model_name: str, group: tuple[str, ...]
+def _load_curves_for_formula(
+    model_name: str, formula: str
 ) -> list[tuple[str, dict]]:
     """
-    Load all curve payloads whose element group matches *group*.
+    Load all curve payloads whose reduced chemical formula matches *formula*.
 
     Parameters
     ----------
     model_name
         Model identifier.
-    group
-        Target element group (e.g. ``("C",)`` or ``("C", "H")``).
+    formula
+        Reduced chemical formula (e.g. ``"CH2"``).
 
     Returns
     -------
@@ -129,7 +83,7 @@ def _load_curves_for_element_group(
         return []
     results: list[tuple[str, dict]] = []
     for p in sorted(model_dir.glob("*.json")):
-        if _element_group(_composition_from_label(p.stem)) == group:
+        if _chemical_formula_from_label(p.stem) == formula:
             try:
                 with p.open(encoding="utf8") as fh:
                     results.append((p.stem, json.load(fh)))
@@ -267,12 +221,9 @@ class CompressionApp(BaseApp):
             """
             if not model_name:
                 raise PreventUpdate
-            groups = _available_element_groups(model_name)
-            options = [
-                {"label": _element_group_label(g), "value": _element_group_label(g)}
-                for g in groups
-            ]
-            default = options[0]["value"] if options else None
+            formulas = _available_formulas(model_name)
+            options = [{"label": f, "value": f} for f in formulas]
+            default = formulas[0] if formulas else None
             return options, default
 
         @callback(
@@ -301,8 +252,7 @@ class CompressionApp(BaseApp):
             if not model_name or not composition:
                 raise PreventUpdate
 
-            group = tuple(composition.split("-"))
-            curves = _load_curves_for_element_group(model_name, group)
+            curves = _load_curves_for_formula(model_name, composition)
             if not curves:
                 raise PreventUpdate
 

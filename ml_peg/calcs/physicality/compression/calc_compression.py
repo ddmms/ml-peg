@@ -11,6 +11,7 @@ from ase import Atoms
 from ase.build import bulk, make_supercell
 from ase.data import covalent_radii, atomic_numbers
 from ase.io import read as ase_read, write
+from ase.formula import Formula
 import numpy as np
 import pandas as pd
 import pytest
@@ -39,7 +40,7 @@ N_POINTS = 20
 ELEMENTS: list[str] = ["H", "C", "N", "O"]  # limit to common elements for testing
 PROTOTYPES: list[str] = ["sc", "bcc","fcc", "hcp", "diamond"]  # common crystal prototypes
 MAX_ATOMS_PER_CELL = 6  # limit to small cells for testing
-RANDOM_STRUCTURES: list[dict[str, int]] = [[1, 2*len(ELEMENTS), 5], [2, 5, 10]]  # [[Number of elements, number of compositions, repeats per composition], ...]
+RANDOM_STRUCTURES: list[dict[str, int]] = [[1, len(ELEMENTS), 1], [2, 2, 1]]  # [[Number of elements, number of compositions, repeats per composition], ...]
 
 def _scale_grid(
     min_scale: float,
@@ -261,7 +262,8 @@ def _composition_label(composition: dict[str, int]) -> str:
     Build a canonical string label for a composition.
 
     Elements are sorted alphabetically and counts are appended only when
-    greater than one (e.g. ``{"C": 1, "O": 2}`` → ``"CO2"``).
+    greater than one (e.g. ``{"C": 1, "O": 2}`` → ``"C-O2"``).
+    elements split by "-" to avoid confusion with the underscore used for separating the composition from the rest of the label (e.g. "C-O2_pyxtal_0")
 
     Parameters
     ----------
@@ -277,7 +279,7 @@ def _composition_label(composition: dict[str, int]) -> str:
     for elem in sorted(composition):
         count = composition[elem]
         parts.append(f"{elem}{count if count > 1 else ''}")
-    return "".join(parts)
+    return "-".join(parts)
 
 
 def _generate_all_random(
@@ -374,15 +376,17 @@ def _generate_all_random(
         print(f"Generated {len(generated_compositions)} unique compositions with {n_elements} elements: {generated_compositions}")
         # Generate structures for each composition
         for composition in generated_compositions:
-            comp_label = _composition_label(composition)
+            #comp_label = _composition_label(composition)
             for i in range(repeats):
-                struct_label = f"{comp_label}_pyxtal_{i}"
+                #struct_label = f"{comp_label}_pyxtal_{i}"
                 try:
                     atoms = _gen_random_structure(
                         composition,
                         seed=int(rng.integers(0, 2**31)),
                         space_group=1,  # random space group
                     )
+                    
+                    struct_label = f"{atoms.get_chemical_formula()}_pyxtal_{i}"
                     atoms.info["label"] = struct_label
                     structures[struct_label] = atoms
 
