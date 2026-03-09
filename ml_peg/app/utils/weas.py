@@ -77,8 +77,9 @@ def generate_weas_html(
         const filename = "{str(filename)}";
         const title = document.getElementById("weas-title");
         if (title) {{
-            title.textContent = `File: ${{filename}}`;
-            title.title = filename;
+            const basename = filename.split(/[/\\\\]/).pop() || filename;
+            title.textContent = `Viewing: ${{basename}}`;
+            title.title = basename;
         }}
         console.log("filename: ", filename);
         structureData = await fetchFile(filename);
