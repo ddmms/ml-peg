@@ -13,7 +13,7 @@ from ml_peg.analysis.utils.decorators import (
     plot_parity,
 )
 from ml_peg.analysis.utils.utils import (
-    build_d3_name_map,
+    build_dispersion_name_map,
     load_metrics_config,
     mae,
 )
@@ -23,7 +23,7 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "tm_complexes" / "3dTMV" / "outputs"
@@ -235,7 +235,7 @@ def total_mae(ionization_energies) -> dict[str, float]:
     filename=OUT_PATH / "3dtmv_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
