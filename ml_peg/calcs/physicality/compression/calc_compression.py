@@ -12,6 +12,7 @@ from ase.build import bulk, make_supercell
 from ase.data import covalent_radii, atomic_numbers
 from ase.io import read as ase_read, write
 from ase.formula import Formula
+from ase import units
 import numpy as np
 import pandas as pd
 import pytest
@@ -40,7 +41,7 @@ N_POINTS = 20
 ELEMENTS: list[str] = ["H", "C", "N", "O"]  # limit to common elements for testing
 PROTOTYPES: list[str] = ["sc", "bcc","fcc", "hcp", "diamond"]  # common crystal prototypes
 MAX_ATOMS_PER_CELL = 6  # limit to small cells for testing
-RANDOM_STRUCTURES: list[dict[str, int]] = [[1, len(ELEMENTS), 1], [2, 2, 1]]  # [[Number of elements, number of compositions, repeats per composition], ...]
+RANDOM_STRUCTURES: list[dict[str, int]] = [[1, len(ELEMENTS), 5], [2, 5, 10]]  # [[Number of elements, number of compositions, repeats per composition], ...]
 
 def _scale_grid(
     min_scale: float,
@@ -549,7 +550,7 @@ def run_compression(model_name: str, model) -> None:
                 # Stress tensor (Voigt notation, eV/Å³)
                 try:
                     stress_voigt = atoms.get_stress(voigt=False)
-                    pressure = -1/3 * np.trace(stress_voigt)  # hydrostatic pressure
+                    pressure = -1/3 * np.trace(stress_voigt)/units.GPa  # hydrostatic pressure
                 except Exception:
                     stress_voigt = np.zeros(6)
                     pressure = np.nan

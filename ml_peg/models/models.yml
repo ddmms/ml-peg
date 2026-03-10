@@ -172,7 +172,7 @@ orb-v3-consv-inf-omat:
 pet-mad:
   module: pet_mad.calculator
   class_name: PETMADCalculator
-  device: "cpu"
+  device: "auto"
   default_dtype: float32
   trained_on_d3: false
   level_of_theory: PBEsol
