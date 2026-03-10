@@ -50,35 +50,35 @@ def register_summary_table_callbacks(
             "summary-table", "tooltip_data"
         ),  # Needed to display model config & level of theory tooltips
         Output("summary-table-computed-store", "data", allow_duplicate=True),
-        Input("all-tabs", "value"),
-        Input("summary-table-weight-store", "data"),
         Input("selected-models-store", "data"),
-        State("summary-table-scores-store", "data"),
+        Input("summary-table-scores-store", "data"),
+        Input("summary-table-weight-store", "data"),
+        Input("app-location", "pathname"),
         State("summary-table", "data"),
         State("summary-table-computed-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_summary_table(
-        tabs_value: str,
-        stored_weights: dict[str, float],
         selected_models: list[str] | None,
-        stored_scores: dict[str, dict[str, float]],
+        stored_scores: dict[str, dict[str, float]] | None,
+        stored_weights: dict[str, float],
+        _pathname: str,
         summary_data: list[dict],
         computed_store: list[dict] | None,
     ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
         """
-        Update summary table when scores/weights change, and sync on tab change.
+        Update summary table when scores/weights change, and sync on page change.
 
         Parameters
         ----------
-        tabs_value
-            Value of selected tab. Parameter unused, but required to register Input.
-        stored_weights
-            Stored summary weights dictionary.
         selected_models
             List of model names currently selected in the model filter.
         stored_scores
             Stored scores for table scores.
+        stored_weights
+            Stored summary weights dictionary.
+        _pathname
+            Current pathname. Unused, but required to trigger on path changes.
         summary_data
             Data from summary table to be updated (may be filtered).
         computed_store
@@ -93,6 +93,8 @@ def register_summary_table_callbacks(
         # Use the full unfiltered store as source so re-selecting models works.
         # Fall back to summary_data only before the store is first populated.
         source_data = computed_store or summary_data
+        if not source_data:
+            raise PreventUpdate
 
         # Update table from stored scores
         if stored_scores:
@@ -151,7 +153,7 @@ def register_category_table_callbacks(
             Output(f"{table_id}-raw-data-store", "data"),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
-            Input("all-tabs", "value"),
+            Input("app-location", "pathname"),
             Input(f"{table_id}-normalized-toggle", "value"),
             Input("selected-models-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
@@ -163,7 +165,7 @@ def register_category_table_callbacks(
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
-            _tabs_value: str,
+            _pathname: str,
             toggle_value: list[str] | None,
             selected_models: list[str] | None,
             stored_raw_data: list[dict] | None,
@@ -180,7 +182,7 @@ def register_category_table_callbacks(
             list[dict],
         ]:
             """
-            Update table when stored weights/threshold change, or tab is changed.
+            Update table when stored weights/threshold change, or page is changed.
 
             Parameters
             ----------
@@ -188,8 +190,8 @@ def register_category_table_callbacks(
                 Stored weights dictionary for table metrics.
             stored_threshold
                 Stored thresholds dictionary for table metric thresholds.
-            _tabs_value
-                Current tab identifier (unused, required to trigger on tab change).
+            _pathname
+                Current URL path. Unused, required to trigger on path change.
             toggle_value
                 Value of toggle to show normalised values.
             selected_models
@@ -216,10 +218,10 @@ def register_category_table_callbacks(
                 tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
                 return combined_style, tooltip_data
 
-            # Tab switches and toggle flips reuse the cached scored rows rather than
+            # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
-                trigger_id in ("all-tabs", f"{table_id}-normalized-toggle")
+                trigger_id in ("app-location", f"{table_id}-normalized-toggle")
                 and stored_computed_data
             ):
                 display_rows = get_scores(
@@ -290,16 +292,16 @@ def register_category_table_callbacks(
             Output(table_id, "tooltip_data", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
-            Input("all-tabs", "value"),
             Input("selected-models-store", "data"),
+            Input("app-location", "pathname"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
-            _tabs_value: str,
             selected_models: list[str] | None,
+            _pathname: str,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
@@ -319,6 +321,13 @@ def register_category_table_callbacks(
             source_data = computed_store or table_data
             if not source_data:
                 raise PreventUpdate
+
+            trigger_id = ctx.triggered_id
+
+            if trigger_id == "app-location":
+                style = get_table_style(source_data)
+                style, tooltip_data = apply_levels(source_data, style)
+                return source_data, style, tooltip_data, source_data
 
             scored_rows, _ = update_score_style(source_data, stored_weights)
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
@@ -405,8 +414,8 @@ def register_benchmark_to_category_callback(
         Output(category_table_id, "style_data_conditional", allow_duplicate=True),
         Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
         Input(f"{benchmark_table_id}-computed-store", "data"),
-        Input("all-tabs", "value"),
         Input("selected-models-store", "data"),
+        Input("app-location", "pathname"),
         State(category_table_id, "data"),
         State(f"{category_table_id}-weight-store", "data"),
         State(f"{category_table_id}-computed-store", "data"),
@@ -414,8 +423,8 @@ def register_benchmark_to_category_callback(
     )
     def update_category_from_benchmark(
         benchmark_computed_store: list[dict] | None,
-        _tabs_value: str,
         selected_models: list[str] | None,
+        _pathname: str,
         category_data: list[dict] | None,
         category_weights: dict[str, float] | None,
         category_computed_store: list[dict] | None,
@@ -427,10 +436,10 @@ def register_benchmark_to_category_callback(
         ----------
         benchmark_computed_store
             Latest scored benchmark rows emitted by the benchmark table.
-        _tabs_value
-            Current tab identifier (unused, required to trigger on tab change).
         selected_models
             List of model names currently selected in the model filter.
+        _pathname
+            Current pathname. Unused, but required to trigger on path changes.
         category_data
             Existing category table rows shown to the user.
         category_weights
@@ -443,12 +452,16 @@ def register_benchmark_to_category_callback(
         tuple[list[dict], list[dict], list[dict]]
             Updated table data, updated style, and refreshed cached rows.
         """
-        # Default to pre-computed category data to avoid multiple updates on tab change
+        # Default to pre-computed category data to avoid multiple updates on page change
         category_rows = category_computed_store or category_data
         if not category_rows:
             raise PreventUpdate
         if not benchmark_computed_store:
             raise PreventUpdate
+
+        if not benchmark_computed_store:
+            category_rows, style = update_score_style(category_rows, category_weights)
+            return category_rows, style, category_rows
 
         benchmark_scores: dict[str, float] = {}
         for row in benchmark_computed_store:
@@ -537,10 +550,10 @@ def register_weight_callbacks(
     @callback(
         Output(f"{input_id}-input", "value"),
         Input(f"{table_id}-weight-store", "data"),
-        Input("all-tabs", "value"),
+        Input("app-location", "pathname"),
         prevent_initial_call="initial_duplicate",
     )
-    def sync_inputs(stored_weights: dict[str, float], tabs_value: str) -> float:
+    def sync_inputs(stored_weights: dict[str, float], _pathname: str) -> float:
         """
         Sync weight values between the text input and Store.
 
@@ -548,8 +561,9 @@ def register_weight_callbacks(
         ----------
         stored_weights
             Stored weight values for each column.
-        tabs_value
-            Tab name. Variable unused, but required as input to trigger on tab change.
+        _pathname
+            Current pathname. Variable unused, but required as input to trigger on
+            path change.
 
         Returns
         -------
