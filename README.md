@@ -11,7 +11,7 @@
 
 ## Contents
 - [Getting started](#getting-started)
-- [Tutorials](#tutorials)
+- [Features](#features)
 - [Development](#development)
 - [Docker/Podman images](#dockerpodman-images)
 - [License](#license)
@@ -38,12 +38,10 @@ python3 -m pip install git+https://github.com/ddmms/ml-peg.git
 ```
 
 
-## Tutorials
+## Features
 
-The Jupyter Notebook tutorials introduce new devlopers to the ML-PEG framework, providing detailed step-by-step guides:
-- [Adding a New Benchmark](docs/source/tutorials/python/adding_benchmark.ipynb) [![badge](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ddmms/ml-peg/blob/main/docs/source/tutorials/python/adding_benchmark.ipynb)
+More details coming soon!
 
-More coming soon!
 
 ## Development
 
@@ -66,6 +64,11 @@ pytest -v  # Discover and run all tests
 
 Please refer to the [online documentation](https://ddmms.github.io/ml-peg/developer_guide/index.html)
 for information about contributing new benchmarks and models.
+
+### Tutorials
+
+The Jupyter Notebook tutorials introduce new devlopers to the ML-PEG framework, providing detailed step-by-step guides:
+- [Adding a New Benchmark](docs/source/tutorials/python/adding_benchmark.ipynb) [![badge](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ddmms/ml-peg/blob/main/docs/source/tutorials/python/adding_benchmark.ipynb)
 
 
 ## Docker/Podman images
