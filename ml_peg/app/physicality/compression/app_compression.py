@@ -93,7 +93,7 @@ def _load_curves_for_formula(
 
 
 # Fraction of the y-axis occupied by the linear region (±linthresh).
-LINEAR_FRAC: float = 0.6
+LINEAR_FRAC: float = 0.8
 
 
 def _symlog(

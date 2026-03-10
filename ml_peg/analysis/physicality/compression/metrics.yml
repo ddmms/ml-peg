@@ -1,26 +1,41 @@
 metrics:
+  Holes:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    tooltip: Presence of holes in the energy-per-atom curve, any curve with an energy value that is 100 eV/atom lower than the largest volume energy contains a hole
+  Deep Energy minima:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of deep, > 0.1 eV/atom, energy-per-atom minima per structure. Designed to ignore very shallow minma, particularly in the expanded regime.
   Energy minima:
     good: 1.0
     bad: 5.0
     unit: null
-    tooltip: Average number of energy-per-atom minima per structure
-  Energy inflections:
-    good: 1.0
-    bad: 5.0
-    unit: null
-    tooltip: Average number of energy curvature sign changes per structure
+    tooltip: Average number of energy-per-atom minima per structure. Tolerance of 1 meV/atom is used.
+  # Energy inflections:
+  #   good: 1.0
+  #   bad: 5.0
+  #   unit: null
+  #   tooltip: Average number of energy curvature sign changes per structure
   Pressure sign flips:
     good: 1.0
     bad: 5.0
     unit: null
     tooltip: Average number of hydrostatic-pressure sign changes per structure
-  ρ(E, compression):
+  Big Pressure sign flips:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of large, > 1GPa, hydrostatic-pressure sign changes per structure
+  ρ(-E,Vsmall):
     good: 1.0
     bad: -1.0
     unit: null
-    tooltip: Spearman correlation between energy and volume in the compressed regime
-  ρ(E, expansion):
-    good: -1.0
-    bad: 1.0
+    tooltip: Spearman correlation between energy and volume in the compressed region, defined as V < V(Emin) so this metric is polluted when Holes are present.
+  ρ(E,Vlarge):
+    good: 1.0
+    bad: -1.0
     unit: null
-    tooltip: Spearman correlation between energy and volume in the expanded regime
+    tooltip: Spearman correlation between energy and volume in the expanded region, defined as V > V(Emin) so this metric is polluted when Holes are present.

@@ -75,8 +75,9 @@ def prepare_structure_series(
     scales = df_sorted["scale"].to_numpy()
 
     # Shift energies so the equilibrium value (scale closest to 1.0) is zero
-    eq_idx = int(np.argmin(np.abs(scales - 1.0)))
-    shifted_energies = energies - energies[eq_idx]
+    #eq_idx = int(np.argmin(np.abs(scales - 1.0)))
+    #shifted_energies = energies - energies[eq_idx]
+    shifted_energies = energies - energies[-1]  # Shift by the last energy value (largest volume)
 
     return volumes, shifted_energies, pressures, scales
 
@@ -127,8 +128,8 @@ def compute_structure_metrics(
     if volumes.size < 3:
         return None
 
-    energy_gradient = np.gradient(shifted_energies, volumes)
-    energy_curvature = np.gradient(energy_gradient, volumes)
+    energy_gradient = np.gradient(shifted_energies, scales)
+    energy_curvature = np.gradient(energy_gradient, scales)
 
     # Energy minima: find peaks in inverted energy
     minima = 0
@@ -139,11 +140,25 @@ def compute_structure_metrics(
             width=1,
         )
         minima = len(minima_indices)
+        
+        minima_indices, _ = find_peaks(
+            -shifted_energies,
+            prominence=0.1,
+            width=1,
+        )
+        deep_minima = len(minima_indices)
+        
+    # Is there a hole present or not
+    relative_Es = shifted_energies - shifted_energies[-1]  # Relative to the largest volume energy
+    holes = 0
+    if np.any(relative_Es < -100):  # If any energy is 100 eV/atom lower than the largest volume energy, we safely consider it a hole
+       holes = 1
 
     inflections = count_sign_changes(energy_curvature, tol=0.01)
 
     # Pressure sign flips
     pressure_flips = count_sign_changes(pressures, tol=1e-4)
+    big_pressure_flips = count_sign_changes(pressures, tol=1)
 
     # Spearman correlations in compressed and expanded regimes
     spearman_compression = np.nan
@@ -151,21 +166,19 @@ def compute_structure_metrics(
 
     try:
         from scipy import stats
+        
+        #NOTE: this isn't perfect, minimum will be in the wrong place if holes are present
+        #BUT for models without holes, this is another way of finding spurious minima
+        eq_idx = np.argmin(shifted_energies)
 
-        eq_idx = int(np.argmin(shifted_energies))
-
-        # Compressed regime: volumes smaller than equilibrium
-        # Energy should increase as volume decreases (positive correlation
-        # between energy and volume in the compressed region means energy
-        # rises when volume shrinks — but since volumes are sorted ascending,
-        # the compressed side has *lower* volumes with *higher* energies).
+        # Compressed regime
         if volumes[:eq_idx].size > 2:
             spearman_compression = float(
                 stats.spearmanr(
                     volumes[: eq_idx + 1], shifted_energies[: eq_idx + 1]
                 ).statistic
             )
-        # Expanded regime: volumes larger than equilibrium
+        # Expanded regime
         if volumes[eq_idx:].size > 2:
             spearman_expansion = float(
                 stats.spearmanr(
@@ -176,11 +189,14 @@ def compute_structure_metrics(
         pass
 
     return {
+        "Holes": float(holes),
         "Energy minima": float(minima),
-        "Energy inflections": float(inflections),
+        "Deep Energy minima": float(deep_minima),
+        #"Energy inflections": float(inflections),
+        "Big Pressure sign flips": float(big_pressure_flips),
         "Pressure sign flips": float(pressure_flips),
-        "ρ(E, compression)": float(spearman_compression),
-        "ρ(E, expansion)": float(spearman_expansion),
+        "ρ(-E,Vsmall)": -float(spearman_compression),
+        "ρ(E,Vlarge)": float(spearman_expansion),
     }
 
 
@@ -207,6 +223,7 @@ def aggregate_model_metrics(
 
     for _struct, struct_dataframe in model_dataframe.groupby("structure"):
         metrics = compute_structure_metrics(struct_dataframe)
+        print(f"Computed metrics for structure {_struct}: {metrics}")
         if metrics is None:
             continue
         structure_metrics.append(metrics)
