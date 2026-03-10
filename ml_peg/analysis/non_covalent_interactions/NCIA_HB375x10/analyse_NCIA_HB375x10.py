@@ -12,14 +12,19 @@ from ml_peg.analysis.utils.decorators import (
     build_table,
     plot_density_scatter,
 )
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    mae,
+    write_density_trajectories,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NCIA_HB375x10" / "outputs"
@@ -100,6 +105,7 @@ def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict
         Mapping of model names to density-plot payloads.
     """
     ref_vals = interaction_energies["ref"]
+    label_list = labels()
     density_inputs: dict[str, dict] = {}
     for model_name in MODELS:
         preds = interaction_energies.get(model_name, [])
@@ -108,6 +114,14 @@ def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict
             "pred": preds,
             "meta": {"system_count": len([val for val in preds if val is not None])},
         }
+        write_density_trajectories(
+            labels_list=label_list,
+            ref_vals=ref_vals,
+            pred_vals=preds,
+            struct_dir=OUT_PATH / model_name,
+            traj_dir=OUT_PATH / model_name / "density_traj",
+            struct_filename_builder=lambda label: f"{label}.xyz",
+        )
     return density_inputs
 
 
@@ -139,7 +153,7 @@ def get_mae(interaction_energies) -> dict[str, float]:
     filename=OUT_PATH / "ncia_hb375x10_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
