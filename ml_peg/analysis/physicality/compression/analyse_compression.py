@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from pathlib import Path
 
+from ase.formula import Formula
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 from scipy.signal import find_peaks
 
@@ -21,6 +24,106 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "compression" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "compression"
 CURVE_PATH = OUT_PATH / "curves"
+FIGURE_PATH = OUT_PATH / "figures"
+
+# Palette for overlaid structure curves
+_PALETTE = [
+    "royalblue", "firebrick", "seagreen", "darkorange", "mediumpurple",
+    "deeppink", "teal", "goldenrod", "slategray", "crimson",
+]
+
+# Symlog scaling parameters
+LINEAR_FRAC: float = 0.6
+LINTHRESH_ENERGY: float = 10.0  # eV/atom
+SYMLOG_DECADES: int = 5
+
+DEFAULT_WEIGHTS = {"Holes": 1.0, "Energy minima": 0.1, "Deep Energy minima": 1.0, "Energy inflections": 0.1, "Big Pressure sign flips": 1.0, "Pressure sign flips": 0.1, "ρ(-E,Vsmall)": 1.0, "ρ(E,Vlarge)": 0.1}
+
+
+def _symlog(
+    values: list[float] | np.ndarray,
+    linthresh: float = LINTHRESH_ENERGY,
+    linear_frac: float = LINEAR_FRAC,
+    decades: int = SYMLOG_DECADES,
+) -> list[float]:
+    """Apply a symmetric-log transform to *values*.
+
+    Linear within ``[-linthresh, linthresh]``, logarithmic outside.
+    The linear region is scaled so that it occupies *linear_frac* of the
+    total axis range (assuming *decades* log decades on each side).
+
+    Parameters
+    ----------
+    values
+        Raw data values.
+    linthresh
+        Linear threshold.
+    linear_frac
+        Fraction of the full axis height reserved for the linear region.
+    decades
+        Number of log decades shown on each side.
+
+    Returns
+    -------
+    list[float]
+        Transformed values.
+    """
+    lin_half = linear_frac / 2.0
+    log_scale = (1.0 - linear_frac) / (2.0 * max(decades, 1))
+
+    arr = np.asarray(values, dtype=float)
+    out = np.where(
+        np.abs(arr) <= linthresh,
+        lin_half * arr / linthresh,
+        np.sign(arr)
+        * (lin_half + log_scale * np.log10(np.abs(arr) / linthresh)),
+    )
+    return out.tolist()
+
+
+def _symlog_ticks(
+    linthresh: float = LINTHRESH_ENERGY,
+    decades: int = SYMLOG_DECADES,
+    linear_frac: float = LINEAR_FRAC,
+) -> tuple[list[float], list[str]]:
+    """Generate tick positions and labels for a symlog axis.
+
+    Parameters
+    ----------
+    linthresh
+        Linear threshold matching ``_symlog``.
+    decades
+        Number of decades to show on each side of zero.
+    linear_frac
+        Must match the value passed to ``_symlog``.
+
+    Returns
+    -------
+    tuple[list[float], list[str]]
+        Tick values (in transformed space) and their display labels.
+    """
+    ticks_val: list[float] = []
+    ticks_txt: list[str] = []
+
+    kw = {"linthresh": linthresh, "linear_frac": linear_frac, "decades": decades}
+
+    # Negative decades
+    for d in range(decades, 0, -1):
+        raw = -(linthresh * 10**d)
+        ticks_val.append(_symlog([raw], **kw)[0])
+        ticks_txt.append(f"{raw:.0e}")
+    # Linear region
+    for v in [-linthresh, -linthresh / 2, 0, linthresh / 2, linthresh]:
+        ticks_val.append(_symlog([v], **kw)[0])
+        ticks_txt.append(f"{v:g}")
+    # Positive decades
+    for d in range(1, decades + 1):
+        raw = linthresh * 10**d
+        ticks_val.append(_symlog([raw], **kw)[0])
+        ticks_txt.append(f"{raw:.0e}")
+
+    return ticks_val, ticks_txt
+
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
@@ -307,9 +410,109 @@ def _write_curve_payloads(
             json.dump(payload, fh)
 
 
+def _chemical_formula_from_label(label: str) -> str:
+    """Convert a structure label to its reduced chemical formula.
+
+    Parameters
+    ----------
+    label
+        Structure label such as ``"C2H4_pyxtal_0"`` or ``"C_bcc"``.
+
+    Returns
+    -------
+    str
+        Reduced formula, e.g. ``"CH2"`` or ``"C"``.
+    """
+    formula_str = label.split("_")[0]
+    f = Formula(formula_str)
+    return str(f.reduce()[0])
+
+
+def _build_formula_figures(
+    model_name: str, frame: pd.DataFrame
+) -> None:
+    """Build and save an energy-vs-scale scatter figure for each formula.
+
+    All structures that share the same reduced chemical formula are overlaid
+    on a single figure.  Figures are written to
+    ``FIGURE_PATH / model_name / {formula}.json``.
+
+    Parameters
+    ----------
+    model_name
+        Model identifier.
+    frame
+        Dataframe with columns *structure*, *scale*, *energy_per_atom*
+        (at minimum) for this model.
+    """
+    model_fig_dir = FIGURE_PATH / model_name
+    model_fig_dir.mkdir(parents=True, exist_ok=True)
+
+    # Group structure labels by reduced formula
+    formula_groups: dict[str, list[str]] = defaultdict(list)
+    for struct_label in frame["structure"].unique():
+        formula = _chemical_formula_from_label(str(struct_label))
+        formula_groups[formula].append(str(struct_label))
+
+    # Pre-compute symlog ticks
+    tick_vals, tick_text = _symlog_ticks(
+        LINTHRESH_ENERGY, decades=SYMLOG_DECADES, linear_frac=LINEAR_FRAC,
+    )
+
+    for formula, struct_labels in formula_groups.items():
+        fig = go.Figure()
+        y_plot_range = [0,0]
+        for idx, struct_label in enumerate(sorted(struct_labels)):
+            group = (
+                frame[frame["structure"] == struct_label]
+                .sort_values("volume_per_atom")
+                .drop_duplicates("volume_per_atom")
+            )
+            scales = group["scale"].tolist()
+            energies = group["energy_per_atom"].tolist()
+            if not scales or not energies:
+                continue
+
+            color = _PALETTE[idx % len(_PALETTE)]
+            fig.add_trace(
+                go.Scatter(
+                    x=scales,
+                    y=_symlog(energies),
+                    mode="lines",
+                    name=struct_label,
+                    line={"color": color},
+                    marker={"size": 5, "color": color},
+                    customdata=energies,
+                    hovertemplate=(
+                        "scale: %{x:.3f}<br>"
+                        "E/atom: %{customdata:.4f} eV<extra></extra>"
+                    ),
+                )
+            )
+            y_plot_range[0] = min(y_plot_range[0], min(_symlog(energies)))
+            y_plot_range[1] = max(y_plot_range[1], max(_symlog(energies)))
+        
+        default_range = [max(tick_vals[0], y_plot_range[0]), min(tick_vals[-1], y_plot_range[1])]
+        fig.update_layout(
+            title=f"{model_name} — {formula}",
+            xaxis_title="Scale factor",
+            yaxis_title="Energy per atom (eV, symlog)",
+            yaxis={
+                "tickvals": tick_vals,
+                "ticktext": tick_text,
+                "range": default_range,
+            },
+            height=500,
+            showlegend=True,
+            template="plotly_white",
+        )
+
+        fig.write_json(model_fig_dir / f"{formula}.json")
+
+
 def persist_compression_data() -> dict[str, pd.DataFrame]:
     """
-    Persist curve payloads and return per-model dataframes.
+    Persist curve payloads, build figures, and return per-model dataframes.
 
     Returns
     -------
@@ -318,9 +521,11 @@ def persist_compression_data() -> dict[str, pd.DataFrame]:
     """
     data = _load_structure_data()
     CURVE_PATH.mkdir(parents=True, exist_ok=True)
+    FIGURE_PATH.mkdir(parents=True, exist_ok=True)
     for model_name, frame in data.items():
         if frame is not None and not frame.empty:
             _write_curve_payloads(CURVE_PATH, model_name, frame)
+            _build_formula_figures(model_name, frame)
     return data
 
 
@@ -419,7 +624,7 @@ def compression_metrics_dataframe(
     filename=OUT_PATH / "compression_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    weights=None,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     compression_metrics_dataframe: pd.DataFrame,
