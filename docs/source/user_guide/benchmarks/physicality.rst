@@ -135,3 +135,63 @@ Data availability
 -----------------
 
 None required; diatomics are generated in ASE.
+
+
+Compression
+=========
+
+Summary
+-------
+This benchmark is a many-body analogue to the diatomics benchmark.
+Single element crystal structures are generated using common prototypes, namely (sc, bcc, fcc, hcp and diamond).
+Further structures are randomly generated, subject to minimum distance constraints, using pxtal.
+The final structures are then isotropically scaled such that min(d_ij/(r_i + r_j)) = 1.0,
+where d_ij is the distance between atoms i and j, and r_i and r_j are the covalent radii of the respective atoms.
+A linear grid of scale factors containing 100 points is generated from 0.25 to 3.0.
+The structures are then scaled (scale factor applied to all cell vectors) and the energy and pressure are calculated.
+The resulting energies and projected forces are analysed for unphysical oscillations and "holes".
+
+Metrics
+-------
+
+1. Pressure sign flips and Big Pressure sign flips
+
+   Analogous to force flips in the diatomics benchmark, this metric counts the number of times the isotropic pressure changes sign.
+   Pressure sign flips uses a tolerance of 0.001 GPa whilst Big Pressure sign flips uses a tolerance of 1 GPa, to avoid counting noise-induced flips.
+   Whilst it is plausible that some, very contrived, configurations should show multiple sign flips in the pressure curve almost all materials should show 1.
+
+
+2. Energy minima and Deep Energy minima
+
+   Mean count of distinct minima in the energy-scale factor profile. Local minima are
+   found from the second derivative using tolerance of 1meV/atom and 100 meV/atom for Energy minima and Deep Energy minima respectively.
+
+
+3. Holes
+
+   A "hole" is defined as a point on the energy-scale factor curve where the energy is less than the energy at the equilibrium scale factor by more than 100 eV/atom.
+   This is a crude and "cautious" definition, with the idea of flagging catestrophic model failures only.
+
+4. :math:`\rho(-E, V_{\text{small}})`
+
+   Spearman correlation between scale factor and minus energy for :math:`scale < scale(E_{\min})` (i.e. the compressed side of the curve).
+   A perfect curve should show a strong positive correlation, so a value of +1, indicating that as the structure is compressed, the energy increases.
+   As above, this assumes a single minimum in the energy-scale factor curve, which is the case for almost all materials.
+   This metric will be polluted in models containing holes.
+
+5. :math:`\rho(E, V_{\text{large}})`
+
+   Spearman correlation between scale factor and energy for :math:`scale > scale(E_{\min})` (i.e. the expanded side of the curve).
+   A perfect curve should show a strong positive correlation, so a value of +1, indicating that as the structure is expanded, the energy increases.
+   As above, this assumes a single minimum in the energy-scale factor curve, which is the case for almost all materials.
+   This metric will be polluted in models containing holes.
+
+Computational cost
+------------------
+
+High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
+
+Data availability
+-----------------
+
+None required; prototype structures are generated in ASE and random structures are generated using pxtal.

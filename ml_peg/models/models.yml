@@ -66,7 +66,7 @@ mace-matpes-r2scan:
 orb-v3-consv-inf-omat:
   module: orb_models.forcefield
   class_name: OrbCalc
-  device: "auto"
+  device: "cpu"
   default_dtype: float32-high
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -173,7 +173,7 @@ orb-v3-consv-inf-omat:
 pet-mad:
   module: pet_mad.calculator
   class_name: PETMADCalculator
-  device: "auto"
+  device: "cpu"
   default_dtype: float32
   trained_on_dispersion: false
   level_of_theory: PBEsol
