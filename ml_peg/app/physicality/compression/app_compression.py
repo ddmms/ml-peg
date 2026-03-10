@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
@@ -21,8 +19,7 @@ BENCHMARK_NAME = "Compression"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "compression"
 FIGURE_PATH = DATA_PATH / "figures"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
-    "physicality.html#compression"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#compression"
 )
 
 
@@ -61,6 +58,19 @@ class CompressionApp(BaseApp):
             Input(model_dropdown_id, "value"),
         )
         def _update_composition_options(model_name: str):
+            """
+            Update composition dropdown options based on selected model.
+
+            Parameters
+            ----------
+            model_name
+                Currently selected model identifier.
+
+            Returns
+            -------
+            tuple
+                Dropdown options list and default value.
+            """
             if not model_name:
                 raise PreventUpdate
             formulas = _available_formulas(model_name)
@@ -74,7 +84,21 @@ class CompressionApp(BaseApp):
             Input(composition_dropdown_id, "value"),
         )
         def _update_figure(model_name: str, composition: str | None):
-            """Load pre-built energy-per-atom vs scale factor figure."""
+            """
+            Load pre-built energy-per-atom vs scale factor figure.
+
+            Parameters
+            ----------
+            model_name
+                Currently selected model identifier.
+            composition
+                Reduced chemical formula for the composition group.
+
+            Returns
+            -------
+            Figure
+                Plotly figure loaded from the pre-built JSON file.
+            """
             if not model_name or not composition:
                 raise PreventUpdate
 
@@ -131,8 +155,10 @@ def get_app() -> CompressionApp:
     return CompressionApp(
         name=BENCHMARK_NAME,
         description=(
-            "A handful of common prototype (and randomly generated via pyxtal) structures are isotropically scaled across a wide range. "
-            "A scale factor of 1.0 means that a pair of atoms in the structure is separated by the sum of their covalent radii. "
+            "A handful of common prototype (and randomly generated via pyxtal)"
+            "structures are isotropically scaled across a wide range."
+            "A scale factor of 1.0 means that a pair of atoms in the"
+            "structure is separated by the sum of their covalent radii. "
             "e.g. min(d_ij/(r_cov_i + r_cov_j)) = 1.0."
         ),
         docs_url=DOCS_URL,

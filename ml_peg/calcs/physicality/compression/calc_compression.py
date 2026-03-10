@@ -5,24 +5,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import itertools
-
-from ase import Atoms
+from ase import Atoms, units
 from ase.build import bulk, make_supercell
-from ase.data import covalent_radii, atomic_numbers
-from ase.io import read as ase_read, write
-from ase.formula import Formula
-from ase import units
+from ase.data import atomic_numbers, covalent_radii
+from ase.io import read as ase_read
+from ase.io import write
 import numpy as np
 import pandas as pd
 import pytest
-from tqdm import tqdm
+from pyxtal.tolerance import Tol_matrix
+import tqdm
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
-
-import pyxtal #used for generating random crystal structures
-from pyxtal.tolerance import Tol_matrix
 
 MODELS = load_models(current_models)
 
@@ -35,13 +30,36 @@ DATA_PATH = Path(__file__).parent / "data"
 # A factor of 1.0 corresponds to the equilibrium structure.
 MIN_SCALE = 0.25
 MAX_SCALE = 3.0
-N_POINTS = 20
+N_POINTS = 100
 
-#ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-ELEMENTS: list[str] = ["H", "C", "N", "O"]  # limit to common elements for testing
-PROTOTYPES: list[str] = ["sc", "bcc","fcc", "hcp", "diamond"]  # common crystal prototypes
+# ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
+ELEMENTS: list[str] = [
+    "H",
+    "C",
+    "N",
+    "O",
+    "Ti",
+    "Cu",
+    "Cl",
+    "P",
+    "W",
+    "Rb",
+    "Xe",
+]  # limit to common elements for testing
+PROTOTYPES: list[str] = [
+    "sc",
+    "bcc",
+    "fcc",
+    "hcp",
+    "diamond",
+]  # common crystal prototypes
 MAX_ATOMS_PER_CELL = 6  # limit to small cells for testing
-RANDOM_STRUCTURES: list[dict[str, int]] = [[1, len(ELEMENTS), 5], [2, 5, 10]]  # [[Number of elements, number of compositions, repeats per composition], ...]
+RANDOM_STRUCTURES: list[dict[str, int]] = [
+    [1, len(ELEMENTS), 5],
+    [2, 10, 10],
+    [3, 10, 10],
+]  # [[Number of elements, number of compositions, repeats per composition], ...]
+
 
 def _scale_grid(
     min_scale: float,
@@ -100,7 +118,9 @@ def _scale_using_isotropic_guess(atoms: Atoms) -> Atoms:
     np.fill_diagonal(distances, np.inf)
 
     # Build a matrix of target bond lengths (sum of covalent radii per pair)
-    radii = np.array([covalent_radii[atomic_numbers[s]] for s in sc.get_chemical_symbols()])
+    radii = np.array(
+        [covalent_radii[atomic_numbers[s]] for s in sc.get_chemical_symbols()]
+    )
     target_matrix = radii[:, None] + radii[None, :]
 
     # Mask infinite entries (self-distances)
@@ -160,8 +180,12 @@ def _generate_prototype_structures(
                 atoms = bulk(element, crystalstructure=proto, a=1.0)
                 atoms = _scale_using_isotropic_guess(atoms)
 
-                assert np.all(atoms.pbc), f"Generated non-periodic structure for {label}"
-                assert atoms.get_volume() > 0.0, f"Generated zero-volume structure for {label}"
+                assert np.all(atoms.pbc), (
+                    f"Generated non-periodic structure for {label}"
+                )
+                assert atoms.get_volume() > 0.0, (
+                    f"Generated zero-volume structure for {label}"
+                )
 
                 structures[label] = atoms
             except (ValueError, KeyError, RuntimeError) as exc:
@@ -198,6 +222,9 @@ def _gen_random_structure(
         random seed is generated automatically.
     max_attempts
         Maximum number of space-group attempts before giving up.
+    volume_factor
+        Volume factor used when generating random structures.
+        Smaller factors will results in denser structures.
 
     Returns
     -------
@@ -211,7 +238,7 @@ def _gen_random_structure(
     RuntimeError
         If no valid structure could be generated within *max_attempts*.
     """
-    from pyxtal import pyxtal as PyXtal
+    from pyxtal import pyxtal as pyxtal_cls
 
     rng = np.random.default_rng(seed)
 
@@ -221,8 +248,11 @@ def _gen_random_structure(
     # If a specific space group was requested, try it first
     sg_candidates: list[int] = []
     if space_group is not None:
-        #sg_candidates.append(space_group)
-        sg_candidates = [space_group] * max_attempts  # try the same one repeatedly to allow for randomness in the structure generation
+        # sg_candidates.append(space_group)
+        sg_candidates = [
+            space_group
+        ] * max_attempts  # try the same one repeatedly to allow for
+        # randomness in the structure generation
 
     # Fill remaining attempts with random space groups
     while len(sg_candidates) < max_attempts:
@@ -230,7 +260,7 @@ def _gen_random_structure(
 
     custom_tol = Tol_matrix(prototype="atomic", factor=1.0)
     for sg in sg_candidates:
-        crystal = PyXtal()
+        crystal = pyxtal_cls()
         crystal.from_random(
             dim=dim,
             group=sg,
@@ -238,8 +268,8 @@ def _gen_random_structure(
             numIons=num_atoms,
             random_state=int(rng.integers(0, 2**31)),
             tm=custom_tol,
-            max_count=100000,
-            factor=volume_factor
+            max_count=1000,
+            factor=volume_factor,
         )
         if not crystal.valid:
             continue
@@ -248,7 +278,7 @@ def _gen_random_structure(
         atoms.pbc = True
         atoms = _scale_using_isotropic_guess(atoms)
 
-        return atoms
+        return atoms  # noqa: RET504
         # except Exception:
         #     continue
 
@@ -264,7 +294,9 @@ def _composition_label(composition: dict[str, int]) -> str:
 
     Elements are sorted alphabetically and counts are appended only when
     greater than one (e.g. ``{"C": 1, "O": 2}`` → ``"C-O2"``).
-    elements split by "-" to avoid confusion with the underscore used for separating the composition from the rest of the label (e.g. "C-O2_pyxtal_0")
+    Elements are split by ``"-"`` to avoid confusion with the
+    underscore used for separating the composition from the rest
+    of the label (e.g. ``"C-O2_pyxtal_0"``).
 
     Parameters
     ----------
@@ -342,11 +374,16 @@ def _generate_all_random(
         max_comp_attempts = n_compositions * 50  # safety limit
         attempts = 0
 
-        while len(generated_compositions) < n_compositions and attempts < max_comp_attempts:
+        while (
+            len(generated_compositions) < n_compositions
+            and attempts < max_comp_attempts
+        ):
             attempts += 1
             if n_elements == 1:
-                #pick the element which occurs least frequently in the already generated compositions to increase diversity
-                elem_counts = {elem: 0 for elem in elements}
+                # Pick the element which occurs least frequently
+                # in the already generated compositions to
+                # increase diversity.
+                elem_counts = dict.fromkeys(elements, 0)
                 for comp in generated_compositions:
                     for elem in comp:
                         elem_counts[elem] += comp[elem]
@@ -357,36 +394,44 @@ def _generate_all_random(
                     rng.choice(elements, size=n_elements, replace=False).tolist()
                 )
             # Random atom counts that sum to at most max_atoms (each >= 1)
-            counts = rng.integers(1, max(2, max_atoms - n_elements + 2), size=n_elements)
+            counts = rng.integers(
+                1, max(2, max_atoms - n_elements + 2), size=n_elements
+            )
             if len(counts) == 1:
-                counts = np.random.choice(range(max_atoms//2, max_atoms + 1), size=1)  # for single element, just pick a random count between max_atoms//2 and max_atoms
-            
+                counts = np.random.choice(
+                    range(max_atoms // 2, max_atoms + 1), size=1
+                )  # for single element, pick a random count
+                # between max_atoms//2 and max_atoms
+
             # Clip total to max_atoms
             total = int(counts.sum())
             if total > max_atoms:
                 counts = (counts * max_atoms / total).astype(int)
                 counts = np.maximum(counts, 1)
-            
 
-            composition = dict(zip(chosen_elements, counts.tolist()))
+            composition = dict(zip(chosen_elements, counts.tolist(), strict=True))
             label = _composition_label(composition)
             if label not in seen_labels:
                 seen_labels.add(label)
                 generated_compositions.append(composition)
-        
-        print(f"Generated {len(generated_compositions)} unique compositions with {n_elements} elements: {generated_compositions}")
+
+        print(
+            f"Generated {len(generated_compositions)} unique "
+            f"compositions with {n_elements} elements: "
+            f"{generated_compositions}"
+        )
         # Generate structures for each composition
-        for composition in generated_compositions:
-            #comp_label = _composition_label(composition)
+        for composition in tqdm.tqdm(generated_compositions):
+            # comp_label = _composition_label(composition)
             for i in range(repeats):
-                #struct_label = f"{comp_label}_pyxtal_{i}"
+                # struct_label = f"{comp_label}_pyxtal_{i}"
                 try:
                     atoms = _gen_random_structure(
                         composition,
                         seed=int(rng.integers(0, 2**31)),
                         space_group=1,  # random space group
                     )
-                    
+
                     struct_label = f"{atoms.get_chemical_formula()}_pyxtal_{i}"
                     atoms.info["label"] = struct_label
                     structures[struct_label] = atoms
@@ -507,7 +552,6 @@ def run_compression(model_name: str, model) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_dir = write_dir / "compression"
     traj_dir.mkdir(parents=True, exist_ok=True)
-    
 
     reference_structures = _collect_structures(ELEMENTS, PROTOTYPES, DATA_PATH)
     if not reference_structures:
@@ -520,7 +564,7 @@ def run_compression(model_name: str, model) -> None:
 
     scales = _scale_grid(MIN_SCALE, MAX_SCALE, N_POINTS)
 
-    for struct_label, ref_atoms in tqdm(
+    for struct_label, ref_atoms in tqdm.tqdm(
         reference_structures.items(),
         desc=f"{model_name} compression",
         unit="struct",
@@ -550,7 +594,9 @@ def run_compression(model_name: str, model) -> None:
                 # Stress tensor (Voigt notation, eV/Å³)
                 try:
                     stress_voigt = atoms.get_stress(voigt=False)
-                    pressure = -1/3 * np.trace(stress_voigt)/units.GPa  # hydrostatic pressure
+                    pressure = (
+                        -1 / 3 * np.trace(stress_voigt) / units.GPa
+                    )  # hydrostatic pressure
                 except Exception:
                     stress_voigt = np.zeros(6)
                     pressure = np.nan
@@ -628,9 +674,11 @@ def test_compression(model_name: str) -> None:
 
 
 if __name__ == "__main__":
-    # generate the random structures and save to data directory 
+    # generate the random structures and save to data directory
     # this only needs to be done once
-    # code included here so that the structures can be easily regenerated in the same way if needed, or more can be created etc.
+    # code included here so that the structures can be easily
+    # regenerated in the same way if needed, or more can be
+    # created etc.
     _generate_all_random(
         RANDOM_STRUCTURES,
         ELEMENTS,

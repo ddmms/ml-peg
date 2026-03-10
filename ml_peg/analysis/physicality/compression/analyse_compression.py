@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections import defaultdict
+import json
 from pathlib import Path
 
 from ase.formula import Formula
@@ -28,16 +28,32 @@ FIGURE_PATH = OUT_PATH / "figures"
 
 # Palette for overlaid structure curves
 _PALETTE = [
-    "royalblue", "firebrick", "seagreen", "darkorange", "mediumpurple",
-    "deeppink", "teal", "goldenrod", "slategray", "crimson",
+    "royalblue",
+    "firebrick",
+    "seagreen",
+    "darkorange",
+    "mediumpurple",
+    "deeppink",
+    "teal",
+    "goldenrod",
+    "slategray",
+    "crimson",
 ]
 
 # Symlog scaling parameters
 LINEAR_FRAC: float = 0.6
 LINTHRESH_ENERGY: float = 10.0  # eV/atom
 SYMLOG_DECADES: int = 5
-
-DEFAULT_WEIGHTS = {"Holes": 1.0, "Energy minima": 0.1, "Deep Energy minima": 1.0, "Energy inflections": 0.1, "Big Pressure sign flips": 1.0, "Pressure sign flips": 0.1, "ρ(-E,Vsmall)": 1.0, "ρ(E,Vlarge)": 0.1}
+DEFAULT_WEIGHTS = {
+    "Holes": 1.0,
+    "Energy minima": 0.1,
+    "Deep Energy minima": 1.0,
+    "Energy inflections": 0.1,
+    "Big Pressure sign flips": 1.0,
+    "Pressure sign flips": 0.1,
+    "ρ(-E,Vsmall)": 1.0,
+    "ρ(E,Vlarge)": 0.1,
+}
 
 
 def _symlog(
@@ -46,7 +62,8 @@ def _symlog(
     linear_frac: float = LINEAR_FRAC,
     decades: int = SYMLOG_DECADES,
 ) -> list[float]:
-    """Apply a symmetric-log transform to *values*.
+    """
+    Apply a symmetric-log transform to *values*.
 
     Linear within ``[-linthresh, linthresh]``, logarithmic outside.
     The linear region is scaled so that it occupies *linear_frac* of the
@@ -75,8 +92,7 @@ def _symlog(
     out = np.where(
         np.abs(arr) <= linthresh,
         lin_half * arr / linthresh,
-        np.sign(arr)
-        * (lin_half + log_scale * np.log10(np.abs(arr) / linthresh)),
+        np.sign(arr) * (lin_half + log_scale * np.log10(np.abs(arr) / linthresh)),
     )
     return out.tolist()
 
@@ -86,7 +102,8 @@ def _symlog_ticks(
     decades: int = SYMLOG_DECADES,
     linear_frac: float = LINEAR_FRAC,
 ) -> tuple[list[float], list[str]]:
-    """Generate tick positions and labels for a symlog axis.
+    """
+    Generate tick positions and labels for a symlog axis.
 
     Parameters
     ----------
@@ -178,9 +195,11 @@ def prepare_structure_series(
     scales = df_sorted["scale"].to_numpy()
 
     # Shift energies so the equilibrium value (scale closest to 1.0) is zero
-    #eq_idx = int(np.argmin(np.abs(scales - 1.0)))
-    #shifted_energies = energies - energies[eq_idx]
-    shifted_energies = energies - energies[-1]  # Shift by the last energy value (largest volume)
+    # eq_idx = int(np.argmin(np.abs(scales - 1.0)))
+    # shifted_energies = energies - energies[eq_idx]
+    shifted_energies = (
+        energies - energies[-1]
+    )  # Shift by the last energy value (largest volume)
 
     return volumes, shifted_energies, pressures, scales
 
@@ -231,9 +250,6 @@ def compute_structure_metrics(
     if volumes.size < 3:
         return None
 
-    energy_gradient = np.gradient(shifted_energies, scales)
-    energy_curvature = np.gradient(energy_gradient, scales)
-
     # Energy minima: find peaks in inverted energy
     minima = 0
     if shifted_energies.size >= 3:
@@ -243,21 +259,22 @@ def compute_structure_metrics(
             width=1,
         )
         minima = len(minima_indices)
-        
+
         minima_indices, _ = find_peaks(
             -shifted_energies,
             prominence=0.1,
             width=1,
         )
         deep_minima = len(minima_indices)
-        
-    # Is there a hole present or not
-    relative_Es = shifted_energies - shifted_energies[-1]  # Relative to the largest volume energy
-    holes = 0
-    if np.any(relative_Es < -100):  # If any energy is 100 eV/atom lower than the largest volume energy, we safely consider it a hole
-       holes = 1
 
-    inflections = count_sign_changes(energy_curvature, tol=0.01)
+    # Is there a hole present or not
+    # Relative to the largest volume energy
+    relative_energies = shifted_energies - shifted_energies[-1]
+    holes = 0
+    # If any energy is 100 eV/atom lower than the largest volume
+    # energy, we safely consider it a hole
+    if np.any(relative_energies < -100):
+        holes = 1
 
     # Pressure sign flips
     pressure_flips = count_sign_changes(pressures, tol=1e-4)
@@ -269,9 +286,11 @@ def compute_structure_metrics(
 
     try:
         from scipy import stats
-        
-        #NOTE: this isn't perfect, minimum will be in the wrong place if holes are present
-        #BUT for models without holes, this is another way of finding spurious minima
+
+        # NOTE: this isn't perfect, minimum will be in the
+        # wrong place if holes are present.
+        # BUT for models without holes, this is another way
+        # of finding spurious minima.
         eq_idx = np.argmin(shifted_energies)
 
         # Compressed regime
@@ -284,9 +303,7 @@ def compute_structure_metrics(
         # Expanded regime
         if volumes[eq_idx:].size > 2:
             spearman_expansion = float(
-                stats.spearmanr(
-                    volumes[eq_idx:], shifted_energies[eq_idx:]
-                ).statistic
+                stats.spearmanr(volumes[eq_idx:], shifted_energies[eq_idx:]).statistic
             )
     except Exception:
         pass
@@ -295,7 +312,7 @@ def compute_structure_metrics(
         "Holes": float(holes),
         "Energy minima": float(minima),
         "Deep Energy minima": float(deep_minima),
-        #"Energy inflections": float(inflections),
+        # "Energy inflections": float(inflections),
         "Big Pressure sign flips": float(big_pressure_flips),
         "Pressure sign flips": float(pressure_flips),
         "ρ(-E,Vsmall)": -float(spearman_compression),
@@ -326,7 +343,6 @@ def aggregate_model_metrics(
 
     for _struct, struct_dataframe in model_dataframe.groupby("structure"):
         metrics = compute_structure_metrics(struct_dataframe)
-        print(f"Computed metrics for structure {_struct}: {metrics}")
         if metrics is None:
             continue
         structure_metrics.append(metrics)
@@ -335,9 +351,7 @@ def aggregate_model_metrics(
         return {}
 
     return {
-        key: float(
-            np.nanmean([m.get(key, np.nan) for m in structure_metrics])
-        )
+        key: float(np.nanmean([m.get(key, np.nan) for m in structure_metrics]))
         for key in DEFAULT_THRESHOLDS.keys()
     }
 
@@ -411,7 +425,8 @@ def _write_curve_payloads(
 
 
 def _chemical_formula_from_label(label: str) -> str:
-    """Convert a structure label to its reduced chemical formula.
+    """
+    Convert a structure label to its reduced chemical formula.
 
     Parameters
     ----------
@@ -428,10 +443,9 @@ def _chemical_formula_from_label(label: str) -> str:
     return str(f.reduce()[0])
 
 
-def _build_formula_figures(
-    model_name: str, frame: pd.DataFrame
-) -> None:
-    """Build and save an energy-vs-scale scatter figure for each formula.
+def _build_formula_figures(model_name: str, frame: pd.DataFrame) -> None:
+    """
+    Build and save an energy-vs-scale scatter figure for each formula.
 
     All structures that share the same reduced chemical formula are overlaid
     on a single figure.  Figures are written to
@@ -456,12 +470,14 @@ def _build_formula_figures(
 
     # Pre-compute symlog ticks
     tick_vals, tick_text = _symlog_ticks(
-        LINTHRESH_ENERGY, decades=SYMLOG_DECADES, linear_frac=LINEAR_FRAC,
+        LINTHRESH_ENERGY,
+        decades=SYMLOG_DECADES,
+        linear_frac=LINEAR_FRAC,
     )
 
     for formula, struct_labels in formula_groups.items():
         fig = go.Figure()
-        y_plot_range = [0,0]
+        y_plot_range = [0, 0]
         for idx, struct_label in enumerate(sorted(struct_labels)):
             group = (
                 frame[frame["structure"] == struct_label]
@@ -484,15 +500,21 @@ def _build_formula_figures(
                     marker={"size": 5, "color": color},
                     customdata=energies,
                     hovertemplate=(
-                        "scale: %{x:.3f}<br>"
-                        "E/atom: %{customdata:.4f} eV<extra></extra>"
+                        "scale: %{x:.3f}<br>E/atom: %{customdata:.4f} eV<extra></extra>"
                     ),
                 )
             )
             y_plot_range[0] = min(y_plot_range[0], min(_symlog(energies)))
             y_plot_range[1] = max(y_plot_range[1], max(_symlog(energies)))
-        
-        default_range = [max(tick_vals[0], y_plot_range[0]), min(tick_vals[-1], y_plot_range[1])]
+
+        default_range = [
+            max(tick_vals[0], y_plot_range[0]),
+            min(tick_vals[-1], y_plot_range[1]),
+        ]
+
+        default_range[0] -= abs(default_range[0]) * 0.1
+        default_range[1] += abs(default_range[1]) * 0.1
+
         fig.update_layout(
             title=f"{model_name} — {formula}",
             xaxis_title="Scale factor",
@@ -565,9 +587,7 @@ def collect_metrics(
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
-    data = (
-        structure_data if structure_data is not None else persist_compression_data()
-    )
+    data = structure_data if structure_data is not None else persist_compression_data()
 
     for model_name, model_dataframe in data.items():
         metrics = aggregate_model_metrics(model_dataframe)
