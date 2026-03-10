@@ -26,7 +26,6 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
-EV_TO_KCAL = 1 / KCAL_TO_EV
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -80,6 +79,7 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
         raw_energies = structure_data["dft_energy_profile"]
         ref_min_conformer_idx = raw_energies.index(min(raw_energies))
         ref_energies = get_relative_energies(raw_energies, ref_min_conformer_idx)
+        ref_energies *= KCAL_TO_EV
 
         for i, conf_positions in enumerate(structure_data["conformer_coordinates"]):
             conf_atoms = Atoms(
