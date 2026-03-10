@@ -277,7 +277,7 @@ def compute_structure_metrics(
         holes = 1
 
     # Pressure sign flips
-    pressure_flips = count_sign_changes(pressures, tol=1e-4)
+    pressure_flips = count_sign_changes(pressures, tol=1e-3)
     big_pressure_flips = count_sign_changes(pressures, tol=1)
 
     # Spearman correlations in compressed and expanded regimes
