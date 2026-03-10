@@ -93,7 +93,13 @@ def _load_curves_for_formula(
 
 
 # Fraction of the y-axis occupied by the linear region (±linthresh).
-LINEAR_FRAC: float = 0.8
+LINEAR_FRAC: float = 0.6
+
+# Separate linear thresholds for energy and pressure symlog axes
+LINTHRESH_ENERGY: float = 10.0   # eV/atom
+LINTHRESH_PRESSURE: float = 100.0  # GPa
+
+# Conversion factor: 1 eV/ų = 160.21766 GPa
 
 
 def _symlog(
@@ -172,7 +178,7 @@ def _symlog_ticks(
         ticks_val.append(_symlog([raw], **kw)[0])
         ticks_txt.append(f"{raw:.0e}")
     # Linear region
-    for v in [-linthresh, 0, linthresh]:
+    for v in [-linthresh, -linthresh / 2, 0, linthresh / 2, linthresh]:
         ticks_val.append(_symlog([v], **kw)[0])
         ticks_txt.append(f"{v:g}")
     # Positive decades
@@ -256,10 +262,12 @@ class CompressionApp(BaseApp):
             if not curves:
                 raise PreventUpdate
 
-            linthresh = 10.0
             decades = 4
-            tick_vals, tick_text = _symlog_ticks(
-                linthresh, decades=decades, linear_frac=LINEAR_FRAC,
+            e_tick_vals, e_tick_text = _symlog_ticks(
+                LINTHRESH_ENERGY, decades=decades, linear_frac=LINEAR_FRAC,
+            )
+            p_tick_vals, p_tick_text = _symlog_ticks(
+                LINTHRESH_PRESSURE, decades=decades, linear_frac=LINEAR_FRAC,
             )
 
             fig = make_subplots(
@@ -287,7 +295,7 @@ class CompressionApp(BaseApp):
                 fig.add_trace(
                     go.Scatter(
                         x=scales,
-                        y=_symlog(energies, linthresh, LINEAR_FRAC, decades),
+                        y=_symlog(energies, LINTHRESH_ENERGY, LINEAR_FRAC, decades),
                         mode="lines+markers",
                         name=f"E — {short_label}",
                         line={"color": color},
@@ -307,7 +315,7 @@ class CompressionApp(BaseApp):
                     fig.add_trace(
                         go.Scatter(
                             x=scales,
-                            y=_symlog(pressures, linthresh, LINEAR_FRAC, decades),
+                            y=_symlog(pressures, LINTHRESH_PRESSURE, LINEAR_FRAC, decades),
                             mode="lines+markers",
                             name=f"P — {short_label}",
                             line={"color": color},
@@ -317,7 +325,7 @@ class CompressionApp(BaseApp):
                             customdata=pressures,
                             hovertemplate=(
                                 "scale: %{x:.3f}<br>"
-                                "P: %{customdata:.4f} eV/ų<extra></extra>"
+                                "P: %{customdata:.2f} GPa<extra></extra>"
                             ),
                         ),
                         row=2,
@@ -326,15 +334,15 @@ class CompressionApp(BaseApp):
 
             # Apply symlog tick formatting to both y-axes
             fig.update_yaxes(
-                tickvals=tick_vals,
-                ticktext=tick_text,
+                tickvals=e_tick_vals,
+                ticktext=e_tick_text,
                 title_text="Energy per atom (eV, symlog)",
                 row=1, col=1,
             )
             fig.update_yaxes(
-                tickvals=tick_vals,
-                ticktext=tick_text,
-                title_text="Pressure (eV/ų, symlog)",
+                tickvals=p_tick_vals,
+                ticktext=p_tick_text,
+                title_text="Pressure (GPa, symlog)",
                 row=2, col=1,
             )
             fig.update_xaxes(title_text="Scale factor", row=2, col=1)
