@@ -5,8 +5,18 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from dash import Input, Output, State, callback, ctx
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -794,3 +804,176 @@ def register_normalization_callbacks(
                 entry = cleaned_thresholds[metric]
                 return entry.get("good"), entry.get("bad")
             raise PreventUpdate
+
+
+def register_download_callbacks(table_id: str) -> None:
+    """
+    Register minimal table download callbacks for CSV, PNG, and SVG.
+
+    Parameters
+    ----------
+    table_id
+        ID of table to export.
+    """
+
+    @callback(
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
+        Input(f"{table_id}-download-button", "n_clicks"),
+        State(f"{table_id}-download-format", "value"),
+        State(table_id, "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+    )
+    def download_table(
+        n_clicks: int,
+        download_format: str,
+        table_data: list[dict] | None,
+        columns: list[dict] | None,
+    ) -> tuple[dict | Any, dict | Any]:
+        """
+        Dispatch table download request.
+
+        Parameters
+        ----------
+        n_clicks
+            Number of clicks on the download button.
+        download_format
+            Requested format, one of ``csv``, ``png``, or ``svg``.
+        table_data
+            Currently visible table rows.
+        columns
+            Current table column metadata.
+
+        Returns
+        -------
+        tuple[dict | Any, dict | Any]
+            Pair of payloads for ``download`` and ``download-request`` stores.
+            For CSV, the first item is a Dash download payload and the second is
+            ``no_update``. For PNG/SVG, the first item is ``no_update`` and the
+            second item is the client-side capture request.
+        """
+        if not n_clicks or not columns:
+            raise PreventUpdate
+
+        fmt = (download_format or "csv").lower()
+        filename_base = table_id.replace("_", "-")
+        column_ids = [col["id"] for col in columns if isinstance(col.get("id"), str)]
+        export_cols = [col for col in column_ids if col != "id"]
+
+        if fmt == "csv":
+            if table_data:
+                frame = pd.DataFrame(table_data)
+                frame = frame.reindex(columns=export_cols)
+            else:
+                frame = pd.DataFrame(columns=export_cols)
+            return (
+                dcc.send_data_frame(
+                    frame.to_csv,
+                    filename=f"{filename_base}.csv",
+                    index=False,
+                ),
+                no_update,
+            )
+
+        if fmt in {"png", "svg"}:
+            return (
+                no_update,
+                {
+                    "element_id": table_id,
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                },
+            )
+
+        raise PreventUpdate
+
+    clientside_callback(
+        """
+        function(request) {
+            const dash = window.dash_clientside;
+            const noUpdate = dash ? dash.no_update : null;
+            if (!request) {
+                return noUpdate;
+            }
+
+            const tableNode = document.getElementById(request.element_id);
+            if (!tableNode) {
+                return noUpdate;
+            }
+
+            const source =
+                "https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js";
+            const ensureLib = () => {
+                if (window.htmlToImage) {
+                    return Promise.resolve(window.htmlToImage);
+                }
+                if (window._mlpegHtmlToImagePromise) {
+                    return window._mlpegHtmlToImagePromise;
+                }
+                window._mlpegHtmlToImagePromise = new Promise((resolve, reject) => {
+                    const script = document.createElement("script");
+                    script.src = source;
+                    script.async = true;
+                    script.onload = () => resolve(window.htmlToImage);
+                    script.onerror = () =>
+                        reject(new Error("Failed to load html-to-image"));
+                    document.head.appendChild(script);
+                });
+                return window._mlpegHtmlToImagePromise;
+            };
+
+            const fmt = (request.format || "png").toLowerCase();
+            const filename = request.filename || `table.${fmt}`;
+            const basePixelRatio = window.devicePixelRatio || 1;
+            const options = {
+                cacheBust: true,
+                pixelRatio:
+                    fmt === "png"
+                        ? Math.max(3, basePixelRatio * 1.5)
+                        : basePixelRatio,
+                backgroundColor: "#ffffff",
+            };
+
+            return ensureLib()
+                .then((htmlToImage) => {
+                    if (!htmlToImage) {
+                        throw new Error("html-to-image unavailable");
+                    }
+                    if (fmt === "svg") {
+                        return htmlToImage.toSvg(tableNode, options);
+                    }
+                    return htmlToImage.toPng(tableNode, options);
+                })
+                .then((dataUrl) => {
+                    const parts = String(dataUrl || "").split(",");
+                    if (parts.length < 2) {
+                        return noUpdate;
+                    }
+
+                    if (fmt === "svg") {
+                        const content = decodeURIComponent(parts.slice(1).join(","));
+                        return {
+                            content: content,
+                            filename: filename,
+                            type: "image/svg+xml",
+                        };
+                    }
+
+                    return {
+                        base64: true,
+                        content: parts.slice(1).join(","),
+                        filename: filename,
+                        type: "image/png",
+                    };
+                })
+                .catch((error) => {
+                    console.error("Table export failed", error);
+                    return noUpdate;
+                });
+        }
+        """,
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )

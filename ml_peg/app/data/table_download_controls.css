@@ -1,0 +1,57 @@
+#all-tabs,
+#all-tabs[role="tablist"],
+#all-tabs [role="tablist"] {
+  height: auto;
+  overflow: visible;
+}
+
+#all-tabs[role="tablist"],
+#all-tabs [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: stretch;
+}
+
+#all-tabs[role="tab"],
+#all-tabs [role="tab"],
+#all-tabs .tab,
+#all-tabs .tab--selected {
+  white-space: normal;
+  line-height: 1.2;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.table-download-format .Select {
+  min-height: 22px;
+  height: 22px;
+}
+
+.table-download-format .Select-control {
+  min-height: 22px;
+  height: 22px;
+}
+
+.table-download-format .Select-placeholder,
+.table-download-format .Select--single > .Select-control .Select-value {
+  line-height: 20px;
+}
+
+.table-download-format .Select-input {
+  height: 20px;
+}
+
+.table-download-format .Select-input > input {
+  line-height: 20px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.table-download-format .Select-arrow-zone {
+  padding-top: 0;
+  padding-bottom: 0;
+}

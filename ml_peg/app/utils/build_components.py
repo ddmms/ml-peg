@@ -8,7 +8,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Store
+from dash.dcc import Checklist, Download, Dropdown, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -17,6 +17,7 @@ import yaml
 from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
+    register_download_callbacks,
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_weight_callbacks,
@@ -132,6 +133,8 @@ def build_weight_components(
     table: DataTable,
     *,
     use_thresholds: bool = False,
+    include_download_controls: bool = True,
+    download_anchor: str = "center",
     include_store: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
@@ -149,6 +152,10 @@ def build_weight_components(
         Whether this table also exposes normalization thresholds. When True,
         weight callbacks will reuse the raw-data store and normalization store to
         recompute Scores consistently.
+    include_download_controls
+        Whether to render download controls inside this component.
+    download_anchor
+        Position of download controls when rendered. One of `"center"` or `"top"`.
     include_store
         Whether to include this table's weight ``dcc.Store`` in the returned
         component. Set to ``False`` when that store is already created elsewhere,
@@ -268,7 +275,8 @@ def build_weight_components(
             "columnGap": "0px",
             "rowGap": "4px",
             "marginTop": "-5px",
-            "padding": "2px 0px",
+            "padding": "2px 4px",
+            "paddingRight": "130px" if include_download_controls else "4px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
             if header == "Metric Weights"
@@ -280,7 +288,19 @@ def build_weight_components(
         },
     )
 
-    layout = [container]
+    panel_children: list[Component] = [container]
+    if include_download_controls:
+        panel_children.insert(
+            0,
+            build_download_controls(table.id, anchor=download_anchor),
+        )
+
+    panel = Div(
+        panel_children,
+        style={"position": "relative"} if include_download_controls else None,
+    )
+
+    layout = [panel]
     if include_store:
         layout.append(
             Store(
@@ -320,7 +340,84 @@ def build_weight_components(
             default_weights=getattr(table, "weights", None),
         )
 
+    register_download_callbacks(table.id)
+
     return Div(layout)
+
+
+def build_download_controls(table_id: str, anchor: str = "center") -> Div:
+    """
+    Build minimal table download controls.
+
+    Parameters
+    ----------
+    table_id
+        ID of the table to export.
+    anchor
+        Vertical anchor for controls: `"center"` or `"top"`.
+
+    Returns
+    -------
+    Div
+        Download controls and target components.
+    """
+    if anchor == "top":
+        top_style = {
+            "top": "10px",
+            "transform": "none",
+        }
+    else:
+        top_style = {
+            "top": "50%",
+            "transform": "translateY(-50%)",
+        }
+
+    return Div(
+        [
+            Dropdown(
+                id=f"{table_id}-download-format",
+                className="table-download-format",
+                options=[
+                    {"label": "CSV", "value": "csv"},
+                    {"label": "PNG", "value": "png"},
+                    {"label": "SVG", "value": "svg"},
+                ],
+                value="csv",
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "72px",
+                    "fontSize": "11px",
+                },
+            ),
+            Button(
+                "Download",
+                id=f"{table_id}-download-button",
+                n_clicks=0,
+                style={
+                    "width": "72px",
+                    "padding": "5px 8px",
+                    "fontSize": "11px",
+                    "borderRadius": "4px",
+                    "border": "1px solid #6c757d",
+                    "backgroundColor": "#ffffff",
+                    "cursor": "pointer",
+                },
+            ),
+            Download(id=f"{table_id}-download"),
+            Store(id=f"{table_id}-download-request", storage_type="memory"),
+        ],
+        style={
+            "position": "absolute",
+            "right": "12px",
+            "zIndex": "10",
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "flex-end",
+            "gap": "6px",
+            **top_style,
+        },
+    )
 
 
 def build_faqs() -> Div:
@@ -676,39 +773,41 @@ def build_test_layout(
         )
     )
 
-    if thresholds is None:
-        raise ValueError("Threshold metadata must be provided for benchmark layouts.")
-
-    reserved = {"MLIP", "Score", "id"}
-    metric_columns = [
-        col["id"] for col in table.columns if col.get("id") not in reserved
-    ]
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-raw-data-store",
-            storage_type="session",
-            data=table.data,
+    # Inline normalization thresholds when metadata is supplied
+    threshold_controls = None
+    if thresholds is not None:
+        reserved = {"MLIP", "Score", "id"}
+        metric_columns = [
+            col["id"] for col in table.columns if col.get("id") not in reserved
+        ]
+        layout_contents.append(
+            Store(
+                id=f"{table.id}-raw-data-store",
+                storage_type="session",
+                data=table.data,
+            )
         )
-    )
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-raw-tooltip-store",
-            storage_type="session",
-            data=table.tooltip_header,
+        layout_contents.append(
+            Store(
+                id=f"{table.id}-raw-tooltip-store",
+                storage_type="session",
+                data=table.tooltip_header,
+            )
         )
-    )
-    threshold_controls = build_threshold_inputs(
-        table_columns=metric_columns,
-        thresholds=thresholds,
-        table_id=table.id,
-        column_widths=column_widths,
-    )
+        threshold_controls = build_threshold_inputs(
+            table_columns=metric_columns,
+            thresholds=thresholds,
+            table_id=table.id,
+            column_widths=column_widths,
+        )
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
         header="Metric Weights",
         table=table,
-        use_thresholds=True,
+        use_thresholds=thresholds is not None,
+        include_download_controls=thresholds is None,
+        download_anchor="top",
         column_widths=column_widths,
         thresholds=thresholds,
     )
@@ -716,21 +815,27 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    controls_visual = Div(
-        [
-            Div(threshold_controls, style={"marginBottom": "0px"}),
-            Div(metric_weights, style={"marginTop": "0"}),
-        ],
-        style={
-            "backgroundColor": "#f8f9fa",
-            "border": "1px solid #dee2e6",
-            "borderRadius": "6px",
-            "padding": "0px 0px 0px 0px",  # top right bottom left
-            "marginTop": "-5px",
-            "boxSizing": "border-box",
-            "width": "100%",
-        },
-    )
+    if thresholds is not None:
+        controls_visual = Div(
+            [
+                build_download_controls(table.id, anchor="top"),
+                Div(threshold_controls, style={"marginBottom": "0px"}),
+                Div(metric_weights, style={"marginTop": "0"}),
+            ],
+            style={
+                "position": "relative",
+                "backgroundColor": "#f8f9fa",
+                "border": "1px solid #dee2e6",
+                "borderRadius": "6px",
+                "padding": "0px 0px 0px 0px",  # top right bottom left
+                "paddingRight": "130px",
+                "marginTop": "-5px",
+                "boxSizing": "border-box",
+                "width": "100%",
+            },
+        )
+    else:
+        controls_visual = metric_weights
 
     table_section = [Div(table), Br(), controls_visual]
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
