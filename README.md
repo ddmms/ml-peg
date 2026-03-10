@@ -67,7 +67,8 @@ for information about contributing new benchmarks and models.
 
 ### Tutorials
 
-The Jupyter Notebook tutorials introduce new devlopers to the ML-PEG framework, providing detailed step-by-step guides:
+We encourage developers new to the ML-PEG framework to work through the detailed
+step-by-step guides provided by our Jupyter Notebook tutorials:
 - [Adding a New Benchmark](docs/source/tutorials/python/adding_benchmark.ipynb) [![badge](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ddmms/ml-peg/blob/main/docs/source/tutorials/python/adding_benchmark.ipynb)
 
 
