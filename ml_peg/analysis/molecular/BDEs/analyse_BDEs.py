@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 from scipy import stats
@@ -310,6 +310,46 @@ def _compute_bde_errors(bdes: dict) -> dict[str, float]:
     }
 
 
+def _save_struct_files(xyz_suffix: str) -> None:
+    """
+    Save individual radical XYZ files for app visualisation.
+
+    Writes one file per BDE data point (one per radical) in the same order
+    as ``_load_bdes``, so that scatter-point indices map to structure files.
+    Saves for every model that has the relevant output file.
+
+    Parameters
+    ----------
+    xyz_suffix
+        Suffix of the xyz filename, e.g. ``"dft_opt"`` or ``"mlff_opt"``.
+    """
+    xyz_filename = f"cytochrome_p450_substrates.{xyz_suffix}.xyz"
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            continue
+        xyz_files = sorted(model_dir.glob(xyz_filename))
+        if not xyz_files:
+            continue
+
+        struct_dir = OUT_PATH / model_name / xyz_suffix
+        struct_dir.mkdir(parents=True, exist_ok=True)
+
+        for xyz_file in xyz_files:
+            all_atoms = read(xyz_file, index=":")
+            compound_dict = into_dict_of_labels(all_atoms, key="compound")
+            compound_dict.pop("isolated_atom", None)
+
+            idx = 0
+            for compound_atoms in compound_dict.values():
+                mol_rad_dict = into_dict_of_labels(compound_atoms, "mol_or_rad")
+                if "rad" not in mol_rad_dict:
+                    continue
+                for rad in mol_rad_dict["rad"]:
+                    write(struct_dir / f"{idx}.xyz", rad)
+                    idx += 1
+
+
 def _compute_rank_correlations(ranks: dict, labels: list) -> dict[str, float]:
     """
     Compute mean Kendall's tau rank correlation against reference ranks.
@@ -371,7 +411,9 @@ def dft_geometry_bdes() -> dict[str, list]:
         Dictionary of reference and predicted BDEs and labels of the
         compound for the corresponding BDE.
     """
-    return _load_bdes("dft_opt", _COMPOUND_LABELS)
+    result = _load_bdes("dft_opt", _COMPOUND_LABELS)
+    _save_struct_files("dft_opt")
+    return result
 
 
 @pytest.fixture
@@ -466,7 +508,9 @@ def mlff_geometry_bdes() -> dict[str, list]:
         Dictionary of reference and predicted BDEs and labels of the
         compound for the corresponding BDE.
     """
-    return _load_bdes("mlff_opt", _MLFF_COMPOUND_LABELS)
+    result = _load_bdes("mlff_opt", _MLFF_COMPOUND_LABELS)
+    _save_struct_files("mlff_opt")
+    return result
 
 
 @pytest.fixture
