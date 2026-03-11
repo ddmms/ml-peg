@@ -49,7 +49,7 @@ def get_rdf_results(
     results = {salt: [] for salt in IRON_SALTS}
 
     model_calc_path = CALC_PATH / model
-    
+
     for salt in IRON_SALTS:
         rdf_file = model_calc_path / f"O-Fe_{salt}_{model}.rdf"
 
