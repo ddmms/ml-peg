@@ -138,10 +138,10 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     # Download data
     data_path = (
         download_s3_data(
-            filename="Liquid_Densities.zip",
-            key="inputs/molecular_dynamics/Liquid_Densities/Liquid_Densities.zip",
+            filename="liquid_densities.zip",
+            key="inputs/molecular_dynamics/liquid_densities/liquid_densities.zip",
         )
-        / "Liquid_Densities"
+        / "liquid_densities"
     )
 
     # Get system name
