@@ -29,7 +29,6 @@ KCAL_TO_EV = units.kcal / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 AU_TO_G_CM3 = 1e24 / units.mol
-G_CM3_TO_AU = 1 / AU_TO_G_CM3
 NUM_MD_STEPS = 2
 TIMESTEP = 1 * units.fs
 LOG_INTERVAL = 100
