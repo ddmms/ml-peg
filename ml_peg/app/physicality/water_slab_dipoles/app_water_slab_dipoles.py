@@ -8,10 +8,7 @@ from dash.html import Div
 from ml_peg.analysis.utils.utils import build_d3_name_map
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_cell,
-    #    struct_from_scatter,
-)
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
