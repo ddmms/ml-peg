@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dash import Input, Output, callback
+from dash import Dash, Input, Output, callback
 from dash.html import Div, Iframe
 
 from ml_peg.app import APP_ROOT
@@ -225,3 +225,16 @@ def get_app() -> BDEsApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
+
+
+if __name__ == "__main__":
+    # Create Dash app
+    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
+
+    # Construct layout and register callbacks
+    bdes_app = get_app()
+    full_app.layout = bdes_app.layout
+    bdes_app.register_callbacks()
+
+    # Run app
+    full_app.run(port=8055, debug=True)
