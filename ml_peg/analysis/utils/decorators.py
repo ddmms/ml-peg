@@ -499,13 +499,6 @@ def plot_hist(
             """
             results = func(*args, **kwargs)
 
-            # hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
-            # customdata = []
-            # if hoverdata:
-            #    for i, key in enumerate(hoverdata):
-            #        hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
-            #    customdata = list(zip(*hoverdata.values(), strict=True))
-
             fig = go.Figure()
             data_all = []
             for model_name, hist_data in results.items():
