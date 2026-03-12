@@ -134,6 +134,10 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     system_id
         Identifier of the system to run MD on.
     """
+    assert system_id in range(0, 63), (
+        "system_id out of range. Please use a value from 0 to 62"
+    )
+
     # Download data
     data_path = (
         download_s3_data(
