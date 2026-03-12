@@ -22,8 +22,8 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
-INTERVAL_PS = 1
-EQUILIB_TIME_PS = 2
+INTERVAL_PS = 0.1
+EQUILIB_TIME_PS = 500
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "water_density" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "water_density"
