@@ -29,9 +29,9 @@ KCAL_TO_EV = units.kcal / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 AU_TO_G_CM3 = 1e24 / units.mol
-NUM_MD_STEPS = 2
+NUM_MD_STEPS = 21
 TIMESTEP = 1 * units.fs
-LOG_INTERVAL = 100
+LOG_INTERVAL = 10
 ATM = 1.01325 * units.bar
 
 
@@ -147,23 +147,25 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     input_xyz_path = sorted((data_path / "equilibrated_structures_xyz").glob("*.xyz"))[
         system_id
     ]
-    system_name = input_xyz_path.stem
-    OUT_PATH.mkdir(exist_ok=True, parents=True)
 
-    logging.basicConfig(
-        format="%(message)s",
-        level=logging.INFO,
-        filename=OUT_PATH / f"{system_name}.log",
-        filemode="a",
-        force=True,
-    )
     model_name, model = mlip
-    # Use double precision
     model.default_dtype = "float32"
     calc = model.get_calculator()
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
+    system_name = input_xyz_path.stem
+    out_dir = OUT_PATH / model_name
+    out_dir.mkdir(exist_ok=True, parents=True)
+
+    logging.basicConfig(
+        format="%(message)s",
+        level=logging.INFO,
+        filename=out_dir / f"{system_name}.log",
+        filemode="a",
+        force=True,
+    )
+
     atoms = read(input_xyz_path)
-    output_fname = OUT_PATH / f"{system_name}.traj"
+    output_fname = out_dir / f"{system_name}.traj"
     run_npt(atoms, calc, output_fname)
