@@ -51,7 +51,7 @@ def evaluate_bde_structures(
         evaluating energies and forces.
     """
     model.default_dtype = "float64"
-    model.d3_kwargs["dtype"] = "float64"
+    model.dispersion_kwargs["dtype"] = "float64"
     calc = model.get_calculator()
     calc = model.add_d3_calculator(calc)
 
