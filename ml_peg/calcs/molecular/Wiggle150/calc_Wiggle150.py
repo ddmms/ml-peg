@@ -185,6 +185,8 @@ def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     # Add D3 calculator for this test

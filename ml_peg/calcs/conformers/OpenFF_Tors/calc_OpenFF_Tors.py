@@ -38,7 +38,11 @@ def test_openff_tors(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -47,10 +51,7 @@ def test_openff_tors(mlip: tuple[str, Any]) -> None:
         )
         / "OpenFF-Tors"
     )
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
+
     with open(data_path / "MP2_heavy-aug-cc-pVTZ_torsiondrive_data.json") as file:
         data = json.load(file)
 

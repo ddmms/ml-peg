@@ -103,7 +103,11 @@ def test_glucose205(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -114,11 +118,6 @@ def test_glucose205(mlip: tuple[str, Any]) -> None:
     )
 
     ref_energies = get_ref_energies(data_path)
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
-
     lowest_conf_label = "alpha_002"
 
     conf_lowest = get_atoms(

@@ -37,7 +37,11 @@ def test_37conf8_conformer_energies(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -50,9 +54,6 @@ def test_37conf8_conformer_energies(mlip: tuple[str, Any]) -> None:
     df = pd.read_excel(
         data_path / "37Conf8_data.xlsx", sheet_name="Rel_Energy_SP", header=2
     )
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)

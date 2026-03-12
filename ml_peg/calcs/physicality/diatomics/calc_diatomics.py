@@ -171,6 +171,9 @@ def run_diatomics(model_name: str, model) -> None:
                     [element1, element2],
                     positions=[(0.0, 0.0, 0.0), (0.0, 0.0, float(distance))],
                 )
+                # Set default charge and spin
+                atoms.info.setdefault("charge", 0)
+                atoms.info.setdefault("spin", 1)
 
                 atoms.calc = calc
                 energy = float(atoms.get_potential_energy())
