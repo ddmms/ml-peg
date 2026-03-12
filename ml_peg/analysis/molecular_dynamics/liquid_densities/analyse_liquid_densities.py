@@ -2,40 +2,32 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from ase import Atoms, units
-from ase.data import atomic_numbers
-from ase.io import write
+from ase.io import Trajectory, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
+INTERVAL_PS = 0.1
+EQUILIB_TIME_PS = 500
+
+CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "liquid_densities" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "liquid_densities"
-AU_TO_G_CM3 = 1e24 / units.mol
-G_CM3_TO_AU = 1 / AU_TO_G_CM3
+
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
-)
-
-DATA_PATH = (
-    download_s3_data(
-        filename="liquid_densities.zip",
-        key="inputs/molecular_dynamics/liquid_densities/liquid_densities.zip",
-    )
-    / "liquid_densities"
 )
 
 
@@ -48,34 +40,36 @@ def labels() -> list:
     list
         List of all system names.
     """
-    with open(DATA_PATH / "liquid_densities.json") as f:
-        data = json.load(f)
-    return list(data.keys())
+    for model_name in MODELS:
+        return [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
+    return []
 
 
-def get_atoms(fname):
+def compute_density(fname, density_col=13):
     """
-    Get atoms from the json file.
+    Compute average density from NPT log file.
 
     Parameters
     ----------
     fname
-        Path to the json file.
+        Path to the log file.
+    density_col
+        Which column the density numbers are in.
 
     Returns
     -------
-    atoms
-        ASE atoms object of the starting system.
+    float
+        Average density in g/cm3.
     """
-    with open(fname) as file:
-        data = json.load(file)
-    numbers = np.array([atomic_numbers[symbol] for symbol in data["elements"]])
-    positions = np.array(data["coordinates"])
-    cell = np.array(data["lattice"]).reshape(3, 3)
-    atoms = Atoms(numbers=numbers, positions=positions)
-    atoms.set_cell(cell)
-    atoms.set_pbc(True)
-    return atoms
+    density_series = []
+    with open(fname) as lines:
+        for line in lines:
+            items = line.strip().split()
+            if len(items) != 15:
+                continue
+            density_series.append(float(items[13]))
+    skip_frames = int(EQUILIB_TIME_PS / INTERVAL_PS)
+    return np.mean(density_series[skip_frames:])
 
 
 @pytest.fixture
@@ -102,16 +96,13 @@ def liquid_densities() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in labels():
-            atoms = get_atoms(
-                DATA_PATH / f"equilibrated_structures/{label.replace(',', '_')}.json"
+            atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
+
+            results[model_name].append(
+                compute_density(CALC_PATH / model_name / f"{label}.log")
             )
-            with open(DATA_PATH / "liquid_densities.json") as f:
-                data = json.load(f)
-                atoms.info["ref_density"] = data[label]["experiment"]
-                atoms.info["model_density"] = data[label][model_name]
-                results[model_name].append(data[label][model_name])
-                if not ref_stored:
-                    results["ref"].append(data[label]["experiment"])
+            if not ref_stored:
+                results["ref"].append(atoms.info["exp_density"])
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
