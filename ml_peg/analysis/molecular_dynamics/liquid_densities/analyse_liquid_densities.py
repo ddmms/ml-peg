@@ -94,7 +94,7 @@ def liquid_densities() -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Dictionary of all reference and predicted energies.
+        Dictionary of all reference and predicted densities.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
@@ -120,17 +120,17 @@ def liquid_densities() -> dict[str, list]:
 @pytest.fixture
 def get_mae(liquid_densities) -> dict[str, float]:
     """
-    Get mean absolute error for conformer energies.
+    Get mean absolute error for liquid densities.
 
     Parameters
     ----------
     liquid_densities
-        Dictionary of reference and predicted conformer energies.
+        Dictionary of reference and predicted liquid densities.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted conformer energies errors for all models.
+        Dictionary of predicted liquid densities errors for all models.
     """
     results = {}
     for model_name in MODELS:
