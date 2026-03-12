@@ -9,16 +9,21 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
-INTERVAL_PS = 0.1
+
+LOG_INTERVAL_PS = 0.1
 EQUILIB_TIME_PS = 500
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "liquid_densities" / "outputs"
@@ -41,8 +46,8 @@ def labels() -> list:
         List of all system names.
     """
     for model_name in MODELS:
-        return [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    return []
+        labels = [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
+    return labels
 
 
 def compute_density(fname, density_col=13):
@@ -68,7 +73,7 @@ def compute_density(fname, density_col=13):
             if len(items) != 15:
                 continue
             density_series.append(float(items[13]))
-    skip_frames = int(EQUILIB_TIME_PS / INTERVAL_PS)
+    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
     return np.mean(density_series[skip_frames:])
 
 
