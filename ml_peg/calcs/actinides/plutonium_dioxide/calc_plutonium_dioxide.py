@@ -33,17 +33,13 @@ def test_puo2_parity(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
 
-    # puo2_data_dir = (
-    # Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    # / "puo2_data")
-
     # Download data.
     puo2_data_dir = (
         download_s3_data(
-            key="inputs/actinides/plutonium_dioxide/puo2.zip",
-            filename="puo2_data.zip",
+            key="inputs/actinides/plutonium_dioxide/plutonium_dioxide.zip",
+            filename="plutonium_dioxide.zip",
         )
-        / "puo2_data"
+        / "plutonium_dioxide"
     )
 
     ref_file = puo2_data_dir / "dft_ref_data.xyz"
