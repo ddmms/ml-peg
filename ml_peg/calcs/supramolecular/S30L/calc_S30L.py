@@ -226,6 +226,8 @@ class S30LBenchmark(zntrack.Node):
 
     def run(self):
         """Run S30L benchmark calculations."""
+        # Use double precision
+        self.model.default_dtype = "float64"
         calc = self.model.get_calculator()
 
         # Add D3 calculator for this test
