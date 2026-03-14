@@ -40,9 +40,13 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
-    # Read in data and attach calculator
+    # Download data
     data_path = (
         download_s3_data(
             filename="CYCLO70.zip",
@@ -50,10 +54,6 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
         )
         / "CYCLO70"
     )
-
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     with open(data_path / "dlpno-ccsdt-34.dat") as lines:
         # Skip header

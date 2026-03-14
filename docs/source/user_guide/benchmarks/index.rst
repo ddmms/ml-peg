@@ -15,3 +15,5 @@ Benchmarks
     lanthanides
     non_covalent_interactions
     electrolytes
+    tm_complexes
+    conformers

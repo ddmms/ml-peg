@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
+from ase.io import read, write
 from matplotlib import cm
 from matplotlib.colors import Colormap
 import numpy as np
@@ -24,31 +26,42 @@ MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
 
 
-def build_d3_name_map(
+def build_dispersion_name_map(
     models: Iterable[str],
     suffix: str = "-D3",
 ) -> dict[str, str]:
     """
-    Return a suffix map for models requiring runtime D3 corrections.
+    Return a suffix map for models requiring runtime dispersion corrections.
 
     Parameters
     ----------
     models
         Iterable of model identifiers to inspect.
     suffix
-        String appended to model names that need the D3 indicator.
+        String appended to model names that need the dispersion correction indicator.
+        Defaults to "-D3" for D3 dispersion corrections.
 
     Returns
     -------
     dict[str, str]
-        Mapping of model -> display name for models not trained with D3 dispersion.
+        Mapping of model -> display name for models not trained with dispersion.
     """
     configs, _ = load_model_configs(tuple(models))
-    return {
-        model: f"{model}{suffix}"
-        for model in models
-        if not configs[model]["trained_on_d3"]
-    }
+    name_map: dict[str, str] = {}
+
+    for model in models:
+        if configs[model]["trained_on_dispersion"]:
+            continue
+        dispersion_kwargs = configs[model].get("dispersion_kwargs") or {}
+        label = dispersion_kwargs.get("label")
+        suffix_to_use = (
+            label.strip() if isinstance(label, str) and label.strip() else suffix
+        )
+        if not suffix_to_use.startswith("-"):
+            suffix_to_use = f"-{suffix_to_use}"
+        name_map[model] = f"{model}{suffix_to_use}"
+
+    return name_map
 
 
 def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
@@ -165,6 +178,83 @@ def rmse(ref: list, prediction: list) -> float:
     return mean_squared_error(ref, prediction)
 
 
+DENSITY_GRID_SIZE = 80
+DENSITY_MAX_POINTS_PER_CELL = 5
+DENSITY_SAMPLE_SEED = 0
+
+
+def sample_density_grid(
+    ref_vals: list[float] | np.ndarray,
+    pred_vals: list[float] | np.ndarray,
+    *,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
+) -> tuple[list[int], list[int], list[list[int]]]:
+    """
+    Sample indices from a density grid, returning density and cell memberships.
+
+    This is the shared implementation used by ``plot_density_scatter`` so the
+    sampling order stays consistent across density-driven artifacts.
+
+    Parameters
+    ----------
+    ref_vals
+        Reference (x-axis) values for all systems, in the same order as the
+        data passed to the density scatter fixture.
+    pred_vals
+        Predicted (y-axis) values, same order as ``ref_vals``.
+    grid_size
+        Number of bins per axis. Must match ``@plot_density_scatter`` default.
+    max_points_per_cell
+        Maximum sampled points per cell. Must match decorator default.
+    seed
+        RNG seed for deterministic sampling. Must match decorator default.
+
+    Returns
+    -------
+    tuple[list[int], list[int], list[list[int]]]
+        ``sampled_indices``: original indices kept in plotting order.
+        ``sampled_density``: density value per sampled index.
+        ``sampled_mapping``: list of source indices for each sampled point.
+    """
+    ref_arr = np.asarray(ref_vals, dtype=float)
+    pred_arr = np.asarray(pred_vals, dtype=float)
+
+    if ref_arr.size == 0 or pred_arr.size == 0:
+        return [], [], []
+
+    delta_x = ref_arr.max() - ref_arr.min()
+    delta_y = pred_arr.max() - pred_arr.min()
+    eps = 1e-9
+
+    norm_x = np.clip((ref_arr - ref_arr.min()) / max(delta_x, eps), 0.0, 0.999999)
+    norm_y = np.clip((pred_arr - pred_arr.min()) / max(delta_y, eps), 0.0, 0.999999)
+    bins_x = (norm_x * grid_size).astype(int)
+    bins_y = (norm_y * grid_size).astype(int)
+
+    cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
+    for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
+        cell_points[(int(cx), int(cy))].append(idx)
+
+    rng = np.random.default_rng(seed)
+    sampled_indices: list[int] = []
+    sampled_density: list[int] = []
+    sampled_mapping: list[list[int]] = []
+    for indices in cell_points.values():
+        if len(indices) > max_points_per_cell:
+            chosen = rng.choice(indices, size=max_points_per_cell, replace=False)
+        else:
+            chosen = indices
+        density = len(indices)
+        for idx in chosen:
+            sampled_indices.append(int(idx))
+            sampled_density.append(density)
+            sampled_mapping.append(indices)
+
+    return sampled_indices, sampled_density, sampled_mapping
+
+
 def build_density_inputs(
     models: list[str],
     model_results: dict[str, dict[str, Any]],
@@ -212,6 +302,61 @@ def build_density_inputs(
         }
 
     return inputs
+
+
+def write_density_trajectories(
+    *,
+    labels_list: list[str],
+    ref_vals: list[float],
+    pred_vals: list[float],
+    struct_dir: Path,
+    traj_dir: Path,
+    struct_filename_builder: Callable[[str], str],
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
+) -> None:
+    """
+    Write one extxyz trajectory per sampled density point for WEAS display.
+
+    Parameters
+    ----------
+    labels_list
+        Ordered system labels matching ``ref_vals``/``pred_vals``.
+    ref_vals
+        Reference values passed to the density scatter.
+    pred_vals
+        Predicted values passed to the density scatter.
+    struct_dir
+        Directory containing per-system structure files.
+    traj_dir
+        Output directory for sampled density trajectories.
+    struct_filename_builder
+        Function to convert each label into the source structure filename.
+    grid_size
+        Number of bins per axis. Must match ``@plot_density_scatter``.
+    max_points_per_cell
+        Maximum sampled points per occupied density cell.
+    seed
+        RNG seed for deterministic sampling.
+    """
+    _, _, sampled_mapping = sample_density_grid(
+        ref_vals,
+        pred_vals,
+        grid_size=grid_size,
+        max_points_per_cell=max_points_per_cell,
+        seed=seed,
+    )
+
+    traj_dir.mkdir(parents=True, exist_ok=True)
+
+    for point_idx, source_indices in enumerate(sampled_mapping):
+        frames = []
+        for source_idx in source_indices:
+            label = labels_list[source_idx]
+            struct_path = struct_dir / struct_filename_builder(label)
+            frames.append(read(struct_path))
+        write(traj_dir / f"{point_idx}.extxyz", frames)
 
 
 def calc_metric_scores(
