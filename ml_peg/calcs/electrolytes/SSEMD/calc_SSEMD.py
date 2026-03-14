@@ -130,15 +130,14 @@ def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
         )
 
         traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
-        md_nvt.attach(function=traj.write, interval=1)
-        # TODO: Implement TQDM progress bar for MD loop
+        md_nvt.attach(function=traj.write, interval=FRAME_FREQUENCY)
 
         md_nvt.run(steps=NSTEPS)
 
         # Read trajectory, skip equilibration frames and subsample
         ase_traj: Atoms | list[Atoms] = io.read(
             filename=str(traj_path), index=f"{N_EQUI_FRAMES}:"
-        )[::FRAME_FREQUENCY]
+        )
 
         # Store metadata on each frame
         for frame in ase_traj:
