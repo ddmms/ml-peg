@@ -359,9 +359,7 @@ def compute_model_rdfs(model_name: str) -> dict[str, dict]:
         system_name = traj_file.stem.removesuffix(f"_{model_name}")
 
         # Read trajectory, skip equilibration and subsample
-        ase_traj = io.read(str(traj_file), index=f"{N_EQUI_FRAMES}:")[
-            ::FRAME_FREQUENCY
-        ]
+        ase_traj = io.read(str(traj_file), index=f"{N_EQUI_FRAMES}:")
 
         # if not ase_traj:
         #     continue
