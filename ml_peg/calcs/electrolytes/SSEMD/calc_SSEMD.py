@@ -86,20 +86,12 @@ def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
     timestep: float = DELTA_T_FS * units.fs
     tdamp: float = 100 * timestep
 
-    # TODO: switch back to S3 download for production
-    # data_dir = (
-    #     download_s3_data(
-    #         key="inputs/electrolytes/SSE/SSEs_data.zip",
-    #         filename="SSEs_data.zip",
-    #     )
-    #     / "SSEs_data"
-    # )
-    from ml_peg.calcs.utils.utils import extract_zip
-
-    scratch_dir: Path = Path(os.getenv("SCRATCH", "."))
-    data_dir: Path = (
-        extract_zip(filename=(scratch_dir / ".cache" / "ml-peg" / "SSEs_data.zip"))
-        / "SSEs_data"
+    data_dir = (
+        download_s3_data(
+            key="inputs/electrolytes/SSE/SSE.zip",
+            filename="SSE.zip",
+        )
+        / "SSE"
     )
 
     # TODO: Check if it is possible to parallelize over systems
