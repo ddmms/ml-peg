@@ -8,6 +8,7 @@ from typing import Any
 
 import ase.io
 import pytest
+from tqdm import tqdm
 import yaml
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -18,8 +19,6 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-
-DATABASE_INFO_SAVED = False
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -57,13 +56,11 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
 
     # save database info for use in analysis
     # (without needing to redownload to get the path)
-    global DATABASE_INFO_SAVED
-    if not DATABASE_INFO_SAVED:
+    database_info_path = OUT_PATH / "database_info.yml"
+    if not database_info_path.exists():
         OUT_PATH.mkdir(parents=True, exist_ok=True)
-        database_info_path = OUT_PATH / "database_info.yml"
         with database_info_path.open("w", encoding="utf-8") as target_fp:
             yaml.safe_dump(database_info, target_fp, sort_keys=False)
-        DATABASE_INFO_SAVED = True
 
     # Calculate energy of single water molecule
     atoms = ase.io.read(structs_dir / "ref_water.xyz", format="extxyz")
@@ -84,7 +81,7 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
             write_file = write_dir / f"{orientation}_{strain}.xyz"
             if os.path.isfile(write_file):
                 os.remove(write_file)
-            for atoms in systems:
+            for atoms in tqdm(systems):
                 atoms.calc = calc
                 mlip_potential_energy = atoms.get_potential_energy()
                 mlip_adsorption_energy = (

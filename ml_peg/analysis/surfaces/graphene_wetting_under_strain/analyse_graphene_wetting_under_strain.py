@@ -7,12 +7,15 @@ from pathlib import Path
 from ase import Atoms
 import ase.io
 import numpy as np
+from plotly.colors import DEFAULT_PLOTLY_COLORS
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pytest
 from scipy.optimize import curve_fit
 import yaml
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -140,6 +143,8 @@ def processed_data() -> dict[str, list]:
     results = {"distances": [], "ref": {}} | {model: {} for model in MODELS}
     ref_stored = False
     dist_stored = False
+    struct_write_dir = OUT_PATH / "structs"
+    struct_write_dir.mkdir(parents=True, exist_ok=True)
 
     for model in MODELS:
         model_dir = CALC_PATH / model
@@ -160,13 +165,17 @@ def processed_data() -> dict[str, list]:
                     "energies": [],
                 }
 
-                struct_write_dir = OUT_PATH / model / "structs"
-                struct_write_dir.mkdir(parents=True, exist_ok=True)
                 systems = ase.io.iread(
                     model_dir / f"{orientation}_{strain}.xyz",
                     index=":",
                     format="extxyz",
                 )
+
+                if not ref_stored:
+                    (struct_write_dir / f"{orientation}_{strain}.xyz").unlink(
+                        missing_ok=True
+                    )
+
                 for atoms in systems:
                     dist = get_molecule_distance(atoms)
                     if not dist_stored:
@@ -179,11 +188,13 @@ def processed_data() -> dict[str, list]:
                         atoms.info["mlip_adsorption_energy"] * 1000.0
                     )
 
-                    ase.io.write(
-                        struct_write_dir / f"{orientation}_{strain}_L{dist:.2f}.xyz",
-                        atoms,
-                        format="xyz",
-                    )
+                    if not ref_stored:
+                        ase.io.write(
+                            struct_write_dir / f"{orientation}_{strain}.xyz",
+                            atoms,
+                            format="xyz",
+                            append=True,
+                        )
 
                 if not ref_stored:
                     results["ref"][orientation][strain]["params"] = (
@@ -197,121 +208,97 @@ def processed_data() -> dict[str, list]:
                     results[model][orientation][strain]["energies"],
                 )
 
-                @plot_scatter(
-                    filename=OUT_PATH / model / f"figure_{orientation}_{strain}.json",
-                    title=f"{orientation} binding energy curve ({strain[1:5]}% strain)",
-                    x_label="Distance / Å",
-                    y_label="Adsorption energy / meV",
-                    show_line=True,
-                )
-                def plot_model_binding_energy_curve(
-                    model, orientation, strain
-                ) -> dict[str, tuple[list[float], list[float]]]:
-                    return {
-                        "ref": (
-                            results["distances"],
-                            results["ref"][orientation][strain]["energies"],
-                        ),
-                        model: (
-                            results["distances"],
-                            results[model][orientation][strain]["energies"],
-                        ),
-                    }
-
-                plot_model_binding_energy_curve(model, orientation, strain)
                 dist_stored = True
 
-        def get_all_hover_data() -> dict[str, list[str]]:
-            hover_data = {"Orientation": [], "Strain": [], "Distance": []}
-            for orientation in ORIENTATIONS:
-                for strain in STRAINS:
-                    for dist in results["distances"]:
-                        hover_data["Orientation"].append(orientation)
-                        hover_data["Strain"].append(strain[1:5] + "%")
-                        hover_data["Distance"].append(f"{dist:.2f} Å")
-            return hover_data
-
-        @plot_parity(
-            filename=OUT_PATH / model / "figure_all_parity.json",
-            title="Adsorption energies",
-            x_label="Predicted adsorption energy / meV",
-            y_label="Reference adsorption energy / meV",
-            hoverdata=get_all_hover_data(),
-        )
-        def plot_model_all_parity(model) -> dict[str, list[float]]:
-            parity_data = {"ref": [], model: []}
-            for orientation in ORIENTATIONS:
-                for strain in STRAINS:
-                    parity_data["ref"].extend(
-                        results["ref"][orientation][strain]["energies"]
-                    )
-                    parity_data[model].extend(
-                        results[model][orientation][strain]["energies"]
-                    )
-            return parity_data
-
-        def get_binding_hover_data() -> dict[str, list[str]]:
-            hover_data = {"Orientation": [], "Strain": []}
-            for orientation in ORIENTATIONS:
-                for strain in STRAINS:
-                    hover_data["Orientation"].append(orientation)
-                    hover_data["Strain"].append(strain[1:5] + "%")
-            return hover_data
-
-        @plot_parity(
-            filename=OUT_PATH / model / "figure_binding_energies_parity.json",
-            title="Binding energies",
-            x_label="Predicted binding energy / meV",
-            y_label="Reference binding energy / meV",
-            hoverdata=get_binding_hover_data(),
-        )
-        def plot_model_binding_energies_parity(model) -> dict[str, list[float]]:
-            parity_data = {"ref": [], model: []}
-            for orientation in ORIENTATIONS:
-                for strain in STRAINS:
-                    parity_data["ref"].append(
-                        results["ref"][orientation][strain]["params"][0]
-                    )
-                    parity_data[model].append(
-                        np.nan_to_num(
-                            results[model][orientation][strain]["params"][0],
-                            nan=-1.0,
-                            posinf=-1.0,
-                            neginf=-1.0,
-                        )
-                    )
-            return parity_data
-
-        @plot_parity(
-            filename=OUT_PATH / model / "figure_binding_lengths_parity.json",
-            title="Binding lengths",
-            x_label="Predicted binding length / Å",
-            y_label="Reference binding length / Å",
-            hoverdata=get_binding_hover_data(),
-        )
-        def plot_model_binding_lengths_parity(model) -> dict[str, list[float]]:
-            parity_data = {"ref": [], model: []}
-            for orientation in ORIENTATIONS:
-                for strain in STRAINS:
-                    parity_data["ref"].append(
-                        results["ref"][orientation][strain]["params"][2]
-                    )
-                    parity_data[model].append(
-                        np.nan_to_num(
-                            results[model][orientation][strain]["params"][2],
-                            nan=-1.0,
-                            posinf=-1.0,
-                            neginf=-1.0,
-                        )
-                    )
-            return parity_data
-
-        plot_model_all_parity(model)
-        plot_model_binding_energies_parity(model)
-        plot_model_binding_lengths_parity(model)
         ref_stored = True
 
     return results
+
+
+@pytest.fixture
+def generate_plots_for_app(processed_data) -> None:
+    """
+    Generate plots for all models across all configurations.
+
+    Parameters
+    ----------
+    processed_data
+        Dictionary of processed data.
+    """
+    # These plots require a fairly low-level access to Plotly, in order to produce the
+    # 3x3 grid of binding energy curves over 3 orientations and 3 strain conditions
+    subplot_titles = [
+        f"{orientation}, {strain[1:5]}% strain"
+        for strain in STRAINS
+        for orientation in ORIENTATIONS
+    ]
+    fig = make_subplots(
+        rows=3,
+        cols=3,
+        # shared_xaxes=True,
+        # shared_yaxes='columns',
+        # column_titles=ORIENTATIONS,
+        # row_titles=[f'{strain[1:5]}% strain' for strain in STRAINS],
+        subplot_titles=subplot_titles,
+    )
+
+    hovertemplate = "<b>Distance: </b>%{x} Å<br>" + "<b>Ref: </b>%{y} meV<br>"
+    for i, orientation in enumerate(ORIENTATIONS):
+        for j, strain in enumerate(STRAINS):
+            fig.add_trace(
+                go.Scatter(
+                    x=processed_data["distances"],
+                    y=processed_data["ref"][orientation][strain]["energies"],
+                    name="Reference",
+                    legendgroup="Reference",
+                    showlegend=((i + j) == 0),
+                    mode="lines+markers",
+                    line={"color": "#000000"},
+                    hovertemplate=hovertemplate,
+                ),
+                row=(j + 1),
+                col=(i + 1),
+            )
+
+    hovertemplate = "<b>Distance: </b>%{x} Å<br>" + "<b>Pred: </b>%{y} meV<br>"
+    for iter, model in enumerate(MODELS):
+        for i, orientation in enumerate(ORIENTATIONS):
+            for j, strain in enumerate(STRAINS):
+                color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+                fig.add_trace(
+                    go.Scatter(
+                        x=processed_data["distances"],
+                        y=processed_data[model][orientation][strain]["energies"],
+                        name=model,
+                        legendgroup=model,
+                        showlegend=((i + j) == 0),
+                        mode="lines+markers",
+                        line={"color": color},
+                        hovertemplate=hovertemplate,
+                    ),
+                    row=(j + 1),
+                    col=(i + 1),
+                )
+
+    for i in range(len(ORIENTATIONS)):
+        for j in range(len(STRAINS)):
+            fig.update_xaxes(title_text="Distance / Å", row=(j + 1), col=(i + 1))
+            fig.update_yaxes(title_text="Energy / meV", row=(j + 1), col=(i + 1))
+
+    fig.update_layout(
+        title_text=(
+            "Adsorption energy curve over various orientations and strain conditions"
+        ),
+        width=1500,
+        height=1500,
+    )
+
+    # Write to file
+    filename = OUT_PATH / "figure_binding_energies.json"
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    fig.write_json(filename)
+
+    return
 
 
 @pytest.fixture
@@ -330,18 +317,23 @@ def all_adsorption_energies_mae(processed_data) -> dict[str, float]:
         Dictionary of MAEs for all models.
     """
     results = {}
+
+    ref = []
+    for orientation in ORIENTATIONS:
+        for strain in STRAINS:
+            for i in range(len(processed_data["distances"])):
+                ref.append(processed_data["ref"][orientation][strain]["energies"][i])
+
     for model in MODELS:
-        deviations = []
+        prediction = []
         for orientation in ORIENTATIONS:
             for strain in STRAINS:
                 for i in range(len(processed_data["distances"])):
-                    deviations.append(
-                        abs(
-                            processed_data[model][orientation][strain]["energies"][i]
-                            - processed_data["ref"][orientation][strain]["energies"][i]
-                        )
+                    prediction.append(
+                        processed_data[model][orientation][strain]["energies"][i]
                     )
-        results[model] = np.mean(deviations)
+        results[model] = mae(ref, prediction)
+
     return results
 
 
@@ -361,19 +353,24 @@ def binding_energies_mae(processed_data) -> dict[str, float]:
         Dictionary of binding energy MAEs for all models.
     """
     results = {}
+
+    ref = []
+    for orientation in ORIENTATIONS:
+        for strain in STRAINS:
+            ref.append(processed_data["ref"][orientation][strain]["params"][0])
+
     for model in MODELS:
-        deviations = []
+        prediction = []
         for orientation in ORIENTATIONS:
             for strain in STRAINS:
-                deviations.append(
-                    abs(
-                        processed_data[model][orientation][strain]["params"][0]
-                        - processed_data["ref"][orientation][strain]["params"][0]
-                    )
+                prediction.append(
+                    processed_data[model][orientation][strain]["params"][0]
                 )
-        results[model] = np.nan_to_num(
-            np.mean(deviations), nan=99999, posinf=99999, neginf=99999
-        )
+        if np.isinf(np.max(prediction)):
+            results[model] = None
+        else:
+            results[model] = mae(ref, prediction)
+
     return results
 
 
@@ -393,19 +390,24 @@ def binding_lengths_mae(processed_data) -> dict[str, float]:
         Dictionary of binding length MAEs for all models.
     """
     results = {}
+
+    ref = []
+    for orientation in ORIENTATIONS:
+        for strain in STRAINS:
+            ref.append(processed_data["ref"][orientation][strain]["params"][2])
+
     for model in MODELS:
-        deviations = []
+        prediction = []
         for orientation in ORIENTATIONS:
             for strain in STRAINS:
-                deviations.append(
-                    abs(
-                        processed_data[model][orientation][strain]["params"][2]
-                        - processed_data["ref"][orientation][strain]["params"][2]
-                    )
+                prediction.append(
+                    processed_data[model][orientation][strain]["params"][2]
                 )
-        results[model] = np.nan_to_num(
-            np.mean(deviations), nan=999, posinf=999, neginf=999
-        )
+        if np.isinf(np.max(prediction)):
+            results[model] = None
+        else:
+            results[model] = mae(ref, prediction)
+
     return results
 
 
@@ -448,7 +450,9 @@ def metrics(
     }
 
 
-def test_graphene_wetting_under_strain(metrics: dict[str, dict]) -> None:
+def test_graphene_wetting_under_strain(
+    metrics: dict[str, dict], generate_plots_for_app: None
+) -> None:
     """
     Run graphene wetting test.
 
@@ -456,5 +460,7 @@ def test_graphene_wetting_under_strain(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All graphene wetting metrics.
+    generate_plots_for_app
+        Hook for PyTest fixture.
     """
     return
