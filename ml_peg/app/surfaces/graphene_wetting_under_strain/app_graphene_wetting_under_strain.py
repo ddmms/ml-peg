@@ -41,9 +41,27 @@ class GrapheneWettingUnderStrainApp(BaseApp):
             for strain in STRAINS
         ] * (len(MODELS) + 1)
 
+        structs_from_params = [
+            [
+                f"assets/surfaces/graphene_wetting_under_strain/structs/{orientation}_{strain}.xyz"
+                for strain in STRAINS
+            ]
+            for orientation in ORIENTATIONS
+        ] * (len(MODELS) + 1)
+
         binding_curve_plot = read_plot(
+            DATA_PATH / "figure_adsorption_energies.json",
+            id=f"{BENCHMARK_NAME}-figure-adsorption-energies",
+        )
+
+        binding_energies_plot = read_plot(
             DATA_PATH / "figure_binding_energies.json",
             id=f"{BENCHMARK_NAME}-figure-binding-energies",
+        )
+
+        binding_lengths_plot = read_plot(
+            DATA_PATH / "figure_binding_lengths.json",
+            id=f"{BENCHMARK_NAME}-figure-binding-lengths",
         )
 
         plot_from_table_column(
@@ -51,15 +69,29 @@ class GrapheneWettingUnderStrainApp(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
                 "All Adsorption Energies MAE": binding_curve_plot,
-                "Binding Energies MAE": binding_curve_plot,
-                "Binding Lengths MAE": binding_curve_plot,
+                "Binding Energies MAE": binding_energies_plot,
+                "Binding Lengths MAE": binding_lengths_plot,
             },
+        )
+
+        struct_from_multi_scatters(
+            scatter_id=f"{BENCHMARK_NAME}-figure-adsorption-energies",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=structs_from_curve,
+            mode="traj",
         )
 
         struct_from_multi_scatters(
             scatter_id=f"{BENCHMARK_NAME}-figure-binding-energies",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs_from_curve,
+            structs=structs_from_params,
+            mode="traj",
+        )
+
+        struct_from_multi_scatters(
+            scatter_id=f"{BENCHMARK_NAME}-figure-binding-lengths",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=structs_from_params,
             mode="traj",
         )
 

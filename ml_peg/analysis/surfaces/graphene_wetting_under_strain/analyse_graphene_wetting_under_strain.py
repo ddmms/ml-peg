@@ -80,6 +80,35 @@ def morse_potential(r: np.ndarray, de: float, a: float, re: float) -> np.ndarray
     return de * (((1.0 - np.exp(a * (re - r))) ** 2) - 1.0)
 
 
+def mie_potential(
+    r: np.ndarray, epsilon: float, re: float, n: float, m: float
+) -> np.ndarray:
+    """
+    Compute Mie potential.
+
+    Parameters
+    ----------
+    r
+        Radial coordinates.
+    epsilon
+        Potential well depth.
+    re
+        Equilibrium length.
+    n
+        Exponent of repulsive potential.
+    m
+        Exponent of attractive potential.
+
+    Returns
+    -------
+    NDArray
+        Potentials at corresponding radii.
+    """
+    coeff = (n / (n - m)) * np.power((n / m), (m / (n - m)))
+    x = re * np.power((m / n), 1.0 / (n - m)) / r
+    return coeff * epsilon * (np.power(x, n) - np.power(x, m))
+
+
 def get_binding_parameters(
     distances: list[float], adsorption_energies: list[float]
 ) -> tuple[float, float, float]:
@@ -96,38 +125,55 @@ def get_binding_parameters(
     Returns
     -------
     float
-        Potential well depth (de) of Morse potential.
+        Potential well depth.
     float
-        Decay coefficient (a) of Morse potential.
-    float
-        Equilibrium length (re) of Morse potential.
+        Equilibrium length.
     """
-    popt = (np.inf, 0.0, np.inf)
-    if np.min(adsorption_energies) < 0.0:
-        depth = max(abs(np.min(adsorption_energies)), 5.0)
-        idx = np.argmin(adsorption_energies)
-        re = distances[idx]
-        if idx > 0 and idx < (len(distances) - 1):
-            second_deriv = (
-                adsorption_energies[idx + 1]
-                + adsorption_energies[idx - 1]
-                - (2.0 * adsorption_energies[idx])
-            )
-            second_deriv /= ((distances[idx + 1] - distances[idx - 1]) / 2.0) ** 2
-            a = max(np.sqrt(second_deriv / (2.0 * depth)), 0.5)
-        else:
-            a = 1.3
-        try:
-            popt, _ = curve_fit(
-                morse_potential,
-                distances,
-                adsorption_energies,
-                p0=(depth, a, re),
-                bounds=(0.0, np.inf),
-            )
-        except (ValueError, RuntimeError):
-            pass
-    return popt
+    # Initial estimates
+    depth = -np.min(adsorption_energies)
+    re = distances[np.argmin(adsorption_energies)]
+    dist_max = np.max(distances)
+
+    # If depth is negative -- i.e. entire binding curve is positive -- then there is no
+    # potential that can be fitted to the curve. Return parameters immediately.
+    if depth <= 0.0:
+        return depth, 0.0
+
+    # Attempt to fit Morse potential, and return if the fit is valid
+    first_deriv = np.gradient(adsorption_energies, distances)
+    second_deriv = np.gradient(first_deriv, distances)
+    second_deriv_at_min = second_deriv[np.argmin(adsorption_energies)]
+    if second_deriv_at_min > 0.0:
+        a = max(np.sqrt(second_deriv_at_min / (2.0 * depth)), 0.5)
+    else:
+        a = 1.3
+    try:
+        popt, _ = curve_fit(
+            morse_potential,
+            distances,
+            adsorption_energies,
+            p0=(depth, a, re),
+            bounds=(0.0, (2.0 * depth, np.inf, dist_max)),
+        )
+        return popt[0], popt[2]
+    except (ValueError, RuntimeError):
+        pass
+
+    # Attempt to fit Mie potential, and return if the fit is valid
+    try:
+        popt, _ = curve_fit(
+            mie_potential,
+            distances,
+            adsorption_energies,
+            p0=(depth, re, 12.0, 3.0),
+            bounds=((0.0, 0.0, 6.0, 0.0), (2.0 * depth, dist_max, np.inf, 6.0)),
+        )
+        return popt[0], popt[1]
+    except (ValueError, RuntimeError):
+        pass
+
+    # No fits -- just return numerical estimate
+    return depth, re
 
 
 @pytest.fixture
@@ -227,6 +273,8 @@ def generate_plots_for_app(processed_data) -> None:
     """
     # These plots require a fairly low-level access to Plotly, in order to produce the
     # 3x3 grid of binding energy curves over 3 orientations and 3 strain conditions
+
+    # First plot: 3x3 grid of adsorption energies across all orientations and strains
     subplot_titles = [
         f"{orientation}, {strain[1:5]}% strain"
         for strain in STRAINS
@@ -235,14 +283,8 @@ def generate_plots_for_app(processed_data) -> None:
     fig = make_subplots(
         rows=3,
         cols=3,
-        # shared_xaxes=True,
-        # shared_yaxes='columns',
-        # column_titles=ORIENTATIONS,
-        # row_titles=[f'{strain[1:5]}% strain' for strain in STRAINS],
         subplot_titles=subplot_titles,
     )
-
-    hovertemplate = "<b>Distance: </b>%{x} Å<br>" + "<b>Ref: </b>%{y} meV<br>"
     for i, orientation in enumerate(ORIENTATIONS):
         for j, strain in enumerate(STRAINS):
             fig.add_trace(
@@ -254,13 +296,11 @@ def generate_plots_for_app(processed_data) -> None:
                     showlegend=((i + j) == 0),
                     mode="lines+markers",
                     line={"color": "#000000"},
-                    hovertemplate=hovertemplate,
+                    hovertemplate="%{y:.1f} meV",
                 ),
                 row=(j + 1),
                 col=(i + 1),
             )
-
-    hovertemplate = "<b>Distance: </b>%{x} Å<br>" + "<b>Pred: </b>%{y} meV<br>"
     for iter, model in enumerate(MODELS):
         for i, orientation in enumerate(ORIENTATIONS):
             for j, strain in enumerate(STRAINS):
@@ -274,28 +314,143 @@ def generate_plots_for_app(processed_data) -> None:
                         showlegend=((i + j) == 0),
                         mode="lines+markers",
                         line={"color": color},
-                        hovertemplate=hovertemplate,
+                        hovertemplate="%{y:.1f} meV",
                     ),
                     row=(j + 1),
                     col=(i + 1),
                 )
-
-    for i in range(len(ORIENTATIONS)):
-        for j in range(len(STRAINS)):
-            fig.update_xaxes(title_text="Distance / Å", row=(j + 1), col=(i + 1))
-            fig.update_yaxes(title_text="Energy / meV", row=(j + 1), col=(i + 1))
-
+    fig.update_xaxes(
+        title_text="Distance / Å",
+        unifiedhovertitle_text="<b>Distance: </b>%{x:.2f} Å",
+    )
+    fig.update_yaxes(title_text="Energy / meV")
     fig.update_layout(
         title_text=(
             "Adsorption energy curve over various orientations and strain conditions"
         ),
         width=1500,
         height=1500,
+        hovermode="x unified",
     )
-
-    # Write to file
-    filename = OUT_PATH / "figure_binding_energies.json"
+    filename = OUT_PATH / "figure_adsorption_energies.json"
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    fig.write_json(filename)
+
+    # Second plot: 1x3 grid of binding energies across all orientations
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        subplot_titles=ORIENTATIONS,
+    )
+    strains_to_plot = [float(strain[1:5]) for strain in STRAINS]
+    for i, orientation in enumerate(ORIENTATIONS):
+        fig.add_trace(
+            go.Scatter(
+                x=strains_to_plot,
+                y=[
+                    processed_data["ref"][orientation][strain]["params"][0]
+                    for strain in STRAINS
+                ],
+                name="Reference",
+                legendgroup="Reference",
+                showlegend=(i == 0),
+                mode="lines+markers",
+                line={"color": "#000000"},
+                hovertemplate="%{y:.1f} meV",
+            ),
+            row=1,
+            col=(i + 1),
+        )
+    for iter, model in enumerate(MODELS):
+        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+        for i, orientation in enumerate(ORIENTATIONS):
+            fig.add_trace(
+                go.Scatter(
+                    x=strains_to_plot,
+                    y=[
+                        processed_data[model][orientation][strain]["params"][0]
+                        for strain in STRAINS
+                    ],
+                    name=model,
+                    legendgroup=model,
+                    showlegend=(i == 0),
+                    mode="lines+markers",
+                    line={"color": color},
+                    hovertemplate="%{y:.1f} meV",
+                ),
+                row=1,
+                col=(i + 1),
+            )
+    fig.update_xaxes(
+        title_text="Strain / %",
+        unifiedhovertitle_text="<b>Strain: </b>%{x:+.2f} %",
+    )
+    fig.update_yaxes(title_text="Energy / meV")
+    fig.update_layout(
+        title_text="Binding energy against strain over various orientations",
+        width=1500,
+        height=500,
+        hovermode="x unified",
+    )
+    filename = OUT_PATH / "figure_binding_energies.json"
+    fig.write_json(filename)
+
+    # Third plot: 1x3 grid of binding lengths across all orientations
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        subplot_titles=ORIENTATIONS,
+    )
+    for i, orientation in enumerate(ORIENTATIONS):
+        fig.add_trace(
+            go.Scatter(
+                x=strains_to_plot,
+                y=[
+                    processed_data["ref"][orientation][strain]["params"][1]
+                    for strain in STRAINS
+                ],
+                name="Reference",
+                legendgroup="Reference",
+                showlegend=(i == 0),
+                mode="lines+markers",
+                line={"color": "#000000"},
+                hovertemplate="%{y:.2f} Å",
+            ),
+            row=1,
+            col=(i + 1),
+        )
+    for iter, model in enumerate(MODELS):
+        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+        for i, orientation in enumerate(ORIENTATIONS):
+            fig.add_trace(
+                go.Scatter(
+                    x=strains_to_plot,
+                    y=[
+                        processed_data[model][orientation][strain]["params"][1]
+                        for strain in STRAINS
+                    ],
+                    name=model,
+                    legendgroup=model,
+                    showlegend=(i == 0),
+                    mode="lines+markers",
+                    line={"color": color},
+                    hovertemplate="%{y:.2f} Å",
+                ),
+                row=1,
+                col=(i + 1),
+            )
+    fig.update_xaxes(
+        title_text="Strain / %",
+        unifiedhovertitle_text="<b>Strain: </b>%{x:+.2f} %",
+    )
+    fig.update_yaxes(title_text="Length / Å")
+    fig.update_layout(
+        title_text="Binding length against strain over various orientations",
+        width=1500,
+        height=500,
+        hovermode="x unified",
+    )
+    filename = OUT_PATH / "figure_binding_lengths.json"
     fig.write_json(filename)
 
     return
@@ -394,14 +549,14 @@ def binding_lengths_mae(processed_data) -> dict[str, float]:
     ref = []
     for orientation in ORIENTATIONS:
         for strain in STRAINS:
-            ref.append(processed_data["ref"][orientation][strain]["params"][2])
+            ref.append(processed_data["ref"][orientation][strain]["params"][1])
 
     for model in MODELS:
         prediction = []
         for orientation in ORIENTATIONS:
             for strain in STRAINS:
                 prediction.append(
-                    processed_data[model][orientation][strain]["params"][2]
+                    processed_data[model][orientation][strain]["params"][1]
                 )
         if np.isinf(np.max(prediction)):
             results[model] = None
