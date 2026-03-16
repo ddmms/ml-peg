@@ -338,12 +338,7 @@ def metrics(
     }
 
 
-def test_puo2(
-    metrics: dict[str, dict],
-    energy_density: dict[str, dict],
-    force_density: dict[str, dict],
-    stress_density: dict[str, dict],
-) -> None:
+def test_puo2(metrics: dict[str, dict]) -> None:
     """
     Run puo2 analysis.
 
@@ -351,16 +346,5 @@ def test_puo2(
     ----------
     metrics
         Benchmark metric values.
-    energy_density
-        Density scatter inputs for energy.
-    force_density
-        Density scatter inputs for forces.
-    stress_density
-        Density scatter inputs for stress.
     """
-    assert metrics is not None
-    assert energy_density is not None
-    assert force_density is not None
-    assert stress_density is not None
-
     return
