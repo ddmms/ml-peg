@@ -153,7 +153,7 @@ Metal Surface Reconstructions
 Summary
 -------
 
-Performance in the predicting surface energy and representing the surface reconstruction. 
+Performance in the predicting surface energy and representing the surface reconstruction.
 
 Metrics
 -------
