@@ -10,7 +10,12 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
-from ml_peg.analysis.utils.utils import build_density_inputs, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_density_inputs,
+    load_metrics_config,
+    mae,
+    write_density_trajectories,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -36,7 +41,7 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
     Returns
     -------
     dict[str, dict[str, Any]]
-        Processed information per model (energy, force, stress).
+        Processed information per model (energy, force, stress, labels).
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     stats: dict[str, dict[str, Any]] = {}
@@ -46,30 +51,46 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
         if not model_dir.exists():
             continue
 
+        struct_dir = OUT_PATH / model_name
+        struct_dir.mkdir(parents=True, exist_ok=True)
+
         energies_ref, energies_pred = [], []
         forces_ref, forces_pred = [], []
         stress_ref, stress_pred = [], []
+        energy_labels: list[str] = []
+        force_labels: list[str] = []
+        stress_labels: list[str] = []
         excluded = 0
+        frame_idx = 0
 
         for xyz_file in sorted(model_dir.glob("*.xyz")):
             frames = io.read(xyz_file, ":")
             for atoms in frames:
+                label = str(frame_idx)
                 natoms = atoms.get_number_of_atoms()
                 e_ref = atoms.info.get("energy_xtb")
                 f_ref = atoms.arrays.get("forces_xtb")
                 s_ref = atoms.info.get("REF_stress")
 
+                io.write(struct_dir / f"{label}.xyz", atoms)
+
                 if e_ref is not None:
                     energies_ref.append(e_ref / natoms)
                     energies_pred.append(atoms.get_total_energy() / natoms)
+                    energy_labels.append(label)
 
                 if f_ref is not None:
                     forces_ref.append(f_ref.ravel())
                     forces_pred.append(atoms.get_forces().ravel())
+                    force_labels.extend([label] * (natoms * 3))
 
                 if s_ref is not None:
-                    stress_ref.extend(s_ref.tolist())
+                    s_ref_flat = np.asarray(s_ref).ravel().tolist()
+                    stress_ref.extend(s_ref_flat)
                     stress_pred.extend(atoms.get_stress(voigt=False).ravel())
+                    stress_labels.extend([label] * len(s_ref_flat))
+
+                frame_idx += 1
 
         stats[model_name] = {
             "energies": {
@@ -77,14 +98,17 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
                 "pred": energies_pred,
             },
             "forces": {
-                "ref": np.concatenate(forces_ref).tolist(),
-                "pred": np.concatenate(forces_pred).tolist(),
+                "ref": np.concatenate(forces_ref).tolist() if forces_ref else [],
+                "pred": np.concatenate(forces_pred).tolist() if forces_pred else [],
             },
             "stress": {
                 "ref": stress_ref,
                 "pred": stress_pred,
             },
             "excluded": excluded,
+            "energy_labels": energy_labels,
+            "force_labels": force_labels,
+            "stress_labels": stress_labels,
         }
     return stats
 
@@ -180,12 +204,22 @@ def energy_density(puo2_stats: dict[str, dict[str, Any]]) -> dict[str, dict]:
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return build_density_inputs(
+    result = build_density_inputs(
         list(puo2_stats.keys()),
         puo2_stats,
         "energies",
         metric_fn=mae,
     )
+    for model_name, model_stats in puo2_stats.items():
+        write_density_trajectories(
+            labels_list=model_stats["energy_labels"],
+            ref_vals=model_stats["energies"]["ref"],
+            pred_vals=model_stats["energies"]["pred"],
+            struct_dir=OUT_PATH / model_name,
+            traj_dir=OUT_PATH / model_name / "density_traj_energy",
+            struct_filename_builder=lambda label: f"{label}.xyz",
+        )
+    return result
 
 
 @pytest.fixture
@@ -210,12 +244,22 @@ def force_density(puo2_stats: dict[str, dict[str, Any]]) -> dict[str, dict]:
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return build_density_inputs(
+    result = build_density_inputs(
         list(puo2_stats.keys()),
         puo2_stats,
         "forces",
         metric_fn=mae,
     )
+    for model_name, model_stats in puo2_stats.items():
+        write_density_trajectories(
+            labels_list=model_stats["force_labels"],
+            ref_vals=model_stats["forces"]["ref"],
+            pred_vals=model_stats["forces"]["pred"],
+            struct_dir=OUT_PATH / model_name,
+            traj_dir=OUT_PATH / model_name / "density_traj_force",
+            struct_filename_builder=lambda label: f"{label}.xyz",
+        )
+    return result
 
 
 @pytest.fixture
@@ -240,12 +284,22 @@ def stress_density(puo2_stats: dict[str, dict[str, Any]]) -> dict[str, dict]:
     dict[str, dict]
         Mapping of model name to density-scatter data.
     """
-    return build_density_inputs(
+    result = build_density_inputs(
         list(puo2_stats.keys()),
         puo2_stats,
         "stress",
         metric_fn=mae,
     )
+    for model_name, model_stats in puo2_stats.items():
+        write_density_trajectories(
+            labels_list=model_stats["stress_labels"],
+            ref_vals=model_stats["stress"]["ref"],
+            pred_vals=model_stats["stress"]["pred"],
+            struct_dir=OUT_PATH / model_name,
+            traj_dir=OUT_PATH / model_name / "density_traj_stress",
+            struct_filename_builder=lambda label: f"{label}.xyz",
+        )
+    return result
 
 
 @pytest.fixture
