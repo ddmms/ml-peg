@@ -1,10 +1,7 @@
-
-
 """Run Metal surface reconstructions app."""
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -26,8 +23,7 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
 
 
-
-class Metal_surface_reconstructions(BaseApp):
+class MetalSurfaceApp(BaseApp):
     """Metal surface reconstructions benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
@@ -49,7 +45,6 @@ class Metal_surface_reconstructions(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={"MAE": scatter, "Displacement": scatter},
         )
-        
 
         struct_from_scatter(
             scatter_id=f"{BENCHMARK_NAME}-figure",
@@ -59,17 +54,16 @@ class Metal_surface_reconstructions(BaseApp):
         )
 
 
-
-def get_app() -> Metal_surface_reconstructions:
+def get_app() -> MetalSurfaceApp:
     """
     Get Metal surface reconstructions benchmark app layout and callback registration.
 
     Returns
     -------
-    Metal surface reconstructions App
+    MetalSurfaceApp
         Benchmark layout and callback registration.
     """
-    return Metal_surface_reconstructions(
+    return MetalSurfaceApp(
         name=BENCHMARK_NAME,
         description="Energies for two surface reconstuctions.",
         docs_url=DOCS_URL,
@@ -79,4 +73,3 @@ def get_app() -> Metal_surface_reconstructions:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
-
