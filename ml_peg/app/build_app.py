@@ -444,8 +444,7 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                Loading(
-                    model_filter,
+                model_filter,
                 Store(
                     id="selected-models-store",
                     storage_type="session",
@@ -456,7 +455,8 @@ def build_tabs(
                     storage_type="session",
                     data=summary_table.data,
                 ),
-                Div(id="tabs-content"),
+                Loading(
+                    Div(id="tabs-content"),
                     type="circle",
                     color="#119DFF",
                     fullscreen=False,
