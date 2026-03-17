@@ -501,3 +501,32 @@ Building those components and their interactivity should become increasingly aut
 but less standard plots/interactions will need setting up.
 
 For now, please contact us to help with this process.
+
+Framework credit tags
++++++++++++++++++++++
+
+If a benchmark comes from an external benchmarking framework (for example,
+MLIP Arena), add a framework credit tag as follows:
+
+1. Add/update the framework entry in ``ml_peg/app/utils/frameworks.yml``.
+
+.. code-block:: yaml
+
+    mlip_arena:
+      label: MLIP Arena
+      color: "#0f766e"
+      text_color: "#ecfeff"
+      url: "https://huggingface.co/spaces/atomind/mlip-arena"
+
+2. Set ``framework_id`` in the benchmark app constructor.
+
+.. code-block:: python3
+
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_id="mlip_arena",
+    )
+
+That is all that is required. The benchmark header badge and framework filter
+dropdown are populated automatically from this metadata.
