@@ -21,7 +21,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
-from ml_peg.app.utils.utils import calculate_column_widths
+from ml_peg.app.utils.utils import calculate_column_widths, get_framework_config
 
 
 def grid_template_from_widths(
@@ -514,9 +514,56 @@ def build_footer() -> html.Footer:
     )
 
 
+def build_framework_badge(framework_id: str) -> Component:
+    """
+    Build a visual framework attribution badge.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier for the benchmark.
+
+    Returns
+    -------
+    Component
+        Styled badge, wrapped as a link when framework docs URL is configured.
+    """
+    config = get_framework_config(framework_id)
+    label = config["label"]
+    color = config["color"]
+    text_color = config["text_color"]
+    url = config.get("url")
+
+    badge_style = {
+        "display": "inline-flex",
+        "alignItems": "center",
+        "padding": "2px 8px",
+        "borderRadius": "999px",
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "letterSpacing": "0.02em",
+        "textTransform": "uppercase",
+        "backgroundColor": color,
+        "color": text_color,
+        "lineHeight": "1.8",
+    }
+
+    badge = html.Span(label, style=badge_style)
+    if url:
+        return html.A(
+            badge,
+            href=url,
+            target="_blank",
+            style={"textDecoration": "none"},
+            title=f"Open {label} website",
+        )
+    return badge
+
+
 def build_test_layout(
     name: str,
     description: str,
+    framework_id: str,
     table: DataTable,
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
@@ -532,6 +579,8 @@ def build_test_layout(
         Name of test.
     description
         Description of test.
+    framework_id
+        Framework identifier used to render attribution badge.
     table
         Dash Table with metric results. Can include a `weights` attribute to be used by
         `build_weight_components`.
@@ -553,7 +602,18 @@ def build_test_layout(
         Layout for test layout.
     """
     layout_contents = [
-        H2(name, style={"color": "black"}),
+        Div(
+            [
+                H2(name, style={"color": "black", "margin": "0"}),
+                build_framework_badge(framework_id),
+            ],
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "flexWrap": "wrap",
+                "gap": "10px",
+            },
+        ),
         H3(description),
     ]
 
