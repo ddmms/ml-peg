@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Loading, Store, Tab, Tabs
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Button, Details, Div, Summary
+from dash.html import H1, H3, Details, Div, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -395,39 +395,6 @@ def build_tabs(
                         closeOnSelect=False,
                         style={"fontSize": "13px"},
                     ),
-                    Div(
-                        [
-                            Button(
-                                "Select all",
-                                id="model-filter-select-all",
-                                n_clicks=0,
-                                style={
-                                    "fontSize": "11px",
-                                    "padding": "4px 8px",
-                                    "backgroundColor": "#6c757d",
-                                    "color": "white",
-                                    "border": "none",
-                                    "borderRadius": "3px",
-                                    "cursor": "pointer",
-                                },
-                            ),
-                            Button(
-                                "Clear",
-                                id="model-filter-clear-all",
-                                n_clicks=0,
-                                style={
-                                    "fontSize": "11px",
-                                    "padding": "4px 8px",
-                                    "backgroundColor": "#6c757d",
-                                    "color": "white",
-                                    "border": "none",
-                                    "borderRadius": "3px",
-                                    "cursor": "pointer",
-                                },
-                            ),
-                        ],
-                        style={"display": "flex", "gap": "8px", "marginTop": "8px"},
-                    ),
                 ],
                 style={"padding": "8px 12px"},
             ),
@@ -489,15 +456,11 @@ def build_tabs(
         Output("model-filter-checklist", "value"),
         Output("selected-models-store", "data"),
         Input("model-filter-checklist", "value"),
-        Input("model-filter-select-all", "n_clicks"),
-        Input("model-filter-clear-all", "n_clicks"),
         Input("selected-models-store", "data"),
         prevent_initial_call=False,
     )
     def sync_model_filter(
         checklist_value: list[str] | None,
-        _select_all: int,
-        _clear_all: int,
         stored_selection: list[str] | None,
     ) -> tuple[list[str], list[str] | object]:
         """
@@ -507,10 +470,6 @@ def build_tabs(
         ----------
         checklist_value
             Current selection from the model filter control.
-        _select_all
-            Click count for the "Select all" button.
-        _clear_all
-            Click count for the "Clear" button.
         stored_selection
             Previously persisted selection from ``selected-models-store``.
 
@@ -521,14 +480,10 @@ def build_tabs(
             ``dash.no_update`` when only syncing from store to UI.
         """
         trigger_id = ctx.triggered_id
-        stored = stored_selection if stored_selection is not None else MODELS
 
         if trigger_id in (None, "selected-models-store"):
+            stored = stored_selection if stored_selection is not None else MODELS
             return stored, no_update
-        if trigger_id == "model-filter-select-all":
-            return MODELS, MODELS
-        if trigger_id == "model-filter-clear-all":
-            return [], []
         if trigger_id == "model-filter-checklist":
             selected = checklist_value or []
             return selected, selected
