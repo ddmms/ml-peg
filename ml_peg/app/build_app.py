@@ -254,7 +254,7 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, None)
         data.append(row)
 
-    data = calc_table_scores(data)
+    data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
 
