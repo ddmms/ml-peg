@@ -35,6 +35,7 @@ def test_scaling_pol(mlip: tuple[str, Any]) -> None:
 	"""
 	model_name, model = mlip
 	clean_calc = model.get_calculator()
+	#help(clean_calc)
 
 	# Download 'linear organic mols' dataset
 	"""
@@ -58,13 +59,12 @@ def test_scaling_pol(mlip: tuple[str, Any]) -> None:
 		calc = copy(clean_calc)
 		mol.calc = calc
 
-		energy = mol.get_potential_energy()	
-		#if 'dipole' in calc.results:
-		#	mol_out.append(mol)
+		energy = mol.get_potential_energy()
+		mol_out.append(mol)
 
 	# Write output structures
-	#if len(mol_out) > 0:
-	write_dir = OUT_PATH/model_name
-	write_dir.mkdir(parents=True, exist_ok=True)
-	write(write_dir/"ORCA_DATA.xyz", mol_out)	# This filename needs to be adjusted to whatever's in the zipfile above
+	if len(mol_out) > 0:
+		write_dir = OUT_PATH/model_name
+		write_dir.mkdir(parents=True, exist_ok=True)
+		write(write_dir/"ORCA_DATA.xyz", mol_out)	# This filename needs to be adjusted to whatever's in the zipfile above
 
