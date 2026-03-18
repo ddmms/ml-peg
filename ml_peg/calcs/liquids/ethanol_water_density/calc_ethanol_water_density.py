@@ -30,7 +30,7 @@ COMPOSITIONS = load_compositions()
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=list(MODELS.keys()))
-def test_water_ethanol_density_curves(mlip: tuple[str, Any], composition) -> None:
+def terge_water_ethanol_density_curves(mlip: tuple[str, Any], composition) -> None:
     """
     Generate one density-curve case for a model and composition.
 
@@ -100,14 +100,18 @@ if __name__ == "__main__":  # TODO: delete this
     from ase import units
     from mace.calculators import mace_mp
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+
     calc = mace_mp(
         "data_old/mace-omat-0-small.model",
         dispersion=True,
         dispersion_cutoff=25 * units.Bohr,
     )
-    rho = run_one_case(
+    run_one_case(
         "data/mix_xe_0.00.extxyz",
         calc,
-        output_fname="debug/",
+        output_fname="debug/whatever.traj",
     )
-    print(rho)

@@ -23,7 +23,7 @@ NUM_NVT_STEPS = 50_000
 TIMESTEP = 1 * units.fs
 LOG_INTERVAL = 100
 ATM = 1.01325 * units.bar
-TEMPERATURE = 298.15 * units.K
+TEMPERATURE = 298.15
 LANGEVIN_FRICTION = 1 / (500 * units.fs)
 
 
@@ -148,7 +148,7 @@ def run_one_case(
     MaxwellBoltzmannDistribution(atoms, temperature_K=TEMPERATURE)
     Stationary(atoms)
     ZeroRotation(atoms)
-    if os.path.exists(output_fname):
+    if not os.path.exists(output_fname):
         # NVT
         dyn = Langevin(
             atoms,
