@@ -32,6 +32,7 @@ class FrameworkEntry(TypedDict):
     color: str
     text_color: str
     url: NotRequired[str]
+    logo: NotRequired[str]
 
 
 def calculate_column_widths(
@@ -933,6 +934,9 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         url = raw_entry.get("url")
         if isinstance(url, str) and url.strip():
             registry_entry["url"] = url.strip()
+        logo = raw_entry.get("logo")
+        if isinstance(logo, str) and logo.strip():
+            registry_entry["logo"] = logo.strip()
 
         registry[normalized_id] = registry_entry
 

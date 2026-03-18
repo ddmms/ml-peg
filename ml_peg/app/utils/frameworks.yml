@@ -9,3 +9,4 @@ mlip_arena:
   color: "#0f766e"
   text_color: "#ecfeff"
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
+  logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"

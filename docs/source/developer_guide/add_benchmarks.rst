@@ -517,6 +517,7 @@ MLIP Arena), add a framework credit tag as follows:
       color: "#0f766e"
       text_color: "#ecfeff"
       url: "https://huggingface.co/spaces/atomind/mlip-arena"
+      logo: "https://.../logo.svg"
 
 2. Set ``framework_id`` in the benchmark app constructor.
 
@@ -530,3 +531,6 @@ MLIP Arena), add a framework credit tag as follows:
 
 That is all that is required. The benchmark header badge and framework filter
 dropdown are populated automatically from this metadata.
+
+The ``logo`` field is optional. It can point to a remote image URL or a local
+Dash asset path such as ``assets/frameworks/my_framework_logo.png``.

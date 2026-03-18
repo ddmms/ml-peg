@@ -532,6 +532,7 @@ def build_framework_badge(framework_id: str) -> Component:
     label = config["label"]
     color = config["color"]
     text_color = config["text_color"]
+    logo = config.get("logo")
     url = config.get("url")
 
     badge_style = {
@@ -548,7 +549,28 @@ def build_framework_badge(framework_id: str) -> Component:
         "lineHeight": "1.8",
     }
 
-    badge = html.Span(label, style=badge_style)
+    badge_children: list[Component] = []
+    if logo:
+        badge_children.append(
+            html.Img(
+                src=logo,
+                alt=f"{label} logo",
+                style={
+                    "width": "14px",
+                    "height": "14px",
+                    "borderRadius": "50%",
+                    "objectFit": "cover",
+                },
+            )
+        )
+    badge_children.append(html.Span(label))
+    badge = html.Span(
+        badge_children,
+        style={
+            **badge_style,
+            "gap": "6px",
+        },
+    )
     if url:
         return html.A(
             badge,
