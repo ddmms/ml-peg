@@ -1,6 +1,5 @@
 """Analyse ethanol-water density curves."""
 
-# TODO: remove hardcoded things?
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,7 +16,6 @@ from ml_peg.analysis.liquids.ethanol_water_density.io_tools import (
     CALC_PATH,
     DATA_PATH,
     OUT_PATH,
-    _read_model_curve,
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
@@ -123,10 +121,10 @@ def labels() -> list:
     list
         List of all calculated concentrations.
     """
-    for model_name in MODELS:
-        labels_list, _ = _read_model_curve(model_name)
-        break
-    return labels_list
+    return sorted(
+        float(case_dir.name.split("_")[-1])
+        for case_dir in (CALC_PATH / MODELS[0]).iterdir()
+    )
 
 
 @pytest.fixture
