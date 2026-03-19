@@ -60,7 +60,8 @@ def test_scaling_pol(mlip: tuple[str, Any]) -> None:
 		mol.calc = calc
 
 		energy = mol.get_potential_energy()
-		mol_out.append(mol)
+		if 'dipole' in mol.calc.results:
+			mol_out.append(mol)
 
 	# Write output structures
 	if len(mol_out) > 0:
