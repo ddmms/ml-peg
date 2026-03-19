@@ -30,7 +30,7 @@ COMPOSITIONS = load_compositions()
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=list(MODELS.keys()))
-def terge_water_ethanol_density_curves(mlip: tuple[str, Any], composition) -> None:
+def test_water_ethanol_density_curves(mlip: tuple[str, Any]) -> None:
     """
     Generate one density-curve case for a model and composition.
 
@@ -38,8 +38,6 @@ def terge_water_ethanol_density_curves(mlip: tuple[str, Any], composition) -> No
     ----------
     mlip : tuple[str, Any]
         Pair of model name and model object.
-    composition : Any
-        Composition case input.
 
     Returns
     -------

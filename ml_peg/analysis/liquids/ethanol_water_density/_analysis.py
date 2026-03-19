@@ -32,49 +32,6 @@ def weight_to_mole_fraction(w):
     return n_e / (n_e + n_w)
 
 
-def _rmse(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Compute root-mean-square error between two arrays.
-
-    Parameters
-    ----------
-    a : numpy.ndarray
-        First array.
-    b : numpy.ndarray
-        Second array.
-
-    Returns
-    -------
-    float
-        Root-mean-square error.
-    """
-    d = a - b
-    return float(np.sqrt(np.mean(d * d)))
-
-
-def _interp_1d(x_src: np.ndarray, y_src: np.ndarray, x_tgt: np.ndarray) -> np.ndarray:
-    """
-    Linearly interpolate onto target x values.
-
-    Parameters
-    ----------
-    x_src : numpy.ndarray
-        Source x grid.
-    y_src : numpy.ndarray
-        Source y values.
-    x_tgt : numpy.ndarray
-        Target x positions.
-
-    Returns
-    -------
-    numpy.ndarray
-        Interpolated y values at ``x_tgt``.
-    """
-    if np.any(x_tgt < x_src.min() - 1e-12) or np.any(x_tgt > x_src.max() + 1e-12):
-        raise ValueError("Target x values fall outside reference interpolation range.")
-    return np.interp(x_tgt, x_src, y_src)
-
-
 def _excess_volume(x: np.ndarray, rhos: np.ndarray) -> np.ndarray:
     """
     Compute excess volume given molar fraction and density respectively.

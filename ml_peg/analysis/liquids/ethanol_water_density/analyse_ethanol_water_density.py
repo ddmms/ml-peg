@@ -10,17 +10,17 @@ import pytest
 
 from ml_peg.analysis.liquids.ethanol_water_density._analysis import (
     _excess_volume,
-    _interp_1d,
     _peak_x_quadratic,
-    _rmse,
+    weight_to_mole_fraction,
 )
 from ml_peg.analysis.liquids.ethanol_water_density.io_tools import (
+    CALC_PATH,
+    DATA_PATH,
     OUT_PATH,
     _read_model_curve,
-    read_ref_curve,
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -31,7 +31,8 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
-
+LOG_INTERVAL_PS = 0.1
+EQUILIB_TIME_PS = 500
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -46,13 +47,45 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
     tuple[numpy.ndarray, numpy.ndarray]
         Sorted mole fractions and reference densities.
     """
-    x_ref, rho_ref = read_ref_curve()
-    x = np.asarray(x_ref, dtype=float)
-    rho = np.asarray(rho_ref, dtype=float)
+    ref_file = DATA_PATH / "densities_293.15.txt"
+    rho_ref = np.loadtxt(ref_file)
 
-    # Ensure monotonic x for interpolation
-    order = np.argsort(x)
-    return x[order], rho[order]
+    n = len(rho_ref)
+
+    # weight fraction grid
+    w = np.linspace(0.0, 1.0, n)
+
+    # convert to mole fraction
+    x = weight_to_mole_fraction(w)
+
+    return x, rho_ref
+
+
+def compute_density(fname, density_col=13):
+    """
+    Compute average density from NPT log file.
+
+    Parameters
+    ----------
+    fname
+        Path to the log file.
+    density_col
+        Which column the density numbers are in.
+
+    Returns
+    -------
+    float
+        Average density in g/cm3.
+    """
+    density_series = []
+    with open(fname) as lines:
+        for line in lines:
+            items = line.strip().split()
+            if len(items) != 15:
+                continue
+            density_series.append(float(items[13]))
+    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
+    return np.mean(density_series[skip_frames:])
 
 
 @pytest.fixture
@@ -67,7 +100,12 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     """
     curves: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for model_name in MODELS:
-        xs, rhos = _read_model_curve(model_name)
+        model_dir = CALC_PATH / model_name
+        xs = []
+        rhos = []
+        for case_dir in model_dir.iterdir():
+            rhos.append(compute_density(case_dir / f"{model_name}.log"))
+            xs.append(float(case_dir.name.split("_")[-1]))
         x = np.asarray(xs, dtype=float)
         rho = np.asarray(rhos, dtype=float)
 
@@ -126,7 +164,7 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
 
     results: dict[str, list] = {"ref": []} | {m: [] for m in MODELS}
 
-    rho_ref_on_grid = _interp_1d(x_ref, rho_ref, x_grid)
+    rho_ref_on_grid = np.interp(x_grid, x_ref, rho_ref)
     results["ref"] = list(rho_ref_on_grid)
 
     for m in MODELS:
@@ -134,7 +172,7 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
         # Interpolate model to x_grid if needed
         if len(x_m) != len(x_grid) or np.any(np.abs(x_m - x_grid) > 1e-12):
             # This assumes model spans the grid range; otherwise raise.
-            rho_m_on_grid = _interp_1d(x_m, rho_m, x_grid)
+            rho_m_on_grid = np.interp(x_grid, x_m, rho_m)
         else:
             rho_m_on_grid = rho_m
         results[m] = list(rho_m_on_grid)
@@ -162,8 +200,8 @@ def rmse_density(ref_curve, model_curves) -> dict[str, float]:
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
     for m, (x_m, rho_m) in model_curves.items():
-        rho_ref_m = _interp_1d(x_ref, rho_ref, x_m)
-        out[m] = _rmse(rho_m, rho_ref_m)
+        rho_ref_m = np.interp(x_m, x_ref, rho_ref)
+        out[m] = rmse(rho_m, rho_ref_m)
     return out
 
 
@@ -188,12 +226,12 @@ def rmse_excess_volume(ref_curve, model_curves) -> dict[str, float]:
     out: dict[str, float] = {}
 
     for m, (x_m, rho_m) in model_curves.items():
-        rho_ref_m = _interp_1d(x_ref, rho_ref, x_m)
+        rho_ref_m = np.interp(x_m, x_ref, rho_ref)
 
         ex_ref = _excess_volume(x_m, rho_ref_m)
         ex_m = _excess_volume(x_m, rho_m)
 
-        out[m] = _rmse(ex_m, ex_ref)
+        out[m] = rmse(ex_m, ex_ref)
 
     return out
 
