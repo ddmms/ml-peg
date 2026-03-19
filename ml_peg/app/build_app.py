@@ -7,7 +7,7 @@ import warnings
 
 from dash import Dash, Input, Output, callback
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
+from dash.dcc import Loading, Store, Tab, Tabs
 from dash.html import H1, H3, Div
 from yaml import safe_load
 
@@ -254,7 +254,7 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, None)
         data.append(row)
 
-    data = calc_table_scores(data)
+    data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
 
@@ -382,7 +382,25 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                Div(id="tabs-content"),
+                Loading(
+                    Div(id="tabs-content"),
+                    type="circle",
+                    color="#119DFF",
+                    fullscreen=False,
+                    # dont trigger both start up load wheel + tab change load wheel
+                    # (when switching to summary tab)
+                    target_components={"tabs-content": "children"},
+                    style={
+                        # Pin near the top so the spinner is visible on long pages
+                        # (default is centre of page)
+                        "position": "fixed",
+                        "top": "300px",
+                        "left": "50%",
+                        "transform": "translateX(-50%)",
+                        "zIndex": "1100",
+                    },
+                    parent_style={"position": "relative"},
+                ),
             ],
             style={"flex": "1", "marginBottom": "40px"},
         ),
