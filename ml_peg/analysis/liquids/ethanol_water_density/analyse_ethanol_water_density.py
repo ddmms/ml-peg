@@ -7,20 +7,18 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ml_peg.analysis.liquids.ethanol_water_density._analysis import (
-    _excess_volume,
-    _peak_x_quadratic,
-    weight_to_mole_fraction,
-)
-from ml_peg.analysis.liquids.ethanol_water_density.io_tools import (
-    CALC_PATH,
-    DATA_PATH,
-    OUT_PATH,
-)
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
+
+CATEGORY = "liquids"
+BENCHMARK = "ethanol_water_density"
+CALC_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "outputs"
+OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK
+DATA_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "data"
 
 MODELS = get_model_names(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}  # duplicate in calc
@@ -29,10 +27,91 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+M_WATER = 18.01528  # g/mol
+M_ETOH = 46.06844  # g/mol
 LOG_INTERVAL_PS = 0.1
 EQUILIB_TIME_PS = 500
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+
+def weight_to_mole_fraction(w):
+    r"""
+    Convert ethanol weight fraction to mole fraction.
+
+    Parameters
+    ----------
+    w : array-like
+        Ethanol weight fraction :math:`m_\mathrm{ethanol} / m_\mathrm{total}`.
+
+    Returns
+    -------
+    numpy.ndarray
+        Ethanol mole fraction.
+    """
+    n_e = w / M_ETOH
+    n_w = (1 - w) / M_WATER
+    return n_e / (n_e + n_w)
+
+
+def _excess_volume(x: np.ndarray, rhos: np.ndarray) -> np.ndarray:
+    """
+    Compute excess volume given molar fraction and density respectively.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Composition grid (mol fraction).
+    rhos : numpy.ndarray
+        Density.
+
+    Returns
+    -------
+    numpy.ndarray
+        Excess values ``y - y_linear``.
+    """
+    return (x * M_ETOH + (1 - x) * M_WATER) / rhos - (
+        x * M_ETOH / rhos[-1] + (1 - x) * M_WATER / rhos[0]
+    )
+
+
+def _peak_x_quadratic(x: np.ndarray, y: np.ndarray) -> float:
+    """
+    Estimate x position of the minimum by local quadratic fitting.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Composition grid.
+    y : numpy.ndarray
+        Property values.
+
+    Returns
+    -------
+    float
+        Estimated composition of the minimum.
+    """
+    if len(x) < 3:
+        return float(x[int(np.argmin(y))])
+
+    i = int(np.argmin(y))
+    if i == 0 or i == len(x) - 1:
+        return float(x[i])
+
+    # Fit a parabola to (i-1, i, i+1)
+    xs = x[i - 1 : i + 2]
+    ys = y[i - 1 : i + 2]
+
+    # y = ax^2 + bx + c
+    a, b, _c = np.polyfit(xs, ys, deg=2)
+    if abs(a) < 1e-16:
+        return float(x[i])
+
+    xv = -b / (2.0 * a)
+
+    # Clamp to local bracket so we don't get silly extrapolation
+    return float(np.clip(xv, xs.min(), xs.max()))
 
 
 @pytest.fixture(scope="session")
