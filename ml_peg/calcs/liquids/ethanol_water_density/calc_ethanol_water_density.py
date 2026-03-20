@@ -284,25 +284,3 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
         force=True,
     )
     run_one_case(struct_path, calc, case_dir / f"{model_name}.traj")
-
-
-if __name__ == "__main__":  # TODO: delete this
-    # run a very small simulation to see if it does something reasonable
-    from ase import units
-    from mace.calculators import mace_mp
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
-
-    calc = mace_mp(
-        "data_old/mace-omat-0-small.model",
-        dispersion=True,
-        dispersion_cutoff=25 * units.Bohr,
-    )
-    run_one_case(
-        "data/mix_xe_0.00.extxyz",
-        calc,
-        output_fname="debug/whatever.traj",
-    )
