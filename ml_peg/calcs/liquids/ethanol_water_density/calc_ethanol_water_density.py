@@ -21,11 +21,11 @@ from ase.md.velocitydistribution import (
 )
 import pytest
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
-BENCH_ROOT = Path(__file__).resolve().parent
-OUT_PATH = BENCH_ROOT / "outputs"
+OUT_PATH = Path(__file__).parent / "outputs"
 
 MODELS = load_models(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}
@@ -265,9 +265,15 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
     calc = model.get_calculator()
     calc = model.add_d3_calculator(calc)
 
-    # TODO: the data downloading thing here
+    data_dir = (
+        download_s3_data(
+            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
+            filename="ethanol_water_density.zip",
+        )
+        / "ethanol_water_density"
+    )
 
-    struct_path = DATA_PATH / case.filename
+    struct_path = data_dir / case.filename
     if not struct_path.exists():
         raise FileNotFoundError(
             f"Missing structure for x={case.x_ethanol}: {struct_path}"
