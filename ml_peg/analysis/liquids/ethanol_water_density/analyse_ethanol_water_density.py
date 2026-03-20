@@ -11,6 +11,7 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -18,7 +19,6 @@ CATEGORY = "liquids"
 BENCHMARK = "ethanol_water_density"
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "outputs"
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK
-DATA_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "data"
 
 MODELS = get_model_names(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}  # duplicate in calc
@@ -124,7 +124,14 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
     tuple[numpy.ndarray, numpy.ndarray]
         Sorted mole fractions and reference densities.
     """
-    ref_file = DATA_PATH / "densities_293.15.txt"
+    data_dir = (
+        download_s3_data(
+            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
+            filename="ethanol_water_density.zip",
+        )
+        / "ethanol_water_density"
+    )
+    ref_file = data_dir / "densities_293.15.txt"
     rho_ref = np.loadtxt(ref_file)
 
     n = len(rho_ref)
@@ -412,14 +419,4 @@ def test_ethanol_water_density(
     None
         The test validates fixture execution and writes artifacts.
     """
-    print(
-        MODEL_INDEX
-    )  # TODO: these print statements may be useful for debugging, but should I remove?
-    print(
-        {
-            key0: {MODEL_INDEX[name]: value for name, value in value0.items()}
-            for key0, value0 in metrics.items()
-        }
-    )
-    print(densities_parity)
     return
