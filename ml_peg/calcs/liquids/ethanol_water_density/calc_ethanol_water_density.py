@@ -30,8 +30,6 @@ OUT_PATH = Path(__file__).parent / "outputs"
 MODELS = load_models(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}
 
-DATA_PATH = BENCH_ROOT / "data"
-
 NUM_NPT_STEPS = 1000_000
 NUM_NVT_STEPS = 50_000
 TIMESTEP = 1 * units.fs
@@ -58,16 +56,21 @@ class CompositionCase:
     filename: str
 
 
-def load_compositions() -> list[CompositionCase]:
+def load_compositions(data_path) -> list[CompositionCase]:
     """
     Load composition grid from ``compositions.csv``.
+
+    Parameters
+    ----------
+    data_path : pathlib.Path
+        Path to the folder containing ``compositions.csv``.
 
     Returns
     -------
     list[CompositionCase]
         Parsed composition cases ordered as in the CSV file.
     """
-    comps_file = DATA_PATH / "compositions.csv"
+    comps_file = data_path / "compositions.csv"
     cases: list[CompositionCase] = []
     with comps_file.open(newline="") as f:
         reader = csv.DictReader(f)
@@ -81,9 +84,6 @@ def load_compositions() -> list[CompositionCase]:
     if not cases:
         raise RuntimeError("No compositions found in compositions.csv")
     return cases
-
-
-COMPOSITIONS = load_compositions()
 
 
 def run_one_case(
@@ -237,11 +237,18 @@ def test_water_ethanol_density_curves(mlip: tuple[str, Any]) -> None:
     None
         This test writes output files for a single case.
     """
-    for case in COMPOSITIONS:
-        water_ethanol_density_curve_one_case(mlip, case)
+    data_dir = (
+        download_s3_data(
+            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
+            filename="ethanol_water_density.zip",
+        )
+        / "ethanol_water_density"
+    )
+    for case in load_compositions(data_dir):
+        water_ethanol_density_curve_one_case(mlip, case, data_dir)
 
 
-def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
+def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case, data_dir) -> None:
     """
     Run one MD simulation case and write its density time series.
 
@@ -251,6 +258,8 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
         Pair of model name and model object.
     case : Any
         Composition case containing ``x_ethanol`` and ``filename``.
+    data_dir : str | pathlib.Path
+        Path to the data file.
 
     Returns
     -------
@@ -264,14 +273,6 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case) -> None:
 
     calc = model.get_calculator()
     calc = model.add_d3_calculator(calc)
-
-    data_dir = (
-        download_s3_data(
-            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
-            filename="ethanol_water_density.zip",
-        )
-        / "ethanol_water_density"
-    )
 
     struct_path = data_dir / case.filename
     if not struct_path.exists():
