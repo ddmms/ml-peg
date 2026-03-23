@@ -14,12 +14,15 @@ from pymatgen.core import Structure
 import pytest
 from tqdm.auto import tqdm
 
+from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-# TODO: DATA_PATH = download_github_data(filename, github_uri)
-DATA_PATH = Path("/Users/tw/Downloads/split_vacancy_data")
+github_uri = "https://github.com/ThomasWarford/defect_data/raw/refs/heads/main/"
+filename = "split_vacancy_data.zip"
+DATA_PATH = download_github_data(filename, github_uri)
+DATA_PATH = Path(DATA_PATH) / "split_vacancy_data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 # same setting as MatBench

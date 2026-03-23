@@ -479,11 +479,9 @@ def metrics(
     formation_energy_pbesol_mae: dict[str, float],
     spearmans_coefficient_pbesol_mean: dict[str, float],
     rmsd_pbesol_mean: dict[str, float],
-    match_pbesol_rate: dict[str, float],
     formation_energy_pbe_mae: dict[str, float],
     spearmans_coefficient_pbe_mean: dict[str, float],
     rmsd_pbe_mean: dict[str, float],
-    match_pbe_rate: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -496,16 +494,12 @@ def metrics(
         Mean Spearman's rank correlation (oxides, PBEsol) for all models.
     rmsd_pbesol_mean
         Mean RMSD between MLIP and PBEsol relaxed structure that match.
-    match_pbesol_rate
-        Rate of MLIP relaxing to same structure as PBEsol.
     formation_energy_pbe_mae
         Split vacancy formation energy MAE (nitrides, PBE(+U)) for all models.
     spearmans_coefficient_pbe_mean
         Mean Spearman's rank correlation (nitrides, PBE(+U)) for all models.
     rmsd_pbe_mean
         Mean RMSD between MLIP and PBE relaxed structure that match.
-    match_pbe_rate
-        Rate of MLIP relaxing to same structure as PBE.
 
     Returns
     -------
@@ -516,11 +510,11 @@ def metrics(
         "MAE (PBEsol)": formation_energy_pbesol_mae,
         "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
         "RMSD (PBEsol)": rmsd_pbesol_mean,
-        "Match Rate (PBEsol)": match_pbesol_rate,
+        # "Match Rate (PBEsol)": match_pbesol_rate, # not included since always 1
         "MAE (PBE)": formation_energy_pbe_mae,
         "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
         "RMSD (PBE)": rmsd_pbe_mean,
-        "Match Rate (PBE)": match_pbe_rate,
+        # "Match Rate (PBE)": match_pbe_rate, # not included since always 1
     }
 
 
