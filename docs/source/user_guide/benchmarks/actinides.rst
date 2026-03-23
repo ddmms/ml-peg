@@ -33,4 +33,4 @@ Low
 Data availability
 -----------------
 
-Reference data: availabile in repo, for specific calculation details contact willdavie2002@gmail.com.
+Reference data: availabile in repo. Data and complete calculation details will be released in an upcoming publication. For now, please contact willdavie2002@gmail.com.
