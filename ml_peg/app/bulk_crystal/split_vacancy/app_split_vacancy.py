@@ -61,7 +61,7 @@ def get_app() -> SplitVacancyApp:
         name=BENCHMARK_NAME,
         description=(
             "Performance predicting the formation energy of split "
-            "vacancies from regular vacancies in XX systems."  # TODO: add number
+            "vacancies from fully ionised vacancies in nitrides and oxides."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "split_vacancy_metrics_table.json",
