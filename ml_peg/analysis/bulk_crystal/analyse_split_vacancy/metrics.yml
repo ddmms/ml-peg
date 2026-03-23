@@ -1,49 +1,49 @@
 metrics:
   Spearman's (PBEsol):
-    good: 0.0
-    bad: 1.0
+    good: 1.0
+    bad: 0.6
     unit: null
     tooltip: Measure of the accuracy of the energy ranking of PBEsol relaxed oxide structures by MLIPs.
     level_of_theory: PBEsol
   MAE (PBEsol):
     good: 0.0
-    bad: 1.0
+    bad: 2.0
     unit: eV
     tooltip: Formation energy of split vacancy, considering lowest energy relaxed oxide structures.
     level_of_theory: PBEsol
   RMSD (PBEsol):
     good: 0.0
-    bad: 1.0
+    bad: 0.2
     unit: Å
     tooltip: RMSD between MLIP and PBEsol relaxed oxide structures that match.
     level_of_theory: PBEsol
-  Match Rate (PBEsol):
-    good: 0.0
-    bad: 1.0
-    unit: null
-    tooltip: Fraction of MLIP relaxations that converge to the same structure as PBEsol.
-    level_of_theory: PBEsol
+  # Match Rate (PBEsol): # always 1 atm
+    # good: 0.0
+    # bad: 1.0
+  #   unit: null
+  #   tooltip: Fraction of MLIP relaxations that converge to the same structure as PBEsol.
+  #   level_of_theory: PBEsol
   Spearman's (PBE):
-    good: 0.0
-    bad: 1.0
+    good: 1.0
+    bad: 0.6
     unit: null
     tooltip: Measure of the accuracy of the energy ranking of PBE relaxed nitride structures by MLIPs.
     level_of_theory: PBE
   MAE (PBE):
     good: 0.0
-    bad: 1.0
+    bad: 2.0
     unit: eV
     tooltip: Formation energy of split vacancy, considering lowest energy relaxed nitride structures.
     level_of_theory: PBE
   RMSD (PBE):
     good: 0.0
-    bad: 1.0
+    bad: 0.2
     unit: Å
     tooltip: RMSD between MLIP and PBE relaxed nitride structures that match.
     level_of_theory: PBE
-  Match Rate (PBE):
-    good: 0.0
-    bad: 1.0
-    unit: null
-    tooltip: Fraction of MLIP relaxations that converge to the same structure as PBE.
-    level_of_theory: PBE
+  # Match Rate (PBE): # always 1 atm
+  #   good: 0.0
+  #   bad: 1.0
+  #   unit: null
+  #   tooltip: Fraction of MLIP relaxations that converge to the same structure as PBE.
+  #   level_of_theory: PBE
