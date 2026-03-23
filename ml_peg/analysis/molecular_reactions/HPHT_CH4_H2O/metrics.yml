@@ -1,0 +1,22 @@
+metrics:
+
+  FEP_MAE:
+      good: 0
+      bad: 50
+      unit: kJ/mol
+      tooltip: "Mean absolute error of free energy profiles"
+      level_of_theory: PBE + D3
+
+  DF_MAE:
+      good: 0
+      bad: 50
+      unit: kJ/mol
+      tooltip: "Mean absolute error of reaction free energies"
+      level_of_theory: PBE + D3
+  
+  DF#_MAE:
+      good: 0
+      bad: 50
+      unit: kJ/mol
+      tooltip: "Mean absolute error of free energy barriers"
+      level_of_theory: PBE + D3
