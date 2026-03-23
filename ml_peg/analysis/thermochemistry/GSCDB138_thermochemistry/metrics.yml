@@ -1,0 +1,309 @@
+metrics:
+  AE11 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  AE18 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  AL2X6 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  ALK8 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  AlkAtom19 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  ALKBDE10 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  AlkIsod14 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  BDE99MR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  BDE99nonMR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  BH76RC MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  BSR36 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  CR20 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  DARC MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  DC13 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  DIPCS9 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  EA50 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  FH51 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  G21EA MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  G21IP MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  G2RC24 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  HAT707MR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  HAT707nonMR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  HEAVYSB11 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  HNBrBDE18 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  IP23 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  IP30 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  MB08-165 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  MB16-43 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  MX34 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  NBPRC MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  P34AE MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  P34EA MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  P34IP MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  PA26 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  PlatonicRE18 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  PlatonicTAE6 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  RC21 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  RSE43 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  SIE4x4 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  SN13 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  TAE_W4-17MR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  TAE_W4-17nonMR MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  WCPT6 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  YBDE18 MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1

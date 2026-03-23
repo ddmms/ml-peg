@@ -42,7 +42,11 @@ def plot_from_table_column(
         Dictionary relating table headers (keys) and plot to show (values).
     """
 
-    @callback(Output(plot_id, "children"), Input(table_id, "active_cell"))
+    @callback(
+        Output(plot_id, "children"),
+        Output(table_id, "active_cell"),
+        Input(table_id, "active_cell"),
+    )
     def show_plot(active_cell) -> Div:
         """
         Register callback to show plot when a table column is clicked.
@@ -58,11 +62,11 @@ def plot_from_table_column(
             Message explaining interactivity, or plot on table click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot.")
+            return Div("Click on a metric to view plot."), None
         column_id = active_cell.get("column_id", None)
         if column_id:
             if column_id in column_to_plot:
-                return Div(column_to_plot[column_id])
+                return Div(column_to_plot[column_id]), None
             raise PreventUpdate
         raise ValueError("Invalid column_id")
 
@@ -91,6 +95,7 @@ def plot_from_table_cell(
 
     @callback(
         Output(plot_id, "children"),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
         Input(table_id, "data"),
     )
@@ -111,7 +116,7 @@ def plot_from_table_cell(
             Message explaining interactivity, or plot on cell click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot.")
+            return Div("Click on a metric to view plot."), None
         column_id = active_cell.get("column_id", None)
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
@@ -121,13 +126,13 @@ def plot_from_table_cell(
             try:
                 cell_value = current_table_data[row_index].get(column_id)
                 if cell_value is None:
-                    return Div("No data available for this model.")
+                    return Div("No data available for this model."), None
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
-            return Div(cell_to_plot[row_id][column_id])
-        return Div("Click on a metric to view plot.")
+            return Div(cell_to_plot[row_id][column_id]), None
+        return Div("Click on a metric to view plot."), None
 
 
 def struct_from_scatter(
@@ -219,6 +224,7 @@ def struct_from_table(
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
         prevent_initial_call="initial_duplicate",
     )
@@ -237,7 +243,7 @@ def struct_from_table(
             Visualised structure on plot click.
         """
         if not active_cell:
-            return Div("Click on a metric to view the structure.")
+            return Div("Click on a metric to view the structure."), None
 
         column_id = active_cell.get("column_id", None)
         if column_id:
@@ -254,7 +260,7 @@ def struct_from_table(
                             "borderRadius": "5px",
                         },
                     )
-                )
+                ), None
 
             raise PreventUpdate
         raise ValueError("Invalid column_id")
@@ -644,6 +650,7 @@ def scatter_and_assets_from_table(
         Output(plot_container_id, "children"),
         Output(scatter_metadata_store_id, "data"),
         Output(last_cell_store_id, "data"),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
         State(last_cell_store_id, "data"),
         prevent_initial_call=True,
@@ -705,7 +712,7 @@ def scatter_and_assets_from_table(
             raise PreventUpdate
         content, metadata = result
 
-        return content, metadata, active_cell
+        return content, metadata, active_cell, None
 
 
 def model_asset_from_scatter(

@@ -36,6 +36,9 @@ def relaxed_structs() -> dict[str, Atoms]:
         for struct_name in structs:
             struct = read(DATA_PATH / struct_name)
             struct.calc = calc.get_calculator()
+            # Set default charge and spin
+            struct.info.setdefault("charge", 0)
+            struct.info.setdefault("spin", 1)
 
             geomopt = GeomOpt(
                 struct=struct,
@@ -61,7 +64,7 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     model_name
         Name of model to use.
     """
-    NEB(
+    neb = NEB(
         init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
         final_struct=relaxed_structs[f"LiFePO4_end_b.cif-{model_name}"],
         n_images=11,
@@ -70,7 +73,14 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
         plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"li_diffusion_b-{model_name}",
-    ).run()
+    )
+    # Set default charge and spin for all images
+    neb.interpolate()
+    neb.interpolator = None
+    for image in neb.images:
+        image.info.setdefault("charge", 0)
+        image.info.setdefault("spin", 1)
+    neb.run()
 
 
 @pytest.mark.slow
@@ -86,7 +96,7 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     model_name
         Name of model to use.
     """
-    NEB(
+    neb = NEB(
         init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
         final_struct=relaxed_structs[f"LiFePO4_end_c.cif-{model_name}"],
         n_images=11,
@@ -95,4 +105,11 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> N
         plot_band=True,
         write_band=True,
         file_prefix=OUT_PATH / f"li_diffusion_c-{model_name}",
-    ).run()
+    )
+    # Set default charge and spin for all images
+    neb.interpolate()
+    neb.interpolator = None
+    for image in neb.images:
+        image.info.setdefault("charge", 0)
+        image.info.setdefault("spin", 1)
+    neb.run()
