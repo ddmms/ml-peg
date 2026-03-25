@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ase.io import read
+from ase.io import read, write
+from tqdm import tqdm
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
