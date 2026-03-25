@@ -193,5 +193,7 @@ def test_cleavage_energy(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All cleavage energy metrics.
+    cleavage_density
+        Density-scatter inputs for all models (drives saved plots).
     """
     return
