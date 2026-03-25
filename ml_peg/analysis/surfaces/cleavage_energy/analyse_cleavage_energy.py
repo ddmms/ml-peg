@@ -80,11 +80,8 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
         if not model_dir.exists():
             continue
 
-        if canonical_ids is None:
-            canonical_ids = sorted(data.keys())
-            for uid in canonical_ids:
-                entry = data[uid]
-                results["ref"].append(entry["ref_cleavage_energy"] * EV_TO_MEV)
+        model_pred = []
+        model_ref = []
 
         for uid in canonical_ids:
             entry = data[uid]
