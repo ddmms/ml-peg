@@ -109,7 +109,55 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
 
     return results
 
+@pytest.fixture
+@plot_density_scatter(
+    filename=OUT_PATH / "figure_cleavage_energies.json",
+    title="Cleavage Energies",
+    x_label="Predicted cleavage energy / meV/Å²",
+    y_label="Reference cleavage energy / meV/Å²",
+)
+def cleavage_density(
+    cleavage_energies: dict[str, dict[str, list]],
+) -> dict[str, dict]:
+    """
+    Build density scatter inputs and write density trajectories.
 
+    Parameters
+    ----------
+    cleavage_energies
+        Reference and predicted cleavage energies per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of model names to density-plot payloads.
+    """
+    label_list = [
+        f.stem
+        for f in sorted(
+            (CALC_PATH / MODELS[0]).glob("*.xyz"), key=lambda p: int(p.stem)
+        )
+    ]
+
+    density_inputs: dict[str, dict] = {}
+    for model_name in MODELS:
+        preds = cleavage_energies[model_name]["pred"]
+        refs = cleavage_energies[model_name]["ref"]
+        density_inputs[model_name] = {
+            "ref": refs,
+            "pred": preds,
+            "meta": {"system_count": len([v for v in preds if v is not None])},
+        }
+        if preds:
+            write_density_trajectories(
+                labels_list=label_list,
+                ref_vals=refs,
+                pred_vals=preds,
+                struct_dir=CALC_PATH / model_name,
+                traj_dir=OUT_PATH / model_name / "density_traj",
+                struct_filename_builder=lambda label: f"{label}.xyz",
+            )
+    return density_inputs
 @pytest.fixture
 def cleavage_mae(cleavage_energies: dict[str, list]) -> dict[str, float]:
     """
