@@ -199,8 +199,6 @@ def metrics(cleavage_mae: dict[str, float]) -> dict[str, dict]:
     ----------
     cleavage_mae
         Mean absolute errors for all models.
-    cleavage_rmse
-        Root mean squared errors for all models.
 
     Returns
     -------
