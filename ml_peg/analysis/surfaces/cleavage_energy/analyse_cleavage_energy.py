@@ -31,43 +31,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_MEV = 1000.0
 
 
-def _load_model_results(model_name: str) -> dict | None:
-    """
-    Load the JSON energy results for a model, or None if absent.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model whose results file to load.
-
-    Returns
-    -------
-    dict | None
-        Parsed JSON results dictionary, or None if the file does not exist.
-    """
-    result_file = CALC_PATH / f"{model_name}.json"
-    if not result_file.exists():
-        return None
-    with open(result_file, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def system_names() -> list[str]:
-    """
-    Get list of system identifiers from calc outputs.
-
-    Returns
-    -------
-    list[str]
-        Sorted list of unique_id values from the first model with results.
-    """
-    for model_name in MODELS:
-        data = _load_model_results(model_name)
-        if data is not None:
-            return sorted(data.keys())
-    return []
-
-
 def compute_cleavage_energy(
     slab_energy: float,
     bulk_energy: float,
