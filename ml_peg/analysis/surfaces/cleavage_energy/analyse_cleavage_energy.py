@@ -175,36 +175,10 @@ def cleavage_mae(cleavage_energies: dict[str, list]) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if cleavage_energies[model_name]:
-            results[model_name] = mae(
-                cleavage_energies["ref"], cleavage_energies[model_name]
-            )
-        else:
-            results[model_name] = None
-    return results
-
-
-@pytest.fixture
-def cleavage_rmse(cleavage_energies: dict[str, list]) -> dict[str, float]:
-    """
-    Get root mean squared error for cleavage energies.
-
-    Parameters
-    ----------
-    cleavage_energies
-        Dictionary of reference and predicted cleavage energies.
-
-    Returns
-    -------
-    dict[str, float]
-        RMSE for each model.
-    """
-    results = {}
-    for model_name in MODELS:
-        if cleavage_energies[model_name]:
-            ref = np.array(cleavage_energies["ref"])
-            pred = np.array(cleavage_energies[model_name])
-            results[model_name] = float(np.sqrt(np.mean((pred - ref) ** 2)))
+        ref_vals = cleavage_energies[model_name]["ref"]
+        pred_vals = cleavage_energies[model_name]["pred"]
+        if pred_vals:
+            results[model_name] = mae(ref_vals, pred_vals)
         else:
             results[model_name] = None
     return results
