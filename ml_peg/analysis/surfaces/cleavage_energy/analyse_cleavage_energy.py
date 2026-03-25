@@ -189,6 +189,7 @@ def cleavage_mae(cleavage_energies: dict[str, list]) -> dict[str, float]:
     filename=OUT_PATH / "cleavage_energy_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     cleavage_mae: dict[str, float],
