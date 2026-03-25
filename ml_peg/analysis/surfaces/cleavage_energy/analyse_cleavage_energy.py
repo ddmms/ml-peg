@@ -68,8 +68,8 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
 
     Returns
     -------
-    dict[str, list]
-        Dictionary of reference and predicted cleavage energies in meV/A^2.
+    dict[str, dict[str, list]]
+        Dictionary of model names to ``{"ref": [...], "pred": [...]}`` in meV/A^2.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     canonical_ids = None
