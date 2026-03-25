@@ -97,16 +97,7 @@ def compute_cleavage_energy(
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_cleavage_energies.json",
-    title="Cleavage Energies",
-    x_label="Predicted cleavage energy / meV/\u00c5\u00b2",
-    y_label="Reference cleavage energy / meV/\u00c5\u00b2",
-    hoverdata={
-        "System": system_names(),
-    },
-)
-def cleavage_energies() -> dict[str, list]:
+def cleavage_energies() -> dict[str, dict[str, list]]:
     """
     Get cleavage energies for all systems in meV/A^2.
 
