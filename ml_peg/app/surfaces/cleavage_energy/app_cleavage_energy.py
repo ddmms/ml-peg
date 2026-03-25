@@ -76,7 +76,8 @@ def get_app() -> CleavageEnergyApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "cleavage_energy_metrics_table.json",
         extra_components=[
-            Div(scatter, style={"marginTop": "20px"}),
+            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
