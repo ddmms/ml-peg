@@ -208,7 +208,10 @@ def metrics(cleavage_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": cleavage_mae}
 
 
-def test_cleavage_energy(metrics: dict[str, dict]) -> None:
+def test_cleavage_energy(
+    metrics: dict[str, dict],
+    cleavage_density: dict[str, dict],
+) -> None:
     """
     Run cleavage energy analysis.
 
