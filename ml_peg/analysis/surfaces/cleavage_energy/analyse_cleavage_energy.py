@@ -76,8 +76,8 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
     stored_ref = []
 
     for model_name in MODELS:
-        data = _load_model_results(model_name)
-        if data is None:
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
             continue
 
         if canonical_ids is None:
