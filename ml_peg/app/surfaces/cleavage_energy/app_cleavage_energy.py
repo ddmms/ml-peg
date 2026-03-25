@@ -58,7 +58,6 @@ if __name__ == "__main__":
     full_app = Dash(
         __name__,
         assets_folder=DATA_PATH.parent.parent,
-        suppress_callback_exceptions=True,
     )
 
     cleavage_energy_app = get_app()
