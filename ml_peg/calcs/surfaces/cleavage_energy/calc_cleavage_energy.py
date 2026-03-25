@@ -61,19 +61,17 @@ def test_cleavage_energy(mlip: tuple[str, Any]) -> None:
             bulk.calc = copy(calc)
             bulk_energy = float(bulk.get_potential_energy())
 
-            unique_id = slab.info["unique_id"]
-            results[unique_id] = {
-                "slab_energy": slab_energy,
-                "bulk_energy": bulk_energy,
-                "area_slab": float(slab.info["area_slab"]),
-                "thickness_ratio": float(slab.info["thickness_ratio"]),
-                "ref_cleavage_energy": float(slab.info["ref_cleavage_energy"]),
-                "mpid": slab.info["mpid"],
-                "miller": slab.info["miller"],
-                "term": int(slab.info["term"]),
-            }
-
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    output_file = OUT_PATH / f"{model_name}.json"
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(results, f)
+            slab.info.update(
+                {
+                    "slab_energy": slab_energy,
+                    "bulk_energy": bulk_energy,
+                    "area_slab": float(slab.info["area_slab"]),
+                    "thickness_ratio": float(slab.info["thickness_ratio"]),
+                    "ref_cleavage_energy": float(slab.info["ref_cleavage_energy"]),
+                    "mpid": slab.info["mpid"],
+                    "miller": slab.info["miller"],
+                    "term": int(slab.info["term"]),
+                }
+            )
+            write(write_dir / f"{idx}.xyz", slab, format="extxyz")
+            idx += 1
