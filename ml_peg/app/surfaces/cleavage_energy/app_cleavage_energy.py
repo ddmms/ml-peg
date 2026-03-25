@@ -24,7 +24,37 @@ class CleavageEnergyApp(BaseApp):
     """Cleavage energy benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
-        """No interactive callbacks needed."""
+        """Register callbacks to app."""
+        density_plots: dict[str, dict] = {}
+        for model in MODELS:
+            density_graph = read_density_plot_for_model(
+                filename=DATA_PATH / "figure_cleavage_energies.json",
+                model=model,
+                id=f"{BENCHMARK_NAME}-{model}-density",
+            )
+            if density_graph is not None:
+                density_plots[model] = {"MAE": density_graph}
+
+        plot_from_table_cell(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
+            cell_to_plot=density_plots,
+        )
+
+        struct_trajs = collect_traj_assets(
+            data_path=DATA_PATH,
+            assets_prefix="assets/surfaces/cleavage_energy",
+            models=MODELS,
+            traj_dirname="density_traj",
+            suffix=".extxyz",
+        )
+        for model in struct_trajs:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-density",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=struct_trajs[model],
+                mode="traj",
+            )
 
 
 def get_app() -> CleavageEnergyApp:
