@@ -88,10 +88,10 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
 
             pred_ce = (
                 compute_cleavage_energy(
-                    entry["slab_energy"],
-                    entry["bulk_energy"],
-                    entry["thickness_ratio"],
-                    entry["area_slab"],
+                    slab.info["slab_energy"],
+                    slab.info["bulk_energy"],
+                    slab.info["thickness_ratio"],
+                    slab.info["area_slab"],
                 )
                 * EV_TO_MEV
             )
