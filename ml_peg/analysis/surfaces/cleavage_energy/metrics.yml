@@ -5,9 +5,3 @@ metrics:
     unit: meV/A^2
     tooltip: Mean Absolute Error of cleavage energies
     level_of_theory: PBE
-  RMSE:
-    good: 0.0
-    bad: 10.0
-    unit: meV/A^2
-    tooltip: Root Mean Squared Error of cleavage energies
-    level_of_theory: PBE
