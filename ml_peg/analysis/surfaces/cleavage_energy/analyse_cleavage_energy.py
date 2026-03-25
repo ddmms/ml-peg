@@ -205,10 +205,7 @@ def metrics(cleavage_mae: dict[str, float]) -> dict[str, dict]:
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "MAE": cleavage_mae,
-        "RMSE": cleavage_rmse,
-    }
+    return {"MAE": cleavage_mae}
 
 
 def test_cleavage_energy(metrics: dict[str, dict]) -> None:
