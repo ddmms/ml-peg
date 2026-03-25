@@ -95,7 +95,17 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
                 )
                 * EV_TO_MEV
             )
-            results[model_name].append(pred_ce)
+            model_pred.append(pred_ce)
+
+            if not ref_stored:
+                model_ref.append(slab.info["ref_cleavage_energy"] * EV_TO_MEV)
+
+        if model_pred:
+            results[model_name]["pred"] = model_pred
+            if not ref_stored:
+                stored_ref = model_ref
+            results[model_name]["ref"] = stored_ref
+            ref_stored = True
 
     return results
 
