@@ -66,10 +66,6 @@ def get_app() -> CleavageEnergyApp:
     CleavageEnergyApp
         Benchmark layout and callback registration.
     """
-    scatter = read_plot(
-        DATA_PATH / "figure_cleavage_energies.json",
-        id=f"{BENCHMARK_NAME}-figure",
-    )
 
     return CleavageEnergyApp(
         name=BENCHMARK_NAME,
