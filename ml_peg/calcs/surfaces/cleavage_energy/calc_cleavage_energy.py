@@ -46,7 +46,8 @@ def test_cleavage_energy(mlip: tuple[str, Any]) -> None:
         / "cleavage_energy"
     )
 
-    results = {}
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
 
     for mpid_dir in sorted(d for d in data_dir.iterdir() if d.is_dir()):
         for xyz_file in sorted(mpid_dir.glob("*.xyz")):
