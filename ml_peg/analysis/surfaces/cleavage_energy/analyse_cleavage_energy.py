@@ -83,8 +83,9 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
         model_pred = []
         model_ref = []
 
-        for uid in canonical_ids:
-            entry = data[uid]
+        for xyz_file in sorted(model_dir.glob("*.xyz"), key=lambda p: int(p.stem)):
+            slab = read(xyz_file)
+
             pred_ce = (
                 compute_cleavage_energy(
                     entry["slab_energy"],
