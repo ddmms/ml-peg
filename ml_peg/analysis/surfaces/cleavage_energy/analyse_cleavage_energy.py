@@ -191,10 +191,7 @@ def cleavage_mae(cleavage_energies: dict[str, list]) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
-def metrics(
-    cleavage_mae: dict[str, float],
-    cleavage_rmse: dict[str, float],
-) -> dict[str, dict]:
+def metrics(cleavage_mae: dict[str, float]) -> dict[str, dict]:
     """
     Get all cleavage energy metrics.
 
