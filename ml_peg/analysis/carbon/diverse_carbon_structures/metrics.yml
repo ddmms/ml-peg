@@ -1,0 +1,70 @@
+metrics:
+  "sp2 bonded MAE":
+    good: 0.0
+    bad: 0.1
+    unit: eV/atom
+    tooltip: Mean absolute error of energy per atom for sp2-bonded structures (graphene, graphite, fullerenes, nanotubes, incl. defects)
+    level_of_theory: PBE
+
+  "sp3 bonded MAE":
+    good: 0.0
+    bad: 0.1
+    unit: eV/atom
+    tooltip: Mean absolute error of energy per atom for sp3-bonded structures (cubic and hexagonal diamond, high-pressure phases, incl. defects)
+    level_of_theory: PBE
+
+  "amorphous/liquid MAE":
+    good: 0.0
+    bad: 0.1
+    unit: eV/atom
+    tooltip: Mean absolute error of energy per atom for amorphous and liquid carbon structures
+    level_of_theory: PBE
+
+  "general bulk MAE":
+    good: 0.0
+    bad: 0.1
+    unit: eV/atom
+    tooltip: Mean absolute error of energy per atom for general bulk crystal structures (fcc, hcp, bcc, sc, A15, etc.)
+    level_of_theory: PBE
+
+  "general clusters MAE":
+    good: 0.0
+    bad: 0.1
+    unit: eV/atom
+    tooltip: Mean absolute error of energy per atom for non-periodic carbon clusters (2-6 atoms)
+    level_of_theory: PBE
+
+  "sp2 bonded force MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error of force components for sp2-bonded structures (graphene, graphite, fullerenes, nanotubes, incl. defects)
+    level_of_theory: PBE
+
+  "sp3 bonded force MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error of force components for sp3-bonded structures (cubic and hexagonal diamond, high-pressure phases, incl. defects)
+    level_of_theory: PBE
+
+  "amorphous/liquid force MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error of force components for amorphous and liquid carbon structures
+    level_of_theory: PBE
+
+  "general bulk force MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error of force components for general bulk crystal structures (fcc, hcp, bcc, sc, A15, etc.)
+    level_of_theory: PBE
+
+  "general clusters force MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error of force components for non-periodic carbon clusters (2-6 atoms)
+    level_of_theory: PBE
