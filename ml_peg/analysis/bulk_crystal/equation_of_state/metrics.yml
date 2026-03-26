@@ -1,0 +1,19 @@
+metrics:
+  Δ:
+        good: 0.0
+        bad: 200.0
+        unit: meV/atom
+        tooltip: RMS energy difference per atom between the two EOS curves averaged over the sampled volume range.
+        level_of_theory: PBE
+  Phase energy:
+        good: 0.0
+        bad: 200.0
+        unit: meV/atom
+        tooltip: Mean absolute error of the phase energy differences relative to the reference phase between model and DFT.
+        level_of_theory: PBE
+  Phase stability:
+        good: 100.0
+        bad: 0.0
+        unit: '%'
+        tooltip: Percentage of correctly predicted stable phases.
+        level_of_theory: PBE
