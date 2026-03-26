@@ -6,6 +6,7 @@ Benchmarks
     :maxdepth: 3
 
     bulk_crystal
+    carbon
     conformers
     defect
     f_block
