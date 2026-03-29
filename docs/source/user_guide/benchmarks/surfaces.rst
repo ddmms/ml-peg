@@ -176,7 +176,7 @@ Root mean squared error of cleavage energy predictions across all surfaces.
 Computational cost
 ------------------
 
-Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs.
+Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs. Takes roughly 5-20 minutes on GPU or a few hours on CPUs.
 
 Data availability
 -----------------
