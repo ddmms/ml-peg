@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -237,7 +237,7 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
     -------
     dict[tuple[str, str], dict[str, float]]
         Mapping of ``(model_name, element)`` to ``{"Delta",
-        "PhaseDiffEOS_MAE_meV", "CorrectStability_pct"}``.
+        "phase_diff_mae", "correct_stability"}``.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results: dict[tuple[str, str], dict[str, float]] = {}
@@ -305,6 +305,65 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
             }
 
     return results
+
+
+def get_metric_per_element(model, eos_stats, metric_name):
+    """
+    Get a dictionary of metric values for each element for a given model.
+
+    Parameters
+    ----------
+    model
+        The name of the model to extract metrics for.
+    eos_stats
+        The full EOS statistics dictionary containing all models and elements.
+    metric_name
+        The name of the metric to extract (e.g., "Δ",
+        "Phase energy", "Phase stability").
+
+    Returns
+    -------
+    dict[str, float]
+        A dictionary mapping element symbols to their
+        corresponding metric values for the specified model.
+    """
+    return {
+        el: eos_stats.get((model, el), {}).get(metric_name, np.nan) for el in ELEMENTS
+    }
+
+
+@pytest.fixture
+def periodic_tables(
+    eos_stats: dict[tuple[str, str], dict[str, float]],
+) -> None:
+    """
+    Write per-model periodic-table heatmaps for each EOS metric.
+
+    Parameters
+    ----------
+    eos_stats
+        Per-(model, element) metric values.
+    """
+    file_suffixes = {
+        "Δ": "delta_periodic_table",
+        "Phase energy": "phase_energy_periodic_table",
+        "Phase stability": "phase_stability_periodic_table",
+    }
+    for model in MODELS:
+        for metric_name in ["Δ", "Phase energy", "Phase stability"]:
+            title = (
+                f"{metric_name} (meV/atom)"
+                if metric_name != "Phase stability"
+                else f"{metric_name} (%)"
+            )
+            colorbar_title = title
+            file_suffix = file_suffixes[metric_name]
+            values = get_metric_per_element(model, eos_stats, metric_name)
+            plot_periodic_table(
+                title=f"{title} - {model}",
+                colorbar_title=colorbar_title,
+                filename=str(OUT_PATH / model / f"{file_suffix}.json"),
+            )(lambda v=values: v)()
 
 
 @pytest.fixture
@@ -427,7 +486,10 @@ def metrics(
     }
 
 
-def test_equation_of_state(metrics: dict[str, dict]) -> None:
+def test_equation_of_state(
+    metrics: dict[str, dict],
+    periodic_tables: None,
+) -> None:
     """
     Run EOS benchmark analysis.
 
@@ -435,5 +497,7 @@ def test_equation_of_state(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All EOS benchmark metric values.
+    periodic_tables
+        Per-model periodic-table heatmaps (side-effect only).
     """
     return

@@ -7,6 +7,8 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -22,9 +24,29 @@ class EquationOfStateApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        # Build plots for models with data (read_density_plot_for_model
-        # returns None for models without data)
-        return
+        _metrics = [
+            ("Δ", "delta_periodic_table"),
+            ("Phase energy", "phase_energy_periodic_table"),
+            ("Phase stability", "phase_stability_periodic_table"),
+        ]
+        cell_to_plot = {}
+        for model in MODELS:
+            plots = {}
+            for column_id, file_suffix in _metrics:
+                path = DATA_PATH / model / f"{file_suffix}.json"
+                if path.exists():
+                    plots[column_id] = read_plot(
+                        filename=path,
+                        id=f"{BENCHMARK_NAME}-{model}-{file_suffix}",
+                    )
+            if plots:
+                cell_to_plot[model] = plots
+
+        plot_from_table_cell(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
+            cell_to_plot=cell_to_plot,
+        )
 
 
 def get_app() -> EquationOfStateApp:
