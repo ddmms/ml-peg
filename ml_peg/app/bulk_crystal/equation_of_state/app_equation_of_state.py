@@ -21,7 +21,7 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Equation of State"
+BENCHMARK_NAME = "Equation of State (metals)"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/"
     "benchmarks/bulk_crystal.html#equation-of-state"
@@ -185,9 +185,8 @@ def get_app() -> EquationOfStateApp:
     return EquationOfStateApp(
         name=BENCHMARK_NAME,
         description=(
-            "Performance when calculating the equation of state for different "
-            "bulk crystal (W, Mo, Nb) structures "
-            "scomapred to PBE data from literature."
+            "Equation of state curves and phase stability for BCC metals "
+            "(W, Mo, Nb), benchmarked against PBE reference data."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "eos_metrics_table.json",
