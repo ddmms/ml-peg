@@ -804,6 +804,8 @@ def plot_periodic_table(
     hoverdata: dict[str, dict[str, Any]] | None = None,
     filename: str = "periodic_table.json",
     colorscale: str = "Viridis",
+    zmin: float | None = None,
+    zmax: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -820,6 +822,8 @@ def plot_periodic_table(
         Output filename for the JSON figure.
     colorscale
         Plotly colourscale name. Default is ``"Viridis"``.
+    zmin, zmax
+        Optional colour scale limits. If not provided, they are inferred from the data.
 
     Returns
     -------
@@ -896,6 +900,8 @@ def plot_periodic_table(
                     colorscale=colorscale,
                     colorbar={"title": colorbar_title},
                     showscale=True,
+                    zmin=zmin,
+                    zmax=zmax,
                 )
             )
 

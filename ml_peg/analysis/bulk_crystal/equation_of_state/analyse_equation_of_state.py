@@ -359,11 +359,26 @@ def periodic_tables(
             colorbar_title = title
             file_suffix = file_suffixes[metric_name]
             values = get_metric_per_element(model, eos_stats, metric_name)
-            plot_periodic_table(
-                title=f"{title} - {model}",
-                colorbar_title=colorbar_title,
-                filename=str(OUT_PATH / model / f"{file_suffix}.json"),
-            )(lambda v=values: v)()
+            if (
+                DEFAULT_THRESHOLDS[metric_name]["good"]
+                > DEFAULT_THRESHOLDS[metric_name]["bad"]
+            ):
+                plot_periodic_table(
+                    title=f"{title} - {model}",
+                    colorbar_title=colorbar_title,
+                    filename=str(OUT_PATH / model / f"{file_suffix}.json"),
+                    zmin=DEFAULT_THRESHOLDS[metric_name]["bad"],
+                    zmax=DEFAULT_THRESHOLDS[metric_name]["good"],
+                )(lambda v=values: v)()
+            else:
+                plot_periodic_table(
+                    title=f"{title} - {model}",
+                    colorbar_title=colorbar_title,
+                    filename=str(OUT_PATH / model / f"{file_suffix}.json"),
+                    zmin=DEFAULT_THRESHOLDS[metric_name]["good"],
+                    zmax=DEFAULT_THRESHOLDS[metric_name]["bad"],
+                    colorscale="Viridis_r",
+                )(lambda v=values: v)()
 
 
 @pytest.fixture
