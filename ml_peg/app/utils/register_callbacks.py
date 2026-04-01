@@ -459,10 +459,6 @@ def register_benchmark_to_category_callback(
         if not benchmark_computed_store:
             raise PreventUpdate
 
-        if not benchmark_computed_store:
-            category_rows, style = update_score_style(category_rows, category_weights)
-            return category_rows, style, category_rows
-
         benchmark_scores: dict[str, float] = {}
         for row in benchmark_computed_store:
             display_name = row.get("MLIP")
