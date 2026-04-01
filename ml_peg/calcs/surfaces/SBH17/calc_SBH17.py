@@ -57,10 +57,14 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         ref_path = sbh17_dir / system / "barrier_pbe"
 
         gp = read(gp_path, index=0, format="vasp")
+        gp.info.setdefault("charge", 0)
+        gp.info.setdefault("spin", 1)
         gp.calc = calc
         gp.get_potential_energy()
 
         ts = read(ts_path, index=0, format="vasp")
+        ts.info.setdefault("charge", 0)
+        ts.info.setdefault("spin", 1)
         ts.calc = copy(calc)
         ts.get_potential_energy()
 
