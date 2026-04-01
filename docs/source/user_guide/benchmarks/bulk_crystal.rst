@@ -115,3 +115,57 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Equation of state (metals)
+==========================
+
+Summary
+-------
+
+Equation of state (energy-volume) curves and phase stability for BCC metals (W, Mo, Nb), benchmarked against PBE reference data.
+
+Metrics
+-------
+
+1. Δ metric is adapted from `Lejaeghere, K., et. al. Reproducibility in density functional theory
+   calculations of solids. (2016). Science, 351(6280), aad3000.
+   <https://doi.org/10.1126/science.aad3000>`_. It measures difference between predicted and reference energy-volume curves and is calculated as the square root of the integrated squared energy difference between the predicted and reference curves. It is normalized by the volume range and provides a single number in meV/atom. Here we use it to extimate how good the model reproduce the reference PBE energy-volume curve for the ground state structure of each metal. Note that the volume range is larger than in the original paper, so the Δ metric values are not directly comparable to those reported in the original paper.
+
+   .. math::
+
+      \Delta = \sqrt{\frac{\int_{V_i}^{V_f} \left[ E_\text{model}(V) - E_\text{ref}(V) \right]^2 \mathrm{d}V}{V_f - V_i}}
+
+   where :math:`E(V)` is the Birch-Murnaghan energy-volume curve and the integral runs over
+   a fixed volume range :math:`[V_i, V_f]` around the reference equilibrium volume.
+   The result is in meV/atom.
+
+2. Phase energy MAE
+
+   Mean absolute error of the phase energy differences (relative to the ground-state
+   phase) evaluated on a uniform volume grid from BM-fitted curves:
+
+   .. math::
+
+      \text{Phase energy MAE} = \frac{1}{N_\phi N_V}
+      \sum_{\phi,\, j}
+      \left| \Delta E_\text{model}^{\phi}(V_j) - \Delta E_\text{ref}^{\phi}(V_j) \right|
+
+   where :math:`\Delta E^\phi(V) = E^\phi(V) - E^{\phi_0}(V)` is the energy of phase
+   :math:`\phi` relative to the ground-state phase :math:`\phi_0`.
+
+   Result in meV/atom. It measures how well the model reproduces the relative energies of different phases across the volume range.
+
+3. Phase stability
+
+   Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
+   volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
+
+Computational cost
+------------------
+Low. Every eos curve requires 50 calls on unit cells.
+
+Data availability
+-----------------
+
+The reference data for W, Nb, Mo is taken from: `Čák, M., Hammerschmidt, T., Rogal, J., Vitek, V., & Drautz, R. (2014). Analytic bond-order potentials for the bcc refractory metals Nb, Ta, Mo and W. Journal of Physics Condensed Matter, 26(19), 195501. <https://doi.org/10.1088/0953-8984/26/19/195501>`_
