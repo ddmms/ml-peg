@@ -1,0 +1,69 @@
+metrics:
+  Absolute MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of all crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE:
+    good: 0.0
+    bad: 10.0
+    unit: kcal/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of all crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Absolute MAE small rigid molecules:
+    good: 0.5
+    bad: 50.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of small rigid molecule crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE small rigid molecules:
+    good: 0.0
+    bad: 10.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of small rigid molecule crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Absolute MAE carbamazepine family:
+    good: 0.5
+    bad: 50.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of carbamazepine family crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE carbamazepine family:
+    good: 0.0
+    bad: 10.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of carbamazepine family crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Absolute MAE fenamate family:
+    good: 0.5
+    bad: 50.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of fenamate family crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE fenamate family:
+    good: 0.0
+    bad: 10.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of fenamate family crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Absolute MAE small drug molecules:
+    good: 0.5
+    bad: 50.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Absolute lattice energy MAEs for all polymorphs of small drug molecule crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)
+  Relative MAE small drug molecules:
+    good: 0.0
+    bad: 10.0
+    weight: 0.0
+    unit: kcal/mol
+    tooltip: "Relative lattice energy MAEs for all polymorphs of small drug molecule crystals"
+    level_of_theory: wb97md3 + 1b CCSD(T)

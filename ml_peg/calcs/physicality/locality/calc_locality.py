@@ -46,7 +46,7 @@ def smiles_to_ase(smiles: str) -> Atoms:
     for i in range(mol.GetNumAtoms()):
         pos = conf.GetAtomPosition(i)
         positions.append([pos.x, pos.y, pos.z])
-    return Atoms(symbols=symbols, positions=positions)
+    return Atoms(symbols=symbols, positions=positions, info={"charge": 0, "spin": 1})
 
 
 def prepare_ghost_system(solute: Atoms, num_ne: int, ghost_dist: float) -> Atoms:
@@ -78,7 +78,11 @@ def prepare_ghost_system(solute: Atoms, num_ne: int, ghost_dist: float) -> Atoms
         if np.linalg.norm(pos - com) >= ghost_dist:
             ghost_positions.append(pos)
 
-    ghost_atoms = Atoms(symbols=["Ne"] * num_ne, positions=ghost_positions)
+    ghost_atoms = Atoms(
+        symbols=["Ne"] * num_ne,
+        positions=ghost_positions,
+        info={"charge": 0, "spin": 1},
+    )
     return solute.copy() + ghost_atoms
 
 
@@ -117,11 +121,13 @@ def add_random_h(
         # check min distance to existing atoms
         dists = np.linalg.norm(solute.positions - pos, axis=1)
         if np.all(dists > 1.0):
-            return solute.copy() + Atoms("H", positions=[pos])
+            return solute.copy() + Atoms(
+                "H", positions=[pos], info={"charge": 0, "spin": 1}
+            )
 
     # Fallback: add H at min_dist along x axis
     pos = com + np.array([min_dist, 0, 0])
-    return solute.copy() + Atoms("H", positions=[pos])
+    return solute.copy() + Atoms("H", positions=[pos], info={"charge": 0, "spin": 1})
 
 
 @pytest.fixture(scope="module")

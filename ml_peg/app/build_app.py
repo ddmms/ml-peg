@@ -5,15 +5,20 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback
+from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Store, Tab, Tabs
-from dash.html import H1, H3, Div
+from dash.dcc import Dropdown, Loading, Store, Tab, Tabs
+from dash.exceptions import PreventUpdate
+from dash.html import H1, H3, Details, Div, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.build_components import build_footer, build_weight_components
+from ml_peg.app.utils.build_components import (
+    build_faqs,
+    build_footer,
+    build_weight_components,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     build_tutorial_button,
@@ -117,6 +122,7 @@ def build_category(
     # Take all tables in category, build new table, and set layout
     category_layouts = {}
     category_tables = {}
+    category_weights = {}
 
     # `category` corresponds to the category's directory name
     # We will use the loaded `category_title` for IDs/dictionary keys returned
@@ -127,16 +133,25 @@ def build_category(
                 category_info = safe_load(file)
                 category_title = category_info.get("title", category)
                 category_descrip = category_info.get("description", "")
+                category_weight = category_info.get("weight", 1)
+                benchmark_weights = category_info.get("benchmark_weights", {})
         except FileNotFoundError:
             category_title = category
             category_descrip = ""
+            category_weight = 1
+            benchmark_weights = {}
 
         # Build category summary table
         summary_table = build_summary_table(
             all_tables[category],
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
+            weights={f"{key} Score": value for key, value in benchmark_weights.items()},
         )
+
+        # Store category weight for overall summary
+        category_weights[f"{category_title} Score"] = category_weight
+
         category_tables[category_title] = summary_table
 
         # Build weight components for category summary table
@@ -184,13 +199,14 @@ def build_category(
                 model_name_map=getattr(benchmark_table, "model_name_map", None),
             )
 
-    return category_layouts, category_tables
+    return category_layouts, category_tables, category_weights
 
 
 def build_summary_table(
     tables: dict[str, DataTable],
     table_id: str = "summary-table",
     description: str | None = None,
+    weights: dict[str, float] | None = None,
 ) -> DataTable:
     """
     Build summary table from a set of tables.
@@ -203,6 +219,8 @@ def build_summary_table(
         ID of table being built. Default is 'summary-table'.
     description
         Description of summary table. Default is None.
+    weights
+        Weights for each column. Default is `None`, which sets all weights to 1.
 
     Returns
     -------
@@ -223,9 +241,11 @@ def build_summary_table(
         for row in table.data:
             # Category tables may include models not to be included
             # Table headings are of the form "[category] Score"
-            canonical_name = table_name_map.get(row["MLIP"], row["MLIP"])
-            if canonical_name in summary_data:
-                summary_data[canonical_name][category_col] = row["Score"]
+            # ``original_name`` refers to the original model identifier
+            # (no display suffix)
+            original_name = table_name_map.get(row["MLIP"], row["MLIP"])
+            if original_name in summary_data:
+                summary_data[original_name][category_col] = row["Score"]
 
     # Ensure all models have entries for all category columns (None if missing)
     data = []
@@ -235,7 +255,7 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, None)
         data.append(row)
 
-    data = calc_table_scores(data)
+    data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
 
@@ -270,7 +290,12 @@ def build_summary_table(
     style_with_warnings = style + warning_styles
 
     # Calculate column widths based on column names
-    column_widths = calculate_column_widths(columns_headers)
+    calculated_widths = calculate_column_widths(columns_headers)
+    # Limit max width to 150px for better wrapping on long column names
+    column_widths = {
+        col_id: min(width, 150) for col_id, width in calculated_widths.items()
+    }
+
     style_cell_conditional = []
     for column_id, width in column_widths.items():
         col_width = f"{width}px"
@@ -294,6 +319,21 @@ def build_summary_table(
         sort_action="native",
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         tooltip_data=tooltip_rows,
         tooltip_delay=100,
         tooltip_duration=None,
@@ -301,12 +341,14 @@ def build_summary_table(
         persistence_type="session",
         persisted_props=["data"],
         tooltip_header=tooltip_header,
+        editable=False,
     )
     table.column_widths = column_widths
     table.description = description
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
+    table.weights = weights
     return table
 
 
@@ -334,6 +376,34 @@ def build_tabs(
         Tab(label=category_name, value=category_name) for category_name in layouts
     ]
 
+    model_options = [{"label": m, "value": m} for m in MODELS]
+
+    model_filter = Details(
+        [
+            Summary(
+                "Visible models",
+                style={"cursor": "pointer", "fontWeight": "bold", "padding": "5px"},
+            ),
+            Div(
+                [
+                    Dropdown(
+                        id="model-filter-checklist",
+                        options=model_options,
+                        value=MODELS,
+                        multi=True,
+                        placeholder="Select visible models",
+                        closeOnSelect=False,
+                        style={"fontSize": "13px"},
+                    ),
+                ],
+                style={"padding": "8px 12px"},
+            ),
+        ],
+        id="model-filter-details",
+        open=True,
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
     tabs_layout = [
         build_onboarding_modal(),
         build_tutorial_button(),
@@ -341,7 +411,36 @@ def build_tabs(
             [
                 H1("ML-PEG"),
                 Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                Div(id="tabs-content"),
+                model_filter,
+                Store(
+                    id="selected-models-store",
+                    storage_type="session",
+                    data=MODELS,
+                ),
+                Store(
+                    id="summary-table-computed-store",
+                    storage_type="session",
+                    data=summary_table.data,
+                ),
+                Loading(
+                    Div(id="tabs-content"),
+                    type="circle",
+                    color="#119DFF",
+                    fullscreen=False,
+                    # dont trigger both start up load wheel + tab change load wheel
+                    # (when switching to summary tab)
+                    target_components={"tabs-content": "children"},
+                    style={
+                        # Pin near the top so the spinner is visible on long pages
+                        # (default is centre of page)
+                        "position": "fixed",
+                        "top": "300px",
+                        "left": "50%",
+                        "transform": "translateX(-50%)",
+                        "zIndex": "1100",
+                    },
+                    parent_style={"position": "relative"},
+                ),
             ],
             style={"flex": "1", "marginBottom": "40px"},
         ),
@@ -352,6 +451,64 @@ def build_tabs(
         tabs_layout,
         style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
     )
+
+    @callback(
+        Output("model-filter-checklist", "value"),
+        Output("selected-models-store", "data"),
+        Input("model-filter-checklist", "value"),
+        Input("selected-models-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_model_filter(
+        checklist_value: list[str] | None,
+        stored_selection: list[str] | None,
+    ) -> tuple[list[str], list[str] | object]:
+        """
+        Keep the model selector checklist and backing store synchronised.
+
+        Parameters
+        ----------
+        checklist_value
+            Current selection from the model filter control.
+        stored_selection
+            Previously persisted selection from ``selected-models-store``.
+
+        Returns
+        -------
+        tuple[list[str], list[str] | object]
+            Updated checklist value and store payload. The second element may be
+            ``dash.no_update`` when only syncing from store to UI.
+        """
+        trigger_id = ctx.triggered_id
+
+        if trigger_id in (None, "selected-models-store"):
+            stored = stored_selection if stored_selection is not None else MODELS
+            return stored, no_update
+        if trigger_id == "model-filter-checklist":
+            selected = checklist_value or []
+            return selected, selected
+        raise PreventUpdate
+
+    @callback(
+        Output("model-filter-details", "open"),
+        Input("all-tabs", "value"),
+        prevent_initial_call=False,
+    )
+    def toggle_filter_panel(tab: str) -> bool:
+        """
+        Expand the visible-models panel on the summary tab only.
+
+        Parameters
+        ----------
+        tab
+            Currently selected tab identifier.
+
+        Returns
+        -------
+        bool
+            ``True`` when the summary tab is active, otherwise ``False``.
+        """
+        return tab == "summary-tab"
 
     @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
     def select_tab(tab) -> Div:
@@ -378,6 +535,7 @@ def build_tabs(
                         id="summary-table-scores-store",
                         storage_type="session",
                     ),
+                    build_faqs(),
                 ]
             )
         return Div([layouts[tab]])
@@ -401,14 +559,14 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     # Combine tests into categories and create category summary
-    category_layouts, category_tables = build_category(all_layouts, all_tables)
+    cat_layouts, cat_tables, cat_weights = build_category(all_layouts, all_tables)
     # Build overall summary table
-    summary_table = build_summary_table(category_tables)
+    summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
-        column_widths=getattr(summary_table, "column_widths", None),
+        column_widths=summary_table.column_widths,
     )
     # Build summary and category tabs
-    build_tabs(full_app, category_layouts, summary_table, weight_components)
+    build_tabs(full_app, cat_layouts, summary_table, weight_components)
     register_onboarding_callbacks()
