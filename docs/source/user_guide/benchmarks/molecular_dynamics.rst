@@ -69,8 +69,9 @@ Data availability
 
 Input structures:
 
-*
-
+Weber et al., Efficient Long-Range Machine Learning Force Fields for
+Liquid and Materials Properties. arXiv:2505.06462 [physics.chem-ph]
 Reference data:
 
-* Experimental
+Same as input data
+Experimental
