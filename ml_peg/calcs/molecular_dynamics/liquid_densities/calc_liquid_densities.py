@@ -8,7 +8,6 @@ in addition to 1-octanol.
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 import time
 from typing import Any
@@ -93,7 +92,7 @@ def run_npt(atoms, calc, output_fname):
     output_fname
         File name to save the trajectory to.
     """
-    if os.path.exists(output_fname):
+    if Path(output_fname).exists():
         try:
             traj = Trajectory(output_fname)
             atoms = traj[-1]
