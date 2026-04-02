@@ -14,13 +14,13 @@ def pytest_addoption(parser):
     parser
         Parser to use.
     """
-    parser.addoption("--system-id", action="store", default=0, type=int)
+    parser.addoption("--temperature-idx", action="store", default=0, type=int)
 
 
 @pytest.fixture
-def system_id(request):
+def temperature_idx(request):
     """
-    Get system_id argument.
+    Get temperature index argument.
 
     Parameters
     ----------
@@ -32,4 +32,4 @@ def system_id(request):
     option
         Requested command line argument.
     """
-    return request.config.getoption("--system-id")
+    return request.config.getoption("--temperature-idx")

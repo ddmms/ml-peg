@@ -121,7 +121,7 @@ def run_npt(atoms, calc, output_fname, temperature):
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
+def test_liquid_densities(mlip: tuple[str, Any], temperature_idx: int) -> None:
     """
     Run Liquid Densities benchmark.
 
@@ -129,8 +129,8 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     ----------
     mlip
         Name of model use and model to get calculator.
-    system_id
-        Identifier of the system to run MD on.
+    temperature_idx
+        Index of temperature list to run MD at.
     """
     # Download data
     data_path = (
@@ -140,7 +140,7 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
         )
         / "water_density"
     )
-    temperature = TEMPERATURES[system_id]
+    temperature = TEMPERATURES[temperature_idx]
     # Get system name
     input_xyz_path = data_path / f"water_T_{temperature:.1f}/water_equilib.xyz"
     system_name = f"water_{temperature:.1f}_K"
