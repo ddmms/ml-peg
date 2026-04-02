@@ -104,6 +104,9 @@ def run_npt(atoms, calc, output_fname):
         nsteps = 0
 
     atoms.calc = calc
+    # Set default charge and spin
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
 
     dyn = IsotropicMTKNPT(
         atoms=atoms,
