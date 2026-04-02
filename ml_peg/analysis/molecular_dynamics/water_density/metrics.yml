@@ -4,5 +4,5 @@ metrics:
     bad: 0.2
     unit: g/cm^3
     tooltip: Mean Absolute Error in density for all systems
-    level_of_theory: Experimental density
+    level_of_theory: Experimental
     weight: 1

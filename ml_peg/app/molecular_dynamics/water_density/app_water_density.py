@@ -15,8 +15,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "WaterDensity"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#Water_Density"
+BENCHMARK_NAME = "Water Density"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#water-density"
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "water_density"
 
 

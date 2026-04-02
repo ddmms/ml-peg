@@ -62,7 +62,7 @@ calculation. This is compared to the reference density, obtained from experiment
 Computational cost
 ------------------
 
-Low: tests are likely to take several days to run on GPU.
+Very high: tests are likely to take several days to run on GPU.
 
 Data availability
 -----------------

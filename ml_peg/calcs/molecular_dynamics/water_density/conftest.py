@@ -14,7 +14,7 @@ def pytest_addoption(parser):
     parser
         Parser to use.
     """
-    parser.addoption("--system_id", action="store", default=0, type=int)
+    parser.addoption("--system-id", action="store", default=0, type=int)
 
 
 @pytest.fixture
@@ -32,4 +32,4 @@ def system_id(request):
     option
         Requested command line argument.
     """
-    return request.config.getoption("--system_id")
+    return request.config.getoption("--system-id")
