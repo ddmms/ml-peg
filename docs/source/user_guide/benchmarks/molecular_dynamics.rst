@@ -37,4 +37,5 @@ Input structures:
 
 Reference data:
 
-* Experiment
+* Same as input data
+* Experimental
