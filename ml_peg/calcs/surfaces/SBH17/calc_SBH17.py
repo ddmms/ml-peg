@@ -52,17 +52,17 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         systems = f.read().splitlines()
 
     for system in tqdm(systems, desc="Evaluating models on SBH17 structures"):
-        gp_path = sbh17_dir / system / "POSCAR-gp"
-        ts_path = sbh17_dir / system / "POSCAR-ts"
+        gp_path = sbh17_dir / system / "gp.xyz"
+        ts_path = sbh17_dir / system / "ts.xyz"
         ref_path = sbh17_dir / system / "barrier_pbe"
 
-        gp = read(gp_path, index=0, format="vasp")
+        gp = read(gp_path, index=0)
         gp.info.setdefault("charge", 0)
         gp.info.setdefault("spin", 1)
         gp.calc = calc
         gp.get_potential_energy()
 
-        ts = read(ts_path, index=0, format="vasp")
+        ts = read(ts_path, index=0)
         ts.info.setdefault("charge", 0)
         ts.info.setdefault("spin", 1)
         ts.calc = copy(calc)
