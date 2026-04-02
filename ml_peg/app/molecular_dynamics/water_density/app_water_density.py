@@ -50,7 +50,7 @@ def get_app() -> WaterDensityApp:
         name=BENCHMARK_NAME,
         description=(
             "Performance in predicting water density at different temperatures."
-            "Reference data is experimental densities."
+            " Reference data is experimental densities."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "water_density_metrics_table.json",
