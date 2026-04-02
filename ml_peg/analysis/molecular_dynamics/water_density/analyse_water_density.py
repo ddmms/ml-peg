@@ -1,4 +1,4 @@
-"""Analyse the liquid densities benchmark."""
+"""Analyse the water density benchmark."""
 
 from __future__ import annotations
 
@@ -22,18 +22,24 @@ from ml_peg.models.models import current_models
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
-
-LOG_INTERVAL_PS = 0.1
+INTERVAL_PS = 0.1
 EQUILIB_TIME_PS = 500
 
-CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "liquid_densities" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "liquid_densities"
+CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "water_density" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "water_density"
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+EXPERIMENTAL_DATA = {
+    "water_270.0_K": 0.9998,
+    "water_290.0_K": 0.9991,
+    "water_300.0_K": 0.9970,
+    "water_330.0_K": 0.9802,
+}
 
 
 def labels() -> list:
@@ -46,8 +52,8 @@ def labels() -> list:
         List of all system names.
     """
     for model_name in MODELS:
-        labels = [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    return labels
+        return [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
+    return []
 
 
 def compute_density(fname, density_col=13):
@@ -73,13 +79,13 @@ def compute_density(fname, density_col=13):
             if len(items) != 15:
                 continue
             density_series.append(float(items[density_col]))
-    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
+    skip_frames = int(EQUILIB_TIME_PS / INTERVAL_PS)
     return np.mean(density_series[skip_frames:])
 
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_liquid_densities.json",
+    filename=OUT_PATH / "figure_water_density.json",
     title="Densities",
     x_label="Predicted density / kcal/mol",
     y_label="Reference density / kcal/mol",
@@ -87,9 +93,9 @@ def compute_density(fname, density_col=13):
         "Labels": labels(),
     },
 )
-def liquid_densities() -> dict[str, list]:
+def water_density() -> dict[str, list]:
     """
-    Get liquid densities for all systems.
+    Get water densities for all temperatures.
 
     Returns
     -------
@@ -107,7 +113,7 @@ def liquid_densities() -> dict[str, list]:
                 compute_density(CALC_PATH / model_name / f"{label}.log")
             )
             if not ref_stored:
-                results["ref"].append(atoms.info["exp_density"])
+                results["ref"].append(EXPERIMENTAL_DATA[label])
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
@@ -118,29 +124,29 @@ def liquid_densities() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_mae(liquid_densities) -> dict[str, float]:
+def get_mae(water_density) -> dict[str, float]:
     """
-    Get mean absolute error for liquid densities.
+    Get mean absolute error for water densities.
 
     Parameters
     ----------
-    liquid_densities
-        Dictionary of reference and predicted liquid densities.
+    water_density
+        Dictionary of reference and predicted water densities.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted liquid densities errors for all models.
+        Dictionary of predicted water density errors for all models.
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(liquid_densities["ref"], liquid_densities[model_name])
+        results[model_name] = mae(water_density["ref"], water_density[model_name])
     return results
 
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "liquid_densities_metrics_table.json",
+    filename=OUT_PATH / "water_density_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
@@ -164,9 +170,9 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
-def test_liquid_densities(metrics: dict[str, dict]) -> None:
+def test_water_density(metrics: dict[str, dict]) -> None:
     """
-    Run liquid densities test.
+    Run water density test.
 
     Parameters
     ----------
