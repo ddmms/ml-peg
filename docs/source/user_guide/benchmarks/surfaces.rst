@@ -145,3 +145,45 @@ Reference data:
   * S. P. Ong, W. D. Richards, A. Jain, G. Hautier, M. Kocher, S. Cholia, D. Gunter, V. Chevrier, K. A. Persson, G. Ceder, "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis," Comput. Mater. Sci., 2013, 68, 314–319. https://doi.org/10.1016/j.commatsci.2012.10.028
 
 * Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
+
+
+Metal Surface Reconstructions
+================================
+
+Summary
+-------
+
+Performance in the predicting surface energy and representing the surface reconstruction.
+
+Metrics
+-------
+
+For each slab, a geometry optimization (F_max = 0.05 eV/Å) is performed, where the bottom most layer is fixed. After that three metrics are evaluated:
+
+* Surface energy error (the surface energy is calculated with regard to the bulk and gas phase references)
+
+* Displacement with regard to the reference configuration
+
+* Energetic ranking (using the surface energy)
+
+Computational cost
+------------------
+
+Very low: tests are likely to take half an hour.
+
+Data availability
+-----------------
+
+Input data:
+
+* Stable and metastable Cu(111)O surface reconstructions.
+
+  * Zhu, B., Huang, Y., Lv, J., Huang, W., Lian, Z., Ouyang, R.,  Yang, F. "Dynamic Evolution and Transformation of Copper Oxides on Cu (111)." The Journal of Physical Chemistry C, 2025, 129(29), 13497-13504. https://doi.org/10.1021/acs.jpcc.5c03416
+
+* Stable and metastable Pd/Au reconstructions with C, O and N atoms.
+
+  * Vinogradova, O. V., Reuter, K., Bukas, V. J. "Trends of Pd3Au (111) alloy surface segregation in oxygen, carbon, and nitrogen environments." The Journal of Physical Chemistry C, 2023, 127(45), 22060-22066. https://doi.org/10.1021/acs.jpcc.3c05640
+
+Reference data:
+
+* PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
