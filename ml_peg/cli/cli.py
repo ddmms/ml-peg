@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from typer import Exit, Option, Typer
+from typer import Context, Exit, Option, Typer
 
 from ml_peg import __version__
 
@@ -57,8 +57,13 @@ def run_dash_app(
     run_app(category=category, port=port, debug=debug)
 
 
-@app.command(name="calc", help="Run calculations")
+@app.command(
+    name="calc",
+    help="Run calculations",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def run_calcs(
+    ctx: Context,
     models: Annotated[
         str | None,
         Option(
@@ -86,6 +91,8 @@ def run_calcs(
 
     Parameters
     ----------
+    ctx
+        Typer Context. Automatically set.
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
@@ -123,6 +130,9 @@ def run_calcs(
 
     if models:
         options.extend(["--models", models])
+
+    # Parse any custom options to pytest
+    options.extend(ctx.args)
 
     pytest.main(options)
 
