@@ -16,8 +16,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "DipCONFS"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#liquid_densities"
+BENCHMARK_NAME = "Liquid Densities"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#liquid-densities"
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "liquid_densities"
 
 
