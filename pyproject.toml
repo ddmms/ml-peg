@@ -60,7 +60,7 @@ mattersim = [
     "mattersim==1.2.0",
 ]
 orb = [
-    "orb-models == 0.5.5; sys_platform != 'win32' and python_version < '3.13'",
+    "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
 pet-mad = [
     "pet-mad == 1.4.4; sys_platform != 'win32'"
