@@ -72,7 +72,7 @@ def compute_density(fname, density_col=13):
             items = line.strip().split()
             if len(items) != 15:
                 continue
-            density_series.append(float(items[13]))
+            density_series.append(float(items[density_col]))
     skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
     return np.mean(density_series[skip_frames:])
 
