@@ -163,5 +163,8 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     )
 
     atoms = read(input_xyz_path)
+    # Set default charge and spin
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
     output_fname = out_dir / f"{system_name}.traj"
     run_npt(atoms, calc, output_fname, temperature)
