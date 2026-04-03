@@ -1,0 +1,7 @@
+title: WiSE Electrolytes
+description: Structural and thermodynamic properties of 21 m LiTFSI/H2O "water-in-salt" electrolytes from molecular dynamics
+weight: 0
+benchmark_weights:
+  WiSE Density: 0.5
+  WiSE X-ray S(q): 0.3
+  WiSE Li-O RDF: 0.2
