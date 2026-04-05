@@ -55,8 +55,11 @@ def _nav_link_style(is_active: bool) -> dict[str, str]:
     return {
         "display": "block",
         "padding": "6px 10px",
+        "borderRadius": "4px",
         "textDecoration": "none",
-        "fontWeight": "bold" if is_active else "normal",
+        "color": "#119DFF" if is_active else "#495057",
+        "fontWeight": "600" if is_active else "normal",
+        "backgroundColor": "#e8f4ff" if is_active else "transparent",
         "borderLeft": ("3px solid #119DFF" if is_active else "3px solid transparent"),
     }
 
@@ -109,7 +112,14 @@ def build_sidebar(
             [
                 Summary(
                     "Overview",
-                    style={"fontWeight": "bold", "cursor": "pointer"},
+                    style={
+                        "fontWeight": "600",
+                        "fontSize": "11px",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.07em",
+                        "color": "#6c757d",
+                        "cursor": "pointer",
+                    },
                 ),
                 Div([Link("Summary", href="/", style=_nav_link_style(summary_active))]),
             ],
@@ -119,7 +129,14 @@ def build_sidebar(
             [
                 Summary(
                     "Categories",
-                    style={"fontWeight": "bold", "cursor": "pointer"},
+                    style={
+                        "fontWeight": "600",
+                        "fontSize": "11px",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.07em",
+                        "color": "#6c757d",
+                        "cursor": "pointer",
+                    },
                 ),
                 Div(
                     [
@@ -505,11 +522,12 @@ def build_nav(
         id="sidebar-nav",
         children=build_sidebar("/", category_paths),
         style={
-            "width": "260px",
+            "width": "220px",
             "overflowY": "auto",
-            "borderRight": "1px solid #a7adb3",
+            "borderRight": "1px solid #dee2e6",
             "padding": "12px",
             "flexShrink": "0",
+            "backgroundColor": "#f8f9fa",
         },
     )
 
