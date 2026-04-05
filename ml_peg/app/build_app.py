@@ -496,7 +496,15 @@ def build_nav(
         [
             Summary(
                 "Visible models",
-                style={"cursor": "pointer", "fontWeight": "bold", "padding": "5px"},
+                style={
+                    "cursor": "pointer",
+                    "fontWeight": "600",
+                    "fontSize": "11px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.07em",
+                    "color": "#6c757d",
+                    "padding": "5px",
+                },
             ),
             Div(
                 [
@@ -543,7 +551,15 @@ def build_nav(
         ),
         Div(
             [
-                H1("ML-PEG"),
+                H1(
+                    "ML-PEG",
+                    style={
+                        "padding": "12px 16px 16px",
+                        "margin": "0",
+                        "borderBottom": "1px solid #dee2e6",
+                        "color": "#212529",
+                    },
+                ),
                 Div(
                     [
                         sidebar,
@@ -576,7 +592,7 @@ def build_nav(
                                     parent_style={"position": "relative"},
                                 ),
                             ],
-                            style={"flex": "1", "padding": "0 16px"},
+                            style={"flex": "1", "padding": "16px 16px"},
                         ),
                     ],
                     style={"display": "flex", "minHeight": "0", "flex": "1"},
