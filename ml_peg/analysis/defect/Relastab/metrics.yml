@@ -1,0 +1,15 @@
+metrics:
+    GlobalMin:
+        good: 1.0
+        bad: 0.0
+        unit: null
+        tooltip: "Correct identification of the Global Minimum (1=Yes, 0=No)"
+        level_of_theory: DFT
+        weight: 0.5
+    Top5_Spearman:
+        good: 1.0
+        bad: 0.0
+        unit: null
+        tooltip: "Spearman rank correlation of the 5 highest (least stable) energy configurations"
+        level_of_theory: DFT
+        weight: 1.0
