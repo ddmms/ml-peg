@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.io import read, write
-import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
@@ -47,7 +47,7 @@ def all_energies() -> dict[str, dict]:
     Returns
     -------
     dict[str, dict]
-        Nested dict: model → category_folder → {ref, pred, labels}.
+        Nested dict: model -> category_folder -> {ref, pred, labels}.
         Individual structure xyz files are written to OUT_PATH / model / folder /
         as a side effect (needed by write_density_trajectories).
     """
@@ -56,9 +56,6 @@ def all_energies() -> dict[str, dict]:
         "ref": [],
         "pred": [],
         "labels": [],
-        "ref_forces": [],
-        "pred_forces": [],
-        "force_labels": [],
     }
     data: dict[str, dict] = {
         model: {folder: {k: list(v) for k, v in empty.items()} for folder in folders}
@@ -69,7 +66,7 @@ def all_energies() -> dict[str, dict]:
         cat_counters: dict[str, int] = dict.fromkeys(folders, 0)
         atoms_list = read(CALC_PATH / model / "results.xyz", ":")
 
-        for atoms in atoms_list:
+        for atoms in tqdm(atoms_list):
             cat = atoms.info.get("category")
             if cat not in CATEGORIES:
                 continue
@@ -78,17 +75,12 @@ def all_energies() -> dict[str, dict]:
             n_atoms = len(atoms)
             ref_e = atoms.info["ref_energy"] / n_atoms
             pred_e = atoms.info["pred_energy"] / n_atoms
-            ref_f = np.asarray(atoms.arrays["ref_forces"], dtype=float).reshape(-1)
-            pred_f = np.asarray(atoms.arrays["pred_forces"], dtype=float).reshape(-1)
             idx = cat_counters[folder]
             cat_counters[folder] += 1
 
             data[model][folder]["ref"].append(ref_e)
             data[model][folder]["pred"].append(pred_e)
             data[model][folder]["labels"].append(str(idx))
-            data[model][folder]["ref_forces"].extend(ref_f.tolist())
-            data[model][folder]["pred_forces"].extend(pred_f.tolist())
-            data[model][folder]["force_labels"].extend([str(idx)] * (3 * n_atoms))
 
             struct_dir = OUT_PATH / model / folder
             struct_dir.mkdir(parents=True, exist_ok=True)
@@ -119,6 +111,7 @@ def sp2_density(all_energies: dict) -> dict[str, dict]:
     dict[str, dict]
         Density scatter payload per model.
     """
+    print("Saving sp2 bonded density trajectories...")
     density_inputs: dict[str, dict] = {}
     for model in MODELS:
         d = all_energies[model]["sp2"]
@@ -160,6 +153,7 @@ def sp3_density(all_energies: dict) -> dict[str, dict]:
     dict[str, dict]
         Density scatter payload per model.
     """
+    print("Saving sp3 bonded density trajectories...")
     density_inputs: dict[str, dict] = {}
     for model in MODELS:
         d = all_energies[model]["sp3"]
@@ -201,6 +195,7 @@ def amorphous_density(all_energies: dict) -> dict[str, dict]:
     dict[str, dict]
         Density scatter payload per model.
     """
+    print("Saving amorphous/liquid density trajectories...")
     density_inputs: dict[str, dict] = {}
     for model in MODELS:
         d = all_energies[model]["amorphous"]
@@ -242,6 +237,7 @@ def general_bulk_density(all_energies: dict) -> dict[str, dict]:
     dict[str, dict]
         Density scatter payload per model.
     """
+    print("Saving general bulk density trajectories...")
     density_inputs: dict[str, dict] = {}
     for model in MODELS:
         d = all_energies[model]["general_bulk"]
@@ -264,7 +260,7 @@ def general_bulk_density(all_energies: dict) -> dict[str, dict]:
 @pytest.fixture
 @plot_density_scatter(
     filename=OUT_PATH / "figure_general_clusters_density.json",
-    title="General carbon clusters (2–6 atoms, non-periodic)",
+    title="General carbon clusters (2-6 atoms, non-periodic)",
     x_label="Reference energy / eV atom⁻¹",
     y_label="Predicted energy / eV atom⁻¹",
     annotation_metadata={"system_count": "Structures"},
@@ -283,6 +279,7 @@ def general_clusters_density(all_energies: dict) -> dict[str, dict]:
     dict[str, dict]
         Density scatter payload per model.
     """
+    print("Saving general clusters density trajectories...")
     density_inputs: dict[str, dict] = {}
     for model in MODELS:
         d = all_energies[model]["general_clusters"]
@@ -303,211 +300,6 @@ def general_clusters_density(all_energies: dict) -> dict[str, dict]:
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_sp2_force_density.json",
-    title="sp² bonded structures: force components",
-    x_label="Reference force / eV Å⁻¹",
-    y_label="Predicted force / eV Å⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def sp2_force_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build force density scatter inputs for sp2-bonded structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["sp2"]
-        density_inputs[model] = {
-            "ref": d["ref_forces"],
-            "pred": d["pred_forces"],
-            "meta": {"system_count": len(d["labels"])},
-        }
-        write_density_trajectories(
-            labels_list=d["force_labels"],
-            ref_vals=d["ref_forces"],
-            pred_vals=d["pred_forces"],
-            struct_dir=OUT_PATH / model / "sp2",
-            traj_dir=OUT_PATH / model / "density_traj_sp2_force",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_sp3_force_density.json",
-    title="sp³ bonded structures: force components",
-    x_label="Reference force / eV Å⁻¹",
-    y_label="Predicted force / eV Å⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def sp3_force_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build force density scatter inputs for sp3-bonded structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["sp3"]
-        density_inputs[model] = {
-            "ref": d["ref_forces"],
-            "pred": d["pred_forces"],
-            "meta": {"system_count": len(d["labels"])},
-        }
-        write_density_trajectories(
-            labels_list=d["force_labels"],
-            ref_vals=d["ref_forces"],
-            pred_vals=d["pred_forces"],
-            struct_dir=OUT_PATH / model / "sp3",
-            traj_dir=OUT_PATH / model / "density_traj_sp3_force",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_amorphous_force_density.json",
-    title="Amorphous and liquid carbon: force components",
-    x_label="Reference force / eV Å⁻¹",
-    y_label="Predicted force / eV Å⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def amorphous_force_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build force density scatter inputs for amorphous/liquid structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["amorphous"]
-        density_inputs[model] = {
-            "ref": d["ref_forces"],
-            "pred": d["pred_forces"],
-            "meta": {"system_count": len(d["labels"])},
-        }
-        write_density_trajectories(
-            labels_list=d["force_labels"],
-            ref_vals=d["ref_forces"],
-            pred_vals=d["pred_forces"],
-            struct_dir=OUT_PATH / model / "amorphous",
-            traj_dir=OUT_PATH / model / "density_traj_amorphous_force",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_general_bulk_force_density.json",
-    title="General bulk crystal structures: force components",
-    x_label="Reference force / eV Å⁻¹",
-    y_label="Predicted force / eV Å⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def general_bulk_force_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build force density scatter inputs for general bulk structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["general_bulk"]
-        density_inputs[model] = {
-            "ref": d["ref_forces"],
-            "pred": d["pred_forces"],
-            "meta": {"system_count": len(d["labels"])},
-        }
-        write_density_trajectories(
-            labels_list=d["force_labels"],
-            ref_vals=d["ref_forces"],
-            pred_vals=d["pred_forces"],
-            struct_dir=OUT_PATH / model / "general_bulk",
-            traj_dir=OUT_PATH / model / "density_traj_general_bulk_force",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_general_clusters_force_density.json",
-    title="General carbon clusters: force components",
-    x_label="Reference force / eV Å⁻¹",
-    y_label="Predicted force / eV Å⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def general_clusters_force_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build force density scatter inputs for general cluster structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["general_clusters"]
-        density_inputs[model] = {
-            "ref": d["ref_forces"],
-            "pred": d["pred_forces"],
-            "meta": {"system_count": len(d["labels"])},
-        }
-        write_density_trajectories(
-            labels_list=d["force_labels"],
-            ref_vals=d["ref_forces"],
-            pred_vals=d["pred_forces"],
-            struct_dir=OUT_PATH / model / "general_clusters",
-            traj_dir=OUT_PATH / model / "density_traj_general_clusters_force",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "diverse_carbon_structures_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -515,7 +307,7 @@ def general_clusters_force_density(all_energies: dict) -> dict[str, dict]:
 )
 def metrics(all_energies: dict) -> dict[str, dict]:
     """
-    Compute per-category energy and force MAE for each model.
+    Compute per-category energy MAE for each model.
 
     Parameters
     ----------
@@ -536,22 +328,6 @@ def metrics(all_energies: dict) -> dict[str, dict]:
             )
             for model in MODELS
         }
-
-    force_metric_map = {
-        "sp2": "sp2 bonded force MAE",
-        "sp3": "sp3 bonded force MAE",
-        "amorphous": "amorphous/liquid force MAE",
-        "general_bulk": "general bulk force MAE",
-        "general_clusters": "general clusters force MAE",
-    }
-    for folder, force_metric_name in force_metric_map.items():
-        result[force_metric_name] = {
-            model: mae(
-                all_energies[model][folder]["ref_forces"],
-                all_energies[model][folder]["pred_forces"],
-            )
-            for model in MODELS
-        }
     return result
 
 
@@ -561,11 +337,6 @@ def test_diverse_carbon_structures(
     amorphous_density: dict,
     general_bulk_density: dict,
     general_clusters_density: dict,
-    sp2_force_density: dict,
-    sp3_force_density: dict,
-    amorphous_force_density: dict,
-    general_bulk_force_density: dict,
-    general_clusters_force_density: dict,
     metrics: dict,
 ) -> None:
     """
@@ -583,17 +354,7 @@ def test_diverse_carbon_structures(
         Energy density scatter inputs for general bulk structures.
     general_clusters_density
         Energy density scatter inputs for general cluster structures.
-    sp2_force_density
-        Force density scatter inputs for sp2-bonded structures.
-    sp3_force_density
-        Force density scatter inputs for sp3-bonded structures.
-    amorphous_force_density
-        Force density scatter inputs for amorphous/liquid structures.
-    general_bulk_force_density
-        Force density scatter inputs for general bulk structures.
-    general_clusters_force_density
-        Force density scatter inputs for general cluster structures.
     metrics
-        Per-category energy and force MAE for each model.
+        Per-category energy MAE for each model.
     """
     return
