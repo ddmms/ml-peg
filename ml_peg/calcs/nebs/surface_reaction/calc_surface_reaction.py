@@ -6,10 +6,9 @@ from pathlib import Path
 
 from ase import Atoms
 from ase.constraints import FixAtoms
-from ase.io import read, write
-from ase.mep.dyneb import DyNEB
-from ase.mep.neb import idpp_interpolate, interpolate
-from ase.optimize import BFGS
+from ase.io import read
+from janus_core.calculations.geom_opt import GeomOpt
+from janus_core.calculations.neb import NEB
 import pytest
 
 from ml_peg.models.get_models import load_models
@@ -57,176 +56,65 @@ REACTIONS = [
 
 
 @pytest.fixture(scope="module")
-def make_interpolation() -> dict[str, Atoms]:
+def relaxed_structs() -> dict[str, list[Atoms]]:
     """
-    Relax initial and final from DFT trajectory and generate IDPP interpolation.
+    Relax initial and final from DFT trajectory.
 
     Returns
     -------
-    dict[str, Atoms]
+    dict[str, list[Atoms]]
         Relaxed structures indexed by structure name and model name.
     """
-    interpolations = {}
+    relaxed_structs = {}
 
     for reaction in REACTIONS:
-        print(f"{reaction = }")
         for model_name, calc in MODELS.items():
-            print(f"{model_name = }")
-
-            #            model.device = "cuda"
-            calc = calc.get_calculator()
-
-            traj = read(DATA_PATH / f"{reaction}.xyz", ":")
-            initial, final = traj[0], traj[-1]
+            initial = read(DATA_PATH / reaction, "0")
+            final = read(DATA_PATH / reaction, "-1")
             fix_indices = [
                 i for i, tag in enumerate(initial.arrays["tags"]) if tag == 0
             ]
-
             for struct in [initial, final]:
-                struct.calc = calc
+                struct.calc = calc.get_calculator()
                 struct.constraints = [FixAtoms(indices=fix_indices)]
-                opt = BFGS(struct)
-                opt.run(fmax=0.05, steps=1000)
 
-            images = (
-                [initial.copy()] + [initial.copy() for _ in range(8)] + [final.copy()]
-            )
-            interpolate(images, mic=True, apply_constraint=True)
-            idpp_interpolate(images, mic=True, traj=None, log=None)
-            for struct in images:
-                struct.calc = calc
-
-            interpolations[f"{reaction}-{model_name}"] = images
-    return interpolations
+                geomopt = GeomOpt(
+                    struct=struct,
+                    write_results=True,
+                    file_prefix=OUT_PATH / f"{reaction}-{model_name}",
+                    filter_class=None,
+                )
+                geomopt.run()
+            relaxed_structs[f"{reaction}-{model_name}"] = [initial, final]
+    return relaxed_structs
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODELS)
-def test_surface_reaction1(
-    make_interpolation: dict[str, Atoms], model_name: str
+def test_surface_reaction(
+    relaxed_structs: dict[str, list[Atoms]], model_name: str
 ) -> None:
     """
-    Run calculations required for surface reactions with desorption_ood_87_9841_0_111-1.
+    Run calculations required for surface reactions.
 
     Parameters
     ----------
-    make_interpolation
+    relaxed_structs
         Relax and make interpolation, indexed by reaction name and model name.
     model_name
         Name of model to use.
     """
-    images = make_interpolation[f"desorption_ood_87_9841_0_111-1-{model_name}"]
-    neb = DyNEB(
-        images,
-        k=1.0,
-        climb=False,
-        method="eb",
-        allow_shared_calculator=True,
-        scale_fmax=1.0,
-    )
-    opt = BFGS(neb)
-    conv = opt.run(fmax=0.05 + 0.4, steps=200)
-    if conv:
-        neb.climb = True
-        conv = opt.run(fmax=0.05, steps=300)
-
-    if conv:
-        converged = True
-    else:
-        converged = False
-
-    for at in neb.images:
-        at.info["converged"] = converged
-        at.info["mlip_energy"] = at.get_potential_energy()
-        at.arrays["mlip_forces"] = at.get_forces()
-
-    OUT_PATH.mkdir(exist_ok=True, parents=True)
-    write(OUT_PATH / f"desorption_ood_87_9841_0_111-1_{model_name}.xyz", neb.images)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("model_name", MODELS)
-def test_surface_reaction2(
-    make_interpolation: dict[str, Atoms], model_name: str
-) -> None:
-    """
-    Run calculations required for surface reactions dissociation_ood_268_6292_46_211-5.
-
-    Parameters
-    ----------
-    make_interpolation
-        Relax and make interpolation, indexed by reaction name and model name.
-    model_name
-        Name of model to use.
-    """
-    images = make_interpolation[f"dissociation_ood_268_6292_46_211-5-{model_name}"]
-    neb = DyNEB(
-        images,
-        k=1.0,
-        climb=False,
-        method="eb",
-        allow_shared_calculator=True,
-        scale_fmax=1.0,
-    )
-    opt = BFGS(neb)
-    conv = opt.run(fmax=0.05 + 0.4, steps=200)
-    if conv:
-        neb.climb = True
-        conv = opt.run(fmax=0.05, steps=300)
-
-    if conv:
-        converged = True
-    else:
-        converged = False
-
-    for at in neb.images:
-        at.info["converged"] = converged
-        at.info["mlip_energy"] = at.get_potential_energy()
-        at.arrays["mlip_forces"] = at.get_forces()
-
-    OUT_PATH.mkdir(exist_ok=True, parents=True)
-    write(OUT_PATH / f"dissociation_ood_268_6292_46_211-5_{model_name}.xyz", neb.images)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("model_name", MODELS)
-def test_surface_reaction3(
-    make_interpolation: dict[str, Atoms], model_name: str
-) -> None:
-    """
-    Run calculations required for surface reactions with transfer_id_601_1482_1_211-5.
-
-    Parameters
-    ----------
-    make_interpolation
-        Relax and make interpolation, indexed by reaction name and model name.
-    model_name
-        Name of model to use.
-    """
-    images = make_interpolation[f"transfer_id_601_1482_1_211-5-{model_name}"]
-    neb = DyNEB(
-        images,
-        k=1.0,
-        climb=False,
-        method="eb",
-        allow_shared_calculator=True,
-        scale_fmax=1.0,
-    )
-    opt = BFGS(neb)
-    conv = opt.run(fmax=0.05 + 0.4, steps=200)
-    if conv:
-        neb.climb = True
-        conv = opt.run(fmax=0.05, steps=300)
-
-    if conv:
-        converged = True
-    else:
-        converged = False
-
-    for at in neb.images:
-        at.info["converged"] = converged
-        at.info["mlip_energy"] = at.get_potential_energy()
-        at.arrays["mlip_forces"] = at.get_forces()
-
-    OUT_PATH.mkdir(exist_ok=True, parents=True)
-    write(OUT_PATH / f"transfer_id_601_1482_1_211-5_{model_name}.xyz", neb.images)
+    for reaction in REACTIONS:
+        neb = NEB(
+            init_struct=relaxed_structs[f"{reaction}-{model_name}"][0],
+            final_struct=relaxed_structs[f"{reaction}-{model_name}"][-1],
+            n_images=10,
+            interpolator="pymatgen",
+            minimize=True,
+            plot_band=True,
+            write_band=True,
+            file_prefix=OUT_PATH / f"{reaction}-{model_name}",
+        )
+        neb.interpolate()
+        neb.interpolator = None
+        neb.run()
