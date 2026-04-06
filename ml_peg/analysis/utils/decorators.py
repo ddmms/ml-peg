@@ -1578,21 +1578,22 @@ def build_table(
             else:
                 tooltip_header = summary_tooltips
 
+            metric_weights = dict(weights) if weights else {}
+            for column in results:
+                metric_weights.setdefault(column, 1.0)
+
             # Calculate scores, including any normalisation
             if normalize:
                 metrics_data = calc_table_scores(
                     metrics_data=metrics_data,
                     thresholds=thresholds,
                     normalizer=normalizer,
+                    weights=metric_weights,
                 )
             else:
-                metrics_data = calc_table_scores(metrics_data)
+                metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
 
             metrics_columns += ("Score",)
-
-            metric_weights = weights if weights else {}
-            for column in results:
-                metric_weights.setdefault(column, 1)
 
             table = dash_table.DataTable(
                 metrics_data,
