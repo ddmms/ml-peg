@@ -29,23 +29,6 @@ ENERGY_CONFIG = [
     ),
 ]
 
-# Force density plots — no structure viewer (points are per force component)
-FORCE_CONFIG = [
-    ("sp2", "sp2 bonded force MAE", "figure_sp2_force_density.json"),
-    ("sp3", "sp3 bonded force MAE", "figure_sp3_force_density.json"),
-    ("amorphous", "amorphous/liquid force MAE", "figure_amorphous_force_density.json"),
-    (
-        "general_bulk",
-        "general bulk force MAE",
-        "figure_general_bulk_force_density.json",
-    ),
-    (
-        "general_clusters",
-        "general clusters force MAE",
-        "figure_general_clusters_force_density.json",
-    ),
-]
-
 
 class DiverseCarbonStructuresApp(BaseApp):
     """Diverse carbon structures benchmark app layout and callbacks."""
@@ -54,24 +37,12 @@ class DiverseCarbonStructuresApp(BaseApp):
         """Register callbacks to app."""
         # Build {model: {metric_name: density_graph}} for plot_from_table_cell
         cell_plots: dict[str, dict] = {model: {} for model in MODELS}
-        # Energy density plots — linked to structure viewer
         for cat_folder, metric_name, figure_file in ENERGY_CONFIG:
             for model in MODELS:
                 graph = read_density_plot_for_model(
                     filename=DATA_PATH / figure_file,
                     model=model,
                     id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
-                )
-                if graph is not None:
-                    cell_plots[model][metric_name] = graph
-
-        # Force density plots — no structure viewer
-        for cat_folder, metric_name, figure_file in FORCE_CONFIG:
-            for model in MODELS:
-                graph = read_density_plot_for_model(
-                    filename=DATA_PATH / figure_file,
-                    model=model,
-                    id=f"{BENCHMARK_NAME}-{model}-{cat_folder}-force",
                 )
                 if graph is not None:
                     cell_plots[model][metric_name] = graph
@@ -93,22 +64,6 @@ class DiverseCarbonStructuresApp(BaseApp):
             for model, asset_paths in struct_trajs.items():
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
-                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=asset_paths,
-                    mode="traj",
-                )
-
-        # Wire each force density scatter to the structure viewer
-        for cat_folder, _, _ in FORCE_CONFIG:
-            struct_trajs = collect_traj_assets(
-                data_path=DATA_PATH,
-                assets_prefix=ASSETS_PREFIX,
-                models=MODELS,
-                traj_dirname=f"density_traj_{cat_folder}_force",
-            )
-            for model, asset_paths in struct_trajs.items():
-                struct_from_scatter(
-                    scatter_id=f"{BENCHMARK_NAME}-{model}-{cat_folder}-force",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
                     structs=asset_paths,
                     mode="traj",
