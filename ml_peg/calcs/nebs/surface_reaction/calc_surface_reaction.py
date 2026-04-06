@@ -9,7 +9,9 @@ from ase.constraints import FixAtoms
 from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
 from janus_core.calculations.neb import NEB
+from ase.optimize import BFGS, FIRE
 import pytest
+import numpy as np
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -69,11 +71,12 @@ def relaxed_structs() -> dict[str, list[Atoms]]:
 
     for reaction in REACTIONS:
         for model_name, calc in MODELS.items():
-            initial = read(DATA_PATH / reaction, "0")
-            final = read(DATA_PATH / reaction, "-1")
+            initial = read(DATA_PATH / f"{reaction}.xyz", "0")
+            final = read(DATA_PATH / f"{reaction}.xyz", "-1")
             fix_indices = [
                 i for i, tag in enumerate(initial.arrays["tags"]) if tag == 0
             ]
+            relaxed_geometries = []
             for struct in [initial, final]:
                 struct.calc = calc.get_calculator()
                 struct.constraints = [FixAtoms(indices=fix_indices)]
@@ -83,9 +86,11 @@ def relaxed_structs() -> dict[str, list[Atoms]]:
                     write_results=True,
                     file_prefix=OUT_PATH / f"{reaction}-{model_name}",
                     filter_class=None,
+					fmax=0.05
                 )
                 geomopt.run()
-            relaxed_structs[f"{reaction}-{model_name}"] = [initial, final]
+                relaxed_geometries.append(struct)
+            relaxed_structs[f"{reaction}-{model_name}"] = relaxed_geometries
     return relaxed_structs
 
 
@@ -105,16 +110,34 @@ def test_surface_reaction(
         Name of model to use.
     """
     for reaction in REACTIONS:
+        print(f"{reaction} {model_name}, start NEB ...")
         neb = NEB(
             init_struct=relaxed_structs[f"{reaction}-{model_name}"][0],
             final_struct=relaxed_structs[f"{reaction}-{model_name}"][-1],
-            n_images=10,
-            interpolator="pymatgen",
-            minimize=True,
-            plot_band=True,
-            write_band=True,
+			neb_class="DyNEB",
+            n_images=8,
+            neb_kwargs = {"climb": False, "method": "eb", "scale_fmax": 1.0},
+            interpolator="ase",
+            minimize=False,
+			optimizer=BFGS,
+            plot_band=False,
+            write_band=False,
             file_prefix=OUT_PATH / f"{reaction}-{model_name}",
         )
         neb.interpolate()
         neb.interpolator = None
-        neb.run()
+        neb.run(fmax=0.45, steps=200)
+
+        neb.neb.climb = True
+        neb.plot_band = True
+        neb.write_band = True
+        neb.run(fmax=0.05, steps=300)
+
+        forces = neb.neb.get_forces()
+#        print(f"{np.sqrt((forces ** 2).sum(axis=1).max()) = }")
+        neb.results["max_force"] = np.sqrt((forces ** 2).sum(axis=1).max())
+        if neb.write_results:
+            with open(neb.results_file, "w", encoding="utf8") as out:
+                print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+                print(*neb.results.values(), file=out)
+
