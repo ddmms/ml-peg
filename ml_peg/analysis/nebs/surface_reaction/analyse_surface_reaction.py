@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -35,6 +35,7 @@ REACTIONS = [
     "dissociation_ood_268_6292_46_211-5",
     "transfer_id_601_1482_1_211-5",
 ]
+METRICS = ["delta_E", "barrier", "fmax"]
 
 
 def plot_nebs(model: str, reaction: str) -> None:
@@ -84,8 +85,30 @@ def plot_nebs(model: str, reaction: str) -> None:
     plot_neb()
 
 
+def _get_ref_data():
+    """
+    Get reference barrier and delta_E for all reactions.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of reference barrier and delta_E with DFT.
+    """
+    ref_data = {}
+    for path in DATA_PATH.glob("*.xyz"):
+        reaction = str(path).split("/")[-1].split(".")[0]
+        traj = read(path, ":")
+        energy = np.array([at.info["DFT_energy"] for at in traj])
+
+        ref_data[reaction] = {
+            "barrier": energy.max() - energy[0],
+            "delta_E": energy[-1] - energy[0],
+        }
+    return ref_data
+
+
 @pytest.fixture
-def barrier_error() -> dict[str, dict[str, float]]:
+def oc20neb_stats() -> dict[str, dict[str, float]]:
     """
     Get error in energy barrier for all reactions.
 
@@ -94,21 +117,55 @@ def barrier_error() -> dict[str, dict[str, float]]:
     dict[str, float]
         Dictionary of predicted barrier errors for all models.
     """
-    #    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    results = {}
-    for model_name in MODELS:
-        reaction_dict = {}
-        for reaction in REACTIONS:
-            plot_nebs(model_name, reaction)
-            structs = read(CALC_PATH / f"{reaction}_{model_name}.xyz", ":")
-            energies = [struct.info["mlip_energy"] for struct in structs]
-            pred_forward_barrier = np.max(energies) - energies[0]
-            reaction_dict[reaction] = np.abs(
-                pred_forward_barrier - REF_VALUES[reaction]
-            )
-        results[model_name] = reaction_dict
+    ref_data = _get_ref_data()
+    pred_data: dict[str, dict[str, float | str]] = {}
 
-    return results
+    for model_name in MODELS:
+        pred_data[model_name] = {}
+        for reaction in REACTIONS:
+            with open(
+                CALC_PATH / f"{reaction}-{model_name}-neb-results.dat", encoding="utf8"
+            ) as f:
+                data = f.readlines()
+                pred_barrier, pred_delta_e, pred_fmax = tuple(
+                    float(x) for x in data[1].split()
+                )
+
+            pred_data[model_name][reaction] = {
+                "delta_E": pred_delta_e,
+                "barrier": pred_barrier,
+                "fmax": pred_fmax,
+            }
+
+    stats = {}
+    for model in MODELS:
+        stats[model] = {}
+        for metric_key in METRICS:
+            if metric_key == "fmax":
+                # if fmax, count how many cases are not converged.
+                unconverged_percentage = (
+                    np.sum(
+                        [
+                            values[metric_key] > 0.05
+                            for reaction, values in pred_data[model].items()
+                        ]
+                    )
+                    / len(pred_data[model])
+                    * 100
+                )
+
+                stats[model][f"{metric_key}"] = unconverged_percentage
+            else:
+                ref_values = [
+                    values[metric_key] for reaction, values in ref_data.items()
+                ]
+                pred_values = [
+                    pred_data[model][reaction][metric_key]
+                    for reaction, values in ref_data.items()
+                ]
+                stats[model][f"{metric_key}"] = mae(ref_values, pred_values)
+
+    return stats
 
 
 @pytest.fixture
@@ -117,26 +174,26 @@ def barrier_error() -> dict[str, dict[str, float]]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
-def metrics(barrier_error: dict[str, dict[str, float]]) -> dict[str, dict]:
+def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
     """
     Get all surface reactions metrics.
 
     Parameters
     ----------
-    barrier_error
-        Activation barriers for all reactions and all models.
+    oc20neb_stats
+        Barriers, reaction energies, and convergence for all reactions and all models.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    metrics_dict = {}
-    for reaction in REACTIONS:
-        metrics_dict[f"{reaction} barrier error"] = {
-            model: barrier_error[model][reaction] for model in MODELS
+    table_data = {}
+    for metric_key in METRICS:
+        table_data[metric_key] = {
+            model: oc20neb_stats[model][metric_key] for model in MODELS
         }
-    return metrics_dict
+    return table_data
 
 
 def test_surface_reaction(metrics: dict[str, dict]) -> None:
