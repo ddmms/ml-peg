@@ -11,11 +11,7 @@ from dash.dash_table import DataTable
 from dash.dcc import Graph
 from plotly.io import read_json
 
-from ml_peg.analysis.utils.utils import (
-    calc_metric_scores,
-    calc_table_scores,
-    get_table_style,
-)
+from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
@@ -62,7 +58,6 @@ def rebuild_table(
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
-    weights = clean_weights(table_json.get("weights"))
 
     # Pad table with all models from registry (models without data will be
     # grayed/hashed out)
@@ -131,10 +126,6 @@ def rebuild_table(
                 column["name"] = f"{base_name} [{unit_val}]"
 
     tooltip_header = table_json["tooltip_header"]
-
-    # Recompute Score from raw metrics on load so default metric weights are applied
-    # even when the serialized Score field predates weighted scoring.
-    data = calc_table_scores(data, weights=weights, thresholds=thresholds)
 
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
@@ -215,6 +206,11 @@ def rebuild_table(
         persistence_type="session",
         persisted_props=["data"],
     )
+
+    thresholds = clean_thresholds(table_json.get("thresholds"))
+    weights = clean_weights(table_json.get("weights"))
+    if not thresholds or not weights:
+        raise ValueError(f"No thresholds defined in table JSON: {filename}")
 
     table.thresholds = thresholds
     table.weights = weights
