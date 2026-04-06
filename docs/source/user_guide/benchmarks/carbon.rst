@@ -96,34 +96,6 @@ Energy (eV/atom MAE)
    Mean absolute error of predicted vs. reference total energy per atom for
    non-periodic carbon clusters containing 2–6 atoms.
 
-Forces (eV/Å MAE)
-^^^^^^^^^^^^^^^^^
-
-6. sp² bonded force MAE
-
-   Mean absolute error of predicted vs. reference Cartesian force components
-   for all sp²-bonded structures.
-
-7. sp³ bonded force MAE
-
-   Mean absolute error of predicted vs. reference Cartesian force components
-   for all sp³-bonded structures.
-
-8. amorphous/liquid force MAE
-
-   Mean absolute error of predicted vs. reference Cartesian force components
-   for amorphous and liquid carbon structures.
-
-9. general bulk force MAE
-
-   Mean absolute error of predicted vs. reference Cartesian force components
-   for general bulk crystal structures.
-
-10. general clusters force MAE
-
-    Mean absolute error of predicted vs. reference Cartesian force components
-    for non-periodic carbon clusters.
-
 Computational cost
 ------------------
 
@@ -135,11 +107,7 @@ Data availability
 
 Input structures and reference data:
 
-* Bochkarev, A.S., Batatia, I., Kovács, D.P., Csányi, G. and Drautz, R., 2022.
-  Efficient parametrization of the atomic cluster expansion. *Journal of Chemical
-  Theory and Computation*, 18(12), pp.7695–7704.
-  https://doi.org/10.1021/acs.jctc.2c00647
-
+*
 Reference data:
 
 * Reference energies and forces were computed with highly converged PBE-DFT
