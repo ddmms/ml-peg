@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -19,6 +20,7 @@ MODELS = get_model_names(current_models)
 DATA_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "data"
 CALC_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
+SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -36,6 +38,8 @@ REACTIONS = [
     "transfer_id_601_1482_1_211-5",
 ]
 METRICS = ["delta_E", "barrier", "fmax"]
+METRIC_LABELS = {"delta_E": "delta_E", "barrier": "barrier", "fmax": "unconverged"}
+FMAX = 0.05
 
 
 def plot_nebs(model: str, reaction: str) -> None:
@@ -101,6 +105,7 @@ def _get_ref_data():
         energy = np.array([at.info["DFT_energy"] for at in traj])
 
         ref_data[reaction] = {
+            "energy": energy,
             "barrier": energy.max() - energy[0],
             "delta_E": energy[-1] - energy[0],
         }
@@ -118,10 +123,20 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
         Dictionary of predicted barrier errors for all models.
     """
     ref_data = _get_ref_data()
-    pred_data: dict[str, dict[str, float | str]] = {}
+    ref_cache: dict[str, dict[str, Any]] = {}
+
+    for reaction in REACTIONS:
+        ref_traj_path = DATA_PATH / f"{reaction}.xyz"
+        ref_profile = ref_data[reaction]["energy"]
+
+        ref_cache[reaction] = {"profile": ref_profile, "traj_path": ref_traj_path}
+
+    stats: dict[str, dict[str, Any]] = {}
 
     for model_name in MODELS:
-        pred_data[model_name] = {}
+        metrics_data: dict[str, dict[str, Any]] = {
+            key: {"points": [], "ref": [], "pred": [], "mae": None} for key in METRICS
+        }
         for reaction in REACTIONS:
             with open(
                 CALC_PATH / f"{reaction}-{model_name}-neb-results.dat", encoding="utf8"
@@ -131,39 +146,60 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     float(x) for x in data[1].split()
                 )
 
-            pred_data[model_name][reaction] = {
-                "delta_E": pred_delta_e,
-                "barrier": pred_barrier,
-                "fmax": pred_fmax,
+            data_paths = {
+                "ref_profile": str(ref_cache[reaction]["traj_path"]),
+                "pred_profile": str(
+                    CALC_PATH / f"{reaction}-{model_name}-neb-band.xyz"
+                ),
             }
 
-    stats = {}
-    for model in MODELS:
-        stats[model] = {}
-        for metric_key in METRICS:
-            if metric_key == "fmax":
-                # if fmax, count how many cases are not converged.
-                unconverged_percentage = (
-                    np.sum(
-                        [
-                            values[metric_key] > 0.05
-                            for reaction, values in pred_data[model].items()
-                        ]
-                    )
-                    / len(pred_data[model])
-                    * 100
-                )
+            # Store metric points
+            metric_values = {
+                "delta_E": (ref_data[reaction]["delta_E"], pred_delta_e),
+                "barrier": (ref_data[reaction]["barrier"], pred_barrier),
+                "fmax": (None, pred_fmax),
+            }
 
-                stats[model][f"{metric_key}"] = unconverged_percentage
-            else:
-                ref_values = [
-                    values[metric_key] for reaction, values in ref_data.items()
-                ]
-                pred_values = [
-                    pred_data[model][reaction][metric_key]
-                    for reaction, values in ref_data.items()
-                ]
-                stats[model][f"{metric_key}"] = mae(ref_values, pred_values)
+            for metric_key, (ref_val, pred_val) in metric_values.items():
+                if metric_key != "fmax":
+                    metrics_data[metric_key]["ref"].append(ref_val)
+                    metrics_data[metric_key]["pred"].append(pred_val)
+                    metrics_data[metric_key]["points"].append(
+                        {
+                            "reaction": reaction,
+                            "ref": ref_val,
+                            "pred": pred_val,
+                            "data_paths": data_paths,
+                        }
+                    )
+                else:
+                    metrics_data[metric_key]["pred"].append(pred_val)
+                    metrics_data[metric_key]["points"].append(
+                        {
+                            "reaction": reaction,
+                            "pred": pred_val,
+                            "data_paths": data_paths,
+                        }
+                    )
+
+        # Calculate MAEs
+        for metric_key in METRICS:
+            if metric_key != "fmax":
+                ref_vals = metrics_data[metric_key]["ref"]
+                pred_vals = metrics_data[metric_key]["pred"]
+                metrics_data[metric_key]["mae"] = mae(ref_vals, pred_vals)
+
+        unconverged_percentage = (
+            np.sum([fmax > FMAX for fmax in metrics_data["fmax"]["pred"]])
+            / len(metrics_data["fmax"]["pred"])
+            * 100
+        )
+
+        stats[model_name] = {
+            "model": model_name,
+            "metrics": metrics_data,
+            "unconverged": unconverged_percentage,
+        }
 
     return stats
 
@@ -188,15 +224,63 @@ def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
     dict[str, dict]
         Metric names and values for all models.
     """
-    table_data = {}
+    table_data: dict[str, dict[str, float | None]] = {}
+
+    # Get MAE for delta_E and barrier metrics
     for metric_key in METRICS:
-        table_data[metric_key] = {
-            model: oc20neb_stats[model][metric_key] for model in MODELS
-        }
+        if metric_key != "fmax":
+            table_data[metric_key] = {
+                model: oc20neb_stats[model]["metrics"][metric_key]["mae"]
+                for model in MODELS
+            }
+
+    # Get unconverged percentage
+    table_data["fmax"] = {
+        model: oc20neb_stats[model]["unconverged"] for model in MODELS
+    }
     return table_data
 
 
-def test_surface_reaction(metrics: dict[str, dict]) -> None:
+@pytest.fixture
+@cell_to_scatter(
+    filename=SCATTER_FILENAME,
+    x_label="Predicted",
+    y_label="Reference",
+)
+def interactive_dataset(oc20neb_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """
+    Generate pre-made scatter figures for each model-metric pair for the Dash app.
+
+    Parameters
+    ----------
+    oc20neb_stats
+        Aggregated statistics per model from ``oc20neb_stats``.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON-serializable dataset containing pre-generated scatter plots, MAEs,
+        and stability metadata.
+    """
+    dataset = {
+        "metrics": {
+            metric: label for metric, label in METRIC_LABELS.items() if metric != "fmax"
+        },
+        "models": {},
+    }
+
+    for model_name, model_data in oc20neb_stats.items():
+        dataset["models"][model_name] = {"metrics": {}}
+        for metric_key in METRICS:
+            if metric_key != "fmax":
+                dataset["models"][model_name]["metrics"][metric_key] = {
+                    "points": model_data["metrics"][metric_key]["points"],
+                    "mae": model_data["metrics"][metric_key]["mae"],
+                }
+    return dataset
+
+
+def test_surface_reaction(metrics, interactive_dataset) -> None:
     """
     Run surface reaction test.
 
@@ -204,5 +288,7 @@ def test_surface_reaction(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All surface reaction metrics.
+    interactive_dataset
+        Scatter metadata produced by the ``interactive_dataset`` fixture.
     """
     return
