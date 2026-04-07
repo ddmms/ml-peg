@@ -25,9 +25,9 @@ DATA_PATH = download_github_data(filename, github_uri)
 DATA_PATH = Path(DATA_PATH) / "split_vacancy_data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# same setting as MatBench
-# https://github.com/janosh/matbench-discovery/blob/93cc6907ac08b4adaa8391ccc4adf9c015c0dd61/matbench_discovery/structure/symmetry.py#L124
-STRUCTURE_MATCHER = StructureMatcher(stol=0.1, scale=False)
+STOL = 0.3  # since StructureMatcher.fit(), the STOL value we initialize the
+# StructureMatcher with does not matter.
+STRUCTURE_MATCHER = StructureMatcher(scale=False)
 
 
 def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
@@ -107,14 +107,13 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
                         atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
-                        rmsd_max_dist = get_rms_dist(atoms, initial_atoms)
-                        if rmsd_max_dist is None:
+                        rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
+                        if max_dist < STOL:
                             atoms.info["ref_structure_match"] = False
                         else:
-                            rmsd, max_dist = rmsd_max_dist
                             atoms.info["ref_structure_match"] = True
-                            atoms.info["ref_rmsd"] = rmsd
-                            atoms.info["ref_max_distance"] = max_dist
+                        atoms.info["ref_rmsd"] = rmsd
+                        atoms.info["ref_max_distance"] = max_dist
 
                         relaxed_atoms.append(atoms)
 
