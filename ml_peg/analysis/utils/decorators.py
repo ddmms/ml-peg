@@ -1578,7 +1578,7 @@ def build_table(
             else:
                 tooltip_header = summary_tooltips
 
-            metric_weights = dict(weights) if weights else {}
+            metric_weights = weights if weights else {}
             for column in results:
                 metric_weights.setdefault(column, 1.0)
 
