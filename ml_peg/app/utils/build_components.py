@@ -672,13 +672,6 @@ def build_test_layout(
     elif metric_weights:
         layout_contents.append(metric_weights)
 
-    layout_contents.append(
-        Store(
-            id="summary-table-scores-store",
-            storage_type="session",
-        ),
-    )
-
     if extra_components:
         layout_contents.extend(extra_components)
 

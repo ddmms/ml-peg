@@ -7,7 +7,7 @@ import warnings
 
 from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Loading, Store, Tab, Tabs
+from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, Details, Div, Summary
 from yaml import safe_load
@@ -36,6 +36,122 @@ from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
+
+
+def _nav_link_style(is_active: bool) -> dict[str, str]:
+    """
+    Return sidebar link style.
+
+    Parameters
+    ----------
+    is_active
+        Whether the link is active.
+
+    Returns
+    -------
+    dict[str, str]
+        Style dictionary for the link.
+    """
+    return {
+        "display": "block",
+        "padding": "6px 10px",
+        "borderRadius": "4px",
+        "textDecoration": "none",
+        "color": "#119DFF" if is_active else "#495057",
+        "fontWeight": "600" if is_active else "normal",
+        "backgroundColor": "#e8f4ff" if is_active else "transparent",
+        "borderLeft": ("3px solid #119DFF" if is_active else "3px solid transparent"),
+    }
+
+
+def _category_to_path(category_name: str) -> str:
+    """
+    Convert a category name to a stable URL path.
+
+    Parameters
+    ----------
+    category_name
+        Name of category to convert.
+
+    Returns
+    -------
+    str
+        URL path corresponding to category.
+    """
+    slug = "".join(
+        character.lower() if character.isalnum() else "-" for character in category_name
+    )
+    slug = "-".join(part for part in slug.split("-") if part)
+    if not slug:
+        raise ValueError(f"Unable to construct path for {category_name}")
+    return f"/category/{slug}"
+
+
+def build_sidebar(
+    pathname: str | None, category_paths: dict[str, str]
+) -> list[Details]:
+    """
+    Build sidebar navigation children with active-link highlighting.
+
+    Parameters
+    ----------
+    pathname
+        Current URL pathname.
+    category_paths
+        Mapping of category name to its URL path.
+
+    Returns
+    -------
+    list[Details]
+        Sidebar section elements.
+    """
+    current_path = pathname or "/"
+    summary_active = current_path in ("", "/", "/summary")
+    return [
+        Details(
+            [
+                Summary(
+                    "Overview",
+                    style={
+                        "fontWeight": "600",
+                        "fontSize": "11px",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.07em",
+                        "color": "#6c757d",
+                        "cursor": "pointer",
+                    },
+                ),
+                Div([Link("Summary", href="/", style=_nav_link_style(summary_active))]),
+            ],
+            open=True,
+        ),
+        Details(
+            [
+                Summary(
+                    "Categories",
+                    style={
+                        "fontWeight": "600",
+                        "fontSize": "11px",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.07em",
+                        "color": "#6c757d",
+                        "cursor": "pointer",
+                    },
+                ),
+                Div(
+                    [
+                        Link(
+                            category_name,
+                            href=category_path,
+                            style=_nav_link_style(current_path == category_path),
+                        )
+                        for category_name, category_path in category_paths.items()
+                    ]
+                ),
+            ],
+            open=True,
+        ),
+    ]
 
 
 def get_all_tests(
@@ -352,29 +468,27 @@ def build_summary_table(
     return table
 
 
-def build_tabs(
+def build_nav(
     full_app: Dash,
     layouts: dict[str, list[Div]],
     summary_table: DataTable,
     weight_components: Div,
 ) -> None:
     """
-    Build tab layouts and summary tab.
+    Build page layouts and sidebar navigation.
 
     Parameters
     ----------
     full_app
         Full application with all sub-apps.
     layouts
-        Layouts for all tabs.
+        Layouts for all categories.
     summary_table
         Summary table with score from each category.
     weight_components
         Weight sliders, text boxes and reset button.
     """
-    all_tabs = [Tab(label="Summary", value="summary-tab", id="summary-tab")] + [
-        Tab(label=category_name, value=category_name) for category_name in layouts
-    ]
+    category_paths = {category: _category_to_path(category) for category in layouts}
 
     model_options = [{"label": m, "value": m} for m in MODELS]
 
@@ -382,7 +496,15 @@ def build_tabs(
         [
             Summary(
                 "Visible models",
-                style={"cursor": "pointer", "fontWeight": "bold", "padding": "5px"},
+                style={
+                    "cursor": "pointer",
+                    "fontWeight": "600",
+                    "fontSize": "11px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.07em",
+                    "color": "#6c757d",
+                    "padding": "5px",
+                },
             ),
             Div(
                 [
@@ -404,51 +526,90 @@ def build_tabs(
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
-    tabs_layout = [
+    sidebar = Div(
+        id="sidebar-nav",
+        children=build_sidebar("/", category_paths),
+        style={
+            "width": "220px",
+            "overflowY": "auto",
+            "borderRight": "1px solid #dee2e6",
+            "padding": "12px",
+            "flexShrink": "0",
+            "backgroundColor": "#f8f9fa",
+        },
+    )
+
+    path_to_category = {path: category for category, path in category_paths.items()}
+
+    full_layout = [
         build_onboarding_modal(),
         build_tutorial_button(),
+        Location(id="app-location", refresh=False),
+        Store(
+            id="summary-table-scores-store",
+            storage_type="session",
+        ),
         Div(
             [
-                H1("ML-PEG"),
-                Tabs(id="all-tabs", value="summary-tab", children=all_tabs),
-                model_filter,
-                Store(
-                    id="selected-models-store",
-                    storage_type="session",
-                    data=MODELS,
-                ),
-                Store(
-                    id="summary-table-computed-store",
-                    storage_type="session",
-                    data=summary_table.data,
-                ),
-                Loading(
-                    Div(id="tabs-content"),
-                    type="circle",
-                    color="#119DFF",
-                    fullscreen=False,
-                    # dont trigger both start up load wheel + tab change load wheel
-                    # (when switching to summary tab)
-                    target_components={"tabs-content": "children"},
+                H1(
+                    "ML-PEG",
                     style={
-                        # Pin near the top so the spinner is visible on long pages
-                        # (default is centre of page)
-                        "position": "fixed",
-                        "top": "300px",
-                        "left": "50%",
-                        "transform": "translateX(-50%)",
-                        "zIndex": "1100",
+                        "padding": "12px 16px 16px",
+                        "margin": "0",
+                        "borderBottom": "1px solid #dee2e6",
+                        "color": "#212529",
                     },
-                    parent_style={"position": "relative"},
+                ),
+                Div(
+                    [
+                        sidebar,
+                        Div(
+                            [
+                                model_filter,
+                                Store(
+                                    id="selected-models-store",
+                                    storage_type="session",
+                                    data=MODELS,
+                                ),
+                                Store(
+                                    id="summary-table-computed-store",
+                                    storage_type="session",
+                                    data=summary_table.data,
+                                ),
+                                Loading(
+                                    Div(id="page-content"),
+                                    type="circle",
+                                    color="#119DFF",
+                                    fullscreen=False,
+                                    target_components={"page-content": "children"},
+                                    style={
+                                        "position": "fixed",
+                                        "top": "300px",
+                                        "left": "50%",
+                                        "transform": "translateX(-50%)",
+                                        "zIndex": "1100",
+                                    },
+                                    parent_style={"position": "relative"},
+                                ),
+                            ],
+                            style={"flex": "1", "padding": "16px 16px"},
+                        ),
+                    ],
+                    style={"display": "flex", "minHeight": "0", "flex": "1"},
                 ),
             ],
-            style={"flex": "1", "marginBottom": "40px"},
+            style={
+                "flex": "1",
+                "marginBottom": "40px",
+                "display": "flex",
+                "flexDirection": "column",
+            },
         ),
         build_footer(),
     ]
 
     full_app.layout = Div(
-        tabs_layout,
+        full_layout,
         style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
     )
 
@@ -491,54 +652,60 @@ def build_tabs(
 
     @callback(
         Output("model-filter-details", "open"),
-        Input("all-tabs", "value"),
+        Input("app-location", "pathname"),
         prevent_initial_call=False,
     )
-    def toggle_filter_panel(tab: str) -> bool:
+    def toggle_filter_panel(pathname: str | None) -> bool:
         """
-        Expand the visible-models panel on the summary tab only.
+        Expand the visible-models panel on the summary page only.
 
         Parameters
         ----------
-        tab
-            Currently selected tab identifier.
+        pathname
+            Current URL pathname.
 
         Returns
         -------
         bool
-            ``True`` when the summary tab is active, otherwise ``False``.
+            ``True`` when the summary page is active, otherwise ``False``.
         """
-        return tab == "summary-tab"
+        return pathname in (None, "", "/", "/summary")
 
-    @callback(Output("tabs-content", "children"), Input("all-tabs", "value"))
-    def select_tab(tab) -> Div:
+    @callback(
+        Output("page-content", "children"),
+        Output("sidebar-nav", "children"),
+        Input("app-location", "pathname"),
+    )
+    def select_page(pathname: str | None) -> tuple[Div, list[Details]]:
         """
-        Select tab contents to be displayed.
+        Select page contents to be displayed.
 
         Parameters
         ----------
-        tab
-            Name of tab selected.
+        pathname
+            Current URL pathname.
 
         Returns
         -------
         Div
-            Summary or tab contents to be displayed.
+            Summary or category contents to be displayed.
         """
-        if tab == "summary-tab":
+        sidebar_children = build_sidebar(pathname, category_paths)
+
+        if pathname in (None, "", "/", "/summary"):
             return Div(
                 [
                     H1("Benchmarks Summary"),
                     summary_table,
                     weight_components,
-                    Store(
-                        id="summary-table-scores-store",
-                        storage_type="session",
-                    ),
                     build_faqs(),
                 ]
-            )
-        return Div([layouts[tab]])
+            ), sidebar_children
+
+        selected_category = path_to_category.get(pathname)
+        if selected_category is None:
+            return Div([H3("Page not found")]), sidebar_children
+        return Div([layouts[selected_category]]), sidebar_children
 
 
 def build_full_app(full_app: Dash, category: str = "*") -> None:
@@ -567,6 +734,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         table=summary_table,
         column_widths=summary_table.column_widths,
     )
-    # Build summary and category tabs
-    build_tabs(full_app, cat_layouts, summary_table, weight_components)
+    # Build summary and category pages and navigation
+    build_nav(full_app, cat_layouts, summary_table, weight_components)
     register_onboarding_callbacks()
