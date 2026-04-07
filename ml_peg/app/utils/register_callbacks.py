@@ -37,7 +37,8 @@ def register_summary_table_callbacks(
     Parameters
     ----------
     initial_rows
-        Initial unfiltered summary rows used before the cached store is populated.
+        Starting full summary rows. These are used to seed the summary-table
+        cache before any callback has written updated rows to it.
     model_levels
         Mapping from model name to its level of theory badge text.
     metric_levels
@@ -90,11 +91,12 @@ def register_summary_table_callbacks(
         Parameters
         ----------
         stored_scores
-            Stored scores for table scores.
+            Latest category-summary scores, grouped by category column.
         stored_weights
-            Stored summary weights dictionary.
+            Current weights applied to the overall summary table.
         computed_store
-            Full unfiltered summary rows used as the source of truth.
+            Cached full summary rows. When available, these are updated and
+            reused as the source of truth.
 
         Returns
         -------
@@ -135,12 +137,12 @@ def register_summary_table_callbacks(
         Parameters
         ----------
         selected_models
-            List of currently selected model names.
+            Models currently selected in the global model filter.
         computed_store
-            Cached unfiltered summary rows.
+            Cached full summary rows for the overall summary table.
         _pathname
-            Current pathname. Unused, but required so the table hydrates when the
-            summary page is mounted.
+            Current pathname. Included so the visible table refreshes when the
+            summary page is opened.
 
         Returns
         -------
@@ -463,14 +465,14 @@ def register_category_table_callbacks(
         Parameters
         ----------
         computed_rows
-            Cached unfiltered rows for the table.
+            Cached full rows for the category summary table.
         scores_data
-            Dictionary of scores for each tab.
+            Stored overall-summary inputs, keyed by category score column.
 
         Returns
         -------
         dict[str, dict[str, float]]
-            List of scoress indexed by table_id.
+            Updated summary-score mapping.
         """
         # Only category summary tables should write to the global store
         if not table_id.endswith("-summary-table"):
@@ -513,8 +515,8 @@ def register_benchmark_to_category_callback(
     model_name_map
         Optional mapping of displayed benchmark MLIP names -> original model names.
     initial_category_rows
-        Initial unfiltered rows for the category summary table used before the cached
-        store has been populated.
+        Starting full rows for the category summary table. These are used before
+        the category's cached rows have been populated.
     """
     _ = use_threshold_store  # cached rows handle normalization
     # flag kept for compatibility with existing call sites

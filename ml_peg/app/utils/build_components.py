@@ -155,8 +155,9 @@ def build_weight_components(
         weight callbacks will reuse the raw-data store and normalization store to
         recompute Scores consistently.
     include_store
-        Whether to render the backing ``dcc.Store`` inside this component. Set to
-        ``False`` when the store is mounted elsewhere in the app shell.
+        Whether to include this table's weight ``dcc.Store`` in the returned
+        component. Set to ``False`` when that store is already created elsewhere,
+        for example in the main app layout.
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.

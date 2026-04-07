@@ -118,12 +118,13 @@ def _initial_table_weights(table: DataTable) -> dict[str, float]:
     Parameters
     ----------
     table
-        Table whose non-reserved columns need weight defaults.
+        Table whose non-reserved columns should receive default weights.
 
     Returns
     -------
     dict[str, float]
-        Weight mapping including implicit ``1.0`` defaults.
+        Default weight mapping, filling in ``1.0`` for any columns that do not
+        already have an explicit weight.
     """
     reserved = {"MLIP", "Score", "id"}
     weights = dict(getattr(table, "weights", None) or {})
