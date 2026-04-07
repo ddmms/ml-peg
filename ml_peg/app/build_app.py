@@ -552,7 +552,7 @@ def build_nav(
         Div(
             [
                 H1(
-                    "ML-PEG",
+                    "ML-PEG: Machine Learning Performance Guide",
                     style={
                         "padding": "12px 16px 16px",
                         "margin": "0",
