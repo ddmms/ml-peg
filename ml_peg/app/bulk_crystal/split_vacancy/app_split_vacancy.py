@@ -34,6 +34,15 @@ class SplitVacancyApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
+        max_dist_violin_pbesol = read_plot(
+            DATA_PATH / "figure_max_dist_pbesol.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        max_dist_violin_pbe = read_plot(
+            DATA_PATH / "figure_max_dist_pbe.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
@@ -41,9 +50,11 @@ class SplitVacancyApp(BaseApp):
                 "MAE (PBEsol)": scatter_pbesol,
                 "Spearman's (PBEsol)": scatter_pbesol,
                 "RMSD (PBEsol)": scatter_pbesol,
+                "Max Dist (PBEsol)": max_dist_violin_pbesol,
                 "MAE (PBE)": scatter_pbe,
                 "Spearman's (PBE)": scatter_pbe,
                 "RMSD (PBE)": scatter_pbe,
+                "Max Dist (PBE)": max_dist_violin_pbe,
             },
         )
 
