@@ -373,7 +373,7 @@ def build_summary_table(
 
     data = calc_table_scores(data, weights=weights)
 
-    columns_headers = ("MLIP",) + tuple(key + " Score" for key in tables) + ("Score",)
+    columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
 
     columns = [{"name": headers, "id": headers} for headers in columns_headers]
     tooltip_header = {
