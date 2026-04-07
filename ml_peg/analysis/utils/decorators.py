@@ -788,6 +788,68 @@ def plot_density_scatter(
     return plot_density_decorator
 
 
+def plot_violin(
+    *,
+    title: str | None = None,
+    y_label: str | None = None,
+    filename: str = "violin.json",
+) -> Callable:
+    """
+    Plot overlapping violin distributions of per-model value lists.
+
+    The decorated function must return a mapping of model name to a list of
+    numeric values (NaNs are silently ignored).
+
+    Parameters
+    ----------
+    title
+        Graph title. Default is None.
+    y_label
+        Label for y-axis. Default is None.
+    filename
+        Filename to save plot as JSON. Default is "violin.json".
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_violin_decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def plot_violin_wrapper(*args, **kwargs) -> dict[str, Any]:
+            results = func(*args, **kwargs)
+
+            fig = go.Figure()
+            for model_name, values in results.items():
+                filtered = [v for v in values if v is not None and not np.isnan(v)]
+                fig.add_trace(
+                    go.Violin(
+                        y=filtered,
+                        name=model_name,
+                        points="all",
+                        jitter=0.05,
+                        box_visible=True,
+                        meanline_visible=True,
+                        opacity=0.6,
+                    )
+                )
+
+            fig.update_layout(
+                title={"text": title},
+                yaxis={"title": {"text": y_label}},
+            )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_violin_wrapper
+
+    return plot_violin_decorator
+
+
 def plot_periodic_table(
     title: str | None = None,
     colorbar_title: str | None = None,

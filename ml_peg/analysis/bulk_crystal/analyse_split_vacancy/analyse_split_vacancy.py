@@ -10,7 +10,7 @@ import pytest
 from scipy.stats import spearmanr
 from tqdm.auto import tqdm
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_violin
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -205,7 +205,7 @@ def build_results(
         result_spearmans_coefficient,
         result_rmsd,
         result_match,
-        result_max_dist
+        result_max_dist,
     )
 
 
@@ -387,6 +387,17 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
     return results
 
 
+# @pytest.fixture
+# @plot_violin(
+#     title="RMSD Distribution (Oxides, PBEsol)",
+#     y_label="RMSD / Å",
+#     filename=OUT_PATH / "figure_rmsd_pbesol.json",
+# )
+# def rmsd_pbesol_dist(build_results_pbesol) -> dict[str, list]:
+#     _, _, result_rmsd, _, _ = build_results_pbesol
+#     return result_rmsd
+
+
 @pytest.fixture
 def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     """
@@ -403,17 +414,27 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
         Mean RMSD between MLIP and DFT relaxed structure that match.
     """
     _, _, result_rmsd, _, _ = build_results_pbesol
-
     results = {}
     for model_name in MODELS:
         results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
 
 
+# @pytest.fixture
+# @plot_violin(
+#     title="RMSD Distribution (Nitrides, PBE(+U))",
+#     y_label="RMSD / Å",
+#     filename=OUT_PATH / "figure_rmsd_pbe.json",
+# )
+# def rmsd_pbe_dist(build_results_pbe) -> dict[str, list]:
+#     _, _, result_rmsd, _, _ = build_results_pbe
+#     return result_rmsd
+
+
 @pytest.fixture
 def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     """
-    Get RMSD between PBE and MLIP relaxed structures (oxides).
+    Get RMSD between PBE and MLIP relaxed structures (nitrides).
 
     Parameters
     ----------
@@ -426,12 +447,10 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
         Mean RMSD between MLIP and DFT relaxed structures that match.
     """
     _, _, result_rmsd, _, _ = build_results_pbe
-
     results = {}
     for model_name in MODELS:
         results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
-
 
 
 @pytest.fixture
@@ -481,9 +500,14 @@ def match_pbe_rate(build_results_pbe) -> dict[str, float]:
 
 
 @pytest.fixture
-def max_dist_pbesol_mean(build_results_pbesol) -> dict[str, float]:
+@plot_violin(
+    title="Max Distance Distribution (Oxides, PBEsol)",
+    y_label="Max Distance / Å",
+    filename=OUT_PATH / "figure_max_dist_pbesol.json",
+)
+def max_dist_pbesol_dist(build_results_pbesol) -> dict[str, list]:
     """
-    Get normalized max dist between PBEsol and MLIP relaxed structures (oxides).
+    Get max dist distributions between PBEsol and MLIP relaxed structures (oxides).
 
     Parameters
     ----------
@@ -492,20 +516,43 @@ def max_dist_pbesol_mean(build_results_pbesol) -> dict[str, float]:
 
     Returns
     -------
+    dict[str, list]
+        Per-model lists of max_dist values.
+    """
+    _, _, _, _, result_max_dist = build_results_pbesol
+    return result_max_dist
+
+
+@pytest.fixture
+def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
+    """
+    Get mean max dist between PBEsol and MLIP relaxed structures (oxides).
+
+    Parameters
+    ----------
+    max_dist_pbesol_dist
+        Per-model lists of max_dist values.
+
+    Returns
+    -------
     dict[str, float]
         Mean max_dist between MLIP and DFT relaxed structure that match.
     """
-    _, _, _, _, result_max_dist = build_results_pbesol
-
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_max_dist[model_name]))
+        results[model_name] = float(np.nanmean(max_dist_pbesol_dist[model_name]))
     return results
 
+
 @pytest.fixture
-def max_dist_pbe_mean(build_results_pbe) -> dict[str, float]:
+@plot_violin(
+    title="Max Distance Distribution (Nitrides, PBE(+U))",
+    y_label="Max Distance / Å",
+    filename=OUT_PATH / "figure_max_dist_pbe.json",
+)
+def max_dist_pbe_dist(build_results_pbe) -> dict[str, list]:
     """
-    Get normalized max dist between PBE and MLIP relaxed structures (oxides).
+    Get max dist distributions between PBE and MLIP relaxed structures (nitrides).
 
     Parameters
     ----------
@@ -514,15 +561,33 @@ def max_dist_pbe_mean(build_results_pbe) -> dict[str, float]:
 
     Returns
     -------
+    dict[str, list]
+        Per-model lists of max_dist values.
+    """
+    _, _, _, _, result_max_dist = build_results_pbe
+    return result_max_dist
+
+
+@pytest.fixture
+def max_dist_pbe_mean(max_dist_pbe_dist) -> dict[str, float]:
+    """
+    Get mean max dist between PBE and MLIP relaxed structures (nitrides).
+
+    Parameters
+    ----------
+    max_dist_pbe_dist
+        Per-model lists of max_dist values.
+
+    Returns
+    -------
     dict[str, float]
         Mean max_dist between MLIP and DFT relaxed structure that match.
     """
-    _, _, _, _, result_max_dist = build_results_pbe
-
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_max_dist[model_name]))
+        results[model_name] = float(np.nanmean(max_dist_pbe_dist[model_name]))
     return results
+
 
 @pytest.fixture
 @build_table(
@@ -533,11 +598,9 @@ def max_dist_pbe_mean(build_results_pbe) -> dict[str, float]:
 def metrics(
     formation_energy_pbesol_mae: dict[str, float],
     spearmans_coefficient_pbesol_mean: dict[str, float],
-    rmsd_pbesol_mean: dict[str, float],
     max_dist_pbesol_mean: dict[str, float],
     formation_energy_pbe_mae: dict[str, float],
     spearmans_coefficient_pbe_mean: dict[str, float],
-    rmsd_pbe_mean: dict[str, float],
     max_dist_pbe_mean: dict[str, float],
 ) -> dict[str, dict]:
     """
@@ -545,7 +608,7 @@ def metrics(
 
     Parameters
     ----------
-    formation_energy_pbesol_mae
+    formation_energy_pbesol_mae0
         Split vacancy formation energy MAE (oxides, PBEsol) for all models.
     spearmans_coefficient_pbesol_mean
         Mean Spearman's rank correlation (oxides, PBEsol) for all models.
@@ -566,12 +629,12 @@ def metrics(
     return {
         "MAE (PBEsol)": formation_energy_pbesol_mae,
         "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
-        "RMSD (PBEsol)": rmsd_pbesol_mean,
+        # "RMSD (PBEsol)": rmsd_pbesol_mean,
         # "Match Rate (PBEsol)": match_pbesol_rate, # not included since always 1
         "Max Dist (PBEsol)": max_dist_pbesol_mean,
         "MAE (PBE)": formation_energy_pbe_mae,
         "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
-        "RMSD (PBE)": rmsd_pbe_mean,
+        # "RMSD (PBE)": rmsd_pbe_mean,
         # "Match Rate (PBE)": match_pbe_rate, # not included since always 1
         "Max Dist (PBE)": max_dist_pbe_mean,
     }
