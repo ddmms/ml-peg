@@ -74,7 +74,8 @@ class SiDefectNebSinglepointsApp(BaseApp):
         for model in scatter_plots:
             for case in CASES:
                 structs = (
-                    f"assets/nebs/si_defects/{case.key}/{model}/{model}-neb-band.extxyz"
+                    f"/assets/nebs/si_defects/{case.key}/{model}/"
+                    f"{model}-neb-band.extxyz"
                 )
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-{case.key}-energy-figure",

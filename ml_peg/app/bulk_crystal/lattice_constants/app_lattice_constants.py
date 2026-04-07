@@ -37,13 +37,13 @@ class LatticeConstantsApp(BaseApp):
             if struct_file.stem == "SiC":
                 structs.extend(
                     [
-                        f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                        f"/assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
                     ]
                     * 2
                 )
             else:
                 structs.append(
-                    f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                    f"/assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
                 )
 
         plot_from_table_column(

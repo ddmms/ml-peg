@@ -352,7 +352,7 @@ def collect_traj_assets(
     data_path
         Base data directory containing per-model folders.
     assets_prefix
-        Assets URL prefix (e.g., ``"assets/molecular_reactions/RDB7"``).
+        Assets URL prefix (e.g., ``"/assets/molecular_reactions/RDB7"``).
     models
         Ordered list of model names to include.
     traj_dirname

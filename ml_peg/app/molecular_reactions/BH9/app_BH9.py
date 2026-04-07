@@ -39,7 +39,7 @@ class BH9App(BaseApp):
             # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*.xyz"))
             structs = [
-                f"assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
+                f"/assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:
