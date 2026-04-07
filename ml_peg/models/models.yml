@@ -64,7 +64,7 @@ mace-matpes-r2scan:
 #     head: omat_pbe
 
 orb-v3-consv-inf-omat:
-  module: orb_models.forcefield
+  module: orb_models.inference.calculator
   class_name: OrbCalc
   device: "cpu"
   default_dtype: float32-high
@@ -73,15 +73,15 @@ orb-v3-consv-inf-omat:
   kwargs:
     name: "orb_v3_conservative_inf_omat"
 
-# orb-v3-consv-omol:
-#   module: orb_models.forcefield
-#   class_name: OrbCalc
-#   device: "cpu"
-#   default_dtype: float32-high
-#   trained_on_dispersion: true
-#   level_of_theory: PBE
-#   kwargs:
-#     name: "orb_v3_conservative_omol"
+orb-v3-consv-omol:
+  module: orb_models.forcefield.inference.calculator
+  class_name: OrbCalc
+  device: "cpu"
+  default_dtype: float32-high
+  trained_on_dispersion: true
+  level_of_theory: PBE
+  kwargs:
+    name: "orb_v3_conservative_omol"
 
 # mattersim-5M:
 #   module: mattersim.forcefield
