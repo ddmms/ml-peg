@@ -137,6 +137,7 @@ def build_weight_components(
     table: DataTable,
     *,
     use_thresholds: bool = False,
+    include_store: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
 ) -> Div:
@@ -153,6 +154,9 @@ def build_weight_components(
         Whether this table also exposes normalization thresholds. When True,
         weight callbacks will reuse the raw-data store and normalization store to
         recompute Scores consistently.
+    include_store
+        Whether to render the backing ``dcc.Store`` inside this component. Set to
+        ``False`` when the store is mounted elsewhere in the app shell.
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
@@ -280,15 +284,15 @@ def build_weight_components(
         },
     )
 
-    layout = [
-        Br(),
-        container,
-        Store(
-            id=f"{table.id}-weight-store",
-            storage_type="session",
-            data=weights,
-        ),
-    ]
+    layout = [Br(), container]
+    if include_store:
+        layout.append(
+            Store(
+                id=f"{table.id}-weight-store",
+                storage_type="session",
+                data=weights,
+            )
+        )
 
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
@@ -305,6 +309,7 @@ def build_weight_components(
         )
     else:
         register_summary_table_callbacks(
+            initial_rows=table.data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,

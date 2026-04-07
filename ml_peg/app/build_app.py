@@ -111,6 +111,29 @@ def _framework_to_path(framework_id: str) -> str:
     return f"/framework/{slug}"
 
 
+def _initial_table_weights(table: DataTable) -> dict[str, float]:
+    """
+    Build the full default weight mapping for a table.
+
+    Parameters
+    ----------
+    table
+        Table whose non-reserved columns need weight defaults.
+
+    Returns
+    -------
+    dict[str, float]
+        Weight mapping including implicit ``1.0`` defaults.
+    """
+    reserved = {"MLIP", "Score", "id"}
+    weights = dict(getattr(table, "weights", None) or {})
+    for column in table.columns:
+        column_id = column.get("id")
+        if column_id not in reserved:
+            weights.setdefault(column_id, 1.0)
+    return weights
+
+
 def build_sidebar(
     pathname: str | None,
     category_paths: dict[str, str],
@@ -353,6 +376,7 @@ def build_category(
         weight_components = build_weight_components(
             header="Benchmark weights",
             table=summary_table,
+            include_store=False,
             column_widths=getattr(summary_table, "column_widths", None),
         )
 
@@ -384,6 +408,7 @@ def build_category(
                 category_table_id=f"{category_title}-summary-table",
                 benchmark_column=test_name + " Score",
                 model_name_map=getattr(benchmark_table, "model_name_map", None),
+                initial_category_rows=summary_table.data,
             )
 
     return category_views, category_tables, category_weights, framework_ids
@@ -417,11 +442,6 @@ def build_category_tab_layout(
             H1(category_title),
             H3(category_description),
             summary_table,
-            Store(
-                id=f"{category_title}-summary-table-computed-store",
-                storage_type="session",
-                data=summary_table.data,
-            ),
             weight_components,
             Div(
                 [
@@ -771,6 +791,31 @@ def build_nav(
     path_to_framework = {
         path: framework_id for framework_id, path in framework_paths.items()
     }
+    category_state_stores = []
+    for category_view in category_views.values():
+        summary_table_component = category_view["summary_table"]
+        category_state_stores.extend(
+            [
+                Store(
+                    id=f"{summary_table_component.id}-computed-store",
+                    storage_type="session",
+                    data=summary_table_component.data,
+                ),
+                Store(
+                    id=f"{summary_table_component.id}-weight-store",
+                    storage_type="session",
+                    data=_initial_table_weights(summary_table_component),
+                ),
+            ]
+        )
+    global_state_stores = [
+        Store(
+            id="summary-table-weight-store",
+            storage_type="session",
+            data=_initial_table_weights(summary_table),
+        ),
+        *category_state_stores,
+    ]
 
     full_layout = [
         build_onboarding_modal(),
@@ -780,6 +825,7 @@ def build_nav(
             id="summary-table-scores-store",
             storage_type="session",
         ),
+        Div(global_state_stores, style={"display": "none"}),
         Div(
             [
                 H1(
@@ -1002,6 +1048,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     weight_components = build_weight_components(
         header="Category weights",
         table=summary_table,
+        include_store=False,
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation
