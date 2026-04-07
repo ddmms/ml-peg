@@ -23,6 +23,12 @@ metrics:
   #   unit: null
   #   tooltip: Fraction of MLIP relaxations that converge to the same structure as PBEsol.
   #   level_of_theory: PBEsol
+  Max Dist (PBEsol):
+    good: 1
+    bad: 0
+    unit: null
+    tooltip: Change
+    level_of_theory: PBEsol
   Spearman's (PBE):
     good: 1.0
     bad: 0.6
@@ -47,3 +53,9 @@ metrics:
   #   unit: null
   #   tooltip: Fraction of MLIP relaxations that converge to the same structure as PBE.
   #   level_of_theory: PBE
+  Max Dist (PBE):
+    good: 1
+    bad: 0
+    unit: null
+    tooltip: Change
+    level_of_theory: PBE

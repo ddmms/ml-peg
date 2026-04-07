@@ -27,7 +27,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # same setting as MatBench
 # https://github.com/janosh/matbench-discovery/blob/93cc6907ac08b4adaa8391ccc4adf9c015c0dd61/matbench_discovery/structure/symmetry.py#L124
-STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False)
+STRUCTURE_MATCHER = StructureMatcher(stol=0.1, scale=False)
 
 
 def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
