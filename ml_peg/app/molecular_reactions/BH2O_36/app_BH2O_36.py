@@ -40,7 +40,7 @@ class BH2O36App(BaseApp):
                     for f in sorted(model_dir.glob("*_rct_to_ts.xyz"))
                 }
             )
-            asset_prefix = f"assets/molecular_reactions/BH2O_36/{MODELS[0]}/"
+            asset_prefix = f"/assets/molecular_reactions/BH2O_36/{MODELS[0]}/"
             # Each system has 2 data points:
             # TS-Reactants (rct->TS), TS-Products (pro->TS)
             structs = [
