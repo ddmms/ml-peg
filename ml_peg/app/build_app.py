@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Details, Div, Span, Summary
+from dash.html import H1, H3, Details, Div, Span, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -135,6 +135,44 @@ def _initial_table_weights(table: DataTable) -> dict[str, float]:
     return weights
 
 
+def _framework_sidebar_label(framework_id: str, label: str) -> Div:
+    """
+    Build a framework sidebar label with an optional logo.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier used to look up logo metadata.
+    label
+        Visible framework label shown in the sidebar.
+
+    Returns
+    -------
+    Div
+        Sidebar label content with optional logo and text.
+    """
+    logo = get_framework_config(framework_id).get("logo")
+    children = []
+    if logo:
+        children.append(
+            Img(
+                src=logo,
+                alt=f"{label} logo",
+                style={
+                    "width": "14px",
+                    "height": "14px",
+                    "borderRadius": "50%",
+                    "objectFit": "cover",
+                },
+            )
+        )
+    children.append(Span(label))
+    return Div(
+        children,
+        style={"display": "flex", "alignItems": "center", "gap": "8px"},
+    )
+
+
 def build_sidebar(
     pathname: str | None,
     category_paths: dict[str, str],
@@ -226,7 +264,9 @@ def build_sidebar(
                     Div(
                         [
                             Link(
-                                framework_labels[framework_id],
+                                _framework_sidebar_label(
+                                    framework_id, framework_labels[framework_id]
+                                ),
                                 href=framework_path,
                                 style=_nav_link_style(current_path == framework_path),
                             )
