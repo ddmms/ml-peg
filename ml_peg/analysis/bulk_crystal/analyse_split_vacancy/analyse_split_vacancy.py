@@ -103,7 +103,10 @@ def build_results(
     }  # spearmans coefficient for every material-cation pair
     result_rmsd = {
         mlip: [] for mlip in MODELS
-    }  # RMSD error for every material-cation pair
+    }  # normalized RMSD error for every material-cation pair
+    result_max_dist = {
+        mlip: [] for mlip in MODELS
+    }  # normalized max_dist for every material-cation pair
     result_match = {mlip: [] for mlip in MODELS}  # if structures relaxing to same state
     # TODO: investigate Kendall rank correlation
 
@@ -150,15 +153,18 @@ def build_results(
 
                 match_list = []
                 rmsd_list = []
+                max_dist_list = []
 
                 nv_initial_energies = []
                 nv_relaxed_energies = []
                 for nv_atoms in nv_atoms_list:
                     if nv_atoms.info["ref_structure_match"]:
                         rmsd_list.append(nv_atoms.info["ref_rmsd"])
+                        max_dist_list.append(nv_atoms.info["ref_max_distance"])
                         nv_relaxed_energies.append(nv_atoms.info["relaxed_energy"])
                     else:
                         rmsd_list.append(np.nan)
+                        max_dist_list.append(np.nan)
 
                     match_list.append(nv_atoms.info["ref_structure_match"])
                     nv_initial_energies.append(nv_atoms.info["initial_energy"])
@@ -169,8 +175,10 @@ def build_results(
                     if sv_atoms.info["ref_structure_match"]:
                         rmsd_list.append(sv_atoms.info["ref_rmsd"])
                         sv_relaxed_energies.append(sv_atoms.info["relaxed_energy"])
+                        max_dist_list.append(sv_atoms.info["ref_max_distance"])
                     else:
                         rmsd_list.append(np.nan)
+                        max_dist_list.append(np.nan)
 
                     match_list.append(sv_atoms.info["ref_structure_match"])
                     sv_initial_energies.append(sv_atoms.info["initial_energy"])
@@ -187,6 +195,7 @@ def build_results(
                 result_formation_energy[model_name].append(sv_formation_energy)
                 result_spearmans_coefficient[model_name].append(spearmans_coefficient)
                 result_rmsd[model_name].extend(rmsd_list)
+                result_max_dist[model_name].extend(max_dist_list)
                 result_match[model_name].extend(match_list)
 
         ref_stored = True
@@ -196,6 +205,7 @@ def build_results(
         result_spearmans_coefficient,
         result_rmsd,
         result_match,
+        result_max_dist
     )
 
 
@@ -251,7 +261,7 @@ def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _, _ = build_results_pbesol
+    result_formation_energies, _, _, _, _ = build_results_pbesol
     return result_formation_energies
 
 
@@ -281,7 +291,7 @@ def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
     dict[str, list]
         Dictionary of DFT and predicted formation energies.
     """
-    result_formation_energies, _, _, _ = build_results_pbe
+    result_formation_energies, _, _, _, _ = build_results_pbe
     return result_formation_energies
 
 
@@ -346,7 +356,7 @@ def spearmans_coefficient_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _, _ = build_results_pbesol
+    _, result_spearmans_coefficient, _, _, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
@@ -369,7 +379,7 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
     dict[str, float]
         Dictionary of mean Spearman's coefficients for all models.
     """
-    _, result_spearmans_coefficient, _, _ = build_results_pbe
+    _, result_spearmans_coefficient, _, _, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
@@ -392,7 +402,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     dict[str, float]
         Mean RMSD between MLIP and DFT relaxed structure that match.
     """
-    _, _, result_rmsd, _ = build_results_pbesol
+    _, _, result_rmsd, _, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
@@ -415,12 +425,13 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     dict[str, float]
         Mean RMSD between MLIP and DFT relaxed structures that match.
     """
-    _, _, result_rmsd, _ = build_results_pbe
+    _, _, result_rmsd, _, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
         results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
+
 
 
 @pytest.fixture
@@ -438,7 +449,7 @@ def match_pbesol_rate(build_results_pbesol) -> dict[str, float]:
     dict[str, float]
         Rate of MLIP relaxing to same structure as DFT.
     """
-    _, _, _, result_match = build_results_pbesol
+    _, _, _, result_match, _ = build_results_pbesol
 
     results = {}
     for model_name in MODELS:
@@ -461,13 +472,57 @@ def match_pbe_rate(build_results_pbe) -> dict[str, float]:
     dict[str, float]
         Rate of MLIP relaxing to same structure as DFT.
     """
-    _, _, _, result_match = build_results_pbe
+    _, _, _, result_match, _ = build_results_pbe
 
     results = {}
     for model_name in MODELS:
         results[model_name] = np.mean(result_match[model_name])
     return results
 
+
+@pytest.fixture
+def max_dist_pbesol_mean(build_results_pbesol) -> dict[str, float]:
+    """
+    Get normalized max dist between PBEsol and MLIP relaxed structures (oxides).
+
+    Parameters
+    ----------
+    build_results_pbesol
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean max_dist between MLIP and DFT relaxed structure that match.
+    """
+    _, _, _, _, result_max_dist = build_results_pbesol
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = float(np.nanmean(result_max_dist[model_name]))
+    return results
+
+@pytest.fixture
+def max_dist_pbe_mean(build_results_pbe) -> dict[str, float]:
+    """
+    Get normalized max dist between PBE and MLIP relaxed structures (oxides).
+
+    Parameters
+    ----------
+    build_results_pbe
+        Tuple of results dictionaries.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean max_dist between MLIP and DFT relaxed structure that match.
+    """
+    _, _, _, _, result_max_dist = build_results_pbe
+
+    results = {}
+    for model_name in MODELS:
+        results[model_name] = float(np.nanmean(result_max_dist[model_name]))
+    return results
 
 @pytest.fixture
 @build_table(
@@ -479,9 +534,11 @@ def metrics(
     formation_energy_pbesol_mae: dict[str, float],
     spearmans_coefficient_pbesol_mean: dict[str, float],
     rmsd_pbesol_mean: dict[str, float],
+    max_dist_pbesol_mean: dict[str, float],
     formation_energy_pbe_mae: dict[str, float],
     spearmans_coefficient_pbe_mean: dict[str, float],
     rmsd_pbe_mean: dict[str, float],
+    max_dist_pbe_mean: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all new benchmark metrics.
@@ -511,10 +568,12 @@ def metrics(
         "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
         "RMSD (PBEsol)": rmsd_pbesol_mean,
         # "Match Rate (PBEsol)": match_pbesol_rate, # not included since always 1
+        "Max Dist (PBEsol)": max_dist_pbesol_mean,
         "MAE (PBE)": formation_energy_pbe_mae,
         "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
         "RMSD (PBE)": rmsd_pbe_mean,
         # "Match Rate (PBE)": match_pbe_rate, # not included since always 1
+        "Max Dist (PBE)": max_dist_pbe_mean,
     }
 
 
