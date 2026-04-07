@@ -28,6 +28,7 @@ from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_c
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
+    get_framework_config,
     load_model_registry_configs,
     sig_fig_format,
 )
@@ -87,8 +88,34 @@ def _category_to_path(category_name: str) -> str:
     return f"/category/{slug}"
 
 
+def _framework_to_path(framework_id: str) -> str:
+    """
+    Convert a framework identifier to a stable URL path.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier to convert.
+
+    Returns
+    -------
+    str
+        URL path corresponding to framework.
+    """
+    slug = "".join(
+        character.lower() if character.isalnum() else "-" for character in framework_id
+    )
+    slug = "-".join(part for part in slug.split("-") if part)
+    if not slug:
+        raise ValueError(f"Unable to construct path for framework {framework_id}")
+    return f"/framework/{slug}"
+
+
 def build_sidebar(
-    pathname: str | None, category_paths: dict[str, str]
+    pathname: str | None,
+    category_paths: dict[str, str],
+    framework_paths: dict[str, str] | None = None,
+    framework_labels: dict[str, str] | None = None,
 ) -> list[Details]:
     """
     Build sidebar navigation children with active-link highlighting.
@@ -99,6 +126,10 @@ def build_sidebar(
         Current URL pathname.
     category_paths
         Mapping of category name to its URL path.
+    framework_paths
+        Optional mapping of framework ID to its URL path.
+    framework_labels
+        Optional mapping of framework ID to display label.
 
     Returns
     -------
@@ -107,7 +138,7 @@ def build_sidebar(
     """
     current_path = pathname or "/"
     summary_active = current_path in ("", "/", "/summary")
-    return [
+    sidebar_sections = [
         Details(
             [
                 Summary(
@@ -152,6 +183,38 @@ def build_sidebar(
             open=True,
         ),
     ]
+
+    if framework_paths and framework_labels:
+        sidebar_sections.append(
+            Details(
+                [
+                    Summary(
+                        "Frameworks",
+                        style={
+                            "fontWeight": "600",
+                            "fontSize": "11px",
+                            "textTransform": "uppercase",
+                            "letterSpacing": "0.07em",
+                            "color": "#6c757d",
+                            "cursor": "pointer",
+                        },
+                    ),
+                    Div(
+                        [
+                            Link(
+                                framework_labels[framework_id],
+                                href=framework_path,
+                                style=_nav_link_style(current_path == framework_path),
+                            )
+                            for framework_id, framework_path in framework_paths.items()
+                        ]
+                    ),
+                ],
+                open=True,
+            )
+        )
+
+    return sidebar_sections
 
 
 def get_all_tests(
@@ -377,6 +440,95 @@ def build_category_tab_layout(
     )
 
 
+def build_framework_views(
+    category_views: dict[str, dict[str, object]],
+    framework_ids: set[str],
+) -> dict[str, dict[str, object]]:
+    """
+    Build extra framework-focused page metadata for non-default frameworks.
+
+    Parameters
+    ----------
+    category_views
+        Category metadata including benchmark layout components.
+    framework_ids
+        All framework IDs discovered from benchmark apps.
+
+    Returns
+    -------
+    dict[str, dict[str, object]]
+        Mapping of framework ID to grouped benchmark layouts by category.
+    """
+    framework_views: dict[str, dict[str, object]] = {}
+    for framework_id in sorted(framework_ids):
+        if framework_id == "ml_peg":
+            continue
+
+        category_groups = []
+        for category_name, category_view in category_views.items():
+            tests = [
+                test["layout"]
+                for test in category_view["tests"]
+                if test["framework_id"] == framework_id
+            ]
+            if tests:
+                category_groups.append({"category": category_name, "tests": tests})
+
+        if category_groups:
+            framework_views[framework_id] = {
+                "framework_id": framework_id,
+                "label": get_framework_config(framework_id)["label"],
+                "category_groups": category_groups,
+            }
+
+    return framework_views
+
+
+def build_framework_page_layout(framework_view: dict[str, object]) -> Div:
+    """
+    Build a framework-focused page containing benchmark sections only.
+
+    Parameters
+    ----------
+    framework_view
+        Framework page metadata with grouped benchmark layouts by category.
+
+    Returns
+    -------
+    Div
+        Framework page layout.
+    """
+    framework_label = framework_view["label"]
+    category_groups = framework_view["category_groups"]
+
+    sections = []
+    for group in category_groups:
+        sections.append(H3(group["category"], style={"marginTop": "26px"}))
+        sections.append(Div(group["tests"]))
+
+    return Div(
+        [
+            H1(f"{framework_label} Benchmarks"),
+            Div(
+                (
+                    "These benchmarks also remain in their category pages. "
+                    "Framework pages omit the category summary table and reuse the "
+                    "same benchmark controls, so weight and threshold edits stay in "
+                    "sync across both views."
+                ),
+                style={
+                    "fontSize": "13px",
+                    "fontStyle": "italic",
+                    "color": "#64748b",
+                    "marginTop": "8px",
+                    "marginBottom": "8px",
+                },
+            ),
+            *sections,
+        ]
+    )
+
+
 def build_summary_table(
     tables: dict[str, DataTable],
     table_id: str = "summary-table",
@@ -530,6 +682,7 @@ def build_summary_table(
 def build_nav(
     full_app: Dash,
     category_views: dict[str, dict[str, object]],
+    framework_views: dict[str, dict[str, object]],
     summary_table: DataTable,
     weight_components: Div,
 ) -> None:
@@ -542,6 +695,8 @@ def build_nav(
         Full application with all sub-apps.
     category_views
         Category metadata required to render page content.
+    framework_views
+        Framework page metadata for extra grouped benchmark pages.
     summary_table
         Summary table with score from each category.
     weight_components
@@ -550,6 +705,18 @@ def build_nav(
     category_paths = {
         category_name: _category_to_path(category_name)
         for category_name in category_views
+    }
+    framework_order = sorted(
+        framework_views,
+        key=lambda framework_id: framework_views[framework_id]["label"],
+    )
+    framework_paths = {
+        framework_id: _framework_to_path(framework_id)
+        for framework_id in framework_order
+    }
+    framework_labels = {
+        framework_id: framework_views[framework_id]["label"]
+        for framework_id in framework_order
     }
     model_options = [{"label": m, "value": m} for m in MODELS]
 
@@ -589,7 +756,7 @@ def build_nav(
 
     sidebar = Div(
         id="sidebar-nav",
-        children=build_sidebar("/", category_paths),
+        children=build_sidebar("/", category_paths, framework_paths, framework_labels),
         style={
             "width": "220px",
             "overflowY": "auto",
@@ -601,6 +768,9 @@ def build_nav(
     )
 
     path_to_category = {path: category for category, path in category_paths.items()}
+    path_to_framework = {
+        path: framework_id for framework_id, path in framework_paths.items()
+    }
 
     full_layout = [
         build_onboarding_modal(),
@@ -775,7 +945,9 @@ def build_nav(
         Div
             Summary or category contents to be displayed.
         """
-        sidebar_children = build_sidebar(pathname, category_paths)
+        sidebar_children = build_sidebar(
+            pathname, category_paths, framework_paths, framework_labels
+        )
 
         if pathname in (None, "", "/", "/summary"):
             return Div(
@@ -786,6 +958,13 @@ def build_nav(
                     build_faqs(),
                 ]
             ), sidebar_children
+
+        selected_framework = path_to_framework.get(pathname)
+        if selected_framework is not None:
+            return (
+                Div([build_framework_page_layout(framework_views[selected_framework])]),
+                sidebar_children,
+            )
 
         selected_category = path_to_category.get(pathname)
         if selected_category is None:
@@ -814,9 +993,10 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     # Combine tests into categories and create category summary
-    cat_views, cat_tables, cat_weights, _framework_ids = build_category(
+    cat_views, cat_tables, cat_weights, framework_ids = build_category(
         all_layouts, all_tables, all_frameworks
     )
+    framework_views = build_framework_views(cat_views, framework_ids)
     # Build overall summary table
     summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
@@ -828,6 +1008,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     build_nav(
         full_app,
         cat_views,
+        framework_views,
         summary_table,
         weight_components,
     )
