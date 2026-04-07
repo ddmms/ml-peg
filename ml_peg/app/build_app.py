@@ -695,7 +695,7 @@ def build_nav(
         if pathname in (None, "", "/", "/summary"):
             return Div(
                 [
-                    H1("Benchmarks Summary"),
+                    H1("Test Summary"),
                     summary_table,
                     weight_components,
                     build_faqs(),
