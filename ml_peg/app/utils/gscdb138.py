@@ -71,7 +71,7 @@ class GSCDB138BenchmarkApp(BaseApp):
             ],
         )
 
-    def get_system_paths(self, dataset: str) -> list[Path]:
+    def get_system_paths(self, dataset: str) -> list[str]:
         """
         Get list of paths to system from the first available model for a dataset.
 
@@ -82,18 +82,17 @@ class GSCDB138BenchmarkApp(BaseApp):
 
         Returns
         -------
-        list[Path]
-            List of systems in the dataset.
+        list[str]
+            List of absolute paths for systems in the dataset.
         """
         for model_name in MODELS:
             model_dir = self.data_path / model_name
             if model_dir.exists():
                 system_paths = sorted(model_dir.glob(f"{dataset}_*.xyz"))
                 if system_paths:
-                    # Get path starting from assets directory
+                    # Get absolute paths for systems in assets directory
                     return [
-                        Path("assets")
-                        / system_path.relative_to(self.data_path.parent.parent)
+                        f"/assets/{system_path.relative_to(self.data_path.parent.parent).as_posix()}"
                         for system_path in system_paths
                     ]
         return []
