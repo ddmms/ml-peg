@@ -193,8 +193,10 @@ def build_results(
                 sv_xyz_path = cation_dir / "split_vacancy.xyz"
 
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
-                    # continue
-                    raise ValueError  # TODO: remove
+                    raise ValueError(
+                        f"Missing xyz file(s) in {cation_dir}. Expected both "
+                        f"normal_vacancy.xyz and split_vacancy.xyz to exist."
+                    )
 
                 nv_atoms_list = read(nv_xyz_path, ":")
                 sv_atoms_list = read(sv_xyz_path, ":")

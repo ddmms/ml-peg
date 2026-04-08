@@ -16,8 +16,7 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Split vacancy"
-# TODO: change DOCS_URL
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#split-vacancy"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
 
 # for dash, assets/ is equivalent to APP_ROOT/data/
