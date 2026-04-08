@@ -792,6 +792,7 @@ def plot_violin(
     *,
     title: str | None = None,
     y_label: str | None = None,
+    hoverdata: dict[str, list] | None = None,
     filename: str = "violin.json",
 ) -> Callable:
     """
@@ -806,6 +807,10 @@ def plot_violin(
         Graph title. Default is None.
     y_label
         Label for y-axis. Default is None.
+    hoverdata
+        Hover data dictionary mapping field names to lists of values, aligned
+        with the per-structure value lists. NaN entries are filtered in sync
+        with the value lists. Default is None.
     filename
         Filename to save plot as JSON. Default is "violin.json".
 
@@ -816,13 +821,63 @@ def plot_violin(
     """
 
     def plot_violin_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot violin.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
         @functools.wraps(func)
         def plot_violin_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot violin.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
             results = func(*args, **kwargs)
+
+            hovertemplate = None
+            if hoverdata:
+                hovertemplate = f"<b>{y_label or 'Value'}:</b> %{{y:.4f}}<br>"
+                for i, key in enumerate(hoverdata):
+                    hovertemplate += f"<b>{key}:</b> %{{customdata[{i}]}}<br>"
+                hovertemplate += "<extra></extra>"
 
             fig = go.Figure()
             for model_name, values in results.items():
-                filtered = [v for v in values if v is not None and not np.isnan(v)]
+                mask = [v is not None and not np.isnan(v) for v in values]
+                filtered = [v for v, m in zip(values, mask, strict=True) if m]
+
+                customdata = None
+                if hoverdata:
+                    filtered_cols = [
+                        [v for v, m in zip(col, mask, strict=True) if m]
+                        for col in hoverdata.values()
+                    ]
+                    customdata = (
+                        list(zip(*filtered_cols, strict=True))
+                        if filtered_cols
+                        else None
+                    )
+
                 fig.add_trace(
                     go.Violin(
                         y=filtered,
@@ -832,6 +887,8 @@ def plot_violin(
                         box_visible=True,
                         meanline_visible=True,
                         opacity=0.6,
+                        customdata=customdata,
+                        hovertemplate=hovertemplate,
                     )
                 )
 
