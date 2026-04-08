@@ -148,17 +148,15 @@ structures:
 
    E_\text{form} = \min_i E^\text{SV}_i - \min_j E^\text{NV}_j
 
-where the minima are taken over all initial structures relaxed for a given
-material-cation pair.
+where the minima are taken over all initial structures that match the DFT reference
+(see metric 3) for a given material-cation pair.
 
 2. Spearman's rank correlation
 
-For each material-cation pair, all DFT-relaxed NV and SV structures are collected.
-The Spearman's rank correlation is computed between the DFT total energies of these
-structures and the corresponding MLIP single-point energies (evaluated at the
-DFT-relaxed geometries). A high coefficient indicates the MLIP correctly orders the
-relative energies of the competing defect configurations. The mean coefficient across
-all material-cation pairs is reported.
+`Spearman's rank correlation coefficient <https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient>`_
+between MLIP and DFT total energies, evaluated as single points on DFT-relaxed NV and
+SV structures. A perfect ranking gives a coefficient of 1. The mean across all
+material-cation pairs is reported.
 
 3. Match Rate
 
@@ -197,7 +195,7 @@ Input structures:
 Reference data:
 
 * See: Seán Kavanagh, *Identifying split vacancy defects with machine-learned foundation models and electrostatics*,
-`https://doi.org/10.1088/2515-7655/ade916 <https://doi.org/10.1088/2515-7655/ade916>`_
+  `https://doi.org/10.1088/2515-7655/ade916 <https://doi.org/10.1088/2515-7655/ade916>`_
 * All DFT calculations performed with VASP using PAW pseudopotentials. Oxides:
   PBEsol functional, 400 eV plane-wave cutoff, Γ-point sampling, 0.01 eV Å⁻¹
   force convergence. Nitrides: PBE functional with MPRelaxSet parameters,
