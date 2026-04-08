@@ -184,7 +184,7 @@ def build_results(
                 p for p in material_dir.iterdir() if p.is_dir()
             ]  # skip pristine supercell.xyz files if present (not used)
 
-            for cation_dir in tqdm(cation_dirs, leave=False):
+            for cation_dir in cation_dirs:
                 nv_xyz_path = cation_dir / "normal_vacancy.xyz"
                 sv_xyz_path = cation_dir / "split_vacancy.xyz"
 
