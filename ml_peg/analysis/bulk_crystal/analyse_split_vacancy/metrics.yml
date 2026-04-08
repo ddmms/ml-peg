@@ -18,16 +18,16 @@ metrics:
     tooltip: RMSD between MLIP and PBEsol relaxed oxide structures that match.
     level_of_theory: PBEsol
   Match Rate (PBEsol):
-    good: 0.0
-    bad: 1.0
+    good: 1.0
+    bad: 0.0
     unit: null
     tooltip: Fraction of MLIP relaxations that converge to the same structure as PBEsol.
     level_of_theory: PBEsol
   Max Dist (PBEsol):
-    good: 1
-    bad: 0
+    good: 0.0
+    bad: 0.3
     unit: null
-    tooltip: Change
+    tooltip: Maximum normalised atomic displacement between MLIP and PBEsol relaxed structures (normalised by (N/V)^(1/3)). Only computed for matched structures.
     level_of_theory: PBEsol
   Spearman's (PBE):
     good: 1.0
@@ -48,14 +48,14 @@ metrics:
     tooltip: RMSD between MLIP and PBE relaxed nitride structures that match.
     level_of_theory: PBE
   Match Rate (PBE):
-    good: 0.0
-    bad: 1.0
+    good: 1.0
+    bad: 0.0
     unit: null
     tooltip: Fraction of MLIP relaxations that converge to the same structure as PBE.
     level_of_theory: PBE
   Max Dist (PBE):
-    good: 1
-    bad: 0
+    good: 0.0
+    bad: 0.3
     unit: null
-    tooltip: Change
+    tooltip: Maximum normalised atomic displacement between MLIP and PBE relaxed structures (normalised by (N/V)^(1/3)).
     level_of_theory: PBE
