@@ -156,8 +156,6 @@ def build_results(
     tuple[dict[str, float], dict[str, float], dict[str, float]]
         Tuple of metrics.
     """
-    # preference_energy_threshold = 0  # TODO: confirm
-
     print(f"Analysing {functional_path.stem} calculations.")
 
     result_formation_energy = {"ref": []} | {
@@ -173,7 +171,6 @@ def build_results(
         mlip: [] for mlip in MODELS
     }  # normalized max_dist for every material-cation pair
     result_match = {mlip: [] for mlip in MODELS}  # if structures relaxing to same state
-    # TODO: investigate Kendall rank correlation
 
     ref_stored = False
 
@@ -210,10 +207,6 @@ def build_results(
                     ref_sv_formation_energy = min(ref_sv_energies) - min(
                         ref_nv_energies
                     )
-                    # ref_sv_preferred = (
-                    #     ref_sv_formation_energy < preference_energy_threshold
-                    # ) # TODO: F1 score
-
                     result_formation_energy["ref"].append(ref_sv_formation_energy)
 
                 match_list = []
