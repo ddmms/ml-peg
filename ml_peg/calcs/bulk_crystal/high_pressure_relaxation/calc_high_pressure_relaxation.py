@@ -253,7 +253,14 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
             pred_volume = relaxed_atoms.get_volume() / len(relaxed_atoms)
             relaxed_atoms.info["mat_id"] = mat_id
             relaxed_atoms.info["pressure_gpa"] = pressure_gpa
-
+            relaxed_atoms.info["ref_volume_per_atom"] = struct_data[
+                "ref_volume_per_atom"
+            ]
+            relaxed_atoms.info["ref_energy_per_atom"] = struct_data[
+                "ref_energy_per_atom"
+            ]
+            relaxed_atoms.info["pred_volume_per_atom"] = pred_volume
+            relaxed_atoms.info["pred_energy_per_atom"] = enthalpy_per_atom
         else:
             pred_volume = None
 
@@ -261,10 +268,6 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
             {
                 "mat_id": mat_id,
                 "pressure_gpa": pressure_gpa,
-                "ref_volume_per_atom": struct_data["ref_volume_per_atom"],
-                "ref_energy_per_atom": struct_data["ref_energy_per_atom"],
-                "pred_volume_per_atom": pred_volume,
-                "pred_energy_per_atom": enthalpy_per_atom,
                 "converged": converged,
                 "relaxed_atoms": relaxed_atoms,
             }
@@ -278,11 +281,11 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
     )
     df.to_csv(out_dir / f"results_{pressure_label}.csv", index=False)
 
-    # Write converged relaxed structures to xyz
-    relaxed_frames = [
-        r["relaxed_atoms"] for r in results if r["relaxed_atoms"] is not None
-    ]
-    if relaxed_frames:
-        for frame in relaxed_frames:
+    # Write converged relaxed structures to individual xyz files
+    structs_dir = out_dir / pressure_label
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for r in results:
+        if r["relaxed_atoms"] is not None:
+            frame = r["relaxed_atoms"]
             frame.calc = None
-        ase_write(out_dir / f"relaxed_{pressure_label}.xyz", relaxed_frames)
+            ase_write(structs_dir / f"{r['mat_id']}.xyz", frame)

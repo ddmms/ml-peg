@@ -7,8 +7,8 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
+from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -57,6 +57,35 @@ class HighPressureRelaxationApp(BaseApp):
             cell_to_plot=density_plots,
         )
 
+        vol_trajs = collect_traj_assets(
+            data_path=DATA_PATH,
+            assets_prefix="assets/bulk_crystal/high_pressure_relaxation",
+            models=MODELS,
+            traj_dirname="density_traj_volume",
+        )
+        energy_trajs = collect_traj_assets(
+            data_path=DATA_PATH,
+            assets_prefix="assets/bulk_crystal/high_pressure_relaxation",
+            models=MODELS,
+            traj_dirname="density_traj_energy",
+        )
+        for model in MODELS:
+            for pressure in PRESSURES:
+                if model in vol_trajs:
+                    struct_from_scatter(
+                        scatter_id=f"{BENCHMARK_NAME}-{model}-{pressure}-vol-figure",
+                        struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                        structs=vol_trajs[model],
+                        mode="traj",
+                    )
+                if model in energy_trajs:
+                    struct_from_scatter(
+                        scatter_id=f"{BENCHMARK_NAME}-{model}-{pressure}-energy-figure",
+                        struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                        structs=energy_trajs[model],
+                        mode="traj",
+                    )
+
 
 def get_app() -> HighPressureRelaxationApp:
     """
@@ -73,6 +102,9 @@ def get_app() -> HighPressureRelaxationApp:
             "Performance when relaxing crystal structures under high pressure "
             "(0-150 GPa). Evaluates volume, energy, and convergence percentage "
             "against PBE reference calculations from the Alexandria database. "
+            "Converged structures with predicted energies outside "
+            "[-25, 25] eV/atom are treated as energy outliers: excluded "
+            "from parity metrics and treated as non-converged. "
             "Please also reference Loew et al 2026 J. Phys. Mater. 9 015010"
             " (https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8) "
             "when using this benchmark."
@@ -81,6 +113,7 @@ def get_app() -> HighPressureRelaxationApp:
         table_path=DATA_PATH / "high_pressure_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
