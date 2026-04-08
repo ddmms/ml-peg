@@ -49,11 +49,9 @@ class SplitVacancyApp(BaseApp):
             column_to_plot={
                 "MAE (PBEsol)": scatter_pbesol,
                 "Spearman's (PBEsol)": scatter_pbesol,
-                "RMSD (PBEsol)": scatter_pbesol,
                 "Max Dist (PBEsol)": max_dist_violin_pbesol,
                 "MAE (PBE)": scatter_pbe,
                 "Spearman's (PBE)": scatter_pbe,
-                "RMSD (PBE)": scatter_pbe,
                 "Max Dist (PBE)": max_dist_violin_pbe,
             },
         )

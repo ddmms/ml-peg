@@ -43,8 +43,6 @@ def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
     tuple[list, list, list ]
         Tuple of Materials Project IDs, bulk formulae and vacant cations.
     """
-    # TODO: RMSD could be good hoverdata?
-    # TODO: add cell charge?
     mp_ids = []
     formulae = []
     vacant_cations = []
@@ -60,19 +58,82 @@ def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
         ]  # skip pristine supercell.xyz files if present (not used)
 
         for cation_dir in cation_dirs:
-            cation = cation_dir.stem
+            vacant_cation = cation_dir.stem
 
             mp_ids.append(mp_id)
             formulae.append(bulk_formula)
-            vacant_cations.append(cation)
+            vacant_cations.append(vacant_cation)
 
-    return mp_ids, formulae, vacant_cations
+    return {
+        "Materials Project ID": mp_ids,
+        "Formula": formulae,
+        "Vacant Cation": vacant_cations,
+    }
 
 
-MP_IDS_PBE, BULK_FORMULAE_PBE, VACANT_CATIONS_PBE = get_hoverdata(CALC_PATH_PBE)
-MP_IDS_PBESOL, BULK_FORMULAE_PBESOL, VACANT_CATIONS_PBESOL = get_hoverdata(
-    CALC_PATH_PBESOL
-)
+FORMATION_HOVERDATA_PBE = get_hoverdata(CALC_PATH_PBE)
+FORMATION_HOVERDATA_PBESOL = get_hoverdata(CALC_PATH_PBESOL)
+
+
+def get_max_dist_hoverdata(functional_path: Path) -> dict[str, list]:
+    """
+    Get per-structure hover data for max_dist violin plots.
+
+    Reads xyz files to account for multiple initial structures per
+    material-cation pair.
+
+    Parameters
+    ----------
+    functional_path
+        Path to data.
+
+    Returns
+    -------
+    dict[str, list]
+        Hover data aligned with per-structure max_dist values.
+    """
+    mp_ids: list[str] = []
+    formulae: list[str] = []
+    vacant_cations: list[str] = []
+    vacancy_types: list[str] = []
+    frames_ids: list[int] = []
+
+    model_dir = functional_path / MODELS[0]
+    for material_dir in model_dir.iterdir():
+        split_dir_name = material_dir.stem.split("-")
+        bulk_formula = split_dir_name[0]
+        mp_id = f"mp-{split_dir_name[-1]}"
+
+        cation_dirs = [p for p in material_dir.iterdir() if p.is_dir()]
+
+        for cation_dir in cation_dirs:
+            cation = cation_dir.stem
+            nv_xyz_path = cation_dir / "normal_vacancy.xyz"
+            sv_xyz_path = cation_dir / "split_vacancy.xyz"
+
+            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                continue
+
+            nv_n = len(read(nv_xyz_path, ":"))
+            sv_n = len(read(sv_xyz_path, ":"))
+
+            mp_ids.extend([mp_id] * (nv_n + sv_n))
+            formulae.extend([bulk_formula] * (nv_n + sv_n))
+            vacant_cations.extend([cation] * (nv_n + sv_n))
+            vacancy_types.extend(["NV"] * nv_n + ["SV"] * sv_n)
+            frames_ids.extend(list(range(nv_n)) + list(range(sv_n)))
+
+    return {
+        "Materials Project ID": mp_ids,
+        "Formula": formulae,
+        "Vacant Cation": vacant_cations,
+        "Type": vacancy_types,
+        "Frame ID": frames_ids,
+    }
+
+
+MAX_DIST_HOVERDATA_PBE = get_max_dist_hoverdata(CALC_PATH_PBE)
+MAX_DIST_HOVERDATA_PBESOL = get_max_dist_hoverdata(CALC_PATH_PBESOL)
 
 
 def build_results(
@@ -124,10 +185,8 @@ def build_results(
             ]  # skip pristine supercell.xyz files if present (not used)
 
             for cation_dir in tqdm(cation_dirs, leave=False):
-                # cation = cation_dir.stem TODO: save structures for visualization
-
-                nv_xyz_path = cation_dir / "normal_vacancy.xyz.gz"
-                sv_xyz_path = cation_dir / "split_vacancy.xyz.gz"
+                nv_xyz_path = cation_dir / "normal_vacancy.xyz"
+                sv_xyz_path = cation_dir / "split_vacancy.xyz"
 
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
                     # continue
@@ -241,11 +300,7 @@ def build_results_pbe():
     title="Split vacancy (Oxides, PBEsol)",
     x_label="Predicted Split Vacancy Formation Energy / eV",
     y_label="DFT Split Vacancy Formation Energy / eV",
-    hoverdata={
-        "Materials Project ID": MP_IDS_PBESOL,
-        "Formula": BULK_FORMULAE_PBESOL,
-        "Vacant Cation": VACANT_CATIONS_PBESOL,
-    },
+    hoverdata=FORMATION_HOVERDATA_PBESOL,
 )
 def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     """
@@ -271,11 +326,7 @@ def formation_energies_pbesol(build_results_pbesol) -> dict[str, list]:
     title="Split vacancy (Nitrides, PBE(+U))",
     x_label="Predicted Split Vacancy Formation Energy / eV",
     y_label="DFT Split Vacancy Formation Energy / eV",
-    hoverdata={
-        "Materials Project ID": MP_IDS_PBE,
-        "Formula": BULK_FORMULAE_PBE,
-        "Vacant Cation": VACANT_CATIONS_PBE,
-    },
+    hoverdata=FORMATION_HOVERDATA_PBE,
 )
 def formation_energies_pbe(build_results_pbe) -> dict[str, list]:
     """
@@ -503,6 +554,7 @@ def match_pbe_rate(build_results_pbe) -> dict[str, float]:
 @plot_violin(
     title="Max Distance Distribution (Oxides, PBEsol)",
     y_label="Max Distance / Å",
+    hoverdata=MAX_DIST_HOVERDATA_PBESOL,
     filename=OUT_PATH / "figure_max_dist_pbesol.json",
 )
 def max_dist_pbesol_dist(build_results_pbesol) -> dict[str, list]:
@@ -548,6 +600,7 @@ def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
 @plot_violin(
     title="Max Distance Distribution (Nitrides, PBE(+U))",
     y_label="Max Distance / Å",
+    hoverdata=MAX_DIST_HOVERDATA_PBE,
     filename=OUT_PATH / "figure_max_dist_pbe.json",
 )
 def max_dist_pbe_dist(build_results_pbe) -> dict[str, list]:
@@ -598,9 +651,11 @@ def max_dist_pbe_mean(max_dist_pbe_dist) -> dict[str, float]:
 def metrics(
     formation_energy_pbesol_mae: dict[str, float],
     spearmans_coefficient_pbesol_mean: dict[str, float],
+    match_pbesol_rate: dict[str, float],
     max_dist_pbesol_mean: dict[str, float],
     formation_energy_pbe_mae: dict[str, float],
     spearmans_coefficient_pbe_mean: dict[str, float],
+    match_pbe_rate: dict[str, float],
     max_dist_pbe_mean: dict[str, float],
 ) -> dict[str, dict]:
     """
@@ -608,18 +663,22 @@ def metrics(
 
     Parameters
     ----------
-    formation_energy_pbesol_mae0
+    formation_energy_pbesol_mae
         Split vacancy formation energy MAE (oxides, PBEsol) for all models.
     spearmans_coefficient_pbesol_mean
         Mean Spearman's rank correlation (oxides, PBEsol) for all models.
-    rmsd_pbesol_mean
-        Mean RMSD between MLIP and PBEsol relaxed structure that match.
+    match_pbesol_rate
+        Rate of MLIP relaxing to same structure as PBEsol.
+    max_dist_pbesol_mean
+        Mean max distance between MLIP and PBEsol relaxed structures.
     formation_energy_pbe_mae
         Split vacancy formation energy MAE (nitrides, PBE(+U)) for all models.
     spearmans_coefficient_pbe_mean
         Mean Spearman's rank correlation (nitrides, PBE(+U)) for all models.
-    rmsd_pbe_mean
-        Mean RMSD between MLIP and PBE relaxed structure that match.
+    match_pbe_rate
+        Rate of MLIP relaxing to same structure as PBE.
+    max_dist_pbe_mean
+        Mean max distance between MLIP and PBE relaxed structures.
 
     Returns
     -------
@@ -630,12 +689,12 @@ def metrics(
         "MAE (PBEsol)": formation_energy_pbesol_mae,
         "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
         # "RMSD (PBEsol)": rmsd_pbesol_mean,
-        # "Match Rate (PBEsol)": match_pbesol_rate, # not included since always 1
+        "Match Rate (PBEsol)": match_pbesol_rate,
         "Max Dist (PBEsol)": max_dist_pbesol_mean,
         "MAE (PBE)": formation_energy_pbe_mae,
         "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
         # "RMSD (PBE)": rmsd_pbe_mean,
-        # "Match Rate (PBE)": match_pbe_rate, # not included since always 1
+        "Match Rate (PBE)": match_pbe_rate,
         "Max Dist (PBE)": max_dist_pbe_mean,
     }
 
