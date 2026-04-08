@@ -785,3 +785,87 @@ def model_asset_from_scatter(
         if rendered is None:
             return html.Div(missing_message)
         return rendered
+
+
+def struct_pair_from_violin(
+    violin_id: str,
+    struct_id: str,
+    functional: str,
+) -> None:
+    """
+    Attach callback to show ref and MLIP structures when a violin point is clicked.
+
+    Parameters
+    ----------
+    violin_id
+        ID for Dash violin plot being clicked.
+    struct_id
+        ID for Dash placeholder Div where structures will be visualised.
+    functional
+        Takes pbe or pbesol, used to determine path to structure files.
+    """
+
+    @callback(
+        Output(struct_id, "children", allow_duplicate=True),
+        Input(violin_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_struct(click_data):
+        """
+        Register callback to show structures when a violin point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in violin plot.
+
+        Returns
+        -------
+        Div
+            Side-by-side DFT ref and MLIP relaxed structure visualisations.
+        """
+        if not click_data:
+            return Div("Click on a point to view structures.")
+
+        point = click_data["points"][0]
+        model_name = point["x"]
+        mp_id = point["customdata"][0]
+        formula = point["customdata"][1]
+        cation = point["customdata"][2]
+        vac_type = point["customdata"][3]
+        frame_id = int(point["customdata"][4])
+
+        xyz_name = "normal_vacancy.xyz" if vac_type == "NV" else "split_vacancy.xyz"
+        material_dir = f"{formula}-{mp_id}"
+
+        prefix = "assets/bulk_crystal/split_vacancy"
+        ref_path = f"{prefix}/{functional}/ref/{material_dir}/{cation}/{xyz_name}"
+        mlip_path = (
+            f"{prefix}/{functional}/{model_name}/{material_dir}/{cation}/{xyz_name}"
+        )
+        print(
+            ref_path.replace("assets/", "/Users/tw/dev/mlip-testing/ml_peg/app/data/")
+        )
+
+        ref_html = generate_weas_html(ref_path, mode="traj", index=frame_id)
+        mlip_html = generate_weas_html(mlip_path, mode="traj", index=frame_id)
+
+        iframe_style = {
+            "height": "550px",
+            "width": "100%",
+            "border": "1px solid #ddd",
+            "borderRadius": "5px",
+        }
+        return Div(
+            [
+                Div(
+                    [Iframe(srcDoc=ref_html, style=iframe_style)],
+                    style={"width": "50%", "paddingRight": "4px"},
+                ),
+                Div(
+                    [Iframe(srcDoc=mlip_html, style=iframe_style)],
+                    style={"width": "50%", "paddingLeft": "4px"},
+                ),
+            ],
+            style={"display": "flex"},
+        )

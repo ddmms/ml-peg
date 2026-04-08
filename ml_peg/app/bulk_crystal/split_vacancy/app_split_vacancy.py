@@ -7,7 +7,10 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_column,
+    struct_pair_from_violin,
+)
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -36,11 +39,11 @@ class SplitVacancyApp(BaseApp):
 
         max_dist_violin_pbesol = read_plot(
             DATA_PATH / "figure_max_dist_pbesol.json",
-            id=f"{BENCHMARK_NAME}-figure",
+            id=f"{BENCHMARK_NAME}-figure-pbesol",
         )
         max_dist_violin_pbe = read_plot(
             DATA_PATH / "figure_max_dist_pbe.json",
-            id=f"{BENCHMARK_NAME}-figure",
+            id=f"{BENCHMARK_NAME}-figure-pbe",
         )
 
         plot_from_table_column(
@@ -54,6 +57,17 @@ class SplitVacancyApp(BaseApp):
                 "Spearman's (PBE)": scatter_pbe,
                 "Max Dist (PBE)": max_dist_violin_pbe,
             },
+        )
+
+        struct_pair_from_violin(
+            violin_id=f"{BENCHMARK_NAME}-figure-pbesol",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            functional="pbesol",
+        )
+        struct_pair_from_violin(
+            violin_id=f"{BENCHMARK_NAME}-figure-pbe",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            functional="pbe",
         )
 
 
