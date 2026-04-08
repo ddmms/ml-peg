@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 from ase.io import read
 import numpy as np
@@ -22,6 +23,9 @@ CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs"
 CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
+
+print(f"Copying data from {CALC_PATH} to {OUT_PATH} for flask app.")
+shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
