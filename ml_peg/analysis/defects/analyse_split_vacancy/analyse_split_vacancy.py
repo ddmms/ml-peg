@@ -19,10 +19,10 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "split_vacancy" / "outputs"
+CALC_PATH = CALCS_ROOT / "defects" / "split_vacancy" / "outputs"
 CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
-OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
+OUT_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
 print(f"Copying data from {CALC_PATH} to {OUT_PATH} for flask app.")
 shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
