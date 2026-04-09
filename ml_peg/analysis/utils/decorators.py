@@ -1534,7 +1534,7 @@ def build_table(
             #     metric_2: {mlip_1: value_3, mlip_2: value_4},
             # }
 
-            metrics_columns = ("MLIP",) + tuple(results)
+            metrics_columns = ("MLIP", "Score") + tuple(results)
 
             # Get all models (including those without results for this benchmark)
             mlips = tuple(get_model_names())
@@ -1592,8 +1592,6 @@ def build_table(
                 )
             else:
                 metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
-
-            metrics_columns += ("Score",)
 
             table = dash_table.DataTable(
                 metrics_data,
