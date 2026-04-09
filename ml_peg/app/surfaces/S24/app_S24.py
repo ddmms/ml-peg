@@ -36,7 +36,7 @@ class S24App(BaseApp):
 
         # Assets dir will be parent directory
         structs = [
-            f"assets/surfaces/S24/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/S24/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

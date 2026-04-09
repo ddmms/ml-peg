@@ -42,6 +42,14 @@ def generate_weas_html(
     <!doctype html>
     <html lang="en">
     <body>
+        <div id="weas-title"
+             style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+                    font-size: 12px;
+                    color: #444;
+                    margin: 0 0 8px 0;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;"></div>
         <div id="viewer" style="position: relative; width: 100%; height: 500px"></div>
 
         <script type="module">
@@ -67,6 +75,12 @@ def generate_weas_html(
 
         let structureData;
         const filename = "{str(filename)}";
+        const title = document.getElementById("weas-title");
+        if (title) {{
+            const basename = filename.split(/[/\\\\]/).pop() || filename;
+            title.textContent = `Viewing: ${{basename}}`;
+            title.title = basename;
+        }}
         console.log("filename: ", filename);
         structureData = await fetchFile(filename);
         console.log("structureData: ", structureData);
