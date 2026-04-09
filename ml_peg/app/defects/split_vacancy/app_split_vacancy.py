@@ -16,11 +16,13 @@ from ml_peg.models.models import current_models
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Split vacancy"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#split-vacancy"
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "split_vacancy"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defects.html#split-vacancy"
+)
+DATA_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
 # for dash, assets/ is equivalent to APP_ROOT/data/
-STRUCTS_URL = "assets/bulk_crystal/split_vacancy"
+STRUCTS_URL = "assets/defects/split_vacancy"
 
 
 def struct_pair_from_violin(
