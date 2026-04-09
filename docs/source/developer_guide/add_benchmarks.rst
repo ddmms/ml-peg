@@ -514,10 +514,10 @@ MLIP Arena), add a framework credit tag as follows:
 
     mlip_arena:
     label: MLIP Arena
-    color: "#0f766e"
-    text_color: "#ecfeff"
-    url: "https://huggingface.co/spaces/atomind/mlip-arena"
-    logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+      color: "#0f766e"
+      text_color: "#ecfeff"
+      url: "https://huggingface.co/spaces/atomind/mlip-arena"
+      logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
 
 2. Set ``framework_id`` in the benchmark app constructor.
 
