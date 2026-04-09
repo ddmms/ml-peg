@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Details, Div, Summary
+from dash.html import H1, H3, Details, Div, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -552,12 +552,34 @@ def build_nav(
         Div(
             [
                 H1(
-                    "ML-PEG: Machine Learning Performance Guide",
+                    [
+                        Span(
+                            "ML-PEG",
+                            style={
+                                "display": "block",
+                                "fontSize": "1.0em",
+                                "fontWeight": "700",
+                                "letterSpacing": "-0.03em",
+                            },
+                        ),
+                        Span(
+                            "Machine Learning Performance Guide",
+                            style={
+                                "display": "block",
+                                "marginTop": "4px",
+                                "fontSize": "0.54em",
+                                "fontWeight": "500",
+                                "letterSpacing": "0.01em",
+                                "color": "#6c757d",
+                            },
+                        ),
+                    ],
                     style={
                         "padding": "12px 16px 16px",
                         "margin": "0",
                         "borderBottom": "1px solid #dee2e6",
                         "color": "#212529",
+                        "lineHeight": "1.05",
                     },
                 ),
                 Div(
@@ -695,7 +717,7 @@ def build_nav(
         if pathname in (None, "", "/", "/summary"):
             return Div(
                 [
-                    H1("Test Summary"),
+                    H1("Categories Summary"),
                     summary_table,
                     weight_components,
                     build_faqs(),
