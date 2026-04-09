@@ -485,7 +485,10 @@ def build_category_page_layout(
     summary_table = category_view["summary_table"]
     weight_components = category_view["weight_components"]
     tests = category_view["tests"]
-    benchmark_section = Div([test["layout"] for test in tests])
+    benchmark_section = Div(
+        [test["layout"] for test in tests],
+        style={"display": "grid", "gap": "24px"},
+    )
 
     return Div(
         [
@@ -574,7 +577,7 @@ def build_framework_page_layout(framework_view: dict[str, object]) -> Div:
     sections = []
     for group in category_groups:
         sections.append(H3(group["category"], style={"marginTop": "26px"}))
-        sections.append(Div(group["tests"]))
+        sections.append(Div(group["tests"], style={"display": "grid", "gap": "24px"}))
 
     return Div(
         [
