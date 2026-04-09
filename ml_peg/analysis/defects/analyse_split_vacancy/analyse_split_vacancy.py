@@ -19,12 +19,13 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
+STOL = 0.25  # normalised max-distance threshold for structure matching
 CALC_PATH = CALCS_ROOT / "defects" / "split_vacancy" / "outputs"
 CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
-print(f"Copying data from {CALC_PATH} to {OUT_PATH} for flask app.")
+print(f"Copying xyz files from {CALC_PATH} to {OUT_PATH} for flask app.")
 shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -216,29 +217,25 @@ def build_results(
                 nv_initial_energies = []
                 nv_relaxed_energies = []
                 for nv_atoms in nv_atoms_list:
-                    if nv_atoms.info["ref_structure_match"]:
-                        rmsd_list.append(nv_atoms.info["ref_rmsd"])
-                        max_dist_list.append(nv_atoms.info["ref_max_distance"])
+                    match = nv_atoms.info["ref_max_distance"] < STOL
+                    match_list.append(match)
+                    if match:
                         nv_relaxed_energies.append(nv_atoms.info["relaxed_energy"])
-                    else:
-                        rmsd_list.append(np.nan)
-                        max_dist_list.append(np.nan)
 
-                    match_list.append(nv_atoms.info["ref_structure_match"])
+                    rmsd_list.append(nv_atoms.info["ref_rmsd"])
+                    max_dist_list.append(nv_atoms.info["ref_max_distance"])
                     nv_initial_energies.append(nv_atoms.info["initial_energy"])
 
                 sv_initial_energies = []
                 sv_relaxed_energies = []
                 for sv_atoms in sv_atoms_list:
-                    if sv_atoms.info["ref_structure_match"]:
-                        rmsd_list.append(sv_atoms.info["ref_rmsd"])
+                    match = sv_atoms.info["ref_max_distance"] < STOL
+                    match_list.append(match)
+                    if match:
                         sv_relaxed_energies.append(sv_atoms.info["relaxed_energy"])
-                        max_dist_list.append(sv_atoms.info["ref_max_distance"])
-                    else:
-                        rmsd_list.append(np.nan)
-                        max_dist_list.append(np.nan)
 
-                    match_list.append(sv_atoms.info["ref_structure_match"])
+                    rmsd_list.append(sv_atoms.info["ref_rmsd"])
+                    max_dist_list.append(sv_atoms.info["ref_max_distance"])
                     sv_initial_energies.append(sv_atoms.info["initial_energy"])
 
                 sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
@@ -362,9 +359,14 @@ def formation_energy_pbesol_mae(formation_energies_pbesol) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            formation_energies_pbesol["ref"], formation_energies_pbesol[model_name]
-        )
+        formation_energies_ref = formation_energies_pbesol["ref"].copy()
+        formation_energies_model = formation_energies_pbesol[model_name].copy()
+
+        nan_mask = ~np.isnan(formation_energies_model)
+        formation_energies_ref = np.array(formation_energies_ref)[nan_mask]
+        formation_energies_model = np.array(formation_energies_model)[nan_mask]
+
+        results[model_name] = mae(formation_energies_ref, formation_energies_model)
     return results
 
 
@@ -385,9 +387,14 @@ def formation_energy_pbe_mae(formation_energies_pbe) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            formation_energies_pbe["ref"], formation_energies_pbe[model_name]
-        )
+        formation_energies_ref = formation_energies_pbe["ref"].copy()
+        formation_energies_model = formation_energies_pbe[model_name].copy()
+
+        nan_mask = ~np.isnan(formation_energies_model)
+        formation_energies_ref = np.array(formation_energies_ref)[nan_mask]
+        formation_energies_model = np.array(formation_energies_model)[nan_mask]
+
+        results[model_name] = mae(formation_energies_ref, formation_energies_model)
     return results
 
 
@@ -466,7 +473,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbesol
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
+        results[model_name] = float(np.mean(result_rmsd[model_name]))
     return results
 
 
@@ -499,7 +506,7 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbe
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
+        results[model_name] = float(np.mean(result_rmsd[model_name]))
     return results
 
 
@@ -591,7 +598,7 @@ def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(max_dist_pbesol_dist[model_name]))
+        results[model_name] = float(np.mean(max_dist_pbesol_dist[model_name]))
     return results
 
 
@@ -637,7 +644,7 @@ def max_dist_pbe_mean(max_dist_pbe_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(max_dist_pbe_dist[model_name]))
+        results[model_name] = float(np.mean(max_dist_pbe_dist[model_name]))
     return results
 
 
