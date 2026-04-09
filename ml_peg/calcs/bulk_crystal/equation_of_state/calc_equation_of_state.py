@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ase.filters import UnitCellFilter
 from ase.lattice.cubic import BodyCenteredCubic, FaceCenteredCubic, SimpleCubicFactory
+from ase.lattice.hexagonal import HexagonalClosedPacked
+from ase.optimize import LBFGS
 import numpy as np
 import pandas as pd
 import pytest
@@ -37,7 +40,68 @@ class A15Factory(SimpleCubicFactory):
 
 A15 = A15Factory()
 
-lattices = {"BCC": BodyCenteredCubic, "FCC": FaceCenteredCubic, "A15": A15}
+lattices = {
+    "BCC": BodyCenteredCubic,
+    "FCC": FaceCenteredCubic,
+    "A15": A15,
+    "HCP": HexagonalClosedPacked,
+}
+
+
+def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
+    """
+    Calculate lattice constants for a given lattice and volume per atom.
+
+    Parameters
+    ----------
+    lattice
+        ASE lattice class to use for structure generation.
+    volume_per_atom
+        Array of volumes per atom to sample for the EOS curve.
+    symbol
+        Chemical symbol of the element to use for structure generation.
+    calc
+        ASE calculator to use for energy calculations.
+
+    Returns
+    -------
+    list[float] for cubic lattices or list[tuple[float, float]] for HCP
+        List of lattice constants for each volume per atom.
+    """
+    if lattice == HexagonalClosedPacked:
+        # create a cell assuming ideal c/a ratio of 1.6123 for HCP
+        a0 = (
+            lattice.calc_num_atoms()
+            * volume_per_atom[len(volume_per_atom) // 2]
+            / (np.sqrt(2))
+        ) ** (1 / 3)
+        try:
+            unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * 1.6123))
+            unit_cell.calc = calc
+            uc_filter = UnitCellFilter(unit_cell, constant_volume=True)
+            opt = LBFGS(uc_filter)
+            converged = opt.run(fmax=1e-3, steps=25)
+            a, c = unit_cell.cell[0, 0], unit_cell.cell[2, 2]
+            ratio = c / a
+            print(f"Optimized c/a ratio for {symbol} HCP: {ratio:.4f}")
+            print(
+                "Difference from ideal c/a ratio: "
+                + f"{(ratio - 1.6123) / 1.6123 * 100:.1f} %"
+            )
+        except Exception as e:
+            print(
+                f"Error optimizing HCP structure for {symbol}: {e}, "
+                + "using ideal c/a ratio instead."
+            )
+            ratio = 1.6123
+        if not converged:
+            print(f"Cell shape optimization for {symbol} HCP did not converge!")
+        lattice_constants = (
+            lattice.calc_num_atoms() * volume_per_atom / (np.sqrt(2))
+        ) ** (1 / 3)
+        return [(a, a * ratio) for a in lattice_constants]
+    # assuming cubic lattice
+    return (lattice.calc_num_atoms() * volume_per_atom) ** (1 / 3)
 
 
 def equation_of_state(
@@ -69,8 +133,12 @@ def equation_of_state(
         Lattice constants (A) and energies (eV/atom) arrays.
     """
     # dummy call to have calc_num_atoms available
-    lattice(symbol="W", latticeconstant=3.16)
-    lattice_constants = (volumes_per_atoms * lattice.calc_num_atoms()) ** (1 / 3)
+    if lattice in [HexagonalClosedPacked]:
+        lattice(symbol="W", latticeconstant=(3.16, 3.16 * 1.6123))
+    else:
+        lattice(symbol="W", latticeconstant=3.16)
+
+    lattice_constants = get_lattice_constants(lattice, volumes_per_atoms, symbol, calc)
 
     structures = [
         lattice(latticeconstant=lc, size=size, symbol=symbol)
@@ -142,7 +210,7 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
             )
             print(duration)
             """
-            results[f"{phase}_a"] = lattice_constants
+            # results[f"{phase}_a"] = lattice_constants
             results[f"{phase}_E"] = energies
 
         write_dir = OUT_PATH / model_name
