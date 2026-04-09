@@ -25,6 +25,42 @@ from ml_peg.app.utils.utils import (
 )
 
 
+def apply_level_of_theory_warnings(
+    rows: list[dict[str, Any]],
+    base_style: list[dict[str, Any]],
+    model_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | None] | None = None,
+    model_configs: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Append level-of-theory warnings and tooltip rows to existing table styles.
+
+    Parameters
+    ----------
+    rows
+        Table rows currently being displayed.
+    base_style
+        Existing conditional style rules for those rows.
+    model_levels
+        Mapping from model name to its level-of-theory metadata.
+    metric_levels
+        Mapping from metric column name to its benchmark level-of-theory metadata.
+    model_configs
+        Optional configuration metadata for each model.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], list[dict[str, Any]]]
+        Augmented style rules and tooltip rows.
+    """
+    warning_styles, tooltip_rows = build_level_of_theory_warnings(
+        rows, model_levels, metric_levels, model_configs
+    )
+    style_with_warnings = base_style + warning_styles
+    tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
+    return style_with_warnings, tooltip_data
+
+
 def register_summary_table_callbacks(
     initial_rows: list[dict] | None = None,
     model_levels: dict[str, str | None] | None = None,
@@ -47,31 +83,6 @@ def register_summary_table_callbacks(
         Optional metadata/configuration dictionary for each model.
     """
     default_rows = deepcopy(initial_rows) if initial_rows else []
-
-    def apply_levels(
-        rows: list[dict], base_style: list[dict]
-    ) -> tuple[list[dict], list[dict]]:
-        """
-        Append level-of-theory warnings and tooltip rows to summary styles.
-
-        Parameters
-        ----------
-        rows
-            Summary rows currently being displayed.
-        base_style
-            Existing conditional style rules for those rows.
-
-        Returns
-        -------
-        tuple[list[dict], list[dict]]
-            Augmented style rules and tooltip rows.
-        """
-        warning_styles, tooltip_rows = build_level_of_theory_warnings(
-            rows, model_levels, metric_levels, model_configs
-        )
-        style_with_warnings = base_style + warning_styles
-        tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
-        return style_with_warnings, tooltip_data
 
     @callback(
         Output("summary-table-computed-store", "data", allow_duplicate=True),
@@ -154,7 +165,13 @@ def register_summary_table_callbacks(
 
         filtered_rows = filter_rows_by_models(computed_store, selected_models)
         base_style = get_table_style(filtered_rows) if filtered_rows else []
-        style_with_warnings, tooltip_data = apply_levels(filtered_rows, base_style)
+        style_with_warnings, tooltip_data = apply_level_of_theory_warnings(
+            filtered_rows,
+            base_style,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+        )
         return filtered_rows, style_with_warnings, tooltip_data
 
 
@@ -251,31 +268,6 @@ def register_category_table_callbacks(
             show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
 
-            def apply_levels_of_theory(
-                rows: list[dict], base_style: list[dict]
-            ) -> tuple[list[dict], list[dict]]:
-                """
-                Append level-of-theory warnings and tooltip rows to benchmark styles.
-
-                Parameters
-                ----------
-                rows
-                    Benchmark rows currently being displayed.
-                base_style
-                    Existing conditional style rules for those rows.
-
-                Returns
-                -------
-                tuple[list[dict], list[dict]]
-                    Augmented style rules and tooltip rows.
-                """
-                warning_styles, tooltip_rows = build_level_of_theory_warnings(
-                    rows, model_levels, metric_levels, model_configs
-                )
-                combined_style = base_style + warning_styles
-                tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
-                return combined_style, tooltip_data
-
             # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
@@ -293,7 +285,13 @@ def register_category_table_callbacks(
                     if filtered_rows
                     else []
                 )
-                style, tooltip_data = apply_levels_of_theory(filtered_rows, style)
+                style, tooltip_data = apply_level_of_theory_warnings(
+                    filtered_rows,
+                    style,
+                    model_levels=model_levels,
+                    metric_levels=metric_levels,
+                    model_configs=model_configs,
+                )
                 columns = format_metric_columns(
                     current_columns, thresholds, show_normalized
                 )
@@ -327,7 +325,13 @@ def register_category_table_callbacks(
                 if filtered_rows
                 else []
             )
-            style, tooltip_data = apply_levels_of_theory(filtered_rows, style)
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
             columns = format_metric_columns(
                 current_columns, thresholds, show_normalized
             )
@@ -343,31 +347,6 @@ def register_category_table_callbacks(
             )
 
     else:
-
-        def apply_levels(
-            rows: list[dict], base_style: list[dict]
-        ) -> tuple[list[dict], list[dict]]:
-            """
-            Append level-of-theory warnings and tooltip rows to category styles.
-
-            Parameters
-            ----------
-            rows
-                Category-summary rows currently being displayed.
-            base_style
-                Existing conditional style rules for those rows.
-
-            Returns
-            -------
-            tuple[list[dict], list[dict]]
-                Augmented style rules and tooltip rows.
-            """
-            warning_styles, tooltip_rows = build_level_of_theory_warnings(
-                rows, model_levels, metric_levels, model_configs
-            )
-            combined_style = base_style + warning_styles
-            tooltips = tooltip_rows if tooltip_rows else [{} for _ in rows]
-            return combined_style, tooltips
 
         @callback(
             Output(table_id, "data", allow_duplicate=True),
@@ -400,13 +379,25 @@ def register_category_table_callbacks(
             if trigger_id == "app-location":
                 filtered_rows = filter_rows_by_models(source_data, selected_models)
                 style = get_table_style(filtered_rows) if filtered_rows else []
-                style, tooltip_data = apply_levels(filtered_rows, style)
+                style, tooltip_data = apply_level_of_theory_warnings(
+                    filtered_rows,
+                    style,
+                    model_levels=model_levels,
+                    metric_levels=metric_levels,
+                    model_configs=model_configs,
+                )
                 return filtered_rows, style, tooltip_data, source_data
 
             scored_rows, _ = update_score_style(source_data, stored_weights)
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
             style = get_table_style(filtered_rows) if filtered_rows else []
-            style, tooltip_data = apply_levels(filtered_rows, style)
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
             return filtered_rows, style, tooltip_data, scored_rows
 
         @callback(
@@ -446,7 +437,13 @@ def register_category_table_callbacks(
 
             filtered_rows = filter_rows_by_models(computed_store, selected_models)
             style = get_table_style(filtered_rows) if filtered_rows else []
-            style, tooltip_data = apply_levels(filtered_rows, style)
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
             return filtered_rows, style, tooltip_data
 
     @callback(
