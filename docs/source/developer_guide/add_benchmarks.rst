@@ -529,8 +529,8 @@ MLIP Arena), add a framework credit tag as follows:
         framework_id="mlip_arena",
     )
 
-That is all that is required. The benchmark header badge and any extra
-framework section for non-default frameworks are populated automatically from
+That is all that is required. The benchmark header badge and the additional
+framework pages for non-default frameworks are populated automatically from
 this metadata.
 
 Framework sections group matching benchmarks by category, omit the category
@@ -539,4 +539,6 @@ weights or thresholds there therefore updates the same benchmark views shown in
 the category pages.
 
 The ``logo`` field is optional. It can point to a remote image URL or a local
-Dash asset path such as ``assets/frameworks/my_framework_logo.png``.
+Dash asset path such as ``/assets/frameworks/my_framework_logo.png``. Use a
+browser-supported image format such as ``.svg``, ``.png``, or ``.jpg``/``.jpeg``;
+``.pdf`` is not supported. For best results, use a square logo image.
