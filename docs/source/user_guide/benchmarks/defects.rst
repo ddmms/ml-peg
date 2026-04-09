@@ -12,10 +12,9 @@ Performance predicting split vacancy formation energies and relaxed structures f
 metal oxides (PBEsol, 531 host compounds, 722 material-cation pairs, 2154 structures)
 and stable nitrides (PBE, 144 host compounds, 149 material-cation pairs, 285 structures).
 
-A split vacancy is a vacancy defect that does not reside at a normal cation lattice site
-but instead at an interstitial position. These are distinct from simple vacancies and
-their prediction requires an MLIP to accurately resolve the energy landscape between
-competing defect geometries.
+A split vacancy is a stoichiometry-conserving defect complex in which an isolated atomic
+vacancy reconstructs into two vacancies and an interstitial
+(:math:`V_X \to [V_X + X_i + V_X]`), often with a dramatic energy lowering.
 
 Data from Seán Kavanagh, *Identifying split vacancy defects with machine-learned foundation models and electrostatics*,
 `https://doi.org/10.1088/2515-7655/ade916 <https://doi.org/10.1088/2515-7655/ade916>`_
