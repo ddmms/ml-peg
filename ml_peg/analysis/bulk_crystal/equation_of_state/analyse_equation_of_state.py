@@ -218,7 +218,8 @@ def _phase_metrics_from_eos_mev(
     )
 
     mae_ev = float(np.mean(np.abs(dft_deltas - model_deltas)))
-    correct_stability_pct = 100.0 * float(np.mean(np.all(model_deltas > 0, axis=0)))
+    sign_match = np.sign(model_deltas) == np.sign(dft_deltas)
+    correct_stability_pct = 100.0 * float(np.mean(sign_match))
 
     return 1000.0 * mae_ev, correct_stability_pct
 
