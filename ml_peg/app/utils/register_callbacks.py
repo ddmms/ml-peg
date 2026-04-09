@@ -497,7 +497,6 @@ def register_benchmark_to_category_callback(
     benchmark_column: str,
     use_threshold_store: bool = False,
     model_name_map: dict[str, str] | None = None,
-    initial_category_rows: list[dict] | None = None,
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
@@ -514,14 +513,10 @@ def register_benchmark_to_category_callback(
         Whether the benchmark table exposes a normalization store for metrics.
     model_name_map
         Optional mapping of displayed benchmark MLIP names -> original model names.
-    initial_category_rows
-        Starting full rows for the category summary table. These are used before
-        the category's cached rows have been populated.
     """
     _ = use_threshold_store  # cached rows handle normalization
     # flag kept for compatibility with existing call sites
     name_map = dict(model_name_map or {})
-    default_rows = deepcopy(initial_category_rows) if initial_category_rows else []
 
     @callback(
         Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
@@ -552,11 +547,11 @@ def register_benchmark_to_category_callback(
         list[dict]
             Refreshed cached rows for the category summary table.
         """
-        category_rows = deepcopy(category_computed_store or default_rows)
-        if not category_rows:
+        if not category_computed_store:
             raise PreventUpdate
         if not benchmark_computed_store:
             raise PreventUpdate
+        category_rows = deepcopy(category_computed_store)
 
         benchmark_scores: dict[str, float] = {}
         for row in benchmark_computed_store:

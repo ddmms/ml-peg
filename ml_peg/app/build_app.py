@@ -111,20 +111,30 @@ def _framework_to_path(framework_id: str) -> str:
     return f"/framework/{slug}"
 
 
-def _initial_table_weights(table: DataTable) -> dict[str, float]:
+def _default_weight_store_data(table: DataTable) -> dict[str, float]:
     """
-    Build the full default weight mapping for a table.
+    Build initial weight-store data for globally mounted summary tables.
 
     Parameters
     ----------
     table
-        Table whose non-reserved columns should receive default weights.
+        Category-summary or overall-summary table whose configurable columns need
+        explicit stored weights when the page controls are rendered elsewhere.
 
     Returns
     -------
     dict[str, float]
-        Default weight mapping, filling in ``1.0`` for any columns that do not
-        already have an explicit weight.
+        Weight mapping containing one entry for every non-reserved table column
+        (i.e. not Score etc).
+        This is used when the category and overall summary weight stores are
+        kept at the top level of the app, rather than inside an individual
+        page, so updates made from framework pages can still propagate even if
+        the corresponding category page is not open. For example, if a user
+        changes benchmark weights from the MLIP Arena page, the category
+        summary still needs a complete set of weights available so it can be
+        recomputed immediately. Missing values are filled with ``1.0`` so reset
+        and input-sync callbacks always see a complete dictionary in the
+        backing ``dcc.Store``.
     """
     reserved = {"MLIP", "Score", "id"}
     weights = dict(getattr(table, "weights", None) or {})
@@ -449,17 +459,16 @@ def build_category(
                 category_table_id=f"{category_title}-summary-table",
                 benchmark_column=test_name + " Score",
                 model_name_map=getattr(benchmark_table, "model_name_map", None),
-                initial_category_rows=summary_table.data,
             )
 
     return category_views, category_tables, category_weights, framework_ids
 
 
-def build_category_tab_layout(
+def build_category_page_layout(
     category_view: dict[str, object],
 ) -> Div:
     """
-    Build category tab layout.
+    Build a category page layout.
 
     Parameters
     ----------
@@ -469,7 +478,7 @@ def build_category_tab_layout(
     Returns
     -------
     Div
-        Category tab layout.
+        Category page layout.
     """
     category_title = category_view["title"]
     category_description = category_view["description"]
@@ -845,7 +854,7 @@ def build_nav(
                 Store(
                     id=f"{summary_table_component.id}-weight-store",
                     storage_type="session",
-                    data=_initial_table_weights(summary_table_component),
+                    data=_default_weight_store_data(summary_table_component),
                 ),
             ]
         )
@@ -853,7 +862,7 @@ def build_nav(
         Store(
             id="summary-table-weight-store",
             storage_type="session",
-            data=_initial_table_weights(summary_table),
+            data=_default_weight_store_data(summary_table),
         ),
         *category_state_stores,
     ]
@@ -1057,7 +1066,7 @@ def build_nav(
         if selected_category is None:
             return Div([H3("Page not found")]), sidebar_children
         return (
-            Div([build_category_tab_layout(category_views[selected_category])]),
+            Div([build_category_page_layout(category_views[selected_category])]),
             sidebar_children,
         )
 
