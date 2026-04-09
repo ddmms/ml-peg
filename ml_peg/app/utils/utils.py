@@ -880,9 +880,13 @@ def normalize_framework_id(framework_id: str) -> str:
     -------
     str
         Normalized framework identifier.
+
+    Raises
+    ------
+    ValueError
+        If ``framework_id`` is not a non-empty string.
     """
-    cleaned = framework_id.strip()
-    if not cleaned:
+    if not isinstance(framework_id, str) or not (cleaned := framework_id.strip()):
         raise ValueError("Framework identifiers must be non-empty strings.")
     return cleaned
 
@@ -956,7 +960,19 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
     -------
     FrameworkEntry
         Style, label, and optional URL metadata for the framework.
+
+    Raises
+    ------
+    ValueError
+        If ``framework_id`` is empty or is not present in ``frameworks.yml``.
     """
     normalized_id = normalize_framework_id(framework_id)
     registry = load_framework_registry()
-    return registry[normalized_id]
+    try:
+        return registry[normalized_id]
+    except KeyError as exc:
+        known_ids = ", ".join(sorted(registry))
+        raise ValueError(
+            f"Unknown framework identifier '{normalized_id}'. "
+            f"Known framework IDs: {known_ids}."
+        ) from exc
