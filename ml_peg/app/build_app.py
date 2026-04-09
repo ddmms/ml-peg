@@ -563,7 +563,7 @@ def build_nav(
                             },
                         ),
                         Span(
-                            "Machine Learning Performance Guide",
+                            "Machine Learning Performance and Extrapolation Guide",
                             style={
                                 "display": "block",
                                 "marginTop": "4px",
