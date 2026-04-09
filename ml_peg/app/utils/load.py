@@ -54,12 +54,6 @@ def rebuild_table(
 
     data = table_json["data"]
     columns = table_json["columns"]
-    mlip_columns = [column for column in columns if column.get("id") == "MLIP"]
-    score_columns = [column for column in columns if column.get("id") == "Score"]
-    metric_columns_ordered = [
-        column for column in columns if column.get("id") not in {"MLIP", "Score"}
-    ]
-    columns = mlip_columns + score_columns + metric_columns_ordered
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
