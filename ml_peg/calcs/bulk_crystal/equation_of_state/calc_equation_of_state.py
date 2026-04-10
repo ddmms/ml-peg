@@ -7,7 +7,7 @@ from typing import Any
 
 from ase.filters import UnitCellFilter
 from ase.lattice.cubic import BodyCenteredCubic, FaceCenteredCubic, SimpleCubicFactory
-from ase.lattice.hexagonal import HexagonalClosedPacked
+from ase.lattice.hexagonal import HexagonalClosedPacked, HexagonalFactory
 from ase.optimize import LBFGS
 import numpy as np
 import pandas as pd
@@ -40,11 +40,26 @@ class A15Factory(SimpleCubicFactory):
 
 A15 = A15Factory()
 
+
+class OmegaFactory(HexagonalFactory):
+    """A factory for creating Omega lattices."""
+
+    xtal_name = "Omega"
+    bravais_basis = [
+        [0, 0, 0],
+        [1 / 3, 2 / 3, 0.5],
+        [2 / 3, 1 / 3, 0.5],
+    ]
+
+
+Omega = OmegaFactory()
+
 lattices = {
     "BCC": BodyCenteredCubic,
     "FCC": FaceCenteredCubic,
     "A15": A15,
     "HCP": HexagonalClosedPacked,
+    "OMEGA": Omega,
 }
 
 
@@ -65,40 +80,60 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
 
     Returns
     -------
-    list[float] for cubic lattices or list[tuple[float, float]] for HCP
+    list[float] for cubic lattices or list[tuple[float, float]] for hexagonal lattices
         List of lattice constants for each volume per atom.
     """
-    if lattice == HexagonalClosedPacked:
-        # create a cell assuming ideal c/a ratio of 1.6123 for HCP
-        a0 = (
-            lattice.calc_num_atoms()
-            * volume_per_atom[len(volume_per_atom) // 2]
-            / (np.sqrt(2))
-        ) ** (1 / 3)
+    if lattice in [HexagonalClosedPacked, Omega]:
+        if lattice == Omega:
+            # assuming ideal c/a ratio for omega is 0.6123
+            ideal_ratio = 0.6323
+            a0 = (
+                lattice.calc_num_atoms()
+                * volume_per_atom[len(volume_per_atom) // 2]
+                / (ideal_ratio * np.sqrt(3) / 2)
+            ) ** (1 / 3)
+            lattice_name = "Omega"
+        elif lattice == HexagonalClosedPacked:
+            ideal_ratio = 1.63
+            # create a cell assuming ideal c/a ratio of 1.63 for HCP
+            a0 = (
+                lattice.calc_num_atoms()
+                * volume_per_atom[len(volume_per_atom) // 2]
+                / (np.sqrt(2))
+            ) ** (1 / 3)
+            lattice_name = "HCP"
         try:
-            unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * 1.6123))
+            unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
             unit_cell.calc = calc
             uc_filter = UnitCellFilter(unit_cell, constant_volume=True)
             opt = LBFGS(uc_filter)
             converged = opt.run(fmax=1e-3, steps=25)
             a, c = unit_cell.cell[0, 0], unit_cell.cell[2, 2]
             ratio = c / a
-            print(f"Optimized c/a ratio for {symbol} HCP: {ratio:.4f}")
+            print(f"Optimized c/a ratio for {symbol} for {lattice_name}: {ratio:.4f}")
             print(
                 "Difference from ideal c/a ratio: "
-                + f"{(ratio - 1.6123) / 1.6123 * 100:.1f} %"
+                + f"{(ratio - ideal_ratio) / ideal_ratio * 100:.1f} %"
             )
         except Exception as e:
             print(
-                f"Error optimizing HCP structure for {symbol}: {e}, "
+                f"Error optimizing {lattice_name} structure for {symbol}: {e}, "
                 + "using ideal c/a ratio instead."
             )
-            ratio = 1.6123
+            ratio = ideal_ratio
         if not converged:
-            print(f"Cell shape optimization for {symbol} HCP did not converge!")
-        lattice_constants = (
-            lattice.calc_num_atoms() * volume_per_atom / (np.sqrt(2))
-        ) ** (1 / 3)
+            print(
+                f"Cell shape optimization for {symbol} "
+                + f"{lattice_name} did not converge!"
+            )
+        if lattice == HexagonalClosedPacked:
+            lattice_constants = (
+                lattice.calc_num_atoms() * volume_per_atom / (np.sqrt(2))
+            ) ** (1 / 3)
+        elif lattice == Omega:
+            lattice_constants = (
+                lattice.calc_num_atoms() * volume_per_atom / (ratio * np.sqrt(3) / 2)
+            ) ** (1 / 3)
         return [(a, a * ratio) for a in lattice_constants]
     # assuming cubic lattice
     return (lattice.calc_num_atoms() * volume_per_atom) ** (1 / 3)
@@ -133,7 +168,7 @@ def equation_of_state(
         Lattice constants (A) and energies (eV/atom) arrays.
     """
     # dummy call to have calc_num_atoms available
-    if lattice in [HexagonalClosedPacked]:
+    if lattice in [HexagonalClosedPacked, Omega]:
         lattice(symbol="W", latticeconstant=(3.16, 3.16 * 1.6123))
     else:
         lattice(symbol="W", latticeconstant=3.16)
