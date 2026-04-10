@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from copy import copy
-import os
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +19,7 @@ from ase.md.velocitydistribution import (
 import numpy as np
 import pytest
 
-# from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -68,7 +67,7 @@ def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None
 
 
 @pytest.mark.parametrize(argnames="mlip", argvalues=MODELS.items())
-def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
+def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     """
     Run SSE RDF benchmark test.
 
@@ -79,6 +78,8 @@ def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Name of model and model to get calculator.
+    system_id
+        Identifier of the SSE system to run MD on.
     """
     model_name, model = mlip
     calc: Calculator = model.get_calculator()
@@ -94,55 +95,57 @@ def test_ssemd_benchmark(mlip: tuple[str, Any]) -> None:
         / "SSE"
     )
 
-    # TODO: Check if it is possible to parallelize over systems
-    for poscar_dir, temperature, system_name in get_systems(data_dir=data_dir):
-        poscar_file: Path = poscar_dir / "POSCAR"
-        atoms_initial: Atoms | list[Atoms] = io.read(
-            filename=poscar_file, format="vasp"
-        )
+    systems = list(get_systems(data_dir=data_dir))
+    assert system_id in range(0, len(systems)), (
+        f"system_id out of range. Please use a value from 0 to {len(systems) - 1}"
+    )
 
-        atoms: Atoms = atoms_initial.copy()  # type: ignore[assignment]
-        atoms.calc = copy(calc)
+    poscar_dir, temperature, system_name = systems[system_id]
+    poscar_file: Path = poscar_dir / "POSCAR"
+    atoms_initial: Atoms | list[Atoms] = io.read(filename=poscar_file, format="vasp")
 
-        rng = np.random.RandomState(seed=SEED)
-        MaxwellBoltzmannDistribution(
-            atoms, temperature_K=temperature, force_temp=True, rng=rng
-        )
-        Stationary(atoms)
-        ZeroRotation(atoms)
+    atoms: Atoms = atoms_initial.copy()  # type: ignore[assignment]
+    atoms.calc = copy(calc)
 
-        file_name = f"{system_name}_{model_name}"
+    rng = np.random.RandomState(seed=SEED)
+    MaxwellBoltzmannDistribution(
+        atoms, temperature_K=temperature, force_temp=True, rng=rng
+    )
+    Stationary(atoms)
+    ZeroRotation(atoms)
 
-        # Write output directory
-        write_dir: Path = OUT_PATH / model_name
-        write_dir.mkdir(parents=True, exist_ok=True)
+    file_name = f"{system_name}_{model_name}"
 
-        log_path: Path = write_dir / f"{file_name}.log"
-        traj_path: Path = write_dir / f"{file_name}.traj"
+    # Write output directory
+    write_dir: Path = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
 
-        md_nvt = NoseHooverChainNVT(
-            atoms=atoms,
-            timestep=timestep,
-            temperature_K=temperature,
-            tdamp=tdamp,
-            tchain=TCHAIN,
-            logfile=str(log_path),
-        )
+    log_path: Path = write_dir / f"{file_name}.log"
+    traj_path: Path = write_dir / f"{file_name}.traj"
 
-        traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
-        md_nvt.attach(function=traj.write, interval=FRAME_FREQUENCY)
+    md_nvt = NoseHooverChainNVT(
+        atoms=atoms,
+        timestep=timestep,
+        temperature_K=temperature,
+        tdamp=tdamp,
+        tchain=TCHAIN,
+        logfile=str(log_path),
+    )
 
-        md_nvt.run(steps=NSTEPS)
+    traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
+    md_nvt.attach(function=traj.write, interval=FRAME_FREQUENCY)
 
-        # Read trajectory, skip equilibration frames and subsample
-        ase_traj: Atoms | list[Atoms] = io.read(
-            filename=str(traj_path), index=f"{N_EQUI_FRAMES}:"
-        )
+    md_nvt.run(steps=NSTEPS)
 
-        # Store metadata on each frame
-        for frame in ase_traj:
-            frame.info["system"] = system_name
-            frame.info["temperature"] = temperature
-            frame.info["delta_t"] = DELTA_T_FS
-            frame.info["nsteps"] = NSTEPS
+    # Read trajectory, skip equilibration frames and subsample
+    ase_traj: Atoms | list[Atoms] = io.read(
+        filename=str(traj_path), index=f"{N_EQUI_FRAMES}:"
+    )
+
+    # Store metadata on each frame
+    for frame in ase_traj:
+        frame.info["system"] = system_name
+        frame.info["temperature"] = temperature
+        frame.info["delta_t"] = DELTA_T_FS
+        frame.info["nsteps"] = NSTEPS
 

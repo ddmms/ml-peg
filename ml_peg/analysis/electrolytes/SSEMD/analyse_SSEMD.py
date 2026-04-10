@@ -14,7 +14,10 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.electrolytes.SSEMD.calc_SSEMD import (
@@ -22,11 +25,12 @@ from ml_peg.calcs.electrolytes.SSEMD.calc_SSEMD import (
     FRAME_FREQUENCY,
     N_EQUI_FRAMES,
 )
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "electrolytes" / "SSEMD" / "outputs"
 OUT_PATH = APP_ROOT / "electrolytes" / "SSEMD"
 
@@ -307,12 +311,12 @@ def load_reference_rdfs() -> dict[str, dict]:
     dict[str, dict]
         Mapping of ``system_name -> {pair_label: (bins, rdf_values)}``.
     """
-    from ml_peg.calcs.utils.utils import extract_zip
-
-    scratch_dir = Path(os.getenv("SCRATCH", "."))
     data_dir = (
-        extract_zip(filename=(scratch_dir / ".cache" / "ml-peg" / "SSEs_data.zip"))
-        / "SSEs_data"
+        download_s3_data(
+            key="inputs/electrolytes/SSE/SSE.zip",
+            filename="SSE.zip",
+        )
+        / "SSE"
     )
 
     ref_rdfs: dict[str, dict] = {}
