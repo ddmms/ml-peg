@@ -1,4 +1,4 @@
-"""Run Li diffusion app."""
+"""Run OC20NEB app."""
 
 from __future__ import annotations
 
