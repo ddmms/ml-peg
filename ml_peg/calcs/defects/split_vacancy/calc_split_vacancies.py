@@ -17,6 +17,7 @@ from tqdm.auto import tqdm
 from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
+import numpy as np
 
 MODELS = load_models(current_models)
 github_uri = "https://github.com/ThomasWarford/defect_data/raw/refs/heads/main/"
@@ -42,9 +43,13 @@ def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
     tuple[float, float] | None
         (Root mean square displacement, max di) or None if no match.
     """
-    return STRUCTURE_MATCHER.get_rms_dist(
+    result = STRUCTURE_MATCHER.get_rms_dist(
         Structure.from_ase_atoms(atoms_1), Structure.from_ase_atoms(atoms_2)
-    )
+        )
+
+    if result is None:
+        return (np.nan, np.nan)
+    return result
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -78,7 +83,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
                 atoms_paths = [nv_xyz_path, sv_xyz_path]
 
-                for atoms_path in tqdm(atoms_paths, leave=False):
+                for atoms_path in atoms_paths:
                     relaxed_atoms = []
                     atoms_list = read(atoms_path, ":")
 
@@ -88,14 +93,14 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                         / "ref"
                         / material_dir.stem
                         / cation_dir.stem
-                        / f"{atoms_path.stem}.xyz.gz"
+                        / f"{atoms_path.stem}.xyz"
                     )
                     # Copy ref structures once; subsequent runs skip if already present.
                     if not ref_atoms_out_path.exists():
                         ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
                         write(ref_atoms_out_path, atoms_list)
 
-                    for initial_atoms in tqdm(atoms_list, leave=False):
+                    for initial_atoms in atoms_list:
                         atoms = deepcopy(initial_atoms)
                         atoms.calc = deepcopy(calc)
                         atoms.info["initial_energy"] = atoms.get_potential_energy()
@@ -117,7 +122,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                         / model_name
                         / material_dir.stem
                         / cation_dir.stem
-                        / f"{atoms_path.stem}.xyz.gz"
+                        / f"{atoms_path.stem}.xyz"
                     )
                     atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
 

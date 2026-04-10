@@ -473,7 +473,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbesol
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_rmsd[model_name]))
+        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
 
 
@@ -506,7 +506,7 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbe
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_rmsd[model_name]))
+        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
 
 
@@ -598,7 +598,7 @@ def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(max_dist_pbesol_dist[model_name]))
+        results[model_name] = float(np.nanmean(max_dist_pbesol_dist[model_name]))
     return results
 
 
@@ -644,7 +644,7 @@ def max_dist_pbe_mean(max_dist_pbe_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(max_dist_pbe_dist[model_name]))
+        results[model_name] = float(np.nanmean(max_dist_pbe_dist[model_name]))
     return results
 
 
