@@ -26,7 +26,9 @@ DATA_PATH = download_github_data(filename, github_uri)
 DATA_PATH = Path(DATA_PATH) / "split_vacancy_data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
-STRUCTURE_MATCHER = StructureMatcher(scale=False)
+# based on MatBench settings, see https://github.com/janosh/matbench-discovery/issues/230
+# note we choose theshold stol for match in analysis
+STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False)
 
 
 def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
