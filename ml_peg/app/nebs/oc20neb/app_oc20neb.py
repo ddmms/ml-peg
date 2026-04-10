@@ -17,11 +17,11 @@ from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Surface reaction"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#surface-reactionn"
-)
-DATA_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
+BENCHMARK_NAME = "oc20neb"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#oc20neb"
+DATA_PATH = APP_ROOT / "data" / "nebs" / "oc20neb"
+TABLE_PATH = DATA_PATH / "oc20neb_metrics_table.json"
+SCATTER_PATH = DATA_PATH / "oc20neb_interactive.json"
 
 REACTIONS = [
     "desorption_ood_87_9841_0_111-1",
@@ -47,7 +47,7 @@ class SurfaceReactionApp(BaseApp):
         }
 
         # Assets dir will be parent directory
-        assets_dir = "assets/nebs/surface_reaction"
+        assets_dir = "assets/nebs/oc20neb"
         structs = {
             model: {
                 f"{rxn} barrier error": f"{assets_dir}/{model}/{model}-{rxn}.xyz"
@@ -85,7 +85,7 @@ def get_app() -> SurfaceReactionApp:
         name=BENCHMARK_NAME,
         description=("Performance in predicting energy barriers for Surface reaction."),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "surface_reaction_metrics_table.json",
+        table_path=DATA_PATH / "oc20neb_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
@@ -98,9 +98,9 @@ if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
 
     # Construct layout and register callbacks
-    surface_reaction_app = get_app()
-    full_app.layout = surface_reaction_app.layout
-    surface_reaction_app.register_callbacks()
+    oc20neb_app = get_app()
+    full_app.layout = oc20neb_app.layout
+    oc20neb_app.register_callbacks()
 
     # Run app
     full_app.run(port=8051, debug=True)

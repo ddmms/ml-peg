@@ -32,9 +32,9 @@ REACTIONS = [
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODELS)
-def test_surface_reaction(model_name: str) -> None:
+def test_oc20neb(model_name: str) -> None:
     """
-    Run calculations required for surface reactions.
+    Run calculations required for oc20neb.
 
     Parameters
     ----------

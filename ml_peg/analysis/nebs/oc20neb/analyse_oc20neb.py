@@ -17,9 +17,9 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-DATA_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "data"
-CALC_PATH = CALCS_ROOT / "nebs" / "surface_reaction" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "nebs" / "surface_reaction"
+DATA_PATH = CALCS_ROOT / "nebs" / "oc20neb" / "data"
+CALC_PATH = CALCS_ROOT / "nebs" / "oc20neb" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "nebs" / "oc20neb"
 SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -72,7 +72,6 @@ def plot_nebs(model: str, reaction: str) -> None:
         """
         results = {}
         structs = read(
-            #            CALC_PATH / f"surface_reaction_{reaction}-{model}.xyz",
             CALC_PATH / f"{reaction}_{model}.xyz",
             index=":",
         )
@@ -206,13 +205,13 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "surface_reaction_metrics_table.json",
+    filename=OUT_PATH / "oc20neb_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
 def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
     """
-    Get all surface reactions metrics.
+    Get all oc20neb metrics.
 
     Parameters
     ----------
@@ -280,14 +279,14 @@ def interactive_dataset(oc20neb_stats: dict[str, dict[str, Any]]) -> dict[str, A
     return dataset
 
 
-def test_surface_reaction(metrics, interactive_dataset) -> None:
+def test_oc20neb(metrics, interactive_dataset) -> None:
     """
-    Run surface reaction test.
+    Run oc20neb test.
 
     Parameters
     ----------
     metrics
-        All surface reaction metrics.
+        All oc20neb metrics.
     interactive_dataset
         Scatter metadata produced by the ``interactive_dataset`` fixture.
     """
