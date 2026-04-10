@@ -697,7 +697,8 @@ def normalize_metric(
         return None
 
     try:
-        # Handle NaNs robustly. Use math.isnan instead of np.isnan to avoid list/array allocation overhead.
+        # Handle NaNs robustly. Use math.isnan instead of np.isnan
+        # to avoid list/array allocation overhead.
         if math.isnan(value) or math.isnan(good_threshold) or math.isnan(bad_threshold):
             return None
     except TypeError:
