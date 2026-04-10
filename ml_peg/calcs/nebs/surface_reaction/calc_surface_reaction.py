@@ -21,7 +21,13 @@ OUT_PATH = Path(__file__).parent / "outputs"
 S3_KEY = "inputs/nebs/oc20neb/oc20neb.zip"
 S3_FILENAME = "oc20neb.zip"
 
-structs = DATA_PATH.glob("*")
+local_files_present = True
+if not local_files_present:
+    DATA_PATH = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "oc20neb"
+REACTIONS = [
+    str(reaction_file).split("/")[-1].split(".")[0]
+    for reaction_file in DATA_PATH.glob("*.xyz")
+]
 
 
 @pytest.mark.slow
@@ -35,18 +41,14 @@ def test_surface_reaction(model_name: str) -> None:
     model_name
         Name of model to use.
     """
-    local_files_present = True
-    if not local_files_present:
-        data_dir = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "oc20neb"
-    reactions = [
-        str(reaction_file).split("/")[-1].split(".")[0]
-        for reaction_file in data_dir.glob("*.xyz")
-    ]
+    calc = MODELS[model_name]
 
-    for reaction in reactions:
+    for reaction in REACTIONS:
         print(f"{reaction} {model_name}, start NEB ...")
-        dft_traj = read(data_dir / f"{reaction}.xyz", ":")
+        dft_traj = read(DATA_PATH / f"{reaction}.xyz", ":")
         initial, final = dft_traj[0], dft_traj[-1]
+        for struct in [initial, final]:
+            struct.calc = calc.get_calculator()
 
         neb = NEB(
             init_struct=initial,
@@ -62,8 +64,6 @@ def test_surface_reaction(model_name: str) -> None:
             write_band=False,
             file_prefix=OUT_PATH / f"{reaction}-{model_name}",
         )
-        neb.interpolate()
-        neb.interpolator = None
         neb.run(fmax=0.45, steps=200)
 
         neb.neb.climb = True
