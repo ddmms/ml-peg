@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dash import Dash, Input, Output, callback
-from dash.html import Div, Iframe
+from dash.html import B, Div, Iframe, P
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -91,16 +91,38 @@ def struct_pair_from_violin(
         }
         return Div(
             [
-                Div(
-                    [Iframe(srcDoc=ref_html, style=iframe_style)],
-                    style={"width": "50%", "paddingRight": "4px"},
+                P(
+                    B(
+                        f"Showing {formula} ({mp_id}) — {cation} vacancy "
+                        f"— {vac_type} — frame {frame_id}"
+                    ),
+                    style={
+                        "fontSize": "1.15rem",
+                        "borderLeft": "4px solid #636efa",
+                        "paddingLeft": "10px",
+                        "margin": "8px 0 14px 0",
+                    },
                 ),
                 Div(
-                    [Iframe(srcDoc=mlip_html, style=iframe_style)],
-                    style={"width": "50%", "paddingLeft": "4px"},
+                    [
+                        Div(
+                            [
+                                P(B("DFT relaxed (reference)")),
+                                Iframe(srcDoc=ref_html, style=iframe_style),
+                            ],
+                            style={"width": "50%", "paddingRight": "4px"},
+                        ),
+                        Div(
+                            [
+                                P(B(f"MLIP relaxed ({model_name})")),
+                                Iframe(srcDoc=mlip_html, style=iframe_style),
+                            ],
+                            style={"width": "50%", "paddingLeft": "4px"},
+                        ),
+                    ],
+                    style={"display": "flex"},
                 ),
-            ],
-            style={"display": "flex"},
+            ]
         )
 
 
