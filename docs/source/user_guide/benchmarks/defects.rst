@@ -54,9 +54,9 @@ metric 4).
 4. Max Dist
 
 Maximum atomic displacement between the MLIP-relaxed and DFT-relaxed matched
-structures, normalised by :math:`(N/V)^{1/3}` (where :math:`N` is the number of
-atoms and :math:`V` the cell volume) to give a unitless quantity comparable across
-different supercell sizes. Only computed for structure pairs that pass the
+structures, normalised by :math:`(V/N)^{1/3}` (wher :math:`V` is the cell volume and
+:math:`N` the number of atoms) to give a unitless quantity comparable across
+different crystal structures. Only computed for structure pairs that pass the
 StructureMatcher test. The match criterion itself is a normalised max dist below 0.3.
 
 
