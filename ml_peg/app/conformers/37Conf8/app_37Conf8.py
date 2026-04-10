@@ -37,7 +37,8 @@ class ThirtySevenConf8App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/37Conf8/{MODELS[0]}/{label}.xyz" for label in labels
+                f"/assets/conformers/37Conf8/{MODELS[0]}/{label}.xyz"
+                for label in labels
             ]
         else:
             structs = []

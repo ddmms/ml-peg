@@ -44,7 +44,7 @@ class NCIANHB375x10App(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/non_covalent_interactions/NCIA_HB375x10",
+            assets_prefix="/assets/non_covalent_interactions/NCIA_HB375x10",
             models=MODELS,
             traj_dirname="density_traj",
             suffix=".extxyz",

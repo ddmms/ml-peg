@@ -37,7 +37,7 @@ class PLA15App(BaseApp):
                 files = sorted(model_dir.glob("*.xyz"))
                 if files:
                     structs = [
-                        f"assets/supramolecular/PLA15/{model_name}/{path.name}"
+                        f"/assets/supramolecular/PLA15/{model_name}/{path.name}"
                         for path in files
                     ]
                     break

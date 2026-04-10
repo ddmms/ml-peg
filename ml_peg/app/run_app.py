@@ -27,7 +27,12 @@ def _build_full_app(app: Dash, category: str):
 
 
 # Make server accessible for gunicorn
-app = Dash(__name__, assets_folder=DATA_PATH)
+app = Dash(
+    __name__,
+    assets_folder=DATA_PATH,
+    title="ML-PEG",  # set browser tab title
+    update_title=None,  # prevent the tab changing to Updating... during callbacks
+)
 
 # Only build app when in production, otherwise run_app's layout is missing
 if bool(os.environ.get("ML_PEG_PROD", False)):

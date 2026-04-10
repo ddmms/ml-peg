@@ -35,7 +35,7 @@ class SBH17App(BaseApp):
         # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"assets/surfaces/SBH17/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/SBH17/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
