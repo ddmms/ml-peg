@@ -52,7 +52,7 @@ class RDB7App(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/molecular_reactions/RDB7",
+            assets_prefix="/assets/molecular_reactions/RDB7",
             models=MODELS,
         )
 

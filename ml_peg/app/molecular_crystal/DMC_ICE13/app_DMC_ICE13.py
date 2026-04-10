@@ -35,7 +35,7 @@ class DMCICE13App(BaseApp):
         # Assets dir will be parent directory - individual files for each polymorph
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"assets/molecular_crystal/DMC_ICE13/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/molecular_crystal/DMC_ICE13/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

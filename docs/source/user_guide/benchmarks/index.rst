@@ -17,3 +17,4 @@ Benchmarks
     electrolytes
     tm_complexes
     conformers
+    molecular_dynamics

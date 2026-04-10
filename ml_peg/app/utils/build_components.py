@@ -36,16 +36,18 @@ def grid_template_from_widths(
     widths
         Mapping of column names to pixel widths.
     column_order
-        Ordered metric column names to render between the MLIP and Score columns.
+        Ordered metric columns rendered after the ``MLIP`` and ``Score`` columns.
 
     Returns
     -------
     str
         CSS grid template definition using `minmax` tracks.
     """
-    tracks: list[tuple[str, int]] = [("MLIP", widths["MLIP"])]
+    tracks: list[tuple[str, int]] = [
+        ("MLIP", widths["MLIP"]),
+        ("Score", widths["Score"]),
+    ]
     tracks.extend((col, widths[col]) for col in column_order)
-    tracks.append(("Score", widths["Score"]))
 
     template_parts: list[str] = []
     for _, width in tracks:
@@ -247,27 +249,17 @@ def build_weight_components(
                     "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
+            Div(
+                "",
+                style={
+                    "width": "100%",
+                    "minWidth": "0",
+                    "maxWidth": "100%",
+                    "boxSizing": "border-box",
+                    "border": "1px solid transparent",
+                },
+            ),
             *weight_inputs,
-            Div(
-                "",
-                style={
-                    "width": "100%",
-                    "minWidth": "0",
-                    "maxWidth": "100%",
-                    "boxSizing": "border-box",
-                    "border": "1px solid transparent",
-                },
-            ),
-            Div(
-                "",
-                style={
-                    "width": "100%",
-                    "minWidth": "0",
-                    "maxWidth": "100%",
-                    "boxSizing": "border-box",
-                    "border": "1px solid transparent",
-                },
-            ),
         ],
         style={
             "display": "grid",
@@ -672,13 +664,6 @@ def build_test_layout(
     elif metric_weights:
         layout_contents.append(metric_weights)
 
-    layout_contents.append(
-        Store(
-            id="summary-table-scores-store",
-            storage_type="session",
-        ),
-    )
-
     if extra_components:
         layout_contents.extend(extra_components)
 
@@ -782,6 +767,18 @@ def build_threshold_inputs(
                 "justifyContent": "center",
                 "padding": "1px 2px",
                 "justifySelf": "start",
+                "width": "100%",
+                "minWidth": "0",
+                "maxWidth": "100%",
+                "boxSizing": "border-box",
+                "border": "1px solid transparent",
+            },
+        )
+    )
+    cells.append(
+        Div(
+            "",
+            style={
                 "width": "100%",
                 "minWidth": "0",
                 "maxWidth": "100%",
@@ -937,20 +934,6 @@ def build_threshold_inputs(
                 },
             )
         )
-
-    # Score
-    cells.append(
-        Div(
-            "",
-            style={
-                "width": "100%",
-                "minWidth": "0",
-                "maxWidth": "100%",
-                "boxSizing": "border-box",
-                "border": "1px solid transparent",
-            },
-        )
-    )
 
     store = Store(
         id=f"{table_id}-thresholds-store",
