@@ -14,6 +14,14 @@ from ml_peg.models import MODELS_ROOT
 
 @functools.lru_cache(maxsize=1)
 def _read_models_yaml() -> dict[str, Any]:
+    """
+    Load model configurations from models.yml.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary mapping model names to configuration mapping.
+    """
     with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
         return yaml.safe_load(model_file) or {}
 
