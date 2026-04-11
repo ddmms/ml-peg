@@ -1,0 +1,3 @@
+## 2024-05-24 - Dash UI Re-Renders
+**Learning:** The Dash application repeatedly evaluates `yaml.safe_load` on `models.yml` when re-rendering tables or updating metrics. Since YAML parsing in Python is relatively slow, this resulted in an ~100x performance slowdown in reading models list, causing rendering to be visibly laggy (taking ~2.5s instead of ~0.02s per 50 reads).
+**Action:** Always cache file reading when the content is expected to be static and is read frequently by the UI or backend. Applied `@functools.lru_cache(maxsize=1)` to `_read_models_yaml` and `load_model_registry_configs` to speed up all Dash UI re-renders and table generation.
