@@ -99,7 +99,7 @@ def adsorption_energies() -> dict[str, list]:
             # Write molecule-surface structure to app data
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system_name}.xyz", mol_surface)
+            write(structs_dir / f"{mol_surface_idx}.xyz", mol_surface)
 
         ref_stored = True
     return results
