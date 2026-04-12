@@ -1,0 +1,27 @@
+schema: '2.0'
+stages:
+  mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark:
+    cmd: zntrack run
+      calc_elemental_slab_oxygen_adsorption.ElementalSlabOxygenAdsorptionBenchmark
+      --name mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark
+    params:
+      params.yaml:
+        mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: mace_mp
+            default_dtype: float32
+            device: auto
+            dispersion_kwargs: {}
+            kwargs:
+              model: medium
+            module: mace.calculators
+            spec:
+            trained_on_dispersion: false
+          model_name: mace-mp-0a
+    outs:
+    - path:
+        nodes/mace-mp-0a/ElementalSlabOxygenAdsorptionBenchmark/node-meta.json
+      hash: md5
+      md5: 38b12a6ca4b96e85f195058acbfb9bfa
+      size: 888

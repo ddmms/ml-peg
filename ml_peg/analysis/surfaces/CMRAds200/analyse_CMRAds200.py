@@ -1,4 +1,4 @@
-"""Analyse S24 benchmark."""
+"""Analyse CMRAds200 benchmark."""
 
 from __future__ import annotations
 
@@ -8,16 +8,20 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "metal" / "CMRAds" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "metal" / "CMRAds"
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+CALC_PATH = CALCS_ROOT / "surfaces" / "CMRAds200" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "surfaces" / "CMRAds200"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
@@ -35,6 +39,7 @@ def labels() -> list:
     structs = read(CALC_PATH / "mol_surface_structs.extxyz", index=":")
     return [struct.info["sys_formula"] for struct in structs]
 
+
 def system_names() -> list:
     """
     Get list of system names.
@@ -44,7 +49,6 @@ def system_names() -> list:
     list
         List of all system names.
     """
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -82,7 +86,9 @@ def adsorption_energies() -> dict[str, list]:
             results[model_name] = []
             continue
         mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
-        for mol_surface_idx, mol_surface in enumerate(mol_surface_list): #sorted(model_dir.glob("*.xyz")):
+        for _mol_surface_idx, mol_surface in enumerate(
+            mol_surface_list
+        ):  # sorted(model_dir.glob("*.xyz")):
             system_name = mol_surface.info["sys_formula"]
 
             # Get pre-calculated adsorption energies
@@ -100,6 +106,7 @@ def adsorption_energies() -> dict[str, list]:
 
         ref_stored = True
     return results
+
 
 @pytest.fixture
 def cmrads_mae(adsorption_energies) -> dict[str, float]:
@@ -129,11 +136,11 @@ def cmrads_mae(adsorption_energies) -> dict[str, float]:
     filename=OUT_PATH / "cmrads_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(cmrads_mae: dict[str, float]) -> dict[str, dict]:
     """
-    Get all CMRAds metrics.
+    Get all CMRAds200 metrics.
 
     Parameters
     ----------
@@ -145,19 +152,18 @@ def metrics(cmrads_mae: dict[str, float]) -> dict[str, dict]:
     dict[str, dict]
         Metric names and values for all models.
     """
-    print(cmrads_mae)
     return {
         "MAE": cmrads_mae,
     }
 
 
-def test_cmrads(metrics: dict[str, dict]) -> None:
+def test_cmrads200(metrics: dict[str, dict]) -> None:
     """
-    Run CMRAds test.
+    Run CMRAds200 test.
 
     Parameters
     ----------
     metrics
-        All CMRAds metrics.
+        All CMRAds200 metrics.
     """
     return

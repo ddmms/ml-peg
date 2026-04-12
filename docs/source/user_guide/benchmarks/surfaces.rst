@@ -102,6 +102,42 @@ Reference data:
 * Same as input data
 * PBE-D3(BJ), MPRelaxSet settings
 
+CMRAds200
+=========
+
+Summary
+-------
+
+Performance in predicting adsorption energies on several transition metal
+surfaces for a set of 200 adsorbate-surface combinations.
+
+Metrics
+-------
+
+Error in adsorption energy
+
+For each combination of surface, molecule, and surface + molecule, the adsorption
+energy is calculated by taking the difference between the energy of the surface +
+molecule and the sum of individual surface and molecule energies. This is compared to
+the reference adsorption energy, calculated in the same way.
+
+Computational cost
+------------------
+
+Low: tests are likely to take a couple of minutes to run on CPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* 1 P.S. Schmidt, and K.S. Thygesen, “Benchmark database of transition metal surface and adsorption energies from many-body perturbation theory,” J. Phys. Chem. C 122(8), 4381–4390 (2018). https://pubs.acs.org/doi/10.1021/acs.jpcc.7b12258
+
+Reference data:
+
+* Same as input data
+* PBE-D3(BJ), MPRelaxSet settings
+
 Elemental Slab Oxygen Adsorption
 ================================
 

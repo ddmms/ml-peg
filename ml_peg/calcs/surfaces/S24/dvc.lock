@@ -1,0 +1,24 @@
+schema: '2.0'
+stages:
+  mace-mp-0a_S24Benchmark:
+    cmd: zntrack run calc_S24.S24Benchmark --name mace-mp-0a_S24Benchmark
+    params:
+      params.yaml:
+        mace-mp-0a_S24Benchmark:
+          model:
+            _cls: ml_peg.models.models.GenericASECalc
+            class_name: mace_mp
+            default_dtype: float32
+            device: auto
+            dispersion_kwargs: {}
+            kwargs:
+              model: medium
+            module: mace.calculators
+            spec:
+            trained_on_dispersion: false
+          model_name: mace-mp-0a
+    outs:
+    - path: nodes/mace-mp-0a/S24Benchmark/node-meta.json
+      hash: md5
+      md5: c4e16a5f829ab56ca43772bc5f1efe57
+      size: 782
