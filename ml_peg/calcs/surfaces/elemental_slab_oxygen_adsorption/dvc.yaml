@@ -1,9 +1,0 @@
-stages:
-  mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark:
-    cmd: zntrack run calc_elemental_slab_oxygen_adsorption.ElementalSlabOxygenAdsorptionBenchmark
-      --name mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark
-    metrics:
-    - nodes/mace-mp-0a/ElementalSlabOxygenAdsorptionBenchmark/node-meta.json:
-        cache: true
-    params:
-    - mace-mp-0a_ElementalSlabOxygenAdsorptionBenchmark
