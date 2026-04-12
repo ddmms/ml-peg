@@ -86,10 +86,7 @@ def adsorption_energies() -> dict[str, list]:
             results[model_name] = []
             continue
         mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
-        for _mol_surface_idx, mol_surface in enumerate(
-            mol_surface_list
-        ):  # sorted(model_dir.glob("*.xyz")):
-            system_name = mol_surface.info["sys_formula"]
+        for mol_surface_idx, mol_surface in enumerate(mol_surface_list):
 
             # Get pre-calculated adsorption energies
             pred_ads_energy = mol_surface.info["pred_adsorption_energy"]
