@@ -71,6 +71,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     fmax = 0.03
     steps = 200
 
+    nan_counter = 0
     for functional in ["pbe", "pbesol"]:
         for material_dir in tqdm(list((DATA_PATH / functional).iterdir())):
             cation_dirs = [
@@ -113,6 +114,8 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                         atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
                         rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
+                        if rmsd is np.nan:
+                            nan_counter += 1
                         atoms.info["ref_rmsd"] = rmsd
                         atoms.info["ref_max_distance"] = max_dist
 
@@ -129,3 +132,10 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                     atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
 
                     write(atoms_out_path, relaxed_atoms)
+    if nan_counter > 0:
+        print(
+            f"Warning: {nan_counter} structures had no match with reference "
+            "and were assigned NaN for RMSD and max distance for model"
+            f"{model_name}. Consider increasing StructureMatcher stol in "
+            "calc_split_vacancies.py."
+        )
