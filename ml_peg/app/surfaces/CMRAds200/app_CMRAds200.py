@@ -38,8 +38,8 @@ class CMRAds200App(BaseApp):
 
         # Assets dir will be parent directory
         structs = [
-            f"/assets/surfaces/CMRAds200/{MODELS[0]}/{struct_file.stem}.xyz"
-            for struct_file in sorted(structs_dir.glob("*.xyz"))
+            f"/assets/surfaces/CMRAds200/{MODELS[0]}/{i}.xyz"
+            for i in range(sum(1 for struct_file in structs_dir.glob('*.xyz') if struct_file.stem.isdigit()))
         ]
 
         plot_from_table_column(
