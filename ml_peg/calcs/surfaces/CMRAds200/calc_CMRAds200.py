@@ -69,6 +69,8 @@ def test_cmrads200(mlip: tuple[str, Any]) -> None:
 
     # Add calc to the systems in cmr_structs_list
     for atoms in cmr_structs_list:
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
         atoms.calc = copy(calc)
 
     structs_energy_dict = {
