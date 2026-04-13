@@ -161,8 +161,17 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _load_all_models_dict() -> dict[str, Any]:
+    """
+    Load and cache models dictionary from models.yml.
+
+    Returns
+    -------
+    dict[str, Any]
+        Loaded models from models.yml.
+    """
     with open(MODELS_ROOT / "models.yml", encoding="utf8") as file:
         return yaml.safe_load(file) or {}
+
 
 def get_model_names(models: None | Iterable = None) -> list[str]:
     """
