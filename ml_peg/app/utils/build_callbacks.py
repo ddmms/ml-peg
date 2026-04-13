@@ -248,7 +248,12 @@ def struct_from_multi_scatters(
     mode: Literal["struct", "traj"] = "struct",
 ) -> None:
     """
-    Attach callback to show a structure when a scatter point is clicked.
+    Attach callback to show a structure when a multiline scatter point is clicked.
+
+    Unlike `struct_from_scatter`, which accepts a single traj file or single list of
+    struct files and renders a struct based on the clicked point index, this callback
+    instead accepts a list of traj files or a list of list of struct files which is
+    rendered based on the clicked curve number and then point index.
 
     Parameters
     ----------
@@ -262,6 +267,18 @@ def struct_from_multi_scatters(
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
+
+    Examples
+    --------
+    >>> struct_from_multi_scatters(
+    >>>     scatter_id="test-figure",
+    >>>     struct_id="test-placeholder",
+    >>>     structs=[["config-i-j.xyz", ...], ...],
+    >>>     mode="struct",
+    >>> )
+
+    When the `i`th data point of the `j`th curve of "test-figure" is clicked,
+    `structs[j][i]` will be rendered in the "test-placeholder" Div.
     """
 
     @callback(
@@ -271,7 +288,7 @@ def struct_from_multi_scatters(
     )
     def show_struct(click_data):
         """
-        Register callback to show structure when a scatter point is clicked.
+        Register callback to show structure when a multiline scatter point is clicked.
 
         Parameters
         ----------
