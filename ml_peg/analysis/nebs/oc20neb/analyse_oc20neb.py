@@ -148,7 +148,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             data_paths = {
                 "ref_profile": str(ref_cache[reaction]["traj_path"]),
                 "pred_profile": str(
-                    CALC_PATH / f"{reaction}-{model_name}-neb-band.xyz"
+                    CALC_PATH / f"{reaction}-{model_name}-neb-band.extxyz"
                 ),
             }
 
@@ -165,6 +165,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     metrics_data[metric_key]["pred"].append(pred_val)
                     metrics_data[metric_key]["points"].append(
                         {
+                            "id": reaction,
                             "reaction": reaction,
                             "ref": ref_val,
                             "pred": pred_val,
@@ -175,6 +176,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     metrics_data[metric_key]["pred"].append(pred_val)
                     metrics_data[metric_key]["points"].append(
                         {
+                            "id": reaction,
                             "reaction": reaction,
                             "pred": pred_val,
                             "data_paths": data_paths,

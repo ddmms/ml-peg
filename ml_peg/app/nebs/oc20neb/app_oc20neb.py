@@ -2,16 +2,30 @@
 
 from __future__ import annotations
 
-from dash import Dash
-from dash.html import Div
+from functools import partial
+import json
 
+from dash import Dash, dcc, html
+from dash.dcc import Loading
+
+# from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_cell,
-    struct_from_scatter,
+
+# from ml_peg.app.bulk_crystal.phonons.interactive_helpers import lookup_system_entry
+from ml_peg.app.nebs.oc20neb.interactive_helpers import (
+    lookup_system_entry,
+    render_neb_profile,
 )
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.build_callbacks import (
+    model_asset_from_scatter,
+    scatter_and_assets_from_table,
+)
+from ml_peg.app.utils.plot_helpers import (
+    build_serialized_scatter_content,
+    resolve_scatter_selection,
+)
+from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -22,73 +36,111 @@ DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#oc20n
 DATA_PATH = APP_ROOT / "data" / "nebs" / "oc20neb"
 TABLE_PATH = DATA_PATH / "oc20neb_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "oc20neb_interactive.json"
+CALC_BASE = CALCS_ROOT / "nebs" / "oc20neb"
 
-REACTIONS = [
-    "desorption_ood_87_9841_0_111-1",
-    "dissociation_ood_268_6292_46_211-5",
-    "transfer_id_601_1482_1_211-5",
-]
+PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
+PROFILE_CONTAINER_ID = f"{BENCHMARK_NAME}-profiile-container"
+LAST_CELL_STORE_ID = f"{BENCHMARK_NAME}-last-cell"
+SCATTER_METADATA_STORE_ID = f"{BENCHMARK_NAME}-scatter-meta"
+SCATTER_GRAPH_ID = f"{BENCHMARK_NAME}-scatter"
 
 
-class SurfaceReactionApp(BaseApp):
-    """Surface reaction benchmark app layout and callbacks."""
+class OC20NEBApp(BaseApp):
+    """OC20NEB benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter_plots = {
-            model: {
-                f"{reaction} barrier error": read_plot(
-                    DATA_PATH / f"figure_{model}_neb_{reaction}.json",
-                    id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}",
-                )
-                for reaction in REACTIONS
-            }
-            for model in MODELS
-        }
+        with SCATTER_PATH.open(encoding="utf8") as handle:
+            interactive_data = json.load(handle)
 
-        # Assets dir will be parent directory
-        assets_dir = "assets/nebs/oc20neb"
-        structs = {
-            model: {
-                f"{rxn} barrier error": f"{assets_dir}/{model}/{model}-{rxn}.xyz"
-                for rxn in REACTIONS
-            }
-            for model in MODELS
-        }
+        models_data = interactive_data.get("models", {})
+        metric_labels = interactive_data.get("metrics", {})
+        label_to_key = {label: key for key, label in metric_labels.items()}
 
-        plot_from_table_cell(
-            table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            cell_to_plot=scatter_plots,
+        refresh_msg = "Click on a metric to view scatter plots."
+
+        metric_handler = partial(
+            build_serialized_scatter_content,
+            models_data=models_data,
+            label_map=label_to_key,
+            scatter_id=SCATTER_GRAPH_ID,
+            instructions=refresh_msg,
         )
 
-        for model in MODELS:
-            for reaction in REACTIONS:
-                struct_from_scatter(
-                    scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{reaction}",
-                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=structs[model][f"{reaction} barrier error"],
-                    mode="traj",
-                )
+        scatter_and_assets_from_table(
+            table_id=self.table_id,
+            table_data=self.table.data,
+            plot_container_id=PLOT_CONTAINER_ID,
+            scatter_metadata_store_id=SCATTER_METADATA_STORE_ID,
+            last_cell_store_id=LAST_CELL_STORE_ID,
+            column_handlers={},
+            default_handler=metric_handler,
+        )
+
+        selection_lookup = partial(
+            resolve_scatter_selection,
+            models_data=models_data,
+            system_lookup=lookup_system_entry,
+        )
+        profile_renderer = partial(
+            render_neb_profile,
+            reference_label="RPBE",
+        )
+
+        model_asset_from_scatter(
+            scatter_id=SCATTER_GRAPH_ID,
+            metadata_store_id=SCATTER_METADATA_STORE_ID,
+            asset_container_id=PROFILE_CONTAINER_ID,
+            data_lookup=selection_lookup,
+            asset_renderer=profile_renderer,
+            empty_message="Click on a data point to preview the NEB profile.",
+            missing_message="No profile plot available for this point.",
+        )
 
 
-def get_app() -> SurfaceReactionApp:
+def get_app() -> OC20NEBApp:
     """
-    Get Li diffusion benchmark app layout and callback registration.
+    Get OC20NEB benchmark app layout and callback registration.
 
     Returns
     -------
-    SurfaceReactionApp
+    OC20NEBApp
         Benchmark layout and callback registration.
     """
-    return SurfaceReactionApp(
+    return OC20NEBApp(
         name=BENCHMARK_NAME,
-        description=("Performance in predicting energy barriers for Surface reaction."),
+        description=("Accuracy of MLIPs in predicting NEB profiles."),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "oc20neb_metrics_table.json",
+        table_path=TABLE_PATH,
+        # Dash Stores persist the last clicked cell and the scatter metadata that
+        # identifies the selected system + model so the oc20neb callback can
+        # look up the correct asset paths when rendering neb profile plots
         extra_components=[
-            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
+            dcc.Store(id=LAST_CELL_STORE_ID),
+            dcc.Store(id=SCATTER_METADATA_STORE_ID),
+            html.Div(
+                [
+                    html.Div(
+                        "Click on a metric to view scatter plots.",
+                        id=PLOT_CONTAINER_ID,
+                        style={"flex": "1", "minWidth": 0},
+                    ),
+                    Loading(
+                        html.Div(
+                            "Click on a scatter point to view the dispersion plot.",
+                            id=PROFILE_CONTAINER_ID,
+                            style={"flex": "1", "minWidth": 0},
+                        ),
+                        type="circle",
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "gap": "24px",
+                    "alignItems": "stretch",
+                    "flexWrap": "wrap",
+                },
+            ),
         ],
     )
 
