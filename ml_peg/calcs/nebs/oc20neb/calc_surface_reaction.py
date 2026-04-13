@@ -1,4 +1,4 @@
-"""Run calculations for Surface reaction tests."""
+"""Run calculations for OC20NEB tests."""
 
 from __future__ import annotations
 

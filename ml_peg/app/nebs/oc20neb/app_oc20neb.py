@@ -8,11 +8,8 @@ import json
 from dash import Dash, dcc, html
 from dash.dcc import Loading
 
-# from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-
-# from ml_peg.app.bulk_crystal.phonons.interactive_helpers import lookup_system_entry
 from ml_peg.app.nebs.oc20neb.interactive_helpers import (
     lookup_system_entry,
     render_neb_profile,
