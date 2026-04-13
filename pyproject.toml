@@ -66,7 +66,7 @@ pet-mad = [
     "pet-mad == 1.4.4; sys_platform != 'win32'"
 ]
 uma = [
-    "fairchem-core == 2.10.0",
+    "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
 
 [project.scripts]
