@@ -18,8 +18,6 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-# D3_MODEL_NAMES = build_d3_name_map(MODELS)
-D3_MODEL_NAMES = {m: m for m in MODELS}
 CALC_PATH = CALCS_ROOT / "defect" / "Relastab" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "defect" / "Relastab"
 
@@ -277,7 +275,6 @@ def ranking_metrics(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(ranking_metrics: tuple) -> dict[str, dict]:
     """
@@ -324,7 +321,6 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
             metric_tooltips=DEFAULT_TOOLTIPS,
             thresholds=DEFAULT_THRESHOLDS,
             weights=DEFAULT_WEIGHTS,
-            mlip_name_map=D3_MODEL_NAMES,
         )
         def _save_subset(_data=subset_pivoted):
             return _data

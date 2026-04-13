@@ -17,7 +17,6 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = {m: m for m in MODELS}
 CALC_PATH = CALCS_ROOT / "defect" / "Defectstab" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "defect" / "Defectstab"
 
@@ -285,7 +284,6 @@ def fe_errors(
     filename=OUT_PATH / "defectstab_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     fe_errors: tuple[dict[str, float], dict[str, dict[str, float]]],
@@ -316,7 +314,6 @@ def metrics(
             filename=OUT_PATH / f"defectstab_metrics_table_{subset_name}.json",
             metric_tooltips=DEFAULT_TOOLTIPS,
             thresholds=DEFAULT_THRESHOLDS,
-            mlip_name_map=D3_MODEL_NAMES,
         )
         def _save_subset(data=subset_pivoted):
             return data
@@ -326,7 +323,10 @@ def metrics(
     return {"RMSD": total_results}
 
 
-def test_defectstab_analysis(metrics: dict[str, dict]) -> None:
+def test_defectstab_analysis(
+    metrics: dict[str, dict],
+    formation_energies: dict[str, list],
+) -> None:
     """
     Run Defectstab analysis test.
 
@@ -334,5 +334,7 @@ def test_defectstab_analysis(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All Defectstab metrics.
+    formation_energies
+        Parity plot data for formation energies.
     """
     return
