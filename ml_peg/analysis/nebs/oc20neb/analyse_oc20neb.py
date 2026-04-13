@@ -1,4 +1,4 @@
-"""Analyse Li diffusion benchmark."""
+"""Analyse OC20NEB benchmark."""
 
 from __future__ import annotations
 
