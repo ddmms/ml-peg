@@ -36,14 +36,14 @@ class GrapheneWettingUnderStrainApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         structs_from_curve = [
-            f"assets/surfaces/graphene_wetting_under_strain/structs/{orientation}_{strain}.xyz"
+            f"/assets/surfaces/graphene_wetting_under_strain/structs/{orientation}_{strain}.xyz"
             for orientation in ORIENTATIONS
             for strain in STRAINS
         ] * (len(MODELS) + 1)
 
         structs_from_params = [
             [
-                f"assets/surfaces/graphene_wetting_under_strain/structs/{orientation}_{strain}.xyz"
+                f"/assets/surfaces/graphene_wetting_under_strain/structs/{orientation}_{strain}.xyz"
                 for strain in STRAINS
             ]
             for orientation in ORIENTATIONS
