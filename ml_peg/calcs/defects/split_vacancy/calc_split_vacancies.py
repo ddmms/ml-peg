@@ -72,6 +72,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     steps = 200
 
     nan_counter = 0
+    unconverged_counter = 0
     for functional in ["pbe", "pbesol"]:
         for material_dir in tqdm(list((DATA_PATH / functional).iterdir())):
             cation_dirs = [
@@ -108,19 +109,22 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                         atoms.calc = deepcopy(calc)
                         atoms.info["initial_energy"] = atoms.get_potential_energy()
 
-                        opt = LBFGS(atoms, logfile=None)
+                        converged = opt = LBFGS(atoms, logfile=None)
                         opt.run(fmax=fmax, steps=steps)
 
                         atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
                         rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
-                        if rmsd is np.nan:
-                            nan_counter += 1
                         atoms.info["ref_rmsd"] = rmsd
                         atoms.info["ref_max_distance"] = max_dist
+                        atoms.info["relaxation_converged"] = converged
 
                         relaxed_atoms.append(atoms)
 
+                        if rmsd is np.nan:
+                            nan_counter += 1
+                        if not converged:
+                            unconverged_counter += 1
                     atoms_out_path = (
                         OUT_PATH
                         / functional
@@ -138,4 +142,10 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             "and were assigned NaN for RMSD and max distance for model"
             f"{model_name}. Consider increasing StructureMatcher stol in "
             "calc_split_vacancies.py."
+        )
+    if unconverged_counter > 0:
+        print(
+            f"Warning: {unconverged_counter} structures did not converge within "
+            f"{steps} steps for model {model_name}. Consider increasing the "
+            "number of steps or fmax in calc_split_vacancies.py."
         )
