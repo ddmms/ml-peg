@@ -62,9 +62,13 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
-    # Read in data and attach calculator
+    # Download data
     data_path = (
         download_s3_data(
             filename="DipCONFS.zip",
@@ -72,11 +76,6 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         )
         / "DipCONFS"
     )
-
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     df = pd.read_excel(
         data_path / "ct4c00801_si_004.xlsx",

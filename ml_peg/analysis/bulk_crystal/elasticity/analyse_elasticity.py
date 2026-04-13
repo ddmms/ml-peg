@@ -141,6 +141,7 @@ def shear_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | 
     title="Bulk modulus density plot",
     x_label="Reference bulk modulus / GPa",
     y_label="Predicted bulk modulus / GPa",
+    annotation_metadata={"excluded": "Excluded"},
 )
 def bulk_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]:
     """
@@ -165,6 +166,7 @@ def bulk_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]
     title="Shear modulus density plot",
     x_label="Reference shear modulus / GPa",
     y_label="Predicted shear modulus / GPa",
+    annotation_metadata={"excluded": "Excluded"},
 )
 def shear_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]:
     """

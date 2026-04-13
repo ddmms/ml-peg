@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 import json
 from pathlib import Path
+from warnings import warn
 
 from dash.dash_table import DataTable
 from dash.dcc import Graph
@@ -64,14 +65,12 @@ def rebuild_table(
     existing_display_names = {row.get("MLIP") for row in data}
 
     # Model names come in two forms:
-    # - Canonical name: Base name from models.yml (e.g., "mace-mp-0a")
+    # - Original model name: Base name from models.yml (e.g., "mace-mp-0a")
     # - Display name: UI name, may have suffix (e.g., "mace-mp-0a-D3")
 
-    # model_name_map stores: display_name -> canonical_name
-    # We need the inverse for lookups: canonical_name -> display_name
-    canonical_to_display = {}
-    for display_name, canonical_name in model_name_map.items():
-        canonical_to_display[canonical_name] = display_name
+    # model_name_map stores: display_name -> original model name
+    # We need the inverse for lookups: original name -> display name
+    original_to_display = {v: k for k, v in model_name_map.items()}
 
     # Determine which metrics exist (excluding MLIP, Score, id)
     metric_columns = [
@@ -79,12 +78,13 @@ def rebuild_table(
     ]
 
     # Add missing models with None for all metrics
-    for canonical_model in all_registry_models:
-        # Convert canonical name (from registry) to display name (for table)
-        display_name = canonical_to_display.get(canonical_model, canonical_model)
+    for original_model in all_registry_models:
+        # Convert original model name (from registry) to display name (for table)
+        display_name = original_to_display.get(original_model, original_model)
         if display_name not in existing_display_names:
-            # Create row with None for all metrics (will appear grayed out)
-            new_row = {"MLIP": display_name, "id": display_name}
+            # Create row with None for all metrics (will appear grayed out) while
+            # storing the original model name in ``id`` so callbacks have a stable key
+            new_row = {"MLIP": display_name, "id": original_model}
             for metric in metric_columns:
                 new_row[metric] = None
             # Score will be None (calculated later by calc_table_scores)
@@ -92,8 +92,8 @@ def rebuild_table(
             data.append(new_row)
 
             # Update model_name_map if this is a new model not in original JSON
-            if canonical_model not in model_name_map.values():
-                model_name_map[display_name] = canonical_model
+            if original_model not in model_name_map.values():
+                model_name_map[display_name] = original_model
 
     width_labels: list[str] = []
 
@@ -139,21 +139,21 @@ def rebuild_table(
     all_display_names = {row.get("MLIP") for row in data}
     missing_models = []
     for display_name in all_display_names:
-        # Convert display name to canonical name for config lookup
-        canonical_name = model_name_map.get(display_name, display_name)
+        # Convert display name to the original model name for config lookup
+        original_name = model_name_map.get(display_name, display_name)
         if display_name not in model_configs:
-            missing_models.append(canonical_name)
+            missing_models.append(original_name)
 
     if missing_models:
-        # Load configs using canonical names (as they appear in models.yml)
+        # Load configs using the original names (as they appear in models.yml)
         new_configs, new_levels = load_model_configs(missing_models)
-        for canonical_name in missing_models:
+        for original_name in missing_models:
             # Convert back to display name for storage in table metadata
-            display_name = canonical_to_display.get(canonical_name, canonical_name)
-            if canonical_name in new_configs:
-                model_configs[display_name] = new_configs[canonical_name]
-            if canonical_name in new_levels:
-                model_levels[display_name] = new_levels[canonical_name]
+            display_name = original_to_display.get(original_name, original_name)
+            if original_name in new_configs:
+                model_configs[display_name] = new_configs[original_name]
+            if original_name in new_levels:
+                model_levels[display_name] = new_levels[original_name]
 
     warning_styles, tooltip_rows = build_level_of_theory_warnings(
         data, model_levels, metric_levels, model_configs
@@ -182,10 +182,25 @@ def rebuild_table(
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
-        editable=True,
+        editable=False,
         id=id,
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         sort_action="native",
         persistence=True,
         persistence_type="session",
@@ -315,6 +330,53 @@ def read_density_plot_for_model(
     # Check if model has actual data (not just the reference line)
     # If only 1 trace (the y=x line) or 0 traces, model has no data
     if len(filtered_fig.get("data", [])) <= 1:
+        warn(f"No model data found for {model}", stacklevel=2)
         return None
 
     return Graph(id=id, figure=filtered_fig)
+
+
+def collect_traj_assets(
+    *,
+    data_path: Path,
+    assets_prefix: str,
+    models: list[str],
+    traj_dirname: str = "density_traj",
+    suffix: str = ".extxyz",
+) -> dict[str, list[str]]:
+    """
+    Collect trajectory asset paths for each model.
+
+    Parameters
+    ----------
+    data_path
+        Base data directory containing per-model folders.
+    assets_prefix
+        Assets URL prefix (e.g., ``"/assets/molecular_reactions/RDB7"``).
+    models
+        Ordered list of model names to include.
+    traj_dirname
+        Subdirectory name containing trajectories (default: ``"density_traj"``).
+    suffix
+        File suffix to match (default: ``".extxyz"``).
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Mapping of model name to list of asset paths.
+    """
+    assets_base = assets_prefix.rstrip("/")
+    struct_trajs: dict[str, list[str]] = {}
+
+    for model in models:
+        traj_dir = data_path / model / traj_dirname
+        traj_files = sorted(
+            traj_dir.glob(f"*{suffix}"), key=lambda path: int(path.stem)
+        )
+        if traj_files:
+            struct_trajs[model] = [
+                f"{assets_base}/{model}/{traj_dirname}/{traj_file.name}"
+                for traj_file in traj_files
+            ]
+
+    return struct_trajs

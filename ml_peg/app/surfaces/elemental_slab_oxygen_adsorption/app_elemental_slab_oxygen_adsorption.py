@@ -36,7 +36,7 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
 
         # Assets dir will be parent directory
         structs = [
-            f"assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

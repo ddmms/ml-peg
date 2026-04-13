@@ -82,6 +82,10 @@ def load_structures(data_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
         else:
             molecules[molecule]["conformers"].append(atoms)
 
+        # Set default charge and spin
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
+
     for mol, entries in molecules.items():
         if entries["ground"] is None:
             raise FileNotFoundError(f"Missing ground-state structure for {mol}.")
@@ -181,6 +185,8 @@ def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
+    # Use double precision
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     # Add D3 calculator for this test
