@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Details, Div, Span, Img, Span, Summary
+from dash.html import H1, H3, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
