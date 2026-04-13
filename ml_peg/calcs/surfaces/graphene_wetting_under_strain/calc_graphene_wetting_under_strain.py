@@ -77,13 +77,14 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
 
         # Iterate through orientations
         for orientation in orientations:
-            systems = ase.io.iread(
+            systems = ase.io.read(
                 structs_dir / f"{orientation}_{strain}.xyz", index=":", format="extxyz"
             )
             write_file = write_dir / f"{orientation}_{strain}.xyz"
             if os.path.isfile(write_file):
                 os.remove(write_file)
-            for atoms in tqdm(systems):
+            desc = f"{orientation} orientation with {strain[1:5]}% strain"
+            for atoms in tqdm(systems, desc=desc, unit="configurations"):
                 atoms.calc = calc
                 mlip_potential_energy = atoms.get_potential_energy()
                 mlip_adsorption_energy = (
