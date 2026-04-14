@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.calcs.physicality.iron_properties.iron_utils import (
+from ml_peg.calcs.bulk_crystal.iron_properties.iron_utils import (
     EV_PER_A2_TO_J_PER_M2,
     EV_PER_A3_TO_GPA,
     apply_voigt_strain,

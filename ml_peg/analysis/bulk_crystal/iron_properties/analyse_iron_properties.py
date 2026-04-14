@@ -30,8 +30,8 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "physicality" / "iron_properties" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "physicality" / "iron_properties"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "iron_properties" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "iron_properties"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)

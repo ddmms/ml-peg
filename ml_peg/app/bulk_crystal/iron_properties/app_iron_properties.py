@@ -18,9 +18,9 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Iron Properties"
-DATA_PATH = APP_ROOT / "data" / "physicality" / "iron_properties"
+DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "iron_properties"
 FIGURES_PATH = DATA_PATH / "figures"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#iron-properties"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#iron-properties"
 
 
 def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
