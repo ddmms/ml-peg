@@ -2,189 +2,47 @@
 
 from __future__ import annotations
 
+import json
+
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
-import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 
-from ml_peg.analysis.physicality.iron_properties.analyse_iron_properties import (
-    DFT_CURVES,
-)
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.calcs import CALCS_ROOT
+from ml_peg.app.utils.plot_helpers import figure_from_dict
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
-# Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Iron Properties"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "iron_properties"
-CALC_PATH = CALCS_ROOT / "physicality" / "iron_properties" / "outputs"
+FIGURES_PATH = DATA_PATH / "figures"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#iron-properties"
 
-# Curve configuration: file name, x column, y column, title, x label, y label
-CURVE_CONFIG = {
-    "eos": {
-        "file": "eos_curve.csv",
-        "x": "volume",
-        "y": "energy",
-        "title": "Equation of State",
-        "x_label": "Volume (Å³/atom)",
-        "y_label": "Energy (eV/atom)",
-    },
-    "bain": {
-        "file": "bain_path.csv",
-        "x": "ca_ratio",
-        "y": "energy_meV",
-        "title": "Bain Path",
-        "x_label": "c/a ratio",
-        "y_label": "Energy (meV/atom)",
-    },
-    "sfe_110": {
-        "file": "sfe_110_curve.csv",
-        "x": "displacement",
-        "y": "sfe_J_per_m2",
-        "title": "Stacking Fault Energy {110}<111>",
-        "x_label": "Displacement (Å)",
-        "y_label": "SFE (J/m²)",
-    },
-    "sfe_112": {
-        "file": "sfe_112_curve.csv",
-        "x": "displacement",
-        "y": "sfe_J_per_m2",
-        "title": "Stacking Fault Energy {112}<111>",
-        "x_label": "Displacement (Å)",
-        "y_label": "SFE (J/m²)",
-    },
-    "ts_100": {
-        "file": "ts_100_curve.csv",
-        "x": "separation",
-        "y": "traction",
-        "title": "Traction-Separation Curve (100)",
-        "x_label": "Separation (Å)",
-        "y_label": "Traction (GPa)",
-    },
-    "ts_110": {
-        "file": "ts_110_curve.csv",
-        "x": "separation",
-        "y": "traction",
-        "title": "Traction-Separation Curve (110)",
-        "x_label": "Separation (Å)",
-        "y_label": "Traction (GPa)",
-    },
-}
 
-
-def _load_curve_data(model_name: str, curve_type: str) -> pd.DataFrame | None:
+def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
     """
-    Load curve data for a model.
+    Load a pre-created figure from JSON.
 
     Parameters
     ----------
     model_name : str
         Name of the model.
     curve_type : str
-        Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
+        Type of curve (e.g., 'eos', 'bain', 'sfe_110').
 
     Returns
     -------
-    pd.DataFrame or None
-        DataFrame with curve data, or None if not found.
+    go.Figure or None
+        Plotly figure, or None if not found.
     """
-    model_dir = CALC_PATH / model_name
-    if not model_dir.exists():
+    fig_path = FIGURES_PATH / f"{model_name}_{curve_type}.json"
+    if not fig_path.exists():
         return None
-
-    config = CURVE_CONFIG.get(curve_type)
-    if not config:
-        return None
-
-    csv_path = model_dir / config["file"]
-    if not csv_path.exists():
-        return None
-
-    return pd.read_csv(csv_path)
-
-
-def _create_figure(df: pd.DataFrame, curve_type: str, model_name: str) -> go.Figure:
-    """
-    Create plotly figure for the given curve type.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing the curve data.
-    curve_type : str
-        Type of curve to plot (e.g., 'eos', 'bain', 'sfe_110').
-    model_name : str
-        Name of the model for the title.
-
-    Returns
-    -------
-    go.Figure
-        Plotly figure object.
-    """
-    config = CURVE_CONFIG.get(curve_type, {})
-
-    fig = go.Figure()
-
-    # Get model data x-range for limiting DFT reference
-    model_x_max = df[config["x"]].max() if config.get("x") else None
-
-    # Add DFT reference curve if available
-    dft_data = DFT_CURVES.get(curve_type)
-    if dft_data is not None:
-        x_dft, y_dft = dft_data[0].copy(), dft_data[1].copy()
-
-        # For SFE curves, limit DFT data to model x-range (data is periodic)
-        if curve_type.startswith("sfe_") and model_x_max is not None:
-            mask = x_dft <= model_x_max
-            x_dft = np.array(x_dft)[mask]
-            y_dft = np.array(y_dft)[mask]
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_dft,
-                y=y_dft,
-                mode="lines",
-                name="DFT Reference",
-                line={"width": 2, "dash": "dash", "color": "gray"},
-            )
-        )
-
-    # Add model curve
-    fig.add_trace(
-        go.Scatter(
-            x=df[config["x"]],
-            y=df[config["y"]],
-            mode="lines+markers",
-            name=model_name,
-            line={"width": 2},
-            marker={"size": 6},
-        )
-    )
-
-    # Special handling for Bain path (add BCC/FCC reference lines)
-    if curve_type == "bain":
-        fig.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="BCC")
-        fig.add_vline(
-            x=1.414, line_dash="dash", line_color="gray", annotation_text="FCC"
-        )
-
-    fig.update_layout(
-        title=f"{config['title']} - {model_name}",
-        xaxis_title=config["x_label"],
-        yaxis_title=config["y_label"],
-        template="plotly_white",
-        showlegend=True,
-        height=500,
-    )
-
-    return fig
+    return figure_from_dict(json.loads(fig_path.read_text()))
 
 
 class IronPropertiesApp(BaseApp):
@@ -221,9 +79,8 @@ class IronPropertiesApp(BaseApp):
             if not model_name or not curve_type:
                 raise PreventUpdate
 
-            df = _load_curve_data(model_name, curve_type)
-            if df is None or df.empty:
-                # Return empty figure with message
+            fig = _load_figure(model_name, curve_type)
+            if fig is None:
                 fig = go.Figure()
                 fig.add_annotation(
                     text=f"No data available for {model_name} - {curve_type}",
@@ -238,9 +95,7 @@ class IronPropertiesApp(BaseApp):
                     template="plotly_white",
                     height=500,
                 )
-                return fig
-
-            return _create_figure(df, curve_type, model_name)
+            return fig
 
 
 def get_app() -> IronPropertiesApp:

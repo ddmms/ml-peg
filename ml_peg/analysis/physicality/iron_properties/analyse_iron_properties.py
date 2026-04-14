@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
@@ -142,6 +143,51 @@ CURVE_FILES = {
     "ts_110": "ts_110_curve.csv",
 }
 
+CURVE_CONFIG = {
+    "eos": {
+        "x": "volume",
+        "y": "energy",
+        "title": "Equation of State",
+        "x_label": "Volume (Å³/atom)",
+        "y_label": "Energy (eV/atom)",
+    },
+    "bain": {
+        "x": "ca_ratio",
+        "y": "energy_meV",
+        "title": "Bain Path",
+        "x_label": "c/a ratio",
+        "y_label": "Energy (meV/atom)",
+    },
+    "sfe_110": {
+        "x": "displacement",
+        "y": "sfe_J_per_m2",
+        "title": "Stacking Fault Energy {110}<111>",
+        "x_label": "Displacement (Å)",
+        "y_label": "SFE (J/m²)",
+    },
+    "sfe_112": {
+        "x": "displacement",
+        "y": "sfe_J_per_m2",
+        "title": "Stacking Fault Energy {112}<111>",
+        "x_label": "Displacement (Å)",
+        "y_label": "SFE (J/m²)",
+    },
+    "ts_100": {
+        "x": "separation",
+        "y": "traction",
+        "title": "Traction-Separation Curve (100)",
+        "x_label": "Separation (Å)",
+        "y_label": "Traction (GPa)",
+    },
+    "ts_110": {
+        "x": "separation",
+        "y": "traction",
+        "title": "Traction-Separation Curve (110)",
+        "x_label": "Separation (Å)",
+        "y_label": "Traction (GPa)",
+    },
+}
+
 
 def load_model_results(model_name: str) -> dict[str, Any] | None:
     """
@@ -211,12 +257,12 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     if "a0" in eos:
         a0_mlip = eos["a0"]
         a0_error = abs(a0_mlip - DFT_REFERENCE["a0"]) / DFT_REFERENCE["a0"] * 100
-        metrics["a0 error (%)"] = a0_error
+        metrics["a0 error"] = a0_error
 
     if "B0" in eos:
         B0_mlip = eos["B0"]  # noqa: N806
         B0_error = abs(B0_mlip - DFT_REFERENCE["B0"]) / DFT_REFERENCE["B0"] * 100  # noqa: N806
-        metrics["B0 error (%)"] = B0_error
+        metrics["B0 error"] = B0_error
 
     # ==========================================================================
     # Bain path metrics
@@ -225,7 +271,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     if "delta_E_meV" in bain:
         E_bcc_fcc_mlip = bain["delta_E_meV"]  # noqa: N806
         E_bcc_fcc_error = abs(E_bcc_fcc_mlip - DFT_REFERENCE["E_bcc_fcc"])  # noqa: N806
-        metrics["BCC-FCC ΔE error (meV)"] = E_bcc_fcc_error
+        metrics["BCC-FCC ΔE error"] = E_bcc_fcc_error
 
     # ==========================================================================
     # Elastic constants metrics
@@ -235,17 +281,17 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
         C11_error = (  # noqa: N806
             abs(elastic["C11"] - DFT_REFERENCE["C11"]) / DFT_REFERENCE["C11"] * 100
         )
-        metrics["C11 error (%)"] = C11_error
+        metrics["C11 error"] = C11_error
     if "C12" in elastic:
         C12_error = (  # noqa: N806
             abs(elastic["C12"] - DFT_REFERENCE["C12"]) / DFT_REFERENCE["C12"] * 100
         )
-        metrics["C12 error (%)"] = C12_error
+        metrics["C12 error"] = C12_error
     if "C44" in elastic:
         C44_error = (  # noqa: N806
             abs(elastic["C44"] - DFT_REFERENCE["C44"]) / DFT_REFERENCE["C44"] * 100
         )
-        metrics["C44 error (%)"] = C44_error
+        metrics["C44 error"] = C44_error
 
     # ==========================================================================
     # Vacancy metrics
@@ -256,7 +302,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
         E_vac_error = (  # noqa: N806
             abs(E_vac_mlip - DFT_REFERENCE["E_vac"]) / DFT_REFERENCE["E_vac"] * 100
         )
-        metrics["E_vac error (%)"] = E_vac_error
+        metrics["E_vac error"] = E_vac_error
 
     # ==========================================================================
     # Surface energy metrics
@@ -273,7 +319,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
             surface_errors.append(error)
 
     if surface_errors:
-        metrics["Surface MAE (J/m²)"] = np.mean(surface_errors)
+        metrics["Surface MAE"] = np.mean(surface_errors)
 
     # ==========================================================================
     # Stacking fault metrics
@@ -286,7 +332,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
             / DFT_REFERENCE["gamma_us_110"]
             * 100
         )
-        metrics["Max SFE 110 error (%)"] = max_sfe_110_error
+        metrics["Max SFE 110 error"] = max_sfe_110_error
 
     sfe_112 = results.get("sfe_112", {})
     if "max_sfe" in sfe_112:
@@ -296,7 +342,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
             / DFT_REFERENCE["gamma_us_112"]
             * 100
         )
-        metrics["Max SFE 112 error (%)"] = max_sfe_112_error
+        metrics["Max SFE 112 error"] = max_sfe_112_error
 
     # ==========================================================================
     # Traction-separation metrics
@@ -308,7 +354,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
             / DFT_REFERENCE["max_traction_100"]
             * 100
         )
-        metrics["Max traction (100) error (%)"] = traction_100_error
+        metrics["Max traction (100) error"] = traction_100_error
 
     ts_110 = results.get("ts_110", {})
     if "max_traction" in ts_110:
@@ -317,7 +363,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
             / DFT_REFERENCE["max_traction_110"]
             * 100
         )
-        metrics["Max traction (110) error (%)"] = traction_110_error
+        metrics["Max traction (110) error"] = traction_110_error
 
     return metrics
 
@@ -439,6 +485,101 @@ def iron_ts_110_curves() -> dict[str, pd.DataFrame]:
     return _load_curves_for_all_models("ts_110")
 
 
+def create_curve_figure(
+    df: pd.DataFrame, curve_type: str, model_name: str
+) -> go.Figure:
+    """
+    Create a Plotly figure for the given curve type.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the curve data.
+    curve_type : str
+        Type of curve to plot (e.g., 'eos', 'bain', 'sfe_110').
+    model_name : str
+        Name of the model for the title.
+
+    Returns
+    -------
+    go.Figure
+        Plotly figure object.
+    """
+    config = CURVE_CONFIG[curve_type]
+
+    fig = go.Figure()
+
+    model_x_max = df[config["x"]].max()
+
+    dft_data = DFT_CURVES.get(curve_type)
+    if dft_data is not None:
+        x_dft, y_dft = dft_data[0].copy(), dft_data[1].copy()
+
+        if curve_type.startswith("sfe_"):
+            mask = x_dft <= model_x_max
+            x_dft = np.array(x_dft)[mask]
+            y_dft = np.array(y_dft)[mask]
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_dft,
+                y=y_dft,
+                mode="lines",
+                name="DFT Reference",
+                line={"width": 2, "dash": "dash", "color": "gray"},
+            )
+        )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df[config["x"]],
+            y=df[config["y"]],
+            mode="lines+markers",
+            name=model_name,
+            line={"width": 2},
+            marker={"size": 6},
+        )
+    )
+
+    if curve_type == "bain":
+        fig.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="BCC")
+        fig.add_vline(
+            x=1.414, line_dash="dash", line_color="gray", annotation_text="FCC"
+        )
+
+    fig.update_layout(
+        title=f"{config['title']} - {model_name}",
+        xaxis_title=config["x_label"],
+        yaxis_title=config["y_label"],
+        template="plotly_white",
+        showlegend=True,
+        height=500,
+    )
+
+    return fig
+
+
+def save_figures_for_model(model_name: str) -> None:
+    """
+    Pre-create and save all curve figures for a model as JSON.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the model.
+    """
+    figures_dir = OUT_PATH / "figures"
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    for curve_type, filename in CURVE_FILES.items():
+        df = load_curve(model_name, curve_type)
+        if df.empty:
+            continue
+        fig = create_curve_figure(df, curve_type, model_name)
+        fig_path = figures_dir / f"{model_name}_{curve_type}.json"
+        fig_path.write_text(json.dumps(fig.to_plotly_json()))
+
+
 def collect_metrics() -> pd.DataFrame:
     """
     Gather metrics for all models.
@@ -458,6 +599,7 @@ def collect_metrics() -> pd.DataFrame:
         model_metrics = compute_metrics(results)
         row = {"Model": model_name} | model_metrics
         metrics_rows.append(row)
+        save_figures_for_model(model_name)
 
     columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
 
@@ -528,7 +670,7 @@ def metrics(
         values = [
             value if pd.notna(value) else None for value in metrics_df[column].tolist()
         ]
-        metrics_dict[column] = dict(zip(metrics_df["Model"], values, strict=False))
+        metrics_dict[column] = dict(zip(metrics_df["Model"], values, strict=True))
     return metrics_dict
 
 

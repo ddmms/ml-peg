@@ -6,21 +6,22 @@ This module provides structure creation and EOS fitting functions for iron bench
 
 from __future__ import annotations
 
-from typing import Any
-
 from ase import Atoms
 from ase.build import bulk
+from ase.calculators.calculator import Calculator
+from ase.eos import EquationOfState
+from ase.units import GPa, J, m
 import numpy as np
-from scipy.optimize import leastsq, minimize_scalar
+from scipy.optimize import minimize_scalar
 
 # =============================================================================
 # Unit Conversion Constants
 # =============================================================================
 
-EV_TO_J = 1.60218e-19
-ANGSTROM_TO_M = 1.0e-10
-EV_PER_A2_TO_J_PER_M2 = 16.0217733
-EV_PER_A3_TO_GPA = 160.21765
+EV_TO_J = 1 / J
+ANGSTROM_TO_M = 1 / m
+EV_PER_A2_TO_J_PER_M2 = 1 / (J / m**2)
+EV_PER_A3_TO_GPA = 1 / GPa
 
 # =============================================================================
 # Crystallographic Rotation Matrices
@@ -39,67 +40,19 @@ ROTATION_111_FRAME = np.array(
 
 
 # =============================================================================
-# EOS Fitting Functions
+# EOS Fitting
 # =============================================================================
-
-
-def eos_birch_murnaghan(
-    params: tuple[float, float, float, float], vol: np.ndarray
-) -> np.ndarray:
-    """
-    Birch-Murnaghan equation of state (3rd order).
-
-    Parameters
-    ----------
-    params
-        (E0, B0, Bp, V0).
-    vol
-        Volume array.
-
-    Returns
-    -------
-    np.ndarray
-        Energy array.
-    """
-    E0, B0, Bp, V0 = params  # noqa: N806
-    eta = (vol / V0) ** (1.0 / 3.0)
-    return E0 + 9.0 * B0 * V0 / 16.0 * (eta**2 - 1.0) ** 2 * (
-        6.0 + Bp * (eta**2 - 1.0) - 4.0 * eta**2
-    )
-
-
-def get_eos_initial_guess(
-    vol: np.ndarray, ene: np.ndarray
-) -> tuple[float, float, float, float]:
-    """
-    Get initial guess for EOS parameters using quadratic fit.
-
-    Parameters
-    ----------
-    vol
-        Volume array.
-    ene
-        Energy array.
-
-    Returns
-    -------
-    tuple
-        (E0, B0, Bp, V0) initial guess.
-    """
-    a, b, c = np.polyfit(vol, ene, 2)
-    V0 = -b / (2 * a)  # noqa: N806
-    E0 = a * V0**2 + b * V0 + c  # noqa: N806
-    B0 = 2 * a * V0  # noqa: N806
-    Bp = 4.0  # noqa: N806
-    return E0, B0, Bp, V0
 
 
 def fit_eos(
     vol: np.ndarray,
     ene: np.ndarray,
-) -> dict[str, Any]:
+) -> dict[str, float]:
     """
-    Fit Birch-Murnaghan equation of state to energy-volume data.
+    Fit 3rd-order Birch-Murnaghan EOS to energy-volume data.
+
+    Uses ASE's ``EquationOfState`` for the fit and converts the resulting
+    parameters into convenient units.
 
     Parameters
     ----------
@@ -118,35 +71,11 @@ def fit_eos(
         - V0: Equilibrium volume per atom (Angstrom^3)
         - a0: Equilibrium lattice parameter (Angstrom) - for BCC
     """
-    x0 = get_eos_initial_guess(vol, ene)
+    eos = EquationOfState(vol, ene, eos="birchmurnaghan")
+    V0, E0, B0_raw = eos.fit()  # noqa: N806
 
-    def residual(params, y, x):
-        """
-        Compute residual for EOS fitting.
-
-        Parameters
-        ----------
-        params : tuple
-            EOS parameters (E0, B0, Bp, V0).
-        y : np.ndarray
-            Observed energies.
-        x : np.ndarray
-            Volumes.
-
-        Returns
-        -------
-        np.ndarray
-            Residual array (observed - predicted).
-        """
-        return y - eos_birch_murnaghan(params, x)
-
-    params, _ = leastsq(residual, x0, args=(ene, vol))
-    E0, B0, Bp, V0 = params  # noqa: N806
-
-    # Convert bulk modulus to GPa (from eV/Angstrom^3)
-    B0_GPa = B0 * EV_PER_A3_TO_GPA  # noqa: N806
-
-    # Calculate lattice parameter for BCC (2 atoms per unit cell)
+    B0_GPa = B0_raw * EV_PER_A3_TO_GPA  # noqa: N806
+    Bp = eos.eos_parameters[2]  # noqa: N806
     a0 = (V0 * 2) ** (1.0 / 3.0)
 
     return {"E0": E0, "B0": B0_GPa, "Bp": Bp, "V0": V0, "a0": a0}
@@ -159,7 +88,7 @@ def fit_eos(
 
 def relax_volume_isotropic(
     atoms: Atoms,
-    calc: Any,
+    calc: Calculator,
     scale_bounds: tuple[float, float] = (0.9, 1.1),
     xtol: float = 1e-8,
 ) -> Atoms:
@@ -178,7 +107,7 @@ def relax_volume_isotropic(
     ----------
     atoms : Atoms
         ASE Atoms object (will be copied, not modified).
-    calc : Any
+    calc : Calculator
         ASE calculator.
     scale_bounds : tuple[float, float], optional
         Bounds for the scale factor search (min, max). Default: (0.9, 1.1).

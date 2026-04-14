@@ -16,12 +16,14 @@ This benchmark is computationally expensive and marked with @pytest.mark.slow.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 from ase.build import bulk
 from ase.constraints import FixedLine
 from ase.filters import ExpCellFilter
+from ase.io import write
 from ase.optimize import BFGS
 import numpy as np
 import pandas as pd
@@ -45,6 +47,8 @@ from ml_peg.calcs.physicality.iron_properties.iron_utils import (
 )
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
+
+logger = logging.getLogger(__name__)
 
 MODELS = load_models(current_models)
 
@@ -84,6 +88,12 @@ TS_MAX_SEPARATION = 5.0  # Angstroms
 TS_STEP_SIZE = 0.05  # Angstroms
 
 
+def _set_iron_info(atoms: Any) -> None:
+    """Set default charge and spin multiplicity for BCC iron structures."""
+    atoms.info["charge"] = 0
+    atoms.info["spin"] = 1
+
+
 # =============================================================================
 # EOS Calculation
 # =============================================================================
@@ -113,6 +123,7 @@ def run_eos_calculation(calc: Any) -> dict[str, Any]:
 
     for lat in lattice_params:
         atoms = bulk("Fe", "bcc", a=lat, cubic=True)
+        _set_iron_info(atoms)
         atoms.calc = calc
 
         # Relax atomic positions at fixed cell volume
@@ -168,6 +179,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
     """
     # Create supercell
     atoms_ref = create_bcc_supercell(lattice_parameter, ELASTIC_SUPERCELL_SIZE)
+    _set_iron_info(atoms_ref)
     atoms_ref.calc = calc
 
     # Box relaxation
@@ -190,6 +202,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
         # Positive strain with off-diagonal cell adjustment
         atoms_pos = apply_voigt_strain(atoms_ref.copy(), direction, ELASTIC_STRAIN)
+        _set_iron_info(atoms_pos)
         atoms_pos.calc = calc
 
         opt_pos = BFGS(atoms_pos, logfile=None)
@@ -198,6 +211,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
         # Negative strain with off-diagonal cell adjustment
         atoms_neg = apply_voigt_strain(atoms_ref.copy(), direction, -ELASTIC_STRAIN)
+        _set_iron_info(atoms_neg)
         atoms_neg.calc = calc
 
         opt_neg = BFGS(atoms_neg, logfile=None)
@@ -270,6 +284,7 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
     for ratio in ca_ratios_target:
         # Create tetragonally distorted cell at target c/a ratio
         atoms = create_bain_cell(lattice_parameter, ratio)
+        _set_iron_info(atoms)
         atoms.calc = calc
 
         # Step 1: Isotropic volume relaxation (maintains c/a ratio)
@@ -282,7 +297,9 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
         try:
             opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         except Exception:
-            pass
+            logger.warning(
+                "BFGS relaxation failed for Bain path c/a=%.3f", ratio, exc_info=True
+            )
 
         energy = atoms_relaxed.get_potential_energy()
         cell = atoms_relaxed.get_cell()
@@ -338,6 +355,7 @@ def run_vacancy_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
         Dictionary with vacancy results including E_vac, E_coh, E_perfect, E_defect.
     """
     atoms_perfect = create_bcc_supercell(lattice_parameter, VACANCY_SUPERCELL_SIZE)
+    _set_iron_info(atoms_perfect)
     atoms_perfect.calc = calc
 
     n_atoms = len(atoms_perfect)
@@ -346,6 +364,7 @@ def run_vacancy_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
     atoms_defect = atoms_perfect.copy()
     del atoms_defect[0]
+    _set_iron_info(atoms_defect)
     atoms_defect.calc = calc
 
     opt = BFGS(atoms_defect, logfile=None)
@@ -428,6 +447,7 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
 
         # Bulk reference
         atoms_bulk = create_fn(lattice_parameter, **bulk_kwargs)
+        _set_iron_info(atoms_bulk)
         atoms_bulk.calc = calc
         e_bulk = atoms_bulk.get_potential_energy()
         cell = atoms_bulk.get_cell()
@@ -435,6 +455,7 @@ def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, A
 
         # Slab with vacuum
         atoms_slab = create_fn(lattice_parameter, **slab_kwargs)
+        _set_iron_info(atoms_slab)
         atoms_slab.calc = calc
         opt = BFGS(atoms_slab, logfile=None)
         opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
@@ -478,6 +499,7 @@ def run_sfe_calculation(
     """
     config = SFE_CONFIG[sfe_type]
     atoms = config["create_fn"](lattice_parameter)
+    _set_iron_info(atoms)
     atoms.calc = calc
 
     # Calculate Burgers vector magnitude: b = a * sqrt(3) / 2
@@ -515,7 +537,12 @@ def run_sfe_calculation(
         try:
             opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
         except Exception:
-            pass
+            logger.warning(
+                "BFGS relaxation failed for SFE %s step %d",
+                sfe_type,
+                step,
+                exc_info=True,
+            )
 
         atoms.set_constraint()
         energy = atoms.get_potential_energy()
@@ -577,6 +604,7 @@ def run_ts_calculation(
 
         # Create fresh structure for each separation
         atoms = create_fn(lattice_parameter)
+        _set_iron_info(atoms)
         atoms.calc = calc
 
         # Get cell dimensions
@@ -773,6 +801,31 @@ def run_iron_properties(model_name: str, model: Any) -> None:
             f"[{model_name}] Max traction ({direction}): "
             f"{ts_result['max_traction']:.2f} GPa"
         )
+
+    # Save structures for visualization
+    structures_dir = write_dir / "structures"
+    structures_dir.mkdir(parents=True, exist_ok=True)
+
+    eos_atoms = bulk("Fe", "bcc", a=a0, cubic=True)
+    _set_iron_info(eos_atoms)
+    eos_atoms.info["description"] = f"BCC Fe equilibrium (a0={a0:.4f})"
+    write(structures_dir / "equilibrium_bcc.extxyz", eos_atoms)
+
+    vac_atoms = create_bcc_supercell(a0, VACANCY_SUPERCELL_SIZE)
+    del vac_atoms[0]
+    _set_iron_info(vac_atoms)
+    vac_atoms.info["description"] = "BCC Fe vacancy supercell"
+    write(structures_dir / "vacancy.extxyz", vac_atoms)
+
+    for name, cfg in SURFACE_CONFIG.items():
+        create_fn = cfg["create_fn"]
+        if "size" in cfg:
+            slab = create_fn(a0, size=cfg["size"], vacuum=cfg["vacuum"])
+        else:
+            slab = create_fn(a0, layers=cfg["layers"], vacuum=cfg["vacuum"])
+        _set_iron_info(slab)
+        slab.info["description"] = f"BCC Fe ({name}) surface slab"
+        write(structures_dir / f"surface_{name}.extxyz", slab)
 
     # Save all results as JSON
     (write_dir / "results.json").write_text(json.dumps(results, indent=2, default=str))
