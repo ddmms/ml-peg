@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from importlib import import_module
 import warnings
 
@@ -671,7 +672,7 @@ def build_summary_table(
             column["format"] = sig_fig_format()
 
     style = get_table_style(data)
-    registry_configs = load_model_registry_configs()
+    registry_configs = copy.deepcopy(load_model_registry_configs())
     row_models: list[str] = []
     for row in data:
         mlip = row.get("MLIP")

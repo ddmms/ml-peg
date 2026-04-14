@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+import copy
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -440,7 +441,7 @@ def build_level_of_theory_warnings(
         if not isinstance(config, dict):
             config = {}
         if not config:
-            fallback_cfg = load_model_registry_configs().get(mlip) or {}
+            fallback_cfg = copy.deepcopy(load_model_registry_configs().get(mlip) or {})
             if isinstance(fallback_cfg, dict):
                 config = fallback_cfg
         if model_theory_level is None and isinstance(config, dict):
@@ -891,6 +892,7 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
+@lru_cache(maxsize=1)
 def load_framework_registry() -> dict[str, FrameworkEntry]:
     """
     Load framework badge metadata from ``frameworks.yml``.
@@ -967,7 +969,7 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
         If ``framework_id`` is empty or is not present in ``frameworks.yml``.
     """
     normalized_id = normalize_framework_id(framework_id)
-    registry = load_framework_registry()
+    registry = copy.deepcopy(load_framework_registry())
     try:
         return registry[normalized_id]
     except KeyError as exc:
