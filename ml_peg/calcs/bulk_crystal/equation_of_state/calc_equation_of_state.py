@@ -251,29 +251,14 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
         for phase in phases:
             assert phase in lattices, f"Lattice {phase} not implemented for EOS test."
             lattice = lattices[phase]
-            """'
-            start_time = datetime.now()
-            print(f"Start time for {phase} @ {model_name}: {start_time}")
-            """
-            lattice_constants, energies = equation_of_state(
+
+            _, energies = equation_of_state(
                 calc,
                 lattice,
                 volumes_per_atoms,
                 symbol=element,
             )
-            """
-            end_time = datetime.now()
-            duration = end_time - start_time
-            hours, remainder = divmod(duration.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            print(f"End time for {phase} @ {model_name}: {end_time}")
-            print(
-                f"Duration for {phase} @ {model_name}: "
-                f"{hours} hours {minutes} minutes {seconds} seconds"
-            )
-            print(duration)
-            """
-            # results[f"{phase}_a"] = lattice_constants
+
             results[f"{phase}_E"] = energies
 
         write_dir = OUT_PATH / model_name
