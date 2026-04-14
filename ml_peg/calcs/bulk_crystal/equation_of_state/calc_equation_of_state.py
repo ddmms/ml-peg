@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from ase.filters import UnitCellFilter
-from ase.lattice.cubic import BodyCenteredCubic, FaceCenteredCubic, SimpleCubicFactory
+from ase.lattice.cubic import (
+    BodyCenteredCubic,
+    FaceCenteredCubic,
+    FaceCenteredCubicFactory,
+    SimpleCubicFactory,
+)
 from ase.lattice.hexagonal import HexagonalClosedPacked, HexagonalFactory
 from ase.optimize import LBFGS
 import numpy as np
@@ -38,7 +43,27 @@ class A15Factory(SimpleCubicFactory):
     ]
 
 
-A15 = A15Factory()
+class C15Factory(FaceCenteredCubicFactory):
+    """
+    A factory for creating C15 (MgCu2-type) Laves lattices.
+
+    Contains 2 atoms on 8a sites and 4 atoms on 16d sites in the primitive basis.
+    """
+
+    xtal_name = "C15"
+
+    # 6-atom basis (2 'A' sites and 4 'B' sites)
+    # When multiplied by 4 FCC translations, you get 24 atoms total.
+    bravais_basis = [
+        # A sites (8a)
+        [0.000, 0.000, 0.000],
+        [0.250, 0.250, 0.250],
+        # B sites (16d)
+        [0.625, 0.625, 0.625],
+        [0.625, 0.875, 0.875],
+        [0.875, 0.625, 0.875],
+        [0.875, 0.875, 0.625],
+    ]
 
 
 class OmegaFactory(HexagonalFactory):
@@ -52,13 +77,16 @@ class OmegaFactory(HexagonalFactory):
     ]
 
 
+A15 = A15Factory()
+C15 = C15Factory()
 Omega = OmegaFactory()
 
 lattices = {
-    "BCC": BodyCenteredCubic,
+    "BCC": BodyCenteredCubic,  # cubic
     "FCC": FaceCenteredCubic,
     "A15": A15,
-    "HCP": HexagonalClosedPacked,
+    "C15": C15,
+    "HCP": HexagonalClosedPacked,  # hexagonal
     "OMEGA": Omega,
 }
 
