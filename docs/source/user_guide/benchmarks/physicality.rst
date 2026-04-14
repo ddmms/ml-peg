@@ -161,7 +161,7 @@ Estimate band gap based on dipole, count structures where band gap disappears.
 Computational Cost
 ------------------
 
-High: Requires around 500 ps of MD of 40 A slab to get converged distribution.
+High: Requires around 500 ps of MD of 40 A slab to get converged distribution, around 1 day on one GPU.
 
 
 Data availability
