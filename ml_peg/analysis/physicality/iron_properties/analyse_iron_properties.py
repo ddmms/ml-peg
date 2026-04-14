@@ -571,7 +571,7 @@ def save_figures_for_model(model_name: str) -> None:
     figures_dir = OUT_PATH / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    for curve_type, filename in CURVE_FILES.items():
+    for curve_type in CURVE_FILES:
         df = load_curve(model_name, curve_type)
         if df.empty:
             continue
