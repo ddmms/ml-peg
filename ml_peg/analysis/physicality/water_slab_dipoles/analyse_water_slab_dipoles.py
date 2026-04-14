@@ -53,7 +53,7 @@ def get_dipoles() -> dict[str, np.ndarray]:
             if (model_dir / "dipoles.npy").is_file():
                 results[model_name] = np.load(model_dir / "dipoles.npy")
             else:
-                atoms = read(model_dir / "slab.xyz", ":")
+                atoms = read(model_dir / "slab-traj.extxyz", ":")
                 dipoles = np.zeros(len(atoms))
                 for i, struc in enumerate(atoms):
                     o_index = [atom.index for atom in struc if atom.number == 8]
