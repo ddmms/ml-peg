@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase.filters import UnitCellFilter
+from ase.filters import ExpCellFilter
 from ase.lattice.cubic import (
     BodyCenteredCubic,
     FaceCenteredCubic,
@@ -133,7 +133,7 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
         try:
             unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
             unit_cell.calc = calc
-            uc_filter = UnitCellFilter(unit_cell, constant_volume=True)
+            uc_filter = ExpCellFilter(unit_cell, constant_volume=True)
             opt = LBFGS(uc_filter)
             converged = opt.run(fmax=1e-3, steps=25)
             a, c = unit_cell.cell[0, 0], unit_cell.cell[2, 2]
