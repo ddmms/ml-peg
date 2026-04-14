@@ -186,7 +186,8 @@ def get_app() -> EquationOfStateApp:
         name=BENCHMARK_NAME,
         description=(
             "Equation of state curves and phase stability for BCC metals "
-            "(W, Mo, Nb), benchmarked against PBE reference data."
+            "(W, Nb, Mo, Ta, Ti, Zr, Cr, Fe),"
+            " benchmarked against PBE reference data."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "eos_metrics_table.json",
