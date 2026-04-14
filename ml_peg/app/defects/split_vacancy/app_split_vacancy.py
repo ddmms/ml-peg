@@ -153,12 +153,12 @@ class SplitVacancyApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "MAE (PBEsol)": scatter_pbesol,
-                "Spearman's (PBEsol)": scatter_pbesol,
-                "Max Dist (PBEsol)": max_dist_violin_pbesol,
-                "MAE (PBE)": scatter_pbe,
-                "Spearman's (PBE)": scatter_pbe,
-                "Max Dist (PBE)": max_dist_violin_pbe,
+                "MAE (Oxides)": scatter_pbesol,
+                "Spearman's (Oxides)": scatter_pbesol,
+                "Max Dist (Oxides)": max_dist_violin_pbesol,
+                "MAE (Nitrides)": scatter_pbe,
+                "Spearman's (Nitrides)": scatter_pbe,
+                "Max Dist (Nitrides)": max_dist_violin_pbe,
             },
         )
 

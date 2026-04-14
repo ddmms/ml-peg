@@ -692,16 +692,16 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "MAE (PBEsol)": formation_energy_pbesol_mae,
-        "Spearman's (PBEsol)": spearmans_coefficient_pbesol_mean,
+        "MAE (Oxides)": formation_energy_pbesol_mae,
+        "Spearman's (Oxides)": spearmans_coefficient_pbesol_mean,
         # "RMSD (PBEsol)": rmsd_pbesol_mean,
-        "Match Rate (PBEsol)": match_pbesol_rate,
-        "Max Dist (PBEsol)": max_dist_pbesol_mean,
-        "MAE (PBE)": formation_energy_pbe_mae,
-        "Spearman's (PBE)": spearmans_coefficient_pbe_mean,
+        "Match Rate (Oxides)": match_pbesol_rate,
+        "Max Dist (Oxides)": max_dist_pbesol_mean,
+        "MAE (Nitrides)": formation_energy_pbe_mae,
+        "Spearman's (Nitrides)": spearmans_coefficient_pbe_mean,
         # "RMSD (PBE)": rmsd_pbe_mean,
-        "Match Rate (PBE)": match_pbe_rate,
-        "Max Dist (PBE)": max_dist_pbe_mean,
+        "Match Rate (Nitrides)": match_pbe_rate,
+        "Max Dist (Nitrides)": max_dist_pbe_mean,
     }
 
 
