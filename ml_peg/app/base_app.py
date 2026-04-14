@@ -10,6 +10,7 @@ from dash.html import Div
 
 from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
+from ml_peg.app.utils.utils import normalize_framework_id
 
 
 class BaseApp(ABC):
@@ -28,6 +29,9 @@ class BaseApp(ABC):
         List of other Dash components to add to app.
     docs_url
         URL for online documentation. Default is None.
+    framework_id
+        Framework identifier used for benchmark attribution tags. Default is
+        ``"ml_peg"``.
     """
 
     def __init__(
@@ -37,6 +41,7 @@ class BaseApp(ABC):
         table_path: Path,
         extra_components: list[Component],
         docs_url: str | None = None,
+        framework_id: str = "ml_peg",
     ):
         """
         Initiaise class.
@@ -53,12 +58,15 @@ class BaseApp(ABC):
             List of other Dash components to add to app.
         docs_url
             URL to online documentation. Default is None.
+        framework_id
+            Framework identifier used for benchmark attribution tags.
         """
         self.name = name
         self.description = description
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
+        self.framework_id = normalize_framework_id(framework_id)
         self.table_id = f"{self.name}-table"
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
@@ -80,9 +88,9 @@ class BaseApp(ABC):
             name=self.name,
             description=self.description,
             docs_url=self.docs_url,
+            framework_id=self.framework_id,
             table=self.table,
             thresholds=getattr(self.table, "thresholds", None),
-            weights=getattr(self.table, "weights", None),
             extra_components=self.extra_components,
         )
 

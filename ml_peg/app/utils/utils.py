@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 import json
-from typing import Any, TypedDict
+from pathlib import Path
+from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
 import yaml
@@ -22,6 +23,16 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+class FrameworkEntry(TypedDict):
+    """Style and link metadata for benchmark framework attribution badges."""
+
+    label: str
+    color: str
+    text_color: str
+    url: NotRequired[str]
+    logo: NotRequired[str]
 
 
 def calculate_column_widths(
@@ -187,6 +198,40 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def filter_rows_by_models(
+    rows: list[dict] | None,
+    selected_models: Sequence[str] | None,
+) -> list[dict]:
+    """
+    Filter table rows to only those whose model identifier is selected.
+
+    Parameters
+    ----------
+    rows
+        Table rows containing an ``MLIP`` display name and optionally an ``id``
+        canonical model key.
+    selected_models
+        Model identifiers to keep. ``None`` returns the original rows unchanged.
+
+    Returns
+    -------
+    list[dict]
+        Filtered rows preserving original order.
+    """
+    if not rows:
+        return []
+    if selected_models is None:
+        return rows
+    selected = {m for m in selected_models if m}
+    if not selected:
+        return []
+    return [
+        row
+        for row in rows
+        if (row.get("MLIP") in selected) or (row.get("id") in selected)
+    ]
 
 
 def get_scores(
@@ -820,3 +865,114 @@ def load_model_registry_configs() -> dict[str, Any]:
     except FileNotFoundError:
         pass
     return {}
+
+
+def normalize_framework_id(framework_id: str) -> str:
+    """
+    Normalize framework identifiers.
+
+    Parameters
+    ----------
+    framework_id
+        Raw framework identifier from app metadata.
+
+    Returns
+    -------
+    str
+        Normalized framework identifier.
+
+    Raises
+    ------
+    ValueError
+        If ``framework_id`` is not a non-empty string.
+    """
+    if not isinstance(framework_id, str) or not (cleaned := framework_id.strip()):
+        raise ValueError("Framework identifiers must be non-empty strings.")
+    return cleaned
+
+
+def load_framework_registry() -> dict[str, FrameworkEntry]:
+    """
+    Load framework badge metadata from ``frameworks.yml``.
+
+    Returns
+    -------
+    dict[str, FrameworkEntry]
+        Mapping of framework IDs to display configuration.
+    """
+    registry: dict[str, FrameworkEntry] = {}
+    config_path = Path(__file__).with_name("frameworks.yml")
+    with config_path.open(encoding="utf8") as handle:
+        loaded = yaml.safe_load(handle)
+
+    if not isinstance(loaded, dict):
+        raise ValueError("frameworks.yml must map framework IDs to config entries.")
+
+    for framework_id, raw_entry in loaded.items():
+        normalized_id = normalize_framework_id(framework_id)
+        if not isinstance(raw_entry, dict):
+            raise ValueError(
+                f"frameworks.yml entry for '{normalized_id}' must be a dictionary."
+            )
+        try:
+            label = raw_entry["label"].strip()
+            color = raw_entry["color"].strip()
+            text_color = raw_entry["text_color"].strip()
+        except (KeyError, AttributeError) as exc:
+            raise ValueError(
+                f"frameworks.yml entry for '{normalized_id}' must include string "
+                "'label', 'color', and 'text_color' fields."
+            ) from exc
+        if not label or not color or not text_color:
+            raise ValueError(
+                f"frameworks.yml entry for '{normalized_id}' contains empty "
+                "'label', 'color', or 'text_color' values."
+            )
+
+        registry_entry: FrameworkEntry = {
+            "label": label,
+            "color": color,
+            "text_color": text_color,
+        }
+
+        url = raw_entry.get("url")
+        if isinstance(url, str) and url.strip():
+            registry_entry["url"] = url.strip()
+        logo = raw_entry.get("logo")
+        if isinstance(logo, str) and logo.strip():
+            registry_entry["logo"] = logo.strip()
+
+        registry[normalized_id] = registry_entry
+
+    return registry
+
+
+def get_framework_config(framework_id: str) -> FrameworkEntry:
+    """
+    Resolve framework metadata for badge and filter rendering.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier from benchmark app metadata.
+
+    Returns
+    -------
+    FrameworkEntry
+        Style, label, and optional URL metadata for the framework.
+
+    Raises
+    ------
+    ValueError
+        If ``framework_id`` is empty or is not present in ``frameworks.yml``.
+    """
+    normalized_id = normalize_framework_id(framework_id)
+    registry = load_framework_registry()
+    try:
+        return registry[normalized_id]
+    except KeyError as exc:
+        known_ids = ", ".join(sorted(registry))
+        raise ValueError(
+            f"Unknown framework identifier '{normalized_id}'. "
+            f"Known framework IDs: {known_ids}."
+        ) from exc

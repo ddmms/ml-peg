@@ -46,6 +46,8 @@ def make_slab(
     slab = slab.repeat((size_xy[0], size_xy[1], 1))
     slab.center(axis=2, vacuum=vacuum_z)
     slab.pbc = True
+    slab.info["charge"] = 0
+    slab.info["spin"] = 1
     return slab
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Callable
 import functools
 import json
@@ -15,7 +14,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_table_scores
+from ml_peg.analysis.utils.utils import (
+    DENSITY_GRID_SIZE,
+    DENSITY_MAX_POINTS_PER_CELL,
+    DENSITY_SAMPLE_SEED,
+    calc_table_scores,
+    sample_density_grid,
+)
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -541,9 +546,9 @@ def plot_density_scatter(
     y_label: str | None = None,
     filename: str = "density_scatter.json",
     colorbar_title: str = "Density",
-    grid_size: int = 80,
-    max_points_per_cell: int = 5,
-    seed: int = 0,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
     hover_metadata: dict[str, str] | None = None,
     annotation_metadata: dict[str, str] | None = None,
 ) -> Callable:
@@ -621,70 +626,6 @@ def plot_density_scatter(
             dict
                 Results dictionary.
             """
-
-            def _downsample(
-                ref_vals: np.ndarray, pred_vals: np.ndarray
-            ) -> tuple[list[float], list[float], list[int]]:
-                """
-                Downsample data points while keeping dense regions representative.
-
-                Parameters
-                ----------
-                ref_vals
-                    Reference (x-axis) values for all systems.
-                pred_vals
-                    Predicted (y-axis) values for all systems.
-
-                Returns
-                -------
-                tuple[list[float], list[float], list[int]]
-                    Downsampled reference values, predicted values, and density counts
-                    corresponding to each retained point.
-                """
-                if ref_vals.size == 0:
-                    return [], [], []
-
-                delta_x = ref_vals.max() - ref_vals.min()
-                delta_y = pred_vals.max() - pred_vals.min()
-                eps = 1e-9
-
-                norm_x = np.clip(
-                    # Normalise to [0, 1). Clamp to avoid hitting the upper bound so
-                    # bin indices always live in [0, grid_size - 1].
-                    (ref_vals - ref_vals.min()) / max(delta_x, eps),
-                    0.0,
-                    0.999999,
-                )
-                norm_y = np.clip(
-                    (pred_vals - pred_vals.min()) / max(delta_y, eps),
-                    0.0,
-                    0.999999,
-                )
-                bins_x = (norm_x * grid_size).astype(int)
-                bins_y = (norm_y * grid_size).astype(int)
-                cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
-                for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
-                    cell_points[(int(cx), int(cy))].append(idx)
-
-                rng = np.random.default_rng(seed)
-                sampled_x: list[float] = []
-                sampled_y: list[float] = []
-                sampled_density: list[int] = []
-                for indices in cell_points.values():
-                    if len(indices) > max_points_per_cell:
-                        chosen = rng.choice(
-                            indices, size=max_points_per_cell, replace=False
-                        )
-                    else:
-                        chosen = indices
-                    density = len(indices)
-                    for idx in chosen:
-                        sampled_x.append(float(ref_vals[idx]))
-                        sampled_y.append(float(pred_vals[idx]))
-                        sampled_density.append(density)
-
-                return sampled_x, sampled_y, sampled_density
-
             results = func(*args, **kwargs)
             if not isinstance(results, dict):
                 raise TypeError(
@@ -724,7 +665,16 @@ def plot_density_scatter(
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
                 else:
-                    sampled = _downsample(ref_vals, pred_vals)
+                    sampled_indices, sampled_density, _ = sample_density_grid(
+                        ref_vals,
+                        pred_vals,
+                        grid_size=grid_size,
+                        max_points_per_cell=max_points_per_cell,
+                        seed=seed,
+                    )
+                    sampled_x = [float(ref_vals[idx]) for idx in sampled_indices]
+                    sampled_y = [float(pred_vals[idx]) for idx in sampled_indices]
+                    sampled = (sampled_x, sampled_y, sampled_density)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
 
@@ -1584,7 +1534,7 @@ def build_table(
             #     metric_2: {mlip_1: value_3, mlip_2: value_4},
             # }
 
-            metrics_columns = ("MLIP",) + tuple(results)
+            metrics_columns = ("MLIP", "Score") + tuple(results)
 
             # Get all models (including those without results for this benchmark)
             mlips = tuple(get_model_names())
@@ -1628,21 +1578,20 @@ def build_table(
             else:
                 tooltip_header = summary_tooltips
 
+            metric_weights = weights if weights else {}
+            for column in results:
+                metric_weights.setdefault(column, 1.0)
+
             # Calculate scores, including any normalisation
             if normalize:
                 metrics_data = calc_table_scores(
                     metrics_data=metrics_data,
                     thresholds=thresholds,
                     normalizer=normalizer,
+                    weights=metric_weights,
                 )
             else:
-                metrics_data = calc_table_scores(metrics_data)
-
-            metrics_columns += ("Score",)
-
-            metric_weights = weights if weights else {}
-            for column in results:
-                metric_weights.setdefault(column, 1)
+                metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
 
             table = dash_table.DataTable(
                 metrics_data,

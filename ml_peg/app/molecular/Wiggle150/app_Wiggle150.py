@@ -40,7 +40,7 @@ class Wiggle150App(BaseApp):
         )
 
         structs = [
-            f"assets/molecular/{BENCHMARK_NAME}/{MODELS[0]}/{path.name}"
+            f"/assets/molecular/{BENCHMARK_NAME}/{MODELS[0]}/{path.name}"
             for path in structure_files
         ]
 
