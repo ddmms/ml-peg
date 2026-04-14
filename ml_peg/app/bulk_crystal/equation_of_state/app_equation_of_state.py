@@ -29,9 +29,9 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "equation_of_state" / "outputs"
 INPUT_PATH = Path(__file__).parents[4] / "inputs" / "bulk_crystal" / "equation_of_state"
-_PT_TYPE = "eos-periodic-table"
-_EOS_CURVE_ID = f"{BENCHMARK_NAME}-eos-curve"
-_METRICS = [
+PT_TYPE = "eos-periodic-table"
+EOS_CURVE_ID = f"{BENCHMARK_NAME}-eos-curve"
+METRICS = [
     ("\u0394", "delta_periodic_table"),
     ("Phase energy", "phase_energy_periodic_table"),
     ("Phase stability", "phase_stability_periodic_table"),
@@ -107,13 +107,13 @@ class EquationOfStateApp(BaseApp):
         cell_to_plot = {}
         for model in MODELS:
             plots = {}
-            for column_id, file_suffix in _METRICS:
+            for column_id, file_suffix in METRICS:
                 path = DATA_PATH / model / f"{file_suffix}.json"
                 if not path.exists():
                     continue
                 plots[column_id] = Graph(
                     id={
-                        "type": _PT_TYPE,
+                        "type": PT_TYPE,
                         "model": model,
                         "metric": file_suffix,
                     },
@@ -129,9 +129,9 @@ class EquationOfStateApp(BaseApp):
         )
 
         @callback(
-            Output(_EOS_CURVE_ID, "children"),
+            Output(EOS_CURVE_ID, "children"),
             Input(
-                {"type": _PT_TYPE, "model": ALL, "metric": ALL},
+                {"type": PT_TYPE, "model": ALL, "metric": ALL},
                 "clickData",
             ),
             prevent_initial_call=True,
@@ -192,7 +192,7 @@ def get_app() -> EquationOfStateApp:
         table_path=DATA_PATH / "eos_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            Div(id=_EOS_CURVE_ID),
+            Div(id=EOS_CURVE_ID),
         ],
     )
 
