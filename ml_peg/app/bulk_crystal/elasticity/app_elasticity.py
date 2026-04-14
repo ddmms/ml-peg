@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
 from dash import Dash
+from dash.dcc import Graph
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -26,6 +29,18 @@ class ElasticityApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
+        # Load pre-generated per-model violin figures (may not exist before analysis)
+        violin_files = {
+            "Bulk modulus MAE": DATA_PATH / "figure_bulk_violin.json",
+            "Shear modulus MAE": DATA_PATH / "figure_shear_violin.json",
+            "Elasticity tensor MAE": DATA_PATH / "figure_elastic_tensor_violin.json",
+        }
+        violin_data: dict[str, dict] = {}
+        for col, path in violin_files.items():
+            if path.exists():
+                with open(path) as f:
+                    violin_data[col] = json.load(f)
+
         # Build plots for models with data (read_density_plot_for_model
         # returns None for models without data)
         density_plots = {}
@@ -42,6 +57,17 @@ class ElasticityApp(BaseApp):
                     id=f"{BENCHMARK_NAME}-{model}-shear-figure",
                 ),
             }
+            for col, suffix in [
+                ("Bulk modulus MAE", "bulk-violin"),
+                ("Shear modulus MAE", "shear-violin"),
+                ("Elasticity tensor MAE", "tensor-violin"),
+            ]:
+                fig_dict = violin_data.get(col, {}).get(model)
+                if fig_dict is not None:
+                    plots[col] = Graph(
+                        id=f"{BENCHMARK_NAME}-{model}-{suffix}",
+                        figure=fig_dict,
+                    )
             # Filter out None values (models without data for that metric)
             model_plots = {k: v for k, v in plots.items() if v is not None}
             if model_plots:

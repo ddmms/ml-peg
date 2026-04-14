@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from ase.calculators.calculator import Calculator
+from ase.io import write as ase_write
 from matcalc._base import PropCalc
 from matcalc._elasticity import ElasticityCalc
 from matcalc.benchmark import Benchmark
 from matcalc.units import eVA3ToGPa
 import numpy as np
+from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import pytest
 
@@ -227,7 +229,22 @@ def run_elasticity_benchmark(
         checkpoint_file=checkpoint_file if checkpoint_file else None,
         checkpoint_freq=100,
         delete_checkpoint_on_finish=False,
+        include_full_results=True,
     )
+
+    # Save relaxed structures to extxyz for visualisation
+    atoms_list = []
+    for _, row in results.iterrows():
+        struct = row.get("final_structure")
+        if struct is not None:
+            atoms = AseAtomsAdaptor.get_atoms(struct)
+            atoms.info["mp_id"] = row[benchmark.index_name]
+            atoms_list.append(atoms)
+    if atoms_list:
+        ase_write(out_dir / "relaxed_structures.extxyz", atoms_list)
+
+    # Drop structure column before CSV processing
+    results = results.drop(columns=["final_structure"], errors="ignore")
 
     results["elastic_tensor_DFT"] = results["elastic_tensor_DFT"].apply(
         lambda x: np.array(x["raw"]) if x is not None else None
@@ -259,7 +276,4 @@ def test_elasticity(mlip: tuple[str, Any]) -> None:
         calc=calc,
         model_name=model_name,
         out_dir=OUT_PATH / model_name,
-        n_materials=100,
-        relax_structure=False,
-        relax_deformed_structures=False,
     )

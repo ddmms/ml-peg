@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pandas as pd
 import pytest
 
@@ -19,6 +21,7 @@ from ml_peg.analysis.utils.utils import (
     mae,
 )
 from ml_peg.app import APP_ROOT
+from ml_peg.app.utils.plot_helpers import build_violin_distribution
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -163,6 +166,25 @@ VOIGT_SYMMETRIES = {
 }
 
 
+def _str_to_array(s: str) -> np.ndarray:
+    """
+    Convert a string representation of a 6x6 elastic tensor to a NumPy array.
+
+    Parameters
+    ----------
+    s : str
+        String representation of a 6x6 elastic tensor. The string may
+        contain square brackets and whitespace-separated numbers.
+
+    Returns
+    -------
+    np.ndarray
+        A 6x6 NumPy array containing the numeric values from the input string.
+    """
+    s_clean = s.replace("[", "").replace("]", "")
+    return np.fromstring(s_clean, sep=" ").reshape(6, 6)
+
+
 def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
     """
     Extract symmetry-independent elastic constants.
@@ -184,13 +206,13 @@ def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
         Independent elastic constants for reference and comparison tensors.
     """
 
-    def _allclose(values):
+    def _allclose(values: ArrayLike) -> bool:
         """
         Check whether all values in an array are close to the first element.
 
         Parameters
         ----------
-        values : array_like
+        values : ArrayLike
             Sequence of numeric values to compare. The first value is taken
             as the reference.
 
@@ -199,17 +221,9 @@ def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
         bool
             True if all values are close to the reference value within the
             specified relative tolerance; False otherwise.
-
-        Notes
-        -----
-        If the reference value is zero, all elements must be exactly zero to
-        return True.
         """
-        values = np.asarray(values)
-        ref = values[0]
-        if ref == 0.0:
-            return np.all(values == 0.0)
-        return np.all(np.abs(values - ref) <= rtol * np.abs(ref))
+        arr = np.asarray(values)
+        return bool(np.all(np.isclose(arr, arr[0], rtol=rtol, atol=0.0)))
 
     pass_symm_check = True
     for c in [c_ref, c_arr]:
@@ -308,6 +322,7 @@ def elasticity_stats() -> dict[str, dict[str, Any]]:
                 "ref": filtered[f"{SYMMETRY_COLUMN}_DFT"].tolist(),
                 "pred": filtered[f"{SYMMETRY_COLUMN}_{model_name}"].tolist(),
             },
+            "mp_ids": filtered["mp_id"].tolist(),
             "excluded": excluded,
         }
 
@@ -417,6 +432,113 @@ def elastic_tensor_mae(
 
 
 @pytest.fixture
+def bulk_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
+    """
+    Build and save per-model violin figures of per-material bulk modulus MAE.
+
+    Parameters
+    ----------
+    elasticity_stats : dict
+        Aggregated benchmark statistics.
+    """
+    violin_data: dict[str, dict] = {}
+    for model_name in MODELS:
+        prop = elasticity_stats.get(model_name, {}).get("bulk")
+        mp_ids = elasticity_stats.get(model_name, {}).get("mp_ids", [])
+        if prop is None or not prop["ref"]:
+            continue
+        values = [abs(p - r) for r, p in zip(prop["ref"], prop["pred"], strict=False)]
+        labels = [str(mp_id) for mp_id in mp_ids]
+        fig = build_violin_distribution(
+            values=values,
+            labels=labels,
+            title="Bulk modulus MAE distribution",
+            yaxis_title="MAE / GPa",
+            hovertemplate="Material: %{text}<br>MAE: %{y:.2f} GPa<extra></extra>",
+        )
+        violin_data[model_name] = fig.to_dict()
+
+    with open(OUT_PATH / "figure_bulk_violin.json", "w") as f:
+        json.dump(violin_data, f)
+
+
+@pytest.fixture
+def shear_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
+    """
+    Build and save per-model violin figures of per-material shear modulus MAE.
+
+    Parameters
+    ----------
+    elasticity_stats : dict
+        Aggregated benchmark statistics.
+    """
+    violin_data: dict[str, dict] = {}
+    for model_name in MODELS:
+        prop = elasticity_stats.get(model_name, {}).get("shear")
+        mp_ids = elasticity_stats.get(model_name, {}).get("mp_ids", [])
+        if prop is None or not prop["ref"]:
+            continue
+        values = [abs(p - r) for r, p in zip(prop["ref"], prop["pred"], strict=False)]
+        labels = [str(mp_id) for mp_id in mp_ids]
+        fig = build_violin_distribution(
+            values=values,
+            labels=labels,
+            title="Shear modulus MAE distribution",
+            yaxis_title="MAE / GPa",
+            hovertemplate="Material: %{text}<br>MAE: %{y:.2f} GPa<extra></extra>",
+        )
+        violin_data[model_name] = fig.to_dict()
+
+    with open(OUT_PATH / "figure_shear_violin.json", "w") as f:
+        json.dump(violin_data, f)
+
+
+@pytest.fixture
+def elastic_tensor_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
+    """
+    Build and save per-model violin figures of per-material elastic tensor MAE.
+
+    Parameters
+    ----------
+    elasticity_stats : dict
+        Aggregated benchmark statistics including per-material tensor data.
+    """
+    violin_data: dict[str, dict] = {}
+    for model_name in MODELS:
+        prop = elasticity_stats.get(model_name, {}).get("elastic_tensor")
+        crystal_system = elasticity_stats.get(model_name, {}).get("crystal_system")
+        mp_ids = elasticity_stats.get(model_name, {}).get("mp_ids", [])
+        if prop is None or not prop["ref"]:
+            continue
+
+        tensor_maes = []
+        labels = []
+        for r, p, cs, mp_id in zip(
+            prop["ref"], prop["pred"], crystal_system["ref"], mp_ids, strict=False
+        ):
+            r_arr = np.asarray(r) if isinstance(r, np.ndarray) else _str_to_array(r)
+            p_arr = np.asarray(p) if isinstance(p, np.ndarray) else _str_to_array(p)
+            r_arr[np.abs(r_arr) < 0.01] = 0.0
+            p_arr[np.abs(p_arr) < 0.01] = 0.0
+            r_vals, p_vals = get_independent_cs(r_arr, p_arr, cs)
+            tensor_maes.append(mae(r_vals, p_vals))
+            labels.append(str(mp_id))
+
+        fig = build_violin_distribution(
+            values=tensor_maes,
+            labels=labels,
+            title="Elastic tensor MAE distribution",
+            yaxis_title="MAE / GPa",
+            hovertemplate="Material: %{text}<br>MAE: %{y:.2f} GPa<extra></extra>",
+        )
+        violin_data[model_name] = fig.to_dict()
+
+    violin_path = OUT_PATH / "figure_elastic_tensor_violin.json"
+    with open(violin_path, "w") as f:
+        json.dump(violin_data, f)
+
+
+@pytest.fixture
 @plot_density_scatter(
     filename=OUT_PATH / "figure_bulk_density.json",
     title="Bulk modulus density plot",
@@ -506,6 +628,9 @@ def test_elasticity(
     metrics: dict[str, dict],
     bulk_density: dict[str, dict],
     shear_density: dict[str, dict],
+    bulk_violin: None,
+    shear_violin: None,
+    elastic_tensor_violin: None,
 ) -> None:
     """
     Run elasticity analysis.
@@ -518,5 +643,11 @@ def test_elasticity(
         Density scatter data for bulk modulus.
     shear_density : dict
         Density scatter data for shear modulus.
+    bulk_violin : None
+        Saves per-material bulk modulus MAE violin figures.
+    shear_violin : None
+        Saves per-material shear modulus MAE violin figures.
+    elastic_tensor_violin : None
+        Saves per-material elastic tensor MAE violin figures.
     """
     return
