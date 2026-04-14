@@ -167,4 +167,4 @@ High: Requires around 500 ps of MD of 40 A slab to get converged distribution.
 Data availability
 -----------------
 
-Paper in preparation, contact Isaac Parker (ijp30@cam.ac.uk).
+https://arxiv.org/html/2603.04228v1
