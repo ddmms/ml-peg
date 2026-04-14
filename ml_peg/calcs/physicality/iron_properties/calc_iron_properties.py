@@ -677,6 +677,7 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     model
         Model wrapper providing ``get_calculator``.
     """
+    model.default_dtype = "float64"
     calc = model.get_calculator()
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
