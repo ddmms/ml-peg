@@ -130,7 +130,7 @@ Metrics
 
 1. Δ metric is adapted from `Lejaeghere, K., et. al. Reproducibility in density functional theory
    calculations of solids. (2016). Science, 351(6280), aad3000.
-   <https://doi.org/10.1126/science.aad3000>`_. It measures difference between predicted and reference energy-volume curves and is calculated as the square root of the integrated squared energy difference between the predicted and reference curves. It is normalized by the volume range and provides a single number in meV/atom. Here we use it to extimate how good the model reproduce the reference PBE energy-volume curve for the ground state structure of each metal. Note that the volume range is larger than in the original paper, so the Δ metric values are not directly comparable to those reported in the original paper.
+   <https://doi.org/10.1126/science.aad3000>`_. It measures difference between predicted and reference energy-volume curves and is calculated as the square root of the integrated squared energy difference between the predicted and reference curves. It is normalised by the volume range and provides a single number in meV/atom. Here we use it to estimate how well the model reproduces the reference PBE energy-volume curve for the ground state structure of each metal. Note that the volume range is larger than in the original paper, so the Δ metric values are not directly comparable to those reported in the original paper.
 
    .. math::
 
