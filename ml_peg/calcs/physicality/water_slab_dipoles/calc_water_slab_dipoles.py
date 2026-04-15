@@ -14,6 +14,7 @@ from janus_core.calculations.md import NVT
 import numpy as np
 import pytest
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
