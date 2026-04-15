@@ -16,18 +16,9 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 S3_KEY = "inputs/nebs/OC20NEB/OC20NEB.zip"
 S3_FILENAME = "OC20NEB.zip"
-
-local_files_present = True
-if not local_files_present:
-    DATA_PATH = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "OC20NEB"
-REACTIONS = [
-    str(reaction_file).split("/")[-1].split(".")[0]
-    for reaction_file in DATA_PATH.glob("*.xyz")
-]
 
 
 @pytest.mark.slow
@@ -41,14 +32,22 @@ def test_oc20neb(model_name: str) -> None:
     model_name
         Name of model to use.
     """
+    data_path = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "OC20NEB"
+    reactions = [
+        str(reaction_file).split("/")[-1].split(".")[0]
+        for reaction_file in data_path.glob("*.xyz")
+    ]
+
     calc = MODELS[model_name]
 
-    for reaction in REACTIONS:
+    for reaction in reactions:
         print(f"{reaction} {model_name}, start NEB ...")
-        dft_traj = read(DATA_PATH / f"{reaction}.xyz", ":")
+        dft_traj = read(data_path / f"{reaction}.xyz", ":")
         initial, final = dft_traj[0], dft_traj[-1]
         for struct in [initial, final]:
             struct.calc = calc.get_calculator()
+            struct.info.setdefault("spin", 1)
+            struct.info.setdefault("charge", 0)
 
         neb = NEB(
             init_struct=initial,
