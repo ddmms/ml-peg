@@ -86,6 +86,8 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
             desc = f"{orientation} orientation with {strain[1:5]}% strain"
             for atoms in tqdm(systems, desc=desc, unit="configurations"):
                 atoms.calc = calc
+                atoms.info.setdefault("charge", 0)
+                atoms.info.setdefault("spin", 1)
                 mlip_potential_energy = atoms.get_potential_energy()
                 mlip_adsorption_energy = (
                     mlip_potential_energy - graphene_energy - water_energy
