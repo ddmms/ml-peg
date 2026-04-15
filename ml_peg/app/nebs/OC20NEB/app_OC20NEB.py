@@ -10,7 +10,7 @@ from dash.dcc import Loading
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.nebs.oc20neb.interactive_helpers import (
+from ml_peg.app.nebs.OC20NEB.interactive_helpers import (
     lookup_system_entry,
     render_neb_profile,
 )
@@ -28,12 +28,12 @@ from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "oc20neb"
+BENCHMARK_NAME = "OC20NEB"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#oc20neb"
-DATA_PATH = APP_ROOT / "data" / "nebs" / "oc20neb"
+DATA_PATH = APP_ROOT / "data" / "nebs" / "OC20NEB"
 TABLE_PATH = DATA_PATH / "oc20neb_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "oc20neb_interactive.json"
-CALC_BASE = CALCS_ROOT / "nebs" / "oc20neb"
+CALC_BASE = CALCS_ROOT / "nebs" / "OC20NEB"
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 PROFILE_CONTAINER_ID = f"{BENCHMARK_NAME}-profiile-container"
@@ -110,7 +110,7 @@ def get_app() -> OC20NEBApp:
         docs_url=DOCS_URL,
         table_path=TABLE_PATH,
         # Dash Stores persist the last clicked cell and the scatter metadata that
-        # identifies the selected system + model so the oc20neb callback can
+        # identifies the selected system + model so the OC20NEB callback can
         # look up the correct asset paths when rendering neb profile plots
         extra_components=[
             dcc.Store(id=LAST_CELL_STORE_ID),

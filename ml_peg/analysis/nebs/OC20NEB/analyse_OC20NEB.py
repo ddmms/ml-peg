@@ -17,9 +17,9 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-DATA_PATH = CALCS_ROOT / "nebs" / "oc20neb" / "data"
-CALC_PATH = CALCS_ROOT / "nebs" / "oc20neb" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "nebs" / "oc20neb"
+DATA_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "data"
+CALC_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "nebs" / "OC20NEB"
 SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -213,7 +213,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
 )
 def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
     """
-    Get all oc20neb metrics.
+    Get all OC20NEB metrics.
 
     Parameters
     ----------
@@ -283,12 +283,12 @@ def interactive_dataset(oc20neb_stats: dict[str, dict[str, Any]]) -> dict[str, A
 
 def test_oc20neb(metrics, interactive_dataset) -> None:
     """
-    Run oc20neb test.
+    Run OC20NEB test.
 
     Parameters
     ----------
     metrics
-        All oc20neb metrics.
+        All OC20NEB metrics.
     interactive_dataset
         Scatter metadata produced by the ``interactive_dataset`` fixture.
     """

@@ -18,12 +18,12 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-S3_KEY = "inputs/nebs/oc20neb/oc20neb.zip"
-S3_FILENAME = "oc20neb.zip"
+S3_KEY = "inputs/nebs/OC20NEB/OC20NEB.zip"
+S3_FILENAME = "OC20NEB.zip"
 
 local_files_present = True
 if not local_files_present:
-    DATA_PATH = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "oc20neb"
+    DATA_PATH = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "OC20NEB"
 REACTIONS = [
     str(reaction_file).split("/")[-1].split(".")[0]
     for reaction_file in DATA_PATH.glob("*.xyz")
@@ -34,7 +34,7 @@ REACTIONS = [
 @pytest.mark.parametrize("model_name", MODELS)
 def test_oc20neb(model_name: str) -> None:
     """
-    Run calculations required for oc20neb.
+    Run calculations required for OC20NEB.
 
     Parameters
     ----------
