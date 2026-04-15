@@ -63,7 +63,6 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
     )
     
     start_config = read(data_dir / "init_38A_slab.xyz", "-1")
-    start_config.set_cell(np.triu(start_config.get_cell()))  # why?
     start_config.info["charge"] = 0
     start_config.info["spin"] = 1
 
