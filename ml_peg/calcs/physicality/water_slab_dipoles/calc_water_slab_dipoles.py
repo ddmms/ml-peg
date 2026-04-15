@@ -54,8 +54,15 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
 
     ttime = 100 * units.fs  # timescale themostat
 
-    print("Reading start_config from ", DATA_PATH / "init_38A_slab.xyz")
-    start_config = read(DATA_PATH / "init_38A_slab.xyz", "-1")
+    data_dir = (
+        download_s3_data(
+            key="inputs/physicality/water_slab_dipoles/water_slab_dipoles.zip",
+            filename="water_slab_dipoles.zip",
+        )
+        / "water_slab_dipoles"
+    )
+    
+    start_config = read(data_dir / "init_38A_slab.xyz", "-1")
     start_config.set_cell(np.triu(start_config.get_cell()))  # why?
     start_config.info["charge"] = 0
     start_config.info["spin"] = 1
