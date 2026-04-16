@@ -60,12 +60,14 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         gp = read(gp_path, index=0)
         gp.info.setdefault("charge", 0)
         gp.info.setdefault("spin", 1)
+        gp.info["spin"] = int(round(gp.info["spin"]))
         gp.calc = calc
         gp.get_potential_energy()
 
         ts = read(ts_path, index=0)
         ts.info.setdefault("charge", 0)
         ts.info.setdefault("spin", 1)
+        ts.info["spin"] = int(round(ts.info["spin"]))
         ts.calc = copy(calc)
         ts.get_potential_energy()
 
