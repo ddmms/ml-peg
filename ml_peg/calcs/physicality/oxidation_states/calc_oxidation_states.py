@@ -7,7 +7,7 @@ from typing import Any
 
 from ase.geometry.rdf import get_rdf
 from ase.io import read
-from janus_core.calculations.md import NPT
+from janus_core.calculations.md import NVT
 import numpy as np
 import pytest
 
@@ -54,23 +54,25 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
         struct_path = data_path / f"{salt}_start.xyz"
         struct = read(struct_path, "0")
         struct.calc = calc
+        struct.info["charge"] = int(struct.info["charge"])
+        struct.info["spin"] = int(struct.info["spin"])
 
-        npt = NPT(
+        npt = NVT(
             struct=struct,
             steps=40000,
             timestep=0.5,
             stats_every=50,
             traj_every=100,
             traj_append=True,
-            thermostat_time=50,
-            barostat_time=None,
+            friction=0.01,
             file_prefix=out_dir / f"{salt}_{model_name}",
+            restart_every=1000,
         )
         npt.run()
 
 
-@pytest.mark.parametrize("mlip", MODELS.items())
-def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
+@pytest.mark.parametrize("model_name", MODELS)
+def test_iron_oxygen_rdfs(model_name: str) -> None:
     """
     Calculate Fe-O RDFs from NVT MLMD for oxidation states tests.
 
@@ -79,7 +81,7 @@ def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
     mlip
         Name of model used and model.
     """
-    model_name, model = mlip
+    model_name = model_name
     out_dir = OUT_PATH / model_name
 
     rmax = 6.0
