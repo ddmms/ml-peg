@@ -18,6 +18,11 @@ def _get_all_models() -> dict[str, Any]:
     Load and cache all models from models.yml.
 
     Callers must use `copy.deepcopy()` on the result.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary mapping model names to their configuration dicts.
     """
     with open(MODELS_ROOT / "models.yml", encoding="utf8") as file:
         return yaml.safe_load(file) or {}
