@@ -137,6 +137,7 @@ def run_diatomics(model_name: str, model) -> None:
     """
     _safe_register_torch_slice()
 
+    model.default_dtype = "float64"
     calc = model.get_calculator()
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
