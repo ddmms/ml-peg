@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -67,12 +66,16 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
     # Calculate energy of single water molecule
     atoms = ase.io.read(structs_dir / "ref_water.xyz", format="extxyz")
     atoms.calc = calc
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
     water_energy = atoms.get_potential_energy()
 
     # Iterate through strain conditions
     for strain in strains:
         atoms = ase.io.read(structs_dir / f"ref_graphene_{strain}.xyz", format="extxyz")
         atoms.calc = calc
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
         graphene_energy = atoms.get_potential_energy()
 
         # Iterate through orientations
@@ -81,8 +84,8 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
                 structs_dir / f"{orientation}_{strain}.xyz", index=":", format="extxyz"
             )
             write_file = write_dir / f"{orientation}_{strain}.xyz"
-            if os.path.isfile(write_file):
-                os.remove(write_file)
+            if write_file.is_file():
+                write_file.unlink(missing_ok=True)
             desc = f"{orientation} orientation with {strain[1:5]}% strain"
             for atoms in tqdm(systems, desc=desc, unit="configurations"):
                 atoms.calc = calc
