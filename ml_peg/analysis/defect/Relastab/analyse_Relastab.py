@@ -49,6 +49,29 @@ def get_system_names() -> list[str]:
     return system_names
 
 
+def get_subset_labels() -> list[str]:
+    """
+    Get subset label for each system, matching the order from get_system_names.
+
+    Returns
+    -------
+    list[str]
+        List of subset labels, one per system.
+    """
+    subset_labels = []
+
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            xyz_files = sorted(model_dir.glob("*.xyz"))
+            for xyz_file in xyz_files:
+                atoms = read(xyz_file)
+                subset_labels.append(atoms.info.get("subset", "unknown"))
+            if subset_labels:
+                break
+    return subset_labels
+
+
 @pytest.fixture
 def grouped_data() -> dict[str, dict[str, list[dict]]]:
     """
@@ -106,6 +129,7 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
     y_label="Reference Energy (Shifted) / eV",
     hoverdata={
         "System": get_system_names(),
+        "Subset": get_subset_labels(),
     },
 )
 def stability_energies(grouped_data) -> dict[str, list]:
@@ -330,7 +354,10 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
     return pivot(total_metrics)
 
 
-def test_relastab_analysis(metrics: dict[str, dict]) -> None:
+def test_relastab_analysis(
+    metrics: dict[str, dict],
+    stability_energies: dict[str, list],
+) -> None:
     """
     Run Relastab analysis test.
 
@@ -338,5 +365,7 @@ def test_relastab_analysis(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All Relastab metrics.
+    stability_energies
+        Parity plot data for shifted energies.
     """
     return

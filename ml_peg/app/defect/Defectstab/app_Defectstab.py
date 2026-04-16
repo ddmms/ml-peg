@@ -97,7 +97,7 @@ class DefectstabApp(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
         # Sort files to match the order in the scatter plot
         structs = [
-            f"assets/defect/Defectstab/{MODELS[0]}/{struct_file.name}"
+            f"/assets/defect/Defectstab/{MODELS[0]}/{struct_file.name}"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

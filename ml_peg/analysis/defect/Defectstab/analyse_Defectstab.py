@@ -48,6 +48,28 @@ def get_system_names() -> list[str]:
     return system_names
 
 
+def get_subset_labels() -> list[str]:
+    """
+    Get subset label for each system, matching the order from get_system_names.
+
+    Returns
+    -------
+    list[str]
+        List of subset labels, one per system.
+    """
+    subset_labels = []
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if model_dir.exists():
+            for xyz_file in sorted(model_dir.glob("*.xyz")):
+                atoms = read(xyz_file)
+                if atoms.info.get("ref") is not None:
+                    subset_labels.append(atoms.info.get("subset", "unknown"))
+            if subset_labels:
+                break
+    return subset_labels
+
+
 def _compute_pred_fe(atoms) -> float | None:
     """
     Compute predicted formation energy from stored info.
@@ -174,6 +196,7 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
     y_label="Reference Formation Energy / eV",
     hoverdata={
         "System": get_system_names(),
+        "Subset": get_subset_labels(),
     },
 )
 def formation_energies(grouped_data) -> dict[str, list]:

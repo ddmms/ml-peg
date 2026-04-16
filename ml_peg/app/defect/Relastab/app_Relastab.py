@@ -100,7 +100,7 @@ class RelastabApp(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
         # Sort glob to match analysis order
         structs = [
-            f"assets/defect/Relastab/{MODELS[0]}/{struct_path.name}"
+            f"/assets/defect/Relastab/{MODELS[0]}/{struct_path.name}"
             for struct_path in sorted(structs_dir.glob("*.xyz"))
         ]
 
