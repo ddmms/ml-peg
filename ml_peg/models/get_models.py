@@ -14,7 +14,14 @@ from ml_peg.models import MODELS_ROOT
 
 @lru_cache(maxsize=1)
 def _load_all_models_cached() -> dict[str, Any]:
-    """Cache the parsed models.yml to avoid repeated file I/O."""
+    """
+    Cache the parsed models.yml to avoid repeated file I/O.
+
+    Returns
+    -------
+    dict[str, Any]
+        Parsed dictionary of models.
+    """
     with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
         return yaml.safe_load(model_file) or {}
 
