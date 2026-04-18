@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+import copy
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -891,15 +892,9 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
-def load_framework_registry() -> dict[str, FrameworkEntry]:
-    """
-    Load framework badge metadata from ``frameworks.yml``.
-
-    Returns
-    -------
-    dict[str, FrameworkEntry]
-        Mapping of framework IDs to display configuration.
-    """
+@lru_cache(maxsize=1)
+def _load_framework_registry_cached() -> dict[str, FrameworkEntry]:
+    """Cache inner function for loading framework registry."""
     registry: dict[str, FrameworkEntry] = {}
     config_path = Path(__file__).with_name("frameworks.yml")
     with config_path.open(encoding="utf8") as handle:
@@ -945,6 +940,20 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         registry[normalized_id] = registry_entry
 
     return registry
+
+
+def load_framework_registry() -> dict[str, FrameworkEntry]:
+    """
+    Load framework badge metadata from ``frameworks.yml``.
+
+    Returns
+    -------
+    dict[str, FrameworkEntry]
+        Mapping of framework IDs to display configuration.
+    """
+    # Use copy.deepcopy() to prevent unintended cache corruption
+    # when callers modify the returned nested dictionary
+    return copy.deepcopy(_load_framework_registry_cached())
 
 
 def get_framework_config(framework_id: str) -> FrameworkEntry:

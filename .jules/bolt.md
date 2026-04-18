@@ -1,0 +1,3 @@
+## 2024-05-19 - Missing cache on config files
+**Learning:** Config files like `frameworks.yml` are loaded on every function call via `load_framework_registry()` and `get_framework_config()`. This involves file IO and YAML parsing, which is slow if performed repeatedly. `load_model_registry_configs` correctly has `@lru_cache(maxsize=1)` but `load_framework_registry` doesn't.
+**Action:** Always check file parsing utilities for proper memoization to avoid redundant disk I/O, using `lru_cache` and `copy.deepcopy()` (if objects are modified downstream) or just `lru_cache` if readonly. In this case, dictionary objects are returned, so apply deepcopy when accessing if they are mutated, or ensure they are treated as immutable.
