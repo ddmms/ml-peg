@@ -99,7 +99,10 @@ def run_dash_app(
     ] = None,
     category: Annotated[
         AppCategories,
-        Option(help="Category to build app for. Default is all categories."),
+        Option(
+            help="Category to build app for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
     debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
@@ -144,7 +147,10 @@ def run_calcs(
     ] = None,
     category: Annotated[
         CalcCategories,
-        Option(help="Category to run calculations for. Default is all categories."),
+        Option(
+            help="Category to run calculations for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     test: Annotated[
         str, Option(help="Test to run calculations for. Default is all tests.")
@@ -220,7 +226,10 @@ def run_analysis(
     ] = None,
     category: Annotated[
         AnalysisCategories,
-        Option(help="Category to run analysis for. Default is all categories."),
+        Option(
+            help="Category to run analysis for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     test: Annotated[
         str, Option(help="Test to run analysis for. Default is all tests.")
@@ -277,7 +286,10 @@ app.add_typer(info_app, help="Get info for calculations, analysis, and apps.")
 def calc_info(
     category: Annotated[
         CalcCategories,
-        Option(help="Category to run calculations for. Default is all categories."),
+        Option(
+            help="Category to run calculations for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
 ):
     """
@@ -303,7 +315,10 @@ def calc_info(
 def analysis_info(
     category: Annotated[
         AnalysisCategories,
-        Option(help="Category to get test info for. Default is all categories."),
+        Option(
+            help="Category to get test info for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
 ):
     """
@@ -331,7 +346,10 @@ def analysis_info(
 def app_info(
     category: Annotated[
         AppCategories,
-        Option(help="Category to get test info for. Default is all categories."),
+        Option(
+            help="Category to get test info for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
 ):
     """
