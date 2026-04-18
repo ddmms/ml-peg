@@ -4,7 +4,7 @@ Analyse BCC iron properties benchmark.
 This analysis combines EOS, elastic, Bain path, defect, surface, and stacking fault
 properties.
 
-Reference
+References
 ----------
 Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2023).
 Efficiency, Accuracy, and Transferability of Machine Learning Potentials:

@@ -89,7 +89,14 @@ TS_STEP_SIZE = 0.05  # Angstroms
 
 
 def _set_iron_info(atoms: Any) -> None:
-    """Set default charge and spin multiplicity for BCC iron structures."""
+    """
+    Set default charge and spin multiplicity for BCC iron structures.
+
+    Parameters
+    ----------
+    atoms : Any
+        ASE Atoms object to annotate.
+    """
     atoms.info["charge"] = 0
     atoms.info["spin"] = 1
 
