@@ -894,7 +894,14 @@ def normalize_framework_id(framework_id: str) -> str:
 
 @lru_cache(maxsize=1)
 def _load_framework_registry_cached() -> dict[str, FrameworkEntry]:
-    """Cache inner function for loading framework registry."""
+    """
+    Cache inner function for loading framework registry.
+
+    Returns
+    -------
+    dict[str, FrameworkEntry]
+        Mapping of framework IDs to display configuration.
+    """
     registry: dict[str, FrameworkEntry] = {}
     config_path = Path(__file__).with_name("frameworks.yml")
     with config_path.open(encoding="utf8") as handle:
