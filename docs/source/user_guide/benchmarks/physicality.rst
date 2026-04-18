@@ -135,4 +135,3 @@ Data availability
 -----------------
 
 None required; diatomics are generated in ASE.
-
