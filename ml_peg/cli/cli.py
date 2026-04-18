@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, get_args
 
 from typer import Context, Exit, Option, Typer
 
@@ -30,7 +30,7 @@ def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
         Tuple of sorted category names. Uses glob matches for `script_prefix` within
         the `root` directory.
     """
-    return tuple(
+    return ("*",) + tuple(
         sorted(
             {
                 path.parent.parent.name
@@ -41,9 +41,42 @@ def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
     )
 
 
-AnalysisCategories = Literal[("*",) + (get_categories(ANALYSIS_ROOT, "analyse"))]
-AppCategories = Literal[("*",) + (get_categories(APP_ROOT, "app"))]
-CalculationCategories = Literal[("*",) + (get_categories(CALCS_ROOT, "calc"))]
+def get_tests(root: Path, script_prefix: str, category: str = "*") -> tuple[str, ...]:
+    """
+    Get current tests.
+
+    Parameters
+    ----------
+    root
+        Root directory to search for tests in.
+    script_prefix
+        Prefix of script files to match for e.g. "calc" for calc_test.py.
+    category
+        Category in which to search for tests. Default is `*`, corresponding to all
+        categories.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Tuple of sorted test names. Uses glob matches for `script_prefix` within
+        the `root` directory.
+    """
+    return tuple(
+        sorted(
+            {
+                path.parent.name
+                for path in root.glob(f"{category}/*/{script_prefix}_*.py")
+                if path.is_file()
+                and path.parent.is_dir()
+                and path.name == f"{script_prefix}_{path.parent.name}.py"
+            }
+        )
+    )
+
+
+AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
+AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
+CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
 
 
 app = Typer(
@@ -110,7 +143,7 @@ def run_calcs(
         ),
     ] = None,
     category: Annotated[
-        CalculationCategories,
+        CalcCategories,
         Option(help="Category to run calculations for. Default is all categories."),
     ] = "*",
     test: Annotated[
@@ -230,6 +263,94 @@ def run_analysis(
         options.extend(["--models", models])
 
     pytest.main(options)
+
+
+info_app = Typer(
+    name="info",
+    no_args_is_help=True,
+    epilog="Try 'ml_peg info COMMAND --help' for subcommand options",
+)
+app.add_typer(info_app, help="Get info for calculations, analysis, and apps.")
+
+
+@info_app.command(name="calc", help="Get categories info")
+def calc_info(
+    category: Annotated[
+        CalcCategories,
+        Option(help="Category to run calculations for. Default is all categories."),
+    ] = "*",
+):
+    """
+    Return information about current tests and categories available for calculations.
+
+    Parameters
+    ----------
+    category
+        Category to get test info for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f"Categories: {
+                ', '.join(
+                    category for category in get_args(CalcCategories) if category != '*'
+                )
+            }\n"
+        )
+    print(f"Tests: {', '.join(get_tests(CALCS_ROOT, 'calc', category))}")
+
+
+@info_app.command(name="analysis", help="Get analysis info")
+def analysis_info(
+    category: Annotated[
+        AnalysisCategories,
+        Option(help="Category to get test info for. Default is all categories."),
+    ] = "*",
+):
+    """
+    Return information about current tests and categories available for analysis.
+
+    Parameters
+    ----------
+    category
+        Category to get test info for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f"Categories: {
+                ', '.join(
+                    category
+                    for category in get_args(AnalysisCategories)
+                    if category != '*'
+                )
+            }\n"
+        )
+    print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
+
+
+@info_app.command(name="app", help="Get app info")
+def app_info(
+    category: Annotated[
+        AppCategories,
+        Option(help="Category to get test info for. Default is all categories."),
+    ] = "*",
+):
+    """
+    Return information about current tests and categories available for app.
+
+    Parameters
+    ----------
+    category
+        Category to get test info for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f"Categories: {
+                ', '.join(
+                    category for category in get_args(AppCategories) if category != '*'
+                )
+            }\n"
+        )
+    print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
 
 @app.command(name="download", help="Download data from S3 bucket")
