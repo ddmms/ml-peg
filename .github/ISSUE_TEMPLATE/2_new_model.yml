@@ -1,0 +1,44 @@
+name: New model
+description: Propose or discuss benchmarking a new model.
+labels: ["new model"]
+body:
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: |
+        A clear and concise description of the model. Please include any relevant references.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Model availability
+      description: |
+        Is the model publicly available? Please share any links.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Training data
+      description: |
+        What data was used to train the model? Is this publicly available?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Model architecture
+      description: |
+        Does the model require a new calculator class, or are other models of similar
+        architecture already supported?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context, or examples of use.
+    validations:
+      required: false
