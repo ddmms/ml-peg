@@ -102,6 +102,7 @@ Reference data:
 * Same as input data
 * PBE-D3(BJ), MPRelaxSet settings
 
+
 Elemental Slab Oxygen Adsorption
 ================================
 
@@ -184,3 +185,49 @@ Reference data:
 * Taken from the SI of the publication above (as the main text of the publication discusses mixed levels of theory). Values from the "Medium algorithm" are used in order to be consistent with the structures.
 
 * PBE without dispersion
+
+
+Graphene Wetting Under Strain
+=============================
+
+Summary
+-------
+
+Performance in predicting adsorption energies for a water molecule on graphene under varying strain conditions.
+
+Metrics
+-------
+
+MAE of adsorption energies
+
+For each combination of water molecule orientation, water-graphene distance, and strain
+condition, the adsorption energy is calculated by taking the difference between the
+energy of the combined water + graphene system and the sum of individual water and
+graphene energies. This is compared to the reference adsorption energy, calculated in the
+same way.
+
+MAE of binding energies & lengths
+
+The adsorption energies calculated above are fitted to Morse potentials, to obtain an
+effective binding energy and binding length (i.e. minimum of adsorption energy curve) for
+each strain condition. This is compared to the reference binding energy & length,
+calculated in the same way.
+
+Computational cost
+------------------
+
+Very low: tests are likely to take less than a minute to run on CPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* Structures were taken from:
+
+  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential,” *awaiting publication* (arXiv:2601.20134)
+
+Reference data:
+
+* Same as input data
+* PBE (with D3 dispersion correction), FHI-aims "intermediate" settings
