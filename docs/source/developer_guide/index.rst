@@ -7,6 +7,7 @@ Developer guide
 
     get_started
     llm_agent_integration
+    cli
     add_benchmarks
     add_category
     running
