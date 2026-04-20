@@ -230,13 +230,13 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator()
 
-    fns = list(DATA_PATH.glob("*DFT*"))
+    filenames = list(DATA_PATH.glob("*DFT*"))
 
-    for fn in fns:
-        element = fn.name.split("_")[0]
+    for filename in filenames:
+        element = filename.name.split("_")[0]
         print(f"Starting EOS calculations for {element} with model {model_name}")
 
-        dft_data = pd.read_csv(fn, comment="#")
+        dft_data = pd.read_csv(filename, comment="#")
 
         volumes_per_atoms = np.linspace(
             np.round(dft_data[dft_data.columns[0]].min() * 0.95),
