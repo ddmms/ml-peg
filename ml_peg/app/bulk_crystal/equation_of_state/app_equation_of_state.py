@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import ALL, Dash, Input, Output, callback, callback_context
 from dash.dcc import Graph
 from dash.exceptions import PreventUpdate
 from dash.html import Div
-import pandas as pd
-from plotly.colors import qualitative
-import plotly.graph_objects as go
 from plotly.io import read_json
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -27,8 +21,6 @@ DOCS_URL = (
     "benchmarks/bulk_crystal.html#equation-of-state"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "equation_of_state" / "outputs"
-INPUT_PATH = Path(__file__).parents[4] / "inputs" / "bulk_crystal" / "equation_of_state"
 PT_TYPE = "eos-periodic-table"
 EOS_CURVE_ID = f"{BENCHMARK_NAME}-eos-curve"
 METRICS = [
@@ -36,67 +28,6 @@ METRICS = [
     ("Phase energy", "phase_energy_periodic_table"),
     ("Phase stability", "phase_stability_periodic_table"),
 ]
-
-
-def _make_eos_figure(model: str, element: str) -> go.Figure | None:
-    """
-    Create an equation of state figure for a given model and element.
-
-    Parameters
-    ----------
-    model : str
-        The model name.
-    element : str
-        The element name.
-
-    Returns
-    -------
-    go.Figure | None
-        The equation of state figure or None if the data is not available.
-    """
-    model_csv = CALC_PATH / model / f"{element}_eos_results.csv"
-    dft_csv = INPUT_PATH / f"{element}_eos_DFT.csv"
-    if not model_csv.exists() or not dft_csv.exists():
-        return None
-    model_data = pd.read_csv(model_csv)
-    dft_data = pd.read_csv(dft_csv, comment="#")
-    phases = [
-        col.split("_")[1]
-        for col in dft_data.columns
-        if col.startswith("Delta_") and col.endswith("_E")
-    ]
-    colours = qualitative.D3
-    fig = go.Figure()
-    for i, phase in enumerate(phases):
-        colour = colours[i % len(colours)]
-        dft_v = dft_data[f"V/atom_{phase}"].dropna()
-        dft_e = dft_data[f"Delta_{phase}_E"].loc[dft_v.index]
-        fig.add_trace(
-            go.Scatter(
-                x=dft_v,
-                y=dft_e,
-                mode="markers",
-                name=f"DFT {phase}",
-                marker={"symbol": "x", "color": colour, "size": 8},
-            )
-        )
-        model_v = model_data["V/atom"]
-        model_delta_e = model_data[f"{phase}_E"] - model_data[f"{phases[0]}_E"].min()
-        fig.add_trace(
-            go.Scatter(
-                x=model_v,
-                y=model_delta_e,
-                mode="lines",
-                name=f"{model} {phase}",
-                line={"color": colour},
-            )
-        )
-    fig.update_layout(
-        title=f"EOS - {element} ({model})",
-        xaxis_title="Volume per atom (\u00c5\u00b3)",
-        yaxis_title="Energy per atom (eV)",
-    )
-    return fig
 
 
 class EquationOfStateApp(BaseApp):
@@ -167,10 +98,10 @@ class EquationOfStateApp(BaseApp):
             if not element or len(element) > 3:
                 raise PreventUpdate
             model = triggered_id["model"]
-            fig = _make_eos_figure(model, element)
-            if fig is None:
+            fig_path = DATA_PATH / model / f"{element}_eos_figure.json"
+            if not fig_path.exists():
                 return Div(f"No data for {element} / {model}.")
-            return Div(Graph(figure=fig))
+            return Div(Graph(figure=read_json(str(fig_path))))
 
 
 def get_app() -> EquationOfStateApp:

@@ -7,6 +7,8 @@ from pathlib import Path
 from ase.eos import EquationOfState, birchmurnaghan
 import numpy as np
 import pandas as pd
+from plotly.colors import qualitative
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
@@ -222,6 +224,67 @@ def _phase_metrics_from_eos_mev(
     correct_stability_pct = 100.0 * float(np.mean(sign_match))
 
     return 1000.0 * mae_ev, correct_stability_pct
+
+
+def plot_eos_figure(model: str, element: str) -> go.Figure | None:
+    """
+    Create an equation of state figure for a given model and element.
+
+    Parameters
+    ----------
+    model : str
+        The model name.
+    element : str
+        The element name.
+
+    Returns
+    -------
+    go.Figure | None
+        The equation of state figure or None if the data is not available.
+    """
+    model_csv = CALC_PATH / model / f"{element}_eos_results.csv"
+    dft_csv = DATA_PATH / f"{element}_eos_DFT.csv"
+    if not model_csv.exists() or not dft_csv.exists():
+        return None
+    model_data = pd.read_csv(model_csv)
+    dft_data = pd.read_csv(dft_csv, comment="#")
+    phases = [
+        col.split("_")[1]
+        for col in dft_data.columns
+        if col.startswith("Delta_") and col.endswith("_E")
+    ]
+    colours = qualitative.D3
+    fig = go.Figure()
+    for i, phase in enumerate(phases):
+        colour = colours[i % len(colours)]
+        dft_v = dft_data[f"V/atom_{phase}"].dropna()
+        dft_e = dft_data[f"Delta_{phase}_E"].loc[dft_v.index]
+        fig.add_trace(
+            go.Scatter(
+                x=dft_v,
+                y=dft_e,
+                mode="markers",
+                name=f"DFT {phase}",
+                marker={"symbol": "x", "color": colour, "size": 8},
+            )
+        )
+        model_v = model_data["V/atom"]
+        model_delta_e = model_data[f"{phase}_E"] - model_data[f"{phases[0]}_E"].min()
+        fig.add_trace(
+            go.Scatter(
+                x=model_v,
+                y=model_delta_e,
+                mode="lines",
+                name=f"{model} {phase}",
+                line={"color": colour},
+            )
+        )
+    fig.update_layout(
+        title=f"EOS - {element} ({model})",
+        xaxis_title="Volume per atom (\u00c5\u00b3)",
+        yaxis_title="Energy per atom (eV)",
+    )
+    return fig
 
 
 # ---------------------------------------------------------------------------
@@ -502,9 +565,33 @@ def metrics(
     }
 
 
+@pytest.fixture
+def eos_figures(eos_stats: dict[tuple[str, str], dict[str, float]]) -> None:
+    """
+    Save per-model-element EOS curve figures as JSON files.
+
+    Parameters
+    ----------
+    eos_stats
+        Per-(model, element) metric values (used to determine which
+        model-element pairs have data).
+    """
+    for model in MODELS:
+        for element in ELEMENTS:
+            if (model, element) not in eos_stats:
+                continue
+            fig = plot_eos_figure(model, element)
+            if fig is None:
+                continue
+            out_dir = OUT_PATH / model
+            out_dir.mkdir(parents=True, exist_ok=True)
+            fig.write_json(str(out_dir / f"{element}_eos_figure.json"))
+
+
 def test_equation_of_state(
     metrics: dict[str, dict],
     periodic_tables: None,
+    eos_figures: None,
 ) -> None:
     """
     Run EOS benchmark analysis.
@@ -515,5 +602,7 @@ def test_equation_of_state(
         All EOS benchmark metric values.
     periodic_tables
         Per-model periodic-table heatmaps (side-effect only).
+    eos_figures
+        Per-model-element EOS curve figures (side-effect only).
     """
     return
