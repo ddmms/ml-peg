@@ -1,0 +1,49 @@
+name: New benchmark
+description: Propose or discuss a new benchmark for existing models
+labels: ["new benchmark"]
+body:
+
+  - type: textarea
+    attributes:
+      label: Summary
+      description: |
+        A clear and concise summary of the new benchmark. What application and properties are of interest?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Interactive features
+      description: |
+        How would you like to explore the results of your benchmark?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Category
+      description: |
+        Which category does the new benchmark belong in? This can already exist, or you may propose a new one.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Data availability
+      description: What reference data is available? If this is theoretical, at what level of theory?
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Computational cost
+      description: If possible, estimate how long the benchmark would take to run on a typical model.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context, or example implementations.
+    validations:
+      required: false

@@ -1,0 +1,23 @@
+name: Question
+description: Ask a question about ML-PEG
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please select the `New benchmark` issue template to propose or discuss new benchmarks.**
+
+  - type: textarea
+    attributes:
+      label: Question
+      description: Describe your question in detail.
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Platform
+      description: What operating system and architecture are you using? (e.g. `uname -orsm`)
+      placeholder: e.g., macOS 14 arm64, Windows 11 x86_64, Ubuntu 20.04 amd64
+    validations:
+      required: false
