@@ -282,7 +282,9 @@ info_app = Typer(
 app.add_typer(info_app, help="Get info for calculations, analysis, and apps.")
 
 
-@info_app.command(name="calc", help="Get categories info")
+@info_app.command(
+    name="calc", help="List categories and tests available for calculations"
+)
 def calc_info(
     category: Annotated[
         CalcCategories,
@@ -311,7 +313,9 @@ def calc_info(
     print(f"Tests: {', '.join(get_tests(CALCS_ROOT, 'calc', category))}")
 
 
-@info_app.command(name="analysis", help="Get analysis info")
+@info_app.command(
+    name="analysis", help="List categories and tests available for analysis"
+)
 def analysis_info(
     category: Annotated[
         AnalysisCategories,
@@ -342,7 +346,9 @@ def analysis_info(
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
 
-@info_app.command(name="app", help="Get app info")
+@info_app.command(
+    name="app", help="List categories and tests available for application"
+)
 def app_info(
     category: Annotated[
         AppCategories,
@@ -369,6 +375,14 @@ def app_info(
             }\n"
         )
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
+
+
+@info_app.command(name="models", help="List models currently available")
+def models_info() -> None:
+    """Return information about current models."""
+    from ml_peg.models.get_models import get_model_names
+
+    print(f"Available models: {', '.join(get_model_names())}")
 
 
 @app.command(name="download", help="Download data from S3 bucket")
