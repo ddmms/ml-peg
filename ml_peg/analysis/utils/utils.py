@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable
+import math
 from pathlib import Path
 from typing import Any
 
@@ -696,8 +697,9 @@ def normalize_metric(
         return None
 
     try:
-        # Handle NaNs robustly
-        if np.isnan([value, good_threshold, bad_threshold]).any():
+        # Handle NaNs robustly. Use math.isnan instead of np.isnan
+        # to avoid list/array allocation overhead.
+        if math.isnan(value) or math.isnan(good_threshold) or math.isnan(bad_threshold):
             return None
     except TypeError:
         return None
