@@ -9,6 +9,7 @@ from typing import Any
 # from pymatgen.analysis import StructureMatcher
 from ase.io import read, write
 from ase.optimize import LBFGS
+import numpy as np
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core import Structure
 import pytest
@@ -17,7 +18,6 @@ from tqdm.auto import tqdm
 from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
-import numpy as np
 
 MODELS = load_models(current_models)
 github_uri = "https://github.com/ThomasWarford/defect_data/raw/refs/heads/main/"
@@ -47,7 +47,7 @@ def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
     """
     result = STRUCTURE_MATCHER.get_rms_dist(
         Structure.from_ase_atoms(atoms_1), Structure.from_ase_atoms(atoms_2)
-        )
+    )
 
     if result is None:
         return (np.nan, np.nan)
