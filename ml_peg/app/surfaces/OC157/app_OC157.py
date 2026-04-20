@@ -38,7 +38,7 @@ class OC157App(BaseApp):
         structs = list(
             np.repeat(
                 [
-                    f"assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
+                    f"/assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
                     for i in range(len(list(structs_dir.glob("*.xyz"))))
                 ],
                 3,

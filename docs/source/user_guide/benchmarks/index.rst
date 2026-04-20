@@ -16,3 +16,4 @@ Benchmarks
     non_covalent_interactions
     tm_complexes
     conformers
+    molecular_dynamics

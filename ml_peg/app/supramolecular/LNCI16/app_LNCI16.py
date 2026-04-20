@@ -36,7 +36,7 @@ class LNCI16App(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/LNCI16/{MODELS[0]}/{i}.xyz"
+            f"/assets/supramolecular/LNCI16/{MODELS[0]}/{i}.xyz"
             for i in range(16)  # LNCI16 has 16 systems
         ]
 

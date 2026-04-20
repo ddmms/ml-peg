@@ -37,7 +37,7 @@ class S30LApp(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/S30L/{MODELS[0]}/{i}.xyz"
+            f"/assets/supramolecular/S30L/{MODELS[0]}/{i}.xyz"
             for i in range(30)  # S30L has 30 systems
         ]
 

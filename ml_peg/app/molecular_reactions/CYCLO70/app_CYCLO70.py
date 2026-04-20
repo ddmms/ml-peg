@@ -37,7 +37,7 @@ class CYCLO70App(BaseApp):
                 [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_forward.xyz")]
             )
             structs = [
-                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
+                f"/assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
                 for label in labels
                 for direction in ("forward", "reverse")
             ]
