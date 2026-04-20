@@ -17,6 +17,7 @@ from ase.optimize import LBFGS
 import numpy as np
 import pandas as pd
 import pytest
+from tqdm import tqdm
 
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
@@ -167,13 +168,7 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
     return (lattice.calc_num_atoms() * volume_per_atom) ** (1 / 3)
 
 
-def equation_of_state(
-    calc,
-    lattice,
-    volumes_per_atoms,
-    symbol="W",
-    size=(2, 2, 2),
-):
+def equation_of_state(calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 2)):
     """
     Compute the equation of state for a given element and lattice.
 
@@ -232,9 +227,9 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
 
     filenames = list(DATA_PATH.glob("*DFT*"))
 
-    for filename in filenames:
+    for filename in (pbar_1 := tqdm(filenames, desc=f"{model_name}")):
         element = filename.name.split("_")[0]
-        print(f"Starting EOS calculations for {element} with model {model_name}")
+        pbar_1.set_description(f"{model_name}/{element}")
 
         dft_data = pd.read_csv(filename, comment="#")
 
@@ -247,8 +242,10 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
         results = {"V/atom": volumes_per_atoms}
 
         phases = [col.split("_")[1] for col in dft_data.columns if "Delta" in col]
+        print(f"Found data for {len(phases)} phases: {', '.join(phases)}")
 
-        for phase in phases:
+        for phase in (pbar_2 := tqdm(phases, desc=element, leave=False)):
+            pbar_2.set_description(f"{model_name}/{element}/{phase}")
             assert phase in lattices, f"Lattice {phase} not implemented for EOS test."
             lattice = lattices[phase]
 
@@ -257,6 +254,7 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
                 lattice,
                 volumes_per_atoms,
                 symbol=element,
+                lattice_name=phase,
             )
 
             results[f"{phase}_E"] = energies
