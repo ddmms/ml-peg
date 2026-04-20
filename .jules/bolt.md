@@ -1,0 +1,3 @@
+## 2025-03-02 - Cache models.yml Loading
+**Learning:** `get_model_names` and `load_model_configs` were reading `models.yml` from disk synchronously every single time they were called. This was a significant performance bottleneck (1s per 100 calls) due to repetitive file I/O and yaml parsing of a large file that never changes at runtime.
+**Action:** Use an `@lru_cache` helper function to read and cache the raw dictionary from `models.yml`. Ensure callers make deep copies where necessary when retrieving mutable dict objects from the cache to prevent unintentional mutation across the application.

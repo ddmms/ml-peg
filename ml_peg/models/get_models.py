@@ -4,11 +4,26 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from copy import deepcopy
+from functools import lru_cache
 from typing import Any
 
 import yaml
 
 from ml_peg.models import MODELS_ROOT
+
+
+@lru_cache(maxsize=1)
+def _load_raw_model_registry() -> dict[str, Any]:
+    """
+    Load model configurations from the registry YAML and cache it.
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of model name to configuration dictionary.
+    """
+    with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
+        return yaml.safe_load(model_file) or {}
 
 
 def load_model_configs(
@@ -30,8 +45,7 @@ def load_model_configs(
         - model_levels: Dictionary mapping model names to their level of
           theory (or ``None``)
     """
-    with open(MODELS_ROOT / "models.yml", encoding="utf8") as model_file:
-        all_models = yaml.safe_load(model_file) or {}
+    all_models = _load_raw_model_registry()
 
     model_levels: dict[str, str | None] = {}
     model_configs: dict[str, Any] = {}
@@ -102,8 +116,8 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
     loaded_models = {}
 
     # Load models from registry YAML: models.yml
-    with open(MODELS_ROOT / "models.yml") as file:
-        all_models = yaml.safe_load(file)
+    # Deepcopy to prevent unintended cache corruption by mutating references
+    all_models = deepcopy(_load_raw_model_registry())
 
     for name, cfg in get_subset(all_models, models).items():
         print(f"Loading model from models.yml: {name}")
@@ -178,8 +192,7 @@ def get_model_names(models: None | Iterable = None) -> list[str]:
         Loaded model names from models.yml.
     """
     # Load models from registry YAML: models.yml
-    with open(MODELS_ROOT / "models.yml") as file:
-        all_models = yaml.safe_load(file)
+    all_models = _load_raw_model_registry()
 
     model_names = []
     for name in get_subset(all_models, models):
