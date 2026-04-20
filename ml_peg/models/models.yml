@@ -160,6 +160,16 @@ orb-v3-consv-omol:
 #     model_name: "uma-s-1p1"
 #     task_name: "omol"
 
+# uma-s-1p2-omol:
+#   module: fairchem.core
+#   class_name: FAIRChemCalculator
+#   device: "cpu"
+#   trained_on_dispersion: true
+#   level_of_theory: ωB97M-V/def2-TZVPD
+#   kwargs:
+#     model_name: "uma-s-1p2"
+#     task_name: "omol"
+
 # uma-m-1p1-omol:
 #   module: fairchem.core
 #   class_name: FAIRChemCalculator
