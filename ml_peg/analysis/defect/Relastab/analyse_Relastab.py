@@ -304,6 +304,8 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
     """
     Get all metrics.
 
+    Returns total metrics and per-subset metrics as separate columns.
+
     Parameters
     ----------
     ranking_metrics
@@ -312,7 +314,7 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
     Returns
     -------
     dict[str, dict]
-        Metric names and values for all models (total).
+        Metric names and values for all models.
     """
     total_metrics, subset_metrics = ranking_metrics
 
@@ -336,22 +338,15 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
             reshaped["Top5_Spearman"][model] = scores.get("Top5_Spearman")
         return reshaped
 
-    # Save subset tables
+    result = pivot(total_metrics)
+
+    # Add per-subset columns with prefixed names
     for subset_name, metrics_dict in subset_metrics.items():
         subset_pivoted = pivot(metrics_dict)
+        for metric_name, model_scores in subset_pivoted.items():
+            result[f"{metric_name}_{subset_name}"] = model_scores
 
-        @build_table(
-            filename=OUT_PATH / f"relastab_metrics_table_{subset_name}.json",
-            metric_tooltips=DEFAULT_TOOLTIPS,
-            thresholds=DEFAULT_THRESHOLDS,
-            weights=DEFAULT_WEIGHTS,
-        )
-        def _save_subset(_data=subset_pivoted):
-            return _data
-
-        _save_subset()
-
-    return pivot(total_metrics)
+    return result
 
 
 def test_relastab_analysis(

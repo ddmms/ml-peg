@@ -307,6 +307,7 @@ def fe_errors(
     filename=OUT_PATH / "defectstab_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     fe_errors: tuple[dict[str, float], dict[str, dict[str, float]]],
@@ -314,8 +315,7 @@ def metrics(
     """
     Get all Defectstab metrics.
 
-    Saves a total metrics table and per-subset tables so the app can
-    display results filtered by subset (matching Relastab pattern).
+    Returns total RMSD and per-subset RMSD as separate columns.
 
     Parameters
     ----------
@@ -325,25 +325,10 @@ def metrics(
     Returns
     -------
     dict[str, dict]
-        Metric names and values for all models (total/average).
+        Metric names and values for all models.
     """
     total_results, subset_results = fe_errors
-
-    # Save per-subset tables
-    for subset_name, model_rmsds in subset_results.items():
-        subset_pivoted = {"RMSD": model_rmsds}
-
-        @build_table(
-            filename=OUT_PATH / f"defectstab_metrics_table_{subset_name}.json",
-            metric_tooltips=DEFAULT_TOOLTIPS,
-            thresholds=DEFAULT_THRESHOLDS,
-        )
-        def _save_subset(data=subset_pivoted):
-            return data
-
-        _save_subset()
-
-    return {"RMSD": total_results}
+    return {"RMSD": total_results} | subset_results
 
 
 def test_defectstab_analysis(
