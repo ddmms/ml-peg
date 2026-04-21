@@ -437,7 +437,7 @@ def plot_hist(
     filename: str | Path,
 ) -> Callable:
     """
-    Plot scatter plot of MLIP results.
+    Plot histogram of MLIP results.
 
     Parameters
     ----------
