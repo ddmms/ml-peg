@@ -27,7 +27,7 @@ class WaterSlabDipolesApp(BaseApp):
         print(" Registering callbacks to app")
         hists = {
             model: {
-                "sigma": read_plot(
+                "σ": read_plot(
                     DATA_PATH / f"figure_{model}_dipoledistr.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure",
                 ),
