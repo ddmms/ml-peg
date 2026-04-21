@@ -1,5 +1,5 @@
 metrics:
-    sigma:
+    σ:
         good: 0.007
         bad: 0.015
         unit: e/Å
