@@ -100,7 +100,20 @@ RMSD
 Root Mean Square Deviation of formation energies compared to DFT data.
 The RMSD is computed independently for each subset, and the overall score
 reported in the table is the average of the per-subset RMSDs.
-Per-subset values can be inspected via the subset dropdown in the app.
+Per-subset values are reported as separate columns in the app table.
+
+For Defectstab, the ``bad`` threshold for each subset RMSD is scaled from the
+reference formation-energy magnitude of that subset:
+
+.. math::
+  \mathrm{bad} = 0.25 \times P90\left(|E_\mathrm{ref}|\right)
+
+where :math:`P90` is the 90th percentile of the absolute reference formation
+energies :math:`|E_\mathrm{ref}|` in that subset. In other words, it is the
+value below which 90% of the subset reference magnitudes lie. This gives a
+robust high-energy scale for each subset while avoiding over-sensitivity to a
+single extreme point. The total RMSD threshold is computed in the same way
+using all Defectstab reference values together.
 
 Computational cost
 ------------------
@@ -113,7 +126,7 @@ Data availability
 
 Input structures:
 
-* Subset ``fe_sia`` of the DFT dataset (:math:`\mathrm{Fe}` SIA configurations).
+* Subset ``fe`` of the ``Defectstab`` dataset (:math:`\mathrm{Fe}` SIA configurations).
 
   * A. Allera, T.D. Swinburne, A.M. Goryaeva, B. Bienvenu, F. Ribeiro, M. Perez, M.-C. Marinica, D. Rodney,
     Activation entropy of dislocation glide in body-centered cubic metals from atomistic simulations,
@@ -123,13 +136,13 @@ Input structures:
     Reinforcing materials modelling by encoding the structures of defects in crystalline solids into distortion scores,
     Nat Commun 11, 4691 (2020).
 
-* Boron Carbide structures from the DFFM-GR dataset.
+* Subset ``boroncarbide_stoichiometry`` and ``boroncarbide_defects`` of the ``Defectstab`` dataset (Boron Carbide structures).
 
   * G. Roma, K. Gillet, A. Jay, N. Vast, G. Gutierrez,
     Understanding first-order Raman spectra of boron carbides across the homogeneity range,
     Phys. Rev. Materials 5, 063601 (2021).
 
-* MAPI tetragonal structures from the DFFM-GR dataset.
+* Subset ``mapi_tetragonal`` of the ``Defectstab`` dataset (MAPI tetragonal structures).
 
   * K. Madaan, G. Roma, J. Gulomov, P. Pochet, C. Corbel, I. Makkonen,
     Challenges in predicting positron annihilation lifetimes in lead halide perovskites: correlation functionals and polymorphism,
@@ -181,6 +194,8 @@ This metric focuses on the model's ability to correctly order high-energy states
 which are often critical for understanding transition pathways or high-temperature
 behavior.
 The final score is the average correlation across all evaluated subsets.
+
+Per-subset values for both metrics are reported as separate columns in the app table.
 
 Computational cost
 ------------------
