@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase import units
@@ -23,6 +24,7 @@ MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
+FILTER_DATA_PATH = OUT_PATH / "x23_element_filter_data.json"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -76,6 +78,8 @@ def lattice_energies() -> dict[str, list]:
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
+    system_order: list[str] = []
+    system_elements: dict[str, list[str]] = {}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -96,7 +100,12 @@ def lattice_energies() -> dict[str, list]:
             molecule_energy = structs[1].get_potential_energy()
 
             lattice_energy = (solid_energy / num_molecules) - molecule_energy
-            results[model_name].append(lattice_energy * EV_TO_KJ_PER_MOL)
+            lattice_energy_kj = float(lattice_energy * EV_TO_KJ_PER_MOL)
+            results[model_name].append(lattice_energy_kj)
+
+            if system not in system_elements:
+                system_order.append(system)
+                system_elements[system] = sorted(set(structs[0].get_chemical_symbols()))
 
             # Copy individual structure files to app data directory
             structs_dir = OUT_PATH / model_name
@@ -108,6 +117,18 @@ def lattice_energies() -> dict[str, list]:
                 results["ref"].append(structs[0].info["ref"])
 
         ref_stored = True
+
+    all_elements = sorted(
+        {element for system in system_order for element in system_elements[system]}
+    )
+    filter_payload = {
+        "systems": system_order,
+        "elements": all_elements,
+        "system_elements": [system_elements[system] for system in system_order],
+    }
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    with FILTER_DATA_PATH.open("w", encoding="utf8") as f:
+        json.dump(filter_payload, f, indent=2)
 
     return results
 
