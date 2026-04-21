@@ -274,18 +274,24 @@ def run_analysis(
     pytest.main(options)
 
 
-info_app = Typer(
-    name="info",
+list_app = Typer(
+    name="list",
     no_args_is_help=True,
-    epilog="Try 'ml_peg info COMMAND --help' for subcommand options",
+    epilog="Try 'ml_peg list COMMAND --help' for subcommand options",
 )
-app.add_typer(info_app, help="Get info for calculations, analysis, and apps.")
+app.add_typer(
+    list_app,
+    help=(
+        "List available categories, tests, and models for calculations, analysis, and "
+        "app."
+    ),
+)
 
 
-@info_app.command(
-    name="calc", help="List categories and tests available for calculations"
+@list_app.command(
+    name="calcs", help="List categories and tests available for calculations"
 )
-def calc_info(
+def list_calcs(
     category: Annotated[
         CalcCategories,
         Option(
@@ -295,12 +301,12 @@ def calc_info(
     ] = "*",
 ):
     """
-    Return information about current tests and categories available for calculations.
+    List categories and tests available for calculations.
 
     Parameters
     ----------
     category
-        Category to get test info for. Default is `*`, corresponding to all categories.
+        Category to list test for. Default is `*`, corresponding to all categories.
     """
     if category == "*":
         print(
@@ -313,25 +319,25 @@ def calc_info(
     print(f"Tests: {', '.join(get_tests(CALCS_ROOT, 'calc', category))}")
 
 
-@info_app.command(
+@list_app.command(
     name="analysis", help="List categories and tests available for analysis"
 )
-def analysis_info(
+def list_analysis(
     category: Annotated[
         AnalysisCategories,
         Option(
-            help="Category to get test info for. Default is all categories.",
+            help="Category to list tests for. Default is all categories.",
             case_sensitive=False,
         ),
     ] = "*",
 ):
     """
-    Return information about current tests and categories available for analysis.
+    List categories and tests available for analysis.
 
     Parameters
     ----------
     category
-        Category to get test info for. Default is `*`, corresponding to all categories.
+        Category to list tests for. Default is `*`, corresponding to all categories.
     """
     if category == "*":
         print(
@@ -346,25 +352,25 @@ def analysis_info(
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
 
-@info_app.command(
-    name="app", help="List categories and tests available for application"
+@list_app.command(
+    name="app", help="List categories and tests available as applications"
 )
-def app_info(
+def list_apps(
     category: Annotated[
         AppCategories,
         Option(
-            help="Category to get test info for. Default is all categories.",
+            help="Category to list tests for. Default is all categories.",
             case_sensitive=False,
         ),
     ] = "*",
 ):
     """
-    Return information about current tests and categories available for app.
+    List categories and tests available as applications.
 
     Parameters
     ----------
     category
-        Category to get test info for. Default is `*`, corresponding to all categories.
+        Category to list tests for. Default is `*`, corresponding to all categories.
     """
     if category == "*":
         print(
@@ -377,9 +383,9 @@ def app_info(
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
 
-@info_app.command(name="models", help="List models currently available")
-def models_info() -> None:
-    """Return information about current models."""
+@list_app.command(name="models", help="List models currently available")
+def list_models() -> None:
+    """List currently available models."""
     from ml_peg.models.get_models import get_model_names
 
     print(f"Available models: {', '.join(get_model_names())}")
