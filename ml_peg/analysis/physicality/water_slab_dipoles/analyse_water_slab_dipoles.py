@@ -159,6 +159,7 @@ def n_bad() -> dict[str, float]:
     filename=OUT_PATH / "water_slab_dipoles_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(dipole_std: dict[str, float], n_bad: dict[str, float]) -> dict[str, dict]:
     """
