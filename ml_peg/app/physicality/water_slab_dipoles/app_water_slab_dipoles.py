@@ -17,7 +17,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_d3_name_map(MODELS)
 BENCHMARK_NAME = "Dipoles of Water Slabs"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#water_slab_dipoles"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#water-slab-dipoles"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "water_slab_dipoles"
 
 
