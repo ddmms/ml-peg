@@ -483,7 +483,7 @@ def plot_hist(
         @functools.wraps(func)
         def plot_hist_wrapper(*args, **kwargs) -> dict[str, Any]:
             """
-            Wrap function to plot scatter.
+            Wrap function to plot histogram.
 
             Parameters
             ----------
