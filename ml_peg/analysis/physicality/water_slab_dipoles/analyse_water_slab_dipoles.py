@@ -178,7 +178,7 @@ def metrics(dipole_std: dict[str, float], n_bad: dict[str, float]) -> dict[str, 
         Metric names and values for all models.
     """
     return {
-        "sigma": dipole_std,
+        "σ": dipole_std,
         "Fraction Breakdown Candidates": n_bad,
     }
 
