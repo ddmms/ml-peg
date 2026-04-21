@@ -467,7 +467,7 @@ def plot_hist(
 
     def plot_hist_decorator(func: Callable) -> Callable:
         """
-        Decorate function to plot scatter.
+        Decorate function to plot histogram.
 
         Parameters
         ----------
