@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read
+from ase.io import read, write
 from ase.optimize import BFGS
 from janus_core.calculations.neb import NEB
 import numpy as np
@@ -61,7 +61,7 @@ def test_oc20neb(model_name: str) -> None:
             optimizer=BFGS,
             plot_band=False,
             write_band=False,
-            file_prefix=OUT_PATH / f"{reaction}-{model_name}",
+            file_prefix=OUT_PATH / model_name / reaction,
         )
         neb.run(fmax=0.45, steps=200)
 
@@ -72,7 +72,9 @@ def test_oc20neb(model_name: str) -> None:
 
         forces = neb.neb.get_forces()
         neb.results["max_force"] = np.sqrt((forces**2).sum(axis=1).max())
-        if neb.write_results:
-            with open(neb.results_file, "w", encoding="utf8") as out:
-                print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
-                print(*neb.results.values(), file=out)
+        with open(neb.results_file, "w", encoding="utf8") as out:
+            print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+            print(*neb.results.values(), file=out)
+
+        # Copy reference trajectory to outputs
+        write(OUT_PATH / f"{reaction}-dft.xyz", dft_traj, format="extxyz")

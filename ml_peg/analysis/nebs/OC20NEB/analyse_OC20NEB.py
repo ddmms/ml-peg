@@ -17,7 +17,6 @@ from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-DATA_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "data"
 CALC_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "OC20NEB"
 SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
@@ -72,7 +71,7 @@ def plot_nebs(model: str, reaction: str) -> None:
         """
         results = {}
         structs = read(
-            CALC_PATH / f"{reaction}_{model}.xyz",
+            CALC_PATH / model / f"{reaction}-neb-band.extxyz",
             index=":",
         )
         results[model] = [
@@ -81,7 +80,7 @@ def plot_nebs(model: str, reaction: str) -> None:
         ]
         structs_dir = OUT_PATH / model
         structs_dir.mkdir(parents=True, exist_ok=True)
-        write(structs_dir / f"{model}-{reaction}.xyz", structs)
+        write(structs_dir / model / f"{reaction}-neb-band.extxyz", structs)
 
         return results
 
@@ -98,8 +97,8 @@ def _get_ref_data():
         Dictionary of reference barrier and delta_E with DFT.
     """
     ref_data = {}
-    for path in DATA_PATH.glob("*.xyz"):
-        reaction = str(path).split("/")[-1].split(".")[0]
+    for path in CALC_PATH.glob("*.xyz"):
+        reaction = path.stem.split("-dft")[0]
         traj = read(path, ":")
         energy = np.array([at.info["DFT_energy"] for at in traj])
 
@@ -125,7 +124,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
     ref_cache: dict[str, dict[str, Any]] = {}
 
     for reaction in REACTIONS:
-        ref_traj_path = DATA_PATH / f"{reaction}.xyz"
+        ref_traj_path = CALC_PATH / f"{reaction}-dft.xyz"
         ref_profile = ref_data[reaction]["energy"]
 
         ref_cache[reaction] = {"profile": ref_profile, "traj_path": ref_traj_path}
@@ -138,7 +137,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
         }
         for reaction in REACTIONS:
             with open(
-                CALC_PATH / f"{reaction}-{model_name}-neb-results.dat", encoding="utf8"
+                CALC_PATH / model_name / f"{reaction}-neb-results.dat", encoding="utf8"
             ) as f:
                 data = f.readlines()
                 pred_barrier, pred_delta_e, pred_fmax = tuple(
@@ -148,7 +147,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             data_paths = {
                 "ref_profile": str(ref_cache[reaction]["traj_path"]),
                 "pred_profile": str(
-                    CALC_PATH / f"{reaction}-{model_name}-neb-band.extxyz"
+                    CALC_PATH / model_name / f"{reaction}-neb-band.extxyz"
                 ),
             }
 
