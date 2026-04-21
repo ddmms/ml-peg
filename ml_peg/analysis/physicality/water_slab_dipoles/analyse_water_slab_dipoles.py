@@ -31,10 +31,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 # We consider a dipole as bad if the expected band gap is <= 0
-# The expected band gap is 4.50 V - |P_z_per_unit_area| / epsilon_0
-# Hence "bad" is |P_z_per_unit_area| > 4.50 V * epsilon_0 / e * 10^(-10)
+# The expected band gap is 4.45 V - |P_z_per_unit_area| / epsilon_0
+# Hence "bad" is |P_z_per_unit_area| > 4.45 V * epsilon_0 / e * 10^(-10)
 # epsilon_0 is in F/m = C/(V*m), so this gives it in e/(V*A)
-DIPOLE_BAD_THRESHOLD = 4.50 * epsilon_0 / e * 10 ** (-10)
+# See https://arxiv.org/abs/2603.04228v1 as reference
+DIPOLE_BAD_THRESHOLD = 4.45 * epsilon_0 / e * 10 ** (-10)
 
 
 def get_dipoles() -> dict[str, np.ndarray]:
@@ -47,6 +48,9 @@ def get_dipoles() -> dict[str, np.ndarray]:
         Dictionary with array of dipoles for each model.
     """
     results = {}
+    # Charge q from https://arxiv.org/abs/2603.04228v1, 
+    # chosen to match revPBE-D3 dipole
+    q = 0.5562 # e
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -59,8 +63,8 @@ def get_dipoles() -> dict[str, np.ndarray]:
                     o_index = [atom.index for atom in struc if atom.number == 8]
                     h_index = [atom.index for atom in struc if atom.number == 1]
                     dipoles[i] = (
-                        np.sum(struc.positions[o_index, 2]) * (-0.8476)
-                        + np.sum(struc.positions[h_index, 2]) * 0.4238
+                        np.sum(struc.positions[o_index, 2]) * (-q)
+                        + np.sum(struc.positions[h_index, 2]) * q / 2
                     )
                 dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
                 results[model_name] = dipoles_unit_area
