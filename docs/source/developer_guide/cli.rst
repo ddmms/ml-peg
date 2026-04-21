@@ -10,7 +10,7 @@ commands::
     ml_peg calc
     ml_peg analyse
     ml_peg download
-    ml_peg info
+    ml_peg list
 
 
 For example, to run the X23 test with mace-mp-0a and orb-v3-consv-inf-omat, you can run::
@@ -24,13 +24,13 @@ A description of each subcommand, as well as valid options, can be listed using 
 
     ml_peg calc --help
 
-The ``ml_peg info`` command provides a further set of subcommands::
+The ``ml_peg list`` command provides a further set of subcommands::
 
 
-    ml_peg info calc
-    ml_peg info analysis
-    ml_peg info app
-    ml_peg info models
+    ml_peg list calcs
+    ml_peg list analysis
+    ml_peg list app
+    ml_peg list models
 
 
 which list the available tests and categories that may be run for ``ml_peg calc``,
