@@ -428,7 +428,7 @@ def cell_to_scatter(
 
 def plot_hist(
     *,
-    bins: Any | None = None,
+    bins: int | dict[str, float] | None = None,
     good: float | None = None,
     bad: float | None = None,
     title: str | None = None,
