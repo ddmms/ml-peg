@@ -56,7 +56,7 @@ def get_app() -> WaterSlabDipolesApp:
     """
     return WaterSlabDipolesApp(
         name=BENCHMARK_NAME,
-        description="Dipole distribution of a 38 A water slab",
+        description="Dipole distribution of a 38 Å water slab",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "water_slab_dipoles_metrics_table.json",
         extra_components=[
