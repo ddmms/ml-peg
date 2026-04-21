@@ -442,7 +442,7 @@ def plot_hist(
     Parameters
     ----------
     bins
-        Bins for histogram. Either int or directory
+        Bins for histogram. Either int or dictionary
         with start, end, size. Default is None.
     good
         Minimum threshold for good values. Requires bins dict.
