@@ -2,7 +2,7 @@ metrics:
     sigma:
         good: 0.007
         bad: 0.015
-        unit: e/A
+        unit: e/Å
         tooltip: Standard deviation of total dipole in z direction
         level of theory: null
     Fraction Breakdown Candidates:
