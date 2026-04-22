@@ -36,7 +36,7 @@ e.g. CCSD(T).
 
 Each metric in ``metrics.yml`` should have a ``level_of_theory`` field identifying its reference
 method. The app compares this string against the ``level_of_theory`` set in ``models.yml`` for each
-MLIP, flagging mismatches in the app using the traffic light system. Important: an exact string match is required for the comparison to work correctly.
+MLIP, flagging mismatches using the traffic light system. An exact string match is required.
 
 .. warning::
 
