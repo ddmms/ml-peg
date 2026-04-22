@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ase import units
@@ -12,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -34,27 +34,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of X23 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH, glob_pattern="*.xyz", info_keys=["system"], out_path=OUT_PATH
+)
 
 
 @pytest.fixture
@@ -64,7 +46,7 @@ def get_system_names() -> list[str]:
     x_label="Predicted lattice energy / kJ/mol",
     y_label="Reference lattice energy / kJ/mol",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
     },
 )
 def lattice_energies() -> dict[str, list]:
@@ -78,8 +60,6 @@ def lattice_energies() -> dict[str, list]:
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
-    system_order: list[str] = []
-    system_elements: dict[str, list[str]] = {}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -100,12 +80,7 @@ def lattice_energies() -> dict[str, list]:
             molecule_energy = structs[1].get_potential_energy()
 
             lattice_energy = (solid_energy / num_molecules) - molecule_energy
-            lattice_energy_kj = float(lattice_energy * EV_TO_KJ_PER_MOL)
-            results[model_name].append(lattice_energy_kj)
-
-            if system not in system_elements:
-                system_order.append(system)
-                system_elements[system] = sorted(set(structs[0].get_chemical_symbols()))
+            results[model_name].append(lattice_energy * EV_TO_KJ_PER_MOL)
 
             # Copy individual structure files to app data directory
             structs_dir = OUT_PATH / model_name
@@ -117,18 +92,6 @@ def lattice_energies() -> dict[str, list]:
                 results["ref"].append(structs[0].info["ref"])
 
         ref_stored = True
-
-    all_elements = sorted(
-        {element for system in system_order for element in system_elements[system]}
-    )
-    filter_payload = {
-        "systems": system_order,
-        "elements": all_elements,
-        "system_elements": [system_elements[system] for system in system_order],
-    }
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    with FILTER_DATA_PATH.open("w", encoding="utf8") as f:
-        json.dump(filter_payload, f, indent=2)
 
     return results
 

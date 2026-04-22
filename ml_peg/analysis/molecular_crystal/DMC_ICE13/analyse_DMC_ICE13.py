@@ -10,6 +10,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -28,27 +29,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_polymorph_names() -> list[str]:
-    """
-    Get list of polymorph names.
-
-    Returns
-    -------
-    list[str]
-        List of polymorph names from structure files.
-    """
-    polymorph_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*_polymorph.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    polymorph_names.append(atoms.info["polymorph"])
-                break
-    return polymorph_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*_polymorph.xyz",
+    info_keys=["polymorph"],
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -58,7 +44,7 @@ def get_polymorph_names() -> list[str]:
     x_label="Predicted lattice energy / meV",
     y_label="Reference lattice energy / meV",
     hoverdata={
-        "Polymorph": get_polymorph_names(),
+        "Polymorph": INFO["polymorph"],
     },
 )
 def lattice_energies() -> dict[str, list]:
