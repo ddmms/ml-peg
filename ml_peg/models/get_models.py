@@ -12,6 +12,9 @@ import yaml
 
 from ml_peg.models import models_file
 
+# "Global" variable that can be imported and set through pytest options
+include_mock = False
+
 
 @lru_cache(maxsize=1)
 def _load_models_yaml(
@@ -111,6 +114,7 @@ def get_subset(
 def load_models(
     models: None | str | Iterable = None,
     filepath: Path | str | None = None,
+    include_mock: bool = False,
 ) -> dict[str, Any]:
     """
     Load models for use in calculations.
@@ -123,15 +127,23 @@ def load_models(
         this will be treated as a comma-separated list.
     filepath
         Path to YAML file with models. Default is `models_file`.
+    include_mock
+            Whether to include mock model in the loaded models. Default is False.
 
     Returns
     -------
     dict[str, Any]
         Loaded models from models.yml.
     """
-    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc, PetMadCalc
+    from ml_peg.models.models import (
+        FairChemCalc,
+        GenericASECalc,
+        MockCalc,
+        OrbCalc,
+        PetMadCalc,
+    )
 
-    loaded_models = {}
+    loaded_models = {"mock": MockCalc()} if include_mock else {}
 
     filepath = filepath if filepath else models_file
     all_models = _load_models_yaml(filepath)

@@ -231,7 +231,7 @@ class FairChemCalc(SumCalc):
         Returns
         -------
         Calculator
-            Loaded ASE Orb Calculator.
+            Loaded ASE fairchem Calculator.
         """
         from fairchem.core import FAIRChemCalculator, pretrained_mlip
         # torch.serialization.add_safe_globals([slice])
@@ -257,3 +257,24 @@ class FairChemCalc(SumCalc):
             return self.model_name in pretrained_mlip._MODEL_CKPTS.checkpoints
         except Exception:
             return False
+
+
+@dataclasses.dataclass(kw_only=True)
+class MockCalc(SumCalc):
+    """Dataclass for mock calculator."""
+
+    model_name: str = "mock"
+    trained_on_dispersion: bool = True
+
+    def get_calculator(self) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Returns
+        -------
+        Calculator
+            Loaded mocl ASE Calculator.
+        """
+        from ml_peg.models.mock import MockCalculator
+
+        return MockCalculator()
