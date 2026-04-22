@@ -2,32 +2,22 @@
 Levels of theory
 ================
 
-The ``level_of_theory`` field appears in two places in ML-PEG:
+The level of theory describes the method used to generate a dataset, for example, a DFT functional
+or Experiment. The ``level_of_theory`` field appears in two places in ML-PEG:
 
-- **``models.yml``** — the functional or method the MLIP was trained on.
-- **``metrics.yml``** — the reference method used to generate the benchmark data for a given metric.
-
-The app compares these strings **exactly** to decide whether to display a level-of-theory warning
-badge on a model's table cell. If the strings do not match, this could lead to an incorrect warning.
-When adding a new benchmark or model, it is recommended to check that you see the expected flags.
-
-.. note::
-
-    For example, a PBE benchmark should have no warning for models trained on PBE datasets (e.g. MACE-MP-0a),
-    but a DFT functional mismatch warning for models trained on an r2SCAN dataset (e.g. MACE-MATPES-r2SCAN).
-    A model trained on PBE should have no warnings for the PBE phonon benchmark (Bulk Crystals),
-    a "high-level theory mismatch" for the DLPNO-CCSD(T)/CBS Wiggle150 benchmark (Molecular Systems), and
-    an "Experimental reference mismatch" for the experimental lattice constants metric (Bulk Crystals).
+- ``models.yml`` — the functional or method the MLIP was trained on.
+- ``metrics.yml`` — the reference method used to generate the benchmark data for a given metric.
 
 .. warning::
 
     Before introducing a new ``level_of_theory`` string, check whether an equivalent string already
-    exists in ``models.yml`` or any ``metrics.yml`` file. Reuse the existing string exactly to ensure
-    correct matching.
+    exists in ``models.yml`` or any ``metrics.yml`` file (full list below). The app compares these strings
+    **exactly** to decide whether to display a level-of-theory warning badge on a model's table cell.
+    If the strings do not match, this could lead to an incorrect warning. When adding a new benchmark
+    or model, it is recommended to check that you see the expected flags.
 
-
-Traffic light warnings: flagging level of theory mismatches between MLIPs and metrics
--------------------------------------------------------------------------------------
+Flagging level of theory mismatches
+-----------------------------------
 
 When a model's ``level_of_theory`` does not match the ``level_of_theory`` of **any** metric within
 a benchmark, the app displays a coloured warning triangle in the model's table cell. A warning can
@@ -63,6 +53,15 @@ warning is shown: DFT functional mismatch > High-level theory mismatch > Experim
     A warning does not indicate that a model is unsuitable, but it is a prompt to consider whether the
     level-of-theory difference is relevant for your use case.
 
+.. admonition:: Checking your assigned level of theory is correct
+
+    Load up the app and inspect the benchmark tables in each category (summary tables don't show flags)
+    For example, a PBE benchmark should have no warning for models trained on PBE datasets (e.g. MACE-MP-0a),
+    but a DFT functional mismatch warning for models trained on an r2SCAN dataset (e.g. MACE-MATPES-r2SCAN).
+    A model trained on PBE should have no warnings for the PBE phonon benchmark (Bulk Crystals),
+    a "high-level theory mismatch" for the DLPNO-CCSD(T)/CBS Wiggle150 benchmark (Molecular Systems), and
+    an "Experimental reference mismatch" for the experimental lattice constants metric (Bulk Crystals).
+
 
 Naming conventions
 ------------------
@@ -87,7 +86,6 @@ Append the dispersion correction to the base functional using a ``+`` separator,
 .. code-block:: yaml
 
    level_of_theory: PBE+D3
-   level_of_theory: r2SCAN+D4
 
 The same convention applies on both sides: if a model was trained on PBE+D3 data, its ``models.yml``
 entry should read ``PBE+D3``, and any benchmark metric derived from PBE+D3 reference data should
@@ -127,51 +125,28 @@ The following special strings are used:
 Reference table
 ---------------
 
-The following strings are currently in use across the codebase. Use these exactly when the same
-reference method applies to your benchmark.
+The following strings are **currently** in use across the codebase. Use these exactly when the same
+reference method applies to your benchmark. If your reference method is not included in this set,
+please update the table when making a pull request to add your benchmark.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 70
-
-   * - String
-     - Notes
-   * - ``PBE``
-     - GGA functional; most common MLIP training functional.
-   * - ``PBEsol``
-     - PBE revised for solids.
-   * - ``r2SCAN``
-     - Meta-GGA functional.
-   * - ``r2SCAN-3c``
-     - r2SCAN with D4 dispersion and geometrical counterpoise correction.
-   * - ``ωB97M-V``
-     - Range-separated hybrid with VV10 dispersion.
-   * - ``ωB97M-V/def2-TZVPD``
-     - ωB97M-V with explicit basis set.
-   * - ``CCSD(T)``
-     - Coupled cluster with singles, doubles, and perturbative triples.
-   * - ``CCSD(T)/CBS``
-     - CCSD(T) extrapolated to the complete basis set limit.
-   * - ``CCSD(T)-F12/cc-pVDZ-F12``
-     - Explicitly correlated CCSD(T)-F12.
-   * - ``CCSDT(Q)/CBS``
-     - Full triples and perturbative quadruples at CBS limit.
-   * - ``DLPNO-CCSD(T)/CBS``
-     - Domain-based local pair natural orbital CCSD(T) at CBS limit.
-   * - ``DLPNO-CCSD(T)/cc-pVTZ``
-     - DLPNO-CCSD(T) with cc-pVTZ basis.
-   * - ``PNO-LCCSD(T)-F12/AVQZ``
-     - Pair natural orbital LCCSD(T)-F12 with aug-cc-pVQZ basis.
-   * - ``DMC``
-     - Diffusion Monte Carlo.
-   * - ``ph-AFQMC``
-     - Phaseless auxiliary-field quantum Monte Carlo.
-   * - ``wb97md3 + 1b CCSD(T)``
-     - ωB97M-D3 with one-body CCSD(T) corrections.
-   * - ``Experimental``
-     - Experimental reference data (see :ref:`special values <special-values>`).
-   * - ``null``
-     - No warning comparison (see :ref:`special values <special-values>`).
+- ``PBE``
+- ``PBEsol``
+- ``r2SCAN``
+- ``r2SCAN-3c``
+- ``ωB97M-V``
+- ``ωB97M-V/def2-TZVPD``
+- ``CCSD(T)``
+- ``CCSD(T)/CBS``
+- ``CCSD(T)-F12/cc-pVDZ-F12``
+- ``CCSDT(Q)/CBS``
+- ``DLPNO-CCSD(T)/CBS``
+- ``DLPNO-CCSD(T)/cc-pVTZ``
+- ``PNO-LCCSD(T)-F12/AVQZ``
+- ``DMC``
+- ``ph-AFQMC``
+- ``wb97md3 + 1b CCSD(T)``
+- ``Experimental`` (see :ref:`special values <special-values>`)
+- ``null`` (see :ref:`special values <special-values>`)
 
 
 See also
