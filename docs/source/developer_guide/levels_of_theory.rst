@@ -2,19 +2,12 @@
 Levels of theory
 ================
 
-The level of theory describes the method used to generate a dataset, for example, a DFT functional
-or Experiment. The ``level_of_theory`` field appears in two places in ML-PEG:
+The level of theory describes the method used to generate a dataset (for model training or benchmarking),
+for example, a DFT functional, post-Hartree-Fock method or experimental measurement. The ``level_of_theory``
+field appears in two places in ML-PEG:
 
 - ``models.yml`` — the functional or method the MLIP was trained on.
 - ``metrics.yml`` — the reference method used to generate the benchmark data for a given metric.
-
-.. warning::
-
-    Before introducing a new ``level_of_theory`` string, check whether an equivalent string already
-    exists in ``models.yml`` or any ``metrics.yml`` file (full list below). The app compares these strings
-    **exactly** to decide whether to display a level-of-theory warning badge on a model's table cell.
-    If the strings do not match, this could lead to an incorrect warning. When adding a new benchmark
-    or model, it is recommended to check that you see the expected flags.
 
 Flagging level of theory mismatches
 -----------------------------------
@@ -42,7 +35,7 @@ warning types, colour-coded by the nature of the mismatch:
        was trained on DFT data.
    * - |icon-experimental|
      - Experimental reference mismatch
-     - The benchmark uses experimental reference data rather than a computed reference.
+     - The benchmark uses experimental reference data.
 
 The icon colour is currently determined by the mismatched benchmark metric's ``level_of_theory``, not the
 model's. When mismatches of different types occur within the same benchmark, the highest-priority
@@ -65,6 +58,14 @@ warning is shown: DFT functional mismatch > High-level theory mismatch > Experim
 
 Naming conventions
 ------------------
+
+.. warning::
+
+    Before introducing a new ``level_of_theory`` string, check whether an equivalent string already
+    exists in ``models.yml`` or any ``metrics.yml`` file (full list below). The app compares these strings
+    **exactly** to decide whether to display a level-of-theory warning badge on a model's table cell.
+    If the strings do not match, this could lead to an incorrect warning. When adding a new benchmark
+    or model, it is recommended to check that you see the expected flags.
 
 Standard methods
 ~~~~~~~~~~~~~~~~
@@ -108,7 +109,7 @@ The following special strings are used:
 
 .. warning::
 
-    These strings must be written exactly as shown — capitalisation matters.
+    These strings must be written exactly as shown (case sensitive).
 
 .. list-table::
    :header-rows: 1
