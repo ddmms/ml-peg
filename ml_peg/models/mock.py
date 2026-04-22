@@ -6,6 +6,10 @@ from ase import Atoms
 from ase.calculators.calculator import Calculator, all_changes
 import numpy as np
 
+# "Global" variables that can be imported and set through pytest options
+run_mock = False
+mock_only = False
+
 
 class MockCalculator(Calculator):
     """A mock calculator that returns zero values for all properties."""

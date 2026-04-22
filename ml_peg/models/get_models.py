@@ -11,9 +11,6 @@ import yaml
 
 from ml_peg.models import MODELS_ROOT
 
-# "Global" variable that can be imported and set through pytest options
-include_mock = False
-
 
 @lru_cache(maxsize=1)
 def _load_models_yaml() -> dict[str, Any]:
@@ -99,7 +96,9 @@ def get_subset(
 
 
 def load_models(
-    models: None | str | Iterable = None, include_mock: bool = False
+    models: None | str | Iterable = None,
+    run_mock: bool | None = None,
+    mock_only: bool | None = None,
 ) -> dict[str, Any]:
     """
     Load models for use in calculations.
@@ -110,13 +109,15 @@ def load_models(
         Models to select from models.yml. If `None`, all models will be selected.
         If an iterable, all models with matching keys will be selected. If a string,
         this will be treated as a comma-separated list.
-    include_mock
+    run_mock
             Whether to include mock model in the loaded models. Default is False.
+    mock_only
+            Whether to load only mock model, ignoring `models`. Default is False.
 
     Returns
     -------
     dict[str, Any]
-        Loaded models from models.yml.
+        Loaded models from models.yml and/or loaded mock model.
     """
     from ml_peg.models.models import (
         FairChemCalc,
@@ -126,7 +127,17 @@ def load_models(
         PetMadCalc,
     )
 
-    loaded_models = {"mock": MockCalc()} if include_mock else {}
+    if run_mock is None:
+        from ml_peg.models.mock import run_mock
+    if mock_only is None:
+        from ml_peg.models.mock import mock_only
+
+    if mock_only and not run_mock:
+        raise ValueError("Cannot set `mock_only` without `run_mock`")
+
+    loaded_models = {"mock": MockCalc()} if run_mock else {}
+    if mock_only:
+        return loaded_models
 
     # Load models from registry YAML: models.yml
     all_models = _load_models_yaml()
