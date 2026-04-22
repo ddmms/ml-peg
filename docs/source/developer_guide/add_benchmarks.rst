@@ -34,6 +34,16 @@ the error with respect to DFT predictions of energies.
 Reference data may also include experimental data, or higher-accuracy theoretical predictions,
 e.g. CCSD(T).
 
+Each metric in ``metrics.yml`` should have a ``level_of_theory`` field identifying its reference
+method. The app compares this string against the ``level_of_theory`` set in ``models.yml`` for each
+MLIP, flagging mismatches using the traffic light system. An exact string match is required.
+
+.. warning::
+
+    Use the standard strings defined in :doc:`Levels of theory </developer_guide/levels_of_theory>`.
+    A typo or inconsistent capitalisation (e.g. ``experiment`` instead of ``Experimental``) will
+    cause incorrect warnings.
+
 In some cases, metrics may also encode correct behaviour without a specific reference,
 such as by quantifying features of a known distribution (curvature, minima, etc.),
 or quantifying the stability of a simulation.
