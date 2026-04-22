@@ -126,16 +126,22 @@ The following special strings are used:
 Reference table
 ---------------
 
-The following strings are **currently** in use across the codebase. Use these exactly when the same
-reference method applies to your benchmark. If your reference method is not included in this set,
-please update the table when making a pull request to add your benchmark.
+The following strings are currently in use across the codebase. If your string is not listed,
+please add it to this table when making a pull request for your benchmark or model.
+
+**Models** (``models.yml``)
 
 - ``PBE``
 - ``PBEsol``
 - ``r2SCAN``
-- ``r2SCAN-3c``
 - ``ωB97M-V``
 - ``ωB97M-V/def2-TZVPD``
+
+**Benchmarks** (``metrics.yml``)
+
+- ``PBE``
+- ``r2SCAN``
+- ``r2SCAN-3c``
 - ``CCSD(T)``
 - ``CCSD(T)/CBS``
 - ``CCSD(T)-F12/cc-pVDZ-F12``
