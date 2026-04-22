@@ -82,7 +82,7 @@ def interactive_dataset(all_energies: dict) -> dict:
     for model in MODELS:
         d = all_energies[model]
         points = [
-            {"config": ct, "ref": r, "pred": p}
+            {"id": ct, "ref": r, "pred": p}
             for ct, r, p in zip(d["config_type"], d["ref"], d["pred"], strict=True)
         ]
         dataset["models"][model] = {"metrics": {METRIC_KEY: {"points": points}}}
