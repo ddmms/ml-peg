@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+import copy
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -891,9 +892,10 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
-def load_framework_registry() -> dict[str, FrameworkEntry]:
+@lru_cache(maxsize=1)
+def _load_framework_registry() -> dict[str, FrameworkEntry]:
     """
-    Load framework badge metadata from ``frameworks.yml``.
+    Load framework badge metadata from ``frameworks.yml`` (cached).
 
     Returns
     -------
@@ -945,6 +947,18 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         registry[normalized_id] = registry_entry
 
     return registry
+
+
+def load_framework_registry() -> dict[str, FrameworkEntry]:
+    """
+    Load framework badge metadata from ``frameworks.yml``.
+
+    Returns
+    -------
+    dict[str, FrameworkEntry]
+        Mapping of framework IDs to display configuration.
+    """
+    return copy.deepcopy(_load_framework_registry())
 
 
 def get_framework_config(framework_id: str) -> FrameworkEntry:
