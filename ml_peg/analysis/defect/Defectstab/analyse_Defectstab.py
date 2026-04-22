@@ -328,7 +328,17 @@ def metrics(
         Metric names and values for all models.
     """
     total_results, subset_results = fe_errors
-    return {"RMSD": total_results} | subset_results
+    subset_name_map = {
+        "fe_sia": "Fe SIA",
+        "boroncarbide_stoichiometry": "Boron Carbide Stoichiometry",
+        "boroncarbide_defects": "Boron Carbide Defects",
+        "mapi_tetragonal": "MAPI Tetragonal",
+    }
+    renamed_subset_results = {
+        subset_name_map.get(subset_name, subset_name): model_scores
+        for subset_name, model_scores in subset_results.items()
+    }
+    return {"RMSD": total_results} | renamed_subset_results
 
 
 def test_defectstab_analysis(

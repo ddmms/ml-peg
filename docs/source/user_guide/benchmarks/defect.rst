@@ -170,6 +170,8 @@ The evaluation is performed across multiple subsets representing different host
 systems (:math:`\mathrm{Fe}` and :math:`\mathrm{CaWO_4}`), and the final scores are averaged over
 these subsets.
 
+* DFT reference: PBE exchange-correlation functional.
+
 Metrics
 -------
 

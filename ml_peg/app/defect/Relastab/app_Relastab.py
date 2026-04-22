@@ -43,7 +43,15 @@ class RelastabApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"GlobalMin": scatter, "Top5_Spearman": scatter},
+            column_to_plot={
+                "Global Min": scatter,
+                "Top 5 Spearman": scatter,
+                "Global Min Fe": scatter,
+                "Top 5 Spearman Fe": scatter,
+                "Global Min CaWO4": scatter,
+                "Top 5 Spearman CaWO4": scatter,
+                "Score": scatter,
+            },
         )
 
         struct_from_scatter(

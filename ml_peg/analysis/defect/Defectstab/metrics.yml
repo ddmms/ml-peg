@@ -6,31 +6,31 @@ metrics:
         tooltip: "Mean RMSD of formation energies across all subsets"
         level_of_theory: DFT
         weight: 1
-    fe_sia:
+    Fe SIA:
         good: 0.0
         bad: 1.32
         unit: eV
         tooltip: "RMSD of formation energies for Fe SIA subset"
-        level_of_theory: DFT
+        level_of_theory: PBE
         weight: 0
-    boroncarbide_stoichiometry:
+    Boron Carbide Stoichiometry:
         good: 0.0
         bad: 11.09
         unit: eV
         tooltip: "RMSD of formation energies for boron carbide stoichiometry subset"
-        level_of_theory: DFT
+        level_of_theory: LDA
         weight: 0
-    boroncarbide_defects:
+    Boron Carbide Defects:
         good: 0.0
         bad: 0.57
         unit: eV
         tooltip: "RMSD of formation energies for boron carbide defects subset"
-        level_of_theory: DFT
+        level_of_theory: LDA
         weight: 0
-    mapi_tetragonal:
+    MAPI Tetragonal:
         good: 0.0
         bad: 0.39
         unit: eV
         tooltip: "RMSD of formation energies for MAPI tetragonal subset"
-        level_of_theory: DFT
+        level_of_theory: optB86b+vdW
         weight: 0

@@ -332,19 +332,25 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
         dict
             Dictionary keyed by metric name with model scores.
         """
-        reshaped = {"GlobalMin": {}, "Top5_Spearman": {}}
+        reshaped = {"Global Min": {}, "Top 5 Spearman": {}}
         for model, scores in data.items():
-            reshaped["GlobalMin"][model] = scores.get("GlobalMin")
-            reshaped["Top5_Spearman"][model] = scores.get("Top5_Spearman")
+            reshaped["Global Min"][model] = scores.get("GlobalMin")
+            reshaped["Top 5 Spearman"][model] = scores.get("Top5_Spearman")
         return reshaped
+
+    subset_display_names = {
+        "fe": "Fe",
+        "cawo4": "CaWO4",
+    }
 
     result = pivot(total_metrics)
 
-    # Add per-subset columns with prefixed names
+    # Add per-subset columns with human-friendly names
     for subset_name, metrics_dict in subset_metrics.items():
+        display = subset_display_names.get(subset_name, subset_name)
         subset_pivoted = pivot(metrics_dict)
         for metric_name, model_scores in subset_pivoted.items():
-            result[f"{metric_name}_{subset_name}"] = model_scores
+            result[f"{metric_name} {display}"] = model_scores
 
     return result
 
