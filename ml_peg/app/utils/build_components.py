@@ -671,7 +671,8 @@ def build_test_layout(
         ]
     )
 
-    layout_contents.append(Div(table))
+    # dcc.Store renders no HTML, so its position here doesn't affect layout.
+    # Placed before the table so the table and controls can share one wrapper below.
     layout_contents.append(
         Store(
             id=f"{table.id}-computed-store",
@@ -681,6 +682,7 @@ def build_test_layout(
     )
 
     # Inline normalization thresholds when metadata is supplied
+    threshold_controls = None
     if thresholds is not None:
         reserved = {"MLIP", "Score", "id"}
         metric_columns = [
@@ -715,6 +717,11 @@ def build_test_layout(
         column_widths=column_widths,
         thresholds=thresholds,
     )
+
+    # Build the controls element before the table wrapper so both can go into the
+    # same fit-content div. The controls use width:100% of that wrapper, which
+    # equals the table width, keeping the columns aligned.
+    controls_visual = None
     if threshold_controls and metric_weights:
         # Combine threshold and weight panels in a single card while trimming the extra
         # <Br/> injected at the top of the weight component so the boundary box hugs
@@ -726,31 +733,30 @@ def build_test_layout(
         weight_children = weight_children[1:]
         compact_weights = Div(weight_children)
 
-        # Insert a single spacer before the combined card so its top aligns with the
-        # elements above (e.g. the table). The thresholds + weights content then sit
-        # within the shared box.
-        layout_contents.append(Br())
-        layout_contents.append(
-            Div(
-                [
-                    Div(threshold_controls, style={"marginBottom": "0px"}),
-                    Div(compact_weights, style={"marginTop": "0"}),
-                ],
-                style={
-                    "backgroundColor": "#f8f9fa",
-                    "border": "1px solid #dee2e6",
-                    "borderRadius": "6px",
-                    "padding": "0px 0px 0px 0px",  # top right bottom left
-                    "marginTop": "-5px",
-                    "boxSizing": "border-box",
-                    "width": "100%",
-                },
-            )
+        controls_visual = Div(
+            [
+                Div(threshold_controls, style={"marginBottom": "0px"}),
+                Div(compact_weights, style={"marginTop": "0"}),
+            ],
+            style={
+                "backgroundColor": "#f8f9fa",
+                "border": "1px solid #dee2e6",
+                "borderRadius": "6px",
+                "padding": "0px 0px 0px 0px",  # top right bottom left
+                "marginTop": "-5px",
+                "boxSizing": "border-box",
+                "width": "100%",
+            },
         )
     elif threshold_controls:
-        layout_contents.append(threshold_controls)
+        controls_visual = threshold_controls
     elif metric_weights:
-        layout_contents.append(metric_weights)
+        controls_visual = metric_weights
+
+    table_section: list[Component] = [Div(table)]
+    if controls_visual:
+        table_section.extend([Br(), controls_visual])
+    layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:
         layout_contents.extend(extra_components)
