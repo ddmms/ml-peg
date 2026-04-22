@@ -129,7 +129,7 @@ Reference table
 The following strings are currently in use across the codebase. If your string is not listed,
 please add it to this table when making a pull request for your benchmark or model.
 
-**Models** (``models.yml``)
+**Models** (``ml_peg/models/models.yml``)
 
 - ``PBE``
 - ``PBEsol``
@@ -137,7 +137,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``ωB97M-V``
 - ``ωB97M-V/def2-TZVPD``
 
-**Benchmarks** (``metrics.yml``)
+**Benchmarks** (``ml_peg/analysis/<category>/<benchmark>/metrics.yml``)
 
 - ``PBE``
 - ``r2SCAN``
