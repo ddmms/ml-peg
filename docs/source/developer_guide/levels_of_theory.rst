@@ -13,10 +13,9 @@ Flagging level of theory mismatches
 -----------------------------------
 
 When a model's ``level_of_theory`` does not match the ``level_of_theory`` of **any** metric within
-a benchmark, the app displays a coloured warning triangle in the model's table cell. A warning can
-appear even if some metrics in the benchmark do match as the warnings are designed to draw attention
-to any potential mismatch so that results can be interpreted in the correct context. There are three
-warning types, colour-coded by the nature of the mismatch:
+a benchmark, the app displays a coloured warning triangle in the model's table cell. These warnings
+are designed to draw attention to any potential mismatch so that results can be interpreted in the
+correct context. There are three warning types, colour-coded by the nature of the mismatch:
 
 .. list-table::
    :header-rows: 1
@@ -48,7 +47,7 @@ warning is shown: DFT functional mismatch > High-level theory mismatch > Experim
 
 .. admonition:: Checking your assigned level of theory is correct
 
-    Load up the app and inspect the benchmark tables in each category (summary tables don't show flags)
+    Load up the app and inspect the benchmark tables in each category (summary tables don't show flags).
     For example, a PBE benchmark should have no warning for models trained on PBE datasets (e.g. MACE-MP-0a),
     but a DFT functional mismatch warning for models trained on an r2SCAN dataset (e.g. MACE-MATPES-r2SCAN).
     A model trained on PBE should have no warnings for the PBE phonon benchmark (Bulk Crystals),
@@ -95,9 +94,9 @@ also read ``PBE+D3``.
 .. note::
 
     Dispersion corrections added at inference time (via ``trained_on_dispersion: false`` in
-    ``models.yml``) are handled separately by the ``add_d3_calculator`` mechanism and do not affect
-    the ``level_of_theory`` string. Only set ``level_of_theory`` to include ``+D3`` if the training
-    data itself was generated with dispersion corrections.
+    ``models.yml``) are handled separately by the ``add_d3_calculator`` mechanism. Only set
+    ``level_of_theory`` to include ``+D3`` if the training data itself was generated with
+    dispersion corrections.
 
 .. _special-values:
 
@@ -120,7 +119,7 @@ The following special strings are used:
    * - ``Experimental``
      - Reference values taken from experiment (e.g. measured lattice constants, enthalpies).
    * - ``null``
-     - No level-of-theory comparison is made; no warning badge will be shown for this metric. Seen in physicality benchmarks where a metric is e.g. number of energy minima
+     - No level-of-theory comparison is made; no warning badge will be shown for this metric. Seen in physicality benchmarks where a metric is e.g. number of energy minima.
 
 
 Reference table
