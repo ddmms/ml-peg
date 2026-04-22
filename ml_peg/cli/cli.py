@@ -310,11 +310,11 @@ def list_calcs(
     """
     if category == "*":
         print(
-            f"Categories: {
-                ', '.join(
-                    category for category in get_args(CalcCategories) if category != '*'
+            f"""Categories: {
+                ", ".join(
+                    category for category in get_args(CalcCategories) if category != "*"
                 )
-            }\n"
+            }\n"""
         )
     print(f"Tests: {', '.join(get_tests(CALCS_ROOT, 'calc', category))}")
 
@@ -341,13 +341,13 @@ def list_analysis(
     """
     if category == "*":
         print(
-            f"Categories: {
-                ', '.join(
+            f""""Categories: {
+                ", ".join(
                     category
                     for category in get_args(AnalysisCategories)
-                    if category != '*'
+                    if category != "*"
                 )
-            }\n"
+            }\n"""
         )
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
@@ -374,11 +374,11 @@ def list_apps(
     """
     if category == "*":
         print(
-            f"Categories: {
-                ', '.join(
-                    category for category in get_args(AppCategories) if category != '*'
+            f"""Categories: {
+                ", ".join(
+                    category for category in get_args(AppCategories) if category != "*"
                 )
-            }\n"
+            }\n"""
         )
     print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
 
