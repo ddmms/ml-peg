@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -32,27 +33,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of X23 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH, glob_pattern="*.xyz", info_keys=["system"], out_path=OUT_PATH
+)
 
 
 @pytest.fixture
@@ -62,7 +45,7 @@ def get_system_names() -> list[str]:
     x_label="Predicted lattice energy / kJ/mol",
     y_label="Reference lattice energy / kJ/mol",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
     },
 )
 def lattice_energies() -> dict[str, list]:
