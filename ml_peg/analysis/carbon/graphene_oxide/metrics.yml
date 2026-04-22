@@ -1,0 +1,7 @@
+metrics:
+  "Energy MAE":
+    good: 0.0
+    bad: 1.0
+    unit: eV/atom
+    tooltip: Mean absolute error of relative energy per atom (relative to isolated C, H, O atoms, DFT/PBE reference)
+    level_of_theory: PBE
