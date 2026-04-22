@@ -1,0 +1,15 @@
+metrics:
+  CN Li-O_water Error:
+    good: 0.0
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in Li-O_water coordination number vs experimental reference (CN=2.0, Watanabe et al. J. Phys. Chem. B 2021, ~18.5 m, neutron diffraction with isotopic substitution)"
+    level_of_theory: Experimental (neutron diffraction, Watanabe et al. JPCB 2021)
+    weight: 1
+  CN Li-O_TFSI Error:
+    good: 0.0
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in Li-O_TFSI coordination number vs experimental reference (CN=2.0, Watanabe et al. J. Phys. Chem. B 2021, ~18.5 m, neutron diffraction with isotopic substitution)"
+    level_of_theory: Experimental (neutron diffraction, Watanabe et al. JPCB 2021)
+    weight: 1
