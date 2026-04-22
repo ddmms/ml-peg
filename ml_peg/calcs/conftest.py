@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pytest import Config, Parser
 
-from ml_peg.models import get_models
+from ml_peg.models import mock
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -22,6 +22,12 @@ def pytest_addoption(parser: Parser) -> None:
         default=False,
         help="Include mock model in tests",
     )
+    parser.addoption(
+        "--mock-only",
+        action="store_true",
+        default=False,
+        help="Only run mock model, ignoring other models",
+    )
 
 
 def pytest_configure(config: Config) -> None:
@@ -34,4 +40,5 @@ def pytest_configure(config: Config) -> None:
         Pytest configuration object.
     """
     # Set current models from CLI input
-    get_models.include_mock = config.getoption("--run-mock")
+    mock.run_mock = config.getoption("--run-mock")
+    mock.mock_only = config.getoption("--mock-only")

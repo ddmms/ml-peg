@@ -179,6 +179,9 @@ def run_calcs(
     run_mock: Annotated[
         bool, Option(help="Whether to run with mock calculator in addition to models.")
     ] = True,
+    mock_only: Annotated[
+        bool, Option(help="Whether to only run mock calculator with no models.")
+    ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
     ] = True,
@@ -209,6 +212,8 @@ def run_calcs(
         category.
     run_mock
         Whether to run mock calculations. Default is `True`.
+    mock_only
+        Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
         Whether to run slow calculations. Default is `True`.
     run_very_slow
@@ -237,6 +242,9 @@ def run_calcs(
 
     if run_mock:
         options.extend(["--run-mock"])
+
+    if mock_only:
+        options.extend(["--mock-only"])
 
     if models:
         options.extend(["--models", models])
