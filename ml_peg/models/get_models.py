@@ -11,6 +11,9 @@ import yaml
 
 from ml_peg.models import MODELS_ROOT
 
+# "Global" variable that can be imported and set through pytest options
+include_mock = False
+
 
 @lru_cache(maxsize=1)
 def _load_models_yaml() -> dict[str, Any]:
@@ -95,7 +98,9 @@ def get_subset(
                 ) from err
 
 
-def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
+def load_models(
+    models: None | str | Iterable = None, include_mock: bool = False
+) -> dict[str, Any]:
     """
     Load models for use in calculations.
 
@@ -105,15 +110,23 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
         Models to select from models.yml. If `None`, all models will be selected.
         If an iterable, all models with matching keys will be selected. If a string,
         this will be treated as a comma-separated list.
+    include_mock
+            Whether to include mock model in the loaded models. Default is False.
 
     Returns
     -------
     dict[str, Any]
         Loaded models from models.yml.
     """
-    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc, PetMadCalc
+    from ml_peg.models.models import (
+        FairChemCalc,
+        GenericASECalc,
+        MockCalc,
+        OrbCalc,
+        PetMadCalc,
+    )
 
-    loaded_models = {}
+    loaded_models = {"mock": MockCalc()} if include_mock else {}
 
     # Load models from registry YAML: models.yml
     all_models = _load_models_yaml()
