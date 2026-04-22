@@ -13,4 +13,5 @@ Developer guide
     running
     data
     add_models
+    levels_of_theory
     scoring_and_normalisation
