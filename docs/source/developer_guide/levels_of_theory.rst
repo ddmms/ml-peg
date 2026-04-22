@@ -2,11 +2,11 @@
 Levels of theory
 ================
 
-The level of theory describes the method used to generate a dataset (for model training or benchmarking),
+The level of theory describes the method used to generate a dataset (training or benchmarking),
 for example, a DFT functional, post-Hartree-Fock method or experimental measurement. The ``level_of_theory``
 field appears in two places in ML-PEG:
 
-- ``models.yml`` — the functional or method the MLIP was trained on.
+- ``models.yml`` — the functional or method of the dataset the MLIP was trained on.
 - ``metrics.yml`` — the reference method used to generate the benchmark data for a given metric.
 
 Flagging level of theory mismatches
