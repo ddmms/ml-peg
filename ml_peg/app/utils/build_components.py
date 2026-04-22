@@ -328,6 +328,35 @@ def build_weight_components(
     return Div(layout)
 
 
+def compact_weight_components(weight_components: Div) -> Div:
+    """
+    Remove the leading spacer from ``build_weight_components`` output.
+
+    This is used when the weight controls sit inside a wrapper that already manages
+    the vertical spacing relative to the table above it.
+
+    Parameters
+    ----------
+    weight_components
+        Wrapper returned by ``build_weight_components``.
+
+    Returns
+    -------
+    Div
+        Weight controls with the leading spacer removed while preserving any stores.
+    """
+    children = weight_components.children
+    if isinstance(children, tuple):
+        children = list(children)
+    elif not isinstance(children, list):
+        children = [children]
+
+    if children and children[0].__class__.__name__ == "Br":
+        children = children[1:]
+
+    return Div(children, style={"width": "100%"})
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -729,9 +758,7 @@ def build_test_layout(
         # The first child of the weight component is always the spacer <Br/> returned by
         # build_weight_components. Drop it from the weights so the metric weights box
         # hugs the threshold box.
-        weight_children = metric_weights.children
-        weight_children = weight_children[1:]
-        compact_weights = Div(weight_children)
+        compact_weights = compact_weight_components(metric_weights)
 
         controls_visual = Div(
             [

@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -18,6 +18,7 @@ from ml_peg.app.utils.build_components import (
     build_faqs,
     build_footer,
     build_weight_components,
+    compact_weight_components,
 )
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
@@ -485,6 +486,7 @@ def build_category_page_layout(
     summary_table = category_view["summary_table"]
     weight_components = category_view["weight_components"]
     tests = category_view["tests"]
+    category_controls = compact_weight_components(weight_components)
     benchmark_section = Div(
         [test["layout"] for test in tests],
         style={"display": "grid", "gap": "24px"},
@@ -494,8 +496,10 @@ def build_category_page_layout(
         [
             H1(category_title),
             H3(category_description),
-            summary_table,
-            weight_components,
+            Div(
+                [Div(summary_table), Br(), category_controls],
+                style={"width": "fit-content"},
+            ),
             Div(
                 [
                     Div(
