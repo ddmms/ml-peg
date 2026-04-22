@@ -58,8 +58,8 @@ def all_energies() -> dict[str, dict]:
 @pytest.fixture
 @cell_to_scatter(
     filename=OUT_PATH / "GAP_20_scatter.json",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
+    x_label="Predicted energy / eV atom⁻¹",
+    y_label="Reference energy / eV atom⁻¹",
 )
 def interactive_dataset(all_energies: dict) -> dict:
     """
