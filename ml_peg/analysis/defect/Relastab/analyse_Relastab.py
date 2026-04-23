@@ -212,9 +212,9 @@ def stability_energies(grouped_data) -> dict[str, list]:
 @pytest.fixture
 def ranking_metrics(
     grouped_data,
-) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, dict[str, float]]]]:
+) -> dict[str, dict[str, dict[str, float]]]:
     """
-    Compute ranking metrics summed over all subsets and detailed per subset.
+    Compute ranking metrics per subset.
 
     (1) Check if global minimum is identified correctly.
     (2) Spearman rank correlation of the 5 highest (least stable) energy configurations.
@@ -226,22 +226,15 @@ def ranking_metrics(
 
     Returns
     -------
-    tuple
-        Total results and per-subset results.
+    dict[str, dict[str, dict[str, float]]]
+        Per-subset results.
     """
-    results = {}
     subset_results = collections.defaultdict(dict)
 
     for model_name in MODELS:
-        total_global_min_match = 0.0
-        total_top5_spearman = 0.0
-
         subsets = grouped_data[model_name]
         if not subsets:
-            results[model_name] = {"GlobalMin": None, "Top5_Spearman": None}
             continue
-
-        valid_subsets = 0
 
         for subset_name, entries in subsets.items():
             if not entries:
@@ -252,8 +245,6 @@ def ranking_metrics(
 
             if len(ref_values) < 2:  # Need at least 2 for ranking
                 continue
-
-            valid_subsets += 1
 
             # --- Metric 1: Global Min Match (per subset) ---
             idx_ref_min = np.argmin(ref_values)
@@ -279,18 +270,7 @@ def ranking_metrics(
                 "Top5_Spearman": spearman,
             }
 
-            total_global_min_match += match
-            total_top5_spearman += spearman
-
-        if valid_subsets > 0:
-            results[model_name] = {
-                "GlobalMin": total_global_min_match / valid_subsets,
-                "Top5_Spearman": total_top5_spearman / valid_subsets,
-            }
-        else:
-            results[model_name] = {"GlobalMin": None, "Top5_Spearman": None}
-
-    return results, subset_results
+    return dict(subset_results)
 
 
 @pytest.fixture
@@ -300,23 +280,23 @@ def ranking_metrics(
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
-def metrics(ranking_metrics: tuple) -> dict[str, dict]:
+def metrics(ranking_metrics: dict[str, dict[str, dict[str, float]]]) -> dict[str, dict]:
     """
     Get all metrics.
 
-    Returns total metrics and per-subset metrics as separate columns.
+    Returns per-subset metrics as separate columns.
 
     Parameters
     ----------
     ranking_metrics
-        Tuple of (total_results, subset_results).
+        Per-subset results.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    total_metrics, subset_metrics = ranking_metrics
+    subset_metrics = ranking_metrics
 
     def pivot(data):
         """
@@ -343,7 +323,7 @@ def metrics(ranking_metrics: tuple) -> dict[str, dict]:
         "cawo4": "CaWO4",
     }
 
-    result = pivot(total_metrics)
+    result = {}
 
     # Add per-subset columns with human-friendly names
     for subset_name, metrics_dict in subset_metrics.items():

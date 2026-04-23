@@ -44,8 +44,6 @@ class RelastabApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "Global Min": scatter,
-                "Top 5 Spearman": scatter,
                 "Global Min Fe": scatter,
                 "Top 5 Spearman Fe": scatter,
                 "Global Min CaWO4": scatter,

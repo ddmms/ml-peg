@@ -46,11 +46,10 @@ class DefectstabApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "RMSD": scatter,
-                "Fe SIA": scatter,
-                "Boron Carbide Stoichiometry": scatter,
-                "Boron Carbide Defects": scatter,
-                "MAPI Tetragonal": scatter,
+                "RMSD Fe SIA": scatter,
+                "RMSD Boron Carbide Stoichiometry": scatter,
+                "RMSD Boron Carbide Defects": scatter,
+                "RMSD MAPI Tetragonal": scatter,
                 "Score": scatter,
             },
         )

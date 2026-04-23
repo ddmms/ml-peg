@@ -249,9 +249,9 @@ def formation_energies(grouped_data) -> dict[str, list]:
 @pytest.fixture
 def fe_errors(
     grouped_data,
-) -> tuple[dict[str, float], dict[str, dict[str, float]]]:
+) -> dict[str, dict[str, float]]:
     """
-    Compute RMSD per subset and averaged over all subsets.
+    Compute RMSD per subset.
 
     Parameters
     ----------
@@ -260,21 +260,15 @@ def fe_errors(
 
     Returns
     -------
-    tuple
-        (total_results, subset_results) where total_results is the
-        average RMSD across subsets and subset_results is the per-subset
-        RMSD for each model.
+    dict[str, dict[str, float]]
+        Per-subset RMSD for each model.
     """
-    total_results = {}
     subset_results = collections.defaultdict(dict)
 
     for model_name in MODELS:
         subsets = grouped_data[model_name]
         if not subsets:
-            total_results[model_name] = None
             continue
-
-        subset_rmsds = []
 
         for subset_name, entries in subsets.items():
             if not entries:
@@ -291,15 +285,7 @@ def fe_errors(
 
             subset_results[subset_name][model_name] = subset_rmsd
 
-            if subset_rmsd is not None:
-                subset_rmsds.append(subset_rmsd)
-
-        if subset_rmsds:
-            total_results[model_name] = np.mean(subset_rmsds)
-        else:
-            total_results[model_name] = None
-
-    return total_results, dict(subset_results)
+    return dict(subset_results)
 
 
 @pytest.fixture
@@ -310,35 +296,34 @@ def fe_errors(
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    fe_errors: tuple[dict[str, float], dict[str, dict[str, float]]],
+    fe_errors: dict[str, dict[str, float]],
 ) -> dict[str, dict]:
     """
     Get all Defectstab metrics.
 
-    Returns total RMSD and per-subset RMSD as separate columns.
+    Returns per-subset RMSD metrics.
 
     Parameters
     ----------
     fe_errors
-        Tuple of (total_results, subset_results).
+        Per-subset RMSD for each model.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    total_results, subset_results = fe_errors
+    subset_results = fe_errors
     subset_name_map = {
-        "fe_sia": "Fe SIA",
-        "boroncarbide_stoichiometry": "Boron Carbide Stoichiometry",
-        "boroncarbide_defects": "Boron Carbide Defects",
-        "mapi_tetragonal": "MAPI Tetragonal",
+        "fe_sia": "RMSD Fe SIA",
+        "boroncarbide_stoichiometry": "RMSD Boron Carbide Stoichiometry",
+        "boroncarbide_defects": "RMSD Boron Carbide Defects",
+        "mapi_tetragonal": "RMSD MAPI Tetragonal",
     }
-    renamed_subset_results = {
+    return {
         subset_name_map.get(subset_name, subset_name): model_scores
         for subset_name, model_scores in subset_results.items()
     }
-    return {"RMSD": total_results} | renamed_subset_results
 
 
 def test_defectstab_analysis(

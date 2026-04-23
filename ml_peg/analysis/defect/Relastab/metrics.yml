@@ -1,43 +1,29 @@
 metrics:
-    Global Min:
-        good: 1.0
-        bad: 0.0
-        unit: null
-        tooltip: "Correct identification of the Global Minimum (1=Yes, 0=No)"
-        level_of_theory: PBE
-        weight: 1
-    Top 5 Spearman:
-        good: 1.0
-        bad: 0.0
-        unit: null
-        tooltip: "Spearman rank correlation of the 5 highest (least stable) energy configurations"
-        level_of_theory: PBE
-        weight: 1
     Global Min Fe:
         good: 1.0
         bad: 0.0
         unit: null
         tooltip: "Global Min for Fe subset"
         level_of_theory: PBE
-        weight: 0
+        weight: 1
     Top 5 Spearman Fe:
         good: 1.0
         bad: 0.0
         unit: null
         tooltip: "Top 5 Spearman for Fe subset"
         level_of_theory: PBE
-        weight: 0
+        weight: 1
     Global Min CaWO4:
         good: 1.0
         bad: 0.0
         unit: null
         tooltip: "Global Min for CaWO4 subset"
         level_of_theory: PBE
-        weight: 0
+        weight: 1
     Top 5 Spearman CaWO4:
         good: 1.0
         bad: 0.0
         unit: null
         tooltip: "Top 5 Spearman for CaWO4 subset"
         level_of_theory: PBE
-        weight: 0
+        weight: 1

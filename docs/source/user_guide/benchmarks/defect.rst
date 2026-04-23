@@ -11,7 +11,7 @@ Summary
 This benchmark evaluates formation energies across four distinct subsets covering
 different material systems: iron self-interstitial atoms (SIA), boron carbide
 stoichiometry, boron carbide point defects, and a methylammonium lead iodide
-vacancy. The overall RMSD metric is the average of the per-subset RMSDs.
+vacancy.
 Results can be viewed per subset in the app. The subsets are described in detail below.
 
 
@@ -95,25 +95,25 @@ and :math:`E_{\mathrm{pristine}}` is the energy of the pristine supercell.
 Metrics
 -------
 
-RMSD
+**RMSD**
 
 Root Mean Square Deviation of formation energies compared to DFT data.
-The RMSD is computed independently for each subset, and the overall score
-reported in the table is the average of the per-subset RMSDs.
-Per-subset values are reported as separate columns in the app table.
+The RMSD of formation energies with respect to DFT data is computed independently
+for each subset. Per-subset values are reported as separate columns in the app table.
 
-For Defectstab, the ``bad`` threshold for each subset RMSD is scaled from the
-reference formation-energy magnitude of that subset:
+For each subset, the ``bad`` threshold is set as:
 
 .. math::
-  \mathrm{bad} = 0.25 \times P90\left(|E_\mathrm{ref}|\right)
+  \mathrm{bad} = 0.5 \times \mathrm{mean}\left(|E_\mathrm{ref}|\right)
 
-where :math:`P90` is the 90th percentile of the absolute reference formation
-energies :math:`|E_\mathrm{ref}|` in that subset. In other words, it is the
-value below which 90% of the subset reference magnitudes lie. This gives a
-robust high-energy scale for each subset while avoiding over-sensitivity to a
-single extreme point. The total RMSD threshold is computed in the same way
-using all Defectstab reference values together.
+where :math:`\mathrm{mean}\left(|E_\mathrm{ref}|\right)` is the mean of the absolute DFT
+reference formation energies in that subset. The ``good`` threshold is 0 eV (perfect agreement).
+
+Each per-subset RMSD is converted to a normalised score in :math:`[0, 1]` by linear
+interpolation between ``good`` (score = 1) and ``bad`` (score = 0). If the RMSD
+exceeds the ``bad`` threshold, the subset score is clamped to 0. The overall
+``Score`` reported in the table is the unweighted average of all four per-subset
+scores.
 
 Computational cost
 ------------------
@@ -126,7 +126,7 @@ Data availability
 
 Input structures:
 
-* Subset ``fe`` of the ``Defectstab`` dataset (:math:`\mathrm{Fe}` SIA configurations).
+* Subset ``fe`` of the ``Defectstab`` dataset (:math:`\mathrm{Fe}` SIA configurations, PBE functional).
 
   * A. Allera, T.D. Swinburne, A.M. Goryaeva, B. Bienvenu, F. Ribeiro, M. Perez, M.-C. Marinica, D. Rodney,
     Activation entropy of dislocation glide in body-centered cubic metals from atomistic simulations,
@@ -136,13 +136,13 @@ Input structures:
     Reinforcing materials modelling by encoding the structures of defects in crystalline solids into distortion scores,
     Nat Commun 11, 4691 (2020).
 
-* Subset ``boroncarbide_stoichiometry`` and ``boroncarbide_defects`` of the ``Defectstab`` dataset (Boron Carbide structures).
+* Subset ``boroncarbide_stoichiometry`` and ``boroncarbide_defects`` of the ``Defectstab`` dataset (Boron Carbide structures, LDA functional).
 
   * G. Roma, K. Gillet, A. Jay, N. Vast, G. Gutierrez,
     Understanding first-order Raman spectra of boron carbides across the homogeneity range,
     Phys. Rev. Materials 5, 063601 (2021).
 
-* Subset ``mapi_tetragonal`` of the ``Defectstab`` dataset (MAPI tetragonal structures).
+* Subset ``mapi_tetragonal`` of the ``Defectstab`` dataset (MAPI tetragonal structures, optB86b+vdW functional).
 
   * K. Madaan, G. Roma, J. Gulomov, P. Pochet, C. Corbel, I. Makkonen,
     Challenges in predicting positron annihilation lifetimes in lead halide perovskites: correlation functionals and polymorphism,
@@ -175,29 +175,22 @@ these subsets.
 Metrics
 -------
 
-1. GlobalMin (Weight: 0.5)
+Two metrics are evaluated per subset; per-subset values are reported as separate
+columns in the app table.
 
-Correct identification of the Global Minimum.
-For each subset, this metric checks if the configuration predicted to have the
-lowest energy matches the reference global minimum.
-It is a binary score (1.0 for a match, 0.0 otherwise) averaged over all
-evaluated subsets.
-This metric assesses the model's ability to find the most stable structure
-within the provided set of configurations.
+**GlobalMin**
+  Binary score (1 if the predicted lowest-energy configuration matches the
+  reference global minimum, 0 otherwise).
 
-2. Top5_Spearman (Weight: 1.0)
+**Top5 Spearman**
+  Spearman rank correlation between predicted and reference rankings for the 5
+  highest-energy (least stable) configurations in the subset.
 
-Spearman rank correlation coefficient calculated on the
-5 highest energy (least stable) configurations.
-For each subset, we identify the 5 configurations with the highest reference
-energies (the least stable ones) and compute the Spearman correlation between
-their reference and predicted rankings.
-This metric focuses on the model's ability to correctly order high-energy states,
-which are often critical for understanding transition pathways or high-temperature
-behavior.
-The final score is the average correlation across all evaluated subsets.
-
-Per-subset values for both metrics are reported as separate columns in the app table.
+For both metrics the ``good`` threshold is 1.0 (perfect) and the ``bad``
+threshold is 0.0. Each per-subset metric value is therefore used directly as its
+normalised score in :math:`[0, 1]`. The overall ``Score`` reported in the table
+is the unweighted average of all per-subset metric scores across both metrics
+and both subsets.
 
 Computational cost
 ------------------
@@ -210,7 +203,7 @@ Data availability
 
 Input structures:
 
-* Subset ``fe`` of the ``Relastab`` dataset (:math:`\mathrm{Fe}` SIA configurations).
+* Subset ``fe`` of the ``Relastab`` dataset (:math:`\mathrm{Fe}` SIA configurations, PBE functional).
 
   * A. Allera, T.D. Swinburne, A.M. Goryaeva, B. Bienvenu, F. Ribeiro, M. Perez, M.-C. Marinica, D. Rodney,
     Activation entropy of dislocation glide in body-centered cubic metals from atomistic simulations,
@@ -220,7 +213,7 @@ Input structures:
     Reinforcing materials modelling by encoding the structures of defects in crystalline solids into distortion scores,
     Nat Commun 11, 4691 (2020).
 
-* Subset ``cawo4`` of the ``Relastab`` dataset (:math:`\mathrm{CaWO_4}` interstitial configurations).
+* Subset ``cawo4`` of the ``Relastab`` dataset (:math:`\mathrm{CaWO_4}` interstitial configurations, PBE functional).
 
   * G. Soum-Sidikov, A. Boisard, D. L010, M. Loidl, O. Stézowski, A. Music, G. Music, Y. Zeng, R. Cong, T. Yang, A. Echeverria, L. Music, D. Music, V. Music,
     Calculation of crystal defects induced in :math:`\mathrm{CaWO_4}` cryogenic detector by 100 eV displacement cascades using a data driven force field,
