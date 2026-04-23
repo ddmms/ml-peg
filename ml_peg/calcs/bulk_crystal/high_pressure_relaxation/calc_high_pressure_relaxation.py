@@ -191,7 +191,6 @@ def relax_with_pressure(
                 fmax=fmax,
                 steps=max_steps,
                 filter_kwargs={"scalar_pressure": pressure_gpa},
-                calc_kwargs={"default_dtype": "float64"},
             )
             geom_opt.run()
             relaxed = geom_opt.struct
@@ -215,6 +214,7 @@ def relax_with_pressure(
     return relaxed, converged, enthalpy / n_atoms
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 @pytest.mark.parametrize("pressure_idx", range(len(PRESSURES)))
 def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> None:
@@ -229,6 +229,7 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         Index into PRESSURES list.
     """
     model_name, model = mlip
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     pressure_gpa = PRESSURES[pressure_idx]

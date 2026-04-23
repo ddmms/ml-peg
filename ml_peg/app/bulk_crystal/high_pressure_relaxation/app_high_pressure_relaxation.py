@@ -59,13 +59,13 @@ class HighPressureRelaxationApp(BaseApp):
 
         vol_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/bulk_crystal/high_pressure_relaxation",
+            assets_prefix="/assets/bulk_crystal/high_pressure_relaxation",
             models=MODELS,
             traj_dirname="density_traj_volume",
         )
         energy_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/bulk_crystal/high_pressure_relaxation",
+            assets_prefix="/assets/bulk_crystal/high_pressure_relaxation",
             models=MODELS,
             traj_dirname="density_traj_energy",
         )
