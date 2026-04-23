@@ -285,7 +285,7 @@ def build_weight_components(
         },
     )
 
-    layout = [Br(), container]
+    layout = [container]
     if include_store:
         layout.append(
             Store(
@@ -326,35 +326,6 @@ def build_weight_components(
         )
 
     return Div(layout)
-
-
-def compact_weight_components(weight_components: Div) -> Div:
-    """
-    Remove the leading spacer from ``build_weight_components`` output.
-
-    This is used when the weight controls sit inside a wrapper that already manages
-    the vertical spacing relative to the table above it.
-
-    Parameters
-    ----------
-    weight_components
-        Wrapper returned by ``build_weight_components``.
-
-    Returns
-    -------
-    Div
-        Weight controls with the leading spacer removed while preserving any stores.
-    """
-    children = weight_components.children
-    if isinstance(children, tuple):
-        children = list(children)
-    elif not isinstance(children, list):
-        children = [children]
-
-    if children and children[0].__class__.__name__ == "Br":
-        children = children[1:]
-
-    return Div(children, style={"width": "100%"})
 
 
 def build_faqs() -> Div:
@@ -710,33 +681,33 @@ def build_test_layout(
         )
     )
 
-    # Inline normalization thresholds when metadata is supplied
-    threshold_controls = None
-    if thresholds is not None:
-        reserved = {"MLIP", "Score", "id"}
-        metric_columns = [
-            col["id"] for col in table.columns if col.get("id") not in reserved
-        ]
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-data-store",
-                storage_type="session",
-                data=table.data,
-            )
+    if thresholds is None:
+        raise ValueError("Threshold metadata must be provided for benchmark layouts.")
+
+    reserved = {"MLIP", "Score", "id"}
+    metric_columns = [
+        col["id"] for col in table.columns if col.get("id") not in reserved
+    ]
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-raw-data-store",
+            storage_type="session",
+            data=table.data,
         )
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-tooltip-store",
-                storage_type="session",
-                data=table.tooltip_header,
-            )
+    )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-raw-tooltip-store",
+            storage_type="session",
+            data=table.tooltip_header,
         )
-        threshold_controls = build_threshold_inputs(
-            table_columns=metric_columns,
-            thresholds=thresholds,
-            table_id=table.id,
-            column_widths=column_widths,
-        )
+    )
+    threshold_controls = build_threshold_inputs(
+        table_columns=metric_columns,
+        thresholds=thresholds,
+        table_id=table.id,
+        column_widths=column_widths,
+    )
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
@@ -750,39 +721,24 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    controls_visual = None
-    if threshold_controls and metric_weights:
-        # Combine threshold and weight panels in a single card while trimming the extra
-        # <Br/> injected at the top of the weight component so the boundary box hugs
-        # both controls.
-        # The first child of the weight component is always the spacer <Br/> returned by
-        # build_weight_components. Drop it from the weights so the metric weights box
-        # hugs the threshold box.
-        compact_weights = compact_weight_components(metric_weights)
-
-        controls_visual = Div(
-            [
-                Div(threshold_controls, style={"marginBottom": "0px"}),
-                Div(compact_weights, style={"marginTop": "0"}),
-            ],
-            style={
-                "backgroundColor": "#f8f9fa",
-                "border": "1px solid #dee2e6",
-                "borderRadius": "6px",
-                "padding": "0px 0px 0px 0px",  # top right bottom left
-                "marginTop": "-5px",
-                "boxSizing": "border-box",
-                "width": "100%",
-            },
-        )
-    elif threshold_controls:
-        controls_visual = threshold_controls
-    elif metric_weights:
-        controls_visual = metric_weights
+    controls_visual = Div(
+        [
+            Div(threshold_controls, style={"marginBottom": "0px"}),
+            Div(metric_weights, style={"marginTop": "0"}),
+        ],
+        style={
+            "backgroundColor": "#f8f9fa",
+            "border": "1px solid #dee2e6",
+            "borderRadius": "6px",
+            "padding": "0px 0px 0px 0px",  # top right bottom left
+            "marginTop": "-5px",
+            "boxSizing": "border-box",
+            "width": "100%",
+        },
+    )
 
     table_section: list[Component] = [Div(table)]
-    if controls_visual:
-        table_section.extend([Br(), controls_visual])
+    table_section.extend([Br(), controls_visual])
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:

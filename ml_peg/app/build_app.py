@@ -18,7 +18,6 @@ from ml_peg.app.utils.build_components import (
     build_faqs,
     build_footer,
     build_weight_components,
-    compact_weight_components,
 )
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
@@ -486,7 +485,6 @@ def build_category_page_layout(
     summary_table = category_view["summary_table"]
     weight_components = category_view["weight_components"]
     tests = category_view["tests"]
-    category_controls = compact_weight_components(weight_components)
     benchmark_section = Div(
         [test["layout"] for test in tests],
         style={"display": "grid", "gap": "24px"},
@@ -497,7 +495,7 @@ def build_category_page_layout(
             H1(category_title),
             H3(category_description),
             Div(
-                [Div(summary_table), Br(), category_controls],
+                [Div(summary_table), Br(), weight_components],
                 style={"width": "fit-content"},
             ),
             Div(
@@ -1057,6 +1055,7 @@ def build_nav(
                 [
                     H1("Categories Summary"),
                     summary_table,
+                    Br(),
                     weight_components,
                     build_faqs(),
                 ]
