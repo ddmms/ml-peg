@@ -1,0 +1,40 @@
+metrics:
+  Dispersion RMSE (mean):
+    good: 0.0
+    bad: 2.0
+    unit: THz
+    tooltip: "Average RMSE between ML and DFT phonon dispersions across the 10 Ti64 cases (after resampling onto a common k-grid)."
+    weight: 1.0
+    level_of_theory: PBE
+
+  Dispersion RMSE (max):
+    good: 0.0
+    bad: 4.0
+    unit: THz
+    tooltip: "Worst-case RMSE between ML and DFT phonon dispersions among the 10 Ti64 cases."
+    weight: 0.5
+    level_of_theory: PBE
+
+  ΔF (0 K) mean:
+    good: 0.0
+    bad: 0.007
+    unit: eV/atom
+    tooltip: "Mean |ΔF| (free energy) at 0 K per atom between ML and DFT."
+    weight: 1.0
+    level_of_theory: PBE
+
+  ΔF (2000 K) mean:
+    good: 0.0
+    bad: 0.03
+    unit: eV/atom
+    tooltip: "Mean |ΔF| (free energy) at 2000 K per atom between ML and DFT."
+    weight: 1.0
+    level_of_theory: PBE
+
+  ω_avg MAE:
+    good: 0.0
+    bad: 1.0
+    unit: THz
+    tooltip: "MAE of ω_avg per case, where ω_avg is the mean of all phonon band frequencies for that case, averaged over the 10 Ti64 cases."
+    weight: 0.5
+    level_of_theory: PBE
