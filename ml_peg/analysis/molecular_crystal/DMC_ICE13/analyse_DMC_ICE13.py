@@ -49,7 +49,7 @@ INFO = get_struct_info(
 )
 def lattice_energies() -> dict[str, list]:
     """
-    Get lattice energies for all DMC-ICE13 polymorphs.
+    Get lattice energies for all DMC-ICE13 polymorphs and plot as scatter.
 
     Returns
     -------
@@ -95,8 +95,7 @@ def lattice_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
+def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for lattice energies.
 
@@ -121,21 +120,14 @@ def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
     return results
 
 
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "dmc_ice13_metrics_table.json",
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=DISPERSION_NAME_MAP,
-)
-def metrics(dmc_ice13_errors: dict[str, float]) -> dict[str, dict]:
+def get_metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     """
     Get all DMC-ICE13 metrics.
 
     Parameters
     ----------
-    dmc_ice13_errors
-        Mean absolute errors for all polymorphs.
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
 
     Returns
     -------
@@ -143,8 +135,32 @@ def metrics(dmc_ice13_errors: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": dmc_ice13_errors,
+        "MAE": get_errors(lattice_energies),
     }
+
+
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "dmc_ice13_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
+)
+def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Get all DMC-ICE13 metrics.
+
+    Parameters
+    ----------
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return get_metrics(lattice_energies)
 
 
 def test_dmc_ice13(metrics: dict[str, dict]) -> None:
