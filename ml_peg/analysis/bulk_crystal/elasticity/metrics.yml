@@ -15,5 +15,5 @@ metrics:
     good: 5.0
     bad: 50.0
     unit: GPa
-    tooltip: Mean absolute error of all nonzero elements of the full elasticity tensor (lower is better). Computed per-tensor and then averaged across systems.
+    tooltip: Average of per-material mean absolute errors of all nonzero elements of the full elasticity tensor (lower is better). Computed per-tensor and then averaged across systems.
     level_of_theory: PBE
