@@ -321,7 +321,6 @@ def relax_low_dimensional(
                 steps=max_steps,
                 # Use cell mask to constrain relaxation to appropriate dimensions
                 filter_kwargs={"mask": CELL_MASKS[dimensionality]},
-                calc_kwargs={"default_dtype": "float64"},
             )
             geom_opt.run()
             relaxed = geom_opt.struct
@@ -347,6 +346,7 @@ def relax_low_dimensional(
 DIMENSIONALITIES = ["2D", "1D"]
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 @pytest.mark.parametrize("dimensionality", DIMENSIONALITIES)
 def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) -> None:
@@ -361,6 +361,7 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
         Either "2D" or "1D".
     """
     model_name, model = mlip
+    model.default_dtype = "float64"
     calc = model.get_calculator()
 
     # Load structures (downloads from Alexandria if not cached)
