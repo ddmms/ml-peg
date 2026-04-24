@@ -237,11 +237,17 @@ def run_elasticity_benchmark(
     for _, row in results.iterrows():
         struct = row.get("final_structure")
         if struct is not None:
-            atoms = AseAtomsAdaptor.get_atoms(struct)
-            atoms.info["mp_id"] = row[benchmark.index_name]
+            atoms = AseAtomsAdaptor.get_atoms(struct).copy()
+            atoms.calc = None
+            atoms.info = {"mp_id": row[benchmark.index_name]}
             atoms_list.append(atoms)
     if atoms_list:
-        ase_write(out_dir / "relaxed_structures.extxyz", atoms_list)
+        ase_write(
+            out_dir / "relaxed_structures.extxyz",
+            atoms_list,
+            columns=["symbols", "positions"],
+            write_results=False,
+        )
 
     # Drop structure column before CSV processing
     results = results.drop(columns=["final_structure"], errors="ignore")
