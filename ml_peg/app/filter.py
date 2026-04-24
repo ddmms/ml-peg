@@ -87,7 +87,7 @@ def get_element_filter() -> Details:
             Div(
                 [
                     Dropdown(
-                        id="element-filter-checklist",
+                        id="element-filter",
                         options=elements,
                         value=elements,
                         multi=True,

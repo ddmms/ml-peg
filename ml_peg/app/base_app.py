@@ -80,7 +80,10 @@ class BaseApp(ABC):
             self.table_path, id=self.table_id, description=description
         )
         self.layout = self.build_layout()
-        self.info = self.load_info(info_path) if info_path else None
+        if info_path:
+            self.load_info(info_path)
+        else:
+            self.info = None
 
     def load_info(self, info_path: Path) -> None:
         """
@@ -122,3 +125,8 @@ class BaseApp(ABC):
     def register_callbacks(self):
         """Register callbacks with app."""
         pass
+
+    @abstractmethod
+    def filter_data(self):
+        """Filter data by elements."""
+        print(f"No filter_data method defined for {self.name}, skipping.")

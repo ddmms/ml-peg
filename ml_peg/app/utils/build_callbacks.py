@@ -915,3 +915,34 @@ def model_asset_from_scatter(
         if rendered is None:
             return html.Div(missing_message)
         return rendered
+
+
+def filter_table(table_id: str) -> None:
+    """
+    Define callback to filter table by elements.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being filtered.
+    """
+
+    @callback(
+        Output(table_id, "data"),
+        Input("element-filter", "value"),
+    )
+    def _filter_table(element_list: list[str | None]) -> list[dict]:
+        """
+        Register callback to filter table by elements.
+
+        Parameters
+        ----------
+        element_list
+            List of selected elements.
+
+        Returns
+        -------
+        list[dict]
+            Filtered table data.
+        """
+        pass
