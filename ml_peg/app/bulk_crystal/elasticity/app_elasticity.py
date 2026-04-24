@@ -10,7 +10,7 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
@@ -29,20 +29,14 @@ class ElasticityApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        # Load pre-generated per-model violin figures (may not exist before analysis)
-        violin_files = {
-            "Bulk modulus MAE": DATA_PATH / "figure_bulk_violin.json",
-            "Shear modulus MAE": DATA_PATH / "figure_shear_violin.json",
-            "Elasticity tensor MAE": DATA_PATH / "figure_elastic_tensor_violin.json",
-        }
-        violin_data: dict[str, dict] = {}
-        for col, path in violin_files.items():
-            if path.exists():
-                with open(path) as f:
-                    violin_data[col] = json.load(f)
+        # Load pre-generated per-model violin figure for elastic tensor only
+        tensor_violin_data: dict[str, dict] = {}
+        tensor_violin_path = DATA_PATH / "figure_elastic_tensor_violin.json"
+        if tensor_violin_path.exists():
+            with open(tensor_violin_path) as f:
+                tensor_violin_data = json.load(f)
 
-        # Build plots for models with data (read_density_plot_for_model
-        # returns None for models without data)
+        # Build plots: density scatter for bulk/shear, violin for elastic tensor
         density_plots = {}
         for model in MODELS:
             plots = {
@@ -57,18 +51,12 @@ class ElasticityApp(BaseApp):
                     id=f"{BENCHMARK_NAME}-{model}-shear-figure",
                 ),
             }
-            for col, suffix in [
-                ("Bulk modulus MAE", "bulk-violin"),
-                ("Shear modulus MAE", "shear-violin"),
-                ("Elasticity tensor MAE", "tensor-violin"),
-            ]:
-                fig_dict = violin_data.get(col, {}).get(model)
-                if fig_dict is not None:
-                    plots[col] = Graph(
-                        id=f"{BENCHMARK_NAME}-{model}-{suffix}",
-                        figure=fig_dict,
-                    )
-            # Filter out None values (models without data for that metric)
+            fig_dict = tensor_violin_data.get(model)
+            if fig_dict is not None:
+                plots["Elasticity tensor MAE"] = Graph(
+                    id=f"{BENCHMARK_NAME}-{model}-tensor-violin",
+                    figure=fig_dict,
+                )
             model_plots = {k: v for k, v in plots.items() if v is not None}
             if model_plots:
                 density_plots[model] = model_plots
@@ -78,6 +66,45 @@ class ElasticityApp(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             cell_to_plot=density_plots,
         )
+
+        # Structure visualization: density scatter (traj mode) and violin (struct mode)
+        for model in MODELS:
+            for prop, traj_subdir in [
+                ("bulk", "density_bulk"),
+                ("shear", "density_shear"),
+            ]:
+                traj_dir = DATA_PATH / model / traj_subdir
+                if not traj_dir.exists():
+                    continue
+                traj_files = sorted(
+                    traj_dir.glob("*.extxyz"), key=lambda p: int(p.stem)
+                )
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{prop}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=[
+                        f"/assets/bulk_crystal/elasticity/{model}/{traj_subdir}/{p.name}"
+                        for p in traj_files
+                    ],
+                    mode="traj",
+                )
+
+            violin_struct_dir = DATA_PATH / model
+            xyz_files = (
+                sorted(violin_struct_dir.glob("*.xyz"), key=lambda p: int(p.stem))
+                if violin_struct_dir.exists()
+                else []
+            )
+            if xyz_files:
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-tensor-violin",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=[
+                        f"/assets/bulk_crystal/elasticity/{model}/{p.name}"
+                        for p in xyz_files
+                    ],
+                    mode="struct",
+                )
 
 
 def get_app() -> ElasticityApp:
@@ -99,6 +126,7 @@ def get_app() -> ElasticityApp:
         table_path=DATA_PATH / "elasticity_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 

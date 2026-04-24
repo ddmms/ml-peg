@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ase.io import read
+from ase.io import write as write_xyz
 import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
@@ -19,6 +21,7 @@ from ml_peg.analysis.utils.utils import (
     build_density_inputs,
     load_metrics_config,
     mae,
+    write_density_trajectories,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.plot_helpers import build_violin_distribution
@@ -326,6 +329,17 @@ def elasticity_stats() -> dict[str, dict[str, Any]]:
             "excluded": excluded,
         }
 
+        structs_path = CALC_PATH / model_name / "relaxed_structures.extxyz"
+        if structs_path.exists():
+            all_atoms = read(str(structs_path), index=":")
+            mp_id_to_atoms = {str(a.info["mp_id"]): a for a in all_atoms}
+            struct_dir = OUT_PATH / model_name
+            struct_dir.mkdir(parents=True, exist_ok=True)
+            for i, mp_id in enumerate(filtered["mp_id"].tolist()):
+                atoms = mp_id_to_atoms.get(str(mp_id))
+                if atoms is not None:
+                    write_xyz(str(struct_dir / f"{i}.xyz"), atoms)
+
     return stats
 
 
@@ -432,65 +446,34 @@ def elastic_tensor_mae(
 
 
 @pytest.fixture
-def bulk_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
+def density_trajectories(elasticity_stats: dict[str, dict[str, Any]]) -> None:
     """
-    Build and save per-model violin figures of per-material bulk modulus MAE.
+    Write density-scatter trajectory files for WEAS structure viewing.
 
     Parameters
     ----------
     elasticity_stats : dict
         Aggregated benchmark statistics.
     """
-    violin_data: dict[str, dict] = {}
     for model_name in MODELS:
-        prop = elasticity_stats.get(model_name, {}).get("bulk")
-        mp_ids = elasticity_stats.get(model_name, {}).get("mp_ids", [])
-        if prop is None or not prop["ref"]:
-            continue
-        values = [abs(p - r) for r, p in zip(prop["ref"], prop["pred"], strict=False)]
-        labels = [str(mp_id) for mp_id in mp_ids]
-        fig = build_violin_distribution(
-            values=values,
-            labels=labels,
-            title="Bulk modulus MAE distribution",
-            yaxis_title="MAE / GPa",
-            hovertemplate="Material: %{text}<br>MAE: %{y:.2f} GPa<extra></extra>",
-        )
-        violin_data[model_name] = fig.to_dict()
-
-    with open(OUT_PATH / "figure_bulk_violin.json", "w") as f:
-        json.dump(violin_data, f)
-
-
-@pytest.fixture
-def shear_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
-    """
-    Build and save per-model violin figures of per-material shear modulus MAE.
-
-    Parameters
-    ----------
-    elasticity_stats : dict
-        Aggregated benchmark statistics.
-    """
-    violin_data: dict[str, dict] = {}
-    for model_name in MODELS:
-        prop = elasticity_stats.get(model_name, {}).get("shear")
-        mp_ids = elasticity_stats.get(model_name, {}).get("mp_ids", [])
-        if prop is None or not prop["ref"]:
-            continue
-        values = [abs(p - r) for r, p in zip(prop["ref"], prop["pred"], strict=False)]
-        labels = [str(mp_id) for mp_id in mp_ids]
-        fig = build_violin_distribution(
-            values=values,
-            labels=labels,
-            title="Shear modulus MAE distribution",
-            yaxis_title="MAE / GPa",
-            hovertemplate="Material: %{text}<br>MAE: %{y:.2f} GPa<extra></extra>",
-        )
-        violin_data[model_name] = fig.to_dict()
-
-    with open(OUT_PATH / "figure_shear_violin.json", "w") as f:
-        json.dump(violin_data, f)
+        stats = elasticity_stats[model_name]
+        mp_ids = stats["mp_ids"]
+        struct_dir = OUT_PATH / model_name
+        for prop_key, traj_subdir in [
+            ("bulk", "density_bulk"),
+            ("shear", "density_shear"),
+        ]:
+            prop = stats[prop_key]
+            if not prop["ref"]:
+                continue
+            write_density_trajectories(
+                labels_list=list(range(len(mp_ids))),
+                ref_vals=prop["ref"],
+                pred_vals=prop["pred"],
+                struct_dir=struct_dir,
+                traj_dir=OUT_PATH / model_name / traj_subdir,
+                struct_filename_builder=lambda i: f"{i}.xyz",
+            )
 
 
 @pytest.fixture
@@ -628,9 +611,8 @@ def test_elasticity(
     metrics: dict[str, dict],
     bulk_density: dict[str, dict],
     shear_density: dict[str, dict],
-    bulk_violin: None,
-    shear_violin: None,
     elastic_tensor_violin: None,
+    density_trajectories: None,
 ) -> None:
     """
     Run elasticity analysis.
@@ -643,11 +625,9 @@ def test_elasticity(
         Density scatter data for bulk modulus.
     shear_density : dict
         Density scatter data for shear modulus.
-    bulk_violin : None
-        Saves per-material bulk modulus MAE violin figures.
-    shear_violin : None
-        Saves per-material shear modulus MAE violin figures.
     elastic_tensor_violin : None
         Saves per-material elastic tensor MAE violin figures.
+    density_trajectories : None
+        Writes density-scatter trajectory files for WEAS structure viewing.
     """
     return
