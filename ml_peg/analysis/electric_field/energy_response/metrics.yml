@@ -1,0 +1,15 @@
+metrics:
+  Alkane MAE:
+    good: 0.0
+    bad: 100.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: wB97V-M
+    weight: 1
+  Cumulene MAE:
+    good: 0.0
+    bad: 100.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all systems"
+    level_of_theory: wB97V-M
+    weight: 1
