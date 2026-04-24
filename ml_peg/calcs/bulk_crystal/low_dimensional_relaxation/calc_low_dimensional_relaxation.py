@@ -383,10 +383,6 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
             atoms, dimensionality
         )
 
-        if relaxed_atoms is not None:
-            relaxed_atoms.info["mat_id"] = mat_id
-            relaxed_atoms.info["dimensionality"] = dimensionality
-
         result = {
             "mat_id": mat_id,
             "dimensionality": dimensionality,
@@ -410,6 +406,22 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
                 else None
             )
 
+        if relaxed_atoms is not None:
+            relaxed_atoms.info["mat_id"] = mat_id
+            relaxed_atoms.info["dimensionality"] = dimensionality
+            relaxed_atoms.info["ref_energy_per_atom"] = result["ref_energy_per_atom"]
+            relaxed_atoms.info["pred_energy_per_atom"] = result["pred_energy_per_atom"]
+            if dimensionality == "2D":
+                relaxed_atoms.info["ref_area_per_atom"] = result["ref_area_per_atom"]
+                relaxed_atoms.info["pred_area_per_atom"] = result["pred_area_per_atom"]
+            else:
+                relaxed_atoms.info["ref_length_per_atom"] = result[
+                    "ref_length_per_atom"
+                ]
+                relaxed_atoms.info["pred_length_per_atom"] = result[
+                    "pred_length_per_atom"
+                ]
+
         results.append(result)
 
     # Save results
@@ -420,11 +432,11 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
     )
     df.to_csv(out_dir / f"results_{dimensionality}.csv", index=False)
 
-    # Write converged relaxed structures to xyz
-    relaxed_frames = [
-        r["relaxed_atoms"] for r in results if r["relaxed_atoms"] is not None
-    ]
-    if relaxed_frames:
-        for frame in relaxed_frames:
+    # Write converged relaxed structures to individual xyz files
+    structs_dir = out_dir / dimensionality
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for r in results:
+        if r["relaxed_atoms"] is not None:
+            frame = r["relaxed_atoms"]
             frame.calc = None
-        ase_write(out_dir / f"relaxed_{dimensionality}.xyz", relaxed_frames)
+            ase_write(structs_dir / f"{r['mat_id']}.xyz", frame)

@@ -7,8 +7,8 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
+from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -19,6 +19,30 @@ DOCS_URL = (
     "#low-dimensional-relaxation"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "low_dimensional_relaxation"
+ASSETS_PREFIX = "/assets/bulk_crystal/low_dimensional_relaxation"
+
+# (plot_json_filename, metric_cell_name, plot_id_suffix, traj_dirname)
+PLOT_CONFIGS = [
+    ("figure_area_2d.json", "Area MAE (2D)", "area-2d", "density_traj_area_2d"),
+    (
+        "figure_energy_2d.json",
+        "Energy MAE (2D)",
+        "energy-2d",
+        "density_traj_energy_2d",
+    ),
+    (
+        "figure_length_1d.json",
+        "Length MAE (1D)",
+        "length-1d",
+        "density_traj_length_1d",
+    ),
+    (
+        "figure_energy_1d.json",
+        "Energy MAE (1D)",
+        "energy-1d",
+        "density_traj_energy_1d",
+    ),
+]
 
 
 class LowDimensionalRelaxationApp(BaseApp):
@@ -26,17 +50,10 @@ class LowDimensionalRelaxationApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        plot_configs = [
-            ("figure_area_2d.json", "Area MAE (2D)", "area-2d"),
-            ("figure_energy_2d.json", "Energy MAE (2D)", "energy-2d"),
-            ("figure_length_1d.json", "Length MAE (1D)", "length-1d"),
-            ("figure_energy_1d.json", "Energy MAE (1D)", "energy-1d"),
-        ]
-
         density_plots: dict = {}
         for model in MODELS:
             plots = {}
-            for filename, metric_name, plot_id_suffix in plot_configs:
+            for filename, metric_name, plot_id_suffix, _ in PLOT_CONFIGS:
                 plot_path = DATA_PATH / filename
                 if plot_path.exists():
                     graph = read_density_plot_for_model(
@@ -54,6 +71,21 @@ class LowDimensionalRelaxationApp(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             cell_to_plot=density_plots,
         )
+
+        for _, _, plot_id_suffix, traj_dirname in PLOT_CONFIGS:
+            trajs = collect_traj_assets(
+                data_path=DATA_PATH,
+                assets_prefix=ASSETS_PREFIX,
+                models=MODELS,
+                traj_dirname=traj_dirname,
+            )
+            for model, paths in trajs.items():
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{plot_id_suffix}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=paths,
+                    mode="traj",
+                )
 
 
 def get_app() -> LowDimensionalRelaxationApp:
@@ -78,6 +110,7 @@ def get_app() -> LowDimensionalRelaxationApp:
         table_path=DATA_PATH / "low_dimensional_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 

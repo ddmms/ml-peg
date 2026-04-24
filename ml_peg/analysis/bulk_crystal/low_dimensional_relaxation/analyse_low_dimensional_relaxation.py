@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
+from ase.io import read as ase_read
+from ase.io import write as ase_write
 import pandas as pd
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
-from ml_peg.analysis.utils.utils import build_density_inputs, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_density_inputs,
+    load_metrics_config,
+    mae,
+    write_density_trajectories,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -29,38 +37,25 @@ ENERGY_OUTLIER_MAX = 40
 
 # Dimensionality-specific configuration
 DIM_CONFIGS = {
-    "2D": {"geom_col": "area_per_atom", "geom_label": "Area", "geom_unit": "Å²/atom"},
+    "2D": {
+        "geom_col": "area_per_atom",
+        "geom_label": "Area",
+        "geom_unit": "Å²/atom",
+        "traj_geom_dirname": "density_traj_area_2d",
+        "traj_energy_dirname": "density_traj_energy_2d",
+        "geom_plot_filename": "figure_area_2d.json",
+        "energy_plot_filename": "figure_energy_2d.json",
+    },
     "1D": {
         "geom_col": "length_per_atom",
         "geom_label": "Length",
         "geom_unit": "Å/atom",
+        "traj_geom_dirname": "density_traj_length_1d",
+        "traj_energy_dirname": "density_traj_energy_1d",
+        "geom_plot_filename": "figure_length_1d.json",
+        "energy_plot_filename": "figure_energy_1d.json",
     },
 }
-
-
-def _filter_energy_outliers(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Mark structures with extreme predicted energies as unconverged.
-
-    Structures with predicted energy per atom outside [-40, 40] eV/atom
-    are considered outliers and marked as unconverged.
-
-    Parameters
-    ----------
-    df
-        Results dataframe with 'pred_energy_per_atom' and 'converged' columns.
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with outliers marked as unconverged.
-    """
-    df.loc[
-        (df["pred_energy_per_atom"] <= ENERGY_OUTLIER_MIN)
-        | (df["pred_energy_per_atom"] >= ENERGY_OUTLIER_MAX),
-        "converged",
-    ] = False
-    return df
 
 
 def load_results(model_name: str, dimensionality: str = "2D") -> pd.DataFrame:
@@ -87,7 +82,11 @@ def load_results(model_name: str, dimensionality: str = "2D") -> pd.DataFrame:
 
 def get_converged_data(model_name: str, dimensionality: str = "2D") -> dict[str, list]:
     """
-    Get converged geometric and energy data for a model.
+    Get converged geometric and energy data for a model by reading xyz files.
+
+    Reads per-structure xyz files written by the calc step and copies them to
+    the app data directory. Filters predicted-energy outliers (treated as
+    non-converged).
 
     Parameters
     ----------
@@ -99,29 +98,60 @@ def get_converged_data(model_name: str, dimensionality: str = "2D") -> dict[str,
     Returns
     -------
     dict[str, list]
-        Dictionary with ref/pred values for geometric metric and energy.
+        Labels (mat_ids) and lists of ref/pred values for geometric metric
+        and energy.
     """
-    df = load_results(model_name, dimensionality)
-    if df.empty:
-        return {"ref_geom": [], "pred_geom": [], "ref_energy": [], "pred_energy": []}
-
-    df = _filter_energy_outliers(df)
-    df_conv = df[df["converged"]].copy()
+    xyz_dir = CALC_PATH / model_name / dimensionality
+    if not xyz_dir.exists():
+        return {
+            "labels": [],
+            "ref_geom": [],
+            "pred_geom": [],
+            "ref_energy": [],
+            "pred_energy": [],
+        }
 
     geom_col = DIM_CONFIGS[dimensionality]["geom_col"]
-    df_conv = df_conv.dropna(subset=[f"pred_{geom_col}", "pred_energy_per_atom"])
+    ref_key = f"ref_{geom_col}"
+    pred_key = f"pred_{geom_col}"
+
+    app_dir = OUT_PATH / model_name / dimensionality
+    app_dir.mkdir(parents=True, exist_ok=True)
+
+    labels, ref_geom, pred_geom, ref_energy, pred_energy = [], [], [], [], []
+    for xyz_file in sorted(xyz_dir.glob("*.xyz")):
+        atoms = ase_read(xyz_file)
+        pred_e = atoms.info.get("pred_energy_per_atom")
+        pred_g = atoms.info.get(pred_key)
+        if (
+            pred_e is None
+            or pred_g is None
+            or pred_e <= ENERGY_OUTLIER_MIN
+            or pred_e >= ENERGY_OUTLIER_MAX
+        ):
+            continue
+        labels.append(xyz_file.stem)
+        ref_geom.append(atoms.info[ref_key])
+        pred_geom.append(pred_g)
+        ref_energy.append(atoms.info["ref_energy_per_atom"])
+        pred_energy.append(pred_e)
+        ase_write(app_dir / xyz_file.name, atoms)
 
     return {
-        "ref_geom": df_conv[f"ref_{geom_col}"].tolist(),
-        "pred_geom": df_conv[f"pred_{geom_col}"].tolist(),
-        "ref_energy": df_conv["ref_energy_per_atom"].tolist(),
-        "pred_energy": df_conv["pred_energy_per_atom"].tolist(),
+        "labels": labels,
+        "ref_geom": ref_geom,
+        "pred_geom": pred_geom,
+        "ref_energy": ref_energy,
+        "pred_energy": pred_energy,
     }
 
 
 def get_convergence_rate(model_name: str, dimensionality: str = "2D") -> float | None:
     """
     Get convergence rate for a model.
+
+    Converged structures whose predicted energy falls outside
+    ``[ENERGY_OUTLIER_MIN, ENERGY_OUTLIER_MAX]`` are counted as unconverged.
 
     Parameters
     ----------
@@ -138,11 +168,24 @@ def get_convergence_rate(model_name: str, dimensionality: str = "2D") -> float |
     df = load_results(model_name, dimensionality)
     if df.empty:
         return None
-    df = _filter_energy_outliers(df)
-    return (df["converged"].sum() / len(df)) * 100
+
+    n_total = len(df)
+    n_converged = int(df["converged"].sum())
+
+    xyz_dir = CALC_PATH / model_name / dimensionality
+    if xyz_dir.is_dir():
+        for xyz_file in xyz_dir.glob("*.xyz"):
+            atoms = ase_read(xyz_file)
+            pred_e = atoms.info.get("pred_energy_per_atom")
+            if pred_e is not None and (
+                pred_e <= ENERGY_OUTLIER_MIN or pred_e >= ENERGY_OUTLIER_MAX
+            ):
+                n_converged -= 1
+
+    return (n_converged / n_total) * 100
 
 
-def _build_stats(dimensionality: str) -> dict[str, dict]:
+def _build_stats(dimensionality: str) -> dict[str, dict[str, Any]]:
     """
     Aggregate converged ref/pred data per model for a given dimensionality.
 
@@ -153,13 +196,14 @@ def _build_stats(dimensionality: str) -> dict[str, dict]:
 
     Returns
     -------
-    dict[str, dict]
-        Per-model dicts with "geom" and "energy" ref/pred lists.
+    dict[str, dict[str, Any]]
+        Per-model dicts with "labels", "geom" and "energy" ref/pred lists.
     """
-    stats = {}
+    stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
         data = get_converged_data(model_name, dimensionality)
         stats[model_name] = {
+            "labels": data["labels"],
             "geom": {"ref": data["ref_geom"], "pred": data["pred_geom"]},
             "energy": {"ref": data["ref_energy"], "pred": data["pred_energy"]},
         }
@@ -214,80 +258,139 @@ def _compute_convergence(dimensionality: str) -> dict[str, float]:
     return results
 
 
+def _build_density_plot_for_condition(
+    stats_per_model: dict[str, dict[str, Any]],
+    *,
+    quantity: str,
+    dimensionality: str,
+    filename: Path,
+    title: str,
+    x_label: str,
+    y_label: str,
+    traj_dirname: str,
+) -> None:
+    """
+    Write a density-scatter plot and structure trajectories for one condition.
+
+    Parameters
+    ----------
+    stats_per_model
+        Mapping of model name to that model's stats for this dimensionality.
+    quantity
+        Either ``"geom"`` or ``"energy"``.
+    dimensionality
+        Either ``"2D"`` or ``"1D"``.
+    filename
+        Output JSON file for the density plot.
+    title
+        Plot title.
+    x_label
+        X-axis label.
+    y_label
+        Y-axis label.
+    traj_dirname
+        Per-model subdirectory name for sampled structure trajectories.
+    """
+
+    @plot_density_scatter(
+        filename=filename,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+    )
+    def _build(stats: dict[str, dict[str, Any]] = stats_per_model) -> dict[str, dict]:
+        """
+        Write sampled trajectories and return density-scatter inputs.
+
+        Parameters
+        ----------
+        stats
+            Mapping of model name to that model's stats.
+
+        Returns
+        -------
+        dict[str, dict]
+            Density-scatter inputs per model.
+        """
+        for model_name in MODELS:
+            model_stats = stats.get(model_name)
+            if model_stats is None or not model_stats["labels"]:
+                continue
+            write_density_trajectories(
+                labels_list=model_stats["labels"],
+                ref_vals=model_stats[quantity]["ref"],
+                pred_vals=model_stats[quantity]["pred"],
+                struct_dir=OUT_PATH / model_name / dimensionality,
+                traj_dir=OUT_PATH / model_name / traj_dirname,
+                struct_filename_builder=lambda label: f"{label}.xyz",
+            )
+        return build_density_inputs(MODELS, stats, quantity, metric_fn=mae)
+
+    _build()
+
+
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_area_2d.json",
-    title="Area per atom (2D)",
-    x_label="Reference area / Å²/atom",
-    y_label="Predicted area / Å²/atom",
-)
-def area_density_2d() -> dict[str, dict]:
-    """
-    Density scatter inputs for 2D area per atom.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
-    """
-    return build_density_inputs(MODELS, _build_stats("2D"), "geom", metric_fn=mae)
+def area_density_2d() -> None:
+    """Write the 2D area-per-atom density plot."""
+    cfg = DIM_CONFIGS["2D"]
+    _build_density_plot_for_condition(
+        _build_stats("2D"),
+        quantity="geom",
+        dimensionality="2D",
+        filename=OUT_PATH / cfg["geom_plot_filename"],
+        title="Area per atom (2D)",
+        x_label="Reference area / Å²/atom",
+        y_label="Predicted area / Å²/atom",
+        traj_dirname=cfg["traj_geom_dirname"],
+    )
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_energy_2d.json",
-    title="Energy per atom (2D)",
-    x_label="Reference energy / eV/atom",
-    y_label="Predicted energy / eV/atom",
-)
-def energy_density_2d() -> dict[str, dict]:
-    """
-    Density scatter inputs for 2D energy per atom.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
-    """
-    return build_density_inputs(MODELS, _build_stats("2D"), "energy", metric_fn=mae)
+def energy_density_2d() -> None:
+    """Write the 2D energy-per-atom density plot."""
+    cfg = DIM_CONFIGS["2D"]
+    _build_density_plot_for_condition(
+        _build_stats("2D"),
+        quantity="energy",
+        dimensionality="2D",
+        filename=OUT_PATH / cfg["energy_plot_filename"],
+        title="Energy per atom (2D)",
+        x_label="Reference energy / eV/atom",
+        y_label="Predicted energy / eV/atom",
+        traj_dirname=cfg["traj_energy_dirname"],
+    )
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_length_1d.json",
-    title="Length per atom (1D)",
-    x_label="Reference length / Å/atom",
-    y_label="Predicted length / Å/atom",
-)
-def length_density_1d() -> dict[str, dict]:
-    """
-    Density scatter inputs for 1D length per atom.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
-    """
-    return build_density_inputs(MODELS, _build_stats("1D"), "geom", metric_fn=mae)
+def length_density_1d() -> None:
+    """Write the 1D length-per-atom density plot."""
+    cfg = DIM_CONFIGS["1D"]
+    _build_density_plot_for_condition(
+        _build_stats("1D"),
+        quantity="geom",
+        dimensionality="1D",
+        filename=OUT_PATH / cfg["geom_plot_filename"],
+        title="Length per atom (1D)",
+        x_label="Reference length / Å/atom",
+        y_label="Predicted length / Å/atom",
+        traj_dirname=cfg["traj_geom_dirname"],
+    )
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_energy_1d.json",
-    title="Energy per atom (1D)",
-    x_label="Reference energy / eV/atom",
-    y_label="Predicted energy / eV/atom",
-)
-def energy_density_1d() -> dict[str, dict]:
-    """
-    Density scatter inputs for 1D energy per atom.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
-    """
-    return build_density_inputs(MODELS, _build_stats("1D"), "energy", metric_fn=mae)
+def energy_density_1d() -> None:
+    """Write the 1D energy-per-atom density plot."""
+    cfg = DIM_CONFIGS["1D"]
+    _build_density_plot_for_condition(
+        _build_stats("1D"),
+        quantity="energy",
+        dimensionality="1D",
+        filename=OUT_PATH / cfg["energy_plot_filename"],
+        title="Energy per atom (1D)",
+        x_label="Reference energy / eV/atom",
+        y_label="Predicted energy / eV/atom",
+        traj_dirname=cfg["traj_energy_dirname"],
+    )
 
 
 @pytest.fixture
@@ -316,10 +419,10 @@ def metrics() -> dict[str, dict]:
 
 def test_low_dimensional_relaxation(
     metrics: dict[str, dict],
-    area_density_2d: dict[str, dict],
-    energy_density_2d: dict[str, dict],
-    length_density_1d: dict[str, dict],
-    energy_density_1d: dict[str, dict],
+    area_density_2d: None,
+    energy_density_2d: None,
+    length_density_1d: None,
+    energy_density_1d: None,
 ) -> None:
     """
     Run low-dimensional relaxation analysis test.
@@ -329,12 +432,12 @@ def test_low_dimensional_relaxation(
     metrics
         All low-dimensional relaxation metrics.
     area_density_2d
-        Triggers 2D area density plot generation.
+        Triggers 2D area density plot and trajectory generation.
     energy_density_2d
-        Triggers 2D energy density plot generation.
+        Triggers 2D energy density plot and trajectory generation.
     length_density_1d
-        Triggers 1D length density plot generation.
+        Triggers 1D length density plot and trajectory generation.
     energy_density_1d
-        Triggers 1D energy density plot generation.
+        Triggers 1D energy density plot and trajectory generation.
     """
     return
