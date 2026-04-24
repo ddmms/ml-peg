@@ -20,6 +20,8 @@ DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "high_pressure_relaxation"
 
 
 PRESSURES = [0, 25, 50, 75, 100, 125, 150]
+PRESSURE_LABELS = ["P000", "P025", "P050", "P075", "P100", "P125", "P150"]
+ASSETS_PREFIX = "/assets/bulk_crystal/high_pressure_relaxation"
 
 
 class HighPressureRelaxationApp(BaseApp):
@@ -29,24 +31,18 @@ class HighPressureRelaxationApp(BaseApp):
         """Register callbacks to app."""
         density_plots: dict = {}
         for model in MODELS:
-            plots = {
-                f"Volume MAE ({pressure} GPa)": read_density_plot_for_model(
-                    filename=DATA_PATH / "figure_volume_density.json",
+            plots: dict = {}
+            for pressure, p_label in zip(PRESSURES, PRESSURE_LABELS, strict=False):
+                plots[f"Volume MAE ({pressure} GPa)"] = read_density_plot_for_model(
+                    filename=DATA_PATH / f"figure_volume_density_{p_label}.json",
                     model=model,
-                    id=f"{BENCHMARK_NAME}-{model}-{pressure}-vol-figure",
+                    id=f"{BENCHMARK_NAME}-{model}-{p_label}-vol-figure",
                 )
-                for pressure in PRESSURES
-            }
-            plots.update(
-                {
-                    f"Energy MAE ({pressure} GPa)": read_density_plot_for_model(
-                        filename=DATA_PATH / "figure_energy_density.json",
-                        model=model,
-                        id=f"{BENCHMARK_NAME}-{model}-{pressure}-energy-figure",
-                    )
-                    for pressure in PRESSURES
-                }
-            )
+                plots[f"Energy MAE ({pressure} GPa)"] = read_density_plot_for_model(
+                    filename=DATA_PATH / f"figure_energy_density_{p_label}.json",
+                    model=model,
+                    id=f"{BENCHMARK_NAME}-{model}-{p_label}-energy-figure",
+                )
             model_plots = {k: v for k, v in plots.items() if v is not None}
             if model_plots:
                 density_plots[model] = model_plots
@@ -57,32 +53,40 @@ class HighPressureRelaxationApp(BaseApp):
             cell_to_plot=density_plots,
         )
 
-        vol_trajs = collect_traj_assets(
-            data_path=DATA_PATH,
-            assets_prefix="/assets/bulk_crystal/high_pressure_relaxation",
-            models=MODELS,
-            traj_dirname="density_traj_volume",
-        )
-        energy_trajs = collect_traj_assets(
-            data_path=DATA_PATH,
-            assets_prefix="/assets/bulk_crystal/high_pressure_relaxation",
-            models=MODELS,
-            traj_dirname="density_traj_energy",
-        )
+        vol_trajs: dict[tuple[str, str], list[str]] = {}
+        energy_trajs: dict[tuple[str, str], list[str]] = {}
+        for p_label in PRESSURE_LABELS:
+            vol_per_p = collect_traj_assets(
+                data_path=DATA_PATH,
+                assets_prefix=ASSETS_PREFIX,
+                models=MODELS,
+                traj_dirname=f"density_traj_volume_{p_label}",
+            )
+            for model, paths in vol_per_p.items():
+                vol_trajs[(model, p_label)] = paths
+            energy_per_p = collect_traj_assets(
+                data_path=DATA_PATH,
+                assets_prefix=ASSETS_PREFIX,
+                models=MODELS,
+                traj_dirname=f"density_traj_energy_{p_label}",
+            )
+            for model, paths in energy_per_p.items():
+                energy_trajs[(model, p_label)] = paths
+
         for model in MODELS:
-            for pressure in PRESSURES:
-                if model in vol_trajs:
+            for p_label in PRESSURE_LABELS:
+                if (model, p_label) in vol_trajs:
                     struct_from_scatter(
-                        scatter_id=f"{BENCHMARK_NAME}-{model}-{pressure}-vol-figure",
+                        scatter_id=f"{BENCHMARK_NAME}-{model}-{p_label}-vol-figure",
                         struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                        structs=vol_trajs[model],
+                        structs=vol_trajs[(model, p_label)],
                         mode="traj",
                     )
-                if model in energy_trajs:
+                if (model, p_label) in energy_trajs:
                     struct_from_scatter(
-                        scatter_id=f"{BENCHMARK_NAME}-{model}-{pressure}-energy-figure",
+                        scatter_id=f"{BENCHMARK_NAME}-{model}-{p_label}-energy-figure",
                         struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                        structs=energy_trajs[model],
+                        structs=energy_trajs[(model, p_label)],
                         mode="traj",
                     )
 

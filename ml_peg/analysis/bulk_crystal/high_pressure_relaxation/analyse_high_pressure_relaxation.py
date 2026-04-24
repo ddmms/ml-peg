@@ -104,32 +104,27 @@ def get_converged_data_for_pressure(
 
 
 @pytest.fixture
-def high_pressure_stats() -> dict[str, dict[str, Any]]:
+def high_pressure_stats_per_pressure() -> dict[str, dict[str, dict[str, Any]]]:
     """
-    Load and aggregate converged volume/energy data across all pressures per model.
+    Load converged volume/energy data per pressure per model.
 
     Returns
     -------
-    dict[str, dict[str, Any]]
-        Per-model dicts with pooled "labels", "volume" and "energy" ref/pred lists.
+    dict[str, dict[str, dict[str, Any]]]
+        Nested mapping ``{pressure_label: {model_name: stats}}`` where ``stats``
+        contains ``labels`` (mat_ids), ``volume`` and ``energy`` ref/pred lists.
     """
-    stats: dict[str, dict[str, Any]] = {}
-    for model_name in MODELS:
-        labels, ref_vol, pred_vol, ref_energy, pred_energy = [], [], [], [], []
-        for pressure_label in PRESSURE_LABELS:
+    per_pressure: dict[str, dict[str, dict[str, Any]]] = {}
+    for pressure_label in PRESSURE_LABELS:
+        per_pressure[pressure_label] = {}
+        for model_name in MODELS:
             data = get_converged_data_for_pressure(model_name, pressure_label)
-            # Use "{pressure_label}/{mat_id}" as compound label so struct paths resolve
-            labels.extend(f"{pressure_label}/{mat_id}" for mat_id in data["labels"])
-            ref_vol.extend(data["ref_vol"])
-            pred_vol.extend(data["pred_vol"])
-            ref_energy.extend(data["ref_energy"])
-            pred_energy.extend(data["pred_energy"])
-        stats[model_name] = {
-            "labels": labels,
-            "volume": {"ref": ref_vol, "pred": pred_vol},
-            "energy": {"ref": ref_energy, "pred": pred_energy},
-        }
-    return stats
+            per_pressure[pressure_label][model_name] = {
+                "labels": data["labels"],
+                "volume": {"ref": data["ref_vol"], "pred": data["pred_vol"]},
+                "energy": {"ref": data["ref_energy"], "pred": data["pred_energy"]},
+            }
+    return per_pressure
 
 
 def get_convergence_rate_for_pressure(
@@ -178,74 +173,131 @@ def get_convergence_rate_for_pressure(
     return (n_converged / n_total) * 100
 
 
+def _build_density_plot_for_pressure(
+    stats_per_model: dict[str, dict[str, Any]],
+    *,
+    quantity: str,
+    pressure: int,
+    pressure_label: str,
+    filename: Path,
+    title: str,
+    x_label: str,
+    y_label: str,
+    traj_dirname: str,
+) -> None:
+    """
+    Write a density-scatter plot and structure trajectories for one pressure.
+
+    Parameters
+    ----------
+    stats_per_model
+        Mapping of model name to that model's stats at this pressure.
+    quantity
+        Either ``"volume"`` or ``"energy"``.
+    pressure
+        Pressure in GPa (used in labels only).
+    pressure_label
+        Pressure label (e.g. ``"P050"``).
+    filename
+        Output JSON file for the density plot.
+    title
+        Plot title.
+    x_label
+        X-axis label.
+    y_label
+        Y-axis label.
+    traj_dirname
+        Per-model subdirectory name for sampled structure trajectories.
+    """
+    del pressure  # kept in signature for symmetry with callers
+
+    @plot_density_scatter(
+        filename=filename,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+    )
+    def _build(stats: dict[str, dict[str, Any]] = stats_per_model) -> dict[str, dict]:
+        """
+        Write sampled trajectories and return density-scatter inputs.
+
+        Parameters
+        ----------
+        stats
+            Mapping of model name to that model's stats at this pressure.
+
+        Returns
+        -------
+        dict[str, dict]
+            Density-scatter inputs per model.
+        """
+        for model_name in MODELS:
+            model_stats = stats.get(model_name)
+            if model_stats is None or not model_stats["labels"]:
+                continue
+            write_density_trajectories(
+                labels_list=model_stats["labels"],
+                ref_vals=model_stats[quantity]["ref"],
+                pred_vals=model_stats[quantity]["pred"],
+                struct_dir=OUT_PATH / model_name / pressure_label,
+                traj_dir=OUT_PATH / model_name / traj_dirname,
+                struct_filename_builder=lambda label: f"{label}.xyz",
+            )
+        return build_density_inputs(MODELS, stats, quantity, metric_fn=mae)
+
+    _build()
+
+
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_volume_density.json",
-    title="Volume per atom (all pressures)",
-    x_label="Reference volume / Å³/atom",
-    y_label="Predicted volume / Å³/atom",
-)
 def volume_density(
-    high_pressure_stats: dict[str, dict[str, Any]],
-) -> dict[str, dict]:
+    high_pressure_stats_per_pressure: dict[str, dict[str, dict[str, Any]]],
+) -> None:
     """
-    Density scatter inputs for volume per atom (pooled across all pressures).
+    Write one volume density-scatter plot per pressure.
 
     Parameters
     ----------
-    high_pressure_stats
-        Aggregated volume/energy data per model.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
+    high_pressure_stats_per_pressure
+        Per-pressure converged volume/energy data per model.
     """
-    for model_name in MODELS:
-        write_density_trajectories(
-            labels_list=high_pressure_stats[model_name]["labels"],
-            ref_vals=high_pressure_stats[model_name]["volume"]["ref"],
-            pred_vals=high_pressure_stats[model_name]["volume"]["pred"],
-            struct_dir=OUT_PATH / model_name,
-            traj_dir=OUT_PATH / model_name / "density_traj_volume",
-            struct_filename_builder=lambda label: f"{label}.xyz",
+    for pressure, pressure_label in zip(PRESSURES, PRESSURE_LABELS, strict=False):
+        _build_density_plot_for_pressure(
+            high_pressure_stats_per_pressure[pressure_label],
+            quantity="volume",
+            pressure=pressure,
+            pressure_label=pressure_label,
+            filename=OUT_PATH / f"figure_volume_density_{pressure_label}.json",
+            title=f"Volume per atom ({pressure} GPa)",
+            x_label="Reference volume / Å³/atom",
+            y_label="Predicted volume / Å³/atom",
+            traj_dirname=f"density_traj_volume_{pressure_label}",
         )
-    return build_density_inputs(MODELS, high_pressure_stats, "volume", metric_fn=mae)
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_energy_density.json",
-    title="Energy per atom (all pressures)",
-    x_label="Reference energy / eV/atom",
-    y_label="Predicted energy / eV/atom",
-)
 def energy_density(
-    high_pressure_stats: dict[str, dict[str, Any]],
-) -> dict[str, dict]:
+    high_pressure_stats_per_pressure: dict[str, dict[str, dict[str, Any]]],
+) -> None:
     """
-    Density scatter inputs for energy per atom (pooled across all pressures).
+    Write one energy density-scatter plot per pressure.
 
     Parameters
     ----------
-    high_pressure_stats
-        Aggregated volume/energy data per model.
-
-    Returns
-    -------
-    dict[str, dict]
-        Mapping of model name to density-scatter data.
+    high_pressure_stats_per_pressure
+        Per-pressure converged volume/energy data per model.
     """
-    for model_name in MODELS:
-        write_density_trajectories(
-            labels_list=high_pressure_stats[model_name]["labels"],
-            ref_vals=high_pressure_stats[model_name]["energy"]["ref"],
-            pred_vals=high_pressure_stats[model_name]["energy"]["pred"],
-            struct_dir=OUT_PATH / model_name,
-            traj_dir=OUT_PATH / model_name / "density_traj_energy",
-            struct_filename_builder=lambda label: f"{label}.xyz",
+    for pressure, pressure_label in zip(PRESSURES, PRESSURE_LABELS, strict=False):
+        _build_density_plot_for_pressure(
+            high_pressure_stats_per_pressure[pressure_label],
+            quantity="energy",
+            pressure=pressure,
+            pressure_label=pressure_label,
+            filename=OUT_PATH / f"figure_energy_density_{pressure_label}.json",
+            title=f"Energy per atom ({pressure} GPa)",
+            x_label="Reference energy / eV/atom",
+            y_label="Predicted energy / eV/atom",
+            traj_dirname=f"density_traj_energy_{pressure_label}",
         )
-    return build_density_inputs(MODELS, high_pressure_stats, "energy", metric_fn=mae)
 
 
 @pytest.fixture
@@ -352,8 +404,8 @@ def metrics(
 
 def test_high_pressure_relaxation(
     metrics: dict[str, dict],
-    volume_density: dict[str, dict],
-    energy_density: dict[str, dict],
+    volume_density: None,
+    energy_density: None,
 ) -> None:
     """
     Run high-pressure relaxation analysis test.
@@ -363,8 +415,8 @@ def test_high_pressure_relaxation(
     metrics
         All high-pressure relaxation metrics.
     volume_density
-        Triggers volume density plot generation.
+        Triggers per-pressure volume density plot generation.
     energy_density
-        Triggers energy density plot generation.
+        Triggers per-pressure energy density plot generation.
     """
     return
