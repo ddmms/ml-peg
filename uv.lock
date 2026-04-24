@@ -5508,7 +5508,7 @@ requires-dist = [
     { name = "orb-models", marker = "python_full_version >= '3.12' and sys_platform != 'win32' and extra == 'orb'", specifier = "==0.6.2" },
     { name = "pet-mad", marker = "sys_platform != 'win32' and extra == 'pet-mad'", specifier = "==1.4.4" },
     { name = "scikit-learn", specifier = ">=1.7.2,<2" },
-    { name = "scipy", specifier = "<1.17" },
+    { name = "scipy", specifier = ">=1,<1.17" },
     { name = "tensorpotential", marker = "python_full_version < '3.13' and extra == 'grace'", specifier = "==0.5.1" },
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "tqdm", specifier = ">=4.67.3,<5" },
