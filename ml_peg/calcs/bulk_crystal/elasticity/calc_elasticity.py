@@ -12,6 +12,7 @@ from matcalc._elasticity import ElasticityCalc
 from matcalc.benchmark import Benchmark
 from matcalc.units import eVA3ToGPa
 import numpy as np
+from pymatgen.core.structure import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import pytest
@@ -23,7 +24,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-def get_crystal_system(struct):
+def get_crystal_system(struct: Structure) -> str:
     """
     Determine a crystal-system label.
 
@@ -33,7 +34,7 @@ def get_crystal_system(struct):
 
     Parameters
     ----------
-    struct : pymatgen.core.structure.Structure
+    struct
         Structure to analyse.
 
     Returns
@@ -53,7 +54,7 @@ def get_crystal_system(struct):
     return crystal_system
 
 
-class CustomElasticityBenchmark(Benchmark):  # noqa: PR01
+class CustomElasticityBenchmark(Benchmark):
     """
     Extend the matcalc Benchmark to output full elastic tensors.
 
@@ -62,12 +63,12 @@ class CustomElasticityBenchmark(Benchmark):  # noqa: PR01
 
     Parameters
     ----------
-    index_name : str, optional
+    index_name
         Name of the index used to identify benchmark records (default is "mp_id").
-    benchmark_name : str or Path, optional
+    benchmark_name
         Name or path of the benchmark dataset,
         default is "mp-binary-pbe-elasticity-2025.1.json.gz".
-    **kwargs : dict, optional
+    **kwargs
         Additional keyword arguments forwarded to the parent class.
     """
 
@@ -82,12 +83,12 @@ class CustomElasticityBenchmark(Benchmark):  # noqa: PR01
 
         Parameters
         ----------
-        index_name : str, optional
+        index_name
             Name of the index used to identify benchmark records (default is "mp_id").
-        benchmark_name : str or Path, optional
+        benchmark_name
             Name or path of the benchmark dataset,
             default is "mp-binary-pbe-elasticity-2025.1.json.gz".
-        **kwargs : dict, optional
+        **kwargs
             Additional keyword arguments forwarded to the parent class.
         """
         kwargs.setdefault(
@@ -111,9 +112,9 @@ class CustomElasticityBenchmark(Benchmark):  # noqa: PR01
 
         Parameters
         ----------
-        calculator : str or Calculator
+        calculator
             Calculator used to evaluate elastic properties.
-        **kwargs : dict
+        **kwargs
             Additional configuration options.
 
         Returns
@@ -130,9 +131,9 @@ class CustomElasticityBenchmark(Benchmark):  # noqa: PR01
 
         Parameters
         ----------
-        result : dict or None
+        result
             Result dictionary containing elastic properties.
-        model_name : str
+        model_name
             Name of the model used to label output keys.
 
         Returns
@@ -182,25 +183,25 @@ def run_elasticity_benchmark(
     ----------
     calc
         ASE calculator for evaluating structures.
-    model_name : str
+    model_name
         Name of MLIP model.
-    out_dir : Path
+    out_dir
         Directory to write per-model outputs.
-    n_jobs : int
+    n_jobs
         Number of parallel workers for the benchmark.
-    norm_strains : tuple of float
+    norm_strains
         Normal strains to apply.
-    shear_strains : tuple of float
+    shear_strains
         Shear strains to apply.
-    relax_structure : bool
+    relax_structure
         Relax the equilibrium structure before deformations.
-    relax_deformed_structures : bool
+    relax_deformed_structures
         Relax each strained structure.
-    use_checkpoint : bool
+    use_checkpoint
         Whether to write intermediate checkpoints.
-    n_materials : int or None
+    n_materials
         Number of materials to sample. None means all materials.
-    fmax : float
+    fmax
         Force threshold for structural relaxations.
     """
     benchmark = CustomElasticityBenchmark(
@@ -273,7 +274,7 @@ def test_elasticity(mlip: tuple[str, Any]) -> None:
 
     Parameters
     ----------
-    mlip : tuple
+    mlip
         Model entry containing name and object capable of providing a calculator.
     """
     model_name, model = mlip

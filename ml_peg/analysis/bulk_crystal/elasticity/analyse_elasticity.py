@@ -175,7 +175,7 @@ def _str_to_array(s: str) -> np.ndarray:
 
     Parameters
     ----------
-    s : str
+    s
         String representation of a 6x6 elastic tensor. The string may
         contain square brackets and whitespace-separated numbers.
 
@@ -188,20 +188,22 @@ def _str_to_array(s: str) -> np.ndarray:
     return np.fromstring(s_clean, sep=" ").reshape(6, 6)
 
 
-def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
+def get_independent_cs(
+    c_ref: ArrayLike, c_arr: ArrayLike, crystal_symmetry: str, rtol: float = 0.10
+) -> tuple[ArrayLike, ArrayLike]:
     """
     Extract symmetry-independent elastic constants.
 
     Parameters
     ----------
-    c_ref : (6, 6) array_like
+    c_ref
         Reference Voigt tensor.
-    c_arr : (6, 6) array_like
+    c_arr
         Comparison Voigt tensor.
-    crystal_symmetry : str
+    crystal_symmetry
         Crystal symmetry label.
-    rtol : float, optional
-        Relative tolerance for consistency checks (default: 0.10).
+    rtol
+        Relative tolerance for consistency checks. Default is 0.10.
 
     Returns
     -------
@@ -215,7 +217,7 @@ def get_independent_cs(c_ref, c_arr, crystal_symmetry, rtol=0.10):
 
         Parameters
         ----------
-        values : ArrayLike
+        values
             Sequence of numeric values to compare. The first value is taken
             as the reference.
 
@@ -274,9 +276,9 @@ def _filter_results(df: pd.DataFrame, model_name: str) -> tuple[pd.DataFrame, in
 
     Parameters
     ----------
-    df : pd.DataFrame
+    df
         Dataframe containing raw benchmark results.
-    model_name : str
+    model_name
         Model whose columns should be filtered..
 
     Returns
@@ -350,7 +352,7 @@ def bulk_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | N
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
 
     Returns
@@ -372,7 +374,7 @@ def shear_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | 
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
 
     Returns
@@ -396,7 +398,7 @@ def elastic_tensor_mae(
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
 
     Returns
@@ -404,25 +406,6 @@ def elastic_tensor_mae(
     dict[str, float | None]
         Elastic tensor MAE per model.
     """
-
-    def _str_to_array(s: str) -> np.ndarray:
-        """
-        Convert a string representation of a 6x6 elastic tensor into a NumPy array.
-
-        Parameters
-        ----------
-        s : str
-            String representation of a 6x6 elastic tensor. The string may
-            contain square brackets and whitespace-separated numbers.
-
-        Returns
-        -------
-        np.ndarray
-            A 6x6 NumPy array containing the numeric values from the input string.
-        """
-        s_clean = s.replace("[", "").replace("]", "")
-        return np.fromstring(s_clean, sep=" ").reshape(6, 6)
-
     results: dict[str, float | None] = {}
     for model_name in MODELS:
         prop = elasticity_stats.get(model_name, {}).get("elastic_tensor")
@@ -452,7 +435,7 @@ def density_trajectories(elasticity_stats: dict[str, dict[str, Any]]) -> None:
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
     """
     for model_name in MODELS:
@@ -483,7 +466,7 @@ def elastic_tensor_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics including per-material tensor data.
     """
     violin_data: dict[str, dict] = {}
@@ -535,7 +518,7 @@ def bulk_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict]
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
 
     Returns
@@ -560,7 +543,7 @@ def shear_density(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, dict
 
     Parameters
     ----------
-    elasticity_stats : dict
+    elasticity_stats
         Aggregated benchmark statistics.
 
     Returns
@@ -588,11 +571,11 @@ def metrics(
 
     Parameters
     ----------
-    bulk_mae : dict
+    bulk_mae
         Bulk modulus MAE per model.
-    shear_mae : dict
+    shear_mae
         Shear modulus MAE per model.
-    elastic_tensor_mae : dict
+    elastic_tensor_mae
         Elastic tensor MAE per model.
 
     Returns
@@ -619,15 +602,15 @@ def test_elasticity(
 
     Parameters
     ----------
-    metrics : dict
+    metrics
         Benchmark metric values.
-    bulk_density : dict
+    bulk_density
         Density scatter data for bulk modulus.
-    shear_density : dict
+    shear_density
         Density scatter data for shear modulus.
-    elastic_tensor_violin : None
+    elastic_tensor_violin
         Saves per-material elastic tensor MAE violin figures.
-    density_trajectories : None
+    density_trajectories
         Writes density-scatter trajectory files for WEAS structure viewing.
     """
     return
