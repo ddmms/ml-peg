@@ -35,7 +35,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 INFO = get_struct_info(
-    calc_path=CALC_PATH, glob_pattern="*.xyz", info_keys=["system"], out_path=OUT_PATH
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    info_keys=["system"],
+    out_path=OUT_PATH,
 )
 
 
@@ -96,8 +100,7 @@ def lattice_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def x23_errors(lattice_energies) -> dict[str, float]:
+def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for lattice energies.
 
@@ -122,21 +125,14 @@ def x23_errors(lattice_energies) -> dict[str, float]:
     return results
 
 
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "x23_metrics_table.json",
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=DISPERSION_NAME_MAP,
-)
-def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
+def get_metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     """
     Get all X23 metrics.
 
     Parameters
     ----------
-    x23_errors
-        Mean absolute errors for all systems.
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
 
     Returns
     -------
@@ -144,8 +140,32 @@ def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": x23_errors,
+        "MAE": get_errors(lattice_energies),
     }
+
+
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "x23_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
+)
+def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Get all X23 metrics.
+
+    Parameters
+    ----------
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return get_metrics(lattice_energies)
 
 
 def test_x23(metrics: dict[str, dict]) -> None:
