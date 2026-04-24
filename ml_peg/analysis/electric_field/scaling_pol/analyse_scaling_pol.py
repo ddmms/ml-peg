@@ -61,22 +61,24 @@ def get_system_names() -> list[str]:
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_total_energies.json",
-    title="scaling_pol Total Energies",
-    x_label="Predicted total energy / kJ/mol",
-    y_label="Reference total energy / kJ/mol",
+    filename=OUT_PATH / "figure_field_response.json",
+    title="scaling_pol Field response",
+    x_label="Predicted field response / kJ/mol",
+    y_label="Reference field response / kJ/mol",
     hoverdata={
         "System": get_system_names(),
     },
 )
-def total_energies() -> dict[str, list]:
+def electric_field_response() -> dict[str, list]:
     """
-    Get total energies for all scaling_pol systems.
+    Get electric field response for all scaling_pol systems.
+
+    
 
     Returns
     -------
     dict[str, list]
-        Dictionary of reference and predicted total energies.
+        Dictionary of reference and predicted electric field responses.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
@@ -91,53 +93,73 @@ def total_energies() -> dict[str, list]:
         if not xyz_file:
             continue
 
+        # Read data
         mols = read(xyz_file, index=":")
+    
+        # Temporary dict storing total energies under electric field
+        electric_field_total_energies = {
+            "ref":{},
+            model_name:{}
+        }
 
+        # Get total energies under electric field
         for mol in mols:
-
+            # Get molecule energy
             molecule_energy = mol.get_potential_energy()
-            results[model_name].append(molecule_energy * EV_TO_KJ_PER_MOL)
-
             name = str(mol.get_chemical_formula())
 
             # Copy individual structure files to app data directory
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
 
-            if np.linalg.norm(mol.info['external_field']) > 0:
-                write(structs_dir / f"{name}_ef.xyz", mol)
-            else:
+            # Store energies and reference energies in a dict, and xyz files
+            if any(mol.info['external_field']):
+                electric_field_total_energies[model_name][name] = molecule_energy
+                electric_field_total_energies["ref"][name] = mol.info["REF_energy"]
+                write(structs_dir / f"{name}_field.xyz", mol)
+
+
+        # Calculate electric field response
+        for mol in mols:
+            # Get molecule energy
+            molecule_energy = mol.get_potential_energy()
+            name = str(mol.get_chemical_formula())
+
+            # Calculate field response, and store xyz files 
+            if not any(mol.info['external_field']):
+                diff = molecule_energy - electric_field_total_energies[model_name][name]
+                ref_diff = mol.info["REF_energy"] - electric_field_total_energies["ref"][name]
                 write(structs_dir / f"{name}.xyz", mol)
 
-            # Store reference energies (only once)
-            if not ref_stored:
-                results["ref"].append(mol.info["REF_energy"] * EV_TO_KJ_PER_MOL)
+                # Save electric field response. Save reference only first time.
+                results[model_name].append(diff * EV_TO_KJ_PER_MOL)
+                if not ref_stored:
+                    results["ref"].append(ref_diff * EV_TO_KJ_PER_MOL)
 
         ref_stored = True
-
     return results
 
 
 @pytest.fixture
-def scaling_pol_errors(total_energies) -> dict[str, float]:
+def scaling_pol_errors(electric_field_response) -> dict[str, float]:
     """
-    Get mean absolute error for total energies.
+    Get mean absolute error for the electric field response.
 
     Parameters
     ----------
-    total_energies
-        Dictionary of reference and predicted total energies.
+    electric_field_response
+        Dictionary of reference and predicted electric field responses.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted total energy errors for all models.
+        Dictionary of predicted electric field response errors for all models.
     """
     results = {}
     for model_name in MODELS:
-        if total_energies[model_name]:
+        if electric_field_response[model_name]:
             results[model_name] = mae(
-                total_energies["ref"], total_energies[model_name]
+                electric_field_response["ref"], electric_field_response[model_name]
             )
         else:
             results[model_name] = None
