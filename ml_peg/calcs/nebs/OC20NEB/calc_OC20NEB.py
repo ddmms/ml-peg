@@ -1,0 +1,80 @@
+"""Run calculations for OC20NEB tests."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from ase.io import read, write
+from ase.optimize import BFGS
+from janus_core.calculations.neb import NEB
+import numpy as np
+import pytest
+
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models.get_models import load_models
+from ml_peg.models.models import current_models
+
+MODELS = load_models(current_models)
+
+OUT_PATH = Path(__file__).parent / "outputs"
+S3_KEY = "inputs/nebs/OC20NEB/OC20NEB.zip"
+S3_FILENAME = "OC20NEB.zip"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", MODELS)
+def test_oc20neb(model_name: str) -> None:
+    """
+    Run calculations required for OC20NEB.
+
+    Parameters
+    ----------
+    model_name
+        Name of model to use.
+    """
+    data_path = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / "OC20NEB"
+    reactions = [
+        str(reaction_file).split("/")[-1].split(".")[0]
+        for reaction_file in data_path.glob("*.xyz")
+    ]
+
+    calc = MODELS[model_name]
+
+    for reaction in reactions:
+        print(f"{reaction} {model_name}, start NEB ...")
+        dft_traj = read(data_path / f"{reaction}.xyz", ":")
+        initial, final = dft_traj[0], dft_traj[-1]
+        for struct in [initial, final]:
+            struct.calc = calc.get_calculator()
+            struct.info.setdefault("spin", 1)
+            struct.info.setdefault("charge", 0)
+
+        neb = NEB(
+            init_struct=initial,
+            final_struct=final,
+            neb_class="DyNEB",
+            n_images=8,
+            neb_kwargs={"climb": False, "method": "eb", "scale_fmax": 1.0},
+            interpolator="ase",
+            minimize=True,
+            minimize_kwargs={"fmax": 0.05},
+            optimizer=BFGS,
+            plot_band=False,
+            write_band=False,
+            file_prefix=OUT_PATH / model_name / reaction,
+        )
+        neb.run(fmax=0.45, steps=200)
+
+        neb.neb.climb = True
+        neb.plot_band = True
+        neb.write_band = True
+        neb.run(fmax=0.05, steps=300)
+
+        forces = neb.neb.get_forces()
+        neb.results["max_force"] = np.sqrt((forces**2).sum(axis=1).max())
+        with open(neb.results_file, "w", encoding="utf8") as out:
+            print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+            print(*neb.results.values(), file=out)
+
+        # Copy reference trajectory to outputs
+        write(OUT_PATH / f"{reaction}-dft.xyz", dft_traj, format="extxyz")

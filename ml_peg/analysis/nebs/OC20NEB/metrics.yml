@@ -1,0 +1,19 @@
+metrics:
+  barrier:
+    good: 0.1
+    bad: 0.5
+    unit: eV
+    tooltip: "barrier mae"
+    level_of_theory: RPBE
+  delta_E:
+    good: 0.1
+    bad: 0.5
+    unit: eV
+    tooltip: "delta_E mae"
+    level_of_theory: RPBE
+  fmax:
+    good: 10
+    bad: 30
+    unit: percent
+    tooltip: "convergence"
+    level_of_theory: RPBE
