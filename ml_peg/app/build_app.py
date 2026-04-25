@@ -27,7 +27,6 @@ from ml_peg.app.utils.onboarding import (
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
-    calculate_column_widths,
     get_framework_config,
     load_model_registry_configs,
     sig_fig_format,
@@ -143,6 +142,42 @@ def _default_weight_store_data(table: DataTable) -> dict[str, float]:
         if column_id not in reserved:
             weights.setdefault(column_id, 1.0)
     return weights
+
+
+def _format_summary_column_header(column_id: str) -> str:
+    """
+    Format summary-table headers for more compact wrapping.
+
+    Non-static summary columns always place ``Score`` on its own line. Longer
+    multi-word titles are split across two title lines first, yielding a compact
+    three-line header.
+
+    Parameters
+    ----------
+    column_id
+        Summary-table column identifier.
+
+    Returns
+    -------
+    str
+        Header label with explicit newline breaks.
+    """
+    if column_id in {"MLIP", "Score"} or not column_id.endswith(" Score"):
+        return column_id
+
+    title = column_id.removesuffix(" Score")
+    if len(title) > 14 and " " in title:
+        words = title.split()
+        split_index = min(
+            range(1, len(words)),
+            key=lambda index: abs(
+                len(" ".join(words[:index])) - len(" ".join(words[index:]))
+            ),
+        )
+        title = "\n".join(
+            [" ".join(words[:split_index]), " ".join(words[split_index:])]
+        )
+    return f"{title}\nScore"
 
 
 def _framework_sidebar_label(framework_id: str, label: str) -> Div:
@@ -660,8 +695,13 @@ def build_summary_table(
     data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
+    display_headers = {
+        header: _format_summary_column_header(header) for header in columns_headers
+    }
 
-    columns = [{"name": headers, "id": headers} for headers in columns_headers]
+    columns = [
+        {"name": display_headers[header], "id": header} for header in columns_headers
+    ]
     tooltip_header = {
         header + " Score": table.description for header, table in tables.items()
     }
@@ -691,12 +731,14 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
-    # Calculate column widths based on column names
-    calculated_widths = calculate_column_widths(columns_headers)
-    # Limit max width to 150px for better wrapping on long column names
-    column_widths = {
-        col_id: min(width, 150) for col_id, width in calculated_widths.items()
-    }
+    column_widths = {"MLIP": 150, "Score": 100}
+    for column_id in columns_headers:
+        if column_id in {"MLIP", "Score"}:
+            continue
+        longest_line = max(
+            len(line) for line in display_headers[column_id].splitlines()
+        )
+        column_widths[column_id] = min(max(longest_line * 9 + 24, 100), 150)
 
     style_cell_conditional = []
     for column_id, width in column_widths.items():
@@ -722,7 +764,7 @@ def build_summary_table(
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
         style_header={
-            "whiteSpace": "normal",
+            "whiteSpace": "pre-line",
             "height": "auto",
             "minHeight": "70px",
             "textAlign": "center",
@@ -1054,9 +1096,10 @@ def build_nav(
             return Div(
                 [
                     H1("Categories Summary"),
-                    summary_table,
-                    Br(),
-                    weight_components,
+                    Div(
+                        [Div(summary_table), Br(), weight_components],
+                        style={"width": "fit-content"},
+                    ),
                     build_faqs(),
                 ]
             ), sidebar_children
