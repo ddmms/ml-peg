@@ -696,9 +696,19 @@ def build_summary_table(
     data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
-    display_headers = {
-        header: _format_summary_column_header(header) for header in columns_headers
-    }
+    if table_id == "summary-table":
+        display_headers = {
+            header: (
+                header
+                if header in {"MLIP", "Score"} or not header.endswith(" Score")
+                else "\n".join([*header.removesuffix(" Score").split(), "Score"])
+            )
+            for header in columns_headers
+        }
+    else:
+        display_headers = {
+            header: _format_summary_column_header(header) for header in columns_headers
+        }
 
     columns = [
         {"name": display_headers[header], "id": header} for header in columns_headers
@@ -732,6 +742,8 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
+    summary_header_padding = 12 if table_id == "summary-table" else 24
+    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
     column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
     for column_id in columns_headers:
         if column_id in {"MLIP", "Score"}:
@@ -739,7 +751,9 @@ def build_summary_table(
         longest_line = max(
             len(line) for line in display_headers[column_id].splitlines()
         )
-        column_widths[column_id] = min(max(longest_line * 9 + 24, 100), 150)
+        column_widths[column_id] = min(
+            max(longest_line * 9 + summary_header_padding, 100), 150
+        )
 
     style_cell_conditional = []
     for column_id, width in column_widths.items():
@@ -771,7 +785,7 @@ def build_summary_table(
             "textAlign": "center",
             "verticalAlign": "middle",
             "lineHeight": "1.4",
-            "padding": "8px",
+            "padding": header_cell_padding,
         },
         style_header_conditional=[
             {
