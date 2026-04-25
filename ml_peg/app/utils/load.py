@@ -129,7 +129,7 @@ def rebuild_table(
 
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
-    column_widths = calculate_column_widths(width_labels)
+    column_widths = calculate_column_widths(width_labels, min_metric_width=170)
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
@@ -221,6 +221,7 @@ def rebuild_table(
     table.model_configs = model_configs
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
+    table.column_widths = column_widths
 
     return table
 
