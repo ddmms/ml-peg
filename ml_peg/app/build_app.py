@@ -28,6 +28,7 @@ from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_c
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     get_framework_config,
+    get_mlip_column_width,
     load_model_registry_configs,
     sig_fig_format,
 )
@@ -731,7 +732,7 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
-    column_widths = {"MLIP": 150, "Score": 100}
+    column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
     for column_id in columns_headers:
         if column_id in {"MLIP", "Score"}:
             continue
@@ -786,6 +787,7 @@ def build_summary_table(
         persisted_props=["data"],
         tooltip_header=tooltip_header,
         editable=False,
+        fill_width=False,
     )
     table.column_widths = column_widths
     table.description = description

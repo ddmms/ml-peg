@@ -205,6 +205,7 @@ def rebuild_table(
         persistence=True,
         persistence_type="session",
         persisted_props=["data"],
+        fill_width=False,
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))

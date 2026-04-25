@@ -41,7 +41,7 @@ def grid_template_from_widths(
     Returns
     -------
     str
-        CSS grid template definition using `minmax` tracks.
+        CSS grid template definition using fixed pixel tracks.
     """
     tracks: list[tuple[str, int]] = [
         ("MLIP", widths["MLIP"]),
@@ -49,12 +49,7 @@ def grid_template_from_widths(
     ]
     tracks.extend((col, widths[col]) for col in column_order)
 
-    template_parts: list[str] = []
-    for _, width in tracks:
-        min_px = max(width, 40)
-        weight = max(width / 10, 1)
-        template_parts.append(f"minmax({int(min_px)}px, {weight:.3f}fr)")
-    return " ".join(template_parts)
+    return " ".join(f"{max(width, 40)}px" for _, width in tracks)
 
 
 def build_weight_input(
@@ -273,7 +268,7 @@ def build_weight_components(
             "columnGap": "0px",
             "rowGap": "4px",
             "marginTop": "-5px",
-            "padding": "2px 4px",
+            "padding": "2px 0px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
             if header == "Metric Weights"
@@ -783,7 +778,7 @@ def build_threshold_inputs(
         "columnGap": "0px",
         "rowGap": "0px",
         "marginTop": "0px",
-        "padding": "2px 2px",
+        "padding": "2px 0px",
         "backgroundColor": "#f8f9fa",
         "border": "1px solid transparent",
         "borderRadius": "5px",
