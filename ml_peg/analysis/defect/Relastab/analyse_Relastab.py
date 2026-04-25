@@ -11,7 +11,7 @@ import pytest
 from scipy.stats import spearmanr
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, read_extxyz_info_fast
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -65,8 +65,8 @@ def get_subset_labels() -> list[str]:
         if model_dir.exists():
             xyz_files = sorted(model_dir.glob("*.xyz"))
             for xyz_file in xyz_files:
-                atoms = read(xyz_file)
-                subset_labels.append(atoms.info.get("subset", "unknown"))
+                info = read_extxyz_info_fast(xyz_file)
+                subset_labels.append(info.get("subset", "unknown"))
             if subset_labels:
                 break
     return subset_labels

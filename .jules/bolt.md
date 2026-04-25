@@ -1,3 +1,6 @@
 ## 2024-05-19 - Caching YAML Load for Model Parsing
 **Learning:** `yaml.safe_load` on large configuration files like `models.yml` is significantly slower than parsing JSON or doing other basic IO. It can become a bottleneck when called repeatedly throughout an application's lifecycle (e.g., getting subsets of models, instantiating apps).
 **Action:** Always memoize or `@lru_cache` functions that load static, read-only configuration files (like `models.yml`) to prevent repeated disk I/O and parsing overhead.
+## 2024-05-18 - Avoid full structure parsing for Extended XYZ metadata
+**Learning:** In the `ml_peg` repository, many analysis scripts iterate over large sets of Extended XYZ (`.xyz`) files just to read the `atoms.info` dictionary (e.g., to get `subset` or `system` references) using `ase.io.read()`. This causes `ase` to parse the entire coordinate structure (positions, species, cell), which is extremely slow and unnecessary when only the second line (the properties line) is needed.
+**Action:** Use the `read_extxyz_info_fast` utility function from `ml_peg.analysis.utils.utils`, which directly uses `ase.io.extxyz.key_val_str_to_dict` to read just the properties line without parsing coordinates. Use this whenever an analysis script loops through files solely to extract values from `.info`.

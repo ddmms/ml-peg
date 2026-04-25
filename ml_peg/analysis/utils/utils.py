@@ -710,3 +710,25 @@ def normalize_metric(
 
     # Clip to [0, 1]
     return max(min(1.0, float(t)), 0.0)
+
+
+def read_extxyz_info_fast(filepath: Path | str) -> dict[str, Any]:
+    """
+    Read the info dictionary from an extxyz file efficiently.
+
+    Parameters
+    ----------
+    filepath
+        Path to the extxyz file.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of info values.
+    """
+    from ase.io.extxyz import key_val_str_to_dict
+
+    with open(filepath) as f:
+        _ = f.readline()
+        line = f.readline().strip()
+    return key_val_str_to_dict(line)
