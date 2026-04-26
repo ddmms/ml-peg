@@ -224,7 +224,16 @@ def build_sidebar(
                         "cursor": "pointer",
                     },
                 ),
-                Div([Link("Summary", href="/", style=_nav_link_style(summary_active))]),
+                Div(
+                    [
+                        Link(
+                            "Summary",
+                            href="/",
+                            style=_nav_link_style(summary_active),
+                            className="sidebar-link",
+                        )
+                    ]
+                ),
             ],
             open=True,
         ),
@@ -247,6 +256,7 @@ def build_sidebar(
                             category_name,
                             href=category_path,
                             style=_nav_link_style(current_path == category_path),
+                            className="sidebar-link",
                         )
                         for category_name, category_path in category_paths.items()
                     ]
@@ -279,6 +289,7 @@ def build_sidebar(
                                 ),
                                 href=framework_path,
                                 style=_nav_link_style(current_path == framework_path),
+                                className="sidebar-link",
                             )
                             for framework_id, framework_path in framework_paths.items()
                         ]
