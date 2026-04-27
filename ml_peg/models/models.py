@@ -168,7 +168,7 @@ class OrbCalc(SumCalc):
 
         method = getattr(pretrained, self.name)
 
-        precision_map = {"low": "float32", "high": "float64"}
+        precision_map = {"low": "float32-high", "high": "float64"}
         dtype = precision_map[precision]
 
         if self.default_dtype is not None:
