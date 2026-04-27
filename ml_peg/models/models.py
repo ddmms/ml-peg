@@ -14,8 +14,6 @@ if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
-current_models = None
-
 
 @dataclasses.dataclass(kw_only=True)
 class SumCalc:
