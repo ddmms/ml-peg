@@ -31,6 +31,12 @@ def pytest_addoption(parser):
         default=None,
         help="MLIPs, in comma-separated list. Default is all models",
     )
+    parser.addoption(
+        "--models-file",
+        action="store",
+        default=None,
+        help="Filepath to model definitions. Default models.yml in models directory.",
+    )
 
 
 def pytest_configure(config):
@@ -41,6 +47,7 @@ def pytest_configure(config):
 
     # Set current models from CLI input
     models.current_models = config.getoption("--models")
+    models.models_file = config.getoption("--models-file")
 
 
 def pytest_collection_modifyitems(config, items):
