@@ -120,12 +120,12 @@ class PetMadCalc(GenericASECalc):
             Loaded ASE Calculator.
         """
         precision_map = {"low": "float32", "high": "float64"}
-        kwargs["default_dtype"] = precision_map[precision]
+        kwargs["dtype"] = precision_map[precision]
 
         if self.default_dtype is not None:
-            kwargs["default_dtype"] = self.default_dtype
+            kwargs["dtype"] = self.default_dtype
         else:
-            kwargs["default_dtype"] = self.default_dtype
+            kwargs["dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
