@@ -15,7 +15,7 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
-CATEGORY = "liquids"
+CATEGORY = "molecular_dynamics"
 BENCHMARK = "ethanol_water_density"
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "outputs"
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK
@@ -126,7 +126,7 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
     """
     data_dir = (
         download_s3_data(
-            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
+            key=f"inputs/{CATEGORY}/ethanol_water_density/ethanol_water_density.zip",
             filename="ethanol_water_density.zip",
         )
         / "ethanol_water_density"

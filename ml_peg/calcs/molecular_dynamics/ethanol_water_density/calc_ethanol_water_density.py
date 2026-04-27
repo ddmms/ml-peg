@@ -26,6 +26,7 @@ from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 OUT_PATH = Path(__file__).parent / "outputs"
+CATEGORY = "molecular_dynamics"
 
 MODELS = load_models(current_models)
 MODEL_INDEX = {name: i for i, name in enumerate(MODELS)}
@@ -244,7 +245,7 @@ def test_water_ethanol_density_curves(mlip: tuple[str, Any], case_idx: int) -> N
     """
     data_dir = (
         download_s3_data(
-            key="inputs/liquids/ethanol_water_density/ethanol_water_density.zip",
+            key=f"inputs/{CATEGORY}/ethanol_water_density/ethanol_water_density.zip",
             filename="ethanol_water_density.zip",
         )
         / "ethanol_water_density"
