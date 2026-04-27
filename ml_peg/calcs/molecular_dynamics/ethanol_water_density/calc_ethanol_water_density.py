@@ -231,6 +231,8 @@ def test_water_ethanol_density_curves(mlip: tuple[str, Any], case_idx: int) -> N
     """
     Generate a density curve for a single model and composition.
 
+    Cases can be selected with `-k <case_idx>-` (e.g. `-k 0-`).
+
     Parameters
     ----------
     mlip : tuple[str, Any]

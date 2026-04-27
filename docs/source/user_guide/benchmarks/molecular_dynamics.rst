@@ -76,3 +76,35 @@ Reference data:
 
 * Same as input data
 * Experimental
+
+
+Water ethanol density curves
+=======
+
+Summary
+-------
+
+Benchmark of the density of water-ethanol mixtures for different concentrations of ethanol, compare to experiment.
+1 ns of NPT MD on about 120 water/ethanol molecules for 6 concentrations.
+
+
+Metrics
+-------
+
+1. rms of the density difference.
+2. rms of the excess volume difference.
+3. Concentration of the minimal excess volume.
+
+
+Data availability
+-----------------
+Input structures:
+Packmol generated
+
+Reference densities:
+From: M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook, 9th Edition. McGraw-Hill Education, 2018.
+
+Computational cost
+------------------
+
+Very high: tests are likely to take several days to run on GPU.
