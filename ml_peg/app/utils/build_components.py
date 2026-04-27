@@ -732,8 +732,7 @@ def build_test_layout(
         },
     )
 
-    table_section: list[Component] = [Div(table)]
-    table_section.extend([Br(), controls_visual])
+    table_section = [Div(table), Br(), controls_visual]
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:
