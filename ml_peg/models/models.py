@@ -124,8 +124,6 @@ class PetMadCalc(GenericASECalc):
 
         if self.default_dtype is not None:
             kwargs["dtype"] = self.default_dtype
-        else:
-            kwargs["dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
