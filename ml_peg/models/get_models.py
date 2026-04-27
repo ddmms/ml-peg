@@ -10,12 +10,12 @@ from typing import Any
 
 import yaml
 
-from ml_peg.models import MODELS_ROOT
+from ml_peg.models import models_file
 
 
 @lru_cache(maxsize=1)
 def _load_models_yaml(
-    filepath: Path | str = MODELS_ROOT / "models.yml",
+    filepath: Path | str | None = None,
 ) -> dict[str, Any]:
     """
     Load and cache models.yml to prevent repeated expensive YAML parsing.
@@ -23,20 +23,21 @@ def _load_models_yaml(
     Parameters
     ----------
     filepath
-        Path to YAML file with models. Default is `MODELS_ROOT / "models.yml"`.
+        Path to YAML file with models. Default is `models_file`.
 
     Returns
     -------
     dict[str, Any]
         Parsed models.yml registry.
     """
+    filepath = filepath if filepath else models_file
     with open(filepath, encoding="utf8") as file:
         return yaml.safe_load(file) or {}
 
 
 def load_model_configs(
     mlips: Iterable[str] | tuple[str, ...],
-    filepath: Path | str = MODELS_ROOT / "models.yml",
+    filepath: Path | str | None = None,
 ) -> tuple[dict[str, Any], dict[str, str | None]]:
     """
     Load model configurations and level of theory metadata from models.yml.
@@ -46,7 +47,7 @@ def load_model_configs(
     mlips
         Iterable of model identifiers to load configurations for.
     filepath
-        Path to YAML file with models. Default is `MODELS_ROOT / "models.yml"`.
+        Path to YAML file with models. Default is `models_file`.
 
     Returns
     -------
@@ -56,6 +57,7 @@ def load_model_configs(
         - model_levels: Dictionary mapping model names to their level of
           theory (or ``None``)
     """
+    filepath = filepath if filepath else models_file
     all_models = _load_models_yaml(filepath)
 
     model_levels: dict[str, str | None] = {}
@@ -108,7 +110,7 @@ def get_subset(
 
 def load_models(
     models: None | str | Iterable = None,
-    filepath: Path | str = MODELS_ROOT / "models.yml",
+    filepath: Path | str | None = None,
 ) -> dict[str, Any]:
     """
     Load models for use in calculations.
@@ -120,7 +122,7 @@ def load_models(
         If an iterable, all models with matching keys will be selected. If a string,
         this will be treated as a comma-separated list.
     filepath
-        Path to YAML file with models. Default is `MODELS_ROOT / "models.yml"`.
+        Path to YAML file with models. Default is `models_file`.
 
     Returns
     -------
@@ -131,7 +133,7 @@ def load_models(
 
     loaded_models = {}
 
-    # Load models from registry YAML: models.yml
+    filepath = filepath if filepath else models_file
     all_models = _load_models_yaml(filepath)
 
     for name, cfg in get_subset(all_models, models).items():
@@ -192,7 +194,7 @@ def load_models(
 
 def get_model_names(
     models: None | Iterable = None,
-    filepath: Path | str = MODELS_ROOT / "models.yml",
+    filepath: Path | str | None = None,
 ) -> list[str]:
     """
     Load models names for use in analysis.
@@ -204,14 +206,14 @@ def get_model_names(
         If an iterable, all models with matching keys will be selected. If a string,
         this will be treated as a comma-separated list.
     filepath
-        Path to YAML file with models. Default is `MODELS_ROOT / "models.yml"`.
+        Path to YAML file with models. Default is `models_file`.
 
     Returns
     -------
     list[str]
         Loaded model names from `filepath`.
     """
-    # Load models from registry YAML: models.yml
+    filepath = filepath if filepath else models_file
     all_models = _load_models_yaml(filepath)
 
     model_names = []

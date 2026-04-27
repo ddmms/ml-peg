@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from ml_peg.models import models
+from ml_peg import models
 
 
 def pytest_addoption(parser):
