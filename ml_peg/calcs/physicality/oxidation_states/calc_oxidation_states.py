@@ -31,7 +31,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
     Parameters
     ----------
     mlip
-        Name of model use and model.
+        Name of model used and model.
     """
     model_name, model = mlip
     model.default_dtype = "float32"
@@ -78,8 +78,8 @@ def test_iron_oxygen_rdfs(model_name: str) -> None:
 
     Parameters
     ----------
-    mlip
-        Name of model used and model.
+    model_name
+        Name of MLIP.
     """
     model_name = model_name
     out_dir = OUT_PATH / model_name

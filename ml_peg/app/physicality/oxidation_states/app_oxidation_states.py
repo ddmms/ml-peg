@@ -34,7 +34,11 @@ class FeOxidationStatesApp(BaseApp):
                     DATA_PATH / f"Fe-O_{model}_RDF_scatter.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-Fe-O-RDF",
                 ),
-                "Peak Within Experimental Ref": read_plot(
+                "Fe +2 Peak Experimental Ref Deviation": read_plot(
+                    DATA_PATH / f"Fe-O_{model}_RDF_scatter.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure-Fe-O-RDF",
+                ),
+                "Fe +3 Peak Experimental Ref Deviation": read_plot(
                     DATA_PATH / f"Fe-O_{model}_RDF_scatter.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-Fe-O-RDF",
                 ),
