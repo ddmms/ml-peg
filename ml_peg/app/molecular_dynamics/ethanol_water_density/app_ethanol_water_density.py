@@ -1,5 +1,3 @@
-# TODO: This does not work. Fix this
-
 """Run ethanol–water density (decomposition curves) app."""
 
 from __future__ import annotations
