@@ -38,6 +38,8 @@ ATM = 1.01325 * units.bar
 TEMPERATURE = 298.15
 LANGEVIN_FRICTION = 1 / (500 * units.fs)
 
+N_COMPOSITIONS = 7
+
 
 @dataclass(frozen=True)
 class CompositionCase:
@@ -223,14 +225,17 @@ def run_npt(atoms, calc, output_fname):
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=list(MODELS.keys()))
-def test_water_ethanol_density_curves(mlip: tuple[str, Any]) -> None:
+@pytest.mark.parametrize("case_idx", range(N_COMPOSITIONS))
+def test_water_ethanol_density_curves(mlip: tuple[str, Any], case_idx: int) -> None:
     """
-    Generate one density-curve case for a model and composition.
+    Generate a density curve for a single model and composition.
 
     Parameters
     ----------
     mlip : tuple[str, Any]
         Pair of model name and model object.
+    case_idx : int
+        Index into the list of compositions returned by ``load_compositions``.
 
     Returns
     -------
@@ -244,8 +249,8 @@ def test_water_ethanol_density_curves(mlip: tuple[str, Any]) -> None:
         )
         / "ethanol_water_density"
     )
-    for case in load_compositions(data_dir):
-        water_ethanol_density_curve_one_case(mlip, case, data_dir)
+    case = load_compositions(data_dir)[case_idx]
+    water_ethanol_density_curve_one_case(mlip, case, data_dir)
 
 
 def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case, data_dir) -> None:
