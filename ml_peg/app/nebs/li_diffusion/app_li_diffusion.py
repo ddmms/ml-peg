@@ -42,7 +42,7 @@ class LiDiffusionApp(BaseApp):
         }
 
         # Assets dir will be parent directory
-        assets_dir = "assets/nebs/li_diffusion"
+        assets_dir = "/assets/nebs/li_diffusion"
         structs = {
             model: {
                 "Path B error": f"{assets_dir}/{model}/{model}-b-neb-band.extxyz",

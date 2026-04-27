@@ -26,7 +26,7 @@ class ExtensivityApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         # Assets dir will be parent directory - individual files for each system
-        assets_dir = f"assets/physicality/extensivity/{MODELS[0]}"
+        assets_dir = f"/assets/physicality/extensivity/{MODELS[0]}"
         structs = {
             "ΔE": f"{assets_dir}/slabs.xyz",
         }

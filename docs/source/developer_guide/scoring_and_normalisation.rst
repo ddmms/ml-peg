@@ -34,6 +34,9 @@ For developers to specify custom default weights, you can do so in the benchmark
        level_of_theory: DMC
 
 
+See :doc:`Levels of theory </developer_guide/levels_of_theory>` for the full list of accepted
+``level_of_theory`` strings.
+
 These weights are returned as part of the tuple from ``load_metrics_config``
 
 .. code-block:: python

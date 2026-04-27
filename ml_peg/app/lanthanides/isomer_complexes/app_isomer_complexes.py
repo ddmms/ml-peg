@@ -41,7 +41,7 @@ class IsomerComplexesApp(BaseApp):
         if MODELS:
             structs_dir = DATA_PATH / MODELS[0]
             structs = [
-                f"assets/lanthanides/isomer_complexes/{MODELS[0]}/{struct_file.stem}.xyz"
+                f"/assets/lanthanides/isomer_complexes/{MODELS[0]}/{struct_file.stem}.xyz"
                 for struct_file in sorted(structs_dir.glob("*.xyz"))
             ]
 

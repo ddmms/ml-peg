@@ -37,7 +37,7 @@ class Maltose222App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/Maltose222/{MODELS[0]}/{label}.xyz"
+                f"/assets/conformers/Maltose222/{MODELS[0]}/{label}.xyz"
                 for label in labels
             ]
         else:
