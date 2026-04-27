@@ -47,7 +47,9 @@ def pytest_configure(config):
 
     # Set current models from CLI input
     models.current_models = config.getoption("--models")
-    models.models_file = config.getoption("--models-file")
+    model_file = config.getoption("--models-file")
+    if model_file:
+        models.models_file = model_file
 
 
 def pytest_collection_modifyitems(config, items):
