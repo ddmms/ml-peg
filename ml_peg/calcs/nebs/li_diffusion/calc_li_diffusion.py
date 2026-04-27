@@ -35,7 +35,7 @@ def relaxed_structs() -> dict[str, Atoms]:
     for model_name, calc in MODELS.items():
         for struct_name in structs:
             struct = read(DATA_PATH / struct_name)
-            struct.calc = calc.get_calculator()
+            struct.calc = calc.get_calculator(precision="high")
             # Set default charge and spin
             struct.info.setdefault("charge", 0)
             struct.info.setdefault("spin", 1)
