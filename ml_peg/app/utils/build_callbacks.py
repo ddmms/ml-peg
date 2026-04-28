@@ -8,7 +8,7 @@ import io
 import json
 import math
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from dash import Input, Output, State, callback, callback_context, html
 from dash.dcc import Graph
@@ -917,7 +917,9 @@ def model_asset_from_scatter(
         return rendered
 
 
-def filter_table(table_id: str) -> None:
+def filter_table(
+    *, table_id: str, filter_func: Callable, filter_kwargs: dict[str, Any]
+) -> None:
     """
     Define callback to filter table by elements.
 
@@ -925,24 +927,43 @@ def filter_table(table_id: str) -> None:
     ----------
     table_id
         ID for Dash table being filtered.
+    filter_func
+        Filter function to update table data.
+    filter_kwargs
+        Keyword arguments to pass to the filter function.
     """
 
     @callback(
         Output(table_id, "data"),
         Input("element-filter", "value"),
+        State(table_id, "data"),
     )
-    def _filter_table(element_list: list[str | None]) -> list[dict]:
+    def _filter_table(
+        elements_list: list[str | None], table_data: dict[str, dict[str, float | None]]
+    ) -> list[dict]:
         """
         Register callback to filter table by elements.
 
         Parameters
         ----------
-        element_list
+        elements_list
             List of selected elements.
+        table_data
+            Data to be updated.
 
         Returns
         -------
         list[dict]
             Filtered table data.
         """
-        pass
+        if not elements_list:
+            return table_data
+
+        fitered_results = filter_func(set(elements_list), **filter_kwargs)
+
+        for row in table_data:
+            mlip_id = row.get("id")
+            for metric, results in fitered_results.items():
+                row[metric] = results.get(mlip_id)
+
+        return table_data

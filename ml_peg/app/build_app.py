@@ -404,11 +404,6 @@ def get_all_tests(
                 stacklevel=2,
             )
             continue
-        try:
-            test_app.filter_data()
-        except Exception as err:
-            warnings.warn(f"Error filtering data. Full error:\n{err}", stacklevel=2)
-            continue
 
     return layouts, tables, frameworks
 
