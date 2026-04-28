@@ -34,6 +34,7 @@ INFO = get_struct_info(
     glob_pattern="*_polymorph.xyz",
     info_keys=["polymorph"],
     out_path=OUT_PATH,
+    write_structs=True,
 )
 
 
