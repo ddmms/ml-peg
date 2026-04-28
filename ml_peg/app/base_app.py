@@ -126,7 +126,7 @@ class BaseApp(ABC):
         """Register callbacks with app."""
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def filter_data(self):
         """Filter data by elements."""
         print(f"No filter_data method defined for {self.name}, skipping.")
