@@ -264,14 +264,19 @@ class MockCalc(SumCalc):
     model_name: str = "mock"
     trained_on_dispersion: bool = True
 
-    def get_calculator(self) -> Calculator:
+    def get_calculator(self, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Any additional keyword arguments passed to `get_calculator`.
 
         Returns
         -------
         Calculator
-            Loaded mocl ASE Calculator.
+            Loaded mock ASE Calculator.
         """
         from ml_peg.models.mock import MockCalculator
 
