@@ -1124,6 +1124,20 @@ def build_nav(
                 [
                     H1("Categories Summary"),
                     Div(
+                        "Scores range from 0 (worst) to 1 (best).",
+                        style={
+                            "fontSize": "14px",
+                            "fontWeight": "600",
+                            "color": "#212529",
+                            "backgroundColor": "#e8f4fd",
+                            "border": "1px solid #bee3f8",
+                            "borderRadius": "6px",
+                            "padding": "8px 14px",
+                            "marginBottom": "16px",
+                            "width": "fit-content",
+                        },
+                    ),
+                    Div(
                         [Div(summary_table), Br(), weight_components],
                         style={"width": "fit-content"},
                     ),
