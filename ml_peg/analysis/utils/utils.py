@@ -710,3 +710,26 @@ def normalize_metric(
 
     # Clip to [0, 1]
     return max(min(1.0, float(t)), 0.0)
+
+
+def read_extxyz_info_fast(filepath: Path | str) -> dict[str, Any]:
+    """
+    Read metadata from the second line of an Extended XYZ file.
+
+    Parameters
+    ----------
+    filepath
+        Path to the extxyz file.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of metadata from the info line.
+    """
+    from ase.io.extxyz import key_val_str_to_dict
+
+    with open(filepath, encoding="utf8") as f:
+        f.readline()  # Skip number of atoms
+        info_line = f.readline()
+
+    return key_val_str_to_dict(info_line)

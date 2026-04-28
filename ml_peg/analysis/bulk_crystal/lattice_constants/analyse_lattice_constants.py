@@ -9,7 +9,11 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    load_metrics_config,
+    mae,
+    read_extxyz_info_fast,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
@@ -41,8 +45,9 @@ def get_crystal_formulae() -> list[str]:
             continue
         struct_files = sorted(model_dir.glob("*-traj.extxyz"))
         for struct_file in struct_files:
-            atoms = read(struct_file)
-            name = atoms.info["name"]
+            # Bolt optimization: Read metadata only instead of parsing full structure
+            info = read_extxyz_info_fast(struct_file)
+            name = info["name"]
             if name == "SiC":
                 formulae.extend(("SiC(a)", "SiC(c)"))
             else:
