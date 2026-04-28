@@ -177,4 +177,6 @@ High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
 Data availability
 -----------------
 
-Starting configurations for the MD are available on S3 bucket.
+Starting configurations for the MD are available on S3 bucket. Experimental reference ranges for the RDF peaks were taken from [1].
+
+[1] Kocer, Emir, et al. "Machine learning potentials for redox chemistry in solution." arXiv preprint arXiv:2410.03299 (2024).
