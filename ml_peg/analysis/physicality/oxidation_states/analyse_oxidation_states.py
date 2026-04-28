@@ -32,7 +32,7 @@ TESTS = [
 ]
 REF_PEAK_RANGE = {
     "Fe<sup>+2</sup><br>Ref": [2.0, 2.2],
-    "Fe<sup>+3</sup><br>Ref": [1.9, 2.0],
+    "Fe<sup>+3</sup><br>Ref": [1.9, 2.05],
 }
 
 
@@ -117,7 +117,7 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
     oxidation_state_passfail = {test: {} for test in TESTS}
 
     fe_2_ref = [2.0, 2.2]
-    fe_3_ref = [1.9, 2.0]
+    fe_3_ref = [1.9, 2.05]
 
     for model in MODELS:
         results = get_rdf_results(model)

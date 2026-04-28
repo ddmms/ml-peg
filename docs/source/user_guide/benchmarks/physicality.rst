@@ -138,14 +138,14 @@ None required; diatomics are generated in ASE.
 
 
 Oxidation States
-===========
+================
 
 Summary
 -------
 
 Examines the model's ability to capture different oxidation states of Fe in aqueous solution [1, 2]. Two systems containing Fe 2Cl (Fe+2 state) and Fe 3Cl (Fe+3 state) in water are simulated at 300K for 20ps with NVT MD.
 The solvation cell is expected to be tighter for iron in the Fe+3 state. This effect, if an MLIP can correctly capture the Fe oxidation state, appears as a split on the Fe-O RDF peaks.
-This test examines whether a split appears between the Fe-O RDF peaks of the two systems. Additionally, the benchmark examines whether the peaks fall into the expected experimental range.
+This test examines whether a split appears between the Fe-O RDF peaks of the two systems. Additionally, the benchmark examines whether the peaks fall into the expected experimental range [1].
 
 [1] Kocer, Emir, et al. "Machine learning potentials for redox chemistry in solution." arXiv preprint arXiv:2410.03299 (2024).
 [2] Batatia, Ilyes, et al. "MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry." arXiv preprint arXiv:2602.19411 (2026).
