@@ -5,6 +5,7 @@ from __future__ import annotations
 import warnings
 
 from dash import Dash
+from dash.dcc import Graph
 from dash.html import Div
 import numpy as np
 
@@ -12,7 +13,6 @@ from ml_peg.analysis.molecular_crystal.X23.analyse_X23 import get_metrics
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    filter_table,
     plot_from_table_column,
     struct_from_scatter,
 )
@@ -26,77 +26,6 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
 INFO_PATH = DATA_PATH / "info.json"
 ELEMENT_DROPDOWN_ID = f"{BENCHMARK_NAME}-element-dropdown"
-
-
-# FILTER_PAYLOAD = _load_filter_payload()
-# FILTER_ELEMENTS = [
-#     element
-#     for element in FILTER_PAYLOAD.get("elements", [])
-#     if isinstance(element, str) and element
-# ]
-# FILTER_SYSTEMS = [
-#     system
-#     for system in FILTER_PAYLOAD.get("systems", [])
-#     if isinstance(system, str) and system
-# ]
-# FILTER_SYSTEM_ELEMENTS = FILTER_PAYLOAD.get("system_elements", [])
-# SYSTEM_TO_INDEX = {system: idx for idx, system in enumerate(FILTER_SYSTEMS)}
-
-
-# def _figure_dict(graph) -> dict:
-#     """Convert a Plotly graph component into a mutable figure dictionary."""
-#     figure = getattr(graph, "figure", None)
-#     if figure is None:
-#         return {}
-#     if hasattr(figure, "to_plotly_json"):
-#         return figure.to_plotly_json()
-#     if isinstance(figure, dict):
-#         return figure
-#     return {}
-
-
-# def _customdata_system(point_customdata) -> str | None:
-#     """Extract the system label from a Plotly customdata entry."""
-#     if point_customdata is None:
-#         return None
-#     if isinstance(point_customdata, (list, tuple, np.ndarray)):
-#         if not point_customdata:
-#             return None
-#         value = point_customdata[0]
-#     else:
-#         value = point_customdata
-#     return str(value) if value is not None else None
-
-
-# def _keep_mask(selected_elements: list[str] | None) -> np.ndarray:
-#     """Return a mask of systems that do not contain deselected elements."""
-#     n_systems = len(FILTER_SYSTEMS)
-#     n_elements = len(FILTER_ELEMENTS)
-#     if n_systems == 0:
-#         return np.zeros(0, dtype=bool)
-
-#     selected = {
-#         element for element in (selected_elements or []) if isinstance(element, str)
-#     }
-#     selected_vector = np.array(
-#         [element in selected for element in FILTER_ELEMENTS], dtype=bool
-#     )
-#     deselected_vector = ~selected_vector
-#     if not deselected_vector.any() or n_elements == 0:
-#         return np.ones(n_systems, dtype=bool)
-
-#     incidence = np.zeros((n_systems, n_elements), dtype=bool)
-#     element_to_idx = {element: idx for idx, element in enumerate(FILTER_ELEMENTS)}
-#     for system_idx, element_list in enumerate(FILTER_SYSTEM_ELEMENTS[:n_systems]):
-#         if not isinstance(element_list, list):
-#             continue
-#         for element in element_list:
-#             element_idx = element_to_idx.get(element)
-#             if element_idx is not None:
-#                 incidence[system_idx, element_idx] = True
-
-#     excluded = incidence[:, deselected_vector].any(axis=1)
-#     return ~excluded
 
 
 class X23App(BaseApp):
@@ -134,7 +63,7 @@ class X23App(BaseApp):
             mode="struct",
         )
 
-        filter_table(table_id=self.table_id)
+        # filter_table(self.table_id, self.filter_data)
 
     def get_elements(self) -> None:
         """Get element sets for filtering from loaded info."""
@@ -143,38 +72,41 @@ class X23App(BaseApp):
         except KeyError:
             warnings.warn("Unable to read elements lists.", stacklevel=2)
 
-    def filter_data(self, deselected_elements: set[str]) -> dict[str, dict]:
+    @staticmethod
+    def filter_data(
+        filter_elements: set[str], data: Graph, test_elements: list[list[str]]
+    ) -> dict[str, dict]:
         """
         Apply elements filter to data.
 
         Parameters
         ----------
-        deselected_elements
+        filter_elements
             Set of elements to filter out of data.
+        data
+            Scatter plot to filter.
+        test_elements
+            List of element for each system.
 
         Returns
         -------
         dict[str, dict]
             Metric names and values for all models.
         """
-        if not hasattr(self, "data"):
-            self.load_data()
-        if not hasattr(self, "elements"):
-            self.get_elements()
-
-        # Get overlap of deselected elements with each system's elements)
+        # Get overlap of deselected elements with each system's elements
         filtered_indices = [
-            not bool(elements & deselected_elements) for elements in self.elements
+            not bool(elements & filter_elements) for elements in test_elements
         ]
 
         results = {}
         ref_filtered = False
 
-        for plot in self.data.figure.data:
+        for plot in data.figure.data:
+            # Ignore unamed (parity) line
             if plot.name:
-                results[plot.name] = np.array(plot.x)[filtered_indices]
+                results[plot.name] = np.array(plot.x)[filtered_indices].tolist()
                 if not ref_filtered:
-                    results["ref"] = np.array(plot.y)[filtered_indices]
+                    results["ref"] = np.array(plot.y)[filtered_indices].tolist()
                     ref_filtered = True
 
         return get_metrics(results)
