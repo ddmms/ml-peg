@@ -89,9 +89,9 @@ def get_element_filter() -> Details:
                     Dropdown(
                         id="element-filter",
                         options=elements,
-                        value=elements,
+                        value=None,
                         multi=True,
-                        placeholder="Select elements",
+                        placeholder="Filter elements",
                         closeOnSelect=False,
                         style={"fontSize": "13px"},
                         debounce=True,
