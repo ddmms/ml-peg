@@ -898,6 +898,39 @@ def build_nav(
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
+    _summary_label_style = {
+        "cursor": "pointer",
+        "fontWeight": "600",
+        "fontSize": "11px",
+        "textTransform": "uppercase",
+        "letterSpacing": "0.07em",
+        "color": "#6c757d",
+        "padding": "5px",
+    }
+    cmap_selector = Details(
+        [
+            Summary("Colour scheme", style=_summary_label_style),
+            Div(
+                Dropdown(
+                    id="cmap-dropdown",
+                    options=[
+                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
+                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
+                        {
+                            "label": "Green-Red (matches good/bad thresholds)",
+                            "value": "RdYlGn_r",
+                        },
+                    ],
+                    value="viridis_r",
+                    clearable=False,
+                    style={"fontSize": "13px"},
+                ),
+                style={"padding": "8px 12px"},
+            ),
+        ],
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
     sidebar = Div(
         id="sidebar-nav",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
@@ -938,6 +971,7 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
+        Store(id="cmap-store", storage_type="session", data="viridis_r"),
         *category_state_stores,
     ]
 
@@ -989,6 +1023,7 @@ def build_nav(
                         Div(
                             [
                                 model_filter,
+                                cmap_selector,
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -1072,6 +1107,27 @@ def build_nav(
             selected = checklist_value or []
             return selected, selected
         raise PreventUpdate
+
+    @callback(
+        Output("cmap-store", "data"),
+        Input("cmap-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    def store_cmap(cmap_name: str) -> str:
+        """
+        Store selected colormap name.
+
+        Parameters
+        ----------
+        cmap_name
+            Matplotlib colormap name selected from the dropdown.
+
+        Returns
+        -------
+        str
+            Colormap name to persist in the cmap store.
+        """
+        return cmap_name
 
     @callback(
         Output("model-filter-details", "open"),

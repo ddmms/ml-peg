@@ -135,12 +135,14 @@ def register_summary_table_callbacks(
         Input("selected-models-store", "data"),
         Input("summary-table-computed-store", "data"),
         Input("app-location", "pathname"),
+        Input("cmap-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def sync_summary_table(
         selected_models: list[str] | None,
         computed_store: list[dict] | None,
         _pathname: str,
+        cmap_name: str | None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Sync the visible summary table from cached unfiltered rows.
@@ -154,6 +156,8 @@ def register_summary_table_callbacks(
         _pathname
             Current pathname. Included so the visible table refreshes when the
             summary page is opened.
+        cmap_name
+            Matplotlib colormap name from the cmap store.
 
         Returns
         -------
@@ -164,7 +168,11 @@ def register_summary_table_callbacks(
             raise PreventUpdate
 
         filtered_rows = filter_rows_by_models(computed_store, selected_models)
-        base_style = get_table_style(filtered_rows) if filtered_rows else []
+        base_style = (
+            get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+            if filtered_rows
+            else []
+        )
         style_with_warnings, tooltip_data = apply_level_of_theory_warnings(
             filtered_rows,
             base_style,
@@ -216,6 +224,7 @@ def register_category_table_callbacks(
             Input("app-location", "pathname"),
             Input(f"{table_id}-normalized-toggle", "value"),
             Input("selected-models-store", "data"),
+            Input("cmap-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
@@ -228,6 +237,7 @@ def register_category_table_callbacks(
             _pathname: str,
             toggle_value: list[str] | None,
             selected_models: list[str] | None,
+            cmap_name: str | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
@@ -271,7 +281,8 @@ def register_category_table_callbacks(
             # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
-                trigger_id in ("app-location", f"{table_id}-normalized-toggle")
+                trigger_id
+                in ("app-location", f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
                 display_rows = get_scores(
@@ -281,7 +292,11 @@ def register_category_table_callbacks(
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
                 style = (
-                    get_table_style(filtered_rows, scored_data=filtered_scores)
+                    get_table_style(
+                        filtered_rows,
+                        scored_data=filtered_scores,
+                        cmap_name=cmap_name or "viridis_r",
+                    )
                     if filtered_rows
                     else []
                 )
@@ -321,7 +336,11 @@ def register_category_table_callbacks(
             filtered_rows = filter_rows_by_models(display_rows, selected_models)
             filtered_scores = filter_rows_by_models(scored_rows, selected_models)
             style = (
-                get_table_style(filtered_rows, scored_data=filtered_scores)
+                get_table_style(
+                    filtered_rows,
+                    scored_data=filtered_scores,
+                    cmap_name=cmap_name or "viridis_r",
+                )
                 if filtered_rows
                 else []
             )
@@ -356,6 +375,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-weight-store", "data"),
             Input("selected-models-store", "data"),
             Input("app-location", "pathname"),
+            Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
@@ -364,6 +384,7 @@ def register_category_table_callbacks(
             stored_weights: dict[str, float] | None,
             selected_models: list[str] | None,
             _pathname: str,
+            cmap_name: str | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
@@ -376,9 +397,13 @@ def register_category_table_callbacks(
 
             trigger_id = ctx.triggered_id
 
-            if trigger_id == "app-location":
+            if trigger_id in ("app-location", "cmap-store"):
                 filtered_rows = filter_rows_by_models(source_data, selected_models)
-                style = get_table_style(filtered_rows) if filtered_rows else []
+                style = (
+                    get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                    if filtered_rows
+                    else []
+                )
                 style, tooltip_data = apply_level_of_theory_warnings(
                     filtered_rows,
                     style,
@@ -390,7 +415,11 @@ def register_category_table_callbacks(
 
             scored_rows, _ = update_score_style(source_data, stored_weights)
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
-            style = get_table_style(filtered_rows) if filtered_rows else []
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
                 style,
@@ -407,12 +436,14 @@ def register_category_table_callbacks(
             Input(f"{table_id}-computed-store", "data"),
             Input("selected-models-store", "data"),
             Input("app-location", "pathname"),
+            Input("cmap-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
         def sync_table_from_computed_store(
             computed_store: list[dict] | None,
             selected_models: list[str] | None,
             _pathname: str,
+            cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
             """
             Sync the visible category table from its cached unfiltered rows.
@@ -436,7 +467,11 @@ def register_category_table_callbacks(
                 raise PreventUpdate
 
             filtered_rows = filter_rows_by_models(computed_store, selected_models)
-            style = get_table_style(filtered_rows) if filtered_rows else []
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
                 style,

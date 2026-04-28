@@ -483,6 +483,7 @@ def get_table_style(
     normalized: bool = True,
     all_cols: bool = True,
     col_names: list[str] | str | None = None,
+    cmap_name: str = "viridis_r",
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -500,13 +501,15 @@ def get_table_style(
         Whether to colour all numerical columns.
     col_names
         Column name or list of names to be coloured.
+    cmap_name
+        Matplotlib colormap name. Default is ``"viridis_r"``.
 
     Returns
     -------
     list[TableRow]
         Conditional style data to apply to table.
     """
-    cmap = cm.get_cmap("RdYlGn_r")
+    cmap = cm.get_cmap(cmap_name)
 
     def rgba_from_val(val: float, vmin: float, vmax: float, cmap: Colormap) -> str:
         """
