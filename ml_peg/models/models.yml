@@ -1,12 +1,12 @@
-mace-mp-0a:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium"
+#mace-mp-0a:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  default_dtype: float32
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium"
 
 mace-mp-0b3:
   module: mace.calculators
@@ -18,39 +18,39 @@ mace-mp-0b3:
   kwargs:
     model: "medium-0b3"
 
-mace-mpa-0:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-mpa-0"
+#mace-mpa-0:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  default_dtype: float32
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium-mpa-0"
 
-mace-omat-0:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-omat-0"
+#mace-omat-0:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  default_dtype: float32
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium-omat-0"
 
-mace-matpes-r2scan:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  default_dtype: float32
-  trained_on_dispersion: false
-  level_of_theory: r2SCAN
-  kwargs:
-    model: "mace-matpes-r2scan-0"
-    head: "matpes_pbe"
-  dispersion_kwargs:
-    xc: r2scan
-    label: D4
+#mace-matpes-r2scan:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  default_dtype: float32
+#  trained_on_dispersion: false
+#  level_of_theory: r2SCAN
+#  kwargs:
+#    model: "mace-matpes-r2scan-0"
+#    head: "matpes_pbe"
+#  dispersion_kwargs:
+#    xc: r2scan
+#    label: D4
 
 # mace-mh-1-omat:
 #   module: mace.calculators
@@ -63,15 +63,15 @@ mace-matpes-r2scan:
 #     model: "mh-1"
 #     head: omat_pbe
 
-orb-v3-consv-inf-omat:
-  module: orb_models.forcefield
-  class_name: OrbCalc
-  device: "cpu"
-  default_dtype: float32-high
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    name: "orb_v3_conservative_inf_omat"
+#orb-v3-consv-inf-omat:
+#  module: orb_models.forcefield
+#  class_name: OrbCalc
+#  device: "cpu"
+#  default_dtype: float32-high
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    name: "orb_v3_conservative_inf_omat"
 
 # orb-v3-consv-omol:
 #   module: orb_models.forcefield
@@ -170,17 +170,17 @@ orb-v3-consv-inf-omat:
 #     model_name: "uma-m-1p1"
 #     task_name: "omol"
 
-pet-mad:
-  module: pet_mad.calculator
-  class_name: PETMADCalculator
-  device: "cpu"
-  default_dtype: float32
-  trained_on_dispersion: false
-  level_of_theory: PBEsol
-  kwargs:
-    version: "v1.0.2"
-  dispersion_kwargs:
-    xc: pbesol
+#pet-mad:
+#  module: pet_mad.calculator
+#  class_name: PETMADCalculator
+#  device: "cpu"
+#  default_dtype: float32
+#  trained_on_dispersion: false
+#  level_of_theory: PBEsol
+#  kwargs:
+#    version: "v1.0.2"
+#  dispersion_kwargs:
+#    xc: pbesol
 
 mace-polar-1-s:
   module: mace.calculators
@@ -192,15 +192,15 @@ mace-polar-1-s:
   kwargs:
     model: "polar-1-s"
 
-mace-polar-1-m:
-  module: mace.calculators
-  class_name: mace_polar
-  device: "cpu"
-  default_dtype: float32
-  trained_on_dispersion: true
-  level_of_theory: ωB97M-V
-  kwargs:
-    model: "polar-1-m"
+#mace-polar-1-m:
+#  module: mace.calculators
+#  class_name: mace_polar
+#  device: "cpu"
+#  default_dtype: float32
+#  trained_on_dispersion: true
+#  level_of_theory: ωB97M-V
+#  kwargs:
+#    model: "polar-1-m"
 
 # mace-polar-1-l:
 #   module: mace.calculators
