@@ -420,6 +420,33 @@ wheels = [
 ]
 
 [[package]]
+name = "ase-ga"
+version = "1.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ase" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/3f/0cb20510b115ac2eef57cca0551e8e59c439c1617daaeba352b161faa28b/ase_ga-1.0.3.tar.gz", hash = "sha256:48997ca75ac0db5aeb9cdee4c7c0f406dbb0921e173272360bdbb73cdab3c767", size = 237296, upload-time = "2025-11-06T14:47:53.317Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/55/cb27ae7f78e44ad95f572cb0cc2997af85855cfc3cfc058ec7cdc946b5f4/ase_ga-1.0.3-py3-none-any.whl", hash = "sha256:fdc247fcebd5bf6982ae4cfba3d48c5ec1a76e01997d1b0aa18533b727935048", size = 94604, upload-time = "2025-11-06T14:47:52.446Z" },
+]
+
+[[package]]
+name = "asemolec"
+version = "1.0.0"
+source = { git = "https://github.com/imagdau/aseMolec.git#7dad6334392aa23c27ffb18a6d7d718b16ce9240" }
+dependencies = [
+    { name = "ase" },
+    { name = "ase-ga" },
+    { name = "matplotlib" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13' or (python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+]
+
+[[package]]
 name = "asn1crypto"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5340,9 +5367,10 @@ wheels = [
 
 [[package]]
 name = "ml-peg"
-version = "0.4.1"
+version = "0.4.2"
 source = { editable = "." }
 dependencies = [
+    { name = "asemolec" },
     { name = "boto3" },
     { name = "dash" },
     { name = "janus-core" },
@@ -5423,6 +5451,7 @@ prod = [
 
 [package.metadata]
 requires-dist = [
+    { name = "asemolec", git = "https://github.com/imagdau/aseMolec.git" },
     { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
     { name = "dash", specifier = ">=4.0.0,<5" },
