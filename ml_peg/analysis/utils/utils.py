@@ -721,6 +721,7 @@ def get_struct_info(
     info_keys: list[str] | None = None,
     write_info: bool = True,
     out_path: Path | None = None,
+    write_structs: bool = True,
 ) -> dict[str, Any]:
     """
     Get info from structure files.
@@ -738,7 +739,10 @@ def get_struct_info(
     write_info
         Whether to write out info for each system. Default is True. Requires `out_path`.
     out_path
-        Path to write out info for each system. Required if `write_info` is True.
+        Path to write out info for each system. Required if `write_info` is `True`.
+    write_structs
+        Whether to write out structure files for each system. Default is `True` if
+        `out_path` is specified.
 
     Returns
     -------
@@ -756,6 +760,7 @@ def get_struct_info(
         raise ValueError(
             f"No file matches in {model_dir}. Please run mock calculation."
         )
+
     for file in files:
         structs = read(file, index=index)
         if isinstance(structs, Atoms):
@@ -764,10 +769,13 @@ def get_struct_info(
             for key in info_keys:
                 info[key].append(struct.info[key])
             info["elements"].append(sorted(set(struct.get_chemical_symbols())))
+        if write_structs:
+            (out_path / "mock").mkdir(parents=True, exist_ok=True)
+            write(out_path / "mock" / file.name, structs)
 
     if write_info:
         if out_path is None:
-            raise ValueError("`out_path` must be specified if `write_info` is True.")
+            raise ValueError("`out_path` must be specified if `write_info` is `True`.")
         out_path.mkdir(parents=True, exist_ok=True)
         out_file = out_path / "info.json"
         with out_file.open("w", encoding="utf8") as f:
