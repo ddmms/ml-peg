@@ -41,7 +41,7 @@ metrics:
 
   V30 MAE:
     good: 0
-    bad: 1
+    bad: 0.001
     unit: kcal/mol
     tooltip: Mean Absolute Error for all systems
     level_of_theory: CCSD(T)
