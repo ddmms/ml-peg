@@ -157,10 +157,13 @@ Metrics
 
 The similarity of the aqueous Fe 2Cl and Fe 3Cl system RDFs is examined.
 If a split is present the score is +1 and in the case there is no clear split the score is 0.
+This metric determines whether a model can capture the different oxidation states of Fe and is therefore weighted as 5x more important than the two following metrics.
+
 
 2. Fe +2 Peak Experimental Ref Deviation
 
 Deviation of the Fe 2Cl system's RDF peak position from the experimental range.
+
 
 3. Fe +3 Peak Experimental Ref Deviation
 
@@ -170,7 +173,6 @@ Computational cost
 ------------------
 
 High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
-
 
 Data availability
 -----------------

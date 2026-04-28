@@ -20,7 +20,9 @@ CALC_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
 TESTS = [
@@ -134,16 +136,18 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
         diff = norm_fe2_g_r - norm_fe3_g_r
         mae = np.sum(np.absolute(diff)) / (np.sum(norm_fe2_g_r) + np.sum(norm_fe3_g_r))
 
-        oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 0.0
-
         if mae > 0.2:
             oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 1.0
-            oxidation_state_passfail["Fe +2 Peak Experimental Ref Deviation"][model] = (
-                normalised_peak_error(fe2_peak_pos, fe_2_ref)
-            )
-            oxidation_state_passfail["Fe +3 Peak Experimental Ref Deviation"][model] = (
-                normalised_peak_error(fe3_peak_pos, fe_3_ref)
-            )
+
+        else:
+            oxidation_state_passfail["Fe-O RDF Peak Split"][model] = 0.0
+
+        oxidation_state_passfail["Fe +2 Peak Experimental Ref Deviation"][model] = (
+            normalised_peak_error(fe2_peak_pos, fe_2_ref)
+        )
+        oxidation_state_passfail["Fe +3 Peak Experimental Ref Deviation"][model] = (
+            normalised_peak_error(fe3_peak_pos, fe_3_ref)
+        )
 
     return oxidation_state_passfail
 
@@ -153,6 +157,7 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
     filename=OUT_PATH / "oxidation_states_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def oxidation_states_passfail_metrics(
     get_oxidation_states_passfail: dict[str, dict],

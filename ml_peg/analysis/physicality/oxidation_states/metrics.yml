@@ -5,15 +5,18 @@ metrics:
     unit: Yes(1)/No(0)
     tooltip: Whether there is a split between Fe-O RDF peaks for different iron oxidation states
     level_of_theory: Experimental
+    weight: 5
   Fe +2 Peak Experimental Ref Deviation:
     good: 0.0
     bad: 1.0
     unit: σ
     tooltip: Deviation of peak position from experimental range
     level_of_theory: Experimental
+    weight: 1
   Fe +3 Peak Experimental Ref Deviation:
     good: 0.0
     bad: 1.0
     unit: σ
     tooltip: Deviation of peak position from experimental range
     level_of_theory: Experimental
+    weight: 1
