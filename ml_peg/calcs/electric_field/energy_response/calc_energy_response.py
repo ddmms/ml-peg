@@ -38,11 +38,12 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     mlip
         Name of model use and model to get calculator.
     """
-    DATA_NOT_DOWNLOADED = False
+    DATA_NOT_DOWNLOADED = True
     
     model_name, model = mlip
     model.default_dtype = "float64"
     clean_calc = model.get_calculator()
+
 
     # Organic molecules data sets for electric field response.
     datasets = [
@@ -62,8 +63,8 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
 
         if DATA_NOT_DOWNLOADED:
             DATA_PATH.mkdir(parents=True, exist_ok=True)
-            write(DATA_PATH/f'{dataset}.xyz', mols)
             mols = read(data_path/ 'data' /f'{dataset}.xyz',':')
+            write(DATA_PATH/f'{dataset}.xyz', mols)
             DATA_NOT_DOWNLOADED = False
         else:
             mols = read(DATA_PATH/f'{dataset}.xyz',':')
@@ -76,7 +77,7 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
                 mols_out.append(mol)
 
         # Write output structures
-        if len(mols_out) < 0:
+        if len(mols_out) > 0:
             write_dir = OUT_PATH/model_name
             write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir/f'{dataset}.xyz', mol_out)
+            write(write_dir/f'{dataset}.xyz', mols_out)
