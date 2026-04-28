@@ -506,7 +506,7 @@ def get_table_style(
     list[TableRow]
         Conditional style data to apply to table.
     """
-    cmap = cm.get_cmap("viridis_r")
+    cmap = cm.get_cmap("RdYlGn_r")
 
     def rgba_from_val(val: float, vmin: float, vmax: float, cmap: Colormap) -> str:
         """
