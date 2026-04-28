@@ -40,6 +40,7 @@ INFO = get_struct_info(
     index="0",
     info_keys=["system"],
     out_path=OUT_PATH,
+    write_structs=True,
 )
 
 
