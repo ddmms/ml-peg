@@ -885,7 +885,7 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-good-threshold",
                 type="number",
                 value=good_val,
-                step=0.001,
+                step=0.0001,
                 debounce=True,
                 style={
                     "width": "60px",
@@ -932,7 +932,7 @@ def build_threshold_inputs(
                 id=f"{table_id}-{metric}-bad-threshold",
                 type="number",
                 value=bad_val,
-                step=0.001,
+                step=0.0001,
                 debounce=True,
                 style={
                     "width": "60px",
