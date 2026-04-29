@@ -134,7 +134,6 @@ def build_weight_components(
     *,
     use_thresholds: bool = False,
     include_download_controls: bool = True,
-    download_anchor: str = "center",
     include_store: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
@@ -153,9 +152,7 @@ def build_weight_components(
         weight callbacks will reuse the raw-data store and normalization store to
         recompute Scores consistently.
     include_download_controls
-        Whether to render download controls inside this component.
-    download_anchor
-        Position of download controls when rendered. One of `"center"` or `"top"`.
+        Whether to render download controls in the Score column slot.
     include_store
         Whether to include this table's weight ``dcc.Store`` in the returned
         component. Set to ``False`` when that store is already created elsewhere,
@@ -256,7 +253,9 @@ def build_weight_components(
                     "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
-            Div(
+            build_download_controls(table.id)
+            if include_download_controls
+            else Div(
                 "",
                 style={
                     "width": "100%",
@@ -276,7 +275,6 @@ def build_weight_components(
             "rowGap": "4px",
             "marginTop": "-5px",
             "padding": "2px 4px",
-            "paddingRight": "130px" if include_download_controls else "4px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
             if header == "Metric Weights"
@@ -288,19 +286,7 @@ def build_weight_components(
         },
     )
 
-    panel_children: list[Component] = [container]
-    if include_download_controls:
-        panel_children.insert(
-            0,
-            build_download_controls(table.id, anchor=download_anchor),
-        )
-
-    panel = Div(
-        panel_children,
-        style={"position": "relative"} if include_download_controls else None,
-    )
-
-    layout = [panel]
+    layout = [container]
     if include_store:
         layout.append(
             Store(
@@ -345,7 +331,7 @@ def build_weight_components(
     return Div(layout)
 
 
-def build_download_controls(table_id: str, anchor: str = "center") -> Div:
+def build_download_controls(table_id: str, *, row: bool = False) -> Div:
     """
     Build minimal table download controls.
 
@@ -353,23 +339,31 @@ def build_download_controls(table_id: str, anchor: str = "center") -> Div:
     ----------
     table_id
         ID of the table to export.
-    anchor
-        Vertical anchor for controls: `"center"` or `"top"`.
+    row
+        When True, arrange the dropdown and button horizontally.
 
     Returns
     -------
     Div
         Download controls and target components.
     """
-    if anchor == "top":
-        top_style = {
-            "top": "10px",
-            "transform": "none",
+    if row:
+        container_style = {
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "gap": "6px",
+            "flexShrink": "0",
+            "marginBottom": "8px",
         }
     else:
-        top_style = {
-            "top": "50%",
-            "transform": "translateY(-50%)",
+        container_style = {
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "gap": "6px",
+            "width": "100%",
+            "padding": "2px 0px",
         }
 
     return Div(
@@ -396,7 +390,8 @@ def build_download_controls(table_id: str, anchor: str = "center") -> Div:
                 n_clicks=0,
                 style={
                     "width": "72px",
-                    "padding": "5px 8px",
+                    "height": "18px",
+                    "padding": "0px 8px",
                     "fontSize": "11px",
                     "borderRadius": "4px",
                     "border": "1px solid #6c757d",
@@ -407,16 +402,7 @@ def build_download_controls(table_id: str, anchor: str = "center") -> Div:
             Download(id=f"{table_id}-download"),
             Store(id=f"{table_id}-download-request", storage_type="memory"),
         ],
-        style={
-            "position": "absolute",
-            "right": "12px",
-            "zIndex": "10",
-            "display": "flex",
-            "flexDirection": "column",
-            "alignItems": "flex-end",
-            "gap": "6px",
-            **top_style,
-        },
+        style=container_style,
     )
 
 
@@ -759,7 +745,7 @@ def build_test_layout(
                     # "borderRadius": "5px",
                 },
             ),
-            Br(),
+            Div(style={"height": "4px"}),
         ]
     )
 
@@ -806,8 +792,7 @@ def build_test_layout(
         header="Metric Weights",
         table=table,
         use_thresholds=thresholds is not None,
-        include_download_controls=thresholds is None,
-        download_anchor="top",
+        include_download_controls=False,
         column_widths=column_widths,
         thresholds=thresholds,
     )
@@ -818,17 +803,14 @@ def build_test_layout(
     if thresholds is not None:
         controls_visual = Div(
             [
-                build_download_controls(table.id, anchor="top"),
                 Div(threshold_controls, style={"marginBottom": "0px"}),
                 Div(metric_weights, style={"marginTop": "0"}),
             ],
             style={
-                "position": "relative",
                 "backgroundColor": "#f8f9fa",
                 "border": "1px solid #dee2e6",
                 "borderRadius": "6px",
                 "padding": "0px 0px 0px 0px",  # top right bottom left
-                "paddingRight": "130px",
                 "marginTop": "-5px",
                 "boxSizing": "border-box",
                 "width": "100%",
@@ -837,7 +819,12 @@ def build_test_layout(
     else:
         controls_visual = metric_weights
 
-    table_section = [Div(table), Br(), controls_visual]
+    table_section = [
+        build_download_controls(table.id, row=True),
+        Div(table),
+        Br(),
+        controls_visual,
+    ]
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:
