@@ -1457,7 +1457,6 @@ def build_table(
     thresholds: Thresholds,
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
-    normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
     mlip_name_map: dict[str, str] | None = None,
@@ -1465,7 +1464,7 @@ def build_table(
     """
     Build DataTable, including optional metric normalisation.
 
-    If `normalize` is `True`, by default each metric is normalised to 0-1 scale where:
+    By default each metric is normalised to 0-1 scale where:
     - Values <= Y get score 0
     - Values >= X get score 1
     - Values between Y and X scale linearly, by default.
@@ -1480,8 +1479,6 @@ def build_table(
         Filename to save table. Default is "table.json".
     metric_tooltips
         Tooltips for table metric headers. Defaults are set for "MLIP" and "Score".
-    normalize
-        Whether to apply normalisation when calculating the score. Default is True.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -1590,15 +1587,9 @@ def build_table(
             summary_tooltips = {
                 "MLIP": "Model identifier, hover for configuration details.",
             }
-            if normalize:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, "
-                    "Higher is better (normalised 0 to 1)."
-                )
-            else:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, higher is better."
-                )
+            summary_tooltips["Score"] = (
+                "Weighted score across metrics, Higher is better (normalised 0 to 1)."
+            )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -1610,15 +1601,12 @@ def build_table(
                 metric_weights.setdefault(column, 1.0)
 
             # Calculate scores, including any normalisation
-            if normalize:
-                metrics_data = calc_table_scores(
-                    metrics_data=metrics_data,
-                    thresholds=thresholds,
-                    normalizer=normalizer,
-                    weights=metric_weights,
-                )
-            else:
-                metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
+            metrics_data = calc_table_scores(
+                metrics_data=metrics_data,
+                thresholds=thresholds,
+                normalizer=normalizer,
+                weights=metric_weights,
+            )
 
             table = dash_table.DataTable(
                 metrics_data,

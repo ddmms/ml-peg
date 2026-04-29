@@ -467,11 +467,14 @@ def calc_table_scores(
             # Strict mode: require all metrics to be present
             metrics_row["Score"] = None
         elif scores_list:
-            # Calculate weighted average of available metrics
-            try:
-                metrics_row["Score"] = np.average(scores_list, weights=weights_list)
-            except ZeroDivisionError:
-                metrics_row["Score"] = np.mean(scores_list)
+            if np.nan in scores_list:
+                metrics_row["Score"] = np.nan
+            else:
+                # Calculate weighted average of available metrics
+                try:
+                    metrics_row["Score"] = np.average(scores_list, weights=weights_list)
+                except ZeroDivisionError:
+                    metrics_row["Score"] = np.mean(scores_list)
         else:
             metrics_row["Score"] = None
 
@@ -700,7 +703,7 @@ def normalize_metric(
     try:
         # Handle NaNs robustly
         if np.isnan([value, good_threshold, bad_threshold]).any():
-            return None
+            return np.nan
     except TypeError:
         return None
 
@@ -782,3 +785,31 @@ def get_struct_info(
             json.dump(info, f, indent=1)
 
     return info
+
+
+def write_struct_info(data_path: Path, out_path: Path, index: str = ":") -> None:
+    """
+    Write out element info on structures used in benchmark.
+
+    Parameters
+    ----------
+    data_path
+        Path to calculation structure file.
+    out_path
+        Path to write out info.
+    index
+        Index to read from structure files. Default is ":".
+    """
+    elements = []
+    if not data_path.exists():
+        raise ValueError(f"{data_path} does not exist. Please run mock calculation.")
+
+    structs = read(data_path, index=index)
+    if isinstance(structs, Atoms):
+        structs = [structs]
+    for struct in structs:
+        elements.append(sorted(set(struct.get_chemical_symbols())))
+
+    out_path.mkdir(parents=True, exist_ok=True)
+    with (out_path / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": elements}, f, indent=1)
