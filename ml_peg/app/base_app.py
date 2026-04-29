@@ -84,6 +84,7 @@ class BaseApp(ABC):
             self.load_info(info_path)
         else:
             self.info = None
+            warnings.warn("No info_path provided.", stacklevel=2)
 
     def load_info(self, info_path: Path) -> None:
         """
