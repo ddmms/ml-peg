@@ -13,6 +13,7 @@ from ml_peg.analysis.molecular_crystal.X23.analyse_X23 import get_metrics
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
+    filter_table,
     plot_from_table_column,
     struct_from_scatter,
 )
@@ -63,18 +64,29 @@ class X23App(BaseApp):
             mode="struct",
         )
 
-        # filter_table(self.table_id, self.filter_data)
+        # Ensure data and elements are loaded
+        if not hasattr(self, "data"):
+            self.load_data()
+        if not hasattr(self, "elements"):
+            self.get_elements()
+
+        filter_table(
+            table_id=self.table_id,
+            filter_func=self.filter_data,
+            filter_kwargs={"data": self.data, "test_elements": self.elements},
+        )
 
     def get_elements(self) -> None:
         """Get element sets for filtering from loaded info."""
         try:
-            self.elements = (set(entry) for entry in self.info["elements"])
-        except KeyError:
+            self.elements = [set(entry) for entry in self.info["elements"]]
+        except (AttributeError, KeyError, TypeError):
+            self.elements = []
             warnings.warn("Unable to read elements lists.", stacklevel=2)
 
     @staticmethod
     def filter_data(
-        filter_elements: set[str], data: Graph, test_elements: list[list[str]]
+        filter_elements: set[str], data: Graph, test_elements: list[set[str]]
     ) -> dict[str, dict]:
         """
         Apply elements filter to data.

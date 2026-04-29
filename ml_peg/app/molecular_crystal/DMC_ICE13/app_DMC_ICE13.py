@@ -76,13 +76,14 @@ class DMCICE13App(BaseApp):
     def get_elements(self) -> None:
         """Get element sets for filtering."""
         try:
-            self.elements = (set(entry) for entry in self.info["elements"])
-        except KeyError:
+            self.elements = [set(entry) for entry in self.info["elements"]]
+        except (AttributeError, KeyError, TypeError):
+            self.elements = []
             warnings.warn("Unable to read elements lists.", stacklevel=2)
 
     @staticmethod
     def filter_data(
-        filter_elements: set[str], data: Graph, test_elements: list[list[str]]
+        filter_elements: set[str], data: Graph, test_elements: list[set[str]]
     ) -> dict[str, dict]:
         """
         Apply elements filter to data.
