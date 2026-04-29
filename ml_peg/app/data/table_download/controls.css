@@ -1,31 +1,6 @@
-#all-tabs,
-#all-tabs[role="tablist"],
-#all-tabs [role="tablist"] {
-  height: auto;
-  overflow: visible;
-}
+/* Dash loads this file as an asset. These rules support the table export UI. */
 
-#all-tabs[role="tablist"],
-#all-tabs [role="tablist"] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: stretch;
-}
-
-#all-tabs[role="tab"],
-#all-tabs [role="tab"],
-#all-tabs .tab,
-#all-tabs .tab--selected {
-  white-space: normal;
-  line-height: 1.2;
-  height: auto;
-  min-height: 36px;
-  padding: 8px 12px;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
+/* Normalise Dash Dropdown internals so it aligns with the Download button. */
 .table-download-format {
   box-sizing: border-box;
   height: 30px;
@@ -69,6 +44,7 @@
   padding-bottom: 0;
 }
 
+/* Small primary action used next to the format dropdown. */
 .table-download-button {
   box-sizing: border-box;
   display: inline-flex;
@@ -93,6 +69,7 @@
     box-shadow 120ms ease;
 }
 
+/* Interaction states mirror the app's restrained blue action styling. */
 .table-download-button:hover {
   background: #095fb5;
   border-color: #084f96;

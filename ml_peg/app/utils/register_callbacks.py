@@ -811,6 +811,12 @@ def register_download_callbacks(table_id: str) -> None:
     """
     Register minimal table download callbacks for CSV, PNG, and SVG.
 
+    CSV exports are generated from the table's Dash data payload. PNG/SVG exports
+    are different: Python sends a small request to the browser, then the browser
+    captures the table exactly as it has already been drawn on the page. That is
+    what preserves conditional colours, warning styles, current column headers, and
+    the table's CSS layout.
+
     Parameters
     ----------
     table_id
@@ -878,6 +884,8 @@ def register_download_callbacks(table_id: str) -> None:
             )
 
         if fmt in {"png", "svg"}:
+            # Image exports need the already-rendered table, not a new table recreated
+            # from raw values. Send the target table id to the browser-side asset.
             return (
                 no_update,
                 {
