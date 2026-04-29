@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable
+from copy import deepcopy
 import io
 import json
 import math
@@ -935,12 +936,14 @@ def filter_table(
 
     @callback(
         Output(table_id, "data"),
+        Output(f"{table_id}-filtered-data-store", "data"),
         Input("element-filter", "value"),
-        State(table_id, "data"),
+        State(f"{table_id}-raw-data-store", "data"),
     )
     def _filter_table(
-        elements_list: list[str | None], table_data: dict[str, dict[str, float | None]]
-    ) -> list[dict]:
+        elements_list: list[str | None],
+        table_data: list[dict[str, Any]] | None,
+    ) -> tuple[list[dict], list[dict]]:
         """
         Register callback to filter table by elements.
 
@@ -953,17 +956,22 @@ def filter_table(
 
         Returns
         -------
-        list[dict]
+        tuple[list[dict], list[dict]]
             Filtered table data.
         """
+        if not table_data:
+            raise PreventUpdate
+
+        filtered_table_data = deepcopy(table_data)
+
         if not elements_list:
-            return table_data
+            return filtered_table_data, filtered_table_data
 
-        fitered_results = filter_func(set(elements_list), **filter_kwargs)
+        filtered_results = filter_func(set(elements_list), **filter_kwargs)
 
-        for row in table_data:
+        for row in filtered_table_data:
             mlip_id = row.get("id")
-            for metric, results in fitered_results.items():
+            for metric, results in filtered_results.items():
                 row[metric] = results.get(mlip_id)
 
-        return table_data
+        return filtered_table_data, filtered_table_data

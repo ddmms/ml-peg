@@ -962,6 +962,11 @@ def build_nav(
                                     data=MODELS,
                                 ),
                                 Store(
+                                    id="filtered-elements-store",
+                                    storage_type="session",
+                                    data=[],
+                                ),
+                                Store(
                                     id="summary-table-computed-store",
                                     storage_type="session",
                                     data=summary_table.data,
@@ -1039,6 +1044,43 @@ def build_nav(
             selected = checklist_value or []
             return selected, selected
         raise PreventUpdate
+
+    # @callback(
+    #     Output("model-filter-checklist", "value"),
+    #     Output("selected-models-store", "data"),
+    #     Input("model-filter-checklist", "value"),
+    #     Input("selected-models-store", "data"),
+    #     prevent_initial_call=False,
+    # )
+    # def sync_model_filter(
+    #     checklist_value: list[str] | None,
+    #     stored_selection: list[str] | None,
+    # ) -> tuple[list[str], list[str] | object]:
+    #     """
+    #     Keep the model selector checklist and backing store synchronised.
+
+    #     Parameters
+    #     ----------
+    #     checklist_value
+    #         Current selection from the model filter control.
+    #     stored_selection
+    #         Previously persisted selection from ``selected-models-store``.
+
+    #     Returns
+    #     -------
+    #     tuple[list[str], list[str] | object]
+    #         Updated checklist value and store payload. The second element may be
+    #         ``dash.no_update`` when only syncing from store to UI.
+    #     """
+    #     trigger_id = ctx.triggered_id
+
+    #     if trigger_id in (None, "selected-models-store"):
+    #         stored = stored_selection if stored_selection is not None else MODELS
+    #         return stored, no_update
+    #     if trigger_id == "model-filter-checklist":
+    #         selected = checklist_value or []
+    #         return selected, selected
+    #     raise PreventUpdate
 
     @callback(
         Output("model-filter-details", "open"),
