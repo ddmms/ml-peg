@@ -43,6 +43,8 @@ class DMCICE13App(BaseApp):
 
         # Assets dir will be parent directory - individual files for each polymorph
         structs_dir = DATA_PATH / "mock"
+        if not structs_dir.exists():
+            warnings.warn("Structures directory not found", stacklevel=2)
         structs = [
             f"/assets/molecular_crystal/DMC_ICE13/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))

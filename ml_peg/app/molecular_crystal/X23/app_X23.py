@@ -46,6 +46,8 @@ class X23App(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / "mock"
+        if not structs_dir.exists():
+            warnings.warn("Structures directory not found", stacklevel=2)
         structs = [
             f"/assets/molecular_crystal/X23/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
