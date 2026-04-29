@@ -6,7 +6,7 @@ from pathlib import Path
 from warnings import warn
 
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 from janus_core.calculations.geom_opt import GeomOpt
 from janus_core.calculations.neb import NEB
 import numpy as np
@@ -45,8 +45,9 @@ def relaxed_structs() -> dict[str, Atoms]:
             geomopt = GeomOpt(
                 struct=struct,
                 write_results=True,
-                file_prefix=OUT_PATH / f"{struct_name}-{model_name}",
+                file_prefix=OUT_PATH / model_name / struct_name,
                 filter_class=None,
+                steps=25,
             )
             try:
                 geomopt.run()
@@ -56,7 +57,7 @@ def relaxed_structs() -> dict[str, Atoms]:
                     stacklevel=2,
                 )
                 struct.info["energy"] = np.nan
-            relaxed_structs[f"{struct_name}-{model_name}"] = geomopt.struct
+            relaxed_structs[f"{model_name}-{struct_name}"] = geomopt.struct
     return relaxed_structs
 
 
@@ -73,28 +74,37 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     model_name
         Name of model to use.
     """
+    init_struct = relaxed_structs[f"{model_name}-LiFePO4_start_bc.cif"]
+    final_struct = relaxed_structs[f"{model_name}-LiFePO4_end_b.cif"]
     neb = NEB(
-        init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
-        final_struct=relaxed_structs[f"LiFePO4_end_b.cif-{model_name}"],
+        init_struct=init_struct,
+        final_struct=final_struct,
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
         plot_band=True,
         write_band=True,
-        file_prefix=OUT_PATH / f"li_diffusion_b-{model_name}",
+        file_prefix=OUT_PATH / model_name / "li_diffusion_b",
+        steps=100,
     )
     # Set default charge and spin for all images
-    neb.interpolate()
-    neb.interpolator = None
-    for image in neb.images:
-        image.info.setdefault("charge", 0)
-        image.info.setdefault("spin", 1)
     try:
-        neb.run()
-    except Exception as exc:
-        warn(f"Error running NEB for {model_name}: {exc}", stacklevel=2)
+        neb.interpolate()
+        neb.interpolator = None
         for image in neb.images:
-            image.info["energy"] = np.nan
+            image.info.setdefault("charge", 0)
+            image.info.setdefault("spin", 1)
+        neb.run()
+    except Exception as e:
+        print(f"Error running NEB for {model_name} path B: {e}")
+        # Write out equivalent data
+        out_dir = OUT_PATH / model_name
+        write(out_dir / "li_diffusion_b-neb-band.extxyz", [init_struct, final_struct])
+        with open(
+            out_dir / "li_diffusion_b-neb-results.dat", "w", encoding="utf8"
+        ) as out:
+            print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+            print(np.nan, np.nan, np.nan, file=out)
 
 
 @pytest.mark.slow
@@ -110,25 +120,34 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     model_name
         Name of model to use.
     """
+    init_struct = relaxed_structs[f"{model_name}-LiFePO4_start_bc.cif"]
+    final_struct = relaxed_structs[f"{model_name}-LiFePO4_end_c.cif"]
     neb = NEB(
-        init_struct=relaxed_structs[f"LiFePO4_start_bc.cif-{model_name}"],
-        final_struct=relaxed_structs[f"LiFePO4_end_c.cif-{model_name}"],
+        init_struct=init_struct,
+        final_struct=final_struct,
         n_images=11,
         interpolator="pymatgen",
         minimize=True,
         plot_band=True,
         write_band=True,
-        file_prefix=OUT_PATH / f"li_diffusion_c-{model_name}",
+        file_prefix=OUT_PATH / model_name / "li_diffusion_c",
+        steps=500,
     )
     # Set default charge and spin for all images
-    neb.interpolate()
-    neb.interpolator = None
-    for image in neb.images:
-        image.info.setdefault("charge", 0)
-        image.info.setdefault("spin", 1)
     try:
-        neb.run()
-    except Exception as exc:
-        warn(f"Error running NEB for {model_name}: {exc}", stacklevel=2)
+        neb.interpolate()
+        neb.interpolator = None
         for image in neb.images:
-            image.info["energy"] = np.nan
+            image.info.setdefault("charge", 0)
+            image.info.setdefault("spin", 1)
+        neb.run()
+    except Exception as e:
+        print(f"Error running NEB for {model_name} path C: {e}")
+        # Write out equivalent data
+        out_dir = OUT_PATH / model_name
+        write(out_dir / "li_diffusion_c-neb-band.extxyz", [init_struct, final_struct])
+        with open(
+            out_dir / "li_diffusion_c-neb-results.dat", "w", encoding="utf8"
+        ) as out:
+            print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+            print(np.nan, np.nan, np.nan, file=out)
