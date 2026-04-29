@@ -984,11 +984,13 @@ def filter_table(
         if not elements_list:
             return table_data
 
-        fitered_results = filter_func(set(elements_list), **filter_kwargs)
+        filtered_results = filter_func(set(elements_list), **filter_kwargs)
+        if filtered_results is None:
+            return table_data, table_data
 
         for row in table_data:
             mlip_id = row.get("id")
-            for metric, results in fitered_results.items():
+            for metric, results in filtered_results.items():
                 row[metric] = results.get(mlip_id)
 
         return table_data
