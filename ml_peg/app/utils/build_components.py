@@ -274,7 +274,7 @@ def build_weight_components(
             "columnGap": "0px",
             "rowGap": "4px",
             "marginTop": "-5px",
-            "padding": "2px 4px",
+            "padding": "2px 0px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
             if header == "Metric Weights"
@@ -351,8 +351,8 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
         container_style = {
             "display": "flex",
             "flexDirection": "row",
-            "alignItems": "center",
-            "gap": "6px",
+            "alignItems": "flex-end",
+            "gap": "8px",
             "flexShrink": "0",
             "marginBottom": "8px",
         }
@@ -380,23 +380,18 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
                 clearable=False,
                 searchable=False,
                 style={
-                    "width": "72px",
-                    "fontSize": "11px",
+                    "width": "76px",
+                    "height": "30px",
+                    "fontSize": "12px",
                 },
             ),
             Button(
                 "Download",
                 id=f"{table_id}-download-button",
+                className="table-download-button",
                 n_clicks=0,
                 style={
-                    "width": "72px",
-                    "height": "18px",
-                    "padding": "0px 8px",
-                    "fontSize": "11px",
-                    "borderRadius": "4px",
-                    "border": "1px solid #6c757d",
-                    "backgroundColor": "#ffffff",
-                    "cursor": "pointer",
+                    "width": "86px",
                 },
             ),
             Download(id=f"{table_id}-download"),
