@@ -968,6 +968,8 @@ def filter_table(
             return filtered_table_data, filtered_table_data
 
         filtered_results = filter_func(set(elements_list), **filter_kwargs)
+        if filtered_results is None:
+            return filtered_table_data, filtered_table_data
 
         for row in filtered_table_data:
             mlip_id = row.get("id")
