@@ -111,7 +111,7 @@ def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if lattice_energies[model_name]:
+        if lattice_energies.get(model_name):
             results[model_name] = mae(
                 lattice_energies["ref"], lattice_energies[model_name]
             )
