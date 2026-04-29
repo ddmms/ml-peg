@@ -40,5 +40,6 @@ pip-wheel-metadata/
 __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
-!ml_peg/app/data/table_download_controls.css
+!ml_peg/app/data/table_download/
+!ml_peg/app/data/table_download/*
 certs/
