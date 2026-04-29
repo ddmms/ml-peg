@@ -720,8 +720,8 @@ def get_struct_info(
     index: str = ":",
     info_keys: list[str] | None = None,
     write_info: bool = True,
-    out_path: Path | None = None,
     write_structs: bool = True,
+    out_path: Path | None = None,
 ) -> dict[str, Any]:
     """
     Get info from structure files.
@@ -738,11 +738,11 @@ def get_struct_info(
         List of info keys to extract from structure files. Default is None.
     write_info
         Whether to write out info for each system. Default is True. Requires `out_path`.
-    out_path
-        Path to write out info for each system. Required if `write_info` is `True`.
     write_structs
         Whether to write out structure files for each system. Default is `True` if
         `out_path` is specified.
+    out_path
+        Path to write out info for each system. Required if `write_info` is `True`.
 
     Returns
     -------
