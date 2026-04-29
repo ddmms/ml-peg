@@ -24,7 +24,6 @@ classifiers = [
 readme = "README.md"
 
 dependencies = [
-    "aseMolec @ https://github.com/imagdau/aseMolec.git",
     "boto3<2,>=1.40.49",
     "dash<5,>=4.0.0",
     "janus-core<1.0.0,>=0.8.6",
@@ -39,6 +38,7 @@ dependencies = [
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",
     "typer<1.0.0,>=0.19.1",
+    "asemolec",
 ]
 
 [project.optional-dependencies]
@@ -211,3 +211,6 @@ constraint-dependencies = [
 
 [tool.uv.build-backend]
 module-root = ""
+
+[tool.uv.sources]
+asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
