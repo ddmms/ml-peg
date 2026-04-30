@@ -18,7 +18,7 @@ from ml_peg.models.models import current_models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Metal Surfaces"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#metal_surfaces"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#metal-surface-reconstructions"
 )
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
 
