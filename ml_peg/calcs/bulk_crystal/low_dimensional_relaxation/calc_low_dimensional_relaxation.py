@@ -21,6 +21,7 @@ from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.utils.utils import BENCHMARK_DATA_DIR
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -39,7 +40,7 @@ DEFAULT_DATA_FILES: dict[str, list[str]] = {
 }
 
 # Local cache directory for downloaded data
-DATA_PATH = Path(__file__).parent / "data"
+DATA_PATH = BENCHMARK_DATA_DIR / "low_dimensional_relaxation"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 # Relaxation parameters
@@ -325,7 +326,7 @@ def relax_low_dimensional(
             geom_opt.run()
             relaxed = geom_opt.struct
             # assess forces to determine convergence
-            max_force = max(relaxed.get_forces().flatten(), key=abs)
+            max_force = np.abs(relaxed.get_forces()).max()
             if max_force < fmax:
                 converged = True
             counter += 1
