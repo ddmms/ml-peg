@@ -659,7 +659,7 @@ def run_compression(model_name: str, model) -> None:
     (write_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
 
-@pytest.mark.slow
+@pytest.mark.very_slow
 @pytest.mark.parametrize("model_name", MODELS)
 def test_compression(model_name: str) -> None:
     """
