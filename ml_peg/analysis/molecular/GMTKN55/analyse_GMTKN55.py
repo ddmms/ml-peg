@@ -250,13 +250,13 @@ def get_category_errors(
         all_counts = INFO["counts"]
 
         # Filter excluded systems
-        categories = all_categories[np.logical_not(excluded)]
+        valid = ~excluded
+        categories = all_categories[valid]
+        subsets = all_subsets[valid]
 
         for category in set(categories):
             # Filter non-excluded subsets in current category
-            filtered_subsets = np.unique(
-                all_subsets[np.logical_not(excluded)][categories == category]
-            )
+            filtered_subsets = np.unique(subsets[categories == category])
 
             # Get number of systems in each subset
             counts = np.array([all_counts[subset] for subset in filtered_subsets])
@@ -353,7 +353,7 @@ def get_metrics(
     metrics = {}
     for full_category, short_category in category_abbrevs.items():
         metrics[short_category] = {
-            model: category_errors[model][full_category] for model in MODELS
+            model: category_errors[model].get(full_category, None) for model in MODELS
         }
 
     return metrics | {"WTMAD": weighted_error}
