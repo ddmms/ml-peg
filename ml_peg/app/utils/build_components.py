@@ -456,7 +456,8 @@ def build_plot_download_controls(graph_id: str) -> Div:
             "alignItems": "flex-end",
             "gap": "8px",
             "flexShrink": "0",
-            "marginBottom": "3px",
+            "marginTop": "12px",
+            "marginBottom": "0px",
         },
     )
 
