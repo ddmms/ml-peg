@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ase import Atoms, units
 from ase.build import bulk, make_supercell
-from ase.data import atomic_numbers, covalent_radii
+from ase.data import atomic_numbers, covalent_radii, chemical_symbols
 from ase.io import read as ase_read
 from ase.io import write
 import numpy as np
@@ -32,20 +32,8 @@ MIN_SCALE = 0.25
 MAX_SCALE = 3.0
 N_POINTS = 100
 
-# ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
-ELEMENTS: list[str] = [
-    "H",
-    "C",
-    "N",
-    "O",
-    "Ti",
-    "Cu",
-    "Cl",
-    "P",
-    "W",
-    "Rb",
-    "Xe",
-]  # limit to common elements for testing
+ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
+
 PROTOTYPES: list[str] = [
     "sc",
     "bcc",
@@ -53,11 +41,11 @@ PROTOTYPES: list[str] = [
     "hcp",
     "diamond",
 ]  # common crystal prototypes
-MAX_ATOMS_PER_CELL = 6  # limit to small cells for testing
+MAX_ATOMS_PER_CELL = 10  # limit to small cells for testing
 RANDOM_STRUCTURES: list[dict[str, int]] = [
     [1, len(ELEMENTS), 5],
-    [2, 10, 10],
-    [3, 10, 10],
+    [2, 20, 10],
+    [3, 20, 10],
 ]  # [[Number of elements, number of compositions, repeats per composition], ...]
 
 
