@@ -12,8 +12,8 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 

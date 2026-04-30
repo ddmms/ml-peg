@@ -11,8 +11,8 @@ from ase.build import bulk, surface
 from ase.io import write
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
