@@ -153,8 +153,7 @@ def prepared_solute() -> dict[str, Atoms]:
     for model_name, calc in MODELS.items():
         solute = solute.copy()
         try:
-            calc.default_dtype = "float64"
-            solute.calc = calc.get_calculator()
+            solute.calc = calc.get_calculator(precision="high")
             solute.get_forces()
             solutes[model_name] = solute
         # If a model fails, don't block other model tests

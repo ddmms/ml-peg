@@ -12,6 +12,7 @@ import dash.dash_table.Format as TableFormat
 import yaml
 
 from ml_peg.models import MODELS_ROOT
+from ml_peg.models.get_models import get_model_names
 
 
 class ThresholdEntry(TypedDict):
@@ -33,6 +34,34 @@ class FrameworkEntry(TypedDict):
     text_color: str
     url: NotRequired[str]
     logo: NotRequired[str]
+
+
+def get_mlip_column_width(
+    *,
+    char_width: int = 9,
+    padding: int = 40,
+    min_width: int = 150,
+) -> int:
+    """
+    Return a single shared MLIP-column width for all app tables.
+
+    Parameters
+    ----------
+    char_width
+        Approximate pixel width per character.
+    padding
+        Extra padding to add to the widest model label.
+    min_width
+        Minimum width for the MLIP column in pixels.
+
+    Returns
+    -------
+    int
+        Fixed pixel width large enough for the longest base model name with a
+        little extra room for display suffixes such as ``-D3``.
+    """
+    longest_name = max((len(name) for name in get_model_names()), default=0)
+    return max(min_width, longest_name * char_width + padding + 30)
 
 
 def calculate_column_widths(
@@ -66,7 +95,14 @@ def calculate_column_widths(
     """
     widths = widths if widths else {}
     # Fixed widths for static columns
-    widths.setdefault("MLIP", 150)
+    widths.setdefault(
+        "MLIP",
+        get_mlip_column_width(
+            char_width=char_width,
+            padding=padding,
+            min_width=150,
+        ),
+    )
     widths.setdefault("Score", 100)
 
     for col in columns:

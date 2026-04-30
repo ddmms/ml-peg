@@ -36,9 +36,8 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    model.default_dtype = "float64"
     # Do not want D3 as references here are dispersionless PBE
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Download SBH17 dataset
     sbh17_dir = (

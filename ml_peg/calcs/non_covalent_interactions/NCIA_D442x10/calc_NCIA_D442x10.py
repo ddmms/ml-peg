@@ -104,9 +104,7 @@ def test_ncia_d442x10(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 

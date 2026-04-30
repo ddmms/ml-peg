@@ -114,7 +114,7 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
         Tuple of ``(model_name, model)`` as provided by ``MODELS.items()``.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     local_files_present = all((DATA_PATH / case.ref_file).exists() for case in CASES)
     if local_files_present:

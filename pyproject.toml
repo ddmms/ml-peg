@@ -1,6 +1,6 @@
 [project]
 name = "ml-peg"
-version = "0.4.0"
+version = "0.4.2"
 description = "ML Performance and Extrapolation Guide"
 authors = [
     { name = "Elliott Kasoar" },
@@ -34,9 +34,11 @@ dependencies = [
     "mlipx<0.2,>=0.1.5",
     "molify<0.3,>=0.2.2",
     "openpyxl<4,>=3.1.5",
+    "scipy<1.17,>=1",
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",
     "typer<1.0.0,>=0.19.1",
+    "asemolec",
 ]
 
 [project.optional-dependencies]
@@ -209,3 +211,6 @@ constraint-dependencies = [
 
 [tool.uv.build-backend]
 module-root = ""
+
+[tool.uv.sources]
+asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
