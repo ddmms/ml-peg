@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
-from matplotlib import cm
+from matplotlib import colormaps
 from matplotlib.colors import Colormap
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -509,9 +509,11 @@ def get_table_style(
     list[TableRow]
         Conditional style data to apply to table.
     """
-    cmap = cm.get_cmap(cmap_name)
+    cmap = colormaps[cmap_name]
 
-    def rgba_from_val(val: float, vmin: float, vmax: float, cmap: Colormap) -> str:
+    def rgb_from_val(
+        val: float, vmin: float, vmax: float, cmap: Colormap
+    ) -> tuple[int, int, int]:
         """
         Get RGB values for a cell.
 
@@ -528,13 +530,52 @@ def get_table_style(
 
         Returns
         -------
-        str
-            RGB colours in backgroundColor format.
+        tuple[int, int, int]
+            RGB colour channels from 0 to 255.
         """
         norm = (val - vmin) / (vmax - vmin) if vmax != vmin else 0
         rgba = cmap(norm)
-        r, g, b = [int(255 * x) for x in rgba[:3]]
-        return f"rgb({r}, {g}, {b})"
+        return tuple(int(255 * x) for x in rgba[:3])
+
+    def text_colour_for_background(rgb: tuple[int, int, int]) -> str:
+        """
+        Choose black or white text for the given cell background.
+
+        Parameters
+        ----------
+        rgb
+            RGB colour channels from 0 to 255.
+
+        Returns
+        -------
+        str
+            Text colour with the stronger contrast against the background.
+        """
+
+        def linear_channel(channel: int) -> float:
+            """
+            Convert one RGB channel to linear light.
+
+            Parameters
+            ----------
+            channel
+                RGB channel value from 0 to 255.
+
+            Returns
+            -------
+            float
+                Linearised channel value used for luminance calculation.
+            """
+            scaled = channel / 255
+            if scaled <= 0.03928:
+                return scaled / 12.92
+            return ((scaled + 0.055) / 1.055) ** 2.4
+
+        r, g, b = (linear_channel(channel) for channel in rgb)
+        luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        contrast_with_black = (luminance + 0.05) / 0.05
+        contrast_with_white = 1.05 / (luminance + 0.05)
+        return "black" if contrast_with_black >= contrast_with_white else "white"
 
     style_data_conditional: list[TableRow] = []
 
@@ -616,22 +657,18 @@ def get_table_style(
             max_value = max(numeric_values)
 
         for raw_value, _, scored_value in numeric_entries:
-            # Determine direction of values
-            mid = (min_value + max_value) / 2
-            increasing = max_value >= min_value
-
+            background_rgb = rgb_from_val(scored_value, min_value, max_value, cmap)
+            background_color = (
+                f"rgb({background_rgb[0]}, {background_rgb[1]}, {background_rgb[2]})"
+            )
             style_data_conditional.append(
                 {
                     "if": {
                         "filter_query": f"{{{col}}} = {raw_value}",
                         "column_id": col,
                     },
-                    "backgroundColor": rgba_from_val(
-                        scored_value, min_value, max_value, cmap
-                    ),
-                    "color": "white"
-                    if (scored_value > mid if increasing else scored_value < mid)
-                    else "black",
+                    "backgroundColor": background_color,
+                    "color": text_colour_for_background(background_rgb),
                 }
             )
 

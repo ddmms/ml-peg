@@ -783,6 +783,7 @@ def register_normalization_callbacks(
             State(f"{table_id}-thresholds-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
+            State("cmap-store", "data"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
@@ -791,6 +792,7 @@ def register_normalization_callbacks(
             thresholds: dict[str, Any] | None,
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
+            cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
@@ -804,7 +806,11 @@ def register_normalization_callbacks(
             display_rows = get_scores(
                 raw_data, scored_rows, cleaned_thresholds, show_normalized
             )
-            style = get_table_style(display_rows, scored_data=scored_rows)
+            style = get_table_style(
+                display_rows,
+                scored_data=scored_rows,
+                cmap_name=cmap_name or "viridis_r",
+            )
             columns = format_metric_columns(
                 current_columns, cleaned_thresholds, normalized_active
             )

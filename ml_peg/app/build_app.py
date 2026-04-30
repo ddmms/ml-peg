@@ -923,6 +923,9 @@ def build_nav(
                     ],
                     value="viridis_r",
                     clearable=False,
+                    persistence=True,
+                    persistence_type="local",
+                    persisted_props=["value"],
                     style={"fontSize": "13px"},
                 ),
                 style={"padding": "8px 12px"},
@@ -971,7 +974,7 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
-        Store(id="cmap-store", storage_type="session", data="viridis_r"),
+        Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
     ]
 
@@ -1109,25 +1112,40 @@ def build_nav(
         raise PreventUpdate
 
     @callback(
+        Output("cmap-dropdown", "value"),
         Output("cmap-store", "data"),
         Input("cmap-dropdown", "value"),
-        prevent_initial_call=True,
+        Input("cmap-store", "data"),
+        prevent_initial_call=False,
     )
-    def store_cmap(cmap_name: str) -> str:
+    def sync_cmap(
+        cmap_name: str | None, stored_cmap: str | None
+    ) -> tuple[str, str | object]:
         """
-        Store selected colormap name.
+        Keep the colour scheme dropdown and backing store synchronised.
 
         Parameters
         ----------
         cmap_name
-            Matplotlib colormap name selected from the dropdown.
+            Matplotlib colormap name selected from the dropdown control.
+        stored_cmap
+            Previously persisted colormap name from ``cmap-store``.
 
         Returns
         -------
-        str
-            Colormap name to persist in the cmap store.
+        tuple[str, str | object]
+            Dropdown value and store payload, or ``dash.no_update`` when only
+            the dropdown needs syncing from the stored value.
         """
-        return cmap_name
+        trigger_id = ctx.triggered_id
+
+        if trigger_id in (None, "cmap-store"):
+            selected = stored_cmap or "viridis_r"
+            return selected, no_update
+        if trigger_id == "cmap-dropdown":
+            selected = cmap_name or "viridis_r"
+            return selected, selected
+        raise PreventUpdate
 
     @callback(
         Output("model-filter-details", "open"),
