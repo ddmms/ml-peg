@@ -169,7 +169,7 @@ For each slab, a geometry optimization (F_max = 0.05 eV/Å) is performed, where 
 Computational cost
 ------------------
 
-Very low: tests are likely to take half an hour.
+Low: tests are likely to take half an hour.
 
 Data availability
 -----------------
