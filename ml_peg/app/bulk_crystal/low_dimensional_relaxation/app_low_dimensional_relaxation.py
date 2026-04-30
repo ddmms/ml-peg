@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
 from dash import Dash
+from dash.dcc import Graph
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -44,6 +47,24 @@ PLOT_CONFIGS = [
     ),
 ]
 
+# (figure_json_filename, metric_cell_name, plot_id_suffix, mirror_dirname)
+# The figure JSON is a dict of {model_name: plotly_figure_dict} so each cell
+# can render its own model's violin without filtering.
+VIOLIN_CONFIGS = [
+    (
+        "figure_force_violin_2d.json",
+        "Convergence (2D)",
+        "force-violin-2d",
+        "force_violin_2d",
+    ),
+    (
+        "figure_force_violin_1d.json",
+        "Convergence (1D)",
+        "force-violin-1d",
+        "force_violin_1d",
+    ),
+]
+
 
 class LowDimensionalRelaxationApp(BaseApp):
     """Low-dimensional relaxation benchmark app layout and callbacks."""
@@ -66,6 +87,22 @@ class LowDimensionalRelaxationApp(BaseApp):
             if plots:
                 density_plots[model] = plots
 
+        # Convergence violin plots: one figure JSON per dim, keyed by model.
+        for filename, metric_name, plot_id_suffix, _ in VIOLIN_CONFIGS:
+            plot_path = DATA_PATH / filename
+            if not plot_path.exists():
+                continue
+            with open(plot_path) as f:
+                figures_per_model = json.load(f)
+            for model, fig_dict in figures_per_model.items():
+                if model not in MODELS:
+                    continue
+                graph = Graph(
+                    id=f"{BENCHMARK_NAME}-{model}-{plot_id_suffix}-figure",
+                    figure=fig_dict,
+                )
+                density_plots.setdefault(model, {})[metric_name] = graph
+
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
@@ -85,6 +122,25 @@ class LowDimensionalRelaxationApp(BaseApp):
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
                     structs=paths,
                     mode="traj",
+                )
+
+        # Violin click-to-structure: each violin point corresponds to one
+        # mirrored xyz (numbered 0.xyz, 1.xyz, ...) in the same order as the
+        # violin's samples. A click on point N renders structs[N].
+        for _, _, plot_id_suffix, mirror_dirname in VIOLIN_CONFIGS:
+            mirrors = collect_traj_assets(
+                data_path=DATA_PATH,
+                assets_prefix=ASSETS_PREFIX,
+                models=MODELS,
+                traj_dirname=mirror_dirname,
+                suffix=".xyz",
+            )
+            for model, paths in mirrors.items():
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{plot_id_suffix}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=paths,
+                    mode="struct",
                 )
 
 

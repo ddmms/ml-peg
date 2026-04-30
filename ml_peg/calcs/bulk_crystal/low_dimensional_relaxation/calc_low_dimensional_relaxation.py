@@ -291,7 +291,7 @@ def relax_low_dimensional(
     dimensionality: str = "2D",
     fmax: float = FMAX,
     max_steps: int = MAX_STEPS,
-) -> tuple[Atoms | None, bool, float | None]:
+) -> tuple[Atoms | None, bool, float | None, float | None]:
     """
     Relax low-dimensional structure with cell mask to constrain relaxation.
 
@@ -308,9 +308,13 @@ def relax_low_dimensional(
 
     Returns
     -------
-    tuple[Atoms | None, bool, float | None]
-        Relaxed atoms (or None if failed), convergence status, energy per atom.
+    tuple[Atoms | None, bool, float | None, float | None]
+        Final relaxed atoms (or None if the calculator raised), convergence
+        status, energy per atom (or None if not extractable), and the final
+        max-absolute-force component (or None if no relaxation completed).
     """
+    relaxed = None
+    max_force = None
     try:
         converged = False
         counter = 0
@@ -326,22 +330,20 @@ def relax_low_dimensional(
             geom_opt.run()
             relaxed = geom_opt.struct
             # assess forces to determine convergence
-            max_force = np.abs(relaxed.get_forces()).max()
+            max_force = float(np.abs(relaxed.get_forces()).max())
             if max_force < fmax:
                 converged = True
             counter += 1
             atoms = relaxed
     except Exception as e:
         print(f"Relaxation failed: {e}")
-        return None, False, None
+        return None, False, None, None
 
-    if not converged:
-        return None, False, None
+    if relaxed is None:
+        return None, False, None, max_force
 
-    energy = relaxed.get_potential_energy()
-    n_atoms = len(relaxed)
-
-    return relaxed, converged, energy / n_atoms
+    energy_per_atom = relaxed.get_potential_energy() / len(relaxed)
+    return relaxed, converged, energy_per_atom, max_force
 
 
 DIMENSIONALITIES = ["2D", "1D"]
@@ -380,7 +382,7 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
         atoms.calc = copy(calc)
         mat_id = struct_data["mat_id"]
 
-        relaxed_atoms, converged, energy_per_atom = relax_low_dimensional(
+        relaxed_atoms, converged, energy_per_atom, max_force = relax_low_dimensional(
             atoms, dimensionality
         )
 
@@ -390,6 +392,7 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
             "ref_energy_per_atom": struct_data["ref_energy_per_atom"],
             "pred_energy_per_atom": energy_per_atom,
             "converged": converged,
+            "max_force": max_force,
             "relaxed_atoms": relaxed_atoms,
         }
 
@@ -410,18 +413,28 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
         if relaxed_atoms is not None:
             relaxed_atoms.info["mat_id"] = mat_id
             relaxed_atoms.info["dimensionality"] = dimensionality
+            relaxed_atoms.info["converged"] = bool(converged)
+            if max_force is not None:
+                relaxed_atoms.info["max_force"] = float(max_force)
             relaxed_atoms.info["ref_energy_per_atom"] = result["ref_energy_per_atom"]
-            relaxed_atoms.info["pred_energy_per_atom"] = result["pred_energy_per_atom"]
+            if result["pred_energy_per_atom"] is not None:
+                relaxed_atoms.info["pred_energy_per_atom"] = result[
+                    "pred_energy_per_atom"
+                ]
             if dimensionality == "2D":
                 relaxed_atoms.info["ref_area_per_atom"] = result["ref_area_per_atom"]
-                relaxed_atoms.info["pred_area_per_atom"] = result["pred_area_per_atom"]
+                if result["pred_area_per_atom"] is not None:
+                    relaxed_atoms.info["pred_area_per_atom"] = result[
+                        "pred_area_per_atom"
+                    ]
             else:
                 relaxed_atoms.info["ref_length_per_atom"] = result[
                     "ref_length_per_atom"
                 ]
-                relaxed_atoms.info["pred_length_per_atom"] = result[
-                    "pred_length_per_atom"
-                ]
+                if result["pred_length_per_atom"] is not None:
+                    relaxed_atoms.info["pred_length_per_atom"] = result[
+                        "pred_length_per_atom"
+                    ]
 
         results.append(result)
 
@@ -433,7 +446,8 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
     )
     df.to_csv(out_dir / f"results_{dimensionality}.csv", index=False)
 
-    # Write converged relaxed structures to individual xyz files
+    # Write all relaxed frames (converged + not) to individual xyz files so the
+    # convergence violin plot can include and visualize the failures.
     structs_dir = out_dir / dimensionality
     structs_dir.mkdir(parents=True, exist_ok=True)
     for r in results:
