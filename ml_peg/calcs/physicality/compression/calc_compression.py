@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pyxtal.tolerance import Tol_matrix
+from pyxtal.database.element import Element
 import tqdm
 
 from ml_peg.models.get_models import load_models
@@ -32,7 +33,8 @@ MIN_SCALE = 0.25
 MAX_SCALE = 3.0
 N_POINTS = 100
 
-ELEMENTS: list[str] = [symbol for symbol in chemical_symbols if symbol]
+#filter out element where pyxtal doesn't have a covalent radius
+ELEMENTS: list[str] = [e for e in chemical_symbols if Element(e).covalent_radius is not None ]
 
 PROTOTYPES: list[str] = [
     "sc",
@@ -188,7 +190,7 @@ def _gen_random_structure(
     dim: int = 3,
     seed: int | None = None,
     max_attempts: int = 230,
-    volume_factor: float = 0.35,
+    volume_factor: float = 0.75,
 ) -> Atoms:
     """
     Generate a random crystal structure using PyXtal.
@@ -349,6 +351,13 @@ def _generate_all_random(
     frames_by_n_elements: dict[int, list[Atoms]] = {}
 
     for n_elements, n_compositions, repeats in random_specs:
+        filepath = data_path / f"{n_elements}.xyz"
+        if Path(filepath).exists():
+            print(
+                f"File {filepath} already exists — skipping generation of "
+                f"{n_compositions} compositions with {n_elements} elements."
+            )
+            continue
         if n_elements > len(elements):
             print(
                 f"Requested {n_elements} elements but only {len(elements)} "
@@ -540,6 +549,14 @@ def run_compression(model_name: str, model) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_dir = write_dir / "compression"
     traj_dir.mkdir(parents=True, exist_ok=True)
+    
+    _generate_all_random(
+        RANDOM_STRUCTURES,
+        ELEMENTS,
+        MAX_ATOMS_PER_CELL,
+        DATA_PATH,
+        seed=42,
+    )
 
     reference_structures = _collect_structures(ELEMENTS, PROTOTYPES, DATA_PATH)
     if not reference_structures:
