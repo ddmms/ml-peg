@@ -354,7 +354,7 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
             "alignItems": "flex-end",
             "gap": "8px",
             "flexShrink": "0",
-            "marginBottom": "8px",
+            "marginBottom": "16px",
         }
     else:
         container_style = {
@@ -370,7 +370,7 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
         [
             Dropdown(
                 id=f"{table_id}-download-format",
-                className="table-download-format",
+                className="download-format table-download-format",
                 options=[
                     {"label": "CSV", "value": "csv"},
                     {"label": "PNG", "value": "png"},
@@ -386,18 +386,78 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
                 },
             ),
             Button(
-                "Download",
+                "Download table",
                 id=f"{table_id}-download-button",
-                className="table-download-button",
+                className="download-button table-download-button",
                 n_clicks=0,
                 style={
-                    "width": "86px",
+                    "width": "118px",
                 },
             ),
             Download(id=f"{table_id}-download"),
             Store(id=f"{table_id}-download-request", storage_type="memory"),
         ],
         style=container_style,
+    )
+
+
+def build_plot_download_controls(graph_id: str) -> Div:
+    """
+    Build plot download controls for CSV, PNG, and SVG exports.
+
+    Parameters
+    ----------
+    graph_id
+        ID of the Plotly graph to export.
+
+    Returns
+    -------
+    Div
+        Download controls and target components.
+    """
+    return Div(
+        [
+            Dropdown(
+                id={"type": "plot-download-format", "index": graph_id},
+                className="download-format plot-download-format",
+                options=[
+                    {"label": "CSV", "value": "csv"},
+                    {"label": "PNG", "value": "png"},
+                    {"label": "SVG", "value": "svg"},
+                ],
+                value="csv",
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "76px",
+                    "height": "30px",
+                    "fontSize": "12px",
+                },
+            ),
+            Button(
+                "Download plot",
+                id={"type": "plot-download-button", "index": graph_id},
+                className="download-button plot-download-button",
+                n_clicks=0,
+                style={
+                    "width": "112px",
+                },
+            ),
+            Download(id={"type": "plot-download", "index": graph_id}),
+            Store(
+                id={"type": "plot-download-target", "index": graph_id},
+                storage_type="memory",
+                data=graph_id,
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "flex-end",
+            "gap": "8px",
+            "flexShrink": "0",
+            "marginBottom": "3px",
+        },
     )
 
 
