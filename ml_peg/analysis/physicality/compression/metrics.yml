@@ -14,11 +14,6 @@ metrics:
     bad: 5.0
     unit: null
     tooltip: Average number of energy-per-atom minima per structure. Tolerance of 1 meV/atom is used.
-  # Energy inflections:
-  #   good: 1.0
-  #   bad: 5.0
-  #   unit: null
-  #   tooltip: Average number of energy curvature sign changes per structure
   Pressure sign flips:
     good: 1.0
     bad: 5.0
