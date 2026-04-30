@@ -221,9 +221,14 @@ class FairChemCalc(SumCalc):
     default_dtype: str = "float32"
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self) -> Calculator:
+    def get_calculator(self, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Unused additional keyword arguments.
 
         Returns
         -------
