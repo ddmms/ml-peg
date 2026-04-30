@@ -74,7 +74,7 @@ class CPOSS209App(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
 
         structs = [
-            f"assets/molecular_crystal/CPOSS209/{MODELS[0]}/{struct_file.relative_to(structs_dir)}"
+            f"/assets/molecular_crystal/CPOSS209/{MODELS[0]}/{struct_file.relative_to(structs_dir)}"
             for struct_file in sorted(structs_dir.glob("**/crystal*.xyz"))
         ]
 

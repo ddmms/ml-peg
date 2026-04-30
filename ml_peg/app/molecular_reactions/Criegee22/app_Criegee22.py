@@ -37,7 +37,7 @@ class Criegee22App(BaseApp):
                 [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_rct.xyz")]
             )
             structs = [
-                f"assets/molecular_reactions/Criegee22/{MODELS[0]}/{label}_rct.xyz"
+                f"/assets/molecular_reactions/Criegee22/{MODELS[0]}/{label}_rct.xyz"
                 for label in base_labels
             ]
         else:

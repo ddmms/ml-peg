@@ -34,6 +34,16 @@ the error with respect to DFT predictions of energies.
 Reference data may also include experimental data, or higher-accuracy theoretical predictions,
 e.g. CCSD(T).
 
+Each metric in ``metrics.yml`` should have a ``level_of_theory`` field identifying its reference
+method. The app compares this string against the ``level_of_theory`` set in ``models.yml`` for each
+MLIP, flagging mismatches using the traffic light system. An exact string match is required.
+
+.. warning::
+
+    Use the standard strings defined in :doc:`Levels of theory </developer_guide/levels_of_theory>`.
+    A typo or inconsistent capitalisation (e.g. ``experiment`` instead of ``Experimental``) will
+    cause incorrect warnings.
+
 In some cases, metrics may also encode correct behaviour without a specific reference,
 such as by quantifying features of a known distribution (curvature, minima, etc.),
 or quantifying the stability of a simulation.
@@ -501,3 +511,44 @@ Building those components and their interactivity should become increasingly aut
 but less standard plots/interactions will need setting up.
 
 For now, please contact us to help with this process.
+
+Framework credit tags
++++++++++++++++++++++
+
+If a benchmark comes from an external benchmarking framework (for example,
+MLIP Arena), add a framework credit tag as follows:
+
+1. Add/update the framework entry in ``ml_peg/app/utils/frameworks.yml``.
+
+.. code-block:: yaml
+
+    mlip_arena:
+    label: MLIP Arena
+      color: "#0f766e"
+      text_color: "#ecfeff"
+      url: "https://huggingface.co/spaces/atomind/mlip-arena"
+      logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+
+2. Set ``framework_id`` in the benchmark app constructor.
+
+.. code-block:: python3
+
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_id="mlip_arena",
+    )
+
+That is all that is required. The benchmark header badge and the additional
+framework pages for non-default frameworks are populated automatically from
+this metadata.
+
+Framework sections group matching benchmarks by category, omit the category
+summary table, and reuse the same benchmark tables and controls. Updating
+weights or thresholds there therefore updates the same benchmark views shown in
+the category pages.
+
+The ``logo`` field is optional. It can point to a remote image URL or a local
+Dash asset path such as ``/assets/frameworks/my_framework_logo.png``. Use a
+browser-supported image format such as ``.svg``, ``.png``, or ``.jpg``/``.jpeg``;
+``.pdf`` is not supported. For best results, use a square logo image.

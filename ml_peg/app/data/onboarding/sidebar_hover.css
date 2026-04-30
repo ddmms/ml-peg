@@ -1,0 +1,9 @@
+.sidebar-link {
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background-color: #e8f4ff !important;
+  color: #119dff !important;
+  box-shadow: inset 3px 0 0 #119dff;
+}

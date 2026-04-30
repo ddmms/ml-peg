@@ -59,7 +59,7 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     box.calc = calc
 
     opt = LBFGS(box)
-    opt.run(fmax=0.1)
+    opt.run(fmax=0.1, steps=1000)
 
     MaxwellBoltzmannDistribution(box, temperature_K=TEMPERATURE)
 

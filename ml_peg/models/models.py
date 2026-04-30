@@ -74,12 +74,14 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -88,6 +90,9 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["default_dtype"] = precision_map[precision]
+
         if self.default_dtype is not None:
             kwargs["default_dtype"] = self.default_dtype
 
@@ -98,12 +103,14 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 class PetMadCalc(GenericASECalc):
     """Dataclass for PET-MAD calculator."""
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -112,9 +119,10 @@ class PetMadCalc(GenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
         if self.default_dtype is not None:
-            kwargs["dtype"] = self.default_dtype
-        else:
             kwargs["dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
@@ -127,15 +135,17 @@ class OrbCalc(SumCalc):
 
     name: str
     device: Device | None = None
-    default_dtype: str = "float32-high"
+    default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -145,7 +155,7 @@ class OrbCalc(SumCalc):
             Loaded ASE Orb Calculator.
         """
         from orb_models.forcefield import pretrained
-        from orb_models.forcefield.calculator import ORBCalculator
+        from orb_models.forcefield.inference.calculator import ORBCalculator
         import torch._dynamo
 
         torch._dynamo.config.suppress_errors = True
@@ -155,21 +165,30 @@ class OrbCalc(SumCalc):
         os.environ["TORCH_DISABLE_MODULE_HIERARCHY_TRACKING"] = "1"
 
         method = getattr(pretrained, self.name)
+
+        precision_map = {"low": "float32-high", "high": "float64"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
         if self.device is None:
-            orbff = method(precision=self.default_dtype, **self.kwargs)
-            calc = ORBCalculator(orbff, **self.kwargs)
+            orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
+            calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
         elif self.device == Device.AUTO:
             orbff = method(
                 device=Device.resolve_auto(),
-                precision=self.default_dtype,
+                precision=dtype,
                 **self.kwargs,
             )
             calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
         else:
-            orbff = method(
-                device=self.device, precision=self.default_dtype, **self.kwargs
+            orbff, atoms_adapter = method(
+                device=self.device, precision=dtype, **self.kwargs
             )
-            calc = ORBCalculator(orbff, device=self.device, **self.kwargs)
+            calc = ORBCalculator(
+                orbff, atoms_adapter=atoms_adapter, device=self.device, **self.kwargs
+            )
 
         return calc
 
@@ -202,9 +221,14 @@ class FairChemCalc(SumCalc):
     default_dtype: str = "float32"
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self) -> Calculator:
+    def get_calculator(self, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Unused additional keyword arguments.
 
         Returns
         -------

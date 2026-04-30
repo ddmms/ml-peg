@@ -102,6 +102,7 @@ Reference data:
 * Same as input data
 * PBE-D3(BJ), MPRelaxSet settings
 
+
 Elemental Slab Oxygen Adsorption
 ================================
 
@@ -145,3 +146,88 @@ Reference data:
   * S. P. Ong, W. D. Richards, A. Jain, G. Hautier, M. Kocher, S. Cholia, D. Gunter, V. Chevrier, K. A. Persson, G. Ceder, "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis," Comput. Mater. Sci., 2013, 68, 314–319. https://doi.org/10.1016/j.commatsci.2012.10.028
 
 * Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
+
+
+SBH17
+=====
+
+Summary
+-------
+
+Performance in predicting activation barriers to dissociative chemisorption
+from the gas phase, for a set of 16 adsorbate-surface combinations.
+
+Metrics
+-------
+
+Error in activation energy (barrier)
+
+For each adsorbate-surface combination, two single points are performed.
+One is of the clean surface with the adsorbate in the gas phase far from the surface,
+the second is of the transition state structure with the adsorbate at the surface
+(minimum barrier geometry to dissociation and chemisorption).
+
+
+Computational cost
+------------------
+
+Very low: tests are likely to take less than a minute to run on CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Tchakoua, T., Gerrits, N., Smeets, E. W. F., & Kroes, G. J. (2022). SBH17: Benchmark database of barrier heights for dissociative chemisorption on transition metal surfaces. Journal of Chemical Theory and Computation, 19(1), 245-270.
+
+Reference data:
+
+* Taken from the SI of the publication above (as the main text of the publication discusses mixed levels of theory). Values from the "Medium algorithm" are used in order to be consistent with the structures.
+
+* PBE without dispersion
+
+
+Graphene Wetting Under Strain
+=============================
+
+Summary
+-------
+
+Performance in predicting adsorption energies for a water molecule on graphene under varying strain conditions.
+
+Metrics
+-------
+
+MAE of adsorption energies
+
+For each combination of water molecule orientation, water-graphene distance, and strain
+condition, the adsorption energy is calculated by taking the difference between the
+energy of the combined water + graphene system and the sum of individual water and
+graphene energies. This is compared to the reference adsorption energy, calculated in the
+same way.
+
+MAE of binding energies & lengths
+
+The adsorption energies calculated above are fitted to Morse potentials, to obtain an
+effective binding energy and binding length (i.e. minimum of adsorption energy curve) for
+each strain condition. This is compared to the reference binding energy & length,
+calculated in the same way.
+
+Computational cost
+------------------
+
+Very low: tests are likely to take less than a minute to run on CPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* Structures were taken from:
+
+  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential,” *awaiting publication* (arXiv:2601.20134)
+
+Reference data:
+
+* Same as input data
+* PBE (with D3 dispersion correction), FHI-aims "intermediate" settings

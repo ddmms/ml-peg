@@ -12,6 +12,7 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import pandas as pd
+import plotly.colors as pc
 import plotly.graph_objects as go
 
 from ml_peg.analysis.utils.utils import (
@@ -436,8 +437,10 @@ def plot_scatter(
     x_label: str | None = None,
     y_label: str | None = None,
     show_line: bool = False,
+    show_markers: bool = True,
     hoverdata: dict | None = None,
     filename: str = "scatter.json",
+    highlight_range: dict = None,
 ) -> Callable:
     """
     Plot scatter plot of MLIP results.
@@ -452,10 +455,14 @@ def plot_scatter(
         Label for y-axis. Default is `None`.
     show_line
         Whether to show line between points. Default is False.
+    show_markers
+        Whether to show markers on the plot. Default is True.
     hoverdata
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
+    highlight_range
+        Dictionary of rectangle title and x-axis endpoints.
 
     Returns
     -------
@@ -504,7 +511,13 @@ def plot_scatter(
                     hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
-            mode = "lines+markers" if show_line else "markers"
+            modes = []
+            if show_line:
+                modes.append("lines")
+            if show_markers:
+                modes.append("markers")
+
+            mode = "+".join(modes)
 
             fig = go.Figure()
             for mlip, value in results.items():
@@ -519,6 +532,20 @@ def plot_scatter(
                         hovertemplate=hovertemplate,
                     )
                 )
+
+                colors = pc.qualitative.Plotly
+
+                if highlight_range:
+                    for i, (h_text, range) in enumerate(highlight_range.items()):
+                        fig.add_vrect(
+                            x0=range[0],
+                            x1=range[1],
+                            annotation_text=h_text,
+                            annotation_position="top",
+                            fillcolor=colors[i],
+                            opacity=0.25,
+                            line_width=0,
+                        )
 
             fig.update_layout(
                 title={"text": title},
@@ -1534,7 +1561,7 @@ def build_table(
             #     metric_2: {mlip_1: value_3, mlip_2: value_4},
             # }
 
-            metrics_columns = ("MLIP",) + tuple(results)
+            metrics_columns = ("MLIP", "Score") + tuple(results)
 
             # Get all models (including those without results for this benchmark)
             mlips = tuple(get_model_names())
@@ -1578,21 +1605,20 @@ def build_table(
             else:
                 tooltip_header = summary_tooltips
 
+            metric_weights = weights if weights else {}
+            for column in results:
+                metric_weights.setdefault(column, 1.0)
+
             # Calculate scores, including any normalisation
             if normalize:
                 metrics_data = calc_table_scores(
                     metrics_data=metrics_data,
                     thresholds=thresholds,
                     normalizer=normalizer,
+                    weights=metric_weights,
                 )
             else:
-                metrics_data = calc_table_scores(metrics_data)
-
-            metrics_columns += ("Score",)
-
-            metric_weights = weights if weights else {}
-            for column in results:
-                metric_weights.setdefault(column, 1)
+                metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
 
             table = dash_table.DataTable(
                 metrics_data,

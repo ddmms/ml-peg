@@ -26,7 +26,7 @@ class LocalityApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         # Assets dir will be parent directory - individual files for each system
-        assets_dir = f"assets/physicality/locality/{MODELS[0]}"
+        assets_dir = f"/assets/physicality/locality/{MODELS[0]}"
         structs = {
             "Ghost atoms max ΔF": f"{assets_dir}/system_ghost.xyz",
             "Random hydrogen mean ΔF": f"{assets_dir}/system_random_H.xyz",
