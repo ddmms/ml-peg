@@ -272,7 +272,7 @@ Reference data:
 
 
 Metal Surface Reconstructions
-================================
+=============================
 
 Summary
 -------
