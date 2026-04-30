@@ -30,7 +30,7 @@ from ml_peg.app.utils.weas import generate_weas_html
 
 def _plot_with_download_controls(graph: Graph) -> Div:
     """
-    Wrap a Plotly graph with CSV/SVG download controls.
+    Wrap a Plotly graph with CSV/PNG/SVG/HTML download controls.
 
     Parameters
     ----------

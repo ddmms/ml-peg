@@ -3,7 +3,7 @@
  *
  * Python registers this once as plot_download.downloadPlot. The callback reads
  * the rendered Plotly graph in the browser and exports either the trace x/y
- * data as CSV or the current figure as PNG/SVG.
+ * data as CSV, the current figure as PNG/SVG, or an interactive HTML file.
  */
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   plot_download: {
@@ -30,6 +30,15 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
 
       const format = (downloadFormat || "csv").toLowerCase();
       const filenameBase = String(graphId).replace(/[\s_]+/g, "-");
+
+      const jsonScript = (value) =>
+        JSON.stringify(value || null).replace(/<\/script/gi, "<\\/script");
+      const escapeHtml = (value) =>
+        String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
 
       if (format === "csv") {
         const csvValue = (value) => {
@@ -72,6 +81,42 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           content: rows.map((row) => row.map(csvValue).join(",")).join("\n"),
           filename: `${filenameBase}.csv`,
           type: "text/csv",
+        };
+      }
+
+      if (format === "html") {
+        const plotlyVersion = window.Plotly && window.Plotly.version;
+        const plotlySource = plotlyVersion
+          ? `https://cdn.plot.ly/plotly-${plotlyVersion}.min.js`
+          : "https://cdn.plot.ly/plotly-latest.min.js";
+        const title =
+          (plotNode.layout && plotNode.layout.title && plotNode.layout.title.text) ||
+          filenameBase;
+
+        return {
+          content: `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)}</title>
+  <script src="${plotlySource}"></script>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #plot { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="plot"></div>
+  <script>
+    const data = ${jsonScript(plotNode.data || [])};
+    const layout = ${jsonScript(plotNode.layout || {})};
+    const config = {responsive: true};
+    Plotly.newPlot("plot", data, layout, config);
+  </script>
+</body>
+</html>`,
+          filename: `${filenameBase}.html`,
+          type: "text/html",
         };
       }
 

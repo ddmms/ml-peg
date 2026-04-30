@@ -403,7 +403,7 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
 
 def build_plot_download_controls(graph_id: str) -> Div:
     """
-    Build plot download controls for CSV, PNG, and SVG exports.
+    Build plot download controls for CSV, PNG, SVG, and HTML exports.
 
     Parameters
     ----------
@@ -424,6 +424,7 @@ def build_plot_download_controls(graph_id: str) -> Div:
                     {"label": "CSV", "value": "csv"},
                     {"label": "PNG", "value": "png"},
                     {"label": "SVG", "value": "svg"},
+                    {"label": "HTML", "value": "html"},
                 ],
                 value="csv",
                 clearable=False,
