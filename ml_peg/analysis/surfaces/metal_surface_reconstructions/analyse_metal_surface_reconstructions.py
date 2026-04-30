@@ -27,9 +27,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
-
 
 def get_system_names() -> list[str]:
     """
