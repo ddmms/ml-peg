@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable
+from copy import deepcopy
 import io
 import json
 import math
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from dash import Input, Output, State, callback, callback_context, html
 from dash.dcc import Graph
@@ -915,3 +916,64 @@ def model_asset_from_scatter(
         if rendered is None:
             return html.Div(missing_message)
         return rendered
+
+
+def filter_table(
+    *, table_id: str, filter_func: Callable, filter_kwargs: dict[str, Any]
+) -> None:
+    """
+    Define callback to filter table by elements.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being filtered.
+    filter_func
+        Filter function to update table data.
+    filter_kwargs
+        Keyword arguments to pass to the filter function.
+    """
+
+    @callback(
+        Output(table_id, "data"),
+        Output(f"{table_id}-filtered-data-store", "data"),
+        Input("element-filter", "value"),
+        State(f"{table_id}-raw-data-store", "data"),
+    )
+    def _filter_table(
+        elements_list: list[str | None],
+        table_data: list[dict[str, Any]] | None,
+    ) -> tuple[list[dict], list[dict]]:
+        """
+        Register callback to filter table by elements.
+
+        Parameters
+        ----------
+        elements_list
+            List of selected elements.
+        table_data
+            Data to be updated.
+
+        Returns
+        -------
+        tuple[list[dict], list[dict]]
+            Filtered table data.
+        """
+        if not table_data:
+            raise PreventUpdate
+
+        filtered_table_data = deepcopy(table_data)
+
+        if not elements_list:
+            return filtered_table_data, filtered_table_data
+
+        filtered_results = filter_func(set(elements_list), **filter_kwargs)
+        if filtered_results is None:
+            return filtered_table_data, filtered_table_data
+
+        for row in filtered_table_data:
+            mlip_id = row.get("id")
+            for metric, results in filtered_results.items():
+                row[metric] = results.get(mlip_id)
+
+        return filtered_table_data, filtered_table_data

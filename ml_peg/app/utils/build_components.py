@@ -692,6 +692,13 @@ def build_test_layout(
     )
     layout_contents.append(
         Store(
+            id=f"{table.id}-filtered-data-store",
+            storage_type="session",
+            data=table.data,
+        )
+    )
+    layout_contents.append(
+        Store(
             id=f"{table.id}-raw-tooltip-store",
             storage_type="session",
             data=table.tooltip_header,

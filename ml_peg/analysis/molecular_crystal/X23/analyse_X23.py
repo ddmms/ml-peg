@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -23,6 +24,7 @@ MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
+FILTER_DATA_PATH = OUT_PATH / "x23_element_filter_data.json"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -32,27 +34,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of X23 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    info_keys=["system"],
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -62,7 +50,7 @@ def get_system_names() -> list[str]:
     x_label="Predicted lattice energy / kJ/mol",
     y_label="Reference lattice energy / kJ/mol",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
     },
 )
 def lattice_energies() -> dict[str, list]:
@@ -112,8 +100,7 @@ def lattice_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def x23_errors(lattice_energies) -> dict[str, float]:
+def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for lattice energies.
 
@@ -129,13 +116,32 @@ def x23_errors(lattice_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if lattice_energies[model_name]:
+        if lattice_energies.get(model_name):
             results[model_name] = mae(
                 lattice_energies["ref"], lattice_energies[model_name]
             )
         else:
             results[model_name] = None
     return results
+
+
+def get_metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Get all X23 metrics.
+
+    Parameters
+    ----------
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return {
+        "MAE": get_errors(lattice_energies),
+    }
 
 
 @pytest.fixture
@@ -145,23 +151,21 @@ def x23_errors(lattice_energies) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     """
     Get all X23 metrics.
 
     Parameters
     ----------
-    x23_errors
-        Mean absolute errors for all systems.
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "MAE": x23_errors,
-    }
+    return get_metrics(lattice_energies)
 
 
 def test_x23(metrics: dict[str, dict]) -> None:

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
+# "Global" variable that can be imported and set through pytest options
 current_models = None
 
 
@@ -228,7 +229,7 @@ class FairChemCalc(SumCalc):
         Returns
         -------
         Calculator
-            Loaded ASE Orb Calculator.
+            Loaded ASE fairchem Calculator.
         """
         from fairchem.core import FAIRChemCalculator, pretrained_mlip
         # torch.serialization.add_safe_globals([slice])
@@ -254,3 +255,29 @@ class FairChemCalc(SumCalc):
             return self.model_name in pretrained_mlip._MODEL_CKPTS.checkpoints
         except Exception:
             return False
+
+
+@dataclasses.dataclass(kw_only=True)
+class MockCalc(SumCalc):
+    """Dataclass for mock calculator."""
+
+    model_name: str = "mock"
+    trained_on_dispersion: bool = True
+
+    def get_calculator(self, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Any additional keyword arguments passed to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded mock ASE Calculator.
+        """
+        from ml_peg.models.mock import MockCalculator
+
+        return MockCalculator()

@@ -10,6 +10,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -28,27 +29,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_polymorph_names() -> list[str]:
-    """
-    Get list of polymorph names.
-
-    Returns
-    -------
-    list[str]
-        List of polymorph names from structure files.
-    """
-    polymorph_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*_polymorph.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    polymorph_names.append(atoms.info["polymorph"])
-                break
-    return polymorph_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*_polymorph.xyz",
+    info_keys=["polymorph"],
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -58,12 +44,12 @@ def get_polymorph_names() -> list[str]:
     x_label="Predicted lattice energy / meV",
     y_label="Reference lattice energy / meV",
     hoverdata={
-        "Polymorph": get_polymorph_names(),
+        "Polymorph": INFO["polymorph"],
     },
 )
 def lattice_energies() -> dict[str, list]:
     """
-    Get lattice energies for all DMC-ICE13 polymorphs.
+    Get lattice energies for all DMC-ICE13 polymorphs and plot as scatter.
 
     Returns
     -------
@@ -109,8 +95,7 @@ def lattice_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
+def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for lattice energies.
 
@@ -126,13 +111,32 @@ def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if lattice_energies[model_name]:
+        if lattice_energies.get(model_name):
             results[model_name] = mae(
                 lattice_energies["ref"], lattice_energies[model_name]
             )
         else:
             results[model_name] = None
     return results
+
+
+def get_metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Get all DMC-ICE13 metrics.
+
+    Parameters
+    ----------
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return {
+        "MAE": get_errors(lattice_energies),
+    }
 
 
 @pytest.fixture
@@ -142,23 +146,21 @@ def dmc_ice13_errors(lattice_energies) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(dmc_ice13_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     """
     Get all DMC-ICE13 metrics.
 
     Parameters
     ----------
-    dmc_ice13_errors
-        Mean absolute errors for all polymorphs.
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "MAE": dmc_ice13_errors,
-    }
+    return get_metrics(lattice_energies)
 
 
 def test_dmc_ice13(metrics: dict[str, dict]) -> None:

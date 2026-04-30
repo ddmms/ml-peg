@@ -7,13 +7,14 @@ import warnings
 
 from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Link, Loading, Location, Store
+from dash.dcc import Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
+from ml_peg.app.filter import get_element_filter, get_model_filter
 from ml_peg.app.utils.build_components import (
     build_faqs,
     build_footer,
@@ -862,41 +863,6 @@ def build_nav(
         framework_id: framework_views[framework_id]["label"]
         for framework_id in framework_order
     }
-    model_options = [{"label": m, "value": m} for m in MODELS]
-
-    model_filter = Details(
-        [
-            Summary(
-                "Visible models",
-                style={
-                    "cursor": "pointer",
-                    "fontWeight": "600",
-                    "fontSize": "11px",
-                    "textTransform": "uppercase",
-                    "letterSpacing": "0.07em",
-                    "color": "#6c757d",
-                    "padding": "5px",
-                },
-            ),
-            Div(
-                [
-                    Dropdown(
-                        id="model-filter-checklist",
-                        options=model_options,
-                        value=MODELS,
-                        multi=True,
-                        placeholder="Select visible models",
-                        closeOnSelect=False,
-                        style={"fontSize": "13px"},
-                    ),
-                ],
-                style={"padding": "8px 12px"},
-            ),
-        ],
-        id="model-filter-details",
-        open=True,
-        style={"marginBottom": "8px", "fontSize": "13px"},
-    )
 
     sidebar = Div(
         id="sidebar-nav",
@@ -988,11 +954,17 @@ def build_nav(
                         sidebar,
                         Div(
                             [
-                                model_filter,
+                                get_model_filter(MODELS),
+                                get_element_filter(),
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
                                     data=MODELS,
+                                ),
+                                Store(
+                                    id="filtered-elements-store",
+                                    storage_type="session",
+                                    data=[],
                                 ),
                                 Store(
                                     id="summary-table-computed-store",
@@ -1072,6 +1044,43 @@ def build_nav(
             selected = checklist_value or []
             return selected, selected
         raise PreventUpdate
+
+    # @callback(
+    #     Output("model-filter-checklist", "value"),
+    #     Output("selected-models-store", "data"),
+    #     Input("model-filter-checklist", "value"),
+    #     Input("selected-models-store", "data"),
+    #     prevent_initial_call=False,
+    # )
+    # def sync_model_filter(
+    #     checklist_value: list[str] | None,
+    #     stored_selection: list[str] | None,
+    # ) -> tuple[list[str], list[str] | object]:
+    #     """
+    #     Keep the model selector checklist and backing store synchronised.
+
+    #     Parameters
+    #     ----------
+    #     checklist_value
+    #         Current selection from the model filter control.
+    #     stored_selection
+    #         Previously persisted selection from ``selected-models-store``.
+
+    #     Returns
+    #     -------
+    #     tuple[list[str], list[str] | object]
+    #         Updated checklist value and store payload. The second element may be
+    #         ``dash.no_update`` when only syncing from store to UI.
+    #     """
+    #     trigger_id = ctx.triggered_id
+
+    #     if trigger_id in (None, "selected-models-store"):
+    #         stored = stored_selection if stored_selection is not None else MODELS
+    #         return stored, no_update
+    #     if trigger_id == "model-filter-checklist":
+    #         selected = checklist_value or []
+    #         return selected, selected
+    #     raise PreventUpdate
 
     @callback(
         Output("model-filter-details", "open"),
