@@ -42,7 +42,6 @@ def get_system_names() -> list[str]:
         model_dir = CALC_PATH / model_name
         print(model_dir)
         if model_dir.exists():
-            print("yes")
             xyz_files = sorted(model_dir.glob("*.xyz"))
             if xyz_files:
                 for xyz_file in xyz_files:
