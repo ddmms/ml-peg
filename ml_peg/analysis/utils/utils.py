@@ -551,27 +551,15 @@ def get_table_style(
         str
             Text colour with the stronger contrast against the background.
         """
-
-        def linear_channel(channel: int) -> float:
-            """
-            Convert one RGB channel to linear light.
-
-            Parameters
-            ----------
-            channel
-                RGB channel value from 0 to 255.
-
-            Returns
-            -------
-            float
-                Linearised channel value used for luminance calculation.
-            """
+        linear_channels = []
+        for channel in rgb:
             scaled = channel / 255
             if scaled <= 0.03928:
-                return scaled / 12.92
-            return ((scaled + 0.055) / 1.055) ** 2.4
+                linear_channels.append(scaled / 12.92)
+            else:
+                linear_channels.append(((scaled + 0.055) / 1.055) ** 2.4)
 
-        r, g, b = (linear_channel(channel) for channel in rgb)
+        r, g, b = linear_channels
         luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
         contrast_with_black = (luminance + 0.05) / 0.05
         contrast_with_white = 1.05 / (luminance + 0.05)
