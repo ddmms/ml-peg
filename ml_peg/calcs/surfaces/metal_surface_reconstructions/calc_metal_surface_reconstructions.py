@@ -33,7 +33,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Download metal_surface_reconstructions dataset
     surface_configurations = (
