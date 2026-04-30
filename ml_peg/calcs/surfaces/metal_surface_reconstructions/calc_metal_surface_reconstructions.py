@@ -61,7 +61,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
         if system.startswith("gas_phase"):
             opt = BFGS(slab)
-            opt.run(fmax=0.01)
+            opt.run(fmax=0.01, steps=500)
         elif not system.startswith("bulk"):
             opt = BFGS(slab)
             opt.run(fmax=0.05, steps=500)
