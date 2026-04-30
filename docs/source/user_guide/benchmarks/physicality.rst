@@ -138,7 +138,7 @@ None required; diatomics are generated in ASE.
 
 
 Compression
-=========
+===========
 
 Summary
 -------
