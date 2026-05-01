@@ -78,6 +78,10 @@ def generate_weas_html(
             }},
         }};
         const editor = new WEAS({{ domElement, viewerConfig: {{ _modelStyle: 1 }}, guiConfig}});
+        const originalExportImage = editor.tjs.exportImage.bind(editor.tjs);
+        editor.tjs.exportImage = function(resolution = 3) {{
+            return originalExportImage(resolution);
+        }};
 
         let structureData;
         const filename = "{str(filename)}";
