@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
+from matplotlib import colormaps
 import yaml
 
 from ml_peg.models import MODELS_ROOT
@@ -24,6 +25,82 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+def colour_from_cmap(cmap_name: str | None, position: float) -> str:
+    """
+    Return a CSS RGB colour sampled from a Matplotlib colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap. Falls back to ``viridis_r`` if
+        missing or invalid.
+    position
+        Position in the colormap from 0.0 to 1.0.
+
+    Returns
+    -------
+    str
+        CSS ``rgb(...)`` colour string.
+    """
+    try:
+        cmap = colormaps[cmap_name or "viridis_r"]
+    except KeyError:
+        cmap = colormaps["viridis_r"]
+
+    clamped = min(max(position, 0.0), 1.0)
+    rgb = tuple(int(255 * channel) for channel in cmap(clamped)[:3])
+    return f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+
+
+def get_threshold_colours(cmap_name: str | None = "viridis_r") -> dict[str, str]:
+    """
+    Get good/bad threshold colours for the active table colormap.
+
+    Normalised table cells map a good score of 1.0 to the start of the colormap
+    and a bad score of 0.0 to the end of the colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap.
+
+    Returns
+    -------
+    dict[str, str]
+        CSS colours keyed by ``"good"`` and ``"bad"``.
+    """
+    return {
+        "good": colour_from_cmap(cmap_name, 0.0),
+        "bad": colour_from_cmap(cmap_name, 1.0),
+    }
+
+
+def build_threshold_input_style(border_colour: str) -> dict[str, str]:
+    """
+    Build the inline style for a threshold value input.
+
+    Parameters
+    ----------
+    border_colour
+        CSS colour used for the input border.
+
+    Returns
+    -------
+    dict[str, str]
+        Inline Dash style dictionary.
+    """
+    return {
+        "width": "60px",
+        "fontSize": "12px",
+        "padding": "2px 4px",
+        "border": f"2px solid {border_colour}",
+        "borderRadius": "3px",
+        "boxSizing": "border-box",
+        "margin": "0 auto",
+        "display": "block",
+    }
 
 
 class FrameworkEntry(TypedDict):

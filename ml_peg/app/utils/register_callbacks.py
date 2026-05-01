@@ -17,11 +17,13 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
+    build_threshold_input_style,
     clean_thresholds,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
     get_scores,
+    get_threshold_colours,
 )
 
 
@@ -770,6 +772,48 @@ def register_normalization_callbacks(
                 raise PreventUpdate
 
             return cleaned_store
+
+    if metrics:
+        threshold_style_outputs = [
+            output
+            for metric in metrics
+            for output in (
+                Output(f"{table_id}-{metric}-good-threshold", "style"),
+                Output(f"{table_id}-{metric}-bad-threshold", "style"),
+            )
+        ]
+
+        @callback(
+            *threshold_style_outputs,
+            Input("cmap-store", "data"),
+            prevent_initial_call=False,
+        )
+        def sync_threshold_input_styles(
+            cmap_name: str | None,
+        ) -> tuple[dict[str, str], ...]:
+            """
+            Colour threshold input borders to match the selected table colour scale.
+
+            Parameters
+            ----------
+            cmap_name
+                Current table colormap name from the shared colour-scheme store.
+
+            Returns
+            -------
+            tuple[dict[str, str], ...]
+                Alternating good/bad input styles for each metric.
+            """
+            colours = get_threshold_colours(cmap_name)
+            styles: list[dict[str, str]] = []
+            for _metric in metrics:
+                styles.extend(
+                    [
+                        build_threshold_input_style(colours["good"]),
+                        build_threshold_input_style(colours["bad"]),
+                    ]
+                )
+            return tuple(styles)
 
     if register_toggle:
         # Toggle display between raw and normalized values without recomputing scores
