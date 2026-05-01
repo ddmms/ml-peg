@@ -21,8 +21,8 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Convergence threshold used by the calc step (eV/Å); shown as a dashed line
 # on the convergence violin plot.
