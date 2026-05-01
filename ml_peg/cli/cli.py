@@ -2,11 +2,82 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, Literal, get_args
 
 from typer import Context, Exit, Option, Typer
 
 from ml_peg import __version__
+from ml_peg.analysis import ANALYSIS_ROOT
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+
+
+def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
+    """
+    Get current categories.
+
+    Parameters
+    ----------
+    root
+        Root directory to search for categories in.
+    script_prefix
+        Prefix of script files to match for e.g. "calc" for calc_test.py.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Tuple of sorted category names. Uses glob matches for `script_prefix` within
+        the `root` directory.
+    """
+    return ("*",) + tuple(
+        sorted(
+            {
+                path.parent.parent.name
+                for path in root.glob(f"*/*/{script_prefix}_*.py")
+                if path.is_file() and path.parent.parent.is_dir()
+            }
+        )
+    )
+
+
+def get_tests(root: Path, script_prefix: str, category: str = "*") -> tuple[str, ...]:
+    """
+    Get current tests.
+
+    Parameters
+    ----------
+    root
+        Root directory to search for tests in.
+    script_prefix
+        Prefix of script files to match for e.g. "calc" for calc_test.py.
+    category
+        Category in which to search for tests. Default is `*`, corresponding to all
+        categories.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Tuple of sorted test names. Uses glob matches for `script_prefix` within
+        the `root` directory.
+    """
+    return tuple(
+        sorted(
+            {
+                path.parent.name
+                for path in root.glob(f"{category}/*/{script_prefix}_*.py")
+                if path.is_file()
+                and path.parent.is_dir()
+                and path.name == f"{script_prefix}_{path.parent.name}.py"
+            }
+        )
+    )
+
+
+AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
+AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
+CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
+
 
 app = Typer(
     name="ml_peg",
@@ -26,8 +97,21 @@ def run_dash_app(
             )
         ),
     ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
     category: Annotated[
-        str, Option(help="Category to build app for. Default is all categories.")
+        AppCategories,
+        Option(
+            help="Category to build app for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
     debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
@@ -40,6 +124,8 @@ def run_dash_app(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
     port
@@ -51,6 +137,7 @@ def run_dash_app(
 
     # Overwrite current_models before it is imported elsewhere
     ml_peg_models.current_models = models
+    ml_peg_models.models_file = models_file
 
     from ml_peg.app.run_app import run_app
 
@@ -70,8 +157,21 @@ def run_calcs(
             help="Comma-separated models to run calculations on. Default is all models."
         ),
     ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
     category: Annotated[
-        str, Option(help="Category to run calculations for. Default is all categories.")
+        CalcCategories,
+        Option(
+            help="Category to run calculations for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     test: Annotated[
         str, Option(help="Test to run calculations for. Default is all tests.")
@@ -96,6 +196,8 @@ def run_calcs(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run calculations for. Default is `*`, corresponding to all
         categories.
@@ -131,6 +233,9 @@ def run_calcs(
     if models:
         options.extend(["--models", models])
 
+    if models_file:
+        options.extend(["--models-file", models_file])
+
     # Parse any custom options to pytest
     options.extend(ctx.args)
 
@@ -145,8 +250,21 @@ def run_analysis(
             help="Comma-separated models to run analysis for. Default is all models."
         ),
     ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
     category: Annotated[
-        str, Option(help="Category to run analysis for. Default is all categories.")
+        AnalysisCategories,
+        Option(
+            help="Category to run analysis for. Default is all categories.",
+            case_sensitive=False,
+        ),
     ] = "*",
     test: Annotated[
         str, Option(help="Test to run analysis for. Default is all tests.")
@@ -163,6 +281,8 @@ def run_analysis(
     models
         Models to run analysis for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run analysis for. Default is `*`, corresponding to all categories.
     test
@@ -188,7 +308,147 @@ def run_analysis(
     if models:
         options.extend(["--models", models])
 
+    if models_file:
+        options.extend(["--models-file", models_file])
+
     pytest.main(options)
+
+
+list_app = Typer(
+    name="list",
+    no_args_is_help=True,
+    epilog="Try 'ml_peg list COMMAND --help' for subcommand options",
+)
+app.add_typer(
+    list_app,
+    help=(
+        "List available categories, tests, and models for calculations, analysis, and "
+        "app."
+    ),
+)
+
+
+@list_app.command(
+    name="calcs", help="List categories and tests available for calculations"
+)
+def list_calcs(
+    category: Annotated[
+        CalcCategories,
+        Option(
+            help="Category to run calculations for. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+):
+    """
+    List categories and tests available for calculations.
+
+    Parameters
+    ----------
+    category
+        Category to list test for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f"""Categories: {
+                ", ".join(
+                    category for category in get_args(CalcCategories) if category != "*"
+                )
+            }\n"""
+        )
+    print(f"Tests: {', '.join(get_tests(CALCS_ROOT, 'calc', category))}")
+
+
+@list_app.command(
+    name="analysis", help="List categories and tests available for analysis"
+)
+def list_analysis(
+    category: Annotated[
+        AnalysisCategories,
+        Option(
+            help="Category to list tests for. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+):
+    """
+    List categories and tests available for analysis.
+
+    Parameters
+    ----------
+    category
+        Category to list tests for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f""""Categories: {
+                ", ".join(
+                    category
+                    for category in get_args(AnalysisCategories)
+                    if category != "*"
+                )
+            }\n"""
+        )
+    print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
+
+
+@list_app.command(
+    name="app", help="List categories and tests available as applications"
+)
+def list_apps(
+    category: Annotated[
+        AppCategories,
+        Option(
+            help="Category to list tests for. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+):
+    """
+    List categories and tests available as applications.
+
+    Parameters
+    ----------
+    category
+        Category to list tests for. Default is `*`, corresponding to all categories.
+    """
+    if category == "*":
+        print(
+            f"""Categories: {
+                ", ".join(
+                    category for category in get_args(AppCategories) if category != "*"
+                )
+            }\n"""
+        )
+    print(f"Tests: {', '.join(get_tests(ANALYSIS_ROOT, 'analyse', category))}")
+
+
+@list_app.command(name="models", help="List models currently available")
+def list_models(
+    models_file: Annotated[
+        str,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """
+    List currently available models.
+
+    Parameters
+    ----------
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
+    """
+    from ml_peg.models.get_models import get_model_names
+
+    if models_file is None:
+        from ml_peg.models import models_file
+
+    print(f"Available models: {', '.join(get_model_names(filepath=models_file))}")
 
 
 @app.command(name="download", help="Download data from S3 bucket")

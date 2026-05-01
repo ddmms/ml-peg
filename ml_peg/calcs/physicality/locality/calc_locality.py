@@ -12,8 +12,8 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -153,8 +153,7 @@ def prepared_solute() -> dict[str, Atoms]:
     for model_name, calc in MODELS.items():
         solute = solute.copy()
         try:
-            calc.default_dtype = "float64"
-            solute.calc = calc.get_calculator()
+            solute.calc = calc.get_calculator(precision="high")
             solute.get_forces()
             solutes[model_name] = solute
         # If a model fails, don't block other model tests
