@@ -43,26 +43,22 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     clean_calc = model.get_calculator()
 
 
-    # Organic molecules data sets for electric field response.
-    datasets = [
-        "ALKANES",
-        "CUMULENES",
-    ]
-
     # Download data
     data_path = download_github_data(
         filename="LINEAR_CARBON_wB97M-V.zip",
         github_uri="https://github.com/viktorsvahn/teoroo_ML-PEG/raw/refs/heads/main/data/source",
     )
+    datasets = [f.name for f in (data_path/'data').glob("*.xyz")]
+
 
     for dataset in datasets:
         mols_out = []
 
-        if (DATA_PATH/f'{dataset}.xyz').exists():
-            mols = read(DATA_PATH/f'{dataset}.xyz',':')
+        if (DATA_PATH/dataset).exists():
+            mols = read(DATA_PATH/dataset,':')
         else:
-            mols = read(data_path/ 'data' /f'{dataset}.xyz',':')
-            write(DATA_PATH/f'{dataset}.xyz', mols)
+            mols = read(data_path/'data'/dataset,':')
+            write(DATA_PATH/dataset, mols)
 
         for mol in mols:
             mol.calc = copy(clean_calc)
@@ -71,8 +67,6 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
                 mols_out.append(mol)
 
         # Write output structures
-        #if len(mols_out) > 0:
         write_dir = OUT_PATH/model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir/f'{dataset}.xyz', mols_out)
-        
+        write(write_dir/dataset, mols_out)
