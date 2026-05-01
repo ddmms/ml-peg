@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, Literal
 
 from dash import Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
@@ -25,6 +25,59 @@ from ml_peg.app.utils.utils import (
     get_scores,
     get_threshold_colours,
 )
+
+THRESHOLD_INPUT_STEP = 0.0001
+THRESHOLD_ROUND_DIGITS = 10
+
+
+def enforce_threshold_direction(
+    *,
+    edited_field: Literal["good", "bad"],
+    good: float,
+    bad: float,
+    default_good: float,
+    default_bad: float,
+    min_gap: float = THRESHOLD_INPUT_STEP,
+) -> tuple[float, float]:
+    """
+    Preserve the original good/bad threshold direction after a user edit.
+
+    Parameters
+    ----------
+    edited_field
+        Which threshold input the user changed.
+    good
+        Candidate good threshold value after the edit.
+    bad
+        Candidate bad threshold value after the edit.
+    default_good
+        Original good threshold from benchmark metadata.
+    default_bad
+        Original bad threshold from benchmark metadata.
+    min_gap
+        Minimum allowed separation between the two thresholds.
+
+    Returns
+    -------
+    tuple[float, float]
+        Corrected ``(good, bad)`` thresholds.
+    """
+    if default_good == default_bad:
+        return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
+
+    good_is_higher = default_good > default_bad
+    if good_is_higher and good <= bad:
+        if edited_field == "good":
+            bad = good - min_gap
+        else:
+            good = bad + min_gap
+    elif not good_is_higher and good >= bad:
+        if edited_field == "good":
+            bad = good + min_gap
+        else:
+            good = bad - min_gap
+
+    return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
 
 
 def apply_level_of_theory_warnings(
@@ -762,12 +815,36 @@ def register_normalization_callbacks(
             if trigger_id == f"{table_id}-{metric}-good-threshold":
                 if good_val is None or bad_threshold is None:
                     raise PreventUpdate
-                entry["good"] = float(good_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="good",
+                    good=float(good_val),
+                    bad=float(bad_threshold),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
 
             elif trigger_id == f"{table_id}-{metric}-bad-threshold":
                 if bad_val is None or good_threshold is None:
                     raise PreventUpdate
-                entry["bad"] = float(bad_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="bad",
+                    good=float(good_threshold),
+                    bad=float(bad_val),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
             else:
                 raise PreventUpdate
 
