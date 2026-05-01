@@ -65,10 +65,16 @@ def generate_weas_html(
         import {{ WEAS, parseXYZ, parseCIF, parseCube, parseXSF }} from 'https://unpkg.com/weas/dist/index.mjs';
         const domElement = document.getElementById("viewer");
 
-        // hide the buttons
+        // WEAS calls download/upload "export"/"import" in the browser bundle.
         const guiConfig = {{
             buttons: {{
-                enabled: false,
+                enabled: true,
+                fullscreen: true,
+                undo: false,
+                redo: false,
+                export: true,
+                import: false,
+                measurement: false,
             }},
         }};
         const editor = new WEAS({{ domElement, viewerConfig: {{ _modelStyle: 1 }}, guiConfig}});
