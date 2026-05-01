@@ -276,7 +276,7 @@ def build_weight_components(
             "padding": "2px 0px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
-            if header == "Metric Weights"
+            if header == "Weights"
             else "1px solid #dee2e6",
             "borderRadius": "6px",
             "width": "100%",
@@ -711,7 +711,7 @@ def build_test_layout(
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
-        header="Metric Weights",
+        header="Weights",
         table=table,
         use_thresholds=True,
         column_widths=column_widths,
@@ -881,7 +881,7 @@ def build_threshold_inputs(
                 "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#212529",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -917,7 +917,7 @@ def build_threshold_inputs(
                 "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#212529",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",

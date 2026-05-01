@@ -472,7 +472,7 @@ def build_category(
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
-            header="Benchmark weights",
+            header="Weights",
             table=summary_table,
             include_store=False,
             column_widths=getattr(summary_table, "column_widths", None),
@@ -1246,7 +1246,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     # Build overall summary table
     summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
-        header="Category weights",
+        header="Weights",
         table=summary_table,
         include_store=False,
         column_widths=summary_table.column_widths,
