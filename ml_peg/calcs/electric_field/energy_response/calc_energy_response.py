@@ -37,9 +37,7 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Name of model use and model to get calculator.
-    """
-    DATA_NOT_DOWNLOADED = True
-    
+    """    
     model_name, model = mlip
     model.default_dtype = "float64"
     clean_calc = model.get_calculator()
@@ -58,17 +56,13 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     )
 
     for dataset in datasets:
-        #mols = read(data_path/f'{dataset}.xyz',':')
         mols_out = []
 
-        if DATA_NOT_DOWNLOADED:
-            DATA_PATH.mkdir(parents=True, exist_ok=True)
+        if (DATA_PATH/f'{dataset}.xyz').exists():
+            mols = read(DATA_PATH/f'{dataset}.xyz',':')
+        else:
             mols = read(data_path/ 'data' /f'{dataset}.xyz',':')
             write(DATA_PATH/f'{dataset}.xyz', mols)
-            DATA_NOT_DOWNLOADED = False
-        else:
-            mols = read(DATA_PATH/f'{dataset}.xyz',':')
-
 
         for mol in mols:
             mol.calc = copy(clean_calc)
@@ -77,7 +71,8 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
                 mols_out.append(mol)
 
         # Write output structures
-        if len(mols_out) > 0:
-            write_dir = OUT_PATH/model_name
-            write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir/f'{dataset}.xyz', mols_out)
+        #if len(mols_out) > 0:
+        write_dir = OUT_PATH/model_name
+        write_dir.mkdir(parents=True, exist_ok=True)
+        write(write_dir/f'{dataset}.xyz', mols_out)
+        
