@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 
-from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -13,6 +12,7 @@ from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
     mae,
+    read_extxyz_info_fast,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -66,9 +66,9 @@ def _extract_metadata() -> dict[str, list[str]]:
         structures: list[str] = []
         molecules: list[str] = []
         for xyz_file in xyz_files:
-            atoms = read(xyz_file)
-            structures.append(atoms.info.get("structure", xyz_file.stem))
-            molecules.append(atoms.info.get("molecule", ""))
+            info = read_extxyz_info_fast(xyz_file)
+            structures.append(info.get("structure", xyz_file.stem))
+            molecules.append(info.get("molecule", ""))
         return {"structures": structures, "molecules": molecules}
     return {"structures": [], "molecules": []}
 
@@ -115,11 +115,11 @@ def relative_energies() -> dict[str, list[float]]:
         model_predictions: list[float] = []
 
         for xyz_file in xyz_files:
-            atoms = read(xyz_file)
-            model_predictions.append(atoms.info["relative_energy_pred_kcal"])
+            info = read_extxyz_info_fast(xyz_file)
+            model_predictions.append(info["relative_energy_pred_kcal"])
 
             if not ref_stored:
-                results["ref"].append(atoms.info["relative_energy_ref_kcal"])
+                results["ref"].append(info["relative_energy_ref_kcal"])
 
             dest_dir = OUT_PATH / model_name
             dest_dir.mkdir(parents=True, exist_ok=True)

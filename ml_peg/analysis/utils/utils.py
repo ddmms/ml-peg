@@ -710,3 +710,40 @@ def normalize_metric(
 
     # Clip to [0, 1]
     return max(min(1.0, float(t)), 0.0)
+
+
+def read_extxyz_info_fast(filepath: Path | str) -> dict:
+    """
+    Fast reading of metadata (atoms.info) from an extxyz file.
+
+    This skips loading atomic positions and relies solely on parsing the
+    second line of the extended XYZ file using ASE's fast C-based dictionary parser.
+    It provides a significant speedup for simply accessing metadata.
+
+    Parameters
+    ----------
+    filepath : Path | str
+        Path to the extxyz file.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata from `atoms.info`.
+    """
+    try:
+        from ase.io.extxyz import key_val_str_to_dict
+
+        with open(filepath, encoding="utf-8") as f:
+            # First line is number of atoms, skip it
+            f.readline()
+            # Second line is info dict
+            line = f.readline()
+            if not line:
+                return {}
+            # Parse with ASE's parser which handles nested values
+            return key_val_str_to_dict(line.strip())
+    except Exception:
+        # Fallback to standard ASE read
+        from ase.io import read
+
+        return read(filepath).info
