@@ -327,7 +327,14 @@ def build_weight_components(
 
 @lru_cache(maxsize=1)
 def _load_faqs_yaml() -> list[dict] | None:
-    """Load and cache the FAQs YAML file to avoid repeated disk reads."""
+    """
+    Load and cache the FAQs YAML file to avoid repeated disk reads.
+
+    Returns
+    -------
+    list[dict] | None
+        The loaded FAQs list, or None if the file is not found.
+    """
     faqs_path = Path(__file__).parent / "faqs.yml"
     try:
         with open(faqs_path, encoding="utf8") as f:
