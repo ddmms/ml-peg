@@ -1,3 +1,6 @@
 ## 2024-05-19 - Caching YAML Load for Model Parsing
 **Learning:** `yaml.safe_load` on large configuration files like `models.yml` is significantly slower than parsing JSON or doing other basic IO. It can become a bottleneck when called repeatedly throughout an application's lifecycle (e.g., getting subsets of models, instantiating apps).
 **Action:** Always memoize or `@lru_cache` functions that load static, read-only configuration files (like `models.yml`) to prevent repeated disk I/O and parsing overhead.
+## 2024-05-19 - Caching YAML Configuration for UI Components
+**Learning:** `yaml.safe_load` overhead is not just an issue for large model registries but also applies to repeated loading of UI configurations like `frameworks.yml` (for badges) and `faqs.yml` (for dropdowns). Frequent calls during UI generation cause unnecessary slowdowns and disk I/O. Using `copy.deepcopy()` is crucial when returning memoized data structures to prevent unintended mutation by downstream callers, which would pollute the global cache.
+**Action:** Extend the pattern of memoizing static YAML configurations to UI-specific data. Ensure the returned data is deeply copied (`copy.deepcopy`) to guarantee immutability of the `@lru_cache` source.

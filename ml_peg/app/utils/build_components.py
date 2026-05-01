@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+from functools import lru_cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -323,6 +325,17 @@ def build_weight_components(
     return Div(layout)
 
 
+@lru_cache(maxsize=1)
+def _load_faqs_yaml() -> list[dict] | None:
+    """Load and cache the FAQs YAML file to avoid repeated disk reads."""
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return None
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -333,12 +346,9 @@ def build_faqs() -> Div:
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
     # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
+    faqs_data = _load_faqs_yaml()
 
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    if faqs_data is None:
         return Div(
             "FAQs file not found",
             style={
@@ -350,6 +360,9 @@ def build_faqs() -> Div:
 
     if not faqs_data or not isinstance(faqs_data, list):
         return Div("No FAQs available")
+
+    # To ensure safety of the cached list (though it's only read), deepcopy it
+    faqs_data = copy.deepcopy(faqs_data)
 
     # Build FAQ dropdowns
     faq_components = []
