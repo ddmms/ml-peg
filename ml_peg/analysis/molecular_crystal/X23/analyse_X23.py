@@ -13,6 +13,7 @@ from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
     mae,
+    read_extxyz_info_fast,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -49,8 +50,8 @@ def get_system_names() -> list[str]:
             xyz_files = sorted(model_dir.glob("*.xyz"))
             if xyz_files:
                 for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
+                    info = read_extxyz_info_fast(xyz_file)
+                    system_names.append(info["system"])
                 break
     return system_names
 

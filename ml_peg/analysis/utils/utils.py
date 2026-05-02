@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
+from ase.io.extxyz import key_val_str_to_dict
 from matplotlib import cm
 from matplotlib.colors import Colormap
 import numpy as np
@@ -24,6 +25,29 @@ from ml_peg.models.get_models import load_model_configs
 
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
+
+
+def read_extxyz_info_fast(filepath: Path | str) -> dict[str, Any]:
+    """
+    Fast extraction of the 'info' dictionary from an Extended XYZ file.
+
+    This avoids the overhead of parsing the full structure using ase.io.read
+    when only the metadata on the second line is required.
+
+    Parameters
+    ----------
+    filepath : Path | str
+        Path to the extended XYZ file.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of metadata from the info line.
+    """
+    with open(filepath, encoding="utf-8") as f:
+        f.readline()  # Skip number of atoms line
+        info_line = f.readline().strip()
+    return key_val_str_to_dict(info_line)
 
 
 def build_dispersion_name_map(

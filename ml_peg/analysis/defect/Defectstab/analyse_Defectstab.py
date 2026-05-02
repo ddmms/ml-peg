@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import load_metrics_config, read_extxyz_info_fast, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -40,9 +40,9 @@ def get_system_names() -> list[str]:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             for xyz_file in sorted(model_dir.glob("*.xyz")):
-                atoms = read(xyz_file)
-                if atoms.info.get("ref") is not None:
-                    system_names.append(atoms.info.get("system", xyz_file.stem))
+                info = read_extxyz_info_fast(xyz_file)
+                if info.get("ref") is not None:
+                    system_names.append(info.get("system", xyz_file.stem))
             if system_names:
                 break
     return system_names
@@ -62,9 +62,9 @@ def get_subset_labels() -> list[str]:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             for xyz_file in sorted(model_dir.glob("*.xyz")):
-                atoms = read(xyz_file)
-                if atoms.info.get("ref") is not None:
-                    subset_labels.append(atoms.info.get("subset", "unknown"))
+                info = read_extxyz_info_fast(xyz_file)
+                if info.get("ref") is not None:
+                    subset_labels.append(info.get("subset", "unknown"))
             if subset_labels:
                 break
     return subset_labels
