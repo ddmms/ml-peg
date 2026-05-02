@@ -306,16 +306,6 @@ def run_elasticity_benchmark(
     # Drop structure column before CSV processing
     results = results.drop(columns=["final_structure"], errors="ignore")
 
-    # results["elastic_tensor_DFT"] = results["elastic_tensor_DFT"].apply(
-    #     lambda x: np.array(x["raw"]) if x is not None else None
-    # )
-
-    # for col in results.columns:
-    #     if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
-    #         results[col] = results[col].apply(
-    #             lambda x: x.voigt if x is not None else None
-    #         )
-
     for col in results.columns:
         if col.startswith("elastic_tensor_"):
             results[col] = results[col].apply(elastic_tensor_to_voigt)
