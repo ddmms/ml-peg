@@ -1,0 +1,17 @@
+--- utils.py
++++ utils.py
+@@ -6,7 +6,13 @@
+ import json
+ from pathlib import Path
+ import re
+-from typing import Any, NotRequired, TypedDict
++from typing import Any, TypedDict
++import sys
++
++if sys.version_info >= (3, 11):
++    from typing import NotRequired
++else:
++    from typing_extensions import NotRequired
+
+ import dash_bootstrap_components as dbc
+ from dash_iconify import DashIconify

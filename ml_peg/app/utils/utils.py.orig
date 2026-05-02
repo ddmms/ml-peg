@@ -6,13 +6,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 import json
 from pathlib import Path
-import sys
-from typing import Any, TypedDict
-
-if sys.version_info >= (3, 11):
-    from typing import NotRequired
-else:
-    from typing_extensions import NotRequired
+from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
 import yaml
