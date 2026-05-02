@@ -1,95 +1,6 @@
 """Analyse scaling_pol benchmark."""
 from __future__ import annotations
 
-
-#################################################################################
-# OLD: Some of it might be needed
-"""
-from __future__ import annotations
-
-from pathlib import Path
-
-from ase import units
-import numpy as np
-from ase.io import read, write
-import pytest
-
-from ml_peg.analysis.external_field.energy_response.energy_response import get_energy_response
-#from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import (
-    #build_dispersion_name_map,
-    load_metrics_config,
-    #mae,
-)
-from ml_peg.app import APP_ROOT
-from ml_peg.calcs import CALCS_ROOT
-from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
-
-MODELS = get_model_names(current_models)
-#DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "external_field" / "energy_response" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "external_field" / "energy_response"
-
-METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
-    METRICS_CONFIG_PATH
-)
-
-
-# Linear organic molecules data sets for electric field response.
-DATASETS = [
-    "ALKANES",
-    "CUMULENES",
-]
-"""
-#################################################################################
-
-
-
-
-
-"""
-The goal is to build a table, using the decorator @build_table and to make a 
-plot using @plot_parity.
-
-@build_table requires an output from its hos function of the form:
-
-{
-    "metric_1": {"model_1": value_1, "model_2": value_2, ...},
-    "metric_2": {"model_1": value_3, "model_2": value_4, ...},
-    ...
-}
-
-where metric_1, metric_2, ... are columns in the table. The plot, on the other 
-hand, requires an output of the form:
-
-{
-    "ref": ref_values_list,
-    "model_1": model_1_values_list,
-    "model_2": model_2_values_list,
-    ...
-}
-
-Essentially, we need to generate the plot data first, since the metric is only
-evaluated over this data.
-
-The plot will also need hover_data which takes an output from a 'label' function
-of the form:
-
-{
-    "label_1": label_1_list,
-    "label_2": label_2_list,
-    ...
-}
-
-Here label_1 is a category and the list will be over all datapoints. Thus, when
-hovering over a data point there should be visible all label_k of tha point.
-
-
-"""
-
-
 from pathlib import Path
 
 from ase import units
@@ -105,16 +16,10 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
-"""
-MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / [category] / [benchmark_name] / "outputs"
-OUT_PATH = APP_ROOT / "data" / [category] / [benchmark_name]
-"""
 
 import os
 
 MODELS = get_model_names(current_models)
-#DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "electric_field" / "energy_response" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
@@ -122,18 +27,6 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
-
-
-# Linear organic molecules data sets for electric field response.
-#DATASETS = [
-#    "ALKANES",
-#    "CUMULENES",
-#]
-
-
-
-#REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
-
 
 
 def labels() -> dict[str, list]:
@@ -161,44 +54,27 @@ def labels() -> dict[str, list]:
     }
 
 
-
-
 def energy_response() -> dict[str, dict]:
     """
     Get energy_responses for all structures.
 
 
-    RETURN SHOULD LOOK LIKE THIS
-    {
-        "ref": ref_values_list,
-        "model_1": model_1_values_list,
-        "model_2": model_2_values_list,
-        ...
-    }
-
-
     Returns
     -------
     dict[str, list]
-        Dictionary of all reference and predicted relative energy_responses.
+        Dictionary of all reference and predicted relative energy responses.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
     
-    
-
-
     for model_name in MODELS:
         dset_results = {}
         datasets = [f.name for f in (CALC_PATH/model_name).glob("*.xyz")]
-
-        #print(datasets, 'asdasdssds')
-       
+    
         for dataset in datasets:
-            #print(dataset)
             structs = read(CALC_PATH / model_name / dataset, index=":")
-            #print(structs)
         
+            # Model precitions
             no_field = [
                 struct.get_potential_energy() 
                 for struct in structs if not any(struct.info['external_field'])
@@ -210,11 +86,9 @@ def energy_response() -> dict[str, dict]:
             dset_results[dataset] = np.abs(
                 np.array(field)-np.array(no_field)
             )
-            #print(field)
 
-
+            # Reference values from ORCA
             if not ref_stored:
-                #results["ref"] = [struct.info["REF_energy"] for struct in structs if any(struct.info['external_field'])]
                 field = [
                     struct.info["REF_energy"] 
                     for struct in structs if any(struct.info['external_field'])
@@ -226,36 +100,15 @@ def energy_response() -> dict[str, dict]:
                 dset_results[dataset] = np.abs(
                     np.array(field)-np.array(no_field)
                 )
-                #print(field)
                 
                 # Write structures for app
-                structs_dir = OUT_PATH / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / dataset, structs)
-        """
-        quit()
+                #structs_dir = OUT_PATH / model_name
+                #structs_dir.mkdir(parents=True, exist_ok=True)
+                #write(structs_dir / dataset, structs)
 
-        no_field = np.array([struct.get_potential_energy() for struct in structs if not any(struct.info['external_field'])])
-        field = np.arra([struct.get_potential_energy() for struct in structs if any(struct.info['external_field'])])
-        results[model_name] = np.abs(field-no_field)
-
-        if not ref_stored:
-            #results["ref"] = [struct.info["REF_energy"] for struct in structs if any(struct.info['external_field'])]
-            field = np.array([struct.info["REF_energy"] for struct in structs if any(struct.info['external_field'])])
-            no_field = np.array([struct.info["REF_energy"] for struct in structs if not any(struct.info['external_field'])])
-            results["ref"] = np.abs(field-no_field)
-
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / dataset, structs)
-        """
         results[model_name] = dset_results
         results["ref"] = dset_results
-        ref_stored = True
-    #print('jahböojdhbföweosdhfeoduhfeaofhasdf')
-    #quit()
-    
+        ref_stored = True    
     return results
 
 
@@ -264,41 +117,26 @@ def energy_response() -> dict[str, dict]:
 @plot_parity(
     filename=OUT_PATH / "figure_energy_responses.json",
     title="Relative energy_responses",
-    x_label="Predicted energy response / eV",
-    y_label="Reference energy response / eV",
+    x_label="Predicted energy response / meV",
+    y_label="Reference energy response / meV",
     hoverdata={
         "Labels": labels(),
     },
 )
 def energy_responses() -> dict[str, list]:
     """
-    Get energy_responses for all structures.
-
-    merges all the response output of all datasets
-
-
-    RETURN SHOULD LOOK LIKE THIS
-    {
-        "ref": ref_values_list,
-        "model_1": model_1_values_list,
-        "model_2": model_2_values_list,
-        ...
-    }
-
+    Get energy responses for all datasets.
 
     Returns
     -------
     dict[str, list]
-        Dictionary of all reference and predicted relative energy_responses.
+        Dictionary of all reference and predicted energy responses.
     """
     results = energy_response()
     flattened_results = {}
-    #print(results)
     for key, res in results.items():
         flattened_results[key] = np.concatenate([v for k,v in res.items()])
     return flattened_results
-
-
 
 
 @pytest.fixture
@@ -309,12 +147,12 @@ def total_mae(energy_responses: dict[str, list]) -> dict[str, float]:
     Parameters
     ----------
     energy_responses
-        Reference and predicted energy_responses for all structures.
+        Reference and predicted energy responses for all structures.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of metric 1 values for each model.
+        Dictionary of total MAE values for each model.
     """
     results = {}
     for model_name in MODELS:
@@ -322,50 +160,49 @@ def total_mae(energy_responses: dict[str, list]) -> dict[str, float]:
     return results
 
 
-
-
-
-
-#def alkane_mae(energy_response: dict[str, dict]) -> dict[str, float]:
 @pytest.fixture
 def alkane_mae() -> dict[str, float]:
     """
-    Get total MAE of alkane energy responses.
+    Get MAE of alkane energy responses.
 
     Parameters
     ----------
     energy_responses
-        Reference and predicted energy_responses for all structures.
+        Reference and predicted energy responses for all alkanes.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of metric 1 values for each model.
+        Dictionary of alkane MAE values for each model.
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(energy_response()["ref"]["ALKANES.xyz"], energy_response()[model_name]["ALKANES.xyz"])
+        results[model_name] = mae(
+            energy_response()["ref"]["ALKANES.xyz"], energy_response()[model_name]["ALKANES.xyz"]
+        )
     return results
 
 
 @pytest.fixture
 def cumulene_mae() -> dict[str, float]:
     """
-    Get total MAE of alkane energy responses.
+    Get MAE of cumulene energy responses.
 
     Parameters
     ----------
     energy_responses
-        Reference and predicted energy_responses for all structures.
+        Reference and predicted energy responses for all cumulenes.
 
     Returns
     -------
     dict[str, float]
-        Dictionary of metric 1 values for each model.
+        Dictionary of cumulene MAE values for each model.
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(energy_response()["ref"]["CUMULENES.xyz"], energy_response()[model_name]["CUMULENES.xyz"])
+        results[model_name] = mae(
+            energy_response()["ref"]["CUMULENES.xyz"], energy_response()[model_name]["CUMULENES.xyz"]
+        )
     return results
 
 
@@ -374,16 +211,11 @@ def cumulene_mae() -> dict[str, float]:
 @build_table(
     filename=OUT_PATH / "energy_response_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
-    #metric_tooltips={
-    #    "Model": "Name of the model",
-    #    "Metric 1": "Description for metric 1 (units)",
-    #    "Metric 2": "Description for metric 2 (units)",
-    #},
+    weights=DEFAULT_WEIGHTS,
     thresholds=DEFAULT_THRESHOLDS,
 
 )
 def metrics(
-    #metric_1: dict[str, float], metric_2: dict[str, float]
     total_mae: dict[str, float],
     alkane_mae: dict[str, float],
     cumulene_mae: dict[str, float],
@@ -393,10 +225,12 @@ def metrics(
 
     Parameters
     ----------
-    metric_1
-        Metric 1 value for all models.
-    metric_2
-        Metric 2 value for all models.
+    tota_mae
+        Total MAE value for all models.
+    alkane_mae
+        Alkane MAE value for all models.
+    cumulene_mae
+        Cumulene MAE value for all models.
 
     Returns
     -------
