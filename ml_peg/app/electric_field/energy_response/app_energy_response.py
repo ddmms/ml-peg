@@ -17,7 +17,7 @@ from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "energy_response Total Energies"
+BENCHMARK_NAME = "Energy response"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy_response"
 )
@@ -30,7 +30,7 @@ class EnergyResponseApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         scatter = read_plot(
-            DATA_PATH / "figure_total_energy_response.json",
+            DATA_PATH / "figure_energy_responses.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
 
@@ -55,7 +55,7 @@ class EnergyResponseApp(BaseApp):
         )
 
 
-def get_app() -> energy_responseApp:
+def get_app() -> EnergyResponseApp:
     """
     Get energy_response benchmark app layout and callback registration.
 
@@ -66,7 +66,7 @@ def get_app() -> energy_responseApp:
     """
     return EnergyResponseApp(
         name=BENCHMARK_NAME,
-        description="Total energies for linear organic molecules.",
+        description="Energy responses of linear organic molecules to external electric fields.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "energy_response_metrics_table.json",
         extra_components=[
