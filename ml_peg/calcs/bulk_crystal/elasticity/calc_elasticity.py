@@ -160,16 +160,35 @@ class CustomElasticityBenchmark(Benchmark):
             ),
             f"crystal_system_{model_name}": key,
         }
-        
-        
+
+
 def elastic_tensor_to_voigt(x):
     """
     Convert elastic tensor-like objects to 6x6 Voigt form.
-    For some models, matcalc returns the tensor as a plain 
-    numpy.ndarray with shape (3, 3, 3, 3), not as a pymatgen 
-    tensor object. NumPy arrays do not have .voigt, so the 
-    final dataframe conversion fails -> we need to be robust to this
 
+    For some models, matcalc returns the tensor as a plain
+    numpy.ndarray with shape (3, 3, 3, 3), not as a pymatgen
+    tensor object. NumPy arrays do not have .voigt, so the
+    final dataframe conversion fails, so this conversion must handle both forms.
+
+    Parameters
+    ----------
+    x : object
+        Elastic tensor-like object to convert. This may be None, NaN, an object
+        with a voigt attribute, a dictionary containing a raw tensor, a 6x6
+        array, or a 3x3x3x3 array.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Tensor in 6x6 Voigt form, or None if ``x`` is None or NaN.
+
+    Raises
+    ------
+    TypeError
+        If ``x`` is a dictionary without a raw tensor entry.
+    ValueError
+        If the tensor shape is unsupported.
     """
     if x is None:
         return None
@@ -206,13 +225,12 @@ def elastic_tensor_to_voigt(x):
         ]
 
         out = np.empty((6, 6), dtype=arr.dtype)
-        for I, (i, j) in enumerate(voigt_pairs):
-            for J, (k, l) in enumerate(voigt_pairs):
-                out[I, J] = arr[i, j, k, l]
+        for row_idx, (i, j) in enumerate(voigt_pairs):
+            for col_idx, (k, m) in enumerate(voigt_pairs):
+                out[row_idx, col_idx] = arr[i, j, k, m]
         return out
 
     raise ValueError(f"Unsupported elastic tensor shape: {arr.shape}")
-
 
 
 def run_elasticity_benchmark(
