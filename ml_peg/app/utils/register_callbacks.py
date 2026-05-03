@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+import dash
 from dash import (
     MATCH,
     ClientsideFunction,
@@ -35,8 +36,6 @@ from ml_peg.app.utils.utils import (
     format_tooltip_headers,
     get_scores,
 )
-
-_PLOT_DOWNLOAD_CALLBACK_REGISTERED = False
 
 
 def apply_level_of_theory_warnings(
@@ -811,18 +810,18 @@ def register_normalization_callbacks(
 
 
 def register_plot_download_callbacks() -> None:
-    """Register one generic plot download callback for CSV and SVG."""
-    global _PLOT_DOWNLOAD_CALLBACK_REGISTERED
-    if _PLOT_DOWNLOAD_CALLBACK_REGISTERED:
+    """Register one generic plot download callback once per Dash app."""
+    app = dash.get_app()
+    output = Output({"type": "plot-download", "index": MATCH}, "data")
+    if str(output) in app.callback_map:
         return
-    _PLOT_DOWNLOAD_CALLBACK_REGISTERED = True
 
-    clientside_callback(
+    app.clientside_callback(
         ClientsideFunction(
             namespace="plot_download",
             function_name="downloadPlot",
         ),
-        Output({"type": "plot-download", "index": MATCH}, "data"),
+        output,
         Input({"type": "plot-download-button", "index": MATCH}, "n_clicks"),
         State({"type": "plot-download-format", "index": MATCH}, "value"),
         State({"type": "plot-download-target", "index": MATCH}, "data"),
