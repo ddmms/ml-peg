@@ -28,7 +28,7 @@ from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
 
 
-def _plot_with_download_controls(graph: Graph) -> Div:
+def plot_with_download_controls(graph: Graph) -> Div:
     """
     Wrap a Plotly graph with CSV/PNG/SVG/HTML download controls.
 
@@ -89,7 +89,7 @@ def plot_from_table_column(
         column_id = active_cell.get("column_id", None)
         if column_id:
             if column_id in column_to_plot:
-                return _plot_with_download_controls(column_to_plot[column_id]), None
+                return plot_with_download_controls(column_to_plot[column_id]), None
             raise PreventUpdate
         raise ValueError("Invalid column_id")
 
@@ -155,7 +155,7 @@ def plot_from_table_cell(
                 pass  # Fall through to normal handling
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
-            return _plot_with_download_controls(cell_to_plot[row_id][column_id]), None
+            return plot_with_download_controls(cell_to_plot[row_id][column_id]), None
         return Div("Click on a metric to view plot."), None
 
 
@@ -202,7 +202,7 @@ def plot_from_scatter(
         idx = click_data["points"][0]["pointNumber"]
 
         if idx >= 0 and idx < len(plots_list):
-            return _plot_with_download_controls(plots_list[idx])
+            return plot_with_download_controls(plots_list[idx])
         return Div("Click on a metric to view plot.")
 
 
