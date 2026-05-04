@@ -1,0 +1,29 @@
+metrics:
+  MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  Ion-Ion MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  Ion-Neutral MAE:
+    good: 0.5
+    bad: 50.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error for all systems
+    level_of_theory: CCSD(T)
+    weight: 1
+  R²:
+    good: 1
+    bad: 0.5
+    unit: null
+    tooltip: Mean Absolute Error for neutral systems
+    level_of_theory: CCSD(T)
+    weight: 1

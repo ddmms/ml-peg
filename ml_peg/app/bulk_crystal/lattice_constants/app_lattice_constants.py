@@ -9,8 +9,8 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -37,13 +37,13 @@ class LatticeConstantsApp(BaseApp):
             if struct_file.stem == "SiC":
                 structs.extend(
                     [
-                        f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                        f"/assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
                     ]
                     * 2
                 )
             else:
                 structs.append(
-                    f"assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
+                    f"/assets/bulk_crystal/lattice_constants/{MODELS[0]}/{struct_file.stem}.xyz"
                 )
 
         plot_from_table_column(

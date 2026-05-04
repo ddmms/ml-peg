@@ -13,8 +13,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -81,6 +81,10 @@ def load_structures(data_dir: Path) -> dict[str, dict[str, Iterable[Atoms]]]:
             molecules[molecule]["ground"] = atoms
         else:
             molecules[molecule]["conformers"].append(atoms)
+
+        # Set default charge and spin
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
 
     for mol, entries in molecules.items():
         if entries["ground"] is None:
@@ -181,7 +185,7 @@ def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)

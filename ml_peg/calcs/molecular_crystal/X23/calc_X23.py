@@ -12,8 +12,8 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -35,7 +35,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
@@ -60,10 +60,16 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
         molecule = read(molecule_path, index=0, format="vasp")
         molecule.calc = calc
+        # Set default charge and spin
+        molecule.info.setdefault("charge", 0)
+        molecule.info.setdefault("spin", 1)
         molecule.get_potential_energy()
 
         solid = read(solid_path, index=0, format="vasp")
         solid.calc = copy(calc)
+        # Set default charge and spin
+        solid.info.setdefault("charge", 0)
+        solid.info.setdefault("spin", 1)
         solid.get_potential_energy()
 
         ref = np.loadtxt(ref_path)[0]

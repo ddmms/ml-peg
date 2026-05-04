@@ -14,8 +14,8 @@ from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -100,11 +100,16 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
             atoms.calc = copy(calc)
             if len(atoms) == 1:
                 atoms.pbc = False
+
+            # Set default charge and spin
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
+
             atoms.get_potential_energy()
 
     def run(self):
         """Run oxygen adsorption energy calculations."""
-        calc = self.model.get_calculator()
+        calc = self.model.get_calculator(precision="high")
         # Get benchmark data
         data_dir = (
             download_s3_data(

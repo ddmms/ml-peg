@@ -42,7 +42,11 @@ def plot_from_table_column(
         Dictionary relating table headers (keys) and plot to show (values).
     """
 
-    @callback(Output(plot_id, "children"), Input(table_id, "active_cell"))
+    @callback(
+        Output(plot_id, "children"),
+        Output(table_id, "active_cell"),
+        Input(table_id, "active_cell"),
+    )
     def show_plot(active_cell) -> Div:
         """
         Register callback to show plot when a table column is clicked.
@@ -58,11 +62,11 @@ def plot_from_table_column(
             Message explaining interactivity, or plot on table click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot.")
+            return Div("Click on a metric to view plot."), None
         column_id = active_cell.get("column_id", None)
         if column_id:
             if column_id in column_to_plot:
-                return Div(column_to_plot[column_id])
+                return Div(column_to_plot[column_id]), None
             raise PreventUpdate
         raise ValueError("Invalid column_id")
 
@@ -91,8 +95,9 @@ def plot_from_table_cell(
 
     @callback(
         Output(plot_id, "children"),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
-        Input(table_id, "data"),
+        State(table_id, "data"),
     )
     def show_plot(active_cell, current_table_data) -> Div:
         """
@@ -111,7 +116,7 @@ def plot_from_table_cell(
             Message explaining interactivity, or plot on cell click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot.")
+            return Div("Click on a metric to view plot."), None
         column_id = active_cell.get("column_id", None)
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
@@ -121,12 +126,58 @@ def plot_from_table_cell(
             try:
                 cell_value = current_table_data[row_index].get(column_id)
                 if cell_value is None:
-                    return Div("No data available for this model.")
+                    return Div("No data available for this model."), None
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
-            return Div(cell_to_plot[row_id][column_id])
+            return Div(cell_to_plot[row_id][column_id]), None
+        return Div("Click on a metric to view plot."), None
+
+
+def plot_from_scatter(
+    scatter_id: str,
+    plot_id: str,
+    plots_list: list[Graph],
+) -> None:
+    """
+    Attach callback to show plot when a scatter point is clicked.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    plot_id
+        ID for Dash plot placeholder Div where new plot will be rendered.
+    plots_list
+        List of plots to show, in same order as scatter data.
+    """
+
+    @callback(
+        Output(plot_id, "children", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_plot(click_data) -> Div:
+        """
+        Register callback to show plot when a scatter point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div
+            Plot on scatter click.
+        """
+        if not click_data:
+            return Div("Click on a metric to view plot.")
+        idx = click_data["points"][0]["pointNumber"]
+
+        if idx >= 0 and idx < len(plots_list):
+            return Div(plots_list[idx])
         return Div("Click on a metric to view plot.")
 
 
@@ -195,6 +246,90 @@ def struct_from_scatter(
         )
 
 
+def struct_from_multi_scatters(
+    scatter_id: str,
+    struct_id: str,
+    structs: list[str] | list[list[str]],
+    mode: Literal["struct", "traj"] = "struct",
+) -> None:
+    """
+    Attach callback to show a structure when a multiline scatter point is clicked.
+
+    Unlike `struct_from_scatter`, which accepts a single traj file or single list of
+    struct files and renders a struct based on the clicked point index, this callback
+    instead accepts a list of traj files or a list of list of struct files which is
+    rendered based on the clicked curve number and then point index.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    struct_id
+        ID for Dash plot placeholder Div where structures will be visualised.
+    structs
+        List of list of structure filenames, with outer list in same order as curves to
+        be visualised, and inner list in same order as scatter data to be visualised.
+    mode
+        Whether to display a single structure ("struct"), or trajectory from an initial
+        image ("traj"). Default is "struct".
+
+    Examples
+    --------
+    >>> struct_from_multi_scatters(
+    >>>     scatter_id="test-figure",
+    >>>     struct_id="test-placeholder",
+    >>>     structs=[["config-i-j.xyz", ...], ...],
+    >>>     mode="struct",
+    >>> )
+
+    When the `i`th data point of the `j`th curve of "test-figure" is clicked,
+    `structs[j][i]` will be rendered in the "test-placeholder" Div.
+    """
+
+    @callback(
+        Output(struct_id, "children", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_struct(click_data):
+        """
+        Register callback to show structure when a multiline scatter point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div
+            Visualised structure on plot click.
+        """
+        if not click_data:
+            return Div("Click on a metric to view the structure.")
+        curve_number = click_data["points"][0]["curveNumber"]
+        idx = click_data["points"][0]["pointNumber"]
+
+        if isinstance(structs[curve_number], str):
+            struct = structs[curve_number]
+            index = idx
+        else:
+            struct = structs[curve_number][idx]
+            index = 0
+
+        return Div(
+            Iframe(
+                srcDoc=generate_weas_html(struct, mode, index),
+                style={
+                    "height": "550px",
+                    "width": "100%",
+                    "border": "1px solid #ddd",
+                    "borderRadius": "5px",
+                },
+            )
+        )
+
+
 def struct_from_table(
     table_id: str,
     struct_id: str,
@@ -219,6 +354,7 @@ def struct_from_table(
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
         prevent_initial_call="initial_duplicate",
     )
@@ -237,7 +373,7 @@ def struct_from_table(
             Visualised structure on plot click.
         """
         if not active_cell:
-            return Div("Click on a metric to view the structure.")
+            return Div("Click on a metric to view the structure."), None
 
         column_id = active_cell.get("column_id", None)
         if column_id:
@@ -254,7 +390,7 @@ def struct_from_table(
                             "borderRadius": "5px",
                         },
                     )
-                )
+                ), None
 
             raise PreventUpdate
         raise ValueError("Invalid column_id")
@@ -644,6 +780,7 @@ def scatter_and_assets_from_table(
         Output(plot_container_id, "children"),
         Output(scatter_metadata_store_id, "data"),
         Output(last_cell_store_id, "data"),
+        Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
         State(last_cell_store_id, "data"),
         prevent_initial_call=True,
@@ -705,7 +842,7 @@ def scatter_and_assets_from_table(
             raise PreventUpdate
         content, metadata = result
 
-        return content, metadata, active_cell
+        return content, metadata, active_cell, None
 
 
 def model_asset_from_scatter(

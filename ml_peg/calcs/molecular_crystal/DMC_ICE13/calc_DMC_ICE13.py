@@ -11,8 +11,8 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -31,7 +31,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
@@ -55,6 +55,9 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     ]
     water = read(data_dir / "water/POSCAR", "0")
     water.calc = calc
+    # Set default charge and spin
+    water.info.setdefault("charge", 0)
+    water.info.setdefault("spin", 1)
     water.get_potential_energy()
 
     for polymorph in polymorphs:
@@ -63,6 +66,9 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         ref = ice_ref[polymorph]
 
         struct.calc = copy(calc)
+        # Set default charge and spin
+        struct.info.setdefault("charge", 0)
+        struct.info.setdefault("spin", 1)
         struct.get_potential_energy()
         struct.info["ref"] = ref
         struct.info["polymorph"] = polymorph

@@ -11,8 +11,8 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -33,7 +33,7 @@ class GMTKN55App(BaseApp):
         # Assets dir will be parent directory - individual files for each polymorph
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"assets/molecular/GMTKN55/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/molecular/GMTKN55/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(
                 structs_dir.glob("*.xyz"), key=lambda f: int(Path(f).stem)
             )
