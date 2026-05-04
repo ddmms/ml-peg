@@ -141,7 +141,6 @@ class CustomElasticityBenchmark(Benchmark):
         dict
             Dictionary of processed elastic properties.
         """
-        key = get_crystal_system(result["final_structure"])
         return {
             f"bulk_modulus_vrh_{model_name}": (
                 result["bulk_modulus_vrh"] * eVA3ToGPa
@@ -158,7 +157,11 @@ class CustomElasticityBenchmark(Benchmark):
                 if result is not None
                 else float("nan")
             ),
-            f"crystal_system_{model_name}": key,
+            f"crystal_system_{model_name}": (
+                get_crystal_system(result["final_structure"])
+                if result is not None
+                else None
+            ),
         }
 
 
