@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+import copy
+import functools
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -927,6 +929,7 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
+@functools.cache
 def load_framework_registry() -> dict[str, FrameworkEntry]:
     """
     Load framework badge metadata from ``frameworks.yml``.
@@ -1005,7 +1008,7 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
     normalized_id = normalize_framework_id(framework_id)
     registry = load_framework_registry()
     try:
-        return registry[normalized_id]
+        return copy.deepcopy(registry[normalized_id])
     except KeyError as exc:
         known_ids = ", ".join(sorted(registry))
         raise ValueError(
