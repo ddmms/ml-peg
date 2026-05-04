@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_MODEL_NAMES = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "superacids" / "HF_SbF5_density" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "superacids" / "HF_SbF5_density"
 
@@ -34,7 +35,7 @@ REF_DENSITIES = {
 
 
 # amu to g conversion factor
-AMU_TO_G = 1.66053906660e-24  # g per amu
+AMU_TO_G = 1000 / units.kg
 A3_TO_CM3 = 1e-24
 
 
@@ -169,7 +170,7 @@ def density_errors(densities) -> dict[str, float]:
     filename=OUT_PATH / "hf_sbf5_density_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_MODEL_NAMES,
 )
 def metrics(density_errors: dict[str, float]) -> dict[str, dict]:
     """

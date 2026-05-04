@@ -23,12 +23,7 @@ from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-
-# Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
-
 
 # Simulation parameters
 TEMPERATURE_K = 288.6
