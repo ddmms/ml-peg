@@ -68,7 +68,6 @@ def get_dipoles() -> dict[str, np.ndarray]:
                     )
                 dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
                 results[model_name] = dipoles_unit_area
-                np.save(model_dir / "dipoles.npy", dipoles_unit_area)
     return results
 
 
@@ -97,7 +96,7 @@ def plot_distribution(model: str) -> None:
     )
     def plot_distr() -> dict[str, np.ndarray]:
         """
-        Plot a NEB and save the structure file.
+        Obtain all total z dipoles for each model.
 
         Returns
         -------
