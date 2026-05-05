@@ -162,6 +162,77 @@ class CustomElasticityBenchmark(Benchmark):
         }
 
 
+def elastic_tensor_to_voigt(x):
+    """
+    Convert elastic tensor-like objects to 6x6 Voigt form.
+
+    For some models, matcalc returns the tensor as a plain
+    numpy.ndarray with shape (3, 3, 3, 3), not as a pymatgen
+    tensor object. NumPy arrays do not have .voigt, so the
+    final dataframe conversion fails, so this conversion must handle both forms.
+
+    Parameters
+    ----------
+    x : object
+        Elastic tensor-like object to convert. This may be None, NaN, an object
+        with a voigt attribute, a dictionary containing a raw tensor, a 6x6
+        array, or a 3x3x3x3 array.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Tensor in 6x6 Voigt form, or None if ``x`` is None or NaN.
+
+    Raises
+    ------
+    TypeError
+        If ``x`` is a dictionary without a raw tensor entry.
+    ValueError
+        If the tensor shape is unsupported.
+    """
+    if x is None:
+        return None
+
+    if isinstance(x, float) and np.isnan(x):
+        return None
+
+    # pymatgen Tensor / ElasticTensor case
+    if hasattr(x, "voigt"):
+        return np.asarray(x.voigt)
+
+    # benchmark dict case, e.g. DFT field
+    if isinstance(x, dict):
+        if "raw" in x:
+            x = x["raw"]
+        else:
+            raise TypeError(f"Cannot convert tensor dict with keys {x.keys()}")
+
+    arr = np.asarray(x)
+
+    # Already Voigt
+    if arr.shape == (6, 6):
+        return arr
+
+    # Full rank-4 tensor C_ijkl
+    if arr.shape == (3, 3, 3, 3):
+        voigt_pairs = [
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (1, 2),
+            (0, 2),
+            (0, 1),
+        ]
+
+        out = np.empty((6, 6), dtype=arr.dtype)
+        for row_idx, (i, j) in enumerate(voigt_pairs):
+            for col_idx, (k, m) in enumerate(voigt_pairs):
+                out[row_idx, col_idx] = arr[i, j, k, m]
+        return out
+
+    raise ValueError(f"Unsupported elastic tensor shape: {arr.shape}")
+
+
 def run_elasticity_benchmark(
     *,
     calc,
@@ -253,15 +324,9 @@ def run_elasticity_benchmark(
     # Drop structure column before CSV processing
     results = results.drop(columns=["final_structure"], errors="ignore")
 
-    results["elastic_tensor_DFT"] = results["elastic_tensor_DFT"].apply(
-        lambda x: np.array(x["raw"]) if x is not None else None
-    )
-
     for col in results.columns:
-        if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
-            results[col] = results[col].apply(
-                lambda x: x.voigt if x is not None else None
-            )
+        if col.startswith("elastic_tensor_"):
+            results[col] = results[col].apply(elastic_tensor_to_voigt)
 
     results.to_csv(out_dir / "moduli_results.csv", index=False)
 
