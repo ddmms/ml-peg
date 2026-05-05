@@ -9,12 +9,13 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import (
+    build_download_controls,
     build_faqs,
     build_footer,
     build_weight_components,
@@ -27,13 +28,13 @@ from ml_peg.app.utils.onboarding import (
 from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
-    calculate_column_widths,
     get_framework_config,
+    get_mlip_column_width,
     load_model_registry_configs,
     sig_fig_format,
 )
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -143,6 +144,42 @@ def _default_weight_store_data(table: DataTable) -> dict[str, float]:
         if column_id not in reserved:
             weights.setdefault(column_id, 1.0)
     return weights
+
+
+def _format_summary_column_header(column_id: str) -> str:
+    """
+    Format summary-table headers for more compact wrapping.
+
+    Non-static summary columns always place ``Score`` on its own line. Longer
+    multi-word titles are split across two title lines first, yielding a compact
+    three-line header.
+
+    Parameters
+    ----------
+    column_id
+        Summary-table column identifier.
+
+    Returns
+    -------
+    str
+        Header label with explicit newline breaks.
+    """
+    if column_id in {"MLIP", "Score"} or not column_id.endswith(" Score"):
+        return column_id
+
+    title = column_id.removesuffix(" Score")
+    if len(title) > 14 and " " in title:
+        words = title.split()
+        split_index = min(
+            range(1, len(words)),
+            key=lambda index: abs(
+                len(" ".join(words[:index])) - len(" ".join(words[index:]))
+            ),
+        )
+        title = "\n".join(
+            [" ".join(words[:split_index]), " ".join(words[split_index:])]
+        )
+    return f"{title}\nScore"
 
 
 def _framework_sidebar_label(framework_id: str, label: str) -> Div:
@@ -436,9 +473,10 @@ def build_category(
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
-            header="Benchmark weights",
+            header="Weights",
             table=summary_table,
             include_store=False,
+            include_download_controls=False,
             column_widths=getattr(summary_table, "column_widths", None),
         )
 
@@ -505,8 +543,15 @@ def build_category_page_layout(
         [
             H1(category_title),
             H3(category_description),
-            summary_table,
-            weight_components,
+            Div(
+                [
+                    build_download_controls(summary_table.id, row=True),
+                    Div(summary_table),
+                    Br(),
+                    weight_components,
+                ],
+                style={"width": "fit-content"},
+            ),
             Div(
                 [
                     Div(
@@ -669,8 +714,23 @@ def build_summary_table(
     data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
+    if table_id == "summary-table":
+        display_headers = {
+            header: (
+                header
+                if header in {"MLIP", "Score"} or not header.endswith(" Score")
+                else "\n".join([*header.removesuffix(" Score").split(), "Score"])
+            )
+            for header in columns_headers
+        }
+    else:
+        display_headers = {
+            header: _format_summary_column_header(header) for header in columns_headers
+        }
 
-    columns = [{"name": headers, "id": headers} for headers in columns_headers]
+    columns = [
+        {"name": display_headers[header], "id": header} for header in columns_headers
+    ]
     tooltip_header = {
         header + " Score": table.description for header, table in tables.items()
     }
@@ -700,12 +760,18 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
-    # Calculate column widths based on column names
-    calculated_widths = calculate_column_widths(columns_headers)
-    # Limit max width to 150px for better wrapping on long column names
-    column_widths = {
-        col_id: min(width, 150) for col_id, width in calculated_widths.items()
-    }
+    summary_header_padding = 12 if table_id == "summary-table" else 24
+    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
+    column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
+    for column_id in columns_headers:
+        if column_id in {"MLIP", "Score"}:
+            continue
+        longest_line = max(
+            len(line) for line in display_headers[column_id].splitlines()
+        )
+        column_widths[column_id] = min(
+            max(longest_line * 9 + summary_header_padding, 100), 150
+        )
 
     style_cell_conditional = []
     for column_id, width in column_widths.items():
@@ -731,13 +797,13 @@ def build_summary_table(
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
         style_header={
-            "whiteSpace": "normal",
+            "whiteSpace": "pre-line",
             "height": "auto",
             "minHeight": "70px",
             "textAlign": "center",
             "verticalAlign": "middle",
             "lineHeight": "1.4",
-            "padding": "8px",
+            "padding": header_cell_padding,
         },
         style_header_conditional=[
             {
@@ -753,6 +819,7 @@ def build_summary_table(
         persisted_props=["data"],
         tooltip_header=tooltip_header,
         editable=False,
+        fill_width=False,
     )
     table.column_widths = column_widths
     table.description = description
@@ -825,9 +892,11 @@ def build_nav(
                         options=model_options,
                         value=MODELS,
                         multi=True,
+                        maxHeight=600,
+                        optionHeight=10,
                         placeholder="Select visible models",
                         closeOnSelect=False,
-                        style={"fontSize": "13px"},
+                        style={"fontSize": "12px"},
                     ),
                 ],
                 style={"padding": "8px 12px"},
@@ -835,6 +904,42 @@ def build_nav(
         ],
         id="model-filter-details",
         open=True,
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
+    _summary_label_style = {
+        "cursor": "pointer",
+        "fontWeight": "600",
+        "fontSize": "11px",
+        "textTransform": "uppercase",
+        "letterSpacing": "0.07em",
+        "color": "#6c757d",
+        "padding": "5px",
+    }
+    cmap_selector = Details(
+        [
+            Summary("Colour scheme", style=_summary_label_style),
+            Div(
+                Dropdown(
+                    id="cmap-dropdown",
+                    options=[
+                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
+                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
+                        {
+                            "label": "Green-Red",
+                            "value": "RdYlGn_r",
+                        },
+                    ],
+                    value="viridis_r",
+                    clearable=False,
+                    persistence=True,
+                    persistence_type="local",
+                    persisted_props=["value"],
+                    style={"fontSize": "13px"},
+                ),
+                style={"padding": "8px 12px"},
+            ),
+        ],
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
@@ -878,6 +983,7 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
+        Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
     ]
 
@@ -929,6 +1035,7 @@ def build_nav(
                         Div(
                             [
                                 model_filter,
+                                cmap_selector,
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -1014,6 +1121,42 @@ def build_nav(
         raise PreventUpdate
 
     @callback(
+        Output("cmap-dropdown", "value"),
+        Output("cmap-store", "data"),
+        Input("cmap-dropdown", "value"),
+        Input("cmap-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_cmap(
+        cmap_name: str | None, stored_cmap: str | None
+    ) -> tuple[str, str | object]:
+        """
+        Keep the colour scheme dropdown and backing store synchronised.
+
+        Parameters
+        ----------
+        cmap_name
+            Matplotlib colormap name selected from the dropdown control.
+        stored_cmap
+            Previously persisted colormap name from ``cmap-store``.
+
+        Returns
+        -------
+        tuple[str, str | object]
+            Dropdown value and store payload, or ``dash.no_update`` when only
+            the dropdown needs syncing from the stored value.
+        """
+        trigger_id = ctx.triggered_id
+
+        if trigger_id in (None, "cmap-store"):
+            selected = stored_cmap or "viridis_r"
+            return selected, no_update
+        if trigger_id == "cmap-dropdown":
+            selected = cmap_name or "viridis_r"
+            return selected, selected
+        raise PreventUpdate
+
+    @callback(
         Output("model-filter-details", "open"),
         Input("app-location", "pathname"),
         prevent_initial_call=False,
@@ -1063,8 +1206,29 @@ def build_nav(
             return Div(
                 [
                     H1("Categories Summary"),
-                    summary_table,
-                    weight_components,
+                    Div(
+                        "Scores range from 0 (worst) to 1 (best).",
+                        style={
+                            "fontSize": "14px",
+                            "fontWeight": "600",
+                            "color": "#212529",
+                            "backgroundColor": "#e8f4fd",
+                            "border": "1px solid #bee3f8",
+                            "borderRadius": "6px",
+                            "padding": "8px 14px",
+                            "marginBottom": "16px",
+                            "width": "fit-content",
+                        },
+                    ),
+                    Div(
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            Div(summary_table),
+                            Br(),
+                            weight_components,
+                        ],
+                        style={"width": "fit-content"},
+                    ),
                     build_faqs(),
                 ]
             ), sidebar_children
@@ -1110,9 +1274,10 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     # Build overall summary table
     summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
-        header="Category weights",
+        header="Weights",
         table=summary_table,
         include_store=False,
+        include_download_controls=False,
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation

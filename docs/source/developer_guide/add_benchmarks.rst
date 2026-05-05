@@ -109,7 +109,7 @@ the same calculation is run for each model name-model pair:
 .. code-block:: python3
 
     from ml_peg.models.get_models import load_models
-    from ml_peg.models.models import current_models
+    from ml_peg.models import current_models
 
     MODELS = load_models(current_models)
     DATA_PATH = Path(__file__).parent / "data"
@@ -350,7 +350,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
     from ml_peg.app import APP_ROOT
     from ml_peg.calcs import CALCS_ROOT
     from ml_peg.models.get_models import get_model_names
-    from ml_peg.models.models import current_models
+    from ml_peg.models import current_models
 
     MODELS = get_model_names(current_models)
     CALC_PATH = CALCS_ROOT / [category] / [benchmark_name] / "outputs"

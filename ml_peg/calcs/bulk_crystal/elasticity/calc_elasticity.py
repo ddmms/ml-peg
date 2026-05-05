@@ -17,8 +17,8 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -278,7 +278,7 @@ def test_elasticity(mlip: tuple[str, Any]) -> None:
         Model entry containing name and object capable of providing a calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     run_elasticity_benchmark(
         calc=calc,
         model_name=model_name,

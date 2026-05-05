@@ -1,0 +1,44 @@
+metrics:
+  # 2D structures
+  Area MAE (2D):
+    good: 0.05
+    bad: 0.15
+    unit: "Å²/atom"
+    tooltip: "Mean Absolute Error of area per atom for 2D structures compared to PBE"
+    level_of_theory: PBE
+
+  Energy MAE (2D):
+    good: 0.02
+    bad: 0.03
+    unit: "eV/atom"
+    tooltip: "Mean Absolute Error of energy per atom for 2D structures compared to PBE"
+    level_of_theory: PBE
+
+  Convergence (2D):
+    good: 100.0
+    bad: 99.0
+    unit: "%"
+    tooltip: "Percentage of 2D structures that converged during relaxation"
+    level_of_theory: PBE
+
+  # 1D structures
+  Length MAE (1D):
+    good: 0.01
+    bad: 0.05
+    unit: "Å/atom"
+    tooltip: "Mean Absolute Error of chain length per atom for 1D structures compared to PBE"
+    level_of_theory: PBE
+
+  Energy MAE (1D):
+    good: 0.02
+    bad: 0.03
+    unit: "eV/atom"
+    tooltip: "Mean Absolute Error of energy per atom for 1D structures compared to PBE"
+    level_of_theory: PBE
+
+  Convergence (1D):
+    good: 100.0
+    bad: 99.0
+    unit: "%"
+    tooltip: "Percentage of 1D structures that converged during relaxation"
+    level_of_theory: PBE

@@ -15,8 +15,8 @@ from ml_peg.calcs.bulk_crystal.high_pressure_relaxation.calc_high_pressure_relax
     load_structures,
     relax_with_pressure,
 )
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 N_TEST_STRUCTURES = 3
 VOLUME_ATOL = 0.001

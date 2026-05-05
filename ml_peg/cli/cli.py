@@ -97,6 +97,15 @@ def run_dash_app(
             )
         ),
     ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
     category: Annotated[
         AppCategories,
         Option(
@@ -115,6 +124,8 @@ def run_dash_app(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
     port
@@ -126,6 +137,7 @@ def run_dash_app(
 
     # Overwrite current_models before it is imported elsewhere
     ml_peg_models.current_models = models
+    ml_peg_models.models_file = models_file
 
     from ml_peg.app.run_app import run_app
 
@@ -143,6 +155,15 @@ def run_calcs(
         str | None,
         Option(
             help="Comma-separated models to run calculations on. Default is all models."
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
         ),
     ] = None,
     category: Annotated[
@@ -175,6 +196,8 @@ def run_calcs(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run calculations for. Default is `*`, corresponding to all
         categories.
@@ -210,6 +233,9 @@ def run_calcs(
     if models:
         options.extend(["--models", models])
 
+    if models_file:
+        options.extend(["--models-file", models_file])
+
     # Parse any custom options to pytest
     options.extend(ctx.args)
 
@@ -222,6 +248,15 @@ def run_analysis(
         str | None,
         Option(
             help="Comma-separated models to run analysis for. Default is all models."
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
         ),
     ] = None,
     category: Annotated[
@@ -246,6 +281,8 @@ def run_analysis(
     models
         Models to run analysis for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run analysis for. Default is `*`, corresponding to all categories.
     test
@@ -270,6 +307,9 @@ def run_analysis(
 
     if models:
         options.extend(["--models", models])
+
+    if models_file:
+        options.extend(["--models-file", models_file])
 
     pytest.main(options)
 
@@ -384,11 +424,31 @@ def list_apps(
 
 
 @list_app.command(name="models", help="List models currently available")
-def list_models() -> None:
-    """List currently available models."""
+def list_models(
+    models_file: Annotated[
+        str,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """
+    List currently available models.
+
+    Parameters
+    ----------
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
+    """
     from ml_peg.models.get_models import get_model_names
 
-    print(f"Available models: {', '.join(get_model_names())}")
+    if models_file is None:
+        from ml_peg.models import models_file
+
+    print(f"Available models: {', '.join(get_model_names(filepath=models_file))}")
 
 
 @app.command(name="download", help="Download data from S3 bucket")

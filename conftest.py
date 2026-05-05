@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from ml_peg.models import models
+from ml_peg import models
 
 
 def pytest_addoption(parser):
@@ -31,6 +31,12 @@ def pytest_addoption(parser):
         default=None,
         help="MLIPs, in comma-separated list. Default is all models",
     )
+    parser.addoption(
+        "--models-file",
+        action="store",
+        default=None,
+        help="Filepath to model definitions. Default models.yml in models directory.",
+    )
 
 
 def pytest_configure(config):
@@ -41,6 +47,9 @@ def pytest_configure(config):
 
     # Set current models from CLI input
     models.current_models = config.getoption("--models")
+    model_file = config.getoption("--models-file")
+    if model_file:
+        models.models_file = model_file
 
 
 def pytest_collection_modifyitems(config, items):
