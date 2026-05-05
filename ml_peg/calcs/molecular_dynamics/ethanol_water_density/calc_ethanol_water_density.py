@@ -39,7 +39,7 @@ ATM = 1.01325 * units.bar
 TEMPERATURE = 298.15
 LANGEVIN_FRICTION = 1 / (500 * units.fs)
 
-N_COMPOSITIONS = 7
+N_COMPOSITIONS = 6
 
 
 @dataclass(frozen=True)
