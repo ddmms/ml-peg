@@ -473,7 +473,7 @@ def build_category(
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
-            header="Benchmark weights",
+            header="Weights",
             table=summary_table,
             include_store=False,
             include_download_controls=False,
@@ -907,6 +907,42 @@ def build_nav(
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
+    _summary_label_style = {
+        "cursor": "pointer",
+        "fontWeight": "600",
+        "fontSize": "11px",
+        "textTransform": "uppercase",
+        "letterSpacing": "0.07em",
+        "color": "#6c757d",
+        "padding": "5px",
+    }
+    cmap_selector = Details(
+        [
+            Summary("Colour scheme", style=_summary_label_style),
+            Div(
+                Dropdown(
+                    id="cmap-dropdown",
+                    options=[
+                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
+                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
+                        {
+                            "label": "Green-Red",
+                            "value": "RdYlGn_r",
+                        },
+                    ],
+                    value="viridis_r",
+                    clearable=False,
+                    persistence=True,
+                    persistence_type="local",
+                    persisted_props=["value"],
+                    style={"fontSize": "13px"},
+                ),
+                style={"padding": "8px 12px"},
+            ),
+        ],
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
     sidebar = Div(
         id="sidebar-nav",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
@@ -947,6 +983,7 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
+        Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
     ]
 
@@ -998,6 +1035,7 @@ def build_nav(
                         Div(
                             [
                                 model_filter,
+                                cmap_selector,
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -1079,6 +1117,42 @@ def build_nav(
             return stored, no_update
         if trigger_id == "model-filter-checklist":
             selected = checklist_value or []
+            return selected, selected
+        raise PreventUpdate
+
+    @callback(
+        Output("cmap-dropdown", "value"),
+        Output("cmap-store", "data"),
+        Input("cmap-dropdown", "value"),
+        Input("cmap-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_cmap(
+        cmap_name: str | None, stored_cmap: str | None
+    ) -> tuple[str, str | object]:
+        """
+        Keep the colour scheme dropdown and backing store synchronised.
+
+        Parameters
+        ----------
+        cmap_name
+            Matplotlib colormap name selected from the dropdown control.
+        stored_cmap
+            Previously persisted colormap name from ``cmap-store``.
+
+        Returns
+        -------
+        tuple[str, str | object]
+            Dropdown value and store payload, or ``dash.no_update`` when only
+            the dropdown needs syncing from the stored value.
+        """
+        trigger_id = ctx.triggered_id
+
+        if trigger_id in (None, "cmap-store"):
+            selected = stored_cmap or "viridis_r"
+            return selected, no_update
+        if trigger_id == "cmap-dropdown":
+            selected = cmap_name or "viridis_r"
             return selected, selected
         raise PreventUpdate
 
@@ -1200,7 +1274,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     # Build overall summary table
     summary_table = build_summary_table(cat_tables, weights=cat_weights)
     weight_components = build_weight_components(
-        header="Category weights",
+        header="Weights",
         table=summary_table,
         include_store=False,
         include_download_controls=False,

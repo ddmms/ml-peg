@@ -22,7 +22,12 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
-from ml_peg.app.utils.utils import calculate_column_widths, get_framework_config
+from ml_peg.app.utils.utils import (
+    build_threshold_input_style,
+    calculate_column_widths,
+    get_framework_config,
+    get_threshold_colours,
+)
 
 
 def grid_template_from_widths(
@@ -277,7 +282,7 @@ def build_weight_components(
             "padding": "2px 0px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
-            if header == "Metric Weights"
+            if header == "Weights"
             else "1px solid #dee2e6",
             "borderRadius": "6px",
             "width": "100%",
@@ -846,7 +851,7 @@ def build_test_layout(
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
-        header="Metric Weights",
+        header="Weights",
         table=table,
         use_thresholds=thresholds is not None,
         include_download_controls=False,
@@ -937,6 +942,7 @@ def build_threshold_inputs(
 
     cells: list[Div] = []
     default_thresholds: Thresholds = {}
+    threshold_colours = get_threshold_colours()
 
     cells.append(
         Div(
@@ -1024,7 +1030,7 @@ def build_threshold_inputs(
                 "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "lightseagreen",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1036,15 +1042,7 @@ def build_threshold_inputs(
                 value=good_val,
                 step=0.0001,
                 debounce=True,
-                style={
-                    "width": "60px",
-                    "fontSize": "12px",
-                    "padding": "2px 4px",
-                    "border": "1px solid lightseagreen",
-                    "borderRadius": "3px",
-                    "margin": "0 auto",
-                    "display": "block",
-                },
+                style=build_threshold_input_style(threshold_colours["good"]),
             ),
         ]
         if unit_label:
@@ -1068,7 +1066,7 @@ def build_threshold_inputs(
                 "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#dc3545",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1083,15 +1081,7 @@ def build_threshold_inputs(
                 value=bad_val,
                 step=0.0001,
                 debounce=True,
-                style={
-                    "width": "60px",
-                    "fontSize": "12px",
-                    "padding": "2px 4px",
-                    "border": "1px solid #dc3545",
-                    "borderRadius": "3px",
-                    "margin": "0 auto",
-                    "display": "block",
-                },
+                style=build_threshold_input_style(threshold_colours["bad"]),
             ),
         ]
         if unit_label:
