@@ -917,7 +917,7 @@ def build_nav(
                         {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
                         {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
                         {
-                            "label": "Green-Red (matches good/bad thresholds)",
+                            "label": "Green-Red",
                             "value": "RdYlGn_r",
                         },
                     ],
