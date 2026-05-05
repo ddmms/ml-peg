@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -323,6 +324,24 @@ def build_weight_components(
     return Div(layout)
 
 
+@cache
+def _load_faqs_yaml() -> list[dict[str, str]] | None:
+    """
+    Load FAQs from YAML file with caching to avoid repeated reads.
+
+    Returns
+    -------
+    list[dict[str, str]] | None
+        Parsed FAQs list, or None if the file is not found.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return None
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -332,13 +351,9 @@ def build_faqs() -> Div:
     Div
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
-    # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
+    faqs_data = _load_faqs_yaml()
 
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    if faqs_data is None:
         return Div(
             "FAQs file not found",
             style={
