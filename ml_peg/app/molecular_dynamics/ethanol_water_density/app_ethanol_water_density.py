@@ -17,7 +17,7 @@ from ml_peg.app.utils.load import read_plot
 CATEGORY = "molecular_dynamics"
 BENCHMARK_NAME = "ethanol_water_density"
 
-DOCS_URL = f"https://ddmms.github.io/ml-peg/user_guide/benchmarks/{CATEGORY}.html#ethanol-water-density-curves"
+DOCS_URL = f"https://ddmms.github.io/ml-peg/user_guide/benchmarks/{CATEGORY}.html#water-ethanol-density-curves"
 
 DATA_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK_NAME
 

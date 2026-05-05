@@ -12,8 +12,8 @@ from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 CATEGORY = "molecular_dynamics"
 BENCHMARK = "ethanol_water_density"

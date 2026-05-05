@@ -79,7 +79,7 @@ Reference data:
 
 
 Water ethanol density curves
-=======
+============================
 
 Summary
 -------

@@ -22,8 +22,8 @@ from ase.md.velocitydistribution import (
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 OUT_PATH = Path(__file__).parent / "outputs"
 CATEGORY = "molecular_dynamics"
@@ -148,7 +148,7 @@ def get_density_g_cm3(atoms):
     float
         Density in g/cm^3.
     """
-    amu_to_kg = 1.66053906660e-27
+    amu_to_kg = 1 / units.kg
     v_a3 = atoms.get_volume()
     v_m3 = v_a3 * 1e-30
     m_kg = atoms.get_masses().sum() * amu_to_kg
