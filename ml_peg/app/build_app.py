@@ -15,6 +15,7 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import (
+    build_download_controls,
     build_faqs,
     build_footer,
     build_weight_components,
@@ -475,6 +476,7 @@ def build_category(
             header="Benchmark weights",
             table=summary_table,
             include_store=False,
+            include_download_controls=False,
             column_widths=getattr(summary_table, "column_widths", None),
         )
 
@@ -542,7 +544,12 @@ def build_category_page_layout(
             H1(category_title),
             H3(category_description),
             Div(
-                [Div(summary_table), Br(), weight_components],
+                [
+                    build_download_controls(summary_table.id, row=True),
+                    Div(summary_table),
+                    Br(),
+                    weight_components,
+                ],
                 style={"width": "fit-content"},
             ),
             Div(
@@ -1140,7 +1147,12 @@ def build_nav(
                         },
                     ),
                     Div(
-                        [Div(summary_table), Br(), weight_components],
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            Div(summary_table),
+                            Br(),
+                            weight_components,
+                        ],
                         style={"width": "fit-content"},
                     ),
                     build_faqs(),
@@ -1191,6 +1203,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         header="Category weights",
         table=summary_table,
         include_store=False,
+        include_download_controls=False,
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation

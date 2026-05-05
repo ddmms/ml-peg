@@ -5,8 +5,21 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from dash import Input, Output, State, callback, ctx
+import dash
+from dash import (
+    MATCH,
+    ClientsideFunction,
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -794,3 +807,124 @@ def register_normalization_callbacks(
                 entry = cleaned_thresholds[metric]
                 return entry.get("good"), entry.get("bad")
             raise PreventUpdate
+
+
+def register_plot_download_callbacks() -> None:
+    """Register one generic plot download callback once per Dash app."""
+    app = dash.get_app()
+    output = Output({"type": "plot-download", "index": MATCH}, "data")
+    if str(output) in app.callback_map:
+        return
+
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace="plot_download",
+            function_name="downloadPlot",
+        ),
+        output,
+        Input({"type": "plot-download-button", "index": MATCH}, "n_clicks"),
+        State({"type": "plot-download-format", "index": MATCH}, "value"),
+        State({"type": "plot-download-target", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
+
+
+def register_download_callbacks(table_id: str) -> None:
+    """
+    Register minimal table download callbacks for CSV, PNG, and SVG.
+
+    CSV exports are generated from the table's Dash data payload. PNG/SVG exports
+    are different: Python sends a small request to the browser, then the browser
+    captures the table exactly as it has already been drawn on the page. That is
+    what preserves conditional colours, warning styles, current column headers, and
+    the table's CSS layout.
+
+    Parameters
+    ----------
+    table_id
+        ID of table to export.
+    """
+
+    @callback(
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
+        Input(f"{table_id}-download-button", "n_clicks"),
+        State(f"{table_id}-download-format", "value"),
+        State(table_id, "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+    )
+    def download_table(
+        n_clicks: int,
+        download_format: str,
+        table_data: list[dict] | None,
+        columns: list[dict] | None,
+    ) -> tuple[dict | Any, dict | Any]:
+        """
+        Dispatch table download request.
+
+        Parameters
+        ----------
+        n_clicks
+            Number of clicks on the download button.
+        download_format
+            Requested format, one of ``csv``, ``png``, or ``svg``.
+        table_data
+            Currently visible table rows.
+        columns
+            Current table column metadata.
+
+        Returns
+        -------
+        tuple[dict | Any, dict | Any]
+            Pair of payloads for ``download`` and ``download-request`` stores.
+            For CSV, the first item is a Dash download payload and the second is
+            ``no_update``. For PNG/SVG, the first item is ``no_update`` and the
+            second item is the client-side capture request.
+        """
+        if not n_clicks or not columns:
+            raise PreventUpdate
+
+        fmt = (download_format or "csv").lower()
+        filename_base = table_id.replace("_", "-")
+        column_ids = [col["id"] for col in columns if isinstance(col.get("id"), str)]
+        export_cols = [col for col in column_ids if col != "id"]
+
+        if fmt == "csv":
+            if table_data:
+                frame = pd.DataFrame(table_data)
+                frame = frame.reindex(columns=export_cols)
+            else:
+                frame = pd.DataFrame(columns=export_cols)
+            return (
+                dcc.send_data_frame(
+                    frame.to_csv,
+                    filename=f"{filename_base}.csv",
+                    index=False,
+                ),
+                no_update,
+            )
+
+        if fmt in {"png", "svg"}:
+            # Image exports need the already-rendered table, not a new table recreated
+            # from raw values. Send the target table id to the browser-side asset.
+            return (
+                no_update,
+                {
+                    "element_id": table_id,
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                },
+            )
+
+        raise PreventUpdate
+
+    clientside_callback(
+        ClientsideFunction(
+            namespace="table_download",
+            function_name="captureTable",
+        ),
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )
