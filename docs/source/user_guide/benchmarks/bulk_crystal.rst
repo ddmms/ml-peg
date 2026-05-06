@@ -256,3 +256,68 @@ Input structures:
 Reference data:
 
 * PBE calculations from the Alexandria database
+
+
+Equation of state (metals)
+==========================
+
+Summary
+-------
+
+Equation of state (energy-volume) curves and phase stability for metals (W, Nb, Mo, Ta, Ti, Zr, Cr, Fe), benchmarked against PBE reference data.
+
+Metrics
+-------
+
+1. Δ metric is adapted from `Lejaeghere, K., et. al. Reproducibility in density functional theory
+   calculations of solids. (2016). Science, 351(6280), aad3000.
+   <https://doi.org/10.1126/science.aad3000>`_. It measures difference between predicted and reference energy-volume curves and is calculated as the square root of the integrated squared energy difference between the predicted and reference curves. It is normalised by the volume range and provides a single number in meV/atom. Here we use it to estimate how well the model reproduces the reference PBE energy-volume curve for the ground state structure of each metal. Note that the volume range is larger than in the original paper, so the Δ metric values are not directly comparable to those reported in the original paper.
+
+   .. math::
+
+      \Delta = \sqrt{\frac{\int_{V_i}^{V_f} \left[ E_\text{model}(V) - E_\text{ref}(V) \right]^2 \mathrm{d}V}{V_f - V_i}}
+
+   where :math:`E(V)` is the Birch-Murnaghan energy-volume curve and the integral runs over
+   a fixed volume range :math:`[V_i, V_f]` around the reference equilibrium volume.
+   The result is in meV/atom.
+
+2. Phase energy MAE
+
+   Mean absolute error of the phase energy differences (relative to the ground-state
+   phase) evaluated on a uniform volume grid from BM-fitted curves:
+
+   .. math::
+
+      \text{Phase energy MAE} = \frac{1}{N_\phi N_V}
+      \sum_{\phi,\, j}
+      \left| \Delta E_\text{model}^{\phi}(V_j) - \Delta E_\text{ref}^{\phi}(V_j) \right|
+
+   where :math:`\Delta E^\phi(V) = E^\phi(V) - E^{\phi_0}(V)` is the energy of phase
+   :math:`\phi` relative to the ground-state phase :math:`\phi_0`.
+
+   Result in meV/atom. It measures how well the model reproduces the relative energies of different phases across the volume range.
+
+3. Phase stability
+
+   Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
+   volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
+
+Computational cost
+------------------
+Low. Every eos curve requires 50 calls on unit cells.
+
+Data availability
+-----------------
+
+
+Input structures:
+
+The perfect bulk crystal cells are created automatically from parsed names from the reference data.
+
+Reference data (PBE):
+
+* W, Nb, Mo, Ta `Čák, M., Hammerschmidt, T., Rogal, J., Vitek, V., & Drautz, R. (2014). Analytic bond-order potentials for the bcc refractory metals Nb, Ta, Mo and W. Journal of Physics Condensed Matter, 26(19), 195501. <https://doi.org/10.1088/0953-8984/26/19/195501>`_
+* Ti and Zr: `Nitol, M. S., Dickel, D. E., & Barrett, C. D. (2022). Machine learning models for predictive materials science from fundamental physics: An application to titanium and zirconium. Acta Materialia, 224, 117347. <https://doi.org/10.1016/j.actamat.2021.117347>`_
+* non-magnetic Cr: `Soulairol, R., Fu, C. C., & Barreteau, C. (2010). Structure and magnetism of bulk Fe and Cr: From plane waves to LCAO methods. Journal of Physics Condensed Matter, 22(29), 295502. <https://doi.org/10.1088/0953-8984/22/29/295502>`_
+* ferromagnetic Ni: `He, X., Kong, L. T., & Liu, B. X. (2005). Calculation of ferromagnetic states in metastable bcc and hcp Ni by projector-augmented wave method. Journal of Applied Physics, 97(10). <https://doi.org/10.1063/1.1903104>`_
+* ferromagnetic Fe: `Dézerald, L., Marinica, M. C., Ventelon, L., Rodney, D., & Willaime, F. (2014). Stability of self-interstitial clusters with C15 Laves phase structure in iron. Journal of Nuclear Materials, 449(1–3), 219–224. <https://doi.org/10.1016/j.jnucmat.2014.02.012>`_ and `Wang, K., Shang, S. L., Wang, Y., Liu, Z. K., & Liu, F. (2018). Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study. Acta Materialia, 147, 261–276. <https://doi.org/10.1016/j.actamat.2018.01.013>`_
