@@ -95,12 +95,18 @@ Mean absolute error (MAE) between predicted and reference shear modulus (G) valu
 
 Calculated alongside (1), with the same exclusion criteria used in analysis.
 
+(3) Elastic tensor MAE
+
+Element-wise mean absolute error of the 6x6 Voigt-form elasticity tensor.
+
+Symmetry-independent elastic constants are extracted based on crystal system:
+triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
+Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
 Computational cost
 ------------------
 
 High: tests are likely to take hours-days to run on GPU.
-
 
 Data availability
 -----------------
@@ -115,6 +121,141 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+High-Pressure Relaxation
+========================
+
+Summary
+-------
+
+Performance in relaxing bulk crystal structures under high-pressure conditions.
+3000 structures from the Alexandria database are relaxed at 7 pressure conditions
+(0, 25, 50, 75, 100, 125, 150 GPa) and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+For each pressure condition (0, 25, 50, 75, 100, 125, 150 GPa):
+
+(1) Volume MAE
+
+Mean absolute error of volume per atom compared to PBE reference.
+
+(2) Energy MAE
+
+Mean absolute error of enthalpy per atom compared to PBE reference. The enthalpy is
+calculated as H = E + PV, where E is the potential energy, P is the applied pressure,
+and V is the volume.
+
+(3) Convergence
+
+Percentage of structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
+applied to preserve crystallographic symmetry analogously to DFT. Starting from P000 (0 GPa) structures, each structure is relaxed at the target pressure using the FrechetCellFilter with the
+specified scalar pressure. Relaxation continues until the maximum force component is
+below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is
+repeated up from the last structure of the previous relaxation up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of
+structures and pressure conditions tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database pressure benchmark dataset
+* URL: https://alexandria.icams.rub.de/data/pbe/benchmarks/pressure
+* 3000 structures randomly sampled from the full datasets at each pressure
+
+Reference data:
+
+* PBE calculations from the Alexandria database
+* Loew et al 2026 J. Phys. Mater. 9 015010 https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8
+
+
+Low-Dimensional Relaxation
+==========================
+
+Summary
+-------
+
+Performance in relaxing low-dimensional (2D and 1D) crystal structures.
+Structures from the Alexandria database are relaxed with cell masks to constrain
+relaxation to the appropriate dimensions and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+**2D Structures:**
+
+(1) Area MAE (2D)
+
+Mean absolute error of area per atom compared to PBE reference. The area is
+calculated as the magnitude of the cross product of the two in-plane lattice vectors.
+
+(2) Energy MAE (2D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(3) Convergence (2D)
+
+Percentage of 2D structures that successfully converged during relaxation.
+
+**1D Structures:**
+
+(4) Length MAE (1D)
+
+Mean absolute error of chain length per atom compared to PBE reference. The length
+is the magnitude of the first lattice vector (the chain direction).
+
+(5) Energy MAE (1D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(6) Convergence (1D)
+
+Percentage of 1D structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
+applied to preserve crystallographic symmetry. Cell relaxation is constrained using
+cell masks:
+
+* 2D: Only in-plane cell components (a, b, and γ) are allowed to relax
+* 1D: Only the chain direction (a) is allowed to relax
+
+Relaxation continues until the maximum force component is below 0.0002 eV/Å or until
+500 steps are reached. If not converged, relaxation is repeated up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of
+structures tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database 2D structures: https://alexandria.icams.rub.de/data/pbe_2d
+* Alexandria database 1D structures: https://alexandria.icams.rub.de/data/pbe_1d
+* 3000 structures randomly sampled from each dataset
+
+Reference data:
+
+* PBE calculations from the Alexandria database
 
 
 Equation of state (metals)

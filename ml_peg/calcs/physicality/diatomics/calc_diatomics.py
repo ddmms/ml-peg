@@ -15,8 +15,8 @@ import pandas as pd
 import pytest
 from tqdm import tqdm
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -137,8 +137,7 @@ def run_diatomics(model_name: str, model) -> None:
     """
     _safe_register_torch_slice()
 
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_dir = write_dir / "diatomics"

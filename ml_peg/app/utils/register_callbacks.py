@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, Literal
 
-from dash import Input, Output, State, callback, ctx
+import dash
+from dash import (
+    MATCH,
+    ClientsideFunction,
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -17,12 +30,67 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
+    build_threshold_input_style,
     clean_thresholds,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
     get_scores,
+    get_threshold_colours,
 )
+
+THRESHOLD_INPUT_STEP = 0.0001
+THRESHOLD_ROUND_DIGITS = 10
+
+
+def enforce_threshold_direction(
+    *,
+    edited_field: Literal["good", "bad"],
+    good: float,
+    bad: float,
+    default_good: float,
+    default_bad: float,
+    min_gap: float = THRESHOLD_INPUT_STEP,
+) -> tuple[float, float]:
+    """
+    Preserve the original good/bad threshold direction after a user edit.
+
+    Parameters
+    ----------
+    edited_field
+        Which threshold input the user changed.
+    good
+        Candidate good threshold value after the edit.
+    bad
+        Candidate bad threshold value after the edit.
+    default_good
+        Original good threshold from benchmark metadata.
+    default_bad
+        Original bad threshold from benchmark metadata.
+    min_gap
+        Minimum allowed separation between the two thresholds.
+
+    Returns
+    -------
+    tuple[float, float]
+        Corrected ``(good, bad)`` thresholds.
+    """
+    if default_good == default_bad:
+        return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
+
+    good_is_higher = default_good > default_bad
+    if good_is_higher and good <= bad:
+        if edited_field == "good":
+            bad = good - min_gap
+        else:
+            good = bad + min_gap
+    elif not good_is_higher and good >= bad:
+        if edited_field == "good":
+            bad = good + min_gap
+        else:
+            good = bad - min_gap
+
+    return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
 
 
 def apply_level_of_theory_warnings(
@@ -135,12 +203,14 @@ def register_summary_table_callbacks(
         Input("selected-models-store", "data"),
         Input("summary-table-computed-store", "data"),
         Input("app-location", "pathname"),
+        Input("cmap-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def sync_summary_table(
         selected_models: list[str] | None,
         computed_store: list[dict] | None,
         _pathname: str,
+        cmap_name: str | None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Sync the visible summary table from cached unfiltered rows.
@@ -154,6 +224,8 @@ def register_summary_table_callbacks(
         _pathname
             Current pathname. Included so the visible table refreshes when the
             summary page is opened.
+        cmap_name
+            Matplotlib colormap name from the cmap store.
 
         Returns
         -------
@@ -164,7 +236,11 @@ def register_summary_table_callbacks(
             raise PreventUpdate
 
         filtered_rows = filter_rows_by_models(computed_store, selected_models)
-        base_style = get_table_style(filtered_rows) if filtered_rows else []
+        base_style = (
+            get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+            if filtered_rows
+            else []
+        )
         style_with_warnings, tooltip_data = apply_level_of_theory_warnings(
             filtered_rows,
             base_style,
@@ -216,6 +292,7 @@ def register_category_table_callbacks(
             Input("app-location", "pathname"),
             Input(f"{table_id}-normalized-toggle", "value"),
             Input("selected-models-store", "data"),
+            Input("cmap-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
@@ -228,6 +305,7 @@ def register_category_table_callbacks(
             _pathname: str,
             toggle_value: list[str] | None,
             selected_models: list[str] | None,
+            cmap_name: str | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
@@ -271,7 +349,8 @@ def register_category_table_callbacks(
             # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
-                trigger_id in ("app-location", f"{table_id}-normalized-toggle")
+                trigger_id
+                in ("app-location", f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
                 display_rows = get_scores(
@@ -281,7 +360,11 @@ def register_category_table_callbacks(
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
                 style = (
-                    get_table_style(filtered_rows, scored_data=filtered_scores)
+                    get_table_style(
+                        filtered_rows,
+                        scored_data=filtered_scores,
+                        cmap_name=cmap_name or "viridis_r",
+                    )
                     if filtered_rows
                     else []
                 )
@@ -321,7 +404,11 @@ def register_category_table_callbacks(
             filtered_rows = filter_rows_by_models(display_rows, selected_models)
             filtered_scores = filter_rows_by_models(scored_rows, selected_models)
             style = (
-                get_table_style(filtered_rows, scored_data=filtered_scores)
+                get_table_style(
+                    filtered_rows,
+                    scored_data=filtered_scores,
+                    cmap_name=cmap_name or "viridis_r",
+                )
                 if filtered_rows
                 else []
             )
@@ -356,6 +443,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-weight-store", "data"),
             Input("selected-models-store", "data"),
             Input("app-location", "pathname"),
+            Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
@@ -364,6 +452,7 @@ def register_category_table_callbacks(
             stored_weights: dict[str, float] | None,
             selected_models: list[str] | None,
             _pathname: str,
+            cmap_name: str | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
@@ -376,9 +465,13 @@ def register_category_table_callbacks(
 
             trigger_id = ctx.triggered_id
 
-            if trigger_id == "app-location":
+            if trigger_id in ("app-location", "cmap-store"):
                 filtered_rows = filter_rows_by_models(source_data, selected_models)
-                style = get_table_style(filtered_rows) if filtered_rows else []
+                style = (
+                    get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                    if filtered_rows
+                    else []
+                )
                 style, tooltip_data = apply_level_of_theory_warnings(
                     filtered_rows,
                     style,
@@ -390,7 +483,11 @@ def register_category_table_callbacks(
 
             scored_rows, _ = update_score_style(source_data, stored_weights)
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
-            style = get_table_style(filtered_rows) if filtered_rows else []
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
                 style,
@@ -407,12 +504,14 @@ def register_category_table_callbacks(
             Input(f"{table_id}-computed-store", "data"),
             Input("selected-models-store", "data"),
             Input("app-location", "pathname"),
+            Input("cmap-store", "data"),
             prevent_initial_call="initial_duplicate",
         )
         def sync_table_from_computed_store(
             computed_store: list[dict] | None,
             selected_models: list[str] | None,
             _pathname: str,
+            cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
             """
             Sync the visible category table from its cached unfiltered rows.
@@ -436,7 +535,11 @@ def register_category_table_callbacks(
                 raise PreventUpdate
 
             filtered_rows = filter_rows_by_models(computed_store, selected_models)
-            style = get_table_style(filtered_rows) if filtered_rows else []
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
                 style,
@@ -725,16 +828,82 @@ def register_normalization_callbacks(
             if trigger_id == f"{table_id}-{metric}-good-threshold":
                 if good_val is None or bad_threshold is None:
                     raise PreventUpdate
-                entry["good"] = float(good_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="good",
+                    good=float(good_val),
+                    bad=float(bad_threshold),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
 
             elif trigger_id == f"{table_id}-{metric}-bad-threshold":
                 if bad_val is None or good_threshold is None:
                     raise PreventUpdate
-                entry["bad"] = float(bad_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="bad",
+                    good=float(good_threshold),
+                    bad=float(bad_val),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
             else:
                 raise PreventUpdate
 
             return cleaned_store
+
+    if metrics:
+        threshold_style_outputs = [
+            output
+            for metric in metrics
+            for output in (
+                Output(f"{table_id}-{metric}-good-threshold", "style"),
+                Output(f"{table_id}-{metric}-bad-threshold", "style"),
+            )
+        ]
+
+        @callback(
+            *threshold_style_outputs,
+            Input("cmap-store", "data"),
+            prevent_initial_call=False,
+        )
+        def sync_threshold_input_styles(
+            cmap_name: str | None,
+        ) -> tuple[dict[str, str], ...]:
+            """
+            Colour threshold input borders to match the selected table colour scale.
+
+            Parameters
+            ----------
+            cmap_name
+                Current table colormap name from the shared colour-scheme store.
+
+            Returns
+            -------
+            tuple[dict[str, str], ...]
+                Alternating good/bad input styles for each metric.
+            """
+            colours = get_threshold_colours(cmap_name)
+            styles: list[dict[str, str]] = []
+            for _metric in metrics:
+                styles.extend(
+                    [
+                        build_threshold_input_style(colours["good"]),
+                        build_threshold_input_style(colours["bad"]),
+                    ]
+                )
+            return tuple(styles)
 
     if register_toggle:
         # Toggle display between raw and normalized values without recomputing scores
@@ -748,6 +917,7 @@ def register_normalization_callbacks(
             State(f"{table_id}-thresholds-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
+            State("cmap-store", "data"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
@@ -756,6 +926,7 @@ def register_normalization_callbacks(
             thresholds: dict[str, Any] | None,
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
+            cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
@@ -769,7 +940,11 @@ def register_normalization_callbacks(
             display_rows = get_scores(
                 raw_data, scored_rows, cleaned_thresholds, show_normalized
             )
-            style = get_table_style(display_rows, scored_data=scored_rows)
+            style = get_table_style(
+                display_rows,
+                scored_data=scored_rows,
+                cmap_name=cmap_name or "viridis_r",
+            )
             columns = format_metric_columns(
                 current_columns, cleaned_thresholds, normalized_active
             )
@@ -794,3 +969,124 @@ def register_normalization_callbacks(
                 entry = cleaned_thresholds[metric]
                 return entry.get("good"), entry.get("bad")
             raise PreventUpdate
+
+
+def register_plot_download_callbacks() -> None:
+    """Register one generic plot download callback once per Dash app."""
+    app = dash.get_app()
+    output = Output({"type": "plot-download", "index": MATCH}, "data")
+    if str(output) in app.callback_map:
+        return
+
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace="plot_download",
+            function_name="downloadPlot",
+        ),
+        output,
+        Input({"type": "plot-download-button", "index": MATCH}, "n_clicks"),
+        State({"type": "plot-download-format", "index": MATCH}, "value"),
+        State({"type": "plot-download-target", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
+
+
+def register_download_callbacks(table_id: str) -> None:
+    """
+    Register minimal table download callbacks for CSV, PNG, and SVG.
+
+    CSV exports are generated from the table's Dash data payload. PNG/SVG exports
+    are different: Python sends a small request to the browser, then the browser
+    captures the table exactly as it has already been drawn on the page. That is
+    what preserves conditional colours, warning styles, current column headers, and
+    the table's CSS layout.
+
+    Parameters
+    ----------
+    table_id
+        ID of table to export.
+    """
+
+    @callback(
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
+        Input(f"{table_id}-download-button", "n_clicks"),
+        State(f"{table_id}-download-format", "value"),
+        State(table_id, "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+    )
+    def download_table(
+        n_clicks: int,
+        download_format: str,
+        table_data: list[dict] | None,
+        columns: list[dict] | None,
+    ) -> tuple[dict | Any, dict | Any]:
+        """
+        Dispatch table download request.
+
+        Parameters
+        ----------
+        n_clicks
+            Number of clicks on the download button.
+        download_format
+            Requested format, one of ``csv``, ``png``, or ``svg``.
+        table_data
+            Currently visible table rows.
+        columns
+            Current table column metadata.
+
+        Returns
+        -------
+        tuple[dict | Any, dict | Any]
+            Pair of payloads for ``download`` and ``download-request`` stores.
+            For CSV, the first item is a Dash download payload and the second is
+            ``no_update``. For PNG/SVG, the first item is ``no_update`` and the
+            second item is the client-side capture request.
+        """
+        if not n_clicks or not columns:
+            raise PreventUpdate
+
+        fmt = (download_format or "csv").lower()
+        filename_base = table_id.replace("_", "-")
+        column_ids = [col["id"] for col in columns if isinstance(col.get("id"), str)]
+        export_cols = [col for col in column_ids if col != "id"]
+
+        if fmt == "csv":
+            if table_data:
+                frame = pd.DataFrame(table_data)
+                frame = frame.reindex(columns=export_cols)
+            else:
+                frame = pd.DataFrame(columns=export_cols)
+            return (
+                dcc.send_data_frame(
+                    frame.to_csv,
+                    filename=f"{filename_base}.csv",
+                    index=False,
+                ),
+                no_update,
+            )
+
+        if fmt in {"png", "svg"}:
+            # Image exports need the already-rendered table, not a new table recreated
+            # from raw values. Send the target table id to the browser-side asset.
+            return (
+                no_update,
+                {
+                    "element_id": table_id,
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                },
+            )
+
+        raise PreventUpdate
+
+    clientside_callback(
+        ClientsideFunction(
+            namespace="table_download",
+            function_name="captureTable",
+        ),
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )

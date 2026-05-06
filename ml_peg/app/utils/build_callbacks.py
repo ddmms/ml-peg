@@ -23,7 +23,29 @@ from ml_peg.analysis.utils.decorators import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
+from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
+
+
+def plot_with_download_controls(graph: Graph) -> Div:
+    """
+    Wrap a Plotly graph with CSV/PNG/SVG/HTML download controls.
+
+    Parameters
+    ----------
+    graph
+        Dash graph component.
+
+    Returns
+    -------
+    Div
+        Graph with download controls above it.
+    """
+    graph_id = getattr(graph, "id", None)
+    if not isinstance(graph_id, str):
+        return Div(graph)
+    return Div([build_plot_download_controls(graph_id), graph])
 
 
 def plot_from_table_column(
@@ -41,6 +63,7 @@ def plot_from_table_column(
     column_to_plot
         Dictionary relating table headers (keys) and plot to show (values).
     """
+    register_plot_download_callbacks()
 
     @callback(
         Output(plot_id, "children"),
@@ -66,7 +89,7 @@ def plot_from_table_column(
         column_id = active_cell.get("column_id", None)
         if column_id:
             if column_id in column_to_plot:
-                return Div(column_to_plot[column_id]), None
+                return plot_with_download_controls(column_to_plot[column_id]), None
             raise PreventUpdate
         raise ValueError("Invalid column_id")
 
@@ -92,12 +115,13 @@ def plot_from_table_cell(
         Optional table data to check for None/missing values. If provided,
         cells with None values will show "No data available" message.
     """
+    register_plot_download_callbacks()
 
     @callback(
         Output(plot_id, "children"),
         Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
-        Input(table_id, "data"),
+        State(table_id, "data"),
     )
     def show_plot(active_cell, current_table_data) -> Div:
         """
@@ -131,7 +155,7 @@ def plot_from_table_cell(
                 pass  # Fall through to normal handling
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
-            return Div(cell_to_plot[row_id][column_id]), None
+            return plot_with_download_controls(cell_to_plot[row_id][column_id]), None
         return Div("Click on a metric to view plot."), None
 
 
@@ -152,6 +176,7 @@ def plot_from_scatter(
     plots_list
         List of plots to show, in same order as scatter data.
     """
+    register_plot_download_callbacks()
 
     @callback(
         Output(plot_id, "children", allow_duplicate=True),
@@ -177,7 +202,7 @@ def plot_from_scatter(
         idx = click_data["points"][0]["pointNumber"]
 
         if idx >= 0 and idx < len(plots_list):
-            return Div(plots_list[idx])
+            return plot_with_download_controls(plots_list[idx])
         return Div("Click on a metric to view plot.")
 
 

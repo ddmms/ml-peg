@@ -12,8 +12,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -36,9 +36,8 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    model.default_dtype = "float64"
     # Do not want D3 as references here are dispersionless PBE
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Download SBH17 dataset
     sbh17_dir = (

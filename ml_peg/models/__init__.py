@@ -5,3 +5,5 @@ from __future__ import annotations
 from pathlib import Path
 
 MODELS_ROOT = Path(__file__).parent
+current_models = None
+models_file = MODELS_ROOT / "models.yml"
