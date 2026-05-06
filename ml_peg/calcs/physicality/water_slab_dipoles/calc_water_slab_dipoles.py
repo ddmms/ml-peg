@@ -11,7 +11,6 @@ from janus_core.calculations.md import NVT
 
 # from ase.md.npt import NPT
 # from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data

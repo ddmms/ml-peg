@@ -463,7 +463,7 @@ def plot_hist(
     y_label
         Label for y axis. Default is `None`.
     filename
-        Filename to save plot as JSON. 
+        Filename to save plot as JSON.
 
     Returns
     -------

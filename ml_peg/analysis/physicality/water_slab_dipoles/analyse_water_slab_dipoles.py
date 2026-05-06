@@ -48,9 +48,9 @@ def get_dipoles() -> dict[str, np.ndarray]:
         Dictionary with array of dipoles for each model.
     """
     results = {}
-    # Charge q from https://arxiv.org/abs/2603.04228v1, 
+    # Charge q from https://arxiv.org/abs/2603.04228v1,
     # chosen to match revPBE-D3 dipole
-    q = 0.5562 # e
+    q = 0.5562  # e
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
