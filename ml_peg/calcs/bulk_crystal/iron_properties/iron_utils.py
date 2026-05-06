@@ -6,13 +6,17 @@ This module provides structure creation and EOS fitting functions for iron bench
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ase import Atoms
 from ase.build import bulk
-from ase.calculators.calculator import Calculator
 from ase.eos import EquationOfState
 from ase.units import GPa, J, m
 import numpy as np
 from scipy.optimize import minimize_scalar
+
+if TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator
 
 # =============================================================================
 # Unit Conversion Constants
@@ -105,13 +109,13 @@ def relax_volume_isotropic(
 
     Parameters
     ----------
-    atoms : Atoms
+    atoms
         ASE Atoms object (will be copied, not modified).
-    calc : Calculator
+    calc
         ASE calculator.
-    scale_bounds : tuple[float, float], optional
+    scale_bounds
         Bounds for the scale factor search (min, max). Default: (0.9, 1.1).
-    xtol : float, optional
+    xtol
         Tolerance for the scale factor optimization. Default: 1e-8.
 
     Returns
@@ -135,7 +139,7 @@ def relax_volume_isotropic(
 
         Parameters
         ----------
-        scale : float
+        scale
             Uniform scale factor to apply to the cell.
 
         Returns
@@ -185,17 +189,17 @@ def _create_oriented_bcc_structure(
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         BCC lattice parameter in Angstroms.
-    rotation : np.ndarray
+    rotation
         3x3 rotation matrix (rows are the new basis vectors).
-    cell_dims : tuple[float, float, float]
+    cell_dims
         Cell dimensions (lx, ly, lz) in Angstroms.
-    max_range : int
+    max_range
         Range for scanning cubic positions.
-    symbol : str, optional
+    symbol
         Chemical symbol (default: 'Fe').
-    wrap : bool, optional
+    wrap
         Whether to wrap positions into cell (default: True).
 
     Returns
@@ -305,13 +309,13 @@ def create_surface_100(
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
-    layers : int, optional
+    layers
         Number of atomic layers (default: 10).
-    vacuum : float, optional
+    vacuum
         Vacuum thickness in Angstroms (default: 0.0).
-    symbol : str, optional
+    symbol
         Chemical symbol (default: 'Fe').
 
     Returns
@@ -343,13 +347,13 @@ def create_surface_110(
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
-    layers : int, optional
+    layers
         Number of atomic layers (default: 10).
-    vacuum : float, optional
+    vacuum
         Vacuum thickness in Angstroms (default: 0.0).
-    symbol : str, optional
+    symbol
         Chemical symbol (default: 'Fe').
 
     Returns
@@ -398,13 +402,13 @@ def create_surface_111(
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
-    size : tuple, optional
+    size
         Cell size as (nx, ny, nz) (default: (3, 15, 3)).
-    vacuum : float, optional
+    vacuum
         Vacuum thickness in Angstroms (default: 0.0).
-    symbol : str, optional
+    symbol
         Chemical symbol (default: 'Fe').
 
     Returns
@@ -439,13 +443,13 @@ def create_surface_112(
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
-    layers : int, optional
+    layers
         Number of atomic layers (default: 15).
-    vacuum : float, optional
+    vacuum
         Vacuum thickness in Angstroms (default: 0.0).
-    symbol : str, optional
+    symbol
         Chemical symbol (default: 'Fe').
 
     Returns
@@ -474,7 +478,7 @@ def create_sfe_110_structure(lattice_parameter: float) -> Atoms:
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
 
     Returns
@@ -503,7 +507,7 @@ def create_sfe_112_structure(lattice_parameter: float) -> Atoms:
 
     Parameters
     ----------
-    lattice_parameter : float
+    lattice_parameter
         Lattice parameter in Angstroms.
 
     Returns
@@ -553,12 +557,12 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
 
     Parameters
     ----------
-    atoms : Atoms
+    atoms
         ASE Atoms object.
-    direction : int
+    direction
         Voigt direction (1-6):
         1=xx, 2=yy, 3=zz, 4=yz, 5=xz, 6=xy.
-    magnitude : float
+    magnitude
         Strain magnitude (e.g., 1e-5).
 
     Returns
@@ -610,11 +614,11 @@ def calculate_surface_energy(
 
     Parameters
     ----------
-    E_slab : float
+    E_slab
         Total energy of the slab with vacuum (eV).
-    E_bulk : float
+    E_bulk
         Total energy of the bulk reference (eV).
-    area : float
+    area
         Surface area (Angstrom^2).
 
     Returns

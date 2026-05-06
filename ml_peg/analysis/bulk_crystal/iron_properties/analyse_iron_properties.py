@@ -26,8 +26,8 @@ from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "iron_properties" / "outputs"
@@ -195,7 +195,7 @@ def load_model_results(model_name: str) -> dict[str, Any] | None:
 
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the model to load results for.
 
     Returns
@@ -215,9 +215,9 @@ def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
 
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the model to load curve for.
-    curve_type : str
+    curve_type
         Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
 
     Returns
@@ -240,7 +240,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
 
     Parameters
     ----------
-    results : dict[str, Any]
+    results
         Dictionary containing model calculation results.
 
     Returns
@@ -391,7 +391,7 @@ def _load_curves_for_all_models(curve_type: str) -> dict[str, pd.DataFrame]:
 
     Parameters
     ----------
-    curve_type : str
+    curve_type
         Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
 
     Returns
@@ -493,11 +493,11 @@ def create_curve_figure(
 
     Parameters
     ----------
-    df : pd.DataFrame
+    df
         DataFrame containing the curve data.
-    curve_type : str
+    curve_type
         Type of curve to plot (e.g., 'eos', 'bain', 'sfe_110').
-    model_name : str
+    model_name
         Name of the model for the title.
 
     Returns
@@ -565,10 +565,10 @@ def save_figures_for_model(model_name: str) -> None:
 
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the model.
     """
-    figures_dir = OUT_PATH / "figures"
+    figures_dir = OUT_PATH / "figures" / model_name
     figures_dir.mkdir(parents=True, exist_ok=True)
 
     for curve_type in CURVE_FILES:
@@ -576,7 +576,7 @@ def save_figures_for_model(model_name: str) -> None:
         if df.empty:
             continue
         fig = create_curve_figure(df, curve_type, model_name)
-        fig_path = figures_dir / f"{model_name}_{curve_type}.json"
+        fig_path = figures_dir / f"{curve_type}.json"
         fig_path.write_text(json.dumps(fig.to_plotly_json()))
 
 
@@ -628,7 +628,7 @@ def iron_properties_metrics_dataframe(
 
     Parameters
     ----------
-    iron_properties_collection : pd.DataFrame
+    iron_properties_collection
         Collection of iron properties metrics.
 
     Returns
@@ -680,7 +680,7 @@ def test_iron_properties(metrics: dict[str, dict]) -> None:
 
     Parameters
     ----------
-    metrics : dict[str, dict]
+    metrics
         Dictionary of iron properties metrics from the metrics fixture.
     """
     return

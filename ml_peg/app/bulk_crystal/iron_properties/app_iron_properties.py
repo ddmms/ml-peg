@@ -13,8 +13,8 @@ import plotly.graph_objects as go
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.plot_helpers import figure_from_dict
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Iron Properties"
@@ -29,9 +29,9 @@ def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
 
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the model.
-    curve_type : str
+    curve_type
         Type of curve (e.g., 'eos', 'bain', 'sfe_110').
 
     Returns
@@ -39,7 +39,7 @@ def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
     go.Figure or None
         Plotly figure, or None if not found.
     """
-    fig_path = FIGURES_PATH / f"{model_name}_{curve_type}.json"
+    fig_path = FIGURES_PATH / model_name / f"{curve_type}.json"
     if not fig_path.exists():
         return None
     return figure_from_dict(json.loads(fig_path.read_text()))
@@ -66,9 +66,9 @@ class IronPropertiesApp(BaseApp):
 
             Parameters
             ----------
-            model_name : str
+            model_name
                 Name of the selected model.
-            curve_type : str
+            curve_type
                 Type of curve to display.
 
             Returns
@@ -156,9 +156,7 @@ def get_app() -> IronPropertiesApp:
             "vacancy formation energy, surface energies (100, 110, 111, 112), "
             "generalized stacking fault energy curves for {110}<111> and "
             "{112}<111> slip systems, and traction-separation curves for (100) "
-            "and (110) cleavage planes. "
-            "This benchmark is computationally expensive and marked with "
-            "@pytest.mark.slow."
+            "and (110) cleavage planes."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "iron_properties_metrics_table.json",

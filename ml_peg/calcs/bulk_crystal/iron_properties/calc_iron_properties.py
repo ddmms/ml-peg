@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ase.build import bulk
 from ase.constraints import FixedLine
@@ -45,8 +45,12 @@ from ml_peg.calcs.bulk_crystal.iron_properties.iron_utils import (
     fit_eos,
     relax_volume_isotropic,
 )
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
+
+if TYPE_CHECKING:
+    from ase import Atoms
+    from ase.calculators.calculator import Calculator
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +92,13 @@ TS_MAX_SEPARATION = 5.0  # Angstroms
 TS_STEP_SIZE = 0.05  # Angstroms
 
 
-def _set_iron_info(atoms: Any) -> None:
+def _set_iron_info(atoms: Atoms) -> None:
     """
     Set default charge and spin multiplicity for BCC iron structures.
 
     Parameters
     ----------
-    atoms : Any
+    atoms
         ASE Atoms object to annotate.
     """
     atoms.info["charge"] = 0
@@ -106,7 +110,7 @@ def _set_iron_info(atoms: Any) -> None:
 # =============================================================================
 
 
-def run_eos_calculation(calc: Any) -> dict[str, Any]:
+def run_eos_calculation(calc: Calculator) -> dict[str, Any]:
     """
     Run the energy-volume curve calculation.
 
@@ -117,7 +121,7 @@ def run_eos_calculation(calc: Any) -> dict[str, Any]:
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with EOS results including a0, B0, V0, E0, volumes, energies.
     """
     # Generate lattice parameters: 2.834 - 0.05 + (0.1/30)*i for i in 1..30
@@ -168,7 +172,9 @@ def run_eos_calculation(calc: Any) -> dict[str, Any]:
 # =============================================================================
 
 
-def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+def run_elastic_calculation(
+    calc: Calculator, lattice_parameter: float
+) -> dict[str, Any]:
     """
     Calculate elastic constants using the stress-strain method.
 
@@ -181,7 +187,7 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with elastic constants C11, C12, C44, bulk_modulus.
     """
     # Create supercell
@@ -257,7 +263,9 @@ def run_elastic_calculation(calc: Any, lattice_parameter: float) -> dict[str, An
 # =============================================================================
 
 
-def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+def run_bain_path_calculation(
+    calc: Calculator, lattice_parameter: float
+) -> dict[str, Any]:
     """
     Calculate the Bain path energy curve.
 
@@ -279,7 +287,7 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with ca_ratios, energies, E_bcc, E_fcc, delta_E.
     """
     # Generate c/a ratios: 0.7 + 0.02*i for i in 1..65
@@ -345,20 +353,22 @@ def run_bain_path_calculation(calc: Any, lattice_parameter: float) -> dict[str, 
 # =============================================================================
 
 
-def run_vacancy_calculation(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+def run_vacancy_calculation(
+    calc: Calculator, lattice_parameter: float
+) -> dict[str, Any]:
     """
     Calculate the vacancy formation energy.
 
     Parameters
     ----------
-    calc : Any
+    calc
         ASE calculator object.
-    lattice_parameter : float
+    lattice_parameter
         Equilibrium lattice parameter from EOS fit.
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with vacancy results including E_vac, E_coh, E_perfect, E_defect.
     """
     atoms_perfect = create_bcc_supercell(lattice_parameter, VACANCY_SUPERCELL_SIZE)
@@ -420,20 +430,22 @@ SURFACE_CONFIG = {
 }
 
 
-def run_surface_calculations(calc: Any, lattice_parameter: float) -> dict[str, Any]:
+def run_surface_calculations(
+    calc: Calculator, lattice_parameter: float
+) -> dict[str, Any]:
     """
     Calculate surface energies for (100), (110), (111), (112) surfaces.
 
     Parameters
     ----------
-    calc : Any
+    calc
         ASE calculator object.
-    lattice_parameter : float
+    lattice_parameter
         Equilibrium lattice parameter from EOS fit.
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with surface energies gamma_100, gamma_110, gamma_111, gamma_112.
     """
     surfaces = {}
@@ -485,23 +497,23 @@ SFE_CONFIG = {
 
 
 def run_sfe_calculation(
-    calc: Any, lattice_parameter: float, sfe_type: str
+    calc: Calculator, lattice_parameter: float, sfe_type: str
 ) -> dict[str, Any]:
     """
     Calculate GSFE curve for specified slip system.
 
     Parameters
     ----------
-    calc : Any
+    calc
         ASE calculator object.
-    lattice_parameter : float
+    lattice_parameter
         Equilibrium lattice parameter from EOS fit.
-    sfe_type : str
+    sfe_type
         Type of SFE calculation ('110' or '112').
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with displacements, sfe_J_per_m2, and max_sfe.
     """
     config = SFE_CONFIG[sfe_type]
@@ -577,7 +589,7 @@ TS_CONFIG = {
 
 
 def run_ts_calculation(
-    calc: Any, lattice_parameter: float, direction: str
+    calc: Calculator, lattice_parameter: float, direction: str
 ) -> dict[str, Any]:
     """
     Calculate traction-separation curve for specified cleavage plane.
@@ -587,16 +599,16 @@ def run_ts_calculation(
 
     Parameters
     ----------
-    calc : Any
+    calc
         ASE calculator object.
-    lattice_parameter : float
+    lattice_parameter
         Equilibrium lattice parameter from EOS fit.
-    direction : str
+    direction
         Cleavage plane direction ('100' or '110').
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with separations, energies, traction, and max_traction.
     """
     create_fn = TS_CONFIG[direction]
@@ -677,11 +689,11 @@ def _save_curve(write_dir: Path, name: str, data: dict[str, list]) -> None:
 
     Parameters
     ----------
-    write_dir : Path
+    write_dir
         Directory to save the file.
-    name : str
+    name
         Base name for the CSV file (without extension).
-    data : dict[str, list]
+    data
         Column name to data mapping for the DataFrame.
     """
     pd.DataFrame(data).to_csv(write_dir / f"{name}.csv", index=False)
@@ -712,8 +724,7 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     model
         Model wrapper providing ``get_calculator``.
     """
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
