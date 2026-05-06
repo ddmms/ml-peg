@@ -54,20 +54,17 @@ def get_dipoles() -> dict[str, np.ndarray]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
-            if (model_dir / "dipoles.npy").is_file():
-                results[model_name] = np.load(model_dir / "dipoles.npy")
-            else:
-                atoms = read(model_dir / "slab-traj.extxyz", ":")
-                dipoles = np.zeros(len(atoms))
-                for i, struc in enumerate(atoms):
-                    o_index = [atom.index for atom in struc if atom.number == 8]
-                    h_index = [atom.index for atom in struc if atom.number == 1]
-                    dipoles[i] = (
-                        np.sum(struc.positions[o_index, 2]) * (-q)
-                        + np.sum(struc.positions[h_index, 2]) * q / 2
-                    )
-                dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
-                results[model_name] = dipoles_unit_area
+            atoms = read(model_dir / "slab-traj.extxyz", ":")
+            dipoles = np.zeros(len(atoms))
+            for i, struc in enumerate(atoms):
+                o_index = [atom.index for atom in struc if atom.number == 8]
+                h_index = [atom.index for atom in struc if atom.number == 1]
+                dipoles[i] = (
+                    np.sum(struc.positions[o_index, 2]) * (-q)
+                    + np.sum(struc.positions[h_index, 2]) * q / 2
+                )
+            dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
+            results[model_name] = dipoles_unit_area
     return results
 
 
