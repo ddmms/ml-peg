@@ -14,8 +14,8 @@ from janus_core.calculations.md import NVT
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -36,7 +36,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
 
     # Add D3 calculator for this test (for models where applicable)
     calc = model.add_d3_calculator(calc)

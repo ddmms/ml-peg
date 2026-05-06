@@ -30,8 +30,7 @@ def test_relastab(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     data_path = download_s3_data(
         key="inputs/defect/Relastab/Relastab.zip",
