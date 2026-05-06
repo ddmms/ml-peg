@@ -460,7 +460,7 @@ def build_category(
 
         # Build category summary table
         summary_table = build_summary_table(
-            all_tables[category],
+            dict(sorted(all_tables[category].items())),
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
             weights={f"{key} Score": value for key, value in benchmark_weights.items()},
@@ -481,7 +481,7 @@ def build_category(
         )
 
         test_entries = []
-        for test_name in all_layouts[category]:
+        for test_name in sorted(all_layouts[category]):
             framework_id = all_frameworks[category][test_name]
             framework_ids.add(framework_id)
             test_entries.append(
@@ -855,7 +855,7 @@ def build_nav(
     """
     category_paths = {
         category_name: _category_to_path(category_name)
-        for category_name in category_views
+        for category_name in sorted(category_views)
     }
     framework_order = sorted(
         framework_views,
@@ -1272,7 +1272,9 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     )
     framework_views = build_framework_views(cat_views, framework_ids)
     # Build overall summary table
-    summary_table = build_summary_table(cat_tables, weights=cat_weights)
+    summary_table = build_summary_table(
+        dict(sorted(cat_tables.items())), weights=cat_weights
+    )
     weight_components = build_weight_components(
         header="Weights",
         table=summary_table,
