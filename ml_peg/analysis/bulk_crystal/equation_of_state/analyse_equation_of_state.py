@@ -195,7 +195,9 @@ def _phase_metrics_from_eos_mev(
         for phase in phases
     ]
     model_fits = [
-        _fit_bm_clean(model_data["V/atom"].values, model_data[f"{phase}_E"].values)
+        _fit_bm_clean(
+            model_data[f"V/atom_{phase}"].values, model_data[f"{phase}_E"].values
+        )
         for phase in phases
     ]
 
@@ -242,17 +244,37 @@ def plot_eos_figure(model: str, element: str) -> go.Figure | None:
     go.Figure | None
         The equation of state figure or None if the data is not available.
     """
-    model_csv = CALC_PATH / model / f"{element}_eos_results.csv"
+    from ase.io import read
+
     dft_csv = DATA_PATH / f"{element}_eos_DFT.csv"
-    if not model_csv.exists() or not dft_csv.exists():
-        return None
-    model_data = pd.read_csv(model_csv)
     dft_data = pd.read_csv(dft_csv, comment="#")
     phases = [
         col.split("_")[1]
         for col in dft_data.columns
         if col.startswith("Delta_") and col.endswith("_E")
     ]
+
+    model_data = pd.DataFrame()
+    for phase in phases:
+        filename = CALC_PATH / model / f"{element}_{phase}_eos_structures.xyz"
+        try:
+            structures = read(filename, index=":")
+            model_data[f"V/atom_{phase}"] = [
+                structure.get_volume() / len(structure) for structure in structures
+            ]
+            model_data[f"{phase}_E"] = [
+                structure.info["MLIP_energy"] / len(structure)
+                for structure in structures
+            ]
+        except FileNotFoundError:
+            Warning(
+                f"Model data file {filename} not found. \
+                  Skipping figure for {model} {element}."
+            )
+
+    if model_data.empty:
+        return None
+
     colours = qualitative.D3
     fig = go.Figure()
     for i, phase in enumerate(phases):
@@ -268,7 +290,7 @@ def plot_eos_figure(model: str, element: str) -> go.Figure | None:
                 marker={"symbol": "x", "color": colour, "size": 8},
             )
         )
-        model_v = model_data["V/atom"]
+        model_v = model_data[f"V/atom_{phase}"]
         model_delta_e = model_data[f"{phase}_E"] - model_data[f"{phases[0]}_E"].min()
         fig.add_trace(
             go.Scatter(
@@ -303,6 +325,8 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
         Mapping of ``(model_name, element)`` to ``{"Delta",
         "phase_diff_mae", "correct_stability"}``.
     """
+    from ase.io import read
+
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results: dict[tuple[str, str], dict[str, float]] = {}
 
@@ -312,12 +336,7 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
             continue
 
         for element in ELEMENTS:
-            model_csv = model_dir / f"{element}_eos_results.csv"
             dft_csv = DATA_PATH / f"{element}_eos_DFT.csv"
-            if not model_csv.exists() or not dft_csv.exists():
-                continue
-
-            model_data = pd.read_csv(model_csv)
             dft_data = pd.read_csv(dft_csv, comment="#")
 
             phases = [
@@ -325,10 +344,35 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
                 for col in dft_data.columns
                 if col.startswith("Delta_") and col.endswith("_E")
             ]
+            model_data = pd.DataFrame()
+            for phase in phases:
+                filename = (
+                    CALC_PATH / model_name / f"{element}_{phase}_eos_structures.xyz"
+                )
+                try:
+                    structures = read(str(filename), index=":")
+                    model_data[f"V/atom_{phase}"] = [
+                        structure.get_volume() / len(structure)
+                        for structure in structures
+                    ]
+                    model_data[f"{phase}_E"] = [
+                        structure.info["MLIP_energy"] / len(structure)
+                        for structure in structures
+                    ]
+                except FileNotFoundError:
+                    Warning(
+                        f"Model data file {filename} not found. \
+                          Skipping metrics for {model_name} {element}."
+                    )
+
+            if model_data.empty:
+                continue
+
             # BM fit for reference phase (Delta metric)
             ref_phase = phases[0]  # Assuming the first phase is the reference
             ref_params = _fit_bm_clean(
-                model_data["V/atom"].values, model_data[f"{ref_phase}_E"].values
+                model_data[f"V/atom_{ref_phase}"].values,
+                model_data[f"{ref_phase}_E"].values,
             )
             dft_ref_params = _fit_bm_clean(
                 dft_data[f"V/atom_{ref_phase}"].values,
@@ -347,7 +391,7 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
                     "B0": dft_ref_params[-3],
                     "BP": dft_ref_params[-2],
                 }
-                volumes = model_data["V/atom"]
+                volumes = model_data[f"V/atom_{ref_phase}"]
                 delta, _, _ = calc_delta(
                     dft_bm,
                     model_bm,
