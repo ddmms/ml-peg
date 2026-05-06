@@ -48,7 +48,7 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
         Name of model and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
 
     bmim = molify.smiles2atoms("CCCCN1C=C[N+](=C1)C")
     cl = molify.smiles2atoms("[Cl-]")

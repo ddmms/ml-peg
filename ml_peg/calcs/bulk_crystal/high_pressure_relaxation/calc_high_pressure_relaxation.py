@@ -229,8 +229,7 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         Index into PRESSURES list.
     """
     model_name, model = mlip
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     pressure_gpa = PRESSURES[pressure_idx]
     pressure_label = PRESSURE_LABELS[pressure_idx]

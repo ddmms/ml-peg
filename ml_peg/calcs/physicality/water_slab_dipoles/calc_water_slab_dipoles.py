@@ -36,7 +36,7 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
 
     # Add D3 calculator for this test (for models where applicable)
     calc = model.add_d3_calculator(calc)
