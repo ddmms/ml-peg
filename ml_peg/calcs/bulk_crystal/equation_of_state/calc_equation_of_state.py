@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from ase.filters import ExpCellFilter
+from ase.io import write
+from ase.io.extxyz import save_calc_results
 from ase.lattice.cubic import (
     BodyCenteredCubic,
     FaceCenteredCubic,
@@ -205,11 +207,11 @@ def equation_of_state(calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 
     for structure in structures:
         structure.calc = calc
 
-    energies = [
-        structure.get_potential_energy() / len(structure) for structure in structures
-    ]
+    for structure in structures:
+        structure.get_potential_energy()
+        save_calc_results(structure, calc_prefix="MLIP_")
 
-    return np.array(lattice_constants), np.array(energies)
+    return structures
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -223,8 +225,11 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
         Tuple of (model_name, model) as provided by pytest parametrize.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
 
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
+
+    calc = model.get_calculator()
     filenames = list(DATA_PATH.glob("*DFT*"))
 
     for filename in (pbar_1 := tqdm(filenames, desc=f"{model_name}")):
@@ -239,28 +244,21 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
             50,
             endpoint=False,
         )
-        results = {"V/atom": volumes_per_atoms}
 
         phases = [col.split("_")[1] for col in dft_data.columns if "Delta" in col]
-        print(f"Found data for {len(phases)} phases: {', '.join(phases)}")
+        print(f"Found DFT data for {len(phases)} phases: {', '.join(phases)}")
 
         for phase in (pbar_2 := tqdm(phases, desc=element, leave=False)):
             pbar_2.set_description(f"{model_name}/{element}/{phase}")
             assert phase in lattices, f"Lattice {phase} not implemented for EOS test."
             lattice = lattices[phase]
 
-            _, energies = equation_of_state(
+            structures = equation_of_state(
                 calc,
                 lattice,
                 volumes_per_atoms,
                 symbol=element,
-                lattice_name=phase,
             )
 
-            results[f"{phase}_E"] = energies
-
-        write_dir = OUT_PATH / model_name
-        df = pd.DataFrame(results)
-        output_file = write_dir / f"{element}_eos_results.csv"
-        write_dir.mkdir(parents=True, exist_ok=True)
-        df.to_csv(output_file, index=False)
+            output_file = write_dir / f"{element}_{phase}_eos_structures.xyz"
+            write(output_file, structures)
