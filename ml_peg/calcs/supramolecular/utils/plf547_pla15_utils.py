@@ -286,8 +286,7 @@ def run_benchmark(benchmark: zntrack.Node, name: str, out_path: Path) -> None:
         / name
     )
 
-    benchmark.model.default_dtype = "float64"
-    calc = benchmark.model.get_calculator()
+    calc = benchmark.model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = benchmark.model.add_d3_calculator(calc)
 

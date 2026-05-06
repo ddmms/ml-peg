@@ -18,8 +18,8 @@ from ase.md.nose_hoover_chain import IsotropicMTKNPT
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -155,8 +155,7 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     ]
 
     model_name, model = mlip
-    model.default_dtype = "float32"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 

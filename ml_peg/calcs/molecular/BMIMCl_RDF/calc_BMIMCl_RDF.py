@@ -20,8 +20,8 @@ import molify
 import pytest
 from tqdm import tqdm
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -48,7 +48,7 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
         Name of model and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
 
     bmim = molify.smiles2atoms("CCCCN1C=C[N+](=C1)C")
     cl = molify.smiles2atoms("[Cl-]")
@@ -59,7 +59,7 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     box.calc = calc
 
     opt = LBFGS(box)
-    opt.run(fmax=0.1)
+    opt.run(fmax=0.1, steps=1000)
 
     MaxwellBoltzmannDistribution(box, temperature_K=TEMPERATURE)
 
