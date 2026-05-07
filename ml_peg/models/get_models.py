@@ -144,9 +144,9 @@ def load_models(
     )
 
     if run_mock is None:
-        from ml_peg.models.mock import run_mock
+        from ml_peg.models import run_mock
     if mock_only is None:
-        from ml_peg.models.mock import mock_only
+        from ml_peg.models import mock_only
 
     if mock_only and not run_mock:
         raise ValueError("Cannot set `mock_only` without `run_mock`")
