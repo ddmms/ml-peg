@@ -81,14 +81,11 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
         sheet_name="Total PNO-CCS(T) Energies solvM",
         header=1,
     )
-    ref_energies = {}
 
-    for row in df.iterrows():
-        label = row[1][0]
-        e_ref = float(row[1][1]) * units.Hartree
-        ref_energies[label] = e_ref
-
-    return ref_energies
+    # BOLT: Replaced iterrows() with dict(zip(...)) for faster dictionary construction
+    return dict(
+        zip(df.iloc[:, 0], df.iloc[:, 1].astype(float) * units.Hartree, strict=True)
+    )
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())

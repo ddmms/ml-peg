@@ -83,13 +83,11 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
         sheet_name="Old vs New CCSD(T) Reference Va",
         header=1,
     )
-    ref_energies = {}
 
-    for row in df.iterrows():
-        label = row[1][0]
-        ref_energies[label] = float(row[1][2]) * KCAL_TO_EV
-
-    return ref_energies
+    # BOLT: Replaced iterrows() with dict(zip(...)) for faster dictionary construction
+    return dict(
+        zip(df.iloc[:, 0], df.iloc[:, 2].astype(float) * KCAL_TO_EV, strict=True)
+    )
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
