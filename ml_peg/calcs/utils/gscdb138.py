@@ -105,11 +105,14 @@ def run_gscdb138(
         df_refs["Reference"] *= units.Hartree
 
         # Calculate relative energy for each entry.
-        for _, row in tqdm(df_refs.iterrows(), dataset, total=df_refs.shape[0]):
+        # BOLT: Replaced iterrows() with itertuples() for faster DataFrame iteration
+        for row in tqdm(
+            df_refs.itertuples(index=False), dataset, total=df_refs.shape[0]
+        ):
             atoms_list = []
-            identifier = row["Reaction"]
-            reactions = row["Stoichiometry"].split(",")  # Parse stoichiometry string.
-            e_rel_ref = row["Reference"]
+            identifier = row.Reaction
+            reactions = row.Stoichiometry.split(",")  # Parse stoichiometry string.
+            e_rel_ref = row.Reference
             num_species = len(reactions) // 2  # Each species has coefficient and name.
 
             e_rel_model = 0
