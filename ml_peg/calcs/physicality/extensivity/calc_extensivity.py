@@ -97,6 +97,7 @@ def test_extensivity(mlip: tuple[str, Any]) -> None:
             warn(f"Error calculating energy: {exc}", stacklevel=2)
             energy = np.nan
         struct.info["energy"] = energy
+        struct.calc = None
 
     # Write output structures
     write_dir = OUT_PATH / model_name

@@ -106,7 +106,9 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                         stacklevel=2,
                     )
                     energy = np.nan
+
                 atoms.info["energy"] = energy
+                atoms.calc = None
 
                 system_structs.append(atoms)
 
