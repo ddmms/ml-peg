@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import write
@@ -17,6 +18,7 @@ from ase.md.langevin import Langevin
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import LBFGS
 import molify
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -78,5 +80,10 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
         traj_file.unlink()
 
     for _ in tqdm(range(STEPS), desc=f"{model_name} MD"):
-        dyn.run(1)
+        try:
+            dyn.run(1)
+        except Exception as exc:
+            warn(f"Error during MD step for {model_name}: {exc}", stacklevel=2)
+            box.info["energy"] = np.nan
+            break
         write(traj_file, box, append=True)

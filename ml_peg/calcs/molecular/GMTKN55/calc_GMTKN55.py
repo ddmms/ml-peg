@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import write
@@ -97,7 +98,15 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.pbc = False
 
                 atoms.calc = copy(calc)
-                atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(
+                        f"Error calculating energy for {species_name}: {exc}",
+                        stacklevel=2,
+                    )
+                    energy = np.nan
+                atoms.info["energy"] = energy
 
                 system_structs.append(atoms)
 

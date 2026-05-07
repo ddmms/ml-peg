@@ -9,6 +9,7 @@ from pathlib import Path
 import random
 from typing import Any
 import urllib.request
+from warnings import warn
 
 from ase import Atoms
 from ase.io import write as ase_write
@@ -335,14 +336,21 @@ def relax_low_dimensional(
                 converged = True
             counter += 1
             atoms = relaxed
-    except Exception as e:
-        print(f"Relaxation failed: {e}")
-        return None, False, None, None
+    except Exception as exc:
+        warn(f"Relaxation failed: {exc}", stacklevel=2)
+        return None, False, np.nan, None
 
     if relaxed is None:
-        return None, False, None, max_force
+        return None, False, np.nan, max_force
 
-    energy_per_atom = relaxed.get_potential_energy() / len(relaxed)
+    try:
+        energy_per_atom = relaxed.get_potential_energy() / len(relaxed)
+    except Exception as exc:
+        warn(
+            f"Error calculating energy: {exc}",
+            stacklevel=2,
+        )
+        energy_per_atom = np.nan
     return relaxed, converged, energy_per_atom, max_force
 
 

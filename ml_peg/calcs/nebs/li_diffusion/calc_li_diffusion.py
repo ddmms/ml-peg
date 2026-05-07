@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
 from janus_core.calculations.neb import NEB
+import numpy as np
 import pytest
 
 from ml_peg.models import current_models
@@ -46,7 +48,14 @@ def relaxed_structs() -> dict[str, Atoms]:
                 file_prefix=OUT_PATH / f"{struct_name}-{model_name}",
                 filter_class=None,
             )
-            geomopt.run()
+            try:
+                geomopt.run()
+            except Exception as exc:
+                warn(
+                    f"Error for {struct_name} with {model_name}: {exc}",
+                    stacklevel=2,
+                )
+                struct.info["energy"] = np.nan
             relaxed_structs[f"{struct_name}-{model_name}"] = geomopt.struct
     return relaxed_structs
 
@@ -80,7 +89,12 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     for image in neb.images:
         image.info.setdefault("charge", 0)
         image.info.setdefault("spin", 1)
-    neb.run()
+    try:
+        neb.run()
+    except Exception as exc:
+        warn(f"Error running NEB for {model_name}: {exc}", stacklevel=2)
+        for image in neb.images:
+            image.info["energy"] = np.nan
 
 
 @pytest.mark.slow
@@ -112,4 +126,9 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> N
     for image in neb.images:
         image.info.setdefault("charge", 0)
         image.info.setdefault("spin", 1)
-    neb.run()
+    try:
+        neb.run()
+    except Exception as exc:
+        warn(f"Error running NEB for {model_name}: {exc}", stacklevel=2)
+        for image in neb.images:
+            image.info["energy"] = np.nan

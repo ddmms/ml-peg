@@ -5,10 +5,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -111,7 +113,11 @@ def get_energy(atoms: Atoms, calc: Calculator) -> float:
     """
     atoms_copy = atoms.copy()
     atoms_copy.calc = calc
-    energy = atoms_copy.get_potential_energy()
+    try:
+        energy = atoms_copy.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        return np.nan
     return float(energy)
 
 
