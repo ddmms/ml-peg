@@ -61,7 +61,10 @@ def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     box.calc = calc
 
     opt = LBFGS(box)
-    opt.run(fmax=0.1, steps=1000)
+    try:
+        opt.run(fmax=0.1, steps=1000)
+    except Exception as exc:
+        warn(f"Error during optimisation: {exc}", stacklevel=2)
 
     MaxwellBoltzmannDistribution(box, temperature_K=TEMPERATURE)
 

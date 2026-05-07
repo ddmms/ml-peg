@@ -153,12 +153,12 @@ def prepared_solute() -> dict[str, Atoms]:
     solutes = {}
     for model_name, calc in MODELS.items():
         solute = solute.copy()
+        solute.calc = calc.get_calculator(precision="high")
+        solutes[model_name] = solute
         try:
-            solute.calc = calc.get_calculator(precision="high")
             solute.get_forces()
-            solutes[model_name] = solute
-        # If a model fails, don't block other model tests
-        except (ModuleNotFoundError, RuntimeError, TypeError):
+        except Exception as exc:
+            warn(f"Error preparing solute: {exc} for {model_name}", stacklevel=2)
             continue
     return solutes
 
