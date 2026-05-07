@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable
+from copy import deepcopy
 import io
 import json
 import math
@@ -942,7 +943,7 @@ def model_asset_from_scatter(
         return rendered
 
 
-def filter_table(
+def filter_table_simple(
     *, table_id: str, filter_func: Callable, filter_kwargs: dict[str, Any]
 ) -> None:
     """
@@ -960,12 +961,14 @@ def filter_table(
 
     @callback(
         Output(table_id, "data"),
+        Output(f"{table_id}-filtered-data-store", "data"),
         Input("element-filter", "value"),
-        State(table_id, "data"),
+        State(f"{table_id}-original-data-store", "data"),
     )
     def _filter_table(
-        elements_list: list[str | None], table_data: dict[str, dict[str, float | None]]
-    ) -> list[dict]:
+        elements_list: list[str | None],
+        table_data: list[dict[str, Any]] | None,
+    ) -> tuple[list[dict], list[dict]]:
         """
         Register callback to filter table by elements.
 
@@ -978,19 +981,34 @@ def filter_table(
 
         Returns
         -------
-        list[dict]
+        tuple[list[dict], list[dict]]
             Filtered table data.
         """
+        if not table_data:
+            raise PreventUpdate
+
+        filtered_table_data = deepcopy(table_data)
+        columns_to_clear: set[str] = set()
+
         if not elements_list:
-            return table_data
+            return filtered_table_data, filtered_table_data
 
         filtered_results = filter_func(set(elements_list), **filter_kwargs)
         if filtered_results is None:
-            return table_data, table_data
+            return filtered_table_data, filtered_table_data
 
-        for row in table_data:
-            mlip_id = row.get("id")
-            for metric, results in filtered_results.items():
-                row[metric] = results.get(mlip_id)
+        columns_to_clear.update(filtered_results)
+        columns_to_clear.add("Score")
 
-        return table_data
+        # Blank metric values in the visible rows and filtered-store cache so
+        # downstream callbacks (category/summary) observe the filtered state.
+        for row in filtered_table_data:
+            for column in columns_to_clear:
+                if column in row:
+                    row[column] = None
+
+        return filtered_table_data, filtered_table_data
+
+
+# Backwards-compatible alias used by app-specific imports.
+filter_table = filter_table_simple

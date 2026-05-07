@@ -11,7 +11,7 @@ import numpy as np
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    filter_table,
+    filter_table_simple,
     plot_from_table_cell,
     struct_from_scatter,
 )
@@ -74,7 +74,7 @@ class LiDiffusionApp(BaseApp):
         if not hasattr(self, "elements"):
             self.get_elements()
 
-        filter_table(
+        filter_table_simple(
             table_id=self.table_id,
             filter_func=self.filter_data,
             filter_kwargs={"test_elements": self.elements},

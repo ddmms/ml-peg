@@ -733,10 +733,10 @@ def build_test_layout(
     description: str,
     framework_id: str,
     table: DataTable,
+    thresholds: Thresholds,
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -752,6 +752,9 @@ def build_test_layout(
     table
         Dash Table with metric results. Can include a `weights` attribute to be used by
         `build_weight_components`.
+    thresholds
+        Normalization metadata (metric -> (good, bad, unit)) supplied via the
+        analysis pipeline. Inline threshold controls are rendered automatically.
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
@@ -759,10 +762,6 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
-    thresholds
-        Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
-        analysis pipeline. When provided, inline threshold controls are rendered
-        automatically.
 
     Returns
     -------
@@ -821,33 +820,46 @@ def build_test_layout(
         )
     )
 
-    # Inline normalization thresholds when metadata is supplied
-    threshold_controls = None
-    if thresholds is not None:
-        reserved = {"MLIP", "Score", "id"}
-        metric_columns = [
-            col["id"] for col in table.columns if col.get("id") not in reserved
-        ]
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-data-store",
-                storage_type="session",
-                data=table.data,
-            )
+    reserved = {"MLIP", "Score", "id"}
+    metric_columns = [
+        col["id"] for col in table.columns if col.get("id") not in reserved
+    ]
+
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-original-data-store",
+            storage_type="session",
+            data=table.data,
         )
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-tooltip-store",
-                storage_type="session",
-                data=table.tooltip_header,
-            )
+    )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-filtered-data-store",
+            storage_type="session",
+            data=table.data,
         )
-        threshold_controls = build_threshold_inputs(
-            table_columns=metric_columns,
-            thresholds=thresholds,
-            table_id=table.id,
-            column_widths=column_widths,
+    )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-raw-data-store",
+            storage_type="session",
+            data=table.data,
         )
+    )
+    layout_contents.append(
+        Store(
+            id=f"{table.id}-raw-tooltip-store",
+            storage_type="session",
+            data=table.tooltip_header,
+        )
+    )
+
+    threshold_controls = build_threshold_inputs(
+        table_columns=metric_columns,
+        thresholds=thresholds,
+        table_id=table.id,
+        column_widths=column_widths,
+    )
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
@@ -862,24 +874,21 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    if thresholds is not None:
-        controls_visual = Div(
-            [
-                Div(threshold_controls, style={"marginBottom": "0px"}),
-                Div(metric_weights, style={"marginTop": "0"}),
-            ],
-            style={
-                "backgroundColor": "#f8f9fa",
-                "border": "1px solid #dee2e6",
-                "borderRadius": "6px",
-                "padding": "0px 0px 0px 0px",  # top right bottom left
-                "marginTop": "-5px",
-                "boxSizing": "border-box",
-                "width": "100%",
-            },
-        )
-    else:
-        controls_visual = metric_weights
+    controls_visual = Div(
+        [
+            Div(threshold_controls, style={"marginBottom": "0px"}),
+            Div(metric_weights, style={"marginTop": "0"}),
+        ],
+        style={
+            "backgroundColor": "#f8f9fa",
+            "border": "1px solid #dee2e6",
+            "borderRadius": "6px",
+            "padding": "0px 0px 0px 0px",  # top right bottom left
+            "marginTop": "-5px",
+            "boxSizing": "border-box",
+            "width": "100%",
+        },
+    )
 
     table_section = [
         build_download_controls(table.id, row=True),
