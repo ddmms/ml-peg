@@ -335,4 +335,13 @@ def prepare(
                 LOG.debug(f"Removing {stale}")
                 stale.unlink()
 
-    return directory / "system.data"
+    output_path = directory / "system.data"
+    if not output_path.exists():
+        # EMC reported success but the LAMMPS data file is missing. This can
+        # happen on disk-full / NFS issues, or with rare silent EMC bugs.
+        raise EMCError(
+            return_code=0,
+            stdout=emc.stdout.decode(),
+            stderr=f"EMC exited 0 but {output_path} was not created",
+        )
+    return output_path

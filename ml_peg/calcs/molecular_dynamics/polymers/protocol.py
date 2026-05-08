@@ -465,11 +465,12 @@ def run_polymer_protocol(
     seed: int = 42,
 ) -> None:
     """
-    Run simpoly's 25-stage Polymatic-style equilibration in ASE.
+    Run simpoly's 24-stage Polymatic-style equilibration in ASE.
 
-    The schedule is written out as 25 explicit ``_step`` calls so the science
-    maps line-by-line to the published protocol. ``state.json`` records
-    completed stages; per-stage trajectories handle within-stage resumption.
+    The schedule is materialised as a 24-element ``(name, callable)`` list so
+    the science maps line-by-line to the published protocol. ``state.json``
+    records completed stages; per-stage trajectories handle within-stage
+    resumption.
 
     Parameters
     ----------
@@ -616,8 +617,16 @@ def run_polymer_protocol(
     for name, fn in schedule:
         traj_path = out_dir / f"{name}.traj"
         if name in completed:
-            atoms = _last_frame(traj_path)
-            continue
+            try:
+                atoms = _last_frame(traj_path)
+                continue
+            except (OSError, ValueError, RuntimeError) as err:
+                LOG.warning(
+                    f"Stage {name} marked complete in state.json but its "
+                    f"trajectory could not be loaded ({err}); re-running."
+                )
+                completed.discard(name)
+                _save_completed(out_dir, completed)
         LOG.info(f"# Stage: {name}")
         atoms = fn(atoms, traj_path)
         completed.add(name)
