@@ -38,10 +38,12 @@ dependencies = [
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",
     "typer<1.0.0,>=0.19.1",
-    "asemolec",
 ]
 
 [project.optional-dependencies]
+asemolec = [
+    "asemolec"
+]
 chgnet = [
     "chgnet == 0.4.0",
 ]
