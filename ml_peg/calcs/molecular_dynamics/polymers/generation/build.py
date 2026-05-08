@@ -1,4 +1,5 @@
-r"""CLI: build polymer starting cells with EMC and write extxyz files.
+r"""
+Build polymer starting cells with EMC and write extxyz files.
 
 Run as a module from the repo root, e.g.
 
@@ -41,7 +42,14 @@ DATA_CSV = pathlib.Path(__file__).resolve().parents[1] / "resources" / "data.csv
 
 
 def _load_polymer_table() -> pd.DataFrame:
-    """Load the polymer table indexed by polymer id."""
+    """
+    Load the polymer table indexed by polymer id.
+
+    Returns
+    -------
+    pd.DataFrame
+        The polymer table indexed by ``id``, sorted alphabetically.
+    """
     df = pd.read_csv(DATA_CSV, na_values=["NaN"], encoding="utf-8", comment="%")
     return df.set_index("id").sort_index()
 
@@ -73,7 +81,9 @@ def build_polymer_cell(
     temp_k
         Target temperature passed to EMC (in K).
     n_total
-        Total number of atoms in the cell. Default: 2 000.
+        Approximate target for the total number of atoms in the cell. EMC
+        builds ``floor(n_total / atoms_per_chain)`` chains, so the actual
+        atom count rounds down. Default: 2 000.
     n_ru_per_chain
         Number of repeat units per chain. Default: 10.
     initial_density_g_cm3
@@ -125,11 +135,21 @@ def build_polymer_cell(
     return extxyz_path
 
 
+class _Formatter(
+    argparse.ArgumentDefaultsHelpFormatter,
+    argparse.RawDescriptionHelpFormatter,
+):
+    """Argparse formatter that preserves description newlines and prints defaults."""
+
+
 def main() -> None:
     """CLI entry point — see module docstring for usage."""
     table = _load_polymer_table()
 
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=_Formatter,
+    )
     ap.add_argument(
         "--poly-id",
         action="append",
@@ -142,11 +162,18 @@ def main() -> None:
         ),
     )
     ap.add_argument("--output-dir", required=True, type=pathlib.Path)
-    ap.add_argument("--temp-k", type=float, default=300.0)
-    ap.add_argument("--n-total", type=int, default=2_000)
-    ap.add_argument("--n-ru-per-chain", type=int, default=10)
+    ap.add_argument("--temp-k", type=float, default=300.0, help="K")
+    ap.add_argument(
+        "--n-total",
+        type=int,
+        default=2_000,
+        help="approximate atom count (rounded down to a whole number of chains)",
+    )
+    ap.add_argument(
+        "--n-ru-per-chain", type=int, default=10, help="repeat units per chain"
+    )
     ap.add_argument("--initial-density", type=float, default=0.5, help="g/cm^3")
-    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--seed", type=int, default=42, help="random seed")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
