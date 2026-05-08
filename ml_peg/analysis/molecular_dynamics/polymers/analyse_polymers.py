@@ -142,6 +142,10 @@ def polymer_densities() -> dict[str, list[float]]:
         results["ref"].append(ref_density)
 
     for model_name in MODELS:
+        # Per project convention, the dashboard/app must not read from the
+        # calc outputs directory: anything the app needs (here, the final
+        # production-stage frame for visualisation) is copied here, into the
+        # app's data tree, during analysis.
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
         for poly_id in poly_ids:
