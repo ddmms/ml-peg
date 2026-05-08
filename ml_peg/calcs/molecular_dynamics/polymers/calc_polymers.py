@@ -26,7 +26,14 @@ DEFAULT_SEED: ty.Final[int] = 42
 
 
 def _load_polymer_table() -> pd.DataFrame:
-    """Load and sort the polymer reference table indexed by polymer id."""
+    """
+    Load and sort the polymer reference table indexed by polymer id.
+
+    Returns
+    -------
+    pd.DataFrame
+        The polymer table indexed by ``id``, sorted alphabetically.
+    """
     df = pd.read_csv(DATA_CSV, na_values=["NaN"], encoding="utf-8", comment="%")
     return df.set_index("id").sort_index()
 

@@ -43,7 +43,14 @@ METRICS_CONFIG_PATH = pathlib.Path(__file__).with_name("metrics.yml")
 
 
 def _load_polymer_table() -> pd.DataFrame:
-    """Load the experimental polymer table indexed by polymer id."""
+    """
+    Load the experimental polymer table indexed by polymer id.
+
+    Returns
+    -------
+    pd.DataFrame
+        The polymer table indexed by ``id``, sorted alphabetically.
+    """
     df = pd.read_csv(DATA_CSV, na_values=["NaN"], encoding="utf-8", comment="%")
     return df.set_index("id").sort_index()
 
@@ -52,12 +59,31 @@ POLYMER_TABLE = _load_polymer_table()
 
 
 def labels() -> list[str]:
-    """Return the list of polymer ids covered by the benchmark."""
+    """
+    Return the list of polymer ids covered by the benchmark.
+
+    Returns
+    -------
+    list[str]
+        Polymer ids from ``data.csv``, in sorted order.
+    """
     return [str(poly_id) for poly_id in POLYMER_TABLE.index]
 
 
 def _open_trajectory(traj_path: pathlib.Path) -> ase_traj.TrajectoryReader | None:
-    """Open an ASE trajectory for reading; ``None`` if missing or unreadable."""
+    """
+    Open an ASE trajectory for reading; ``None`` if missing or unreadable.
+
+    Parameters
+    ----------
+    traj_path
+        Path to an ASE trajectory file.
+
+    Returns
+    -------
+    TrajectoryReader | None
+        Open reader, or ``None`` if the file is missing or unreadable.
+    """
     if not traj_path.exists():
         return None
     try:
@@ -68,7 +94,19 @@ def _open_trajectory(traj_path: pathlib.Path) -> ase_traj.TrajectoryReader | Non
 
 
 def _mean_density_g_cm3(traj: ase_traj.TrajectoryReader) -> float:
-    """Average the density (g/cm³) over every frame of an ASE trajectory."""
+    """
+    Average the density (g/cm³) over every frame of an ASE trajectory.
+
+    Parameters
+    ----------
+    traj
+        Open ASE trajectory reader (already known to be non-empty).
+
+    Returns
+    -------
+    float
+        Frame-averaged density in g/cm³.
+    """
     densities = [
         AU_TO_G_CM3 * float(frame.get_masses().sum()) / float(frame.get_volume())
         for frame in traj

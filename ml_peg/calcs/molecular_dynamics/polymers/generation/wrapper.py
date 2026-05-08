@@ -1,4 +1,5 @@
-"""Subprocess wrapper around the EMC polymer-cell builder.
+"""
+Subprocess wrapper around the EMC polymer-cell builder.
 
 This module defines :class:`Config` (the per-build parameters) and
 :func:`prepare`, which renders the EMC `.esh` template, runs ``emc_setup.pl``
@@ -25,16 +26,43 @@ LOG = logging.getLogger(__name__)
 
 
 def _wrap(name: str, symbol: str = "_") -> str:
-    """Wrap ``name`` with the placeholder symbol on both sides."""
+    """
+    Wrap ``name`` with the placeholder symbol on both sides.
+
+    Parameters
+    ----------
+    name
+        Placeholder key (without the surrounding symbol).
+    symbol
+        Wrapping symbol. Default: ``"_"``.
+
+    Returns
+    -------
+    str
+        ``f"{symbol}{name}{symbol}"``.
+    """
     return symbol + name + symbol
 
 
 def _render_template(template: str, values: ty.Mapping[str, ty.Any]) -> str:
-    """Substitute ``_<key>_`` placeholders in ``template`` from ``values``.
+    """
+    Substitute ``_<key>_`` placeholders in ``template`` from ``values``.
 
     Booleans are rendered as ``"true"`` / ``"false"``; everything else is
     rendered with ``str(...)``. Raises if a key has no matching placeholder
     or if any ``_<word>_`` placeholder remains after substitution.
+
+    Parameters
+    ----------
+    template
+        Raw template string with ``_<key>_`` placeholders.
+    values
+        Mapping from placeholder key to replacement value.
+
+    Returns
+    -------
+    str
+        ``template`` with every placeholder replaced.
     """
     rendered = template
     for key, value in values.items():
@@ -58,24 +86,52 @@ def _render_template(template: str, values: ty.Mapping[str, ty.Any]) -> str:
 
 
 def _emc_root() -> pathlib.Path:
-    """Return the root EMC directory bundled with ``pyemc``."""
+    """
+    Return the root EMC directory bundled with ``pyemc``.
+
+    Returns
+    -------
+    pathlib.Path
+        ``<pyemc package dir>/emc``.
+    """
     import pyemc  # type: ignore[import-not-found]
 
     return pathlib.Path(pyemc.__file__).parent / "emc"
 
 
 def _emc_setup_path() -> pathlib.Path:
-    """Path to the EMC setup Perl script."""
+    """
+    Return the path to the EMC setup Perl script.
+
+    Returns
+    -------
+    pathlib.Path
+        ``<emc root>/scripts/emc_setup.pl``.
+    """
     return _emc_root() / "scripts" / "emc_setup.pl"
 
 
 def _emc_binary() -> pathlib.Path:
-    """Path to the EMC binary."""
+    """
+    Return the path to the EMC binary.
+
+    Returns
+    -------
+    pathlib.Path
+        ``<emc root>/bin/emc_linux_x86_64``.
+    """
     return _emc_root() / "bin" / "emc_linux_x86_64"
 
 
 def _read_emc_template() -> str:
-    """Return the bundled EMC template as a string."""
+    """
+    Return the bundled EMC ``.esh`` template as a string.
+
+    Returns
+    -------
+    str
+        UTF-8-decoded contents of ``resources/emc_template.esh``.
+    """
     template_path = pathlib.Path(__file__).parent / "resources" / "emc_template.esh"
     return template_path.read_text(encoding="utf-8")
 
@@ -95,17 +151,46 @@ class Config:
     pdb: bool = False  # PDB output can crash EMC; off by default
 
     def render(self) -> str:
-        """Render the EMC ``.esh`` script for this configuration."""
+        """
+        Render the EMC ``.esh`` script for this configuration.
+
+        Returns
+        -------
+        str
+            The fully-substituted ``.esh`` script ready to write to disk.
+        """
         template = _read_emc_template()
         values = dataclasses.asdict(self)
         return _render_template(template, values)
 
 
 class EMCError(RuntimeError):
-    """Generic error raised when EMC (setup or simulation) fails."""
+    """
+    Generic error raised when EMC (setup or simulation) fails.
+
+    Parameters
+    ----------
+    return_code
+        Process exit code (negative for signal termination).
+    stdout
+        Captured standard output.
+    stderr
+        Captured standard error.
+    """
 
     def __init__(self, *, return_code: int, stdout: str, stderr: str) -> None:
-        """Store the return code and captured stdout/stderr from the EMC process."""
+        """
+        Construct from the EMC process exit metadata.
+
+        Parameters
+        ----------
+        return_code
+            Process exit code (negative for signal termination).
+        stdout
+            Captured standard output.
+        stderr
+            Captured standard error.
+        """
         super().__init__(f"EMC failed (return_code={return_code})")
         self.return_code = return_code
         self.stdout = stdout
@@ -137,7 +222,23 @@ class SetupError(EMCError):
 
 
 def _classify_error(*, return_code: int, stdout: str, stderr: str) -> EMCError:
-    """Map an EMC failure into the most specific :class:`EMCError` subclass."""
+    """
+    Map an EMC failure into the most specific :class:`EMCError` subclass.
+
+    Parameters
+    ----------
+    return_code
+        Process exit code (negative for signal termination).
+    stdout
+        Captured standard output.
+    stderr
+        Captured standard error.
+
+    Returns
+    -------
+    EMCError
+        The most-specific EMCError subclass that matches the failure.
+    """
     if "Missing force field parameters." in stdout:
         cls: type[EMCError] = MissingForceFieldParametersError
     elif "Ambiguous charge assignments for group" in stdout:
@@ -156,7 +257,21 @@ def _classify_error(*, return_code: int, stdout: str, stderr: str) -> EMCError:
 def _run(
     args: ty.Sequence[str], working_dir: pathlib.Path
 ) -> subprocess.CompletedProcess[bytes]:
-    """Run an external command in ``working_dir`` and capture its output."""
+    """
+    Run an external command in ``working_dir`` and capture its output.
+
+    Parameters
+    ----------
+    args
+        Argv-style command and arguments.
+    working_dir
+        Directory the command runs in.
+
+    Returns
+    -------
+    subprocess.CompletedProcess[bytes]
+        Result with stdout/stderr captured as raw bytes.
+    """
     return subprocess.run(
         args=list(args), cwd=working_dir, capture_output=True, shell=False
     )

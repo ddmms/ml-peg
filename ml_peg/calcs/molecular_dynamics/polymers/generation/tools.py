@@ -18,6 +18,16 @@ def _atomic_numbers_from_masses(atoms: ase.Atoms) -> ty.Sequence[int]:
     LAMMPS data files identify atom types by mass. EMC writes its own masses,
     which can differ slightly from ``ase.data.atomic_masses``; we pick the
     closest standard mass for each atom.
+
+    Parameters
+    ----------
+    atoms
+        Structure whose ``masses`` array is the source.
+
+    Returns
+    -------
+    Sequence[int]
+        Per-atom atomic numbers.
     """
     return [
         int(np.argmin(np.abs(ase.data.atomic_masses - m))) for m in atoms.get_masses()

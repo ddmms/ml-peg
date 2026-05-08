@@ -1,4 +1,5 @@
-"""Run the simpoly 21-step Polymatic-style equilibration of polymer cells in ASE.
+"""
+Run the simpoly 21-step Polymatic-style equilibration of polymer cells in ASE.
 
 ASE translation of ``simpoly.poly_arena.simulation`` (LAMMPS). The protocol
 mirrors simpoly's ``build_21steps_protocol`` and consists of 24 sequential
@@ -58,17 +59,37 @@ StageFn = ty.Callable[[ase.Atoms, pathlib.Path], ase.Atoms]
 
 
 def _density_g_cm3(atoms: ase.Atoms) -> float:
-    """Compute the density of ``atoms`` in g/cm³."""
+    """
+    Compute the density of ``atoms`` in g/cm³.
+
+    Parameters
+    ----------
+    atoms
+        Periodic structure.
+
+    Returns
+    -------
+    float
+        Density in g/cm³.
+    """
     mass = float(atoms.get_masses().sum())
     volume = float(atoms.get_volume())
     return float(AU_TO_G_CM3 * mass / volume)
 
 
 def _log_md(dyn: ase_md.MolecularDynamics, start_time: float) -> None:
-    """Log step, T, ρ, walltime, KE, PE per ``LOG_INTERVAL`` steps.
+    """
+    Log step, T, ρ, walltime, KE, PE per ``LOG_INTERVAL`` steps.
 
     The format mirrors the per-line schema used by ``liquid_densities`` and
     ``water_density`` so the existing log-parsing pattern carries over.
+
+    Parameters
+    ----------
+    dyn
+        Active ASE integrator (the source of step / time / atoms).
+    start_time
+        Wall-clock seconds at which the stage was launched (``time.time()``).
     """
     wall_time = time.time() - start_time
     energy = dyn.atoms.get_potential_energy()
@@ -83,12 +104,37 @@ def _log_md(dyn: ase_md.MolecularDynamics, start_time: float) -> None:
 
 
 def _state_path(out_dir: pathlib.Path) -> pathlib.Path:
-    """Path to the per-polymer state.json file."""
+    """
+    Return the path to the per-polymer state.json file.
+
+    Parameters
+    ----------
+    out_dir
+        Per-polymer output directory.
+
+    Returns
+    -------
+    pathlib.Path
+        ``out_dir / "state.json"``.
+    """
     return out_dir / "state.json"
 
 
 def _load_completed(out_dir: pathlib.Path) -> set[str]:
-    """Load the set of completed stage names from ``state.json`` (or empty)."""
+    """
+    Load the set of completed stage names from ``state.json`` (or empty).
+
+    Parameters
+    ----------
+    out_dir
+        Per-polymer output directory containing (or about to contain)
+        ``state.json``.
+
+    Returns
+    -------
+    set[str]
+        Stage names that previous runs have already finished.
+    """
     path = _state_path(out_dir)
     if not path.exists():
         return set()
@@ -97,7 +143,16 @@ def _load_completed(out_dir: pathlib.Path) -> set[str]:
 
 
 def _save_completed(out_dir: pathlib.Path, completed: set[str]) -> None:
-    """Atomically write the completed-stage list to ``state.json``."""
+    """
+    Atomically write the completed-stage list to ``state.json``.
+
+    Parameters
+    ----------
+    out_dir
+        Per-polymer output directory.
+    completed
+        Names of stages already finished.
+    """
     path = _state_path(out_dir)
     tmp = path.with_suffix(".json.tmp")
     with open(tmp, "w", encoding="utf8") as f:
@@ -106,7 +161,19 @@ def _save_completed(out_dir: pathlib.Path, completed: set[str]) -> None:
 
 
 def _last_frame(traj_path: pathlib.Path) -> ase.Atoms:
-    """Return the last frame from a trajectory, with calculator detached."""
+    """
+    Return the last frame from a trajectory, with calculator detached.
+
+    Parameters
+    ----------
+    traj_path
+        ASE trajectory file to read.
+
+    Returns
+    -------
+    ase.Atoms
+        The final frame of ``traj_path``, with ``atoms.calc`` set to ``None``.
+    """
     traj = ase_traj.Trajectory(str(traj_path))
     atoms = traj[-1]
     atoms.calc = None
@@ -114,10 +181,21 @@ def _last_frame(traj_path: pathlib.Path) -> ase.Atoms:
 
 
 def _resumed_nsteps(traj_path: pathlib.Path) -> int:
-    """Return the number of MD steps already completed in ``traj_path``.
+    """
+    Return the number of MD steps already completed in ``traj_path``.
 
     Uses ``LOG_INTERVAL`` because each integrator dumps one frame every
     ``LOG_INTERVAL`` steps. Returns 0 if the file is missing or unreadable.
+
+    Parameters
+    ----------
+    traj_path
+        Per-stage trajectory path.
+
+    Returns
+    -------
+    int
+        Number of MD steps already represented in the trajectory.
     """
     if not traj_path.exists():
         return 0
@@ -130,7 +208,19 @@ def _resumed_nsteps(traj_path: pathlib.Path) -> int:
 
 
 def _n_md_steps(time_ps: float) -> int:
-    """Convert a stage duration in picoseconds into a number of MD steps."""
+    """
+    Convert a stage duration in picoseconds into a number of MD steps.
+
+    Parameters
+    ----------
+    time_ps
+        Stage duration in picoseconds.
+
+    Returns
+    -------
+    int
+        Number of integrator steps for the stage at ``TIMESTEP``.
+    """
     return int(math.ceil(time_ps * 1000 * ase_units.fs / TIMESTEP))
 
 
@@ -139,7 +229,23 @@ def _minimize(
     calc: ase_calc.Calculator,
     traj_path: pathlib.Path,
 ) -> ase.Atoms:
-    """Geometry-optimize ``atoms`` and write the relaxed frame to ``traj_path``."""
+    """
+    Geometry-optimize ``atoms`` and write the relaxed frame to ``traj_path``.
+
+    Parameters
+    ----------
+    atoms
+        Starting structure (modified in place).
+    calc
+        ASE Calculator attached to ``atoms`` for the optimization.
+    traj_path
+        Trajectory file to overwrite with the single relaxed frame.
+
+    Returns
+    -------
+    ase.Atoms
+        The optimized atoms object.
+    """
     atoms.calc = calc
     opt = ase_opt.LBFGS(atoms, logfile=os.devnull, maxstep=0.05)
     opt.run(fmax=MIN_FMAX, steps=MIN_STEPS)
@@ -156,7 +262,25 @@ def _set_velocity(
     temp_k: float,
     seed: int,
 ) -> ase.Atoms:
-    """Initialize velocities from Maxwell-Boltzmann; zero net translation/rotation."""
+    """
+    Initialize velocities from Maxwell-Boltzmann; zero net translation and rotation.
+
+    Parameters
+    ----------
+    atoms
+        Structure whose ``momenta`` will be populated.
+    traj_path
+        Trajectory file to overwrite with the single post-init frame.
+    temp_k
+        Target temperature for the Maxwell-Boltzmann distribution, in K.
+    seed
+        Seed for the numpy random generator used by ASE.
+
+    Returns
+    -------
+    ase.Atoms
+        ``atoms`` with momenta set and net translation/rotation removed.
+    """
     rng = np.random.default_rng(seed=seed)
     ase_vd.MaxwellBoltzmannDistribution(atoms, temperature_K=temp_k, rng=rng)
     ase_vd.Stationary(atoms)
@@ -173,10 +297,28 @@ def _prepare_md_resume(
     traj_path: pathlib.Path,
     n_total: int,
 ) -> tuple[ase.Atoms, int] | None:
-    """Compute resume state for an MD stage.
+    """
+    Compute resume state for an MD stage.
 
     Returns ``None`` if the stage is already complete. Otherwise returns
     ``(atoms, n_done)`` ready for an integrator to consume.
+
+    Parameters
+    ----------
+    atoms
+        Carry-over structure from the previous stage.
+    calc
+        ASE Calculator to attach to the (possibly reloaded) atoms.
+    traj_path
+        Trajectory file for this stage; if it exists, used for resume.
+    n_total
+        Total number of MD steps the stage is supposed to run.
+
+    Returns
+    -------
+    tuple[ase.Atoms, int] | None
+        ``(atoms, n_done)`` when the stage still has steps to run, or
+        ``None`` if ``n_done >= n_total``.
     """
     n_done = _resumed_nsteps(traj_path)
     if n_done >= n_total:
@@ -193,7 +335,18 @@ def _run_md(
     n_total: int,
     n_done: int,
 ) -> None:
-    """Run an integrator for the remaining steps, with thermo logging hooked in."""
+    """
+    Run an integrator for the remaining steps, with thermo logging hooked in.
+
+    Parameters
+    ----------
+    dyn
+        Already-constructed ASE integrator.
+    n_total
+        Total number of steps the stage is configured for.
+    n_done
+        Number of steps already completed in the trajectory (for resume).
+    """
     dyn.nsteps = n_done
     dyn.attach(_log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
     dyn.run(steps=n_total - n_done)
@@ -207,7 +360,27 @@ def _nvt(
     time_ps: float,
     temp_k: float,
 ) -> ase.Atoms:
-    """Run a Nose-Hoover-chain NVT stage."""
+    """
+    Run a Nose-Hoover-chain NVT stage.
+
+    Parameters
+    ----------
+    atoms
+        Carry-over structure from the previous stage.
+    calc
+        ASE Calculator to attach to ``atoms``.
+    traj_path
+        Per-stage trajectory path (created or appended for resume).
+    time_ps
+        Stage duration in picoseconds (already scaled by ``time_prefactor``).
+    temp_k
+        Target temperature, in K.
+
+    Returns
+    -------
+    ase.Atoms
+        The final-frame atoms after the stage.
+    """
     n_total = _n_md_steps(time_ps)
     prep = _prepare_md_resume(atoms, calc, traj_path, n_total)
     if prep is None:
@@ -236,7 +409,29 @@ def _npt(
     temp_k: float,
     pressure_atm: float,
 ) -> ase.Atoms:
-    """Run an anisotropic NPT stage matching LAMMPS ``npt aniso``."""
+    """
+    Run an anisotropic NPT stage matching LAMMPS ``npt aniso``.
+
+    Parameters
+    ----------
+    atoms
+        Carry-over structure from the previous stage.
+    calc
+        ASE Calculator to attach to ``atoms``.
+    traj_path
+        Per-stage trajectory path (created or appended for resume).
+    time_ps
+        Stage duration in picoseconds (already scaled by ``time_prefactor``).
+    temp_k
+        Target temperature, in K.
+    pressure_atm
+        Target pressure, in atm.
+
+    Returns
+    -------
+    ase.Atoms
+        The final-frame atoms after the stage.
+    """
     n_total = _n_md_steps(time_ps)
     prep = _prepare_md_resume(atoms, calc, traj_path, n_total)
     if prep is None:
@@ -269,7 +464,8 @@ def run_polymer_protocol(
     time_prefactor: float = 1.0,
     seed: int = 42,
 ) -> None:
-    """Run simpoly's 25-stage Polymatic-style equilibration in ASE.
+    """
+    Run simpoly's 25-stage Polymatic-style equilibration in ASE.
 
     The schedule is written out as 25 explicit ``_step`` calls so the science
     maps line-by-line to the published protocol. ``state.json`` records
@@ -309,17 +505,81 @@ def run_polymer_protocol(
     # parameters in a closure here. This lets the schedule below stay one line
     # per stage, which is the entire point of having a procedural protocol.
     def _min(name: str) -> tuple[str, StageFn]:
+        """
+        Build a (name, callable) tuple for a minimization stage.
+
+        Parameters
+        ----------
+        name
+            Stage name used for the trajectory file and ``state.json``.
+
+        Returns
+        -------
+        tuple[str, StageFn]
+            ``(name, fn)`` for the schedule loop.
+        """
         return name, lambda a, p: _minimize(a, calc, p)
 
     def _vel(name: str, *, t_k: float) -> tuple[str, StageFn]:
+        """
+        Build a (name, callable) tuple for a set-velocity stage.
+
+        Parameters
+        ----------
+        name
+            Stage name used for the trajectory file and ``state.json``.
+        t_k
+            Maxwell-Boltzmann temperature, in K.
+
+        Returns
+        -------
+        tuple[str, StageFn]
+            ``(name, fn)`` for the schedule loop.
+        """
         return name, lambda a, p: _set_velocity(a, p, temp_k=t_k, seed=seed)
 
     def _nvt_(name: str, *, t_ps: float, t_k: float) -> tuple[str, StageFn]:
+        """
+        Build a (name, callable) tuple for an NVT stage.
+
+        Parameters
+        ----------
+        name
+            Stage name used for the trajectory file and ``state.json``.
+        t_ps
+            Stage duration in picoseconds.
+        t_k
+            Target temperature, in K.
+
+        Returns
+        -------
+        tuple[str, StageFn]
+            ``(name, fn)`` for the schedule loop.
+        """
         return name, lambda a, p: _nvt(a, calc, p, time_ps=t_ps, temp_k=t_k)
 
     def _npt_(
         name: str, *, t_ps: float, t_k: float, p_atm: float
     ) -> tuple[str, StageFn]:
+        """
+        Build a (name, callable) tuple for an NPT stage.
+
+        Parameters
+        ----------
+        name
+            Stage name used for the trajectory file and ``state.json``.
+        t_ps
+            Stage duration in picoseconds.
+        t_k
+            Target temperature, in K.
+        p_atm
+            Target pressure, in atm.
+
+        Returns
+        -------
+        tuple[str, StageFn]
+            ``(name, fn)`` for the schedule loop.
+        """
         return name, lambda a, p: _npt(
             a, calc, p, time_ps=t_ps, temp_k=t_k, pressure_atm=p_atm
         )
