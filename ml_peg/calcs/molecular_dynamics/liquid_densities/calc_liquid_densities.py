@@ -124,6 +124,7 @@ def run_npt(atoms, calc, output_fname):
     dyn.run(steps=NUM_MD_STEPS - nsteps)
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     """
