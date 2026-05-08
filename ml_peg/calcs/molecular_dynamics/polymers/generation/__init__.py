@@ -1,4 +1,5 @@
-"""Optional polymer-cell builder (requires the ``emc-pypi`` package).
+"""
+Optional polymer-cell builder (requires the ``emc-pypi`` package).
 
 This sub-package is **not** required to run the polymers benchmark — that
 consumes pre-built starting structures from S3. It is provided so users can
