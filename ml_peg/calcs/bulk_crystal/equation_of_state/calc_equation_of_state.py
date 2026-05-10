@@ -29,6 +29,11 @@ MODELS = load_models(current_models)
 DATA_PATH = Path(__file__).parent / "../../../../inputs/bulk_crystal/equation_of_state/"
 OUT_PATH = Path(__file__).parent / "outputs"
 
+magnetic_moments = {
+    "Ni": {"FCC": 0.6, "HCP": 0.59, "BCC": 0.55},
+    "Fe": {"BCC": 2.0, "FCC": 2.2, "A15": 2.2, "C15": 2.2},
+}
+
 
 class A15Factory(SimpleCubicFactory):
     """A factory for creating A15 lattices."""
@@ -135,6 +140,14 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
             lattice_name = "HCP"
         try:
             unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
+            unit_cell.info["charge"] = 0
+            if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
+                unit_cell.info["spin"] = magnetic_moments[symbol][lattice_name] * len(
+                    unit_cell
+                )
+            else:
+                unit_cell.info["spin"] = 0
+
             unit_cell.calc = calc
             uc_filter = ExpCellFilter(unit_cell, constant_volume=True)
             opt = LBFGS(uc_filter)
@@ -170,7 +183,9 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
     return (lattice.calc_num_atoms() * volume_per_atom) ** (1 / 3)
 
 
-def equation_of_state(calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 2)):
+def equation_of_state(
+    calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 2), lattice_name=None
+):
     """
     Compute the equation of state for a given element and lattice.
 
@@ -186,6 +201,8 @@ def equation_of_state(calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 
         Chemical symbol of the element to use for structure generation.
     size
         Size of the supercell to generate for each volume per atom.
+    lattice_name
+        Optional name of the lattice for magnetic moment lookup.
 
     Returns
     -------
@@ -205,6 +222,13 @@ def equation_of_state(calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 
         for lc in lattice_constants
     ]
     for structure in structures:
+        structure.info["charge"] = 0
+        if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
+            structure.info["spin"] = magnetic_moments[symbol][lattice_name] * len(
+                structure
+            )
+        else:
+            structure.info["spin"] = 0
         structure.calc = calc
 
     for structure in structures:
@@ -258,6 +282,7 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
                 lattice,
                 volumes_per_atoms,
                 symbol=element,
+                lattice_name=phase,
             )
 
             output_file = write_dir / f"{element}_{phase}_eos_structures.xyz"
