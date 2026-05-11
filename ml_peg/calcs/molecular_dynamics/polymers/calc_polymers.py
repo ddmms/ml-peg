@@ -78,6 +78,7 @@ def test_polymer_densities(
 
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
+    calc = model.add_d3_calculator(calc)
 
     out_dir = OUT_PATH / model_name / poly_id
     out_dir.mkdir(parents=True, exist_ok=True)
