@@ -44,6 +44,26 @@ Outputs land in `outputs/<model>/<poly_id>/` (one trajectory per stage,
 plus a `state.json` for resumability). Failures are caught and
 `pytest.skip`'d so the rest of the matrix still runs.
 
+Polymer subsets for array jobs are listed in `resources/polymer_sets/`.
+Regenerate them with:
+
+```bash
+python -m ml_peg.calcs.molecular_dynamics.polymers.generate_polymer_sets
+```
+
+See `example_submit.slurm` for a complete Slurm array-job template.
+
+Example Slurm-style lookup:
+
+```bash
+SET_FILE=ml_peg/calcs/molecular_dynamics/polymers/resources/polymer_sets/medium.txt
+POLY_ID=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$SET_FILE")
+
+uv run pytest -v -s \
+    ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
+    --poly-id "$POLY_ID" --models mace-mp-0a
+```
+
 Analysis (averages density over the production stage, writes parity plot
 and MAE table for the dashboard):
 
