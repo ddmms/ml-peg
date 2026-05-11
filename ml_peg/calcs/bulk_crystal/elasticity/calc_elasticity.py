@@ -235,12 +235,14 @@ def run_elasticity_benchmark(
 
     # Save relaxed structures to extxyz for visualisation
     atoms_list = []
-    for _, row in results.iterrows():
-        struct = row.get("final_structure")
+    # PERF: Use to_dict('records') instead of iterrows for faster iteration
+    # and to preserve complex column names that itertuples might alter.
+    for row_dict in results.to_dict("records"):
+        struct = row_dict.get("final_structure")
         if struct is not None:
             atoms = AseAtomsAdaptor.get_atoms(struct).copy()
             atoms.calc = None
-            atoms.info = {"mp_id": row[benchmark.index_name]}
+            atoms.info = {"mp_id": row_dict[benchmark.index_name]}
             atoms_list.append(atoms)
     if atoms_list:
         ase_write(
