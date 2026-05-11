@@ -611,7 +611,7 @@ def run_polymer_protocol(
         _npt_(
             "22_step21_npt_equilibration", t_ps=800 * tp, t_k=t_fin, p_atm=p_final_atm
         ),
-        _npt_("23_step22_final_npt", t_ps=1000 * tp, t_k=t_fin, p_atm=p_final_atm),
+        _npt_("23_step22_final_npt", t_ps=500 * tp, t_k=t_fin, p_atm=p_final_atm),
     ]
 
     for name, fn in schedule:
