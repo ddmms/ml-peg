@@ -8,7 +8,7 @@ ML interatomic potential and compares against the experimental reference in
 
 24-stage Polymatic-style equilibration ported from
 [SimPoly](https://github.com/microsoft/simpoly)'s LAMMPS
-`build_21steps_protocol` to ASE. 0.5 fs timestep, **2.56 ns total** per
+`build_21steps_protocol` to ASE. 0.5 fs timestep, **2.06 ns total** per
 (model, polymer) at the default `--time-prefactor 1.0`:
 
 - minimization + Maxwell-Boltzmann velocity init
@@ -16,7 +16,7 @@ ML interatomic potential and compares against the experimental reference in
 - 600 ps "upward shaking" (3 NPT/NVT/NVT cycles, 0.02 → 0.6 → 1.0 × P_max)
 - 60 ps "downward shaking" (3 cycles, 0.5 → 0.1 → 0.01 × P_max)
 - 800 ps NPT equilibration
-- 1000 ps NPT **production** (density averaged here)
+- 500 ps NPT **production** (density averaged here)
 
 `P_max = 49 346.2 atm`. LAMMPS `npt aniso` → `MaskedMTKNPT(mask=(True, True,
 True))`. The original SimPoly protocol has 25 stages; the LAMMPS
@@ -29,12 +29,12 @@ Starting structures are pulled from S3
 [`generation/README.md`](generation/README.md) to rebuild them.
 
 ```bash
-# Full protocol (~2.56 ns; hours on a GPU)
+# Full protocol (~2.06 ns; hours on a GPU)
 uv run pytest -v -s \
     ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
     --poly-id PS --models mace-mp-0a
 
-# Smoke test (~13 ps; minutes on a GPU)
+# Smoke test (~10 ps; minutes on a GPU)
 uv run pytest -v -s \
     ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
     --poly-id PS --models mace-mp-0a --time-prefactor 0.005

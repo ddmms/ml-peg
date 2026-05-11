@@ -6,7 +6,7 @@ mirrors simpoly's ``build_21steps_protocol`` and consists of 24 sequential
 stages: geometry minimization, Maxwell-Boltzmann velocity initialization, two
 NVT preheats, three "upward shaking" cycles at increasing high pressures
 (each NPT-NVT-NVT), three "downward shaking" cycles at decreasing high
-pressures, an 800 ps NPT equilibration, and a 1 ns NPT production stage.
+pressures, an 800 ps NPT equilibration, and a 500 ps NPT production stage.
 
 Compared with simpoly, the LAMMPS ``nve_preheat`` stage (``langevin`` +
 ``nve/limit 0.1`` for 10 ps) is omitted: ASE has no ``nve/limit`` analogue
