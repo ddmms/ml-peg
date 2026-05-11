@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "37Conf8"
@@ -37,7 +37,8 @@ class ThirtySevenConf8App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/37Conf8/{MODELS[0]}/{label}.xyz" for label in labels
+                f"/assets/conformers/37Conf8/{MODELS[0]}/{label}.xyz"
+                for label in labels
             ]
         else:
             structs = []

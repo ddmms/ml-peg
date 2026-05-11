@@ -124,3 +124,53 @@ Reference data:
 
 * Same as input data
 * DLPNO-CCSD(T)/CBS
+
+
+BMIM Cl RDF
+===========
+
+Summary
+-------
+
+Tests whether MLIPs incorrectly predict covalent bond formation between chloride
+anions (Cl⁻) and carbon atoms in 1-butyl-3-methylimidazolium (BMIM⁺) cations.
+Such Cl-C bonds should NOT form in the ionic liquid under normal conditions.
+
+This benchmark runs NVT molecular dynamics simulations of BMIM Cl at
+353.15 K and analyses the Cl-C RDF to detect any unphysical bond formation.
+
+
+Metrics
+-------
+
+1. Cl-C Bonds Formed
+
+Binary metric indicating whether unphysical Cl-C bonds formed during the MD simulation.
+
+The Cl-C RDF is computed from the MD trajectory. If the RDF shows a peak (g(r) > 0.1)
+at distances below 2.5 Å, this indicates bond formation and the model fails the test.
+
+* 0 = no bonds formed (correct physical behaviour)
+* 1 = bonds formed (unphysical, model failure)
+
+
+Computational cost
+------------------
+
+Medium: tests require running 10,000 steps of Langevin MD for a system of 10 ion
+pairs, which may take tens of minutes on GPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Generated using molify from SMILES representations of BMIM⁺ (CCCCN1C=C[N+](=C1)C)
+  and Cl⁻ ions, packed to experimental density of 1052 kg/m³ at 353.15 K.
+* Zills, F. molify: Molecular Structure Interface. Journal of Open Source Software
+  10, 8829 (2025). https://doi.org/10.21105/joss.08829
+* Density from: Yang, F., Wang, D., Wang, X. & Liu, Z. Volumetric Properties of
+  Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
+  N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
+  3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654

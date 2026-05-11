@@ -1,0 +1,7 @@
+metrics:
+  Cl-C Bonds Formed:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    tooltip: "Whether Cl-C bonds formed (g(r) > 0.1 for r < 2.5 A). 0 = no bonds (correct), 1 = bonds formed (wrong)."
+    weight: 1.0

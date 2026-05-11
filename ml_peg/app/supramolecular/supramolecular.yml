@@ -1,2 +1,5 @@
 title: Supramolecular Complexes
 description: Non-covalent interactions in supramolecular complexes
+weight: 1
+benchmark_weights:
+  PLA15: 0

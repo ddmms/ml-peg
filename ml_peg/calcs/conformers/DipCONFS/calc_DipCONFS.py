@@ -21,8 +21,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -62,9 +62,11 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
-    # Read in data and attach calculator
+    # Download data
     data_path = (
         download_s3_data(
             filename="DipCONFS.zip",
@@ -72,11 +74,6 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         )
         / "DipCONFS"
     )
-
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     df = pd.read_excel(
         data_path / "ct4c00801_si_004.xlsx",

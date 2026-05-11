@@ -16,8 +16,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -86,7 +86,9 @@ def test_bh2o_36(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -95,12 +97,8 @@ def test_bh2o_36(mlip: tuple[str, Any]) -> None:
         )
         / "BH2O-36"
     )
-    # Read in data and attach calculator
+    # Read in data
     systems = get_systems(data_path / "mp2_super.json", data_path / "molecules/for_sp")
-
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     for identifier, system in tqdm(systems.items()):
         atoms_rct = read(system["rct"]["xyz_path"])

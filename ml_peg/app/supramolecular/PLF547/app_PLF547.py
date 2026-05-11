@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash
 from dash.html import Div
 
@@ -14,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -42,8 +40,8 @@ def _structure_paths(model_name: str) -> list[str]:
     """
     struct_dir = DATA_PATH / model_name
     xyz_files = sorted(struct_dir.glob("*.xyz"))
-    prefix = Path("assets") / "supramolecular" / "PLF547" / model_name
-    return [str(prefix / path.name) for path in xyz_files]
+    prefix = f"/assets/supramolecular/PLF547/{model_name}"
+    return [prefix + f"/{path.name}" for path in xyz_files]
 
 
 class PLF547App(BaseApp):

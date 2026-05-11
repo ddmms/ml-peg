@@ -11,8 +11,8 @@ from ase.build import bulk, surface
 from ase.io import write
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -46,6 +46,8 @@ def make_slab(
     slab = slab.repeat((size_xy[0], size_xy[1], 1))
     slab.center(axis=2, vacuum=vacuum_z)
     slab.pbc = True
+    slab.info["charge"] = 0
+    slab.info["spin"] = 1
     return slab
 
 
@@ -60,9 +62,7 @@ def test_extensivity(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     sym1, sym2 = "Al", "Ni"  # element of slab-1 and slab-2
     layers = 8

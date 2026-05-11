@@ -1,0 +1,29 @@
+metrics:
+    RMSD Fe SIA:
+        good: 0.0
+        bad: 2.39
+        unit: eV
+        tooltip: "RMSD of formation energies for Fe SIA subset"
+        level_of_theory: PBE
+        weight: 1
+    RMSD Boron Carbide Stoichiometry:
+        good: 0.0
+        bad: 14.32
+        unit: eV
+        tooltip: "RMSD of formation energies for boron carbide stoichiometry subset"
+        level_of_theory: LDA
+        weight: 1
+    RMSD Boron Carbide Defects:
+        good: 0.0
+        bad: 0.76
+        unit: eV
+        tooltip: "RMSD of formation energies for boron carbide defects subset"
+        level_of_theory: LDA
+        weight: 1
+    RMSD MAPI Tetragonal:
+        good: 0.0
+        bad: 0.77
+        unit: eV
+        tooltip: "RMSD of formation energies for MAPI tetragonal subset"
+        level_of_theory: optB86b+vdW
+        weight: 1

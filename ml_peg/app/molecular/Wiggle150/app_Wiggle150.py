@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -40,7 +40,7 @@ class Wiggle150App(BaseApp):
         )
 
         structs = [
-            f"assets/molecular/{BENCHMARK_NAME}/{MODELS[0]}/{path.name}"
+            f"/assets/molecular/{BENCHMARK_NAME}/{MODELS[0]}/{path.name}"
             for path in structure_files
         ]
 

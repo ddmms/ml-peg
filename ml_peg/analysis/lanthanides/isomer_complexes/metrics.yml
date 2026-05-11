@@ -1,0 +1,7 @@
+metrics:
+  MAE:
+    good: 0.0
+    bad: 10.0
+    unit: kcal/mol
+    tooltip: Mean absolute error for relative isomer energies
+    level_of_theory: r2SCAN-3c
