@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import numpy as np
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
@@ -16,8 +16,8 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "cleavage_energy" / "outputs"
@@ -29,6 +29,42 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 EV_TO_MEV = 1000.0
+
+
+def load_cleavage_results(model_dir: Path) -> list[dict]:
+    """
+    Load cleavage calculation results, preferring compact JSON output.
+
+    Parameters
+    ----------
+    model_dir
+        Directory containing a model's cleavage benchmark outputs.
+
+    Returns
+    -------
+    list[dict]
+        Per-system result dictionaries.
+    """
+    results_path = model_dir / "results.json"
+    if results_path.exists():
+        with results_path.open(encoding="utf8") as file:
+            return json.load(file)
+
+    results = []
+    for xyz_file in sorted(model_dir.glob("*.xyz"), key=lambda p: int(p.stem)):
+        slab = read(xyz_file)
+        results.append(
+            {
+                "id": int(xyz_file.stem),
+                "structure_file": xyz_file.name,
+                "slab_energy": slab.info["slab_energy"],
+                "bulk_energy": slab.info["bulk_energy"],
+                "thickness_ratio": slab.info["thickness_ratio"],
+                "area_slab": slab.info["area_slab"],
+                "ref_cleavage_energy": slab.info["ref_cleavage_energy"],
+            }
+        )
+    return results
 
 
 def compute_cleavage_energy(
@@ -71,9 +107,7 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
     dict[str, dict[str, list]]
         Dictionary of model names to ``{"ref": [...], "pred": [...]}`` in meV/A^2.
     """
-    results = {mlip: {"ref": [], "pred": []} for mlip in MODELS}
-    ref_stored = False
-    stored_ref = []
+    results = {mlip: {"ref": [], "pred": [], "labels": []} for mlip in MODELS}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -82,32 +116,29 @@ def cleavage_energies() -> dict[str, dict[str, list]]:
 
         model_pred = []
         model_ref = []
+        labels = []
 
-        for xyz_file in sorted(model_dir.glob("*.xyz"), key=lambda p: int(p.stem)):
-            slab = read(xyz_file)
-
+        for result in load_cleavage_results(model_dir):
             pred_ce = (
                 compute_cleavage_energy(
-                    slab.info["slab_energy"],
-                    slab.info["bulk_energy"],
-                    slab.info["thickness_ratio"],
-                    slab.info["area_slab"],
+                    result["slab_energy"],
+                    result["bulk_energy"],
+                    result["thickness_ratio"],
+                    result["area_slab"],
                 )
                 * EV_TO_MEV
             )
             model_pred.append(pred_ce)
-
-            if not ref_stored:
-                model_ref.append(slab.info["ref_cleavage_energy"] * EV_TO_MEV)
+            model_ref.append(result["ref_cleavage_energy"] * EV_TO_MEV)
+            labels.append(Path(result["structure_file"]).stem)
 
         if model_pred:
             results[model_name]["pred"] = model_pred
-            if not ref_stored:
-                stored_ref = model_ref
-            results[model_name]["ref"] = stored_ref
-            ref_stored = True
+            results[model_name]["ref"] = model_ref
+            results[model_name]["labels"] = labels
 
     return results
+
 
 @pytest.fixture
 @plot_density_scatter(
@@ -132,17 +163,11 @@ def cleavage_density(
     dict[str, dict]
         Mapping of model names to density-plot payloads.
     """
-    label_list = [
-        f.stem
-        for f in sorted(
-            (CALC_PATH / MODELS[0]).glob("*.xyz"), key=lambda p: int(p.stem)
-        )
-    ]
-
     density_inputs: dict[str, dict] = {}
     for model_name in MODELS:
         preds = cleavage_energies[model_name]["pred"]
         refs = cleavage_energies[model_name]["ref"]
+        labels = cleavage_energies[model_name]["labels"]
         density_inputs[model_name] = {
             "ref": refs,
             "pred": preds,
@@ -150,7 +175,7 @@ def cleavage_density(
         }
         if preds:
             write_density_trajectories(
-                labels_list=label_list,
+                labels_list=labels,
                 ref_vals=refs,
                 pred_vals=preds,
                 struct_dir=CALC_PATH / model_name,
@@ -158,8 +183,10 @@ def cleavage_density(
                 struct_filename_builder=lambda label: f"{label}.xyz",
             )
     return density_inputs
+
+
 @pytest.fixture
-def cleavage_mae(cleavage_energies: dict[str, list]) -> dict[str, float]:
+def cleavage_mae(cleavage_energies: dict[str, dict[str, list]]) -> dict[str, float]:
     """
     Get mean absolute error for cleavage energies.
 
