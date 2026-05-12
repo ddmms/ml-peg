@@ -1,0 +1,43 @@
+metrics:
+  Force MAE (3 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 3-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
+  Force MAE (4 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 4-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
+  Force MAE (5 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 5-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
+  Force MAE (6 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 6-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
+  Force MAE (7 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 7-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
+  Force MAE (8 atoms):
+    good: 0.1
+    bad: 1.0
+    unit: eV/A
+    tooltip: "Component-wise force MAE on neutral 8-atom clusters. Materials/general models are compared to MAD2 forces; organic-focused models are compared to OMOL25 forces."
+    level_of_theory: null
+    weight: 1
