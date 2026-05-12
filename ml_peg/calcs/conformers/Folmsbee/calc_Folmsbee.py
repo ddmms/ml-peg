@@ -20,6 +20,7 @@ from ase.io import write
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
@@ -66,10 +67,16 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    data_path = Path(__file__).parent / "data" / "folmsbee_dataset.json"
+    data_path = (
+        download_s3_data(
+            key="inputs/conformers/Folmsbee/Folmsbee.zip",
+            filename="Folmsbee.zip",
+        )
+        / "Folmsbee"
+    )
     out_path = OUT_PATH / model_name
 
-    with open(data_path) as f:
+    with open(data_path / "folmsbee_dataset.json") as f:
         data = json.load(f)
     progress = tqdm(total=len(data))
     for structure_data in data:
@@ -79,7 +86,7 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
         raw_energies = structure_data["dft_energy_profile"]
         ref_min_conformer_idx = raw_energies.index(min(raw_energies))
         ref_energies = get_relative_energies(raw_energies, ref_min_conformer_idx)
-        ref_energies *= KCAL_TO_EV
+        ref_energies = [e * KCAL_TO_EV for e in ref_energies]
 
         for i, conf_positions in enumerate(structure_data["conformer_coordinates"]):
             conf_atoms = Atoms(
