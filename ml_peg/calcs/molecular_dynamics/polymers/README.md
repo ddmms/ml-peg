@@ -53,15 +53,16 @@ python -m ml_peg.calcs.molecular_dynamics.polymers.generate_polymer_sets
 
 See `example_submit.slurm` for a complete Slurm array-job template.
 
-Example Slurm-style lookup:
+For array jobs, pass the one-based array task id as `--poly-index` and select
+the subset with `--poly-set`:
 
 ```bash
-SET_FILE=ml_peg/calcs/molecular_dynamics/polymers/resources/polymer_sets/medium.txt
-POLY_ID=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$SET_FILE")
-
-uv run pytest -v -s \
-    ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
-    --poly-id "$POLY_ID" --models mace-mp-0a
+ml_peg calc \
+  --category molecular_dynamics \
+  --test polymers \
+  --models mace-mp-0a \
+  --poly-set medium \
+  --poly-index "${SLURM_ARRAY_TASK_ID}"
 ```
 
 Analysis (averages density over the production stage, writes parity plot
