@@ -160,7 +160,7 @@ class CustomElasticityBenchmark(Benchmark):
             f"crystal_system_{model_name}": (
                 get_crystal_system(result["final_structure"])
                 if result is not None
-                else None
+                else np.nan
             ),
         }
 
@@ -240,11 +240,12 @@ def run_elasticity_benchmark(
     atoms_list = []
     for _, row in results.iterrows():
         struct = row.get("final_structure")
-        if struct is not None:
-            atoms = AseAtomsAdaptor.get_atoms(struct).copy()
-            atoms.calc = None
-            atoms.info = {"mp_id": row[benchmark.index_name]}
-            atoms_list.append(atoms)
+        if not isinstance(struct, Structure):
+            continue
+        atoms = AseAtomsAdaptor.get_atoms(struct).copy()
+        atoms.calc = None
+        atoms.info = {"mp_id": row[benchmark.index_name]}
+        atoms_list.append(atoms)
     if atoms_list:
         ase_write(
             out_dir / "relaxed_structures.extxyz",
@@ -263,7 +264,7 @@ def run_elasticity_benchmark(
     for col in results.columns:
         if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
             results[col] = results[col].apply(
-                lambda x: x.voigt if x is not None else None
+                lambda x: x.voigt if hasattr(x, "voigt") else np.nan
             )
 
     results.to_csv(out_dir / "moduli_results.csv", index=False)
