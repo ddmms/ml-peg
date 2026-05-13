@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable
-from copy import deepcopy
 import io
 import json
 import math
@@ -960,15 +959,13 @@ def filter_table_simple(
     """
 
     @callback(
-        Output(table_id, "data"),
         Output(f"{table_id}-filtered-data-store", "data"),
         Input("element-filter", "value"),
-        State(f"{table_id}-original-data-store", "data"),
+        State(f"{table_id}-filtered-data-store", "data"),
     )
     def _filter_table(
-        elements_list: list[str | None],
-        table_data: list[dict[str, Any]] | None,
-    ) -> tuple[list[dict], list[dict]]:
+        elements_list: list[str | None], filtered_data: dict[str, bool]
+    ) -> dict[str, bool]:
         """
         Register callback to filter table by elements.
 
@@ -976,39 +973,12 @@ def filter_table_simple(
         ----------
         elements_list
             List of selected elements.
-        table_data
-            Data to be updated.
+        filtered_data
+            Current filtered data.
 
         Returns
         -------
-        tuple[list[dict], list[dict]]
-            Filtered table data.
+        dict[str, bool]
+            Stored dictionary indicating which tests have been filtering.
         """
-        if not table_data:
-            raise PreventUpdate
-
-        filtered_table_data = deepcopy(table_data)
-        columns_to_clear: set[str] = set()
-
-        if not elements_list:
-            return filtered_table_data, filtered_table_data
-
-        filtered_results = filter_func(set(elements_list), **filter_kwargs)
-        if filtered_results is None:
-            return filtered_table_data, filtered_table_data
-
-        columns_to_clear.update(filtered_results)
-        columns_to_clear.add("Score")
-
-        # Blank metric values in the visible rows and filtered-store cache so
-        # downstream callbacks (category/summary) observe the filtered state.
-        for row in filtered_table_data:
-            for column in columns_to_clear:
-                if column in row:
-                    row[column] = None
-
-        return filtered_table_data, filtered_table_data
-
-
-# Backwards-compatible alias used by app-specific imports.
-filter_table = filter_table_simple
+        return filter_func(set(elements_list or []), **filter_kwargs)
