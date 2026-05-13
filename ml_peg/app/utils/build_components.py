@@ -836,7 +836,7 @@ def build_test_layout(
         Store(
             id=f"{table.id}-filtered-data-store",
             storage_type="session",
-            data=table.data,
+            data=dict.fromkeys(metric_columns, True),
         )
     )
     layout_contents.append(
