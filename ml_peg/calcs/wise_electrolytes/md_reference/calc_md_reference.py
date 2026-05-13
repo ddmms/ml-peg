@@ -45,6 +45,7 @@ from copy import copy
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from ase import Atoms
 from ase.io import read
 import pytest
@@ -157,6 +158,10 @@ def run_reference_md(
         write_traj=False,
         file_prefix=model_out / "minimize",
     ).run()
+
+    # FIRE introduces sub-mAA off-diagonal numerical noise into the (cubic)
+    # cell; ase.md.npt.NPT used by NVT_NH/NPT_MTK requires triangular.
+    struct.set_cell(np.diag(np.diag(struct.cell.array)), scale_atoms=False)
 
     # -- NVT equilibration, 50 ps ---------------------------------------------
     NVT_NH(

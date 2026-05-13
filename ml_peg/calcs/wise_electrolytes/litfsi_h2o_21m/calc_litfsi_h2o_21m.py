@@ -10,7 +10,7 @@ Extracts three observables for each registered MLIP model:
   R_CUT = 2.83 A from the r2SCAN AIMD reference.
 * X-ray structure factor S(q) computed via dynasor in TRAVIS Faber-Ziman
   convention with Cromer-Mann 4-Gaussian form factors (including H) and
-  Savitzky-Golay smoothing (window=27, order=3, dq=0.02 A^-1).
+  Savitzky-Golay smoothing (window=5, order=3, dq=0.02 A^-1; physical width 0.10 A^-1).
 
 System: 21 m LiTFSI / H2O, p64_w170 cell (1534 atoms, 27.4938 A cubic) for
 RDF and S(q); p16_w42 (382 atoms) for NPT density. Trajectories produced
@@ -78,7 +78,7 @@ Q_MAX = 13.0  # A^-1
 Q_MIN = 0.5  # A^-1
 MAX_QPOINTS = 50000
 DQ_BIN = 0.02  # A^-1
-SAVGOL_WINDOW = 27
+SAVGOL_WINDOW = 5
 SAVGOL_ORDER = 3
 
 # LAMMPS atom-type → element fallback for raw dump files
