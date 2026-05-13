@@ -2,20 +2,22 @@
 Reference MD protocol for the WiSE 21 m LiTFSI/H2O benchmark.
 
 This script reproduces, with janus-core, the same MD protocol used to
-generate the production trajectories analysed by the density, rdf, and
-xray_sf sub-benchmarks.  Production trajectories were run externally
+generate the production trajectories analysed by the consolidated
+litfsi_h2o_21m benchmark. Production trajectories were run externally
 with LAMMPS + MACE (symmetrix/Kokkos) on Adastra (MI250X); the driving
 scripts are ``in.pipeline_cpu.lmp`` (Min -> NVT -> NPT) and
 ``in.nvt_continue.lmp`` (NVT continuation) on the Adastra workdir.
 
-The protocol is recast here for:
+Integrators are matched to LAMMPS where janus-core exposes a choice:
 
-  * transparent, version-pinned documentation of the simulation settings,
-  * optional ml-peg-native replication on smaller systems or shorter windows.
+  * NVT: Nosé-Hoover chain (``NVT_NH``) -- equivalent to LAMMPS ``fix nvt``.
+  * NPT: Martyna-Tobias-Klein chain (``NPT_MTK``) -- the same formulation
+    used by LAMMPS ``fix npt``. (``NPT`` in janus is Melchionna and would
+    *not* match.)
 
-It is intentionally marked ``pytest.mark.skip`` in the default test run:
-at ~1500 atoms and 250+ ps of cumulative MD, a Janus/ASE run would take
-days of GPU time per registered model.  Run manually with
+The protocol is intentionally marked ``pytest.mark.very_slow``: at ~1500
+atoms and 250+ ps of cumulative MD, an ASE/Janus run takes a day of GPU
+time per registered model. Run manually with
 
     python calc_md_reference.py <model_name>
 
@@ -24,12 +26,14 @@ or call :func:`run_reference_md` from your own script.
 Protocol summary
 ----------------
 System     : 64 LiTFSI + 170 H2O  (1534 atoms, 21 m)
-Ensembles  : Min (FIRE) -> NVT 50 ps (NH) -> NPT 200 ps (NH, iso) ->
-             optional NVT continuation 50 ps (NH)
+Ensembles  : Min (FIRE) -> NVT 50 ps (NH chain) ->
+             NPT 200 ps (MTK chain, iso) ->
+             optional NVT continuation 50 ps (NH chain)
 Temperature: 298.15 K
 Pressure   : 1.01325 bar (1 atm)
 Timestep   : 0.5 fs
 TDAMP/PDAMP: 50 fs / 500 fs (100*dt / 1000*dt, Nosé-Hoover damping)
+NH chains  : length 3 for both thermostat and barostat (LAMMPS default)
 Dump cadence: every 0.1 ps (= 200 steps)
 References : Gilbert et al., JCED 62, 2056 (2017);
              Watanabe et al., JPCB 125, 7477 (2021).
@@ -133,7 +137,7 @@ def run_reference_md(
     # Lazy imports: janus_core pulls in torch, which may be absent in
     # environments that only run the analysis stack.
     from janus_core.calculations.geom_opt import GeomOpt
-    from janus_core.calculations.md import NPT, NVT_NH
+    from janus_core.calculations.md import NPT_MTK, NVT_NH
 
     model.default_dtype = "float64"
     calc = model.get_calculator()
@@ -167,8 +171,11 @@ def run_reference_md(
         file_prefix=model_out / "nvt_equil",
     ).run()
 
-    # -- NPT production, 200 ps (isotropic Nosé-Hoover; density sampling) -----
-    NPT(
+    # -- NPT production, 200 ps (isotropic MTK chain; density + structure) ----
+    # NPT_MTK uses the Martyna-Tobias-Klein chain integrator -- the same
+    # formulation as LAMMPS `fix npt iso`. Chain length 3 is the LAMMPS
+    # default for both the thermostat and barostat sub-chains.
+    NPT_MTK(
         struct=struct,
         temp=TEMPERATURE_K,
         pressure=PRESSURE_GPA,
@@ -176,6 +183,8 @@ def run_reference_md(
         steps=NPT_STEPS,
         thermostat_time=THERMOSTAT_TIME_FS,
         barostat_time=BAROSTAT_TIME_FS,
+        thermostat_chain=3,
+        barostat_chain=3,
         stats_every=STATS_EVERY,
         traj_every=TRAJ_EVERY,
         seed=SEED,
@@ -197,13 +206,7 @@ def run_reference_md(
         ).run()
 
 
-@pytest.mark.skip(
-    reason=(
-        "Reference protocol only — production MD is run externally with "
-        "LAMMPS+symmetrix on Adastra (see module docstring). Running this in "
-        "pytest would take days of GPU per model."
-    )
-)
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_md_reference(mlip: tuple[str, Any]) -> None:
     """
