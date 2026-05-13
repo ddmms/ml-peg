@@ -32,7 +32,6 @@ from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
     clean_thresholds,
-    filter_rows_by_element,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
@@ -294,7 +293,6 @@ def register_category_table_callbacks(
             Input(f"{table_id}-normalized-toggle", "value"),
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
-            Input(f"{table_id}-filtered-data-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
@@ -308,7 +306,6 @@ def register_category_table_callbacks(
             toggle_value: list[str] | None,
             selected_models: list[str] | None,
             cmap_name: str | None,
-            filter_store: dict[str, bool],
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
@@ -337,10 +334,6 @@ def register_category_table_callbacks(
                 Value of toggle to show normalised values.
             selected_models
                 List of model names currently selected in the model filter.
-            cmap_name
-                Stored colour map name.
-            filter_store
-                Stored dictionary of whether metrics have been filtered.
             stored_raw_data
                 Table data.
             stored_computed_data
@@ -363,9 +356,7 @@ def register_category_table_callbacks(
                 display_rows = get_scores(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
-                scored_rows = calc_metric_scores(
-                    stored_raw_data, thresholds=thresholds, filter_store=filter_store
-                )
+                scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
                 style = (
@@ -401,23 +392,17 @@ def register_category_table_callbacks(
                 )
 
             # Update overall table score for new weights and thresholds
-            # Raw data remains unfiltered
-            stored_raw_data = calc_table_scores(
-                stored_raw_data, weights=stored_weights, thresholds=thresholds
+            metrics_data = calc_table_scores(
+                stored_raw_data, stored_weights, thresholds
             )
             # Update stored scores per metric
-            stored_computed_data = calc_metric_scores(
-                stored_raw_data, thresholds=thresholds, filter_store=filter_store
-            )
+            scored_rows = calc_metric_scores(stored_raw_data, thresholds)
             # Select between unitful and unitless data
             display_rows = get_scores(
-                stored_raw_data, stored_computed_data, thresholds, toggle_value
+                metrics_data, scored_rows, thresholds, toggle_value
             )
             filtered_rows = filter_rows_by_models(display_rows, selected_models)
-            filtered_scores = filter_rows_by_models(stored_computed_data, selected_models)
-
-            filtered_rows = filter_rows_by_element(filtered_rows, filter_store)
-            filtered_scores = filter_rows_by_element(filtered_scores, filter_store)
+            filtered_scores = filter_rows_by_models(scored_rows, selected_models)
             style = (
                 get_table_style(
                     filtered_rows,
@@ -444,8 +429,8 @@ def register_category_table_callbacks(
                 tooltip_data,
                 columns,
                 tooltips,
-                stored_computed_data,
-                stored_raw_data,
+                scored_rows,
+                metrics_data,
             )
 
     else:
@@ -933,7 +918,6 @@ def register_normalization_callbacks(
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
             State("cmap-store", "data"),
-            State(f"{table_id}-filtered-data-store", "data"),
             prevent_initial_call=True,
         )
         def toggle_normalized_display(
@@ -943,7 +927,6 @@ def register_normalization_callbacks(
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
             cmap_name: str | None,
-            filter_store: dict[str, bool],
         ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
@@ -953,9 +936,7 @@ def register_normalization_callbacks(
             normalized_active = bool(show_normalized) and show_normalized[0] == "norm"
 
             # Get metric scores to display
-            scored_rows = calc_metric_scores(
-                raw_data, thresholds=clean_thresholds, filter_store=filter_store
-            )
+            scored_rows = calc_metric_scores(raw_data, cleaned_thresholds)
             display_rows = get_scores(
                 raw_data, scored_rows, cleaned_thresholds, show_normalized
             )

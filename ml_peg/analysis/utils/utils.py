@@ -365,7 +365,6 @@ def calc_metric_scores(
     metrics_data: list[MetricRow],
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
-    filter_store: dict[str, bool] | None = None,
 ) -> list[MetricRow]:
     """
     Calculate all normalised scores.
@@ -380,8 +379,6 @@ def calc_metric_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
-    filter_store
-        Stored dictionary of whether metrics have been filtered.
 
     Returns
     -------
@@ -399,9 +396,6 @@ def calc_metric_scores(
                 if cleaned_thresholds is None or key not in cleaned_thresholds:
                     row[key] = value
                     continue
-                if filter_store is not None and not filter_store.get(key, True):
-                    row[key] = None
-                    continue
 
                 entry = cleaned_thresholds[key]
                 row[key] = normalizer(value, entry["good"], entry["bad"])
@@ -414,7 +408,7 @@ def calc_table_scores(
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
-    filter_store: dict[str, bool] | None = None,
+    require_all_metrics: bool = True,
 ) -> list[MetricRow]:
     """
     Calculate (normalised) score for each model and add to table data.
@@ -433,8 +427,10 @@ def calc_table_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
-    filter_store
-        Stored dictionary of whether metrics have been filtered.
+    require_all_metrics
+        If True, score is set to None unless all metrics are present (not None).
+        If False, score is calculated from available metrics only.
+        Default is True.
 
     Returns
     -------
@@ -443,9 +439,7 @@ def calc_table_scores(
     """
     weights = weights if weights else {}
 
-    metrics_scores = calc_metric_scores(
-        metrics_data, thresholds, normalizer, filter_store
-    )
+    metrics_scores = calc_metric_scores(metrics_data, thresholds, normalizer)
 
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         scores_list = []
@@ -461,14 +455,16 @@ def calc_table_scores(
                 # Weight of zero excludes the metric from scoring requirements
                 continue
 
-            if value is not None and scores_row.get(key) is not None:
+            if value is not None:
                 scores_list.append(scores_row[key])
                 weights_list.append(weight)
             else:
                 # Track if any (weighted) metric is missing
                 all_metrics_present = False
 
-        if not all_metrics_present:
+        # Calculate score only if conditions are met
+        if require_all_metrics and not all_metrics_present:
+            # Strict mode: require all metrics to be present
             metrics_row["Score"] = None
         elif scores_list:
             if np.nan in scores_list:
