@@ -348,6 +348,31 @@ def filter_rows_by_models(
     ]
 
 
+def filter_rows_by_element(
+    rows: list[dict] | None, filter_store: dict[str, bool]
+) -> list[dict]:
+    """
+    Filter values based on whether they have been filtered bv element.
+
+    Parameters
+    ----------
+    rows
+        Table rows to be filtered.
+
+    Returns
+    -------
+    list[dict]
+        Filtered table rows.
+    """
+    if not rows:
+        return []
+    for row in rows:
+        for key in row:
+            if not filter_store.get(key, True):
+                row[key] = None
+    return rows
+
+
 def get_scores(
     raw_rows: list[dict],
     scored_rows: list[dict],
