@@ -6,7 +6,6 @@ import warnings
 
 from dash import Dash
 from dash.html import Div
-import numpy as np
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -110,10 +109,13 @@ class LiDiffusionApp(BaseApp):
         # Get overlap of deselected elements with each system's elements
         if bool(test_elements & filter_elements):
             return {
-                "Path B error": dict.fromkeys(MODELS, np.nan),
-                "Path C error": dict.fromkeys(MODELS, np.nan),
+                "Path B error": False,
+                "Path C error": False,
             }
-        return None
+        return {
+            "Path B error": True,
+            "Path C error": True,
+        }
 
 
 def get_app() -> LiDiffusionApp:
