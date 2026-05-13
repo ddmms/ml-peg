@@ -9,8 +9,8 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "NCIA R739x5"
@@ -44,7 +44,7 @@ class NCIAR739x5App(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/non_covalent_interactions/NCIA_R739x5",
+            assets_prefix="/assets/non_covalent_interactions/NCIA_R739x5",
             models=MODELS,
             traj_dirname="density_traj",
             suffix=".extxyz",

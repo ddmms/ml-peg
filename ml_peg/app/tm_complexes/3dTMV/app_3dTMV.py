@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "3dTMV"
@@ -36,7 +36,7 @@ class Benchmark3dTMVApp(BaseApp):
             # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*.xyz"), key=lambda path: int(path.stem))
             structs = [
-                f"assets/tm_complexes/3dTMV/{MODELS[0]}/{ts_file.name}"
+                f"/assets/tm_complexes/3dTMV/{MODELS[0]}/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:

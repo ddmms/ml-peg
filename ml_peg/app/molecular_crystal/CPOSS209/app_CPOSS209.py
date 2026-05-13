@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -74,7 +74,7 @@ class CPOSS209App(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
 
         structs = [
-            f"assets/molecular_crystal/CPOSS209/{MODELS[0]}/{struct_file.relative_to(structs_dir)}"
+            f"/assets/molecular_crystal/CPOSS209/{MODELS[0]}/{struct_file.relative_to(structs_dir)}"
             for struct_file in sorted(structs_dir.glob("**/crystal*.xyz"))
         ]
 

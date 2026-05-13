@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CYCLO70"
@@ -37,7 +37,7 @@ class CYCLO70App(BaseApp):
                 [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_forward.xyz")]
             )
             structs = [
-                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
+                f"/assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
                 for label in labels
                 for direction in ("forward", "reverse")
             ]

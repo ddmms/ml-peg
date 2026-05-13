@@ -75,7 +75,7 @@ def conformer_energies() -> dict[str, list]:
 
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_energy"] * EV_TO_KCAL)
+                results["ref"].append(atoms.info["ref_rel_energy"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
@@ -132,3 +132,14 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {
         "MAE": get_mae,
     }
+
+
+def test_folmsbee(metrics: dict[str, dict]) -> None:
+    """
+    Run Folmsbee analysis.
+
+    Parameters
+    ----------
+    metrics : dict[str, dict]
+        Folmsbee metric results provided by fixtures.
+    """
