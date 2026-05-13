@@ -111,7 +111,13 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
     dict[str, Any]
         Loaded models from models.yml.
     """
-    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc, PetMadCalc
+    from ml_peg.models.models import (
+        FairChemCalc,
+        GenericASECalc,
+        LammpsMaceCalc,
+        OrbCalc,
+        PetMadCalc,
+    )
 
     loaded_models = {}
 
@@ -122,6 +128,16 @@ def load_models(models: None | str | Iterable = None) -> dict[str, Any]:
         print(f"Loading model from models.yml: {name}")
 
         match cfg["class_name"]:
+            case "LammpsMaceCalc":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = LammpsMaceCalc(
+                    model_path=kwargs["model_path"],
+                    atom_types=kwargs.get("atom_types", None),
+                    kokkos=kwargs.get("kokkos", False),
+                    dispersion=kwargs.get("dispersion", False),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
             case "FAIRChemCalculator":
                 kwargs = cfg.get("kwargs", {})
                 loaded_models[name] = FairChemCalc(

@@ -212,6 +212,80 @@ class OrbCalc(SumCalc):
 
 
 @dataclasses.dataclass(kw_only=True)
+class LammpsMaceCalc(SumCalc):
+    """Dataclass for MACE via the LAMMPS ``mliap unified`` pair style."""
+
+    model_path: str
+    atom_types: dict | None = None
+    kokkos: bool = False
+    dispersion: bool = False
+
+    def get_calculator(self, **kwargs) -> Calculator:
+        """
+        Build a LAMMPSlib calculator using the ``mliap unified`` pair style.
+
+        Parameters
+        ----------
+        **kwargs
+            Unused; accepted for interface compatibility.
+
+        Returns
+        -------
+        Calculator
+            LAMMPSlib instance configured for MACE via mliap.
+        """
+        from ase.calculators.lammpslib import LAMMPSlib
+
+        elements = " ".join(self.atom_types) if self.atom_types else ""
+        mliap_style = f"mliap unified {self.model_path} 0"
+        mliap_coeff = f"pair_coeff * * mliap {elements}".strip()
+
+        if self.dispersion:
+            from ase import units
+
+            damping = self.dispersion_kwargs.get("damping", "bj")
+            xc = self.dispersion_kwargs.get("xc", "pbe")
+            cutoff = self.dispersion_kwargs.get("cutoff", 40.0 * units.Bohr)
+            cn_cutoff = self.dispersion_kwargs.get("cn_cutoff", 30.0 * units.Bohr)
+            d3_args = f"dispersion/d3 {damping} {xc} {cutoff} {cn_cutoff}"
+            lmpcmds = [
+                f"pair_style hybrid/overlay {mliap_style} {d3_args}",
+                mliap_coeff,
+                f"pair_coeff * * dispersion/d3 {elements}".strip(),
+            ]
+        else:
+            lmpcmds = [f"pair_style {mliap_style}", mliap_coeff]
+
+        extra_cmd_args = (
+            ("-k on g 1 -sf kk -pk kokkos newton on neigh half").split()
+            if self.kokkos
+            else ()
+        )
+        return LAMMPSlib(
+            lmpcmds=lmpcmds,
+            atom_types=self.atom_types,
+            extra_cmd_args=extra_cmd_args,
+        )
+
+    def add_d3_calculator(self, calcs) -> Calculator:
+        """
+        Return the calculator unchanged.
+
+        Parameters
+        ----------
+        calcs
+            LAMMPSlib calculator.
+
+        Returns
+        -------
+        Calculator
+            Unchanged calculator; dispersion is handled within LAMMPS via
+            ``dispersion=True``, not via the Python SumCalculator path.
+        """
+        return calcs
+
+
+@dataclasses.dataclass(kw_only=True)
 class FairChemCalc(SumCalc):
     """Dataclass for fairchem (UMA) calculator."""
 

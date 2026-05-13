@@ -1,3 +1,12 @@
+mace-mp-0b3-mliap:
+  class_name: LammpsMaceCalc
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model_path: "/path/to/mace-mp-0b3-medium.model-mliap_lammps.pt"
+    atom_types: {C: 1, H: 2, O: 3}  # all elements the benchmark may contain
+    dispersion: true
+
 mace-mp-0a:
   module: mace.calculators
   class_name: mace_mp
