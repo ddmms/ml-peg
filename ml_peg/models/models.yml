@@ -3,8 +3,9 @@ mace-mp-0b3-mliap:
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
-    model_path: "/path/to/mace-mp-0b3-medium.model-mliap_lammps.pt"
-    atom_types: {C: 1, H: 2, O: 3}  # all elements the benchmark may contain
+    model_path: /home/jh2536/models/mace-mp-0b3-medium.model-mliap_lammps_no_cueq.pt
+    atom_types: null
+    kokkos: true
     dispersion: true
 
 mace-mp-0a:

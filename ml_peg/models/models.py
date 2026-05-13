@@ -236,7 +236,7 @@ class LammpsMaceCalc(SumCalc):
         """
         from ase.calculators.lammpslib import LAMMPSlib
 
-        elements = " ".join(self.atom_types) if self.atom_types else ""
+        elements = " ".join(k for k, _ in sorted(self.atom_types.items(), key=lambda x: x[1])) if self.atom_types else ""
         mliap_style = f"mliap unified {self.model_path} 0"
         mliap_coeff = f"pair_coeff * * mliap {elements}".strip()
 
@@ -252,16 +252,52 @@ class LammpsMaceCalc(SumCalc):
                 f"pair_style hybrid/overlay {mliap_style} {d3_args}",
                 mliap_coeff,
                 f"pair_coeff * * dispersion/d3 {elements}".strip(),
+                "neigh_modify one 4000 page 100000",
             ]
         else:
-            lmpcmds = [f"pair_style {mliap_style}", mliap_coeff]
+            lmpcmds = [
+                f"pair_style {mliap_style}",
+                mliap_coeff,
+                "neigh_modify one 4000 page 100000",
+            ]
 
         extra_cmd_args = (
             ("-k on g 1 -sf kk -pk kokkos newton on neigh half").split()
             if self.kokkos
             else ()
         )
-        return LAMMPSlib(
+        use_kokkos = self.kokkos
+
+        class MliapLAMMPSlib(LAMMPSlib):
+            def start_lammps(self):
+                import torch.fx._symbolic_trace as _syt
+                if not hasattr(_syt, "is_fx_symbolic_tracing"):
+                    _syt.is_fx_symbolic_tracing = _syt.is_fx_tracing
+                super().start_lammps()
+                if use_kokkos:
+                    from lammps.mliap import activate_mliappy_kokkos
+                    activate_mliappy_kokkos(self.lmp)
+                else:
+                    from lammps.mliap import activate_mliappy
+                    activate_mliappy(self.lmp)
+
+            def initialise_lammps(self, atoms):
+                if self.parameters.atom_types is None:
+                    import numpy as np
+                    s = atoms.get_chemical_symbols()
+                    _, idx = np.unique(s, return_index=True)
+                    s_red = np.array(s)[np.sort(idx)].tolist()
+                    self.parameters.atom_types = {j: i + 1 for i, j in enumerate(s_red)}
+                    elems = " ".join(k for k, _ in sorted(self.parameters.atom_types.items(), key=lambda x: x[1]))
+                    self.parameters.lmpcmds = [
+                        f"pair_coeff * * mliap {elems}" if cmd.strip() == "pair_coeff * * mliap"
+                        else f"pair_coeff * * dispersion/d3 {elems}" if cmd.strip() == "pair_coeff * * dispersion/d3"
+                        else cmd
+                        for cmd in self.parameters.lmpcmds
+                    ]
+                super().initialise_lammps(atoms)
+
+        return MliapLAMMPSlib(
             lmpcmds=lmpcmds,
             atom_types=self.atom_types,
             extra_cmd_args=extra_cmd_args,
