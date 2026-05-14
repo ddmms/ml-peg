@@ -23,7 +23,7 @@ D3_MODEL_NAMES = build_d3_name_map(MODELS)
 
 # Path to where the calc script outputted the data
 # Update this to match your actual folder structure
-CALC_PATH = CALCS_ROOT / "molecular" / "rxn_barriers" / "outputs"
+CALC_PATH = CALCS_ROOT / "molecular" / "CRBH20" / "outputs"
 
 # Path where this analysis script will save data for the Streamlit App
 OUT_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
