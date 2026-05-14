@@ -70,6 +70,7 @@ REF_BARRIERS_KCAL = {
 def get_reaction_ids() -> list[str]:
     """
     Get list of Reaction IDs for plotting hover data.
+
     We just use 1..20, sorted.
     """
     return [str(i) for i in range(1, 21)]
@@ -177,16 +178,14 @@ def reaction_barriers() -> dict[str, list]:
 
 @pytest.fixture
 def crbh20_errors(reaction_barriers) -> dict[str, float]:
-    """
-    Compute Mean Absolute Error (MAE) for reaction barriers.
-    """
+    """Compute Mean Absolute Error (MAE) for reaction barriers."""
     results = {}
     for model_name in MODELS:
         if reaction_barriers.get(model_name):
             # Filter out None values in case of failed calculations
             y_true = []
             y_pred = []
-            for r, p in zip(reaction_barriers["ref"], reaction_barriers[model_name]):
+            for r, p in zip(reaction_barriers["ref"], reaction_barriers[model_name], strict=False):
                 if r is not None and p is not None:
                     y_true.append(r)
                     y_pred.append(p)
@@ -208,9 +207,7 @@ def crbh20_errors(reaction_barriers) -> dict[str, float]:
     mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(crbh20_errors: dict[str, float]) -> dict[str, dict]:
-    """
-    Compile all metrics for the table.
-    """
+    """Compile all metrics for the table."""
     return {
         "MAE": crbh20_errors,
     }

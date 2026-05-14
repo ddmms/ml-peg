@@ -57,7 +57,8 @@ class CRBH20App(BaseApp):
 
         structs_dir = DATA_PATH / valid_model
 
-        # We must sort these numerically (1, 2, ... 10) so they align with the plot points
+        # We must sort these numerically (1, 2, ... 10)
+        # so they align with the plot points
         files = sorted(structs_dir.glob("*.xyz"), key=numeric_sort_key)
 
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data

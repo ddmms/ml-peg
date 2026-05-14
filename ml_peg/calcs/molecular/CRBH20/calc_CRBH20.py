@@ -1,3 +1,4 @@
+"""Calculation script for the CRBH20 benchmark."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -32,7 +33,7 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
     Parameters
     ----------
     mlip
-        Tuple containing (model_name, model_object)
+        Tuple containing (model_name, model_object).
     """
     model_name, model = mlip
 
@@ -242,7 +243,8 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
 #             except Exception as e:
 #                 print(f"Error calculating {path}: {e}")
 #         else:
-#             # Silently skip if folder doesn't exist (useful if you only have some folders)
+#             # Silently skip if folder doesn't exist 
+#             # (useful if you only have some folders)
 #             pass
 
 #     # 3. Calculate and Print Barrier
