@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -468,6 +469,7 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+@cache
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
