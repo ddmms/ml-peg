@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -22,11 +21,12 @@ OUT_PATH = Path(__file__).parent / "outputs"
 # Unit conversion: 1 eV = 23.0605 kcal/mol
 EV_TO_KCAL = 23.0605
 
+
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
     """
     Run calculations of the reaction energy barriers for the 20 systems in CRBH20.
-    
+
     This function will be run automatically for every model in models.yml.
 
     Parameters
@@ -35,7 +35,7 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
         Tuple containing (model_name, model_object)
     """
     model_name, model = mlip
-    
+
     # 1. Initialize the Calculator
     # The ml-peg wrapper handles device selection (cuda/cpu) and loading
     calc = model.get_calculator()
@@ -49,7 +49,7 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'Rxn ID':<8} | {'Barrier (eV)':<12} | {'Barrier (kcal/mol)':<18}")
-    print("="*50)
+    print("=" * 50)
 
     # 2. Loop through Reaction Folders (1 to 20)
     for i in range(1, 21):
@@ -64,20 +64,20 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
         atoms_dict = {}
 
         # 3. Calculate Energy for Reactant and Transition State
-        for state in ['react', 'ts']:
+        for state in ["react", "ts"]:
             poscar_path = rxn_path / state / "POSCAR"
-            
+
             if poscar_path.exists():
                 # Read geometry
                 atoms = read(poscar_path)
                 atoms.calc = calc
-                
+
                 # Compute Energy
                 e_pot = atoms.get_potential_energy()
-                
+
                 energies[state] = e_pot
                 atoms_dict[state] = atoms
-                
+
                 # Store metadata in atoms.info (useful for the output xyz file)
                 atoms.info["rxn_id"] = rxn_id
                 atoms.info["state"] = state
@@ -85,22 +85,23 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
                 atoms.info["model"] = model_name
 
         # 4. Compute Barrier and Write Output
-        if 'react' in energies and 'ts' in energies:
-            barrier_ev = energies['ts'] - energies['react']
+        if "react" in energies and "ts" in energies:
+            barrier_ev = energies["ts"] - energies["react"]
             barrier_kcal = barrier_ev * EV_TO_KCAL
-            
+
             # Log to console
             print(f"{rxn_id:<8} | {barrier_ev:.4f}       | {barrier_kcal:.4f}")
-            
+
             # Tag both structures with the calculated barrier
-            for state in ['react', 'ts']:
+            for state in ["react", "ts"]:
                 atoms_dict[state].info["barrier_ev"] = barrier_ev
                 atoms_dict[state].info["barrier_kcal"] = barrier_kcal
 
             # Write combined XYZ file (Reactant + TS) for this reaction
             # This creates: ml_peg/calcs/outputs/mace-mp-0b3/crbh20_1.xyz
             output_filename = write_dir / f"crbh20_{rxn_id}.xyz"
-            write(output_filename, [atoms_dict['react'], atoms_dict['ts']])
+            write(output_filename, [atoms_dict["react"], atoms_dict["ts"]])
+
 
 # """Run calculations of reaction energy barriers for 20 systems"""
 
@@ -185,8 +186,6 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
 #         write(write_dir / f"{system}.xyz", [solid, molecule])
 
 
-
-
 # import os
 # from mace.calculators import mace_mp
 # from ase.io import read
@@ -216,30 +215,30 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
 # for i in range(1, 21):
 #     rxn_id = str(i)
 #     energies = {}
-    
+
 #     # Check both Reactant and Transition State
 #     for state in ['react', 'ts']:
 #         # Construct the path: e.g., "1/react/POSCAR"
 #         path = os.path.join(rxn_id, state, 'POSCAR')
-        
+
 #         if os.path.exists(path):
 #             try:
 #                 # Read the geometry
 #                 atoms = read(path)
-                
+
 #                 # Attach the calculator we loaded earlier
 #                 atoms.calc = macemp
-                
+
 #                 # Calculate Potential Energy
 #                 e_pot = atoms.get_potential_energy()
 #                 energies[state] = e_pot
-                
+
 #                 # OPTIONAL: Write to file to save progress
 #                 # This overwrites ('w') to prevent duplicate lines if you re-run
 #                 output_file = os.path.join(rxn_id, state, 'energy-mace')
 #                 with open(output_file, "w") as f:
 #                     print(e_pot, file=f)
-                    
+
 #             except Exception as e:
 #                 print(f"Error calculating {path}: {e}")
 #         else:

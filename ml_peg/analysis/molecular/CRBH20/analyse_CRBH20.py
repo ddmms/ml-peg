@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
-from ase import units
 from ase.io import read, write
 import pytest
 
@@ -32,10 +31,12 @@ OUT_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 # If the file doesn't exist, we provide defaults, but usually it should exist.
 try:
-    DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(METRICS_CONFIG_PATH)
+    DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+        METRICS_CONFIG_PATH
+    )
 except FileNotFoundError:
     # Fallback defaults if metrics.yml is missing
-    DEFAULT_THRESHOLDS = {"MAE": [1.0, 5.0]} # Green < 1.0, Red > 5.0
+    DEFAULT_THRESHOLDS = {"MAE": [1.0, 5.0]}  # Green < 1.0, Red > 5.0
     DEFAULT_TOOLTIPS = {"MAE": "Mean Absolute Error"}
     DEFAULT_WEIGHTS = {}
 
@@ -43,15 +44,15 @@ except FileNotFoundError:
 # The paper compares MACE against these specific DFT (r2SCAN) values.
 # Original unit was eV. Converted here to kcal/mol (1 eV = 23.0605 kcal/mol)
 REF_BARRIERS_KCAL = {
-    1:  1.7194 * 23.0605,
-    2:  1.9241 * 23.0605,
-    3:  1.7499 * 23.0605,
-    4:  1.8238 * 23.0605,
-    5:  1.7237 * 23.0605,
-    6:  1.5653 * 23.0605,
-    7:  1.0911 * 23.0605,
-    8:  1.8983 * 23.0605,
-    9:  1.5477 * 23.0605,
+    1: 1.7194 * 23.0605,
+    2: 1.9241 * 23.0605,
+    3: 1.7499 * 23.0605,
+    4: 1.8238 * 23.0605,
+    5: 1.7237 * 23.0605,
+    6: 1.5653 * 23.0605,
+    7: 1.0911 * 23.0605,
+    8: 1.8983 * 23.0605,
+    9: 1.5477 * 23.0605,
     10: 1.7115 * 23.0605,
     11: 1.7379 * 23.0605,
     12: 2.0361 * 23.0605,
@@ -62,8 +63,10 @@ REF_BARRIERS_KCAL = {
     17: 1.2587 * 23.0605,
     18: 1.7497 * 23.0605,
     19: 1.6989 * 23.0605,
-    20: 1.7654 * 23.0605
+    20: 1.7654 * 23.0605,
 }
+
+
 def get_reaction_ids() -> list[str]:
     """
     Get list of Reaction IDs for plotting hover data.
@@ -71,13 +74,15 @@ def get_reaction_ids() -> list[str]:
     """
     return [str(i) for i in range(1, 21)]
 
+
 def numeric_sort_key(filepath: Path):
     """Sort helper to ensure files 1, 2, ... 10 come in numerical order, not alpha."""
     # Extract the number from 'crbh20_12.xyz'
-    match = re.search(r'crbh20_(\d+).xyz', filepath.name)
+    match = re.search(r"crbh20_(\d+).xyz", filepath.name)
     if match:
         return int(match.group(1))
     return 0
+
 
 @pytest.fixture
 @plot_parity(
@@ -105,7 +110,7 @@ def reaction_barriers() -> dict[str, list]:
     # --- DEBUGGING END ---
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
-    
+
     # We iterate 1..20 to ensure the lists are perfectly aligned
     rxn_ids = range(1, 21)
 
@@ -117,7 +122,7 @@ def reaction_barriers() -> dict[str, list]:
         if not model_dir.exists():
             print(f"[MISSING] -> Skipped {model_dir}")
             continue
-        print(f"[FOUND]")
+        print("[FOUND]")
         # --- DEBUGGING END ---
         if not model_dir.exists():
             continue
@@ -131,18 +136,19 @@ def reaction_barriers() -> dict[str, list]:
 
             if not xyz_file.exists():
                 # Handle missing data (e.g., if calc failed)
-                # For parity plots, lists must be equal length. 
+                # For parity plots, lists must be equal length.
                 # We append None or NaN, though ml-peg might prefer dropping the point.
                 # Here we assume completeness or append 0.0 with a warning.
-                model_barriers.append(None) 
-                if not ref_stored: results["ref"].append(REF_BARRIERS_KCAL[rxn_id])
+                model_barriers.append(None)
+                if not ref_stored:
+                    results["ref"].append(REF_BARRIERS_KCAL[rxn_id])
                 continue
 
             # Read the combined XYZ (Reactant is index 0, TS is index 1)
             # We only need index 0 because we stored the barrier in info tag of both
             structs = read(xyz_file, index=":")
             reactant = structs[0]
-            
+
             # Extract ML Barrier (calculated in the previous script)
             # stored as "barrier_kcal"
             barrier_ml = reactant.info.get("barrier_kcal", 0.0)
@@ -161,12 +167,13 @@ def reaction_barriers() -> dict[str, list]:
 
         # Update the main results dict
         results[model_name] = model_barriers
-        
+
         # Mark reference as stored so we don't duplicate it
         if any(x is not None for x in model_barriers):
             ref_stored = True
 
     return results
+
 
 @pytest.fixture
 def crbh20_errors(reaction_barriers) -> dict[str, float]:
@@ -183,7 +190,7 @@ def crbh20_errors(reaction_barriers) -> dict[str, float]:
                 if r is not None and p is not None:
                     y_true.append(r)
                     y_pred.append(p)
-            
+
             if y_true:
                 results[model_name] = mae(y_true, y_pred)
             else:
@@ -191,6 +198,7 @@ def crbh20_errors(reaction_barriers) -> dict[str, float]:
         else:
             results[model_name] = None
     return results
+
 
 @pytest.fixture
 @build_table(
@@ -207,11 +215,12 @@ def metrics(crbh20_errors: dict[str, float]) -> dict[str, dict]:
         "MAE": crbh20_errors,
     }
 
+
 def test_crbh20_analysis(metrics: dict[str, dict]) -> None:
     """
     Trigger the analysis pipeline.
-    
-    The decorators on the fixtures above (@plot_parity, @build_table) 
+
+    The decorators on the fixtures above (@plot_parity, @build_table)
     do the heavy lifting of saving the JSON files when this test runs.
     """
     # Verify we actually calculated something

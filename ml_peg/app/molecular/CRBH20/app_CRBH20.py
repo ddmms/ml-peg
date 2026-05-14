@@ -1,9 +1,11 @@
 """Run CRBH20 Reaction Barriers app."""
 
 from __future__ import annotations
-import re
-from dash import Dash, html
+
 from pathlib import Path
+import re
+
+from dash import Dash, html
 
 # ml-peg imports
 from ml_peg.app import APP_ROOT
@@ -25,17 +27,18 @@ DOCS_URL = "https://github.com/ddmms/ml-peg"
 # Point to where we saved the JSONs (ml_peg/app/data/reaction_barriers/CRBH20)
 DATA_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
 
+
 def numeric_sort_key(filepath: Path):
     """Sort helper to ensure files 1, 2... 10 come in numerical order."""
-    match = re.search(r'crbh20_(\d+).xyz', filepath.name)
+    match = re.search(r"crbh20_(\d+).xyz", filepath.name)
     return int(match.group(1)) if match else 0
+
 
 class CRBH20App(BaseApp):
     """CRBH20 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        
         # 1. Load the Parity Plot Data
         scatter = read_plot(
             DATA_PATH / "figure_reaction_barriers.json",
@@ -51,17 +54,16 @@ class CRBH20App(BaseApp):
             if (DATA_PATH / m).exists():
                 valid_model = m
                 break
-        
+
         structs_dir = DATA_PATH / valid_model
-        
+
         # We must sort these numerically (1, 2, ... 10) so they align with the plot points
         files = sorted(structs_dir.glob("*.xyz"), key=numeric_sort_key)
-        
+
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data
         # So we construct the URL path starting from there.
         structs = [
-            f"assets/reaction_barriers/CRBH20/{valid_model}/{f.name}"
-            for f in files
+            f"assets/reaction_barriers/CRBH20/{valid_model}/{f.name}" for f in files
         ]
 
         # 3. Link Table Rows to the Plot
@@ -79,6 +81,7 @@ class CRBH20App(BaseApp):
             mode="struct",
         )
 
+
 def get_app() -> CRBH20App:
     """Get CRBH20 benchmark app layout."""
     return CRBH20App(
@@ -92,13 +95,14 @@ def get_app() -> CRBH20App:
         ],
     )
 
+
 if __name__ == "__main__":
     # Initialize Dash
     # IMPORTANT: We set assets_folder to 'ml_peg/app/data' so it finds your JSONs/XYZs
     full_app = Dash(
-        __name__, 
+        __name__,
         assets_folder=str(APP_ROOT / "data"),
-        suppress_callback_exceptions=True
+        suppress_callback_exceptions=True,
     )
 
     # Load Layout
@@ -107,5 +111,5 @@ if __name__ == "__main__":
     app_instance.register_callbacks()
 
     # Run Server
-    print(f"Serving CRBH20 App on port 8055...")
+    print("Serving CRBH20 App on port 8055...")
     full_app.run(port=8055, debug=True)
