@@ -242,6 +242,8 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         structures, desc=f"{model_name} @ {pressure_gpa} GPa", leave=False
     ):
         atoms = struct_data["atoms"].copy()
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
         atoms.calc = copy(calc)
         mat_id = struct_data["mat_id"]
 
