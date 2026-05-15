@@ -316,7 +316,11 @@ def render_dispersion_component(
         html.H4(label),
         html.Img(
             src=image_src,
-            style={"maxWidth": "100%", "border": "1px solid #ccc"},
+            style={
+                "maxWidth": "100%",
+                "maxHeight": "500px",
+                "border": "1px solid #ccc",
+            },
         ),
     ]
 
