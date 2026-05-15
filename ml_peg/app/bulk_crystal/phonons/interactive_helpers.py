@@ -12,6 +12,8 @@ from typing import Any
 
 import matplotlib
 
+from ml_peg.app.utils.build_components import build_image_download_controls
+
 matplotlib.use("Agg")
 from dash import dcc, html
 from matplotlib import gridspec
@@ -295,9 +297,10 @@ def render_dispersion_component(
     selected = selection_context.get("selection") or {}
     data_paths = selected.get("data_paths")
     label = selected.get("label") or selected.get("id", "")
+    uris = None
     image_src = None
     if data_paths:
-        image_src = render_band_dos_png(
+        uris = render_band_dos_png(
             calc_root=calc_root,
             paths=data_paths,
             model_label=model_display,
@@ -307,19 +310,42 @@ def render_dispersion_component(
             reference_label=reference_label,
             prediction_label=model_display,
         )
+        if uris:
+            image_src = uris["png"]
     elif selected.get("image"):
         image_src = f"/{selected['image']}"
     if not image_src:
         return None
 
+    filename = f"{label}_phonon_dispersion.png" if label else "phonon_dispersion.png"
+    if uris:
+        download_controls = build_image_download_controls(label or "dispersion", uris)
+    else:
+        download_controls = html.Div(
+            html.A(
+                "Download plot",
+                href=image_src,
+                download=filename,
+                className="download-button plot-download-button",
+                style={"width": "112px"},
+            ),
+            style={
+                "display": "flex",
+                "justifyContent": "flex-end",
+                "marginTop": "12px",
+                "marginBottom": "0px",
+            },
+        )
     children = [
         html.H4(label),
+        download_controls,
         html.Img(
             src=image_src,
             style={
                 "maxWidth": "100%",
                 "maxHeight": "500px",
                 "border": "1px solid #ccc",
+                "display": "block",
             },
         ),
     ]
@@ -398,8 +424,9 @@ def render_band_dos_png(
 
     Returns
     -------
-    str | None
-        Base64-encoded data URI or ``None`` when assets are missing.
+    dict[str, str] | None
+        Mapping of ``"png"``, ``"svg"``, ``"json"`` to base64 data URIs, or
+        ``None`` when assets are missing.
     """
     calc_root = Path(calc_root)
     ref_band = _load_band(calc_root, paths.get("ref_band"))
@@ -502,8 +529,47 @@ def render_band_dos_png(
     ax2.grid(True, linestyle=":", linewidth=0.5)
     fig.suptitle(system_label, x=0.4, fontsize=14)
 
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+    png_buf = BytesIO()
+    fig.savefig(png_buf, format="png", dpi=150, bbox_inches="tight")
+    svg_buf = BytesIO()
+    fig.savefig(svg_buf, format="svg", bbox_inches="tight")
     plt.close(fig)
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+
+    json_dict = {
+        "reference": {
+            "distances": [np.asarray(s).tolist() for s in ref_band["distances"]],
+            "frequencies": [np.asarray(s).tolist() for s in ref_band["frequencies"]],
+            "labels": ref_band.get("labels", []),
+            "path_connections": ref_band.get("path_connections", []),
+        },
+        "prediction": {
+            "distances": [np.asarray(s).tolist() for s in pred_band["distances"]],
+            "frequencies": [np.asarray(s).tolist() for s in pred_band["frequencies"]],
+        },
+        "frequency_unit": frequency_unit,
+        "reference_label": reference_label,
+        "prediction_label": prediction_label,
+    }
+    json_bytes = json.dumps(json_dict, indent=2).encode("utf-8")
+
+    def _enc(data: bytes) -> str:
+        """
+        Base64-encode bytes to an ASCII string.
+
+        Parameters
+        ----------
+        data
+            Raw bytes to encode.
+
+        Returns
+        -------
+        str
+            Base64-encoded ASCII string.
+        """
+        return base64.b64encode(data).decode("ascii")
+
+    return {
+        "png": f"data:image/png;base64,{_enc(png_buf.getvalue())}",
+        "svg": f"data:image/svg+xml;base64,{_enc(svg_buf.getvalue())}",
+        "json": f"data:application/json;base64,{_enc(json_bytes)}",
+    }

@@ -26,6 +26,7 @@ from ml_peg.app.utils.plot_helpers import (
     build_serialized_scatter_content,
     resolve_scatter_selection,
 )
+from ml_peg.app.utils.register_callbacks import register_image_download_callbacks
 from ml_peg.calcs import CALCS_ROOT
 
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons"
@@ -50,6 +51,8 @@ class PhononApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register scatter/dispersion callbacks via shared helpers."""
+        register_image_download_callbacks()
+
         with SCATTER_PATH.open(encoding="utf8") as handle:
             interactive_data = json.load(handle)
 
