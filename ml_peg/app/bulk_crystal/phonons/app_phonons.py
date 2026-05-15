@@ -106,6 +106,7 @@ class PhononApp(BaseApp):
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers=column_handlers,
             default_handler=metric_handler,
+            scatter_id=SCATTER_GRAPH_ID,
         )
 
         selection_lookup = partial(
