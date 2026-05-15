@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ml_peg.app.utils.plot_helpers import build_violin_distribution
+from ml_peg.app.utils.weas import generate_weas_html
 
 
 def _load_band(calc_root: Path, rel_path: str | None) -> dict[str, Any] | None:
@@ -310,15 +311,52 @@ def render_dispersion_component(
         image_src = f"/{selected['image']}"
     if not image_src:
         return None
-    return html.Div(
-        [
-            html.H4(label),
-            html.Img(
-                src=image_src,
-                style={"maxWidth": "100%", "border": "1px solid #ccc"},
-            ),
-        ]
-    )
+
+    children = [
+        html.H4(label),
+        html.Img(
+            src=image_src,
+            style={"maxWidth": "100%", "border": "1px solid #ccc"},
+        ),
+    ]
+
+    structure_paths = selected.get("structure_paths")
+    if structure_paths:
+        iframe_style = {
+            "height": "400px",
+            "width": "100%",
+            "border": "1px solid #ddd",
+            "borderRadius": "5px",
+        }
+        children.append(
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.P(html.B("DFT structure")),
+                            html.Iframe(
+                                srcDoc=generate_weas_html(structure_paths["ref"]),
+                                style=iframe_style,
+                            ),
+                        ],
+                        style={"width": "50%", "paddingRight": "4px"},
+                    ),
+                    html.Div(
+                        [
+                            html.P(html.B(f"MLIP structure ({model_display})")),
+                            html.Iframe(
+                                srcDoc=generate_weas_html(structure_paths["pred"]),
+                                style=iframe_style,
+                            ),
+                        ],
+                        style={"width": "50%", "paddingLeft": "4px"},
+                    ),
+                ],
+                style={"display": "flex", "marginTop": "16px"},
+            )
+        )
+
+    return html.Div(children)
 
 
 def render_band_dos_png(

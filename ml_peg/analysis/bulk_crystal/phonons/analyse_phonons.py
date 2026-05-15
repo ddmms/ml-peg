@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import pickle
+import shutil
 from typing import Any
 
 import ase
@@ -298,6 +299,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 "dos_path": ref_dos_path,
             }
 
+            ref_struct_src = REF_PATH / f"{mp_id}.xyz"
+            if ref_struct_src.exists():
+                dft_assets_dir = OUT_PATH / "DFT"
+                dft_assets_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ref_struct_src, dft_assets_dir / f"{mp_id}.xyz")
+
     print(f"Loaded {len(ref_cache)} reference systems into memory\n")
 
     stats: dict[str, dict[str, Any]] = {}
@@ -349,6 +356,18 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
 
             processed_count += 1
 
+            # Copy MLIP structure and build asset URLs for WEAS viewer
+            pred_struct_src = model_dir / f"{mp_id}.xyz"
+            structure_paths = None
+            if pred_struct_src.exists():
+                mlip_assets_dir = OUT_PATH / model_name
+                mlip_assets_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(pred_struct_src, mlip_assets_dir / f"{mp_id}.xyz")
+                structure_paths = {
+                    "ref": f"/assets/bulk_crystal/phonons/DFT/{mp_id}.xyz",
+                    "pred": f"/assets/bulk_crystal/phonons/{model_name}/{mp_id}.xyz",
+                }
+
             # Calculate metrics
             ref_freqs = np.concatenate(ref_band["frequencies"]) * THZ_TO_K
             pred_freqs = np.concatenate(pred_band["frequencies"]) * THZ_TO_K
@@ -395,6 +414,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                         "ref": ref_val,
                         "pred": pred_val,
                         "data_paths": data_paths,
+                        "structure_paths": structure_paths,
                     }
                 )
 
@@ -475,6 +495,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     "pred": min_freq_pred,
                     "class": _classify_stability(min_freq_ref, min_freq_pred),
                     "data_paths": data_paths,
+                    "structure_paths": structure_paths,
                 }
             )
 
