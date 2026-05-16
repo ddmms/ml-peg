@@ -362,6 +362,14 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             ref_freqs = np.concatenate(ref_band["frequencies"]) * THZ_TO_K
             pred_freqs = np.concatenate(pred_band["frequencies"]) * THZ_TO_K
 
+            if not np.all(np.isfinite(pred_freqs)):
+                n_inf = int(~np.isfinite(pred_freqs).sum())
+                print(
+                    f"  Skipping {mp_id}/{model_name}: {n_inf} non-finite frequencies"
+                )
+                skipped_value_error += 1
+                continue
+
             max_freq_ref = float(np.max(ref_freqs))
             max_freq_pred = float(np.max(pred_freqs))
             avg_freq_ref = float(np.mean(ref_freqs))
@@ -491,21 +499,11 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
 
         # Calculate MAEs
         for metric_key in METRIC_LABELS:
-            ref_vals = np.asarray(metrics_data[metric_key]["ref"])
-            pred_vals = np.asarray(metrics_data[metric_key]["pred"])
-            if len(ref_vals) and len(pred_vals):
-                mask = np.isfinite(ref_vals) & np.isfinite(pred_vals)
-                n_inf = int((~mask).sum())
-                if n_inf:
-                    print(
-                        f"{model_name} {metric_key}: dropping {n_inf}/{len(mask)}"
-                        f" non-finite values before MAE"
-                    )
-                metrics_data[metric_key]["mae"] = (
-                    mae(ref_vals[mask], pred_vals[mask]) if mask.any() else None
-                )
-            else:
-                metrics_data[metric_key]["mae"] = None
+            ref_vals = metrics_data[metric_key]["ref"]
+            pred_vals = metrics_data[metric_key]["pred"]
+            metrics_data[metric_key]["mae"] = (
+                mae(ref_vals, pred_vals) if ref_vals and pred_vals else None
+            )
 
         # BZ mean error - mean-of-means (treats each material equally)
         bz_mean = float(np.mean(system_mean_errors))
