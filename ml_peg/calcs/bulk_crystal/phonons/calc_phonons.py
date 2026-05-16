@@ -326,6 +326,8 @@ def _calc_mp_id(
 
     atoms = phonopy2aseatoms(phonons)
     atoms_sym = atoms.copy()
+    atoms_sym.info.setdefault("charge", 0)
+    atoms_sym.info.setdefault("spin", 1)
     atoms_sym.calc = calc
     atoms_sym.set_constraint(FixSymmetry(atoms_sym))
     FIRE(atoms_sym).run(fmax=FMAX, steps=1000)
