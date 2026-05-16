@@ -248,39 +248,11 @@ def _load_ref_qpath(mp_id: str, ref_dir: Path) -> tuple[Any, Any, Any]:
     -------
     tuple[Any, Any, Any]
         Q-points, labels, and path connections for ``phonons.run_band_structure``.
-
-    Raises
-    ------
-    FileNotFoundError
-        If any q-path metadata file is missing.
     """
     qpath_metadata_path = ref_dir / f"{mp_id}{QPATH_METADATA_SUFFIX}"
-    if qpath_metadata_path.exists():
-        with open(qpath_metadata_path, "rb") as f:
-            metadata = pickle.load(f)
-        return metadata["qpoints"], metadata["labels"], metadata["connections"]
-
-    qpoints_path = ref_dir / f"{mp_id}_qpoints.npz"
-    labels_path = ref_dir / f"{mp_id}_labels.json"
-    connections_path = ref_dir / f"{mp_id}_connections.json"
-    missing = [
-        path
-        for path in (qpoints_path, labels_path, connections_path)
-        if not path.exists()
-    ]
-    if missing:
-        raise FileNotFoundError(
-            "Missing DFT q-path metadata: "
-            + ", ".join(str(path.name) for path in missing)
-        )
-
-    with open(qpoints_path, "rb") as f:
-        qpoints = pickle.load(f)
-    with open(labels_path) as f:
-        labels = json.load(f)
-    with open(connections_path) as f:
-        connections = json.load(f)
-    return qpoints, labels, connections
+    with open(qpath_metadata_path, "rb") as f:
+        metadata = pickle.load(f)
+    return metadata["qpoints"], metadata["labels"], metadata["connections"]
 
 
 def _calc_mp_id(

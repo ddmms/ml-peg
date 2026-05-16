@@ -275,22 +275,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         ref_band_path = REF_PATH / f"{mp_id}_band_structure.npz"
         ref_dos_path = REF_PATH / f"{mp_id}_dos.npz"
         ref_thermal_path = REF_PATH / f"{mp_id}_thermal_properties.json"
-        ref_labels_path = REF_PATH / f"{mp_id}_labels.json"
-        ref_connections_path = REF_PATH / f"{mp_id}_connections.json"
 
         ref_band = _load_band_structure(ref_band_path)
         ref_dos = _load_dos(ref_dos_path)
         ref_thermal = _load_thermal_properties(ref_thermal_path)
-        # Reuse JSON loader for band metadata
-        ref_labels = _load_thermal_properties(ref_labels_path)
-        ref_connections = _load_thermal_properties(ref_connections_path)
 
         if all([ref_band, ref_dos, ref_thermal]):
-            # Add labels and connections to band structure dict
-            if ref_labels and ref_connections:
-                ref_band["labels"] = ref_labels
-                ref_band["path_connections"] = ref_connections
-
             ref_cache[mp_id] = {
                 "band": ref_band,
                 "dos": ref_dos,
