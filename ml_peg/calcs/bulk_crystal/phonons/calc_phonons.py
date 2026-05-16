@@ -33,8 +33,8 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names, load_models
 
-# Keep module import lightweight for reference-generation workers; load full
-# calculator objects only inside ``test_phonons``.
+# Keep pytest collection and worker imports lightweight. Reference generation
+# does not need model objects, so load model wrappers only inside ``test_phonons``.
 MODEL_NAMES = get_model_names(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
