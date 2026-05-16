@@ -363,9 +363,9 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             pred_freqs = np.concatenate(pred_band["frequencies"]) * THZ_TO_K
 
             if not np.all(np.isfinite(pred_freqs)):
-                n_inf = int(~np.isfinite(pred_freqs).sum())
+                n_inf = int((~np.isfinite(pred_freqs)).sum())
                 print(
-                    f"  Skipping {mp_id}/{model_name}: {n_inf} non-finite frequencies"
+                    f"  {mp_id}/{model_name}: {n_inf} non-finite frequencies, skipping"
                 )
                 skipped_value_error += 1
                 continue
