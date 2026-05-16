@@ -384,6 +384,21 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             cv_ref = ref_thermal["heat_capacity"][T_300K_INDEX]
             cv_pred = pred_thermal["heat_capacity"][T_300K_INDEX]
 
+            pred_scalars = [
+                max_freq_pred,
+                avg_freq_pred,
+                min_freq_pred,
+                s_pred,
+                f_pred,
+                cv_pred,
+            ]
+            if not all(np.isfinite(v) for v in pred_scalars):
+                print(
+                    f"  {mp_id}/{model_name}: non-finite thermal/freq scalar, skipping"
+                )
+                skipped_value_error += 1
+                continue
+
             # Store data paths for on the fly plot generation -> 10-100x speed increase
             data_paths = {
                 "ref_band": str(ref_band_path.relative_to(CALC_PATH.parent)),
