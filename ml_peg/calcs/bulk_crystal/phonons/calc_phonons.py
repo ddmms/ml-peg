@@ -202,13 +202,11 @@ def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     pending = [mp_id for mp_id in mp_ids if not _ref_complete(mp_id, DFT_REF_PATH)]
     n_done = len(mp_ids) - len(pending)
     if not pending:
-        print(
-            f"DFT reference already computed for all {len(mp_ids)} systems, skipping."
-        )
+        print(f"DFT reference complete for all {len(mp_ids)} systems, skipping.")
         return
     print(
-        f"DFT reference already computed for {n_done}/{len(mp_ids)} systems; "
-        f"computing for remaining {len(pending)}."
+        f"DFT reference complete for {n_done}/{len(mp_ids)} systems; "
+        f"computing remaining {len(pending)}."
     )
 
     def handle_mp_id(mp_id: str) -> None:
@@ -471,11 +469,11 @@ def test_phonons(
     pending = [mp_id for mp_id in mp_ids if not _model_complete(mp_id, out_dir)]
     n_done = len(mp_ids) - len(pending)
     if not pending:
-        print(f"All {len(mp_ids)} phonon calculations already complete, skipping.")
+        print(f"All {len(mp_ids)} phonon calculations complete, skipping.")
         return
     print(
-        f"Phonon calculations already complete for {n_done}/{len(mp_ids)} systems; "
-        f"computing for remaining {len(pending)}."
+        f"Phonon calculations complete for {n_done}/{len(mp_ids)} systems; "
+        f"computing remaining {len(pending)}."
     )
 
     calc = model.get_calculator()
