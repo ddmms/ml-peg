@@ -379,6 +379,8 @@ def test_low_dimensional_relaxation(mlip: tuple[str, Any], dimensionality: str) 
         # Set vacuum padding in non-periodic directions
         atoms = set_vacuum_padding(atoms, dimensionality)
         atoms.calc = copy(calc)
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
         mat_id = struct_data["mat_id"]
 
         relaxed_atoms, converged, energy_per_atom, max_force = relax_low_dimensional(
