@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import warnings
 
 from ase.filters import ExpCellFilter
 from ase.io import write
@@ -159,16 +160,20 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
                 + f"{(ratio - ideal_ratio) / ideal_ratio * 100:.1f} %"
             )
         except Exception as e:
-            print(
+            message = (
                 f"Error optimizing {lattice_name} structure for {symbol}: {e}, "
                 + "using ideal c/a ratio instead."
             )
+            warnings.warn(message, stacklevel=2)
             ratio = ideal_ratio
         if not converged:
-            print(
+            message = (
                 f"Cell shape optimization for {symbol} "
                 + f"{lattice_name} did not converge!"
             )
+            print(message)
+            warnings.warn(message, stacklevel=2)
+
         if lattice == HexagonalClosedPacked:
             lattice_constants = (
                 lattice.calc_num_atoms() * volume_per_atom / (np.sqrt(2))
