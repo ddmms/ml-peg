@@ -4,4 +4,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
-__version__ = version("ml-peg")
+try:
+    __version__ = version("ml-peg")
+except Exception:
+    __version__ = "unknown"

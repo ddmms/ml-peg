@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from functools import cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -468,6 +470,24 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+@cache
+def _load_faqs_registry() -> list[dict[str, str]] | None:
+    """
+    Load FAQs from the YAML file, cached to prevent repeated I/O.
+
+    Returns
+    -------
+    list[dict[str, str]] | None
+        Parsed FAQs registry, or None if the file is missing.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return None
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -477,13 +497,9 @@ def build_faqs() -> Div:
     Div
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
-    # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
+    faqs_data = _load_faqs_registry()
 
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    if faqs_data is None:
         return Div(
             "FAQs file not found",
             style={
@@ -495,6 +511,8 @@ def build_faqs() -> Div:
 
     if not faqs_data or not isinstance(faqs_data, list):
         return Div("No FAQs available")
+
+    faqs_data = deepcopy(faqs_data)
 
     # Build FAQ dropdowns
     faq_components = []
