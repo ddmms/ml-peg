@@ -45,7 +45,7 @@ Q_MESH = 6
 Q_MESH_THERMAL = 20
 TEMPERATURES = [0, 75, 150, 300, 600]
 N_JOBS = 10
-N_PHONONS = 100
+N_PHONONS = 9958
 QPATH_METADATA_SUFFIX = "_qpath_metadata.pkl"
 YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
