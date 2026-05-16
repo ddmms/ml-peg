@@ -262,9 +262,13 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
 
         dft_data = pd.read_csv(filename, comment="#")
 
+        volume_cols = [col for col in dft_data.columns if "V/atom" in col]
+        vmin = dft_data.min()[volume_cols].min()
+        vmax = dft_data.max()[volume_cols].max()
+
         volumes_per_atoms = np.linspace(
-            np.round(dft_data[dft_data.columns[0]].min() * 0.95),
-            np.round(dft_data[dft_data.columns[0]].max() * 1.05),
+            np.round(vmin * 0.95),
+            np.round(vmax * 1.05),
             50,
             endpoint=False,
         )
