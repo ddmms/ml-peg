@@ -19,6 +19,7 @@ import numpy as np
 from phonopy import load as load_phonopy
 from phonopy.phonon.band_structure import get_band_qpoints_by_seekpath
 import pytest
+from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 import yaml
 
@@ -116,19 +117,6 @@ def _calc_ref_mp_id(mp_id: str, yaml_dir: Path, out_dir: Path) -> None:
     qpath_metadata_path = out_dir / f"{mp_id}{QPATH_METADATA_SUFFIX}"
     struct_path = out_dir / f"{mp_id}.xyz"
 
-    if all(
-        path.exists()
-        for path in (
-            band_path,
-            dos_path,
-            thermal_path,
-            qpath_metadata_path,
-            struct_path,
-        )
-    ):
-        print(f"Skipping reference {mp_id}: already completed.")
-        return
-
     yaml_path = yaml_dir / f"{mp_id}.yaml"
 
     with open(yaml_path) as f:
@@ -173,6 +161,34 @@ def _calc_ref_mp_id(mp_id: str, yaml_dir: Path, out_dir: Path) -> None:
     write(struct_path, phonopy2aseatoms(phonons))
 
 
+def _ref_complete(mp_id: str, out_dir: Path) -> bool:
+    """
+    Return True when all DFT reference outputs for ``mp_id`` already exist.
+
+    Parameters
+    ----------
+    mp_id
+        Materials Project identifier.
+    out_dir
+        Directory containing serialised DFT reference outputs.
+
+    Returns
+    -------
+    bool
+        Whether all expected output files are present.
+    """
+    return all(
+        (out_dir / name).exists()
+        for name in (
+            f"{mp_id}_band_structure.npz",
+            f"{mp_id}_dos.npz",
+            f"{mp_id}_thermal_properties.json",
+            f"{mp_id}{QPATH_METADATA_SUFFIX}",
+            f"{mp_id}.xyz",
+        )
+    )
+
+
 @pytest.mark.slow
 def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     """
@@ -184,6 +200,18 @@ def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
         Downloaded ALEX YAML directory and benchmark MP-ID list.
     """
     yaml_dir, mp_ids = alex_phonon_inputs
+
+    pending = [mp_id for mp_id in mp_ids if not _ref_complete(mp_id, DFT_REF_PATH)]
+    n_done = len(mp_ids) - len(pending)
+    if not pending:
+        print(
+            f"DFT reference already computed for all {len(mp_ids)} systems, skipping."
+        )
+        return
+    print(
+        f"DFT reference already computed for {n_done}/{len(mp_ids)} systems; "
+        f"computing for remaining {len(pending)}."
+    )
 
     def handle_mp_id(mp_id: str) -> None:
         """
@@ -199,9 +227,11 @@ def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"Skipping reference {mp_id}: {exc}")
 
-    Parallel(n_jobs=N_JOBS, batch_size=1)(
-        delayed(handle_mp_id)(mp_id) for mp_id in tqdm(mp_ids, desc="DFT reference")
-    )
+    with threadpool_limits(limits=1, user_api="blas"):
+        Parallel(n_jobs=N_JOBS, batch_size=1)(
+            delayed(handle_mp_id)(mp_id)
+            for mp_id in tqdm(pending, desc="DFT reference")
+        )
 
 
 def _load_ref_qpath(mp_id: str, ref_dir: Path) -> tuple[Any, Any, Any]:
