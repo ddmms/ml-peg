@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
+from copy import copy
 from io import StringIO
 import json
 from pathlib import Path
@@ -14,12 +15,10 @@ from ase.calculators.calculator import Calculator
 from ase.constraints import FixSymmetry
 from ase.io import write
 from ase.optimize import FIRE
-from joblib import Parallel, delayed
 import numpy as np
 from phonopy import load as load_phonopy
 from phonopy.phonon.band_structure import get_band_qpoints_by_seekpath
 import pytest
-from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 import yaml
 
@@ -44,7 +43,6 @@ FMAX = 0.005
 Q_MESH = 6
 Q_MESH_THERMAL = 20
 TEMPERATURES = [0, 75, 150, 300, 600]
-N_JOBS = 10
 N_PHONONS = 100
 QPATH_METADATA_SUFFIX = "_qpath_metadata.pkl"
 YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
@@ -227,11 +225,8 @@ def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"Skipping reference {mp_id}: {exc}")
 
-    with threadpool_limits(limits=1, user_api="blas"):
-        Parallel(n_jobs=N_JOBS, batch_size=1)(
-            delayed(handle_mp_id)(mp_id)
-            for mp_id in tqdm(pending, desc="DFT reference")
-        )
+    for mp_id in tqdm(pending, desc="DFT reference"):
+        handle_mp_id(mp_id)
 
 
 def _load_ref_qpath(mp_id: str, ref_dir: Path) -> tuple[Any, Any, Any]:
@@ -327,7 +322,7 @@ def _calc_mp_id(
 
     atoms = phonopy2aseatoms(phonons)
     atoms_sym = atoms.copy()
-    atoms_sym.calc = calc
+    atoms_sym.calc = copy(calc)
     atoms_sym.set_constraint(FixSymmetry(atoms_sym))
     FIRE(atoms_sym).run(fmax=FMAX, steps=1000)
 
@@ -379,22 +374,49 @@ def _calc_mp_id(
     write(struct_path, atoms_sym)
 
 
-def _calc_model_mp_id(
-    mp_id: str,
-    model: Any,
-    yaml_dir: Path,
-    ref_dir: Path,
-    out_dir: Path,
-) -> tuple[str, bool, str]:
+def _model_complete(mp_id: str, out_dir: Path) -> bool:
     """
-    Load a model calculator in a worker process and calculate one phonon system.
+    Return True when all model phonon outputs for ``mp_id`` already exist.
 
     Parameters
     ----------
     mp_id
         Materials Project identifier.
-    model
-        ML-PEG model wrapper used to construct an ASE calculator.
+    out_dir
+        Directory containing model phonon outputs.
+
+    Returns
+    -------
+    bool
+        Whether all expected output files are present.
+    """
+    return all(
+        (out_dir / name).exists()
+        for name in (
+            f"{mp_id}_band_structure.npz",
+            f"{mp_id}_dos.npz",
+            f"{mp_id}_thermal_properties.json",
+            f"{mp_id}.xyz",
+        )
+    )
+
+
+def _calc_model_mp_id(
+    mp_id: str,
+    calc: Calculator,
+    yaml_dir: Path,
+    ref_dir: Path,
+    out_dir: Path,
+) -> tuple[str, bool, str]:
+    """
+    Calculate one phonon system and capture its output.
+
+    Parameters
+    ----------
+    mp_id
+        Materials Project identifier.
+    calc
+        ASE calculator used for relaxation and displacement forces.
     yaml_dir
         Directory containing downloaded ALEX ``phonopy.yaml`` data.
     ref_dir
@@ -411,7 +433,6 @@ def _calc_model_mp_id(
     success = True
     with redirect_stdout(log), redirect_stderr(log):
         try:
-            calc = model.get_calculator()
             _calc_mp_id(mp_id, calc, yaml_dir, ref_dir, out_dir)
         except Exception:  # noqa: BLE001
             success = False
@@ -447,18 +468,25 @@ def test_phonons(
     with open(log_path, "w") as f:
         f.write(f"Phonon calculation log for {model_name}\n")
 
-    results = Parallel(n_jobs=N_JOBS, return_as="generator_unordered")(
-        delayed(_calc_model_mp_id)(mp_id, model, yaml_dir, DFT_REF_PATH, out_dir)
-        for mp_id in mp_ids
+    pending = [mp_id for mp_id in mp_ids if not _model_complete(mp_id, out_dir)]
+    n_done = len(mp_ids) - len(pending)
+    if not pending:
+        print(f"All {len(mp_ids)} phonon calculations already complete, skipping.")
+        return
+    print(
+        f"Phonon calculations already complete for {n_done}/{len(mp_ids)} systems; "
+        f"computing for remaining {len(pending)}."
     )
 
+    calc = model.get_calculator()
     failed_mp_ids = []
-    with tqdm(total=len(mp_ids), desc=f"{model_name} phonons", unit="phonon") as pbar:
-        for mp_id, success, log_text in results:
-            _append_model_log(log_path, mp_id, success, log_text)
-            if not success:
-                failed_mp_ids.append(mp_id)
-            pbar.update()
+    for mp_id in tqdm(pending, desc=f"{model_name} phonons", unit="phonon"):
+        mp_id, success, log_text = _calc_model_mp_id(
+            mp_id, calc, yaml_dir, DFT_REF_PATH, out_dir
+        )
+        _append_model_log(log_path, mp_id, success, log_text)
+        if not success:
+            failed_mp_ids.append(mp_id)
 
     if failed_mp_ids:
         tqdm.write(
