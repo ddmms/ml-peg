@@ -44,6 +44,7 @@ FMAX = 0.005
 Q_MESH = 6
 Q_MESH_THERMAL = 20
 TEMPERATURES = [0, 75, 150, 300, 600]
+# Tune to GPU memory: reduce for large models (e.g. UMA-M) or increase for >40 GB GPUs.
 N_JOBS = 5
 N_PHONONS = 9958
 QPATH_METADATA_SUFFIX = "_qpath_metadata.pkl"
