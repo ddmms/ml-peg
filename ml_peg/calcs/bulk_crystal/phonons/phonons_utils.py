@@ -20,7 +20,7 @@ BENCHMARK_DATA_DIR = Path.home() / ".cache" / "ml_peg"
 
 
 # ---------------------------------------------------------------------------
-# ASE ↔ Phonopy conversions
+# ASE <-> Phonopy conversions (Author: Balázs Póta)
 # ---------------------------------------------------------------------------
 
 
@@ -107,10 +107,8 @@ def phonopy2aseatoms(phonons: Phonopy, primitive: bool | None = None) -> Atoms:
 
 
 # ---------------------------------------------------------------------------
-# Force constant calculation
+# Force constant calculation (Author: Balázs Póta)
 # ---------------------------------------------------------------------------
-
-# from balazs
 
 
 def _calculate_fc2_set(phonons: Phonopy, calculator: Calculator) -> np.ndarray:

@@ -80,6 +80,7 @@ def _append_model_log(
                 f.write("\n")
 
 
+# Crete once per test session + reuse for each test
 @pytest.fixture(scope="session")
 def alex_phonon_inputs() -> tuple[Path, list[str]]:
     """

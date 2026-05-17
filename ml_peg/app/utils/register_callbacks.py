@@ -993,7 +993,15 @@ def register_plot_download_callbacks() -> None:
 
 
 def register_image_download_callbacks() -> None:
-    """Register one generic image download callback once per Dash app."""
+    """
+    Register one generic image download callback once per Dash app.
+
+    Unlike the table download (which asks the browser to capture the live DOM),
+    this callback decodes a pre-rendered image already stored as a base64 data
+    URI in a ``dcc.Store``. The phonon dispersion plot is rendered server-side
+    via kaleido at analysis time, so the full-resolution export is available
+    without re-rendering in the browser.
+    """
     app = dash.get_app()
     output = Output({"type": "image-download", "index": MATCH}, "data")
     if str(output) in app.callback_map:
