@@ -462,13 +462,29 @@ def test_phonons(
         for mp_id in pending
     )
 
+    # Large structures can (infrequently) OOM when multiple workers share the GPU.
+    # Catch them and retry sequentially so only one system is in GPU memory at a time.
+    oom_mp_ids = []
     failed_mp_ids = []
     with tqdm(total=len(pending), desc=f"{model_name} phonons", unit="phonon") as pbar:
         for mp_id, success, log_text in results:
             _append_model_log(log_path, mp_id, success, log_text)
             if not success:
-                failed_mp_ids.append(mp_id)
+                if "cuda out of memory" in log_text.lower():
+                    oom_mp_ids.append(mp_id)
+                else:
+                    failed_mp_ids.append(mp_id)
             pbar.update()
+
+    if oom_mp_ids:
+        tqdm.write(f"{model_name}: retrying {len(oom_mp_ids)} OOM systems sequentially")
+        for mp_id in tqdm(oom_mp_ids, desc=f"{model_name} OOM retry", unit="phonon"):
+            mp_id, success, log_text = _calc_model_mp_id(
+                mp_id, model, yaml_dir, DFT_REF_PATH, out_dir
+            )
+            _append_model_log(log_path, mp_id, success, log_text)
+            if not success:
+                failed_mp_ids.append(mp_id)
 
     if failed_mp_ids:
         tqdm.write(
