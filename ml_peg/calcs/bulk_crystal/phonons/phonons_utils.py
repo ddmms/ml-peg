@@ -134,6 +134,8 @@ def _calculate_fc2_set(phonons: Phonopy, calculator: Calculator) -> np.ndarray:
     ):
         if sc is not None:
             atoms = Atoms(sc.symbols, cell=sc.cell, positions=sc.positions, pbc=True)
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
             atoms.calc = calculator
             f = atoms.get_forces()
         else:
