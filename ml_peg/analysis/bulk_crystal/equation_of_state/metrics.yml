@@ -13,7 +13,7 @@ metrics:
         level_of_theory: PBE
   Phase stability:
         good: 100.0
-        bad: 0.0
+        bad: 25.0
         unit: '%'
         tooltip: Percentage of correctly predicted stable phases.
         level_of_theory: PBE
