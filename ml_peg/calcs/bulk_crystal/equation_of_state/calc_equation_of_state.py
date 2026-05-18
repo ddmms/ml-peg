@@ -253,7 +253,15 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
 
     calc = model.get_calculator(precision="high")
-    filenames = list(DATA_PATH.glob("*DFT*"))
+
+    data_path = (
+        download_s3_data(
+            filename="equation_of_state.zip",
+            key="inputs/bulk_crystal/equation_of_state/equation_of_state.zip",
+        )
+        / "equation_of_state"
+    )
+    filenames = list(data_path.glob("*DFT*"))
 
     for filename in (pbar_1 := tqdm(filenames, desc=f"{model_name}")):
         element = filename.name.split("_")[0]
