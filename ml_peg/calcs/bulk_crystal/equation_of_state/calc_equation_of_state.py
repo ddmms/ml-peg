@@ -214,18 +214,26 @@ def equation_of_state(
     tuple[np.ndarray, np.ndarray]
         Lattice constants (A) and energies (eV/atom) arrays.
     """
-    # dummy call to have calc_num_atoms available
     if lattice in [HexagonalClosedPacked, Omega]:
         lattice(symbol="W", latticeconstant=(3.16, 3.16 * 1.6123))
     else:
         lattice(symbol="W", latticeconstant=3.16)
 
-    lattice_constants = get_lattice_constants(lattice, volumes_per_atoms, symbol, calc)
+    try:
+        lattice_constants = get_lattice_constants(
+            lattice, volumes_per_atoms, symbol, calc
+        )
+    except Exception as e:
+        print(
+            "Error occurred while getting cell "
+            + f"{symbol} {lattice_name} adjustments: {e}"
+        )
 
     structures = [
         lattice(latticeconstant=lc, size=size, symbol=symbol)
         for lc in lattice_constants
     ]
+
     for structure in structures:
         structure.info["charge"] = 0
         if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
@@ -236,9 +244,18 @@ def equation_of_state(
             structure.info["spin"] = 0
         structure.calc = calc
 
-    for structure in structures:
-        structure.get_potential_energy()
-        save_calc_results(structure, calc_prefix="MLIP_")
+        try:
+            structure.get_potential_energy()
+            save_calc_results(structure, calc_prefix="MLIP_")
+        except Exception as e:
+            print(f"Error calculating energy for {lattice_name} {symbol}: {e}")
+            print("Setting energy to NaN for this structure.")
+            warnings.warn(
+                f"Energy calculation failed for {lattice_name} {symbol}: {e}"
+                + ", MLIP energy set to NaN.",
+                stacklevel=2,
+            )
+            structure.info["MLIP_energy"] = np.nan
 
     return structures
 
