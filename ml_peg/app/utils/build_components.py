@@ -139,7 +139,6 @@ def build_weight_components(
     *,
     use_thresholds: bool = False,
     include_download_controls: bool = True,
-    include_store: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
 ) -> Div:
@@ -158,10 +157,6 @@ def build_weight_components(
         recompute Scores consistently.
     include_download_controls
         Whether to render download controls in the Score column slot.
-    include_store
-        Whether to include this table's weight ``dcc.Store`` in the returned
-        component. Set to ``False`` when that store is already created elsewhere,
-        for example in the main app layout.
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
@@ -292,14 +287,6 @@ def build_weight_components(
     )
 
     layout = [container]
-    if include_store:
-        layout.append(
-            Store(
-                id=f"{table.id}-weight-store",
-                storage_type="session",
-                data=weights,
-            )
-        )
 
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
@@ -827,20 +814,6 @@ def build_test_layout(
 
     layout_contents.append(
         Store(
-            id=f"{table.id}-original-data-store",
-            storage_type="session",
-            data=table.data,
-        )
-    )
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-filtered-data-store",
-            storage_type="session",
-            data=dict.fromkeys(metric_columns, True),
-        )
-    )
-    layout_contents.append(
-        Store(
             id=f"{table.id}-raw-data-store",
             storage_type="session",
             data=table.data,
@@ -1154,12 +1127,6 @@ def build_threshold_inputs(
             )
         )
 
-    store = Store(
-        id=f"{table_id}-thresholds-store",
-        storage_type="session",
-        data=default_thresholds,
-    )
-
     # Register callbacks for these metrics, pass default_thresholds for reset
     register_normalization_callbacks(
         table_id,
@@ -1168,9 +1135,4 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    return Div(
-        [
-            Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
-            store,
-        ]
-    )
+    return Div([Div(cells, id=f"{table_id}-threshold-grid", style=container_style)])

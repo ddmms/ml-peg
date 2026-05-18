@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import json
 from pathlib import Path
 import warnings
 
+from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import Div
 
@@ -79,12 +81,17 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        self.original_table = deepcopy(self.table)
         self.layout = self.build_layout()
         if info_path:
             self.load_info(info_path)
         else:
             self.info = None
             warnings.warn("No info_path provided.", stacklevel=2)
+        if hasattr(self, "set_elements"):
+            self.set_elements()
+        else:
+            self.elements = None
 
     def load_info(self, info_path: Path) -> None:
         """
@@ -127,7 +134,52 @@ class BaseApp(ABC):
         """Register callbacks with app."""
         pass
 
-    # @abstractmethod
-    def filter_data(self):
-        """Filter data by elements."""
+    def filter_table(self, filter_elements: list[str] | None) -> None:
+        """
+        Filter data by elements.
+
+        Parameters
+        ----------
+        filter_elements
+            List of elements to filter out of data.
+
+        Returns
+        -------
+        dict[str, dict]
+            Updated benchmark table.
+        """
         print(f"No filter_data method defined for {self.name}, skipping.")
+        return self.table.data
+
+    @property
+    def stores(self) -> list[Store]:
+        """
+        List Stores to be registered with full app.
+
+        Returns
+        -------
+        list[Store]
+            List of Stores to be registered with full app.
+        """
+        return [
+            Store(
+                id=f"{self.table_id}-computed-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-raw-data-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-weight-store",
+                storage_type="session",
+                data=self.table.weights,
+            ),
+            Store(
+                id=f"{self.table_id}-thresholds-store",
+                storage_type="session",
+                data=self.table.thresholds,
+            ),
+        ]

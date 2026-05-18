@@ -8,7 +8,7 @@ import io
 import json
 import math
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from dash import Input, Output, State, callback, callback_context, html
 from dash.dcc import Graph
@@ -940,45 +940,3 @@ def model_asset_from_scatter(
         if rendered is None:
             return html.Div(missing_message)
         return rendered
-
-
-def filter_table_simple(
-    *, table_id: str, filter_func: Callable, filter_kwargs: dict[str, Any]
-) -> None:
-    """
-    Define callback to filter table by elements.
-
-    Parameters
-    ----------
-    table_id
-        ID for Dash table being filtered.
-    filter_func
-        Filter function to update table data.
-    filter_kwargs
-        Keyword arguments to pass to the filter function.
-    """
-
-    @callback(
-        Output(f"{table_id}-filtered-data-store", "data"),
-        Input("element-filter", "value"),
-        State(f"{table_id}-filtered-data-store", "data"),
-    )
-    def _filter_table(
-        elements_list: list[str | None], filtered_data: dict[str, bool]
-    ) -> dict[str, bool]:
-        """
-        Register callback to filter table by elements.
-
-        Parameters
-        ----------
-        elements_list
-            List of selected elements.
-        filtered_data
-            Current filtered data.
-
-        Returns
-        -------
-        dict[str, bool]
-            Stored dictionary indicating which tests have been filtering.
-        """
-        return filter_func(set(elements_list or []), **filter_kwargs)

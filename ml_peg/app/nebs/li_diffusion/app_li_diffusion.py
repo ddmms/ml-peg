@@ -9,11 +9,7 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    filter_table_simple,
-    plot_from_table_cell,
-    struct_from_scatter,
-)
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -69,17 +65,7 @@ class LiDiffusionApp(BaseApp):
                     mode="traj",
                 )
 
-        # Ensure elements are loaded
-        if not hasattr(self, "elements"):
-            self.get_elements()
-
-        filter_table_simple(
-            table_id=self.table_id,
-            filter_func=self.filter_data,
-            filter_kwargs={"test_elements": self.elements},
-        )
-
-    def get_elements(self) -> None:
+    def set_elements(self) -> None:
         """Get element sets for filtering."""
         try:
             self.elements = set(self.info["elements"][0])
@@ -87,35 +73,35 @@ class LiDiffusionApp(BaseApp):
             self.elements = set()
             warnings.warn("Unable to read elements lists.", stacklevel=2)
 
-    @staticmethod
-    def filter_data(
-        filter_elements: set[str], test_elements: set[str]
-    ) -> dict[str, dict]:
+    def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
         """
         Apply elements filter to data.
 
         Parameters
         ----------
         filter_elements
-            Set of elements to filter out of data.
-        test_elements
-            Set of elements for each system.
+            List of elements to filter out of data.
 
         Returns
         -------
         dict[str, dict]
             Metric names and values for all models.
         """
+        filter_elements = set(filter_elements) if filter_elements else set()
+
         # Get overlap of deselected elements with each system's elements
-        if bool(test_elements & filter_elements):
-            return {
-                "Path B error": False,
-                "Path C error": False,
-            }
-        return {
-            "Path B error": True,
-            "Path C error": True,
-        }
+        if bool(self.elements & filter_elements):
+            for row in self.table.data:
+                row["Path B error"] = None
+                row["Path C error"] = None
+        else:
+            for current_row, original_row in zip(
+                self.table.data, self.original_table.data, strict=True
+            ):
+                current_row["Path B error"] = original_row["Path B error"]
+                current_row["Path C error"] = original_row["Path C error"]
+
+        return self.table.data
 
 
 def get_app() -> LiDiffusionApp:
