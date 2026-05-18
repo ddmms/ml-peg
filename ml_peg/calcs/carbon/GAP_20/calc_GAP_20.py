@@ -41,20 +41,16 @@ def test_gap_20(mlip: tuple[str, Any]) -> None:
 
     atoms_list = read(DATA_PATH, ":")
 
-    # Separate isolated atom (first entry) from structures
-    iso_atoms = None
-    structures = []
-    for a in atoms_list[:10]:
-        if a.info.get("config_type") == "IsolatedAtom":
-            iso_atoms = a
-        else:
-            structures.append(a)
+    # Separate isolated atoms from structures
+    structures = [a for a in atoms_list if a.info.get("config_type") != "IsolatedAtom"]
 
-    # Reference isolated-atom energy from DFT; MLIP isolated-atom energy from model
-    ref_iso_energy = iso_atoms.get_potential_energy()
-    iso_atoms.calc = calc
-    pred_iso_energy = float(iso_atoms.get_potential_energy())
-    iso_atoms.calc = None
+    # Subtract the first structure's energy per atom from all others so that
+    # DFT and MLIP are compared on the same relative scale.
+    ref_atoms = structures[0]
+    ref_dft_per_atom = ref_atoms.get_potential_energy() / len(ref_atoms)
+    ref_atoms.calc = calc
+    ref_mlip_per_atom = ref_atoms.get_potential_energy() / len(ref_atoms)
+    ref_atoms.calc = None
 
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -70,8 +66,8 @@ def test_gap_20(mlip: tuple[str, Any]) -> None:
 
         atoms.info["ref_energy"] = ref_energy
         atoms.info["pred_energy"] = pred_energy
-        atoms.info["ref_energy_rel"] = (ref_energy - n * ref_iso_energy) / n
-        atoms.info["pred_energy_rel"] = (pred_energy - n * pred_iso_energy) / n
+        atoms.info["ref_energy_rel"] = ref_energy / n - ref_dft_per_atom
+        atoms.info["pred_energy_rel"] = pred_energy / n - ref_mlip_per_atom
 
         results.append(atoms)
 
