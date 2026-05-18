@@ -253,7 +253,7 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     filenames = list(DATA_PATH.glob("*DFT*"))
 
     for filename in (pbar_1 := tqdm(filenames, desc=f"{model_name}")):
