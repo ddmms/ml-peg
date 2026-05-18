@@ -18,7 +18,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Equation of State (metals)"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/"
-    "benchmarks/bulk_crystal.html#equation-of-state"
+    "benchmarks/bulk_crystal.html#equation-of-state-metals"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
 PT_TYPE = "eos-periodic-table"
