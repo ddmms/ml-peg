@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 import warnings
 
@@ -273,6 +274,10 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
         pbar_1.set_description(f"{model_name}/{element}")
 
         dft_data = pd.read_csv(filename, comment="#")
+
+        saved_dft_data_file = OUT_PATH / Path(filename).name
+        if not saved_dft_data_file.exists():
+            shutil.copy(filename, saved_dft_data_file)
 
         volume_cols = [col for col in dft_data.columns if "V/atom" in col]
         vmin = dft_data.min()[volume_cols].min()
