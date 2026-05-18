@@ -40,50 +40,32 @@ def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
 
     atoms_list = read(DATA_PATH, ":")
 
-    # Separate isolated atoms (C, H, O) from structures
-    ref_iso: dict[str, float] = {}
-    pred_iso: dict[str, float] = {}
-    structures = []
-    for a in atoms_list[:10]:
-        if a.info.get("config_type") == "IsolatedAtom":
-            sym = a.get_chemical_symbols()[0]
-            ref_iso[sym] = a.info["QM_energy"]
-            a.calc = calc
-            pred_iso[sym] = float(a.get_potential_energy())
-            a.calc = None
-        else:
-            structures.append(a)
+    # Separate isolated atoms from structures
+    structures = [a for a in atoms_list if a.info.get("config_type") != "IsolatedAtom"]
+
+    # Subtract the first structure's energy per atom from all others so that
+    # DFT and MLIP are compared on the same relative scale.
+    ref_atoms = structures[0]
+    ref_dft_per_atom = ref_atoms.info["QM_energy"] / len(ref_atoms)
+    ref_atoms.calc = calc
+    ref_mlip_per_atom = float(ref_atoms.get_potential_energy()) / len(ref_atoms)
+    ref_atoms.calc = None
 
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     results = []
     for atoms in tqdm(structures, desc=model_name):
-        syms = atoms.get_chemical_symbols()
         n = len(atoms)
-        n_c = syms.count("C")
-        n_h = syms.count("H")
-        n_o = syms.count("O")
-
         ref_energy = atoms.info["QM_energy"]
         atoms.calc = calc
         pred_energy = float(atoms.get_potential_energy())
         atoms.calc = None
 
-        ref_energy_rel = (
-            ref_energy - n_c * ref_iso["C"] - n_h * ref_iso["H"] - n_o * ref_iso["O"]
-        ) / n
-        pred_energy_rel = (
-            pred_energy
-            - n_c * pred_iso["C"]
-            - n_h * pred_iso["H"]
-            - n_o * pred_iso["O"]
-        ) / n
-
         atoms.info["ref_energy"] = ref_energy
         atoms.info["pred_energy"] = pred_energy
-        atoms.info["ref_energy_rel"] = ref_energy_rel
-        atoms.info["pred_energy_rel"] = pred_energy_rel
+        atoms.info["ref_energy_rel"] = ref_energy / n - ref_dft_per_atom
+        atoms.info["pred_energy_rel"] = pred_energy / n - ref_mlip_per_atom
 
         results.append(atoms)
 
