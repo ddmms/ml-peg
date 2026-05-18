@@ -22,14 +22,12 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "equation_of_state" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
 
-DATA_PATH = Path(__file__).parent / "../../../../inputs/bulk_crystal/equation_of_state/"
-
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-ELEMENTS = [f.name.split("_")[0] for f in DATA_PATH.glob("*DFT*")]
+ELEMENTS = [f.name.split("_")[0] for f in CALC_PATH.glob("*DFT*")]
 
 
 def _fit_bm_clean(volumes: np.ndarray, energies: np.ndarray) -> tuple | None:
@@ -246,7 +244,7 @@ def plot_eos_figure(model: str, element: str) -> go.Figure | None:
     """
     from ase.io import read
 
-    dft_csv = DATA_PATH / f"{element}_eos_DFT.csv"
+    dft_csv = CALC_PATH / f"{element}_eos_DFT.csv"
     dft_data = pd.read_csv(dft_csv, comment="#")
     phases = [
         col.split("_")[1]
@@ -336,7 +334,7 @@ def eos_stats() -> dict[tuple[str, str], dict[str, float]]:
             continue
 
         for element in ELEMENTS:
-            dft_csv = DATA_PATH / f"{element}_eos_DFT.csv"
+            dft_csv = CALC_PATH / f"{element}_eos_DFT.csv"
             dft_data = pd.read_csv(dft_csv, comment="#")
 
             phases = [
