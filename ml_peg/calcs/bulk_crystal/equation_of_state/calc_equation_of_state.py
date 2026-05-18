@@ -224,10 +224,7 @@ def equation_of_state(
             lattice, volumes_per_atoms, symbol, calc
         )
     except Exception as e:
-        print(
-            "Error occurred while getting cell "
-            + f"{symbol} {lattice_name} adjustments: {e}"
-        )
+        print("Error occurred while adjusting " + f"{symbol} {lattice_name} cell: {e}")
 
     structures = [
         lattice(latticeconstant=lc, size=size, symbol=symbol)
