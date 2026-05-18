@@ -5,3 +5,7 @@
 ## 2024-05-19 - Caching YAML Load for Framework Registry
 **Learning:** `yaml.safe_load` on `frameworks.yml` within `load_framework_registry()` was taking ~2-3 ms per call and it was repeatedly called for every framework entry via `get_framework_config()`. This was a micro-bottleneck, especially when dealing with lists or multiple frameworks.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to `load_framework_registry()` and `get_framework_config()` to avoid caching a mutable dictionary directly and avoid repeated YAML I/O parsing.
+
+## 2024-05-19 - Caching YAML Load for FAQs
+**Learning:** `yaml.safe_load` on `faqs.yml` within `build_faqs()` takes ~5 ms per call. This causes unnecessary overhead each time the UI components are built. This pattern confirms that any static `.yml` reading throughout the app during request cycles is a micro-bottleneck that should be avoided.
+**Action:** Applied the same `@cache` and `copy.deepcopy` pattern used for `models.yml` and `frameworks.yml` to `load_faq_data()` to eliminate repetitive I/O and parsing time during UI rendering.
