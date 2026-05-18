@@ -21,12 +21,11 @@ import pandas as pd
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-
-DATA_PATH = Path(__file__).parent / "../../../../inputs/bulk_crystal/equation_of_state/"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 magnetic_moments = {
