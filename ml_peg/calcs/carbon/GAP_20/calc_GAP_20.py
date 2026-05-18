@@ -45,12 +45,12 @@ def test_gap_20(mlip: tuple[str, Any]) -> None:
     structures = [a for a in atoms_list if a.info.get("config_type") != "IsolatedAtom"]
 
     # Subtract the first structure's energy per atom from all others so that
-    # DFT and MLIP are compared on the same relative scale.
-    ref_atoms = structures[0]
-    ref_dft_per_atom = ref_atoms.get_potential_energy() / len(ref_atoms)
-    ref_atoms.calc = calc
-    ref_mlip_per_atom = ref_atoms.get_potential_energy() / len(ref_atoms)
-    ref_atoms.calc = None
+    # DFT and MLIP are compared on the same relative scale. Use a copy for the
+    # MLIP call so the original's SinglePointCalculator stays intact for the loop.
+    _ref = structures[0].copy()
+    _ref.calc = calc
+    ref_dft_per_atom = structures[0].get_potential_energy() / len(structures[0])
+    ref_mlip_per_atom = _ref.get_potential_energy() / len(_ref)
 
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
