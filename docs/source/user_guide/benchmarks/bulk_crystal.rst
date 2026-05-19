@@ -435,7 +435,7 @@ structures are computed along the same high-symmetry path as the DFT reference
 (101 q-points per segment). Thermal properties are computed on a 20x20x20
 q-mesh.
 
-Fixing symmetry during relaxation is deliberate: without it, a structure that
+Here, fixing symmetry is important: without it, a structure that
 relaxes to a different crystal symmetry would have an incompatible Brillouin
 zone path, making metrics such as Avg BZ MAE ill-defined. It also provides a
 more stringent test of each MLIP's ability to match the DFT reference.
