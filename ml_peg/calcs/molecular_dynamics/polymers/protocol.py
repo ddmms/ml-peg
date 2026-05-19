@@ -55,7 +55,7 @@ P_MAX_ATM: ty.Final[float] = 49346.2  # 50 000 bar in atm
 MIN_FMAX: ty.Final[float] = 0.1  # eV / Å
 MIN_STEPS: ty.Final[int] = 200
 
-StageFn = ty.Callable[[ase.Atoms, pathlib.Path], ase.Atoms]
+StageFn = ty.Callable[..., ase.Atoms]
 
 
 def _density_g_cm3(atoms: ase.Atoms) -> float:
@@ -257,6 +257,7 @@ def _minimize(
 
 def _set_velocity(
     atoms: ase.Atoms,
+    calc: ase_calc.Calculator,
     traj_path: pathlib.Path,
     *,
     temp_k: float,
@@ -269,6 +270,8 @@ def _set_velocity(
     ----------
     atoms
         Structure whose ``momenta`` will be populated.
+    calc
+        Unused calculator included for the common stage-call signature.
     traj_path
         Trajectory file to overwrite with the single post-init frame.
     temp_k
@@ -352,7 +355,7 @@ def _run_md(
     dyn.run(steps=n_total - n_done)
 
 
-def _nvt(
+def _run_nvt(
     atoms: ase.Atoms,
     calc: ase_calc.Calculator,
     traj_path: pathlib.Path,
@@ -400,7 +403,7 @@ def _nvt(
     return atoms
 
 
-def _npt(
+def _run_npt(
     atoms: ase.Atoms,
     calc: ase_calc.Calculator,
     traj_path: pathlib.Path,
@@ -494,127 +497,156 @@ def run_polymer_protocol(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     completed = _load_completed(out_dir)
-    tp = time_prefactor
-    t_max = min(max(temp_final_k + 100.0, 700.0), 1000.0)
-    t_fin = temp_final_k
-    p_up_1, p_up_2, p_up_3 = 0.02 * P_MAX_ATM, 0.6 * P_MAX_ATM, 1.0 * P_MAX_ATM
-    p_dn_1, p_dn_2, p_dn_3 = 0.5 * P_MAX_ATM, 0.1 * P_MAX_ATM, 0.01 * P_MAX_ATM
+    temp_max_k = min(max(temp_final_k + 100.0, 700.0), 1000.0)
 
-    # Per-kind factories that each return a `(name, callable(atoms, traj_path))`
-    # tuple. The helpers (`_minimize`, `_set_velocity`, `_nvt`, `_npt`) have
-    # heterogeneous signatures, so we capture `calc` / `seed` / per-stage
-    # parameters in a closure here. This lets the schedule below stay one line
-    # per stage, which is the entire point of having a procedural protocol.
-    def _min(name: str) -> tuple[str, StageFn]:
-        """
-        Build a (name, callable) tuple for a minimization stage.
-
-        Parameters
-        ----------
-        name
-            Stage name used for the trajectory file and ``state.json``.
-
-        Returns
-        -------
-        tuple[str, StageFn]
-            ``(name, fn)`` for the schedule loop.
-        """
-        return name, lambda a, p: _minimize(a, calc, p)
-
-    def _vel(name: str, *, t_k: float) -> tuple[str, StageFn]:
-        """
-        Build a (name, callable) tuple for a set-velocity stage.
-
-        Parameters
-        ----------
-        name
-            Stage name used for the trajectory file and ``state.json``.
-        t_k
-            Maxwell-Boltzmann temperature, in K.
-
-        Returns
-        -------
-        tuple[str, StageFn]
-            ``(name, fn)`` for the schedule loop.
-        """
-        return name, lambda a, p: _set_velocity(a, p, temp_k=t_k, seed=seed)
-
-    def _nvt_(name: str, *, t_ps: float, t_k: float) -> tuple[str, StageFn]:
-        """
-        Build a (name, callable) tuple for an NVT stage.
-
-        Parameters
-        ----------
-        name
-            Stage name used for the trajectory file and ``state.json``.
-        t_ps
-            Stage duration in picoseconds.
-        t_k
-            Target temperature, in K.
-
-        Returns
-        -------
-        tuple[str, StageFn]
-            ``(name, fn)`` for the schedule loop.
-        """
-        return name, lambda a, p: _nvt(a, calc, p, time_ps=t_ps, temp_k=t_k)
-
-    def _npt_(
-        name: str, *, t_ps: float, t_k: float, p_atm: float
-    ) -> tuple[str, StageFn]:
-        """
-        Build a (name, callable) tuple for an NPT stage.
-
-        Parameters
-        ----------
-        name
-            Stage name used for the trajectory file and ``state.json``.
-        t_ps
-            Stage duration in picoseconds.
-        t_k
-            Target temperature, in K.
-        p_atm
-            Target pressure, in atm.
-
-        Returns
-        -------
-        tuple[str, StageFn]
-            ``(name, fn)`` for the schedule loop.
-        """
-        return name, lambda a, p: _npt(
-            a, calc, p, time_ps=t_ps, temp_k=t_k, pressure_atm=p_atm
-        )
-
-    schedule: list[tuple[str, StageFn]] = [
-        _min("00_minimization"),
-        _vel("01_set_velocity", t_k=t_max),
-        _nvt_("02_step1_highT_preheat", t_ps=50 * tp, t_k=t_max),
-        _nvt_("03_step2_lowT_preheat", t_ps=50 * tp, t_k=t_fin),
-        _npt_("04_step3_upward_shaking_highP", t_ps=50 * tp, t_k=t_fin, p_atm=p_up_1),
-        _nvt_("05_step4_upward_shaking_highT", t_ps=50 * tp, t_k=t_max),
-        _nvt_("06_step5_upward_shaking_lowT", t_ps=100 * tp, t_k=t_fin),
-        _npt_("07_step6_upward_shaking_highP", t_ps=50 * tp, t_k=t_fin, p_atm=p_up_2),
-        _nvt_("08_step7_upward_shaking_highT", t_ps=50 * tp, t_k=t_max),
-        _nvt_("09_step8_upward_shaking_lowT", t_ps=100 * tp, t_k=t_fin),
-        _npt_("10_step9_upward_shaking_highP", t_ps=50 * tp, t_k=t_fin, p_atm=p_up_3),
-        _nvt_("11_step10_upward_shaking_highT", t_ps=50 * tp, t_k=t_max),
-        _nvt_("12_step11_upward_shaking_lowT", t_ps=100 * tp, t_k=t_fin),
-        _npt_("13_step12_downward_shaking_highP", t_ps=5 * tp, t_k=t_fin, p_atm=p_dn_1),
-        _nvt_("14_step13_downward_shaking_highT", t_ps=5 * tp, t_k=t_max),
-        _nvt_("15_step14_downward_shaking_lowT", t_ps=10 * tp, t_k=t_fin),
-        _npt_("16_step15_downward_shaking_highP", t_ps=5 * tp, t_k=t_fin, p_atm=p_dn_2),
-        _nvt_("17_step16_downward_shaking_highT", t_ps=5 * tp, t_k=t_max),
-        _nvt_("18_step17_downward_shaking_lowT", t_ps=10 * tp, t_k=t_fin),
-        _npt_("19_step18_downward_shaking_highP", t_ps=5 * tp, t_k=t_fin, p_atm=p_dn_3),
-        _nvt_("20_step19_downward_shaking_highT", t_ps=5 * tp, t_k=t_max),
-        _nvt_("21_step20_downward_shaking_lowT", t_ps=10 * tp, t_k=t_fin),
-        _npt_(
-            "22_step21_npt_equilibration", t_ps=800 * tp, t_k=t_fin, p_atm=p_final_atm
+    schedule: list[tuple[str, StageFn, dict[str, float | int]]] = [
+        ("00_minimization", _minimize, {}),
+        ("01_set_velocity", _set_velocity, {"temp_k": temp_max_k, "seed": seed}),
+        (
+            "02_step1_highT_preheat",
+            _run_nvt,
+            {"time_ps": 50 * time_prefactor, "temp_k": temp_max_k},
         ),
-        _npt_("23_step22_final_npt", t_ps=500 * tp, t_k=t_fin, p_atm=p_final_atm),
+        (
+            "03_step2_lowT_preheat",
+            _run_nvt,
+            {"time_ps": 50 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "04_step3_upward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 50 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": 0.02 * P_MAX_ATM,
+            },
+        ),
+        (
+            "05_step4_upward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 50 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "06_step5_upward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 100 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "07_step6_upward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 50 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": 0.6 * P_MAX_ATM,
+            },
+        ),
+        (
+            "08_step7_upward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 50 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "09_step8_upward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 100 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "10_step9_upward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 50 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": P_MAX_ATM,
+            },
+        ),
+        (
+            "11_step10_upward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 50 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "12_step11_upward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 100 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "13_step12_downward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 5 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": 0.5 * P_MAX_ATM,
+            },
+        ),
+        (
+            "14_step13_downward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 5 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "15_step14_downward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 10 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "16_step15_downward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 5 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": 0.1 * P_MAX_ATM,
+            },
+        ),
+        (
+            "17_step16_downward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 5 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "18_step17_downward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 10 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "19_step18_downward_shaking_highP",
+            _run_npt,
+            {
+                "time_ps": 5 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": 0.01 * P_MAX_ATM,
+            },
+        ),
+        (
+            "20_step19_downward_shaking_highT",
+            _run_nvt,
+            {"time_ps": 5 * time_prefactor, "temp_k": temp_max_k},
+        ),
+        (
+            "21_step20_downward_shaking_lowT",
+            _run_nvt,
+            {"time_ps": 10 * time_prefactor, "temp_k": temp_final_k},
+        ),
+        (
+            "22_step21_npt_equilibration",
+            _run_npt,
+            {
+                "time_ps": 800 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": p_final_atm,
+            },
+        ),
+        (
+            "23_step22_final_npt",
+            _run_npt,
+            {
+                "time_ps": 500 * time_prefactor,
+                "temp_k": temp_final_k,
+                "pressure_atm": p_final_atm,
+            },
+        ),
     ]
 
-    for name, fn in schedule:
+    for name, fn, kwargs in schedule:
         traj_path = out_dir / f"{name}.traj"
         if name in completed:
             try:
@@ -628,6 +660,6 @@ def run_polymer_protocol(
                 completed.discard(name)
                 _save_completed(out_dir, completed)
         LOG.info(f"# Stage: {name}")
-        atoms = fn(atoms, traj_path)
+        atoms = fn(atoms=atoms, calc=calc, traj_path=traj_path, **kwargs)
         completed.add(name)
         _save_completed(out_dir, completed)
