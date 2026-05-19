@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase import units
-from ase.io import read, write
+from ase import Atoms
+from ase.calculators.calculator import Calculator
+from ase.io import write
+from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+    ConformerSelectionModelOutput,
+)
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -16,13 +20,14 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
-EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "conformers" / "Folmsbee" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"
 
@@ -42,7 +47,13 @@ def labels() -> list:
         List of all system names.
     """
     for model_name in MODELS:
-        labels_list = [path.stem for path in sorted((CALC_PATH / model_name).glob("*"))]
+        raw = (CALC_PATH / model_name / "model_output.json").read_text()
+        output = ConformerSelectionModelOutput.model_validate_json(raw)
+        labels_list = sorted(
+            f"{m.molecule_name}_conf{i}"
+            for m in output.molecules
+            for i in range(len(m.predicted_energy_profile))
+        )
         break
     return labels_list
 
@@ -69,15 +80,39 @@ def conformer_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    for model_name in MODELS:
-        for label in labels():
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+    data_input_dir = download_s3_data(
+        key="inputs/conformers/Folmsbee/conformer_selection.zip",
+        filename="conformer_selection.zip",
+    )
 
-            results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
+    for model_name in MODELS:
+        benchmark = MlPegConformerSelectionBenchmark(
+            force_field=Calculator(),
+            data_input_dir=data_input_dir,
+            run_mode="standard",
+        )
+        raw = (CALC_PATH / model_name / "model_output.json").read_text()
+        benchmark.model_output = ConformerSelectionModelOutput.model_validate_json(raw)
+        result = benchmark.analyze()
+
+        result_by_name = {m.molecule_name: m for m in result.molecules}
+        data_by_name = {m.molecule_name: m for m in benchmark._folmsbee_data}
+
+        for label in labels():
+            mol_name, conf_str = label.rsplit("_conf", 1)
+            i = int(conf_str)
+            molecule = result_by_name[mol_name]
+
+            results[model_name].append(float(molecule.predicted_energy_profile[i]))
             if not ref_stored:
-                results["ref"].append(atoms.info["ref_rel_energy"] * EV_TO_KCAL)
+                results["ref"].append(float(molecule.reference_energy_profile[i]))
 
             # Write structures for app
+            data_mol = data_by_name[mol_name]
+            atoms = Atoms(
+                symbols=data_mol.atom_symbols,
+                positions=data_mol.conformer_coordinates[i],
+            )
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}.xyz", atoms)
