@@ -83,9 +83,10 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
     )
     ref_energies = {}
 
-    for row in df.iterrows():
-        label = row[1][0]
-        e_ref = float(row[1][1]) * units.Hartree
+    # Performance optimization: Replace `iterrows` with `itertuples` to avoid Series overhead
+    for row in df.itertuples(index=False, name=None):
+        label = row[0]
+        e_ref = float(row[1]) * units.Hartree
         ref_energies[label] = e_ref
 
     return ref_energies
