@@ -1,4 +1,8 @@
-"""Analyse graphene oxide benchmark (DFT/PBE, relative to isolated atoms)."""
+"""
+Analyse graphene oxide benchmark.
+
+Formation energies are measured relative to isolated atoms using DFT/PBE.
+"""
 
 from __future__ import annotations
 
@@ -68,9 +72,16 @@ def all_energies() -> dict[str, dict]:
         struct_dir = OUT_PATH / model
         struct_dir.mkdir(parents=True, exist_ok=True)
         atoms_list = read(CALC_PATH / model / "results.xyz", ":")
+        atoms_0 = atoms_list[0]
         for idx, atoms in enumerate(tqdm(atoms_list, desc=model)):
-            data[model]["ref"].append(atoms.info["ref_energy_rel"])
-            data[model]["pred"].append(atoms.info["pred_energy_rel"])
+            if idx == 0:
+                continue
+            data[model]["ref"].append(
+                atoms.info["ref_energy_rel"] - atoms_0.info["ref_energy_rel"]
+            )
+            data[model]["pred"].append(
+                atoms.info["pred_energy_rel"] - atoms_0.info["pred_energy_rel"]
+            )
             data[model]["config_type"].append(atoms.info.get("config_type", "unknown"))
             write(struct_dir / f"{idx}.xyz", atoms)
 
