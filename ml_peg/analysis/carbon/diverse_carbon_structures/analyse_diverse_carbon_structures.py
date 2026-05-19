@@ -8,11 +8,10 @@ from ase.io import read, write
 import pytest
 from tqdm import tqdm
 
-from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
 from ml_peg.analysis.utils.utils import (
     load_metrics_config,
     mae,
-    write_density_trajectories,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -48,8 +47,6 @@ def all_energies() -> dict[str, dict]:
     -------
     dict[str, dict]
         Nested dict: model -> category_folder -> {ref, pred, labels}.
-        Individual structure xyz files are written to OUT_PATH / model / folder /
-        as a side effect (needed by write_density_trajectories).
     """
     folders = [folder for folder, _ in CATEGORIES.values()]
     empty: dict = {
@@ -90,16 +87,14 @@ def all_energies() -> dict[str, dict]:
 
 
 @pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_sp2_density.json",
-    title="sp² bonded structures: graphene, graphite, fullerenes, nanotubes",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
-    annotation_metadata={"system_count": "Structures"},
+@cell_to_scatter(
+    filename=OUT_PATH / "diverse_carbon_structures_scatter.json",
+    x_label="Predicted energy / eV atom⁻¹",
+    y_label="Reference energy / eV atom⁻¹",
 )
-def sp2_density(all_energies: dict) -> dict[str, dict]:
+def interactive_dataset(all_energies: dict) -> dict:
     """
-    Build density scatter inputs for sp2-bonded structures.
+    Build cell_to_scatter dataset with one metric per category.
 
     Parameters
     ----------
@@ -108,195 +103,24 @@ def sp2_density(all_energies: dict) -> dict[str, dict]:
 
     Returns
     -------
-    dict[str, dict]
-        Density scatter payload per model.
+    dict
+        Data bundle consumed by cell_to_scatter decorator.
     """
-    print("Saving sp2 bonded density trajectories...")
-    density_inputs: dict[str, dict] = {}
+    dataset: dict = {
+        "metrics": {metric_name: metric_name for _, metric_name in CATEGORIES.values()},
+        "models": {},
+    }
     for model in MODELS:
-        d = all_energies[model]["sp2"]
-        density_inputs[model] = {
-            "ref": d["ref"],
-            "pred": d["pred"],
-            "meta": {"system_count": len(d["ref"])},
-        }
-        write_density_trajectories(
-            labels_list=d["labels"],
-            ref_vals=d["ref"],
-            pred_vals=d["pred"],
-            struct_dir=OUT_PATH / model / "sp2",
-            traj_dir=OUT_PATH / model / "density_traj_sp2",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_sp3_density.json",
-    title="sp³ bonded structures: diamond, high-pressure phases",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def sp3_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build density scatter inputs for sp3-bonded structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    print("Saving sp3 bonded density trajectories...")
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["sp3"]
-        density_inputs[model] = {
-            "ref": d["ref"],
-            "pred": d["pred"],
-            "meta": {"system_count": len(d["ref"])},
-        }
-        write_density_trajectories(
-            labels_list=d["labels"],
-            ref_vals=d["ref"],
-            pred_vals=d["pred"],
-            struct_dir=OUT_PATH / model / "sp3",
-            traj_dir=OUT_PATH / model / "density_traj_sp3",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_amorphous_density.json",
-    title="Amorphous and liquid carbon structures",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def amorphous_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build density scatter inputs for amorphous/liquid structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    print("Saving amorphous/liquid density trajectories...")
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["amorphous"]
-        density_inputs[model] = {
-            "ref": d["ref"],
-            "pred": d["pred"],
-            "meta": {"system_count": len(d["ref"])},
-        }
-        write_density_trajectories(
-            labels_list=d["labels"],
-            ref_vals=d["ref"],
-            pred_vals=d["pred"],
-            struct_dir=OUT_PATH / model / "amorphous",
-            traj_dir=OUT_PATH / model / "density_traj_amorphous",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_general_bulk_density.json",
-    title="General bulk crystal structures (fcc, hcp, bcc, sc, A15, etc.)",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def general_bulk_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build density scatter inputs for general bulk structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    print("Saving general bulk density trajectories...")
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["general_bulk"]
-        density_inputs[model] = {
-            "ref": d["ref"],
-            "pred": d["pred"],
-            "meta": {"system_count": len(d["ref"])},
-        }
-        write_density_trajectories(
-            labels_list=d["labels"],
-            ref_vals=d["ref"],
-            pred_vals=d["pred"],
-            struct_dir=OUT_PATH / model / "general_bulk",
-            traj_dir=OUT_PATH / model / "density_traj_general_bulk",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
-
-
-@pytest.fixture
-@plot_density_scatter(
-    filename=OUT_PATH / "figure_general_clusters_density.json",
-    title="General carbon clusters (2-6 atoms, non-periodic)",
-    x_label="Reference energy / eV atom⁻¹",
-    y_label="Predicted energy / eV atom⁻¹",
-    annotation_metadata={"system_count": "Structures"},
-)
-def general_clusters_density(all_energies: dict) -> dict[str, dict]:
-    """
-    Build density scatter inputs for general cluster structures.
-
-    Parameters
-    ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density scatter payload per model.
-    """
-    print("Saving general clusters density trajectories...")
-    density_inputs: dict[str, dict] = {}
-    for model in MODELS:
-        d = all_energies[model]["general_clusters"]
-        density_inputs[model] = {
-            "ref": d["ref"],
-            "pred": d["pred"],
-            "meta": {"system_count": len(d["ref"])},
-        }
-        write_density_trajectories(
-            labels_list=d["labels"],
-            ref_vals=d["ref"],
-            pred_vals=d["pred"],
-            struct_dir=OUT_PATH / model / "general_clusters",
-            traj_dir=OUT_PATH / model / "density_traj_general_clusters",
-            struct_filename_builder=lambda label: f"{label}.xyz",
-        )
-    return density_inputs
+        model_metrics = {}
+        for _cat, (folder, metric_name) in CATEGORIES.items():
+            d = all_energies[model][folder]
+            points = [
+                {"id": label, "ref": r, "pred": p}
+                for label, r, p in zip(d["labels"], d["ref"], d["pred"], strict=True)
+            ]
+            model_metrics[metric_name] = {"points": points}
+        dataset["models"][model] = {"metrics": model_metrics}
+    return dataset
 
 
 @pytest.fixture
@@ -332,11 +156,7 @@ def metrics(all_energies: dict) -> dict[str, dict]:
 
 
 def test_diverse_carbon_structures(
-    sp2_density: dict,
-    sp3_density: dict,
-    amorphous_density: dict,
-    general_bulk_density: dict,
-    general_clusters_density: dict,
+    interactive_dataset: dict,
     metrics: dict,
 ) -> None:
     """
@@ -344,16 +164,8 @@ def test_diverse_carbon_structures(
 
     Parameters
     ----------
-    sp2_density
-        Energy density scatter inputs for sp2-bonded structures.
-    sp3_density
-        Energy density scatter inputs for sp3-bonded structures.
-    amorphous_density
-        Energy density scatter inputs for amorphous/liquid structures.
-    general_bulk_density
-        Energy density scatter inputs for general bulk structures.
-    general_clusters_density
-        Energy density scatter inputs for general cluster structures.
+    interactive_dataset
+        Per-category scatter inputs from interactive_dataset fixture.
     metrics
         Per-category energy MAE for each model.
     """
