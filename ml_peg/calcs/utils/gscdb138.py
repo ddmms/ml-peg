@@ -105,7 +105,7 @@ def run_gscdb138(
         df_refs["Reference"] *= units.Hartree
 
         # Calculate relative energy for each entry.
-        # Performance optimization: Replace `iterrows` with `itertuples` to avoid Series overhead
+        # Perf opt: Replace `iterrows` with `itertuples` to avoid Series overhead
         for row in tqdm(df_refs.itertuples(), dataset, total=df_refs.shape[0]):
             atoms_list = []
             identifier = row.Reaction

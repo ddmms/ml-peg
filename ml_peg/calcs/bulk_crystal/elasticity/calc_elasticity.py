@@ -235,7 +235,7 @@ def run_elasticity_benchmark(
 
     # Save relaxed structures to extxyz for visualisation
     atoms_list = []
-    # Performance optimization: Replace `iterrows` with `to_dict('records')` to avoid Series overhead
+    # Perf opt: Replace `iterrows` with `to_dict('records')`
     for row in results.to_dict("records"):
         struct = row.get("final_structure")
         if struct is not None:
