@@ -1,7 +1,9 @@
 """
-Analyse graphene oxide benchmark.
+Analyse graphene oxide benchmark (DFT/PBE).
 
-Formation energies are measured relative to isolated atoms using DFT/PBE.
+The calc stores per-atom formation energies (isolated-atom subtracted). Here
+those values are made relative to the first structure in the dataset, so both
+DFT and MLIP share a common energy zero regardless of their absolute offsets.
 """
 
 from __future__ import annotations
@@ -57,7 +59,13 @@ def _decode_config(config_type: str) -> str:
 @pytest.fixture
 def all_energies() -> dict[str, dict]:
     """
-    Load calc results for all models.
+    Load calc results for all models, energies relative to the first structure.
+
+    ``ref_energy_rel`` / ``pred_energy_rel`` are per-atom formation energies
+    (isolated-atom subtracted) written by the calc. Subtracting the first
+    structure's value here gives a common zero for both DFT and MLIP,
+    cancelling any absolute energy offset between the two methods. The first
+    structure is excluded from the output since its relative energy is zero.
 
     Returns
     -------
