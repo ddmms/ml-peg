@@ -30,11 +30,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 # Maps dataset category string -> (folder name for file paths, display metric name)
 CATEGORIES = {
-    "sp2 bonded": ("sp2", "sp2 bonded MAE"),
-    "sp3 bonded": ("sp3", "sp3 bonded MAE"),
-    "amorphous/liquid": ("amorphous", "amorphous/liquid MAE"),
-    "general bulk": ("general_bulk", "general bulk MAE"),
-    "general clusters": ("general_clusters", "general clusters MAE"),
+    "sp2 bonded": ("sp2", "sp2 Bonded MAE"),
+    "sp3 bonded": ("sp3", "sp3 Bonded MAE"),
+    "amorphous/liquid": ("amorphous", "Amorphous/Liquid MAE"),
+    "general bulk": ("general_bulk", "General Bulk MAE"),
+    "general clusters": ("general_clusters", "General Clusters MAE"),
 }
 
 
