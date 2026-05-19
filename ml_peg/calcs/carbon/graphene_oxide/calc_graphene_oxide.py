@@ -3,8 +3,9 @@ Compute single-point energies for the graphene oxide dataset.
 
 3813 graphene oxide structures (C/H/O) with varying oxidation coverage.
 Config types encode O/C ratio, OH/O ratio, and optionally edge R/(R+H) ratio.
-Reference energies from DFT/PBE. Energies are made relative to isolated
-C, H, and O atom energies.
+Reference energies from DFT/PBE. Formation energies are computed by subtracting
+isolated C, H, and O atom energies (composition-weighted) from each structure,
+separately for DFT and MLIP, to place both on the same relative scale.
 """
 
 from __future__ import annotations
@@ -40,16 +41,18 @@ def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
 
     atoms_list = read(DATA_PATH, ":")
 
-    # Separate isolated atoms from structures
+    isolated = [a for a in atoms_list if a.info.get("config_type") == "IsolatedAtom"]
     structures = [a for a in atoms_list if a.info.get("config_type") != "IsolatedAtom"]
 
-    # Subtract the first structure's energy per atom from all others so that
-    # DFT and MLIP are compared on the same relative scale.
-    ref_atoms = structures[0]
-    ref_dft_per_atom = ref_atoms.info["QM_energy"] / len(ref_atoms)
-    ref_atoms.calc = calc
-    ref_mlip_per_atom = float(ref_atoms.get_potential_energy()) / len(ref_atoms)
-    ref_atoms.calc = None
+    # Build per-element isolated-atom energy dicts for DFT and MLIP
+    e0_dft: dict[str, float] = {}
+    e0_mlip: dict[str, float] = {}
+    for iso in isolated:
+        sym = iso.get_chemical_symbols()[0]
+        e0_dft[sym] = iso.info["QM_energy"]
+        iso_copy = iso.copy()
+        iso_copy.calc = calc
+        e0_mlip[sym] = float(iso_copy.get_potential_energy())
 
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -57,15 +60,19 @@ def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
     results = []
     for atoms in tqdm(structures, desc=model_name):
         n = len(atoms)
+        syms = atoms.get_chemical_symbols()
         ref_energy = atoms.info["QM_energy"]
         atoms.calc = calc
         pred_energy = float(atoms.get_potential_energy())
         atoms.calc = None
 
+        e_offset_dft = sum(e0_dft[s] for s in syms)
+        e_offset_mlip = sum(e0_mlip[s] for s in syms)
+
         atoms.info["ref_energy"] = ref_energy
         atoms.info["pred_energy"] = pred_energy
-        atoms.info["ref_energy_rel"] = ref_energy / n - ref_dft_per_atom
-        atoms.info["pred_energy_rel"] = pred_energy / n - ref_mlip_per_atom
+        atoms.info["ref_energy_rel"] = (ref_energy - e_offset_dft) / n
+        atoms.info["pred_energy_rel"] = (pred_energy - e_offset_mlip) / n
 
         results.append(atoms)
 
