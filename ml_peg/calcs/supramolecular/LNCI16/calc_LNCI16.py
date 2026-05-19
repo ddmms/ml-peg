@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import numpy as np
 from tqdm import tqdm
 import zntrack
 
@@ -177,12 +179,16 @@ class LNCI16Benchmark(zntrack.Node):
         guest_copy = frags["guest"].copy()
 
         complex_copy.calc = calc
-        e_complex = complex_copy.get_potential_energy()
         host_copy.calc = calc
-        e_host = host_copy.get_potential_energy()
         guest_copy.calc = calc
-        e_guest = guest_copy.get_potential_energy()
-        return e_complex - e_host - e_guest
+        try:
+            e_complex = complex_copy.get_potential_energy()
+            e_host = host_copy.get_potential_energy()
+            e_guest = guest_copy.get_potential_energy()
+            return e_complex - e_host - e_guest
+        except Exception as exc:
+            warn(f"Error calculating energies: {exc}", stacklevel=2)
+            return np.nan
 
     @staticmethod
     def benchmark_lnci16(

@@ -9,9 +9,11 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -132,11 +134,15 @@ def test_ncia_hb375x10(mlip: tuple[str, Any]) -> None:
         atoms_a.calc = copy(calc)
         atoms_b.calc = copy(calc)
 
-        atoms.info["model_int_energy"] = (
-            atoms.get_potential_energy()
-            - atoms_a.get_potential_energy()
-            - atoms_b.get_potential_energy()
-        )
+        try:
+            atoms.info["model_int_energy"] = (
+                atoms.get_potential_energy()
+                - atoms_a.get_potential_energy()
+                - atoms_b.get_potential_energy()
+            )
+        except Exception as exc:
+            warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_int_energy"] = np.nan
         atoms.info["ref_int_energy"] = ref_energy
         atoms.calc = None
 

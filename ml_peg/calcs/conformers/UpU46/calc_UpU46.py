@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -104,7 +106,11 @@ def test_upu46(mlip: tuple[str, Any]) -> None:
 
     conf_lowest = get_atoms(data_path / f"{zero_conf_label}.xyz")
     conf_lowest.calc = calc
-    e_conf_lowest_model = conf_lowest.get_potential_energy()
+    try:
+        e_conf_lowest_model = conf_lowest.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy for {zero_conf_label}: {exc}", stacklevel=2)
+        e_conf_lowest_model = np.nan
 
     for label, e_ref in tqdm(ref_energies.items()):
         # Skip the reference conformer for
@@ -114,9 +120,13 @@ def test_upu46(mlip: tuple[str, Any]) -> None:
 
         atoms = get_atoms(data_path / f"{label}.xyz")
         atoms.calc = calc
-        atoms.info["model_rel_energy"] = (
-            atoms.get_potential_energy() - e_conf_lowest_model
-        )
+        try:
+            atoms.info["model_rel_energy"] = (
+                atoms.get_potential_energy() - e_conf_lowest_model
+            )
+        except Exception as exc:
+            warn(f"Error calculating relative energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_rel_energy"] = np.nan
         atoms.info["ref_energy"] = e_ref
         atoms.calc = None
 

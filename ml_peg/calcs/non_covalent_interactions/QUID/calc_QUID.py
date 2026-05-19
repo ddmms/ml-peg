@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import write
@@ -104,6 +105,7 @@ def compute_interaction_energy(dataset, label, calc):
     # List to store dimer and monomers.
     atoms_list = []
     model_int_energy = 0
+
     for atoms_name, stoich in zip(
         ["dimer", "small_monomer", "big_monomer"], [1, -1, -1], strict=False
     ):
@@ -112,9 +114,16 @@ def compute_interaction_energy(dataset, label, calc):
         atoms = Atoms(numbers=atomic_numbers, positions=positions)
         atoms.info.update({"charge": 0, "spin": 1})
         atoms.calc = calc
-        model_int_energy += atoms.get_potential_energy() * stoich
-        atoms.calc = None
         atoms_list.append(atoms)
+        try:
+            model_int_energy += atoms.get_potential_energy() * stoich
+        except Exception as exc:
+            warn(f"Error calculating energy for {atoms_name}: {exc}", stacklevel=2)
+            model_int_energy = np.nan
+            break
+
+    for atoms in atoms_list:
+        atoms.calc = None
     atoms_list[0].info.update(
         {
             "ref_int_energy": ref_int_energy,
