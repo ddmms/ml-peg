@@ -489,16 +489,14 @@ classified as true positive, false positive, true negative, or false negative.
 Computational cost
 ------------------
 
-Both tests are marked ``very_slow`` and excluded from default test runs.
-
 The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
 30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
 constants from the Alexandria database to generate band structures for later
-comparison.
+comparison. This part of the test is marked ``slow``.
 
 The MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower.
+models will be slower. This part of the test is marked ``very_slow``.
 
 
 Data availability
