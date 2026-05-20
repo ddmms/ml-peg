@@ -151,6 +151,7 @@ def init_phonopy_from_ref(
     primitive_matrix: Any = "auto",
     symprec: float = 1e-5,
     displacement_dataset: dict | None = None,
+    displacement_distance: float | None = None,
     **kwargs: Any,
 ) -> Phonopy:
     """
@@ -169,7 +170,11 @@ def init_phonopy_from_ref(
         Symmetry tolerance used by phonopy.
     displacement_dataset
         Reference displacement dataset to reuse. If omitted, phonopy generates
-        new displacements.
+        new displacements when ``displacement_distance`` is provided.
+    displacement_distance
+        Displacement distance used to generate new displacements when
+        ``displacement_dataset`` is omitted. Set to ``None`` to require an
+        explicit displacement dataset.
     **kwargs
         Additional keyword arguments forwarded to ``Phonopy``.
 
@@ -189,8 +194,13 @@ def init_phonopy_from_ref(
     )
     if displacement_dataset is not None:
         phonons.dataset = displacement_dataset
+    elif displacement_distance is not None:
+        phonons.generate_displacements(distance=displacement_distance)
     else:
-        phonons.generate_displacements(distance=0.01)
+        raise ValueError(
+            'Either "displacement_dataset" or "displacement_distance" is required when '
+            "initializing phonopy from reference data."
+        )
     return phonons
 
 
