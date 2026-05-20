@@ -99,6 +99,7 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
         print(f"Error running NEB for {model_name} path B: {e}")
         # Write out equivalent data
         out_dir = OUT_PATH / model_name
+        out_dir.mkdir(exist_ok=True, parents=True)
         write(out_dir / "li_diffusion_b-neb-band.extxyz", [init_struct, final_struct])
         with open(
             out_dir / "li_diffusion_b-neb-results.dat", "w", encoding="utf8"
@@ -145,6 +146,7 @@ def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> N
         print(f"Error running NEB for {model_name} path C: {e}")
         # Write out equivalent data
         out_dir = OUT_PATH / model_name
+        out_dir.mkdir(exist_ok=True, parents=True)
         write(out_dir / "li_diffusion_c-neb-band.extxyz", [init_struct, final_struct])
         with open(
             out_dir / "li_diffusion_c-neb-results.dat", "w", encoding="utf8"
