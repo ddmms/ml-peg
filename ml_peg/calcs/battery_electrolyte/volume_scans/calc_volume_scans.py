@@ -9,12 +9,12 @@ from typing import Any
 from ase.io import read, write
 import pytest
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
 from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -29,14 +29,16 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
         Name of models and models used for Volume Scan calculations.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
-
+    calc = model.get_calculator(precision="low")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    struct_paths = DATA_PATH.glob("*.xyz")
+    data_path = download_s3_data(
+        key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
+        filename="volume_scans.zip",
+    )
 
-    for struct_path in struct_paths:
+    for struct_path in data_path:
         file_prefix = OUT_PATH / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for at in configs:
