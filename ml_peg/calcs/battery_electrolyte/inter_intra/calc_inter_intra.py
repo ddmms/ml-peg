@@ -11,8 +11,8 @@ from aseMolec import anaAtoms
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -34,13 +34,21 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    data_path = download_s3_data(
-        key="inputs/battery_electrolyte/inter_intra/inter_intra.zip",
-        filename="inter_intra.zip",
+    out_dir = OUT_PATH / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    data_path = (
+        download_s3_data(
+            key="inputs/battery_electrolyte/inter_intra/inter_intra.zip",
+            filename="inter_intra.zip",
+        )
+        / "inter_intra"
     )
 
-    for struct_path in data_path:
-        file_prefix = OUT_PATH / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
+    structure_paths = data_path.glob("*.xyz")
+
+    for struct_path in structure_paths:
+        file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
             struct.calc = copy(calc)
@@ -52,7 +60,7 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
             struct.calc = None
         write(file_prefix, configs)
 
-    eval_file_prefix = OUT_PATH
+    eval_file_prefix = out_dir
     test = read(eval_file_prefix / f"output_{model_name}_D3.xyz", ":")
     single_molecule_test = []
     for molsym in ["EMC", "EC", "PF6", "Li"]:

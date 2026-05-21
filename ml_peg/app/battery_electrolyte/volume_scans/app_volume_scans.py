@@ -12,15 +12,21 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Volume-Scans"
 DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
-REF_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "data"
+REF_PATH = (
+    download_s3_data(
+        key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
+        filename="volume_scans.zip",
+    )
+    / "volume_scans"
+)
 
 
 class VolumeScansApp(BaseApp):
@@ -43,9 +49,13 @@ class VolumeScansApp(BaseApp):
         }
 
         # Assets dir will be parent directory
+        assets_dir = APP_ROOT / "data/assets/battery_electrolyte/volume_scans"
         structs = {
-            "solvent": f"{REF_PATH}/solvent_VS_PBED3.extxyz",
-            "electrolyte": f"{REF_PATH}/electrolyte_VS_PBED3.extxyz",
+            model: {
+                "Solvent": f"{assets_dir}/{model}/solvent_VS_{model}_D3.extxyz",
+                "Electrolyte": f"{assets_dir}/{model}/electrolyte_VS_{model}_D3.extxyz",
+            }
+            for model in MODELS
         }
 
         plot_from_table_cell(
@@ -59,7 +69,7 @@ class VolumeScansApp(BaseApp):
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{volscan}VS",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=structs[volscan],
+                    structs=structs[model][volscan.capitalize()],
                     mode="traj",
                 )
 
