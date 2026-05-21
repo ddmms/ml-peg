@@ -143,11 +143,12 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
             unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
             unit_cell.info["charge"] = 0
             if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
-                unit_cell.info["spin"] = int(
-                    round(magnetic_moments[symbol][lattice_name] * len(unit_cell))
+                unit_cell.info["spin"] = (
+                    int(round(magnetic_moments[symbol][lattice_name] * len(unit_cell)))
+                    + 1
                 )
             else:
-                unit_cell.info["spin"] = 0
+                unit_cell.info["spin"] = 1
 
             unit_cell.calc = calc
             uc_filter = ExpCellFilter(unit_cell, constant_volume=True)
@@ -234,11 +235,11 @@ def equation_of_state(
     for structure in structures:
         structure.info["charge"] = 0
         if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
-            structure.info["spin"] = int(
-                round(magnetic_moments[symbol][lattice_name] * len(structure))
+            structure.info["spin"] = (
+                int(round(magnetic_moments[symbol][lattice_name] * len(structure))) + 1
             )
         else:
-            structure.info["spin"] = 0
+            structure.info["spin"] = 1
         structure.calc = calc
 
         try:
