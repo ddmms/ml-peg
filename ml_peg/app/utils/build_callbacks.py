@@ -775,9 +775,9 @@ def scatter_and_assets_from_table(
     scatter_metadata_store_id: str,
     last_cell_store_id: str,
     column_handlers: dict[str, Callable[[str, str], tuple[Component, dict] | None]],
+    scatter_id: str,
     default_handler: Callable[[str, str], tuple[Component, dict] | None] | None = None,
     model_key: str = "MLIP",
-    scatter_id: str | None = None,
 ) -> None:
     """
     Render scatter content and persist model-specific metadata for asset callbacks.
@@ -796,16 +796,16 @@ def scatter_and_assets_from_table(
         Store component ID used to reset when the same cell is clicked twice.
     column_handlers
         Mapping of column identifiers to callables returning ``(content, metadata)``.
+    scatter_id
+        Graph ID used for the rendered scatter plot. Handlers must return content
+        containing a ``dcc.Graph`` with this ID so the generic plot-download
+        callback can export the active plot.
     default_handler
         Fallback callable invoked when ``column_handlers`` has no entry.
     model_key
         Key in ``table_data`` used to look up the model display name.
-    scatter_id
-        Optional graph ID; when provided, download controls are rendered above the
-        scatter and the plot-download callback is registered.
     """
-    if scatter_id is not None:
-        register_plot_download_callbacks()
+    register_plot_download_callbacks()
 
     @callback(
         Output(plot_container_id, "children"),
@@ -873,8 +873,7 @@ def scatter_and_assets_from_table(
             raise PreventUpdate
         content, metadata = result
 
-        if scatter_id is not None:
-            content = Div([build_plot_download_controls(scatter_id), content])
+        content = Div([build_plot_download_controls(scatter_id), content])
 
         return content, metadata, active_cell, None
 
