@@ -143,8 +143,8 @@ def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
             unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
             unit_cell.info["charge"] = 0
             if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
-                unit_cell.info["spin"] = magnetic_moments[symbol][lattice_name] * len(
-                    unit_cell
+                unit_cell.info["spin"] = int(
+                    round(magnetic_moments[symbol][lattice_name] * len(unit_cell))
                 )
             else:
                 unit_cell.info["spin"] = 0
