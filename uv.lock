@@ -5474,7 +5474,6 @@ version = "0.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "ase" },
-    { name = "asemolec" },
     { name = "boto3" },
     { name = "dash" },
     { name = "janus-core" },
@@ -5558,7 +5557,8 @@ prod = [
 
 [package.metadata]
 requires-dist = [
-    { name = "asemolec", git = "https://github.com/imagdau/aseMolec.git" },
+    { name = "ase", specifier = ">=3.28.0" },
+    { name = "asemolec", marker = "extra == 'asemolec'", git = "https://github.com/imagdau/aseMolec.git" },
     { name = "boto3", specifier = ">=1.40.49,<2" },
     { name = "chgnet", marker = "extra == 'chgnet'", specifier = "==0.4.0" },
     { name = "dash", specifier = ">=4.0.0,<5" },
