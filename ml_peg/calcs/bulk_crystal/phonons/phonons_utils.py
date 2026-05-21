@@ -24,7 +24,7 @@ BENCHMARK_DATA_DIR = Path.home() / ".cache" / "ml_peg"
 # ---------------------------------------------------------------------------
 
 
-def _aseatoms2phonoatoms(atoms: Atoms) -> PhonopyAtoms:
+def _ase_atoms_to_phonopy_atoms(atoms: Atoms) -> PhonopyAtoms:
     """
     Convert ASE atoms to a PhonopyAtoms object.
 
@@ -43,7 +43,7 @@ def _aseatoms2phonoatoms(atoms: Atoms) -> PhonopyAtoms:
     )
 
 
-def _aseatoms2phonopy(
+def _ase_atoms_to_phonopy(
     atoms: Atoms, fc2_supercell, primitive_matrix=None, symprec=1e-5, **kwargs
 ) -> Phonopy:
     """
@@ -68,7 +68,7 @@ def _aseatoms2phonopy(
         Initialized phonopy object.
     """
     return Phonopy(
-        unitcell=_aseatoms2phonoatoms(atoms),
+        unitcell=_ase_atoms_to_phonopy_atoms(atoms),
         supercell_matrix=fc2_supercell,
         primitive_matrix=primitive_matrix,
         symprec=symprec,
@@ -76,7 +76,7 @@ def _aseatoms2phonopy(
     )
 
 
-def phonopy2aseatoms(phonons: Phonopy, primitive: bool | None = None) -> Atoms:
+def phonopy_to_ase_atoms(phonons: Phonopy, primitive: bool | None = None) -> Atoms:
     """
     Convert a phonopy unit or primitive cell to ASE atoms.
 
@@ -185,7 +185,7 @@ def init_phonopy_from_ref(
     """
     if fc2_supercell is None:
         fc2_supercell = atoms.info["fc2_supercell"]
-    phonons = _aseatoms2phonopy(
+    phonons = _ase_atoms_to_phonopy(
         atoms,
         fc2_supercell=fc2_supercell,
         primitive_matrix=primitive_matrix,

@@ -28,7 +28,7 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     download_alex_parallel,
     get_fc2_and_freqs,
     init_phonopy_from_ref,
-    phonopy2aseatoms,
+    phonopy_to_ase_atoms,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names, load_models
@@ -160,7 +160,7 @@ def _calc_ref_mp_id(mp_id: str, yaml_dir: Path, out_dir: Path) -> None:
             {"qpoints": qpoints, "labels": labels, "connections": connections},
             f,
         )
-    write(struct_path, phonopy2aseatoms(phonons))
+    write(struct_path, phonopy_to_ase_atoms(phonons))
 
 
 def _ref_complete(mp_id: str, out_dir: Path) -> bool:
@@ -298,7 +298,7 @@ def _calc_mp_id(
     phonons = load_phonopy(str(yaml_path))
     displacement_dataset = phonons.dataset
 
-    atoms = phonopy2aseatoms(phonons)
+    atoms = phonopy_to_ase_atoms(phonons)
     atoms_sym = atoms.copy()
     atoms_sym.info.setdefault("charge", 0)
     atoms_sym.info.setdefault("spin", 1)
