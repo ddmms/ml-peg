@@ -234,8 +234,8 @@ def equation_of_state(
     for structure in structures:
         structure.info["charge"] = 0
         if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
-            structure.info["spin"] = magnetic_moments[symbol][lattice_name] * len(
-                structure
+            structure.info["spin"] = int(
+                round(magnetic_moments[symbol][lattice_name] * len(structure))
             )
         else:
             structure.info["spin"] = 0
