@@ -12,12 +12,19 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
-REF_PATH = CALCS_ROOT / "battery_electrolyte" / "inter_intra" / "data"
+REF_PATH = (
+    download_s3_data(
+        key="inputs/battery_electrolyte/inter_intra/inter_intra.zip",
+        filename="inter_intra.zip",
+    )
+    / "inter_intra"
+)
 CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "inter_intra" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
 
@@ -56,7 +63,7 @@ def get_property_results(prop_key: str) -> dict[str, float]:
             configs = read(REF_PATH / "intrainter_PBED3.xyz", ":")
 
         else:
-            configs = read(CALC_PATH / f"intrainter_{model}_D3.xyz", ":")
+            configs = read(CALC_PATH / model / f"intrainter_{model}_D3.xyz", ":")
 
         for frame in configs:
             frame_data = getattr(frame, stored)
