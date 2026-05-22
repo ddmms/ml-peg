@@ -465,11 +465,14 @@ def calc_table_scores(
             # Strict mode: require all metrics to be present
             metrics_row["Score"] = None
         elif scores_list:
-            # Calculate weighted average of available metrics
-            try:
-                metrics_row["Score"] = np.average(scores_list, weights=weights_list)
-            except ZeroDivisionError:
-                metrics_row["Score"] = np.mean(scores_list)
+            if np.nan in scores_list:
+                metrics_row["Score"] = np.nan
+            else:
+                # Calculate weighted average of available metrics
+                try:
+                    metrics_row["Score"] = np.average(scores_list, weights=weights_list)
+                except ZeroDivisionError:
+                    metrics_row["Score"] = np.mean(scores_list)
         else:
             metrics_row["Score"] = None
 
@@ -726,9 +729,9 @@ def normalize_metric(
     try:
         # Handle NaNs robustly
         if np.isnan([value, good_threshold, bad_threshold]).any():
-            return None
+            return np.nan
     except TypeError:
-        return None
+        return np.nan
 
     if good_threshold == bad_threshold:
         return 1.0 if value == good_threshold else 0.0
