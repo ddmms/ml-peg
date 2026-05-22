@@ -19,6 +19,7 @@ from dash import (
     dcc,
     no_update,
 )
+from dash.dash_table import DataTable
 from dash.exceptions import PreventUpdate
 import pandas as pd
 
@@ -277,6 +278,86 @@ def register_category_table_callbacks(
     model_configs
         Optional configuration metadata for each model.
     """
+
+    @callback(
+        Output(table_id, "data", allow_duplicate=True),
+        Output(table_id, "style_data_conditional", allow_duplicate=True),
+        Input(f"{table_id}-raw-data-store", "data"),
+        State(f"{table_id}-computed-store", "data"),
+        State(f"{table_id}-weight-store", "data"),
+        State(f"{table_id}-thresholds-store", "data"),
+        State(f"{table_id}-normalized-toggle", "value"),
+        State("selected-models-store", "data"),
+        State("cmap-store", "data"),
+        State(f"{table_id}-raw-tooltip-store", "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+        optional=True,
+    )
+    def update_table_from_store(
+        stored_raw_data: list[dict] | None,
+        stored_computed_data: list[dict] | None,
+        weights: dict[str, float] | None,
+        thresholds: dict | None,
+        toggle_value: list[str] | None,
+        selected_models: list[str] | None,
+        cmap_name: str | None,
+        raw_tooltips: dict[str, str] | None,
+        current_columns: list[dict] | None,
+    ) -> list[dict]:
+        """
+        Update visible table from cached data when the raw data store changes.
+
+        Parameters
+        ----------
+        stored_raw_data
+            Stored raw table data.
+        stored_computed_data
+            Stored computed table data.
+        weights
+            Stored weights for the table.
+        thresholds
+            Stored thresholds for the table.
+        toggle_value
+            Value of toggle to show normalised values.
+        selected_models
+            List of model names currently selected in the model filter.
+        cmap_name
+            Colourmap name from the cmap store.
+        raw_tooltips
+            Stored raw tooltip text for the table.
+        current_columns
+            Current table columns.
+
+        Returns
+        -------
+        list[dict]
+            Updated rows for the visible table.
+        """
+        display_rows = get_scores(
+            stored_raw_data, stored_computed_data, thresholds, toggle_value
+        )
+        scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+        filtered_rows = filter_rows_by_models(display_rows, selected_models)
+        filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+        style = (
+            get_table_style(
+                filtered_rows,
+                scored_data=filtered_scores,
+                cmap_name=cmap_name or "viridis_r",
+            )
+            if filtered_rows
+            else []
+        )
+        style, tooltip_data = apply_level_of_theory_warnings(
+            filtered_rows,
+            style,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+        )
+        return filtered_rows, style
+
     # Benchmark tables
     if use_thresholds:
 
@@ -287,7 +368,7 @@ def register_category_table_callbacks(
             Output(table_id, "columns", allow_duplicate=True),
             Output(table_id, "tooltip_header", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
-            Output(f"{table_id}-raw-data-store", "data"),
+            Output(f"{table_id}-raw-data-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
             Input("app-location", "pathname"),
@@ -299,6 +380,7 @@ def register_category_table_callbacks(
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
+            optional=True,
         )
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
@@ -593,83 +675,99 @@ def register_category_table_callbacks(
 
 
 def register_benchmark_to_category_callback(
-    benchmark_table_id: str,
-    category_table_id: str,
-    benchmark_column: str,
-    use_threshold_store: bool = False,
-    model_name_map: dict[str, str] | None = None,
+    all_tables: dict[str, dict[str, DataTable]], category_to_title: dict[str, str]
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
 
     Parameters
     ----------
-    benchmark_table_id
-        ID of the benchmark test table (e.g., "OC157-table").
-    category_table_id
-        ID of the category summary table (e.g., "Surfaces-summary-table").
-    benchmark_column
-        Column name in the category summary table corresponding to the benchmark.
-    use_threshold_store
-        Whether the benchmark table exposes a normalization store for metrics.
-    model_name_map
-        Optional mapping of displayed benchmark MLIP names -> original model names.
+    all_tables
+        Tables for all tests, grouped by category.
+    category_to_title
+        Dictionary mapping category directory names to their display titles/table IDs.
     """
-    _ = use_threshold_store  # cached rows handle normalization
-    # flag kept for compatibility with existing call sites
-    name_map = dict(model_name_map or {})
+    all_info = {}
+    for category, tables in all_tables.items():
+        all_info[category] = {}
+        for test_name, benchmark_table in tables.items():
+            all_info[category][test_name] = {
+                "benchmark_table_id": benchmark_table.id,
+                "benchmark_column": test_name + " Score",
+                "model_name_map": getattr(benchmark_table, "model_name_map", {}),
+            }
 
-    @callback(
-        Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
-        Input(f"{benchmark_table_id}-computed-store", "data"),
-        State(f"{category_table_id}-weight-store", "data"),
-        State(f"{category_table_id}-computed-store", "data"),
-        prevent_initial_call=True,
-    )
-    def update_category_from_benchmark(
-        benchmark_computed_store: list[dict] | None,
-        category_weights: dict[str, float] | None,
-        category_computed_store: list[dict] | None,
-    ) -> list[dict]:
+    outputs = []
+    inputs = []
+    for category, category_info in sorted(all_info.items()):
+        category_table_id = f"{category_to_title[category]}-summary-table"
+        outputs.append(
+            Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True)
+        )
+
+        inputs.extend(
+            [
+                State(f"{category_table_id}-weight-store", "data"),
+                State(f"{category_table_id}-computed-store", "data"),
+            ]
+        )
+        inputs.extend(
+            [
+                Input(f"{table_info['benchmark_table_id']}-computed-store", "data")
+                for _, table_info in sorted(category_info.items())
+            ]
+        )
+
+    @callback(outputs, inputs, prevent_initial_call=True)
+    def update_category_from_benchmark(*args) -> list[list[dict]]:
         """
-        Update cached category summary rows from a benchmark's cached scores.
+        Update cached category summary rows from all benchmarks' cached scores.
 
         Parameters
         ----------
-        benchmark_computed_store
-            Latest scored benchmark rows emitted by the benchmark table.
-        category_weights
-            Stored weights for the category summary metrics.
-        category_computed_store
-            Cached scored rows for the category summary.
+        *args
+            States and Inputs for all category summary tables and benchmark tables.
+            Ordered by category. For each category, the weights, computed store, and
+            benchmark computed stores are listed sequentially.
 
         Returns
         -------
-        list[dict]
-            Refreshed cached rows for the category summary table.
+        list[list[dict]]
+            Refreshed cached rows for each category summary table.
         """
-        if not category_computed_store:
-            raise PreventUpdate
-        if not benchmark_computed_store:
-            raise PreventUpdate
-        category_rows = deepcopy(category_computed_store)
+        # Rebuild inputs for each category
+        iterator = iter(args)
 
-        benchmark_scores: dict[str, float] = {}
-        for row in benchmark_computed_store:
-            display_name = row.get("MLIP")
-            original_name = name_map.get(display_name, display_name)
-            score = row.get("Score")
-            if display_name is None or original_name is None or score is None:
-                continue
-            benchmark_scores[original_name] = score
+        all_category_rows = []
 
-        for row in category_rows:
-            mlip = row.get("MLIP")
-            if mlip in benchmark_scores:
-                row[benchmark_column] = benchmark_scores[mlip]
+        for category, category_info in sorted(all_info.items()):
+            category_weights = next(iterator)
+            category_rows = deepcopy(next(iterator))
 
-        category_rows, _ = update_score_style(category_rows, category_weights)
-        return category_rows
+            for test_name, table_info in sorted(category_info.items()):
+                benchmark_rows = deepcopy(next(iterator))
+                name_map = table_info["model_name_map"]
+
+                benchmark_scores = {}
+                for row in benchmark_rows:
+                    display_name = row.get("MLIP")
+                    original_name = name_map.get(display_name, display_name)
+                    score = row.get("Score")
+                    if display_name is None or original_name is None:
+                        continue
+                    benchmark_scores[original_name] = score
+
+                for row in category_rows:
+                    mlip = row.get("MLIP")
+                    if mlip in benchmark_scores:
+                        row[all_info[category][test_name]["benchmark_column"]] = (
+                            benchmark_scores[mlip]
+                        )
+
+            category_rows, _ = update_score_style(category_rows, category_weights)
+            all_category_rows.append(category_rows)
+
+        return all_category_rows
 
 
 def register_weight_callbacks(
@@ -920,6 +1018,7 @@ def register_normalization_callbacks(
             State(f"{table_id}", "columns"),
             State("cmap-store", "data"),
             prevent_initial_call=True,
+            optional=True,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
