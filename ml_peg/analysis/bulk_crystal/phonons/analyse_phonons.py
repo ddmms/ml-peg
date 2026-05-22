@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import pickle
+import shutil
 from typing import Any
 
 import ase
@@ -274,22 +275,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
         ref_band_path = REF_PATH / f"{mp_id}_band_structure.npz"
         ref_dos_path = REF_PATH / f"{mp_id}_dos.npz"
         ref_thermal_path = REF_PATH / f"{mp_id}_thermal_properties.json"
-        ref_labels_path = REF_PATH / f"{mp_id}_labels.json"
-        ref_connections_path = REF_PATH / f"{mp_id}_connections.json"
 
         ref_band = _load_band_structure(ref_band_path)
         ref_dos = _load_dos(ref_dos_path)
         ref_thermal = _load_thermal_properties(ref_thermal_path)
-        # Reuse JSON loader for band metadata
-        ref_labels = _load_thermal_properties(ref_labels_path)
-        ref_connections = _load_thermal_properties(ref_connections_path)
 
         if all([ref_band, ref_dos, ref_thermal]):
-            # Add labels and connections to band structure dict
-            if ref_labels and ref_connections:
-                ref_band["labels"] = ref_labels
-                ref_band["path_connections"] = ref_connections
-
             ref_cache[mp_id] = {
                 "band": ref_band,
                 "dos": ref_dos,
@@ -297,6 +288,12 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                 "band_path": ref_band_path,
                 "dos_path": ref_dos_path,
             }
+
+            ref_struct_src = REF_PATH / f"{mp_id}.xyz"
+            if ref_struct_src.exists():
+                dft_assets_dir = OUT_PATH / "DFT"
+                dft_assets_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ref_struct_src, dft_assets_dir / f"{mp_id}.xyz")
 
     print(f"Loaded {len(ref_cache)} reference systems into memory\n")
 
@@ -349,9 +346,29 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
 
             processed_count += 1
 
+            # Copy MLIP structure and build asset URLs for WEAS viewer
+            pred_struct_src = model_dir / f"{mp_id}.xyz"
+            structure_paths = None
+            if pred_struct_src.exists():
+                mlip_assets_dir = OUT_PATH / model_name
+                mlip_assets_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(pred_struct_src, mlip_assets_dir / f"{mp_id}.xyz")
+                structure_paths = {
+                    "ref": f"/assets/bulk_crystal/phonons/DFT/{mp_id}.xyz",
+                    "pred": f"/assets/bulk_crystal/phonons/{model_name}/{mp_id}.xyz",
+                }
+
             # Calculate metrics
             ref_freqs = np.concatenate(ref_band["frequencies"]) * THZ_TO_K
             pred_freqs = np.concatenate(pred_band["frequencies"]) * THZ_TO_K
+
+            if not np.all(np.isfinite(pred_freqs)):
+                n_inf = int((~np.isfinite(pred_freqs)).sum())
+                print(
+                    f"  {mp_id}/{model_name}: {n_inf} non-finite frequencies, skipping"
+                )
+                skipped_value_error += 1
+                continue
 
             max_freq_ref = float(np.max(ref_freqs))
             max_freq_pred = float(np.max(pred_freqs))
@@ -366,6 +383,21 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
             f_pred = pred_thermal["free_energy"][T_300K_INDEX]
             cv_ref = ref_thermal["heat_capacity"][T_300K_INDEX]
             cv_pred = pred_thermal["heat_capacity"][T_300K_INDEX]
+
+            pred_scalars = [
+                max_freq_pred,
+                avg_freq_pred,
+                min_freq_pred,
+                s_pred,
+                f_pred,
+                cv_pred,
+            ]
+            if not all(np.isfinite(v) for v in pred_scalars):
+                print(
+                    f"  {mp_id}/{model_name}: non-finite thermal/freq scalar, skipping"
+                )
+                skipped_value_error += 1
+                continue
 
             # Store data paths for on the fly plot generation -> 10-100x speed increase
             data_paths = {
@@ -395,6 +427,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                         "ref": ref_val,
                         "pred": pred_val,
                         "data_paths": data_paths,
+                        "structure_paths": structure_paths,
                     }
                 )
 
@@ -475,6 +508,7 @@ def phonon_stats() -> dict[str, dict[str, Any]]:
                     "pred": min_freq_pred,
                     "class": _classify_stability(min_freq_ref, min_freq_pred),
                     "data_paths": data_paths,
+                    "structure_paths": structure_paths,
                 }
             )
 

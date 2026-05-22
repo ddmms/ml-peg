@@ -415,3 +415,102 @@ Reference data:
     "Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
     Application to Dislocations and Cracks in Iron."
     `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
+
+
+Phonons
+=======
+
+Summary
+-------
+
+Phonon dispersion and vibrational thermodynamics for 9958 bulk crystals from
+the Alexandria phonon benchmark database (a PBE recomputation of the PBEsol
+PhononDB/MDR phonon benchmark). The database provides PBE reference
+structures, displacements, and force constants. For each MLIP, the structure
+is relaxed using the FIRE optimiser with the ``FixSymmetry`` constraint
+(fmax = 0.005 eV/Å, up to 1000 steps).
+Forces for all displaced supercells are evaluated with the MLIP, and second-
+order force constants are calculated and symmetrised on a 6x6x6 q-mesh. Band
+structures are computed along the same high-symmetry path as the DFT reference
+(101 q-points per segment). Thermal properties are computed on a 20x20x20
+q-mesh.
+
+Here, fixing symmetry is important: without it, a structure that
+relaxes to a different crystal symmetry would have an incompatible Brillouin
+zone path, making metrics such as Avg BZ MAE ill-defined. It also provides a
+more stringent test of each MLIP's ability to match the DFT reference.
+
+
+Metrics
+-------
+
+Frequencies are reported in Kelvin-equivalent units (THz x h/k\ :sub:`B`; 1 THz ≈ 48 K).
+Thermal properties are evaluated at 300 K.
+
+1. ω\ :sub:`max` MAE (K)
+
+Mean absolute error of the MLIP and DFT maximum phonon frequency across all materials.
+
+2. ω\ :sub:`avg` MAE (K)
+
+Mean absolute error of the MLIP and DFT mean phonon frequency across all materials.
+
+3. ω\ :sub:`min` MAE (K)
+
+Mean absolute error of the MLIP and DFT minimum phonon frequency across all materials.
+Because imaginary modes appear as negative values, this metric is sensitive to
+whether a model incorrectly predicts dynamical instabilities.
+
+4. S MAE (J/mol·K)
+
+Mean absolute error of MLIP and DFT vibrational entropy at 300 K.
+
+5. F MAE (kJ/mol)
+
+Mean absolute error of the MLIP and DFT vibrational Helmholtz free energy at 300 K.
+
+6. C\ :sub:`V` MAE (J/mol·K)
+
+Mean absolute error of the MLIP and DFT constant-volume heat capacity at 300 K.
+
+7. Avg BZ MAE (K)
+
+Mean MAE of the phonon dispersion across the full Brillouin zone.
+The MAE of each MLIP and DFT phonon dispersion branch is computed for a single
+material and then the average error over all materials is computed.
+
+8. Stability F1
+
+F1 score for classifying dynamical stability. A material is classified as
+stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
+classified as true positive, false positive, true negative, or false negative.
+
+
+Computational cost
+------------------
+
+The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
+constants from the Alexandria database to generate band structures for later
+comparison. This part of the test is marked ``slow``.
+
+The MLIP evaluation (``test_phonons``) requires computing forces for all
+displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
+models will be slower. This part of the test is marked ``very_slow``.
+
+
+Data availability
+-----------------
+
+Input structures and reference force constants:
+
+* Alexandria phonon benchmark database (PBE)
+* URL: https://alexandria.icams.rub.de/data/phonon_benchmark/pbe/
+* Pre-computed phonopy YAML files containing PBE phonon reference data,
+  displacement datasets, force constants, and thermal-property reference values
+  for Materials Project structures
+
+Reference data:
+
+* DFT (PBE) force constants, thermal properties and relaxed structures from the Alexandria
+  phonon benchmark database.

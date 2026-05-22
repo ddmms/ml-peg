@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from copy import deepcopy
 from typing import Any, Literal
 
@@ -989,6 +990,60 @@ def register_plot_download_callbacks() -> None:
         State({"type": "plot-download-target", "index": MATCH}, "data"),
         prevent_initial_call=True,
     )
+
+
+def register_image_download_callbacks() -> None:
+    """
+    Register one generic image download callback once per Dash app.
+
+    Unlike the table download (which asks the browser to capture the live DOM),
+    this callback decodes a pre-rendered image already stored as a base64 data
+    URI in a ``dcc.Store``. The phonon dispersion plot is rendered server-side
+    via kaleido at analysis time, so the full-resolution export is available
+    without re-rendering in the browser.
+    """
+    app = dash.get_app()
+    output = Output({"type": "image-download", "index": MATCH}, "data")
+    if str(output) in app.callback_map:
+        return
+
+    @callback(
+        output,
+        Input({"type": "image-download-button", "index": MATCH}, "n_clicks"),
+        State({"type": "image-download-format", "index": MATCH}, "value"),
+        State({"type": "image-download-target", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
+    def _download_image(n_clicks, fmt, uris):
+        """
+        Decode the stored data URI and trigger a browser file download.
+
+        Parameters
+        ----------
+        n_clicks
+            Number of button clicks.
+        fmt
+            Selected download format (``"png"``, ``"svg"``, or ``"json"``).
+        uris
+            Mapping of format keys to base64 data URIs.
+
+        Returns
+        -------
+        dict
+            Dash ``dcc.send_bytes`` payload for the Download component.
+        """
+        if not n_clicks or not uris or not fmt:
+            raise PreventUpdate
+        uri = uris.get(fmt)
+        if not uri:
+            raise PreventUpdate
+        data = base64.b64decode(uri.split(",")[1])
+        mime = {
+            "png": "image/png",
+            "svg": "image/svg+xml",
+            "json": "application/json",
+        }.get(fmt, "application/octet-stream")
+        return dcc.send_bytes(data, f"phonon_dispersion.{fmt}", type=mime)
 
 
 def register_download_callbacks(table_id: str) -> None:
