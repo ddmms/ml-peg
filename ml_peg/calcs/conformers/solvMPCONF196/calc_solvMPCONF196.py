@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -139,7 +140,11 @@ def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
             )
             atoms.translate(-atoms.get_center_of_mass())
             atoms.calc = calc
-            model_abs_energies.append(atoms.get_potential_energy())
+            try:
+                model_abs_energies.append(atoms.get_potential_energy())
+            except Exception as exc:
+                warn(f"Error calculating energy for {xyz_label}: {exc}", stacklevel=2)
+                model_abs_energies.append(np.nan)
             ref_abs_energies.append(e_ref)
             current_molecule_labels.append(label)
 

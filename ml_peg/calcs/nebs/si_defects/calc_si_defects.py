@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import sys
 from typing import Any
+from warnings import warn
 
 from ase.atoms import Atoms
 from ase.io import read, write
@@ -151,10 +152,18 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
             out_atoms = atoms.copy()
             out_atoms.info["ref_energy_ev"] = ref_energy_ev
             out_atoms.arrays["ref_forces"] = ref_forces
-            out_atoms.info["pred_energy_ev"] = float(atoms_pred.get_potential_energy())
-            out_atoms.arrays["pred_forces"] = np.asarray(
-                atoms_pred.get_forces(), dtype=float
-            )
+            try:
+                pred_energy = float(atoms_pred.get_potential_energy())
+                pred_forces = np.asarray(atoms_pred.get_forces(), dtype=float)
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {case}: {exc}",
+                    stacklevel=2,
+                )
+                pred_energy = np.nan
+                pred_forces = np.full((len(atoms_pred), 3), np.nan)
+            out_atoms.info["pred_energy_ev"] = pred_energy
+            out_atoms.arrays["pred_forces"] = pred_forces
             results.append(out_atoms)
 
         write(out_dir / "si_defects.extxyz", results)

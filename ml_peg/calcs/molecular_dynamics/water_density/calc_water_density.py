@@ -7,10 +7,12 @@ import os
 from pathlib import Path
 import time
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import Trajectory, read
 from ase.md.nose_hoover_chain import IsotropicMTKNPT
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -117,7 +119,11 @@ def run_npt(atoms, calc, output_fname, temperature):
     )
     dyn.nsteps = nsteps
     dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
-    dyn.run(steps=NUM_MD_STEPS - nsteps)
+    try:
+        dyn.run(steps=NUM_MD_STEPS - nsteps)
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
+        dyn.atoms.info["energy"] = np.nan
 
 
 @pytest.mark.very_slow
