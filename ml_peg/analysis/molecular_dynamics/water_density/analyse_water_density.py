@@ -42,18 +42,10 @@ EXPERIMENTAL_DATA = {
 }
 
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        return [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    return []
+LABELS = []
+for model_name in MODELS:
+    LABELS = [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
+    break
 
 
 def compute_density(fname, density_col=13):
@@ -90,7 +82,7 @@ def compute_density(fname, density_col=13):
     x_label="Predicted density / kcal/mol",
     y_label="Reference density / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": LABELS,
     },
 )
 def water_density() -> dict[str, list]:
@@ -106,7 +98,7 @@ def water_density() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in LABELS:
             atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
 
             results[model_name].append(

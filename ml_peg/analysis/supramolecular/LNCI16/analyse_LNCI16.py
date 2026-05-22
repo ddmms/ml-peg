@@ -8,7 +8,7 @@ from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -23,29 +23,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of LNCI16 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(
-                        atoms.info.get("system", f"system_{xyz_file.stem}")
-                    )
-                break
-    return system_names
+INFO = get_struct_info(
+    CALC_PATH,
+    glob_pattern="*.xyz",
+    info_keys=["system", "complex_charge"],
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 def get_atom_counts() -> list[int]:
@@ -57,8 +43,6 @@ def get_atom_counts() -> list[int]:
     list[int]
         List of complex atom counts from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -81,8 +65,6 @@ def get_charges() -> list[int]:
     list[int]
         List of complex charges from structure files.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -105,8 +87,6 @@ def get_is_charged() -> list[bool]:
     list[bool]
         List of boolean values indicating if systems are charged.
     """
-    from ase.io import read
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -128,9 +108,9 @@ def get_is_charged() -> list[bool]:
     x_label="Predicted interaction energy / kcal/mol",
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
         "Complex Atoms": get_atom_counts(),
-        "Charge": get_charges(),
+        "Charge": INFO["complex_charge"],
         "Charged": get_is_charged(),
     },
 )
@@ -143,8 +123,6 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted interaction energies.
     """
-    from ase.io import read
-
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 

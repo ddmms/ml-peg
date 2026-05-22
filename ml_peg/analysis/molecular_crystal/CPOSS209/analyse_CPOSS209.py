@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -30,7 +31,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 KJ_PER_MOL_TO_KCAL_PER_MOL = units.kJ / units.kcal
 
@@ -44,10 +44,7 @@ def get_info() -> dict[str, list[str]]:
     dict[str, list[str]]
         Dictationary of info returned from first non-empty model directory.
     """
-    info = {
-        "systems": [],  # Directory names
-        "polymorphs": [],  # Three-letter code + polymorph number
-    }
+    info = {"systems": [], "polymorphs": []}
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
@@ -56,14 +53,15 @@ def get_info() -> dict[str, list[str]]:
                     system_name = system_dir.name
                     info["systems"].append(system_name)
 
-                    # Get crystal files (polymorphs) for this system
-                    system_dir = model_dir / system_name
-                    crystal_files = sorted(system_dir.glob("crystal*.xyz"))
-                    # Get shortened name for each crystal file
-                    for crystal_file in crystal_files:
-                        crystal = read(system_dir / crystal_file, 0)
-                        short_name = crystal.info["polymorph_name"]
-                        info["polymorphs"].append(short_name)
+                    system_info = get_struct_info(
+                        system_dir,
+                        glob_pattern="crystal*.xyz",
+                        info_keys=["polymorph_name"],
+                        write_info=True,
+                        write_structs=True,
+                        out_path=OUT_PATH / model_name / system_name,
+                    )
+                    info["polymorphs"].extend(system_info["polymorph_name"])
 
             # Break after processing first model to avoid duplicates
             if info["systems"] and info["polymorphs"]:
@@ -75,22 +73,7 @@ INFO = get_info()
 
 
 @pytest.fixture
-def systems() -> list[str]:
-    """
-    Get list of CPOSS209 system names as a fixture.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    return INFO["systems"]
-
-
-@pytest.fixture
-def lattice_energies_raw(
-    systems: list[str],
-) -> tuple[
+def lattice_energies_raw() -> tuple[
     dict[str, list[float]],
     dict[str, list[float]],
     dict[str, list[float]],
@@ -104,11 +87,6 @@ def lattice_energies_raw(
 ]:
     """
     Calculate absolute and relative lattice energies for CPOSS209 benchmark systems.
-
-    Parameters
-    ----------
-    systems
-        List of CPOSS209 system names to analyze.
 
     Returns
     -------
@@ -129,6 +107,7 @@ def lattice_energies_raw(
     - Structure files are written to OUT_PATH for each model and system
     """
     # Initialize result dictionaries: absolute and relative lattice energies
+    systems = INFO["systems"]
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     results_relative = {"ref": []} | {mlip: [] for mlip in MODELS}
     results_absolute_small_rigid_molecules = {"ref": []} | {mlip: [] for mlip in MODELS}

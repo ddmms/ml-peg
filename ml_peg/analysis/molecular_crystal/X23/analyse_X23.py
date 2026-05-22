@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -38,6 +39,8 @@ INFO = get_struct_info(
     glob_pattern="*.xyz",
     index="0",
     info_keys=["system"],
+    write_info=True,
+    write_structs=True,
     out_path=OUT_PATH,
 )
 
@@ -120,7 +123,7 @@ def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
                 lattice_energies["ref"], lattice_energies[model_name]
             )
         else:
-            results[model_name] = None
+            results[model_name] = np.nan
     return results
 
 

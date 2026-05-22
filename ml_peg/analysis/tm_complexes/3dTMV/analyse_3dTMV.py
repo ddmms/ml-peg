@@ -75,7 +75,9 @@ def labels():
     list
         IDs of the complexes.
     """
-    return list(range(1, 29))
+
+
+LABELS = list(range(1, 29))
 
 
 @pytest.fixture

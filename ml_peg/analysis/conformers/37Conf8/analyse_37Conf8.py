@@ -36,19 +36,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels_list = [path.stem for path in sorted((CALC_PATH / model_name).glob("*"))]
+LABELS: list = []
+for model_name in MODELS:
+    model_dir = CALC_PATH / model_name
+    if model_dir.exists():
+        LABELS = [path.stem for path in sorted(model_dir.glob("*"))]
         break
-    return labels_list
 
 
 @pytest.fixture
@@ -58,7 +51,7 @@ def labels() -> list:
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": LABELS,
     },
 )
 def conformer_energies() -> dict[str, list]:
@@ -74,7 +67,7 @@ def conformer_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in LABELS:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
 

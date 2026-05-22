@@ -771,14 +771,47 @@ def normalize_metric(
     return max(min(1.0, float(t)), 0.0)
 
 
+def clean_info(info: dict[str, Any] | list[Any]) -> dict[str, Any]:
+    """
+    Ensure all data is JSON serializable.
+
+    Parameters
+    ----------
+    info
+        Dictionary of info to clean.
+
+    Returns
+    -------
+    dict[str, Any]
+        Cleaned info.
+    """
+    if isinstance(info, list):
+        for i, item in enumerate(info):
+            if isinstance(item, dict | list):
+                clean_info(item)
+            else:
+                if isinstance(item, np.int64):
+                    info[i] = int(item)
+
+    elif isinstance(info, dict):
+        for key, value in info.items():
+            if isinstance(value, dict | list):
+                clean_info(value)
+
+            if isinstance(value, np.int64):
+                info[key] = int(value)
+
+
 def get_struct_info(
     calc_path: Path,
+    model_name: str = "mock",
     glob_pattern: str = "*.xyz",
     index: str = ":",
     info_keys: list[str] | None = None,
     write_info: bool = True,
     write_structs: bool = True,
     out_path: Path | None = None,
+    include_filenames: bool = False,
 ) -> dict[str, Any]:
     """
     Get info from structure files.
@@ -787,6 +820,8 @@ def get_struct_info(
     ----------
     calc_path
         Path to calculation outputs.
+    model_name
+        Model name to read structures for. Default is "mock".
     glob_pattern
         Glob pattern to match structure files.
     index
@@ -800,16 +835,24 @@ def get_struct_info(
         `out_path` is specified.
     out_path
         Path to write out info for each system. Required if `write_info` is `True`.
+    include_filenames
+        Whether to include filenames in the output info. Default is False.
 
     Returns
     -------
     dict[str, Any]
         Dictionary of system info for all systems.
     """
+    if out_path is None and (write_info or write_structs):
+        raise ValueError(
+            "`out_path` must be specified if `write_info` or `write_structs` is `True`."
+        )
     info_keys = info_keys or []
     info = {"elements": []} | dict.fromkeys(info_keys, [])
+    if include_filenames:
+        info["filenames"] = []
 
-    model_dir = calc_path / "mock"
+    model_dir = calc_path / model_name
     if not model_dir.exists():
         raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
     files = sorted(model_dir.glob(glob_pattern))
@@ -819,6 +862,10 @@ def get_struct_info(
         )
 
     for file in files:
+        # Record filename/stem if requested (one entry per file)
+        if include_filenames:
+            info["filenames"].append(file.stem)
+
         structs = read(file, index=index)
         if isinstance(structs, Atoms):
             structs = [structs]
@@ -827,15 +874,14 @@ def get_struct_info(
                 info[key].append(struct.info[key])
             info["elements"].append(sorted(set(struct.get_chemical_symbols())))
         if write_structs:
-            (out_path / "mock").mkdir(parents=True, exist_ok=True)
-            write(out_path / "mock" / file.name, structs)
+            (out_path / model_name).mkdir(parents=True, exist_ok=True)
+            write(out_path / model_name / file.name, structs)
 
     if write_info:
-        if out_path is None:
-            raise ValueError("`out_path` must be specified if `write_info` is `True`.")
         out_path.mkdir(parents=True, exist_ok=True)
         out_file = out_path / "info.json"
         with out_file.open("w", encoding="utf8") as f:
+            clean_info(info)
             json.dump(info, f, indent=1)
 
     return info

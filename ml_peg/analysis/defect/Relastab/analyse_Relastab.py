@@ -11,7 +11,7 @@ import pytest
 from scipy.stats import spearmanr
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -26,50 +26,16 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names.
-    """
-    system_names = []
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            # Use glob for flattened structure
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            system_names = [xyz.stem for xyz in xyz_files]
-            if system_names:
-                break
-    return system_names
-
-
-def get_subset_labels() -> list[str]:
-    """
-    Get subset label for each system, matching the order from get_system_names.
-
-    Returns
-    -------
-    list[str]
-        List of subset labels, one per system.
-    """
-    subset_labels = []
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            for xyz_file in xyz_files:
-                atoms = read(xyz_file)
-                subset_labels.append(atoms.info.get("subset", "unknown"))
-            if subset_labels:
-                break
-    return subset_labels
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    info_keys=["subset"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -128,8 +94,8 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
     x_label="Predicted Energy (Shifted) / eV",
     y_label="Reference Energy (Shifted) / eV",
     hoverdata={
-        "System": get_system_names(),
-        "Subset": get_subset_labels(),
+        "System": SYSTEM_INFO["filenames"],
+        "Subset": SYSTEM_INFO["subset"],
     },
 )
 def stability_energies(grouped_data) -> dict[str, list]:
