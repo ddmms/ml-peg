@@ -20,7 +20,7 @@ from matplotlib import gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ml_peg.app.utils.plot_helpers import build_violin_distribution
+from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, build_violin_distribution
 from ml_peg.app.utils.weas import generate_weas_html
 
 
@@ -214,7 +214,7 @@ def build_bz_violin_content(
     )
     graph = dcc.Graph(id=scatter_id, figure=fig)
     meta = {"model": model_display, "type": "bz"}
-    content = html.Div([html.P(instructions), graph])
+    content = html.Div([html.P(instructions, style=INSTRUCTION_STYLE), graph])
     return content, meta
 
 

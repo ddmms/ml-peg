@@ -24,6 +24,7 @@ from ml_peg.analysis.utils.decorators import (
     PERIODIC_TABLE_ROWS,
 )
 from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
 
@@ -45,7 +46,13 @@ def plot_with_download_controls(graph: Graph) -> Div:
     graph_id = getattr(graph, "id", None)
     if not isinstance(graph_id, str):
         return Div(graph)
-    return Div([build_plot_download_controls(graph_id), graph])
+    return Div(
+        [
+            build_plot_download_controls(graph_id),
+            Div(POINT_HINT, style=INSTRUCTION_STYLE),
+            graph,
+        ]
+    )
 
 
 def plot_from_table_column(
@@ -85,7 +92,7 @@ def plot_from_table_column(
             Message explaining interactivity, or plot on table click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot."), None
+            return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
         column_id = active_cell.get("column_id", None)
         if column_id:
             if column_id in column_to_plot:
@@ -140,7 +147,7 @@ def plot_from_table_cell(
             Message explaining interactivity, or plot on cell click.
         """
         if not active_cell:
-            return Div("Click on a metric to view plot."), None
+            return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
         column_id = active_cell.get("column_id", None)
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
@@ -156,7 +163,7 @@ def plot_from_table_cell(
 
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
             return plot_with_download_controls(cell_to_plot[row_id][column_id]), None
-        return Div("Click on a metric to view plot."), None
+        return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
 
 
 def plot_from_scatter(
@@ -198,12 +205,12 @@ def plot_from_scatter(
             Plot on scatter click.
         """
         if not click_data:
-            return Div("Click on a metric to view plot.")
+            return Div(POINT_HINT, style=INSTRUCTION_STYLE)
         idx = click_data["points"][0]["pointNumber"]
 
         if idx >= 0 and idx < len(plots_list):
             return plot_with_download_controls(plots_list[idx])
-        return Div("Click on a metric to view plot.")
+        return Div(POINT_HINT, style=INSTRUCTION_STYLE)
 
 
 def struct_from_scatter(
@@ -248,7 +255,7 @@ def struct_from_scatter(
             Visualised structure on plot click.
         """
         if not click_data:
-            return Div("Click on a metric to view the structure.")
+            return Div()
         idx = click_data["points"][0]["pointNumber"]
 
         if isinstance(structs, str):
@@ -331,7 +338,7 @@ def struct_from_multi_scatters(
             Visualised structure on plot click.
         """
         if not click_data:
-            return Div("Click on a metric to view the structure.")
+            return Div()
         curve_number = click_data["points"][0]["curveNumber"]
         idx = click_data["points"][0]["pointNumber"]
 
@@ -398,7 +405,10 @@ def struct_from_table(
             Visualised structure on plot click.
         """
         if not active_cell:
-            return Div("Click on a metric to view the structure."), None
+            return (
+                Div(TABLE_HINT, style=INSTRUCTION_STYLE),
+                None,
+            )
 
         column_id = active_cell.get("column_id", None)
         if column_id:
