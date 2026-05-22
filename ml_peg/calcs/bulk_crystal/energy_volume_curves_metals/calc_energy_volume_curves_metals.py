@@ -277,10 +277,10 @@ def test_equation_of_state(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            filename="equation_of_state.zip",
-            key="inputs/bulk_crystal/equation_of_state/equation_of_state.zip",
+            filename="energy_volume_curves_metals.zip",
+            key="inputs/bulk_crystal/energy_volume_curves_metals/energy_volume_curves_metals.zip",
         )
-        / "equation_of_state"
+        / "energy_volume_curves_metals"
     )
     filenames = list(data_path.glob("*DFT*"))
 
