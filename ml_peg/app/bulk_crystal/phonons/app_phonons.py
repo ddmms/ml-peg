@@ -166,13 +166,15 @@ def get_app() -> PhononApp:
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
-                    Loading(
-                        html.Div(
-                            "Click on a scatter point to view the dispersion plot.",
-                            id=DISPERSION_CONTAINER_ID,
-                            style={"flex": "1", "minWidth": 0},
+                    html.Div(
+                        Loading(
+                            html.Div(
+                                "Click on a scatter point to view the dispersion plot.",
+                                id=DISPERSION_CONTAINER_ID,
+                            ),
+                            type="circle",
                         ),
-                        type="circle",
+                        style={"flex": "1", "minWidth": 0},
                     ),
                 ],
                 style={
