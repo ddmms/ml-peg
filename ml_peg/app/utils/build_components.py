@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from functools import lru_cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -468,6 +470,27 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+@lru_cache(maxsize=1)
+def load_faqs() -> list[dict]:
+    """
+    Load FAQs from YAML file.
+
+    Returns
+    -------
+    list[dict]
+        List of FAQ dictionary objects. Returns empty list if file missing.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            data = yaml.safe_load(f)
+            if isinstance(data, list):
+                return data
+            return []
+    except FileNotFoundError:
+        return []
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -479,11 +502,7 @@ def build_faqs() -> Div:
     """
     # Load FAQs from YAML file
     faqs_path = Path(__file__).parent / "faqs.yml"
-
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    if not faqs_path.exists():
         return Div(
             "FAQs file not found",
             style={
@@ -492,6 +511,8 @@ def build_faqs() -> Div:
                 "fontStyle": "italic",
             },
         )
+
+    faqs_data = deepcopy(load_faqs())
 
     if not faqs_data or not isinstance(faqs_data, list):
         return Div("No FAQs available")
