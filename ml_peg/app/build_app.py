@@ -25,10 +25,7 @@ from ml_peg.app.utils.onboarding import (
     build_tutorial_button,
     register_onboarding_callbacks,
 )
-from ml_peg.app.utils.register_callbacks import (
-    register_benchmark_to_category_callback,
-    register_filter_tables_callback,
-)
+from ml_peg.app.utils.register_callbacks import register_benchmark_to_category_callback
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     get_framework_config,
@@ -1278,8 +1275,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
-
-    register_filter_tables_callback(all_apps)
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(
