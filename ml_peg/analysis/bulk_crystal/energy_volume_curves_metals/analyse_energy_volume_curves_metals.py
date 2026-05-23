@@ -19,8 +19,8 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "equation_of_state" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "energy_volume_curves_metals" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "energy_volume_curves_metals"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
