@@ -15,12 +15,12 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Equation of State (metals)"
+BENCHMARK_NAME = "Energy-volume curves for metals"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/"
     "benchmarks/bulk_crystal.html#equation-of-state-metals"
 )
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "equation_of_state"
+DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "energy_volume_curves_metals"
 PT_TYPE = "eos-periodic-table"
 EOS_CURVE_ID = f"{BENCHMARK_NAME}-eos-curve"
 METRICS = [
@@ -116,7 +116,7 @@ def get_app() -> EquationOfStateApp:
     return EquationOfStateApp(
         name=BENCHMARK_NAME,
         description=(
-            "Equation of state curves and phase stability for BCC metals "
+            "Energy-volume curves and phase stability for BCC metals "
             "(W, Nb, Mo, Ta, Ti, Zr, Cr, Fe),"
             " benchmarked against PBE reference data."
         ),
