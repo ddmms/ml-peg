@@ -123,13 +123,13 @@ Reference data:
 * PBE
 
 
-Equation of state (metals)
-==========================
+Energy-volume curves for metals
+===============================
 
 Summary
 -------
 
-Equation of state (energy-volume) curves and phase stability for metals (W, Nb, Mo, Ta, Ti, Zr, Cr, Fe), benchmarked against PBE reference data.
+Energy-volume (equation of state) curves and phase stability for metals (W, Nb, Mo, Ta, Ti, Zr, Cr, Fe), benchmarked against PBE reference data.
 
 Metrics
 -------
