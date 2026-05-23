@@ -12,6 +12,7 @@ from matcalc._elasticity import ElasticityCalc
 from matcalc.benchmark import Benchmark
 from matcalc.units import eVA3ToGPa
 import numpy as np
+from pymatgen.core.elasticity.elastic import ElasticTensor
 from pymatgen.core.structure import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -22,6 +23,38 @@ from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
+
+
+def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
+    """
+    Convert an elastic tensor object or array to a 6x6 Voigt matrix.
+
+    Parameters
+    ----------
+    tensor
+        Elastic tensor returned by matcalc.
+
+    Returns
+    -------
+    np.ndarray | float
+        Voigt matrix, or NaN when tensor data is unavailable.
+    """
+    if hasattr(tensor, "voigt"):
+        return np.asarray(tensor.voigt)
+
+    if isinstance(tensor, dict):
+        tensor = tensor.get("data")
+
+    try:
+        tensor_array = np.asarray(tensor, dtype=float)
+    except (TypeError, ValueError):
+        return np.nan
+
+    if tensor_array.shape == (6, 6):
+        return tensor_array
+    if tensor_array.shape == (3, 3, 3, 3):
+        return np.asarray(ElasticTensor(tensor_array).voigt)
+    return np.nan
 
 
 def get_crystal_system(struct: Structure) -> str:
@@ -263,9 +296,7 @@ def run_elasticity_benchmark(
 
     for col in results.columns:
         if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
-            results[col] = results[col].apply(
-                lambda x: x.voigt if hasattr(x, "voigt") else np.nan
-            )
+            results[col] = results[col].apply(elastic_tensor_to_voigt)
 
     results.to_csv(out_dir / "moduli_results.csv", index=False)
 
