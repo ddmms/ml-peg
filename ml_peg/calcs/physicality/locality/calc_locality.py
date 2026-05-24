@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
 from ase.io import write
@@ -12,8 +13,8 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -46,7 +47,7 @@ def smiles_to_ase(smiles: str) -> Atoms:
     for i in range(mol.GetNumAtoms()):
         pos = conf.GetAtomPosition(i)
         positions.append([pos.x, pos.y, pos.z])
-    return Atoms(symbols=symbols, positions=positions)
+    return Atoms(symbols=symbols, positions=positions, info={"charge": 0, "spin": 1})
 
 
 def prepare_ghost_system(solute: Atoms, num_ne: int, ghost_dist: float) -> Atoms:
@@ -78,7 +79,11 @@ def prepare_ghost_system(solute: Atoms, num_ne: int, ghost_dist: float) -> Atoms
         if np.linalg.norm(pos - com) >= ghost_dist:
             ghost_positions.append(pos)
 
-    ghost_atoms = Atoms(symbols=["Ne"] * num_ne, positions=ghost_positions)
+    ghost_atoms = Atoms(
+        symbols=["Ne"] * num_ne,
+        positions=ghost_positions,
+        info={"charge": 0, "spin": 1},
+    )
     return solute.copy() + ghost_atoms
 
 
@@ -117,11 +122,13 @@ def add_random_h(
         # check min distance to existing atoms
         dists = np.linalg.norm(solute.positions - pos, axis=1)
         if np.all(dists > 1.0):
-            return solute.copy() + Atoms("H", positions=[pos])
+            return solute.copy() + Atoms(
+                "H", positions=[pos], info={"charge": 0, "spin": 1}
+            )
 
     # Fallback: add H at min_dist along x axis
     pos = com + np.array([min_dist, 0, 0])
-    return solute.copy() + Atoms("H", positions=[pos])
+    return solute.copy() + Atoms("H", positions=[pos], info={"charge": 0, "spin": 1})
 
 
 @pytest.fixture(scope="module")
@@ -146,13 +153,12 @@ def prepared_solute() -> dict[str, Atoms]:
     solutes = {}
     for model_name, calc in MODELS.items():
         solute = solute.copy()
+        solute.calc = calc.get_calculator(precision="high")
+        solutes[model_name] = solute
         try:
-            calc.default_dtype = "float64"
-            solute.calc = calc.get_calculator()
             solute.get_forces()
-            solutes[model_name] = solute
-        # If a model fails, don't block other model tests
-        except (ModuleNotFoundError, RuntimeError, TypeError):
+        except Exception as exc:
+            warn(f"Error preparing solute: {exc} for {model_name}", stacklevel=2)
             continue
     return solutes
 
@@ -177,7 +183,11 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
     system_ghost = prepare_ghost_system(solute, ghost_num, ghost_dist)
     system_ghost.calc = copy(solute.calc)
 
-    system_ghost.get_forces()
+    try:
+        system_ghost.get_forces()
+    except Exception as exc:
+        warn(f"Error calculating forces: {exc}", stacklevel=2)
+        system_ghost.arrays["forces"] = np.full((len(system_ghost), 3), np.nan)
 
     # Write output structures
     write_dir = OUT_PATH / model_name
@@ -209,7 +219,11 @@ def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
     for _ in range(rand_trials):
         system_rand_h = add_random_h(solute, rand_min_dist, rand_max_dist, rng)
         system_rand_h.calc = copy(solute.calc)
-        system_rand_h.get_forces()
+        try:
+            system_rand_h.get_forces()
+        except Exception as exc:
+            warn(f"Error calculating forces: {exc}", stacklevel=2)
+            system_rand_h.arrays["forces"] = np.full((len(system_rand_h), 3), np.nan)
         rand_h_structures.append(system_rand_h)
 
     # Write output structures

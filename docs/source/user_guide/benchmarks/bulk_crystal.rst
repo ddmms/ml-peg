@@ -95,12 +95,18 @@ Mean absolute error (MAE) between predicted and reference shear modulus (G) valu
 
 Calculated alongside (1), with the same exclusion criteria used in analysis.
 
+(3) Elastic tensor MAE
+
+Element-wise mean absolute error of the 6x6 Voigt-form elasticity tensor.
+
+Symmetry-independent elastic constants are extracted based on crystal system:
+triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
+Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
 Computational cost
 ------------------
 
 High: tests are likely to take hours-days to run on GPU.
-
 
 Data availability
 -----------------
@@ -117,168 +123,394 @@ Reference data:
 * PBE
 
 
-Diamond phonons
+High-Pressure Relaxation
+========================
+
+Summary
+-------
+
+Performance in relaxing bulk crystal structures under high-pressure conditions.
+3000 structures from the Alexandria database are relaxed at 7 pressure conditions
+(0, 25, 50, 75, 100, 125, 150 GPa) and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+For each pressure condition (0, 25, 50, 75, 100, 125, 150 GPa):
+
+(1) Volume MAE
+
+Mean absolute error of volume per atom compared to PBE reference.
+
+(2) Energy MAE
+
+Mean absolute error of enthalpy per atom compared to PBE reference. The enthalpy is
+calculated as H = E + PV, where E is the potential energy, P is the applied pressure,
+and V is the volume.
+
+(3) Convergence
+
+Percentage of structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
+applied to preserve crystallographic symmetry analogously to DFT. Starting from P000 (0 GPa) structures, each structure is relaxed at the target pressure using the FrechetCellFilter with the
+specified scalar pressure. Relaxation continues until the maximum force component is
+below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation is
+repeated up from the last structure of the previous relaxation up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of
+structures and pressure conditions tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database pressure benchmark dataset
+* URL: https://alexandria.icams.rub.de/data/pbe/benchmarks/pressure
+* 3000 structures randomly sampled from the full datasets at each pressure
+
+Reference data:
+
+* PBE calculations from the Alexandria database
+* Loew et al 2026 J. Phys. Mater. 9 015010 https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8
+
+
+Low-Dimensional Relaxation
+==========================
+
+Summary
+-------
+
+Performance in relaxing low-dimensional (2D and 1D) crystal structures.
+Structures from the Alexandria database are relaxed with cell masks to constrain
+relaxation to the appropriate dimensions and compared to PBE reference calculations.
+
+
+Metrics
+-------
+
+**2D Structures:**
+
+(1) Area MAE (2D)
+
+Mean absolute error of area per atom compared to PBE reference. The area is
+calculated as the magnitude of the cross product of the two in-plane lattice vectors.
+
+(2) Energy MAE (2D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(3) Convergence (2D)
+
+Percentage of 2D structures that successfully converged during relaxation.
+
+**1D Structures:**
+
+(4) Length MAE (1D)
+
+Mean absolute error of chain length per atom compared to PBE reference. The length
+is the magnitude of the first lattice vector (the chain direction).
+
+(5) Energy MAE (1D)
+
+Mean absolute error of energy per atom compared to PBE reference.
+
+(6) Convergence (1D)
+
+Percentage of 1D structures that successfully converged during relaxation.
+
+Structures are relaxed using janus-core's GeomOpt with the ase `FixSymmetry` constraint
+applied to preserve crystallographic symmetry. Cell relaxation is constrained using
+cell masks:
+
+* 2D: Only in-plane cell components (a, b, and γ) are allowed to relax
+* 1D: Only the chain direction (a) is allowed to relax
+
+Relaxation continues until the maximum force component is below 0.0002 eV/Å or until
+500 steps are reached. If not converged, relaxation is repeated up to 3 times.
+
+
+Computational cost
+------------------
+
+High: tests are likely to take hours-days to run on GPU, depending on the number of
+structures tested.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria database 2D structures: https://alexandria.icams.rub.de/data/pbe_2d
+* Alexandria database 1D structures: https://alexandria.icams.rub.de/data/pbe_1d
+* 3000 structures randomly sampled from each dataset
+
+Reference data:
+
+* PBE calculations from the Alexandria database
+
+
+Iron Properties
 ===============
 
 Summary
 -------
 
-Performance in predicting the phonon dispersion of bulk diamond (carbon).
+This benchmark evaluates MLIP performance on a comprehensive set of BCC iron
+properties relevant to plasticity and fracture. The benchmark is based on
+`Zhang et al. (2023) <https://arxiv.org/abs/2307.10072>`_, which assessed the
+efficiency, accuracy, and transferability of machine learning potentials for
+dislocations and cracks in iron.
 
-The benchmark evaluates the accuracy of phonon frequencies along a fixed
-high-symmetry path in the Brillouin zone for a single reference crystal
-structure of diamond.
-
+Seven groups of properties are computed and compared against DFT (PBE) reference
+values: equation of state, elastic constants, the Bain path, vacancy formation
+energy, surface energies, generalised stacking fault energies, and
+traction-separation curves.
 
 Metrics
 -------
 
-1. Band MAE
+EOS properties
+^^^^^^^^^^^^^^
 
-Mean absolute error (MAE) between predicted and reference phonon frequencies.
+1. Lattice parameter error (%)
 
-For bulk diamond, the phonon band structure is computed for each model along the same
-q-point path as the reference calculation. At each q-point, the six phonon frequencies
-are compared to the reference frequencies after sorting the modes to avoid branch
-labelling ambiguities. The MAE is evaluated over all q-points and all phonon branches.
+The equilibrium BCC lattice parameter :math:`a_0` is obtained by fitting a
+third-order Birch-Murnaghan equation of state to 30 energy-volume points
+sampled around 2.834 Å. The percentage error relative to the DFT reference
+value (2.831 Å) is reported.
+
+2. Bulk modulus error (%)
+
+The bulk modulus :math:`B_0` is extracted from the same EOS fit. The
+percentage error relative to the DFT reference value (178.0 GPa) is reported.
 
 
-2. Band RMSE
+Elastic constants
+^^^^^^^^^^^^^^^^^
 
-Root mean squared error (RMSE) between predicted and reference phonon frequencies.
+3. :math:`C_{11}` error (%)
 
-The RMSE is computed using the same sorted, mode-unlabelled comparison procedure as in
-(1), over all q-points and all phonon branches.
+The elastic constant :math:`C_{11}` is computed using a stress-strain approach
+on a 4x4x4 BCC supercell. Small positive and negative strains
+(:math:`\pm 10^{-5}`) are applied along each Voigt direction, and the elastic
+constants are extracted from the resulting stress differences. The percentage
+error relative to the DFT reference value (296.7 GPa) is reported.
+
+4. :math:`C_{12}` error (%)
+
+Same as (3), for the elastic constant :math:`C_{12}`. Reference: 151.4 GPa.
+
+5. :math:`C_{44}` error (%)
+
+Same as (3), for the elastic constant :math:`C_{44}`. Reference: 104.7 GPa.
+
+
+Vacancy formation energy
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+6. :math:`E_{\mathrm{vac}}` error (%)
+
+A single vacancy is created in a 4x4x4 BCC supercell by removing one atom.
+Atomic positions are relaxed at fixed cell volume. The vacancy formation energy
+is calculated as
+:math:`E_{\mathrm{vac}} = E_{\mathrm{defect}} - E_{\mathrm{perfect}} + E_{\mathrm{coh}}`,
+where :math:`E_{\mathrm{coh}}` is the cohesive energy per atom. The percentage
+error relative to the DFT reference value (2.02 eV) is reported.
+
+
+Bain path
+^^^^^^^^^
+
+7. BCC-FCC energy difference error (meV)
+
+The Bain path maps the continuous tetragonal distortion from BCC
+(:math:`c/a = 1`) to FCC (:math:`c/a = \sqrt{2}`). For each of 65 target
+:math:`c/a` ratios between 0.72 and 2.0, a tetragonally distorted cell is
+created and its volume is relaxed isotropically (uniform scaling preserving the
+:math:`c/a` ratio). The absolute error in the BCC-FCC energy difference
+relative to the DFT reference (83.5 meV/atom) is reported.
+
+
+Surface energies
+^^^^^^^^^^^^^^^^
+
+8. Surface energy MAE (J/m²)
+
+Surface energies are computed for the (100), (110), (111), and (112) cleavage
+planes. For each surface, a slab is created with vacuum and the surface energy
+is calculated as
+:math:`\gamma = (E_{\mathrm{slab}} - E_{\mathrm{bulk}}) / 2A`.
+Atomic positions are relaxed at fixed cell shape. The mean absolute error
+across all four surfaces, relative to DFT reference values
+(:math:`\gamma_{100}` = 2.41, :math:`\gamma_{110}` = 2.37,
+:math:`\gamma_{111}` = 2.58, :math:`\gamma_{112}` = 2.48 J/m²), is reported.
+
+
+Stacking fault energies
+^^^^^^^^^^^^^^^^^^^^^^^
+
+9. Max SFE :math:`\{110\}\langle111\rangle` error (%)
+
+The generalised stacking fault energy (GSFE) curve for the
+:math:`\{110\}\langle111\rangle` slip system is computed by incrementally
+displacing the upper half of a crystallographically oriented supercell along
+the slip direction. The displacement covers one full Burgers vector
+(:math:`b = a\sqrt{3}/2`) in 16 steps. Atoms are constrained to relax only
+perpendicular to the fault plane. The percentage error in the maximum
+(unstable) SFE relative to the DFT reference (0.75 J/m²) is reported.
+
+10. Max SFE :math:`\{112\}\langle111\rangle` error (%)
+
+Same as (9), for the :math:`\{112\}\langle111\rangle` slip system.
+Reference: 1.12 J/m².
+
+
+Traction-separation curves
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+11. Max traction (100) error (%)
+
+A traction-separation curve is computed for the (100) cleavage plane by
+incrementally separating crystal halves in 0.05 Å steps up to 5.0 Å, without
+atomic relaxation, and measuring forces at each step. The traction (tensile
+stress) is obtained from the sum of z-forces on the upper region divided by
+the cross-sectional area. The percentage error in the maximum traction relative
+to the DFT reference (35.0 GPa) is reported.
+
+12. Max traction (110) error (%)
+
+Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
 
 
 Computational cost
 ------------------
 
-Medium: tests typically take a few minutes to run on CPU.
+Medium: tests are likely to take minutes to run on GPU, or hours on CPU for each model.
+The benchmark is marked as slow and excluded from default test runs.
 
 
 Data availability
 -----------------
 
-Input structures (https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
+Input structures:
 
-* A primitive bulk diamond unit cell containing two carbon atoms, used to generate a
-  phonopy displacement dataset on a 4×4×4 supercell.
+* All structures are generated programmatically using ASE. BCC iron unit cells and
+  supercells are constructed from the equilibrium lattice parameter obtained via EOS
+  fitting.
 
 Reference data:
 
-* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, provided
-  as ``dft_band.npz``.
-* RSCAN.
+* DFT (PBE) reference values from:
+
+  * Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2023).
+    "Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
+    Application to Dislocations and Cracks in Iron."
+    `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
 
 
-Ti64 phonons
-============
+Phonons
+=======
 
 Summary
 -------
 
-Performance in predicting phonon dispersions, vibrational densities of states (DOS/PDOS),
-and thermodynamic Helmholtz free energies for a suite of 10 Ti–Al–V alloy phases.
+Phonon dispersion and vibrational thermodynamics for 9958 bulk crystals from
+the Alexandria phonon benchmark database (a PBE recomputation of the PBEsol
+PhononDB/MDR phonon benchmark). The database provides PBE reference
+structures, displacements, and force constants. For each MLIP, the structure
+is relaxed using the FIRE optimiser with the ``FixSymmetry`` constraint
+(fmax = 0.005 eV/Å, up to 1000 steps).
+Forces for all displaced supercells are evaluated with the MLIP, and second-
+order force constants are calculated and symmetrised on a 6x6x6 q-mesh. Band
+structures are computed along the same high-symmetry path as the DFT reference
+(101 q-points per segment). Thermal properties are computed on a 20x20x20
+q-mesh.
 
-Each case is evaluated by comparing ML-predicted phonon frequencies to CASTEP reference
-phonon frequencies along a fixed high-symmetry q-path. For a subset of cases,
-Helmholtz free-energy errors per atom are additionally reported.
+Here, fixing symmetry is important: without it, a structure that
+relaxes to a different crystal symmetry would have an incompatible Brillouin
+zone path, making metrics such as Avg BZ MAE ill-defined. It also provides a
+more stringent test of each MLIP's ability to match the DFT reference.
 
 
 Metrics
 -------
 
-1. Dispersion RMSE (mean)
+Frequencies are reported in Kelvin-equivalent units (THz x h/k\ :sub:`B`; 1 THz ≈ 48 K).
+Thermal properties are evaluated at 300 K.
 
-   Mean root mean squared error (RMSE) between predicted and reference phonon frequencies,
-   averaged over 10 Ti64 cases.
+1. ω\ :sub:`max` MAE (K)
 
-   For each case, reference phonon frequencies are parsed from CASTEP ``.castep`` outputs
-   along a fixed high-symmetry q-path. The structure is then relaxed for each model using
-   the LBFGS optimiser (maximum 10000 steps, ``fmax=0.001``). Phonon frequencies are computed
-   using finite displacements in a 2×2×2 supercell with a displacement magnitude of 0.02 Å and
-   ``plusminus=True``. The reference dispersion is linearly interpolated onto an inferred ML
-   path-coordinate grid spanning the same path (a uniform grid with the same number of
-   q-points as the ML dispersion), and the RMSE is evaluated over all q-points and all
-   phonon branches.
+Mean absolute error of the MLIP and DFT maximum phonon frequency across all materials.
 
-2. Dispersion RMSE (max)
+2. ω\ :sub:`avg` MAE (K)
 
-   Maximum per-case dispersion RMSE (in THz) over the 10 Ti64 cases.
+Mean absolute error of the MLIP and DFT mean phonon frequency across all materials.
 
-   Computed as in (1), but taking the maximum RMSE value across cases.
+3. ω\ :sub:`min` MAE (K)
 
-3. ω_avg MAE
+Mean absolute error of the MLIP and DFT minimum phonon frequency across all materials.
+Because imaginary modes appear as negative values, this metric is sensitive to
+whether a model incorrectly predicts dynamical instabilities.
 
-   Mean absolute error (MAE) in the average phonon frequency ω_avg over the 10 Ti64 cases.
+4. S MAE (J/mol·K)
 
-   For each case, ω_avg is computed as the arithmetic mean of all phonon frequencies after
-   interpolating the reference dispersion onto the inferred ML grid. The per-case absolute error is
-   then averaged across cases. Frequencies are averaged as stored; if imaginary modes are present
-   as negative values, they contribute directly.
+Mean absolute error of MLIP and DFT vibrational entropy at 300 K.
 
-4. ΔF (0 K) mean
+5. F MAE (kJ/mol)
 
-   Mean absolute error in Helmholtz free energy at 0 K, reported as eV/atom, over the
-   subset of cases where thermodynamic outputs are available.
+Mean absolute error of the MLIP and DFT vibrational Helmholtz free energy at 300 K.
 
-   For applicable cases, CASTEP q-point phonon frequencies and q-point weights are parsed
-   from CASTEP qpoints ``.castep`` outputs. A reference Helmholtz free energy is computed
-   in the harmonic approximation by combining a weighted zero-point energy contribution
-   with a weighted thermal free-energy contribution evaluated on a dense temperature grid
-   (2000 points spanning 0–2000 K) and interpolated to the ML temperatures. The absolute
-   difference between ML and reference free energy at 0 K is divided by the number of atoms
-   and averaged across thermodynamics-enabled cases. Weights are taken directly from CASTEP;
-   no explicit renormalisation is applied.
+6. C\ :sub:`V` MAE (J/mol·K)
 
-5. ΔF (2000 K) mean
+Mean absolute error of the MLIP and DFT constant-volume heat capacity at 300 K.
 
-   Mean absolute error in Helmholtz free energy at 2000 K, reported as eV/atom, over the
-   subset of cases where thermodynamic outputs are available.
+7. Avg BZ MAE (K)
 
-   Computed as in (4), but using the final temperature point (2000 K).
+Mean MAE of the phonon dispersion across the full Brillouin zone.
+The MAE of each MLIP and DFT phonon dispersion branch is computed for a single
+material and then the average error over all materials is computed.
+
+8. Stability F1
+
+F1 score for classifying dynamical stability. A material is classified as
+stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
+classified as true positive, false positive, true negative, or false negative.
 
 
 Computational cost
 ------------------
 
-Medium: dispersion, DOS/PDOS and thermodynamic calculations typically take minutes per model on CPU.
-Thermodynamic calculations are enabled for a 7/10 subset of cases.
+The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
+constants from the Alexandria database to generate band structures for later
+comparison. This part of the test is marked ``slow``.
+
+The MLIP evaluation (``test_phonons``) requires computing forces for all
+displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
+models will be slower. This part of the test is marked ``very_slow``.
 
 
 Data availability
 -----------------
 
-Full details on the data and benchmark:
+Input structures and reference force constants:
 
-* Allen, C. S. & Bartók, A. P. Multi-phase dataset for Ti and Ti-6Al-4V.
-       Preprint at https://arxiv.org/abs/2501.06116 (2025).
-
-* Radova, M., Stark, W. G., Allen, C. S., Maurer, R.J. & Bartók, A. P.
-       Fine-tuning foundation models of materials interatomic potentials
-       with frozen transfer learning.
-       npj Comput Mater 11, 237 (2025).
-       https://doi.org/10.1038/s41524-025-01727-x
-
-Input structures (https://github.com/7radians/ml-peg-data/tree/main/ti64_data):
-
-* CASTEP ``.castep`` outputs providing reference phonon dispersions along fixed
-  high-symmetry q-paths for 10 Ti–Al–V alloy cases.
-* Corresponding CASTEP qpoints ``.castep`` outputs (subset) providing q-point phonon
-  frequencies and weights for thermodynamic reference reconstruction.
+* Alexandria phonon benchmark database (PBE)
+* URL: https://alexandria.icams.rub.de/data/phonon_benchmark/pbe/
+* Pre-computed phonopy YAML files containing PBE phonon reference data,
+  displacement datasets, force constants, and thermal-property reference values
+  for Materials Project structures
 
 Reference data:
 
-* CASTEP phonon dispersions parsed from ``.castep`` outputs (q-path dispersion).
-* CASTEP q-point phonon frequencies and weights parsed from qpoints ``.castep`` outputs
-  (subset), used to compute reference Helmholtz free energies in the harmonic
-  approximation.
-* PBE
-
-Computational environment
--------------------------
-
-Ti64 phonon calculations were run as a single process on CPU on an
-x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
-parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+* DFT (PBE) force constants, thermal properties and relaxed structures from the Alexandria
+  phonon benchmark database.

@@ -5,14 +5,16 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.build import bulk, surface
 from ase.io import write
+import numpy as np
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -46,6 +48,8 @@ def make_slab(
     slab = slab.repeat((size_xy[0], size_xy[1], 1))
     slab.center(axis=2, vacuum=vacuum_z)
     slab.pbc = True
+    slab.info["charge"] = 0
+    slab.info["spin"] = 1
     return slab
 
 
@@ -60,9 +64,7 @@ def test_extensivity(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     sym1, sym2 = "Al", "Ni"  # element of slab-1 and slab-2
     layers = 8
@@ -87,14 +89,15 @@ def test_extensivity(mlip: tuple[str, Any]) -> None:
     slab2_big = slab2.copy()
     slab2_big.set_cell(tall_cell, scale_atoms=False)
 
-    slab1_big.calc = calc
-    slab1_big.get_potential_energy()
-
-    slab2_big.calc = copy(calc)
-    slab2_big.get_potential_energy()
-
-    combined.calc = copy(calc)
-    combined.get_potential_energy()
+    for struct in (slab1_big, slab2_big, combined):
+        struct.calc = copy(calc)
+        try:
+            energy = struct.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy: {exc}", stacklevel=2)
+            energy = np.nan
+        struct.info["energy"] = energy
+        struct.calc = None
 
     # Write output structures
     write_dir = OUT_PATH / model_name

@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import numpy as np
 from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -118,13 +120,21 @@ class OC157Benchmark(zntrack.Node):
         """
         for atoms in triplet:
             atoms.calc = copy(calc)
-            atoms.get_potential_energy()
+
+            # Set default charge and spin
+            atoms.info.setdefault("charge", 0)
+            atoms.info.setdefault("spin", 1)
+
+            try:
+                atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy: {exc}", stacklevel=2)
+                atoms.info["energy"] = np.nan
 
     def run(self):
         """Run OC157 energy calculations."""
         # Add D3 calculator and use double precision for this test
-        self.model.default_dtype = "float64"
-        calc = self.model.get_calculator()
+        calc = self.model.get_calculator(precision="high")
         calc = self.model.add_d3_calculator(calc)
 
         base_dir = (

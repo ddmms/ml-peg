@@ -1,5 +1,5 @@
 Welcome to ML-PEG's documentation!
-========================================
+==================================
 
 ML-PEG is an ML Performance and Extrapolation Guide.
 
