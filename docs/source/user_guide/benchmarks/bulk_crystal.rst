@@ -230,7 +230,7 @@ Metrics
    (2000 points spanning 0–2000 K) and interpolated to the ML temperatures. The absolute
    difference between ML and reference free energy at 0 K is divided by the number of atoms
    and averaged across thermodynamics-enabled cases. Weights are taken directly from CASTEP;
-   no explicit renormalization is applied.
+   no explicit renormalisation is applied.
 
 5. ΔF (2000 K) mean
 
@@ -255,7 +255,7 @@ Full details on the data and benchmark:
 * Allen, C. S. & Bartók, A. P. Multi-phase dataset for Ti and Ti-6Al-4V.
        Preprint at https://arxiv.org/abs/2501.06116 (2025).
 
-* Radova, M., Stark, W. G., Allen, C. S. et al.
+* Radova, M., Stark, W. G., Allen, C. S., Maurer, R.J. & Bartók, A. P.
        Fine-tuning foundation models of materials interatomic potentials
        with frozen transfer learning.
        npj Comput Mater 11, 237 (2025).
