@@ -236,7 +236,7 @@ def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | None:
     if hasattr(tensor, "voigt"):
         return np.asarray(tensor.voigt)
 
-    # Matcalc/checkpoint serialisation stores tensor payloads as dictionaries.
+    # Reference data and JSON checkpoints can store tensor payloads as dictionaries.
     if isinstance(tensor, dict):
         if "raw" in tensor:
             tensor = tensor["raw"]
