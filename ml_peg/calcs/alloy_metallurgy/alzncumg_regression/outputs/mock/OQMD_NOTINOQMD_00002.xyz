@@ -1,0 +1,10 @@
+8
+Lattice="3.982758 0.0 0.0 0.0 3.982758 0.0 0.0 0.0 7.656101" Properties=species:S:1:pos:R:3 oqmd_id=NOTINOQMD_00002 name=NOTINOQMD_00002 oqmd_composition=Al6Cu2 oqmd_formation_energy oqmd_volume_per_atom formula=Al3Cu potential_energy=0.0 formation_energy=0.0 volume_peratom=15.180480013552982 lattice_a=3.982758 lattice_b=3.982758 lattice_c=7.656101 angle_alpha=90.0 angle_beta=90.0 angle_gamma=90.0 oqmd_volume_peratom energy=0.0 pbc="T T T"
+Al       0.00000000       1.99137900       5.95644657
+Al      -1.99137900       0.00000000       5.95644657
+Al       0.00000000       1.99137900      -5.95644657
+Al       1.99137900       0.00000000      -5.95644657
+Al       0.00000000       0.00000000       3.82805050
+Al       1.99137900       1.99137900       3.82805050
+Cu       0.00000000       0.00000000       0.00000000
+Cu       1.99137900       1.99137900       0.00000000

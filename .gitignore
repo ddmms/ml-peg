@@ -1,4 +1,6 @@
 *.json
+!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/references/*.json
+!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/structures/OQMD-Dumps/*.json
 *.html
 *.dat
 *.lock
@@ -11,6 +13,8 @@
 *.cif
 *.xyz
 *.extxyz
+!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/outputs/**/*.json
+!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/outputs/**/*.xyz
 *.yaml
 !dvc.yaml
 *.pdf
@@ -41,4 +45,7 @@ __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 !ml_peg/app/data/table_download/
+!ml_peg/app/data/alloy_metallurgy/
+!ml_peg/app/data/alloy_metallurgy/alzncumg_regression/
+!ml_peg/app/data/alloy_metallurgy/alzncumg_regression/**
 certs/

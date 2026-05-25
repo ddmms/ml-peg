@@ -7,7 +7,7 @@ The alloy metallurgy category collects benchmarks for multi-property metallic al
 Al-Zn-Cu-Mg Regression
 ======================
 
-The first implementation slice covers bulk OQMD structures for the Al-Cu-Mg-Zn regression workflow. It stages the pure Al, Cu, Mg, and Zn reference structures, computes model energies, derives elemental references, and reports formation-energy and volume-per-atom errors against the DFT reference data used by the legacy evalpot plotting workflow.
+The first implementation slice covers bulk OQMD structures for the Al-Cu-Mg-Zn regression workflow. It stages the pure Al, Cu, Mg, and Zn reference structures plus selected Al-Cu and Al-Cu-Mg precipitates, computes model energies, derives elemental references, and reports formation-energy, volume-per-atom, lattice, and optional elastic errors against the DFT reference data used by the legacy evalpot plotting workflow. An opt-in solute-solute binding slice is also available for Al-matrix and Cu-matrix neighbor-shell interactions.
 
 Data Provenance
 ---------------
@@ -20,4 +20,4 @@ The staged structures come from the Open Quantum Materials Database (OQMD), http
 Current Scope
 -------------
 
-The initial slice is intentionally small: it validates the ML-PEG calculation, analysis, and app data flow before porting the more expensive solute, surface, stacking-fault, GSF, antisite, cluster, triplet, and interface-energy workflows.
+The initial slice is intentionally small: it validates the ML-PEG calculation, analysis, and app data flow before porting the more expensive surface, stacking-fault, GSF, antisite, cluster, triplet, and interface-energy workflows. Solute-solute bindings are present as a ``very_slow`` opt-in calculation because the legacy comparison relaxes many large FCC supercells.
