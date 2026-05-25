@@ -1575,8 +1575,10 @@ def build_table(
 
             metrics_columns = ("MLIP", "Score") + tuple(results)
 
-            # Get all models (including those without results for this benchmark)
-            mlips = tuple(get_model_names())
+            # Get selected models, including those without results for this benchmark.
+            from ml_peg import models
+
+            mlips = tuple(get_model_names(models.current_models))
 
             name_map = mlip_name_map if mlip_name_map else {}
             display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}

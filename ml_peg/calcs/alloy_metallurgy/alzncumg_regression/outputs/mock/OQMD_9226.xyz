@@ -1,0 +1,4 @@
+2
+Lattice="3.18552 0.0 0.0 -1.59276 2.758688 0.0 0.0 0.0 5.200198" Properties=species:S:1:pos:R:3 oqmd_id=9226 name=OQMD_9226 oqmd_composition=Mg oqmd_formation_energy=0.00019360583333 oqmd_volume_per_atom=22.8493 formula=Mg potential_energy=0.0 formation_energy=0.0 volume_peratom=22.849295071899974 lattice_a=3.18552 lattice_b=3.1854738892265306 lattice_c=5.200198 angle_alpha=90.0 angle_beta=90.0 angle_gamma=120.00047884108967 oqmd_volume_peratom=22.8493 energy=0.0 pbc="T T T"
+Mg       1.59276000       0.91973000       3.90015000
+Mg       0.00000000       1.83896000       1.30005000
