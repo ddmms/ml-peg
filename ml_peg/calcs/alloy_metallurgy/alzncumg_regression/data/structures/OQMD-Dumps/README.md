@@ -17,3 +17,10 @@ Included first-slice structures:
 - `OQMD_635950`: Cu
 - `OQMD_9226`: Mg
 - `OQMD_122929`: Zn
+
+Included precipitate bulk structures from the legacy evalpot suite:
+
+- `OQMD_695020`: Al2Cu theta-prime
+- `OQMD_10434`: Al-Cu-Mg S-phase entry
+- `NOTINOQMD_00001`: Al2Cu theta
+- `NOTINOQMD_00002`: Al3Cu theta-double-prime

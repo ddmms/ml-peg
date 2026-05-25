@@ -1,15 +1,15 @@
 {
   "elemental_reference_energies": {
-    "Al": -3.709185919599122,
+    "Al": -3.7091859195991215,
     "Cu": -4.090353906508513,
-    "Mg": -1.610146114128179,
-    "Zn": -1.254855413035863
+    "Mg": -1.6101461141281794,
+    "Zn": -1.2548554130358627
   },
   "structures": [
     {
       "oqmd_id": "8100",
       "formula": "Al",
-      "potential_energy": -3.709185919599122,
+      "potential_energy": -3.7091859195991215,
       "formation_energy": 0.0,
       "volume_peratom": 16.48256372178212,
       "lattice_a": 2.8565812883459136,
@@ -39,7 +39,7 @@
     {
       "oqmd_id": "9226",
       "formula": "Mg",
-      "potential_energy": -3.220292228256358,
+      "potential_energy": -3.220292228256359,
       "formation_energy": 0.0,
       "volume_peratom": 22.849295071899974,
       "lattice_a": 3.18552,
@@ -54,7 +54,7 @@
     {
       "oqmd_id": "122929",
       "formula": "Zn",
-      "potential_energy": -2.509710826071726,
+      "potential_energy": -2.5097108260717254,
       "formation_energy": 0.0,
       "volume_peratom": 15.176554555010485,
       "lattice_a": 2.640824,
@@ -65,6 +65,66 @@
       "angle_gamma": 120.00008321505996,
       "oqmd_formation_energy": 0.0,
       "oqmd_volume_peratom": 15.1766
+    },
+    {
+      "oqmd_id": "695020",
+      "formula": "Al2Cu",
+      "potential_energy": -12.141727823133795,
+      "formation_energy": -0.21100069247568007,
+      "volume_peratom": 15.930211768471011,
+      "lattice_a": 4.073358182432881,
+      "lattice_b": 4.073358182432881,
+      "lattice_c": 4.073358182432881,
+      "angle_alpha": 120.00000000000001,
+      "angle_beta": 90.0,
+      "angle_gamma": 120.00000000000001,
+      "oqmd_formation_energy": -0.174995133333,
+      "oqmd_volume_peratom": 15.9302
+    },
+    {
+      "oqmd_id": "10434",
+      "formula": "Al2CuMg",
+      "potential_energy": -27.820076647393115,
+      "formation_energy": -0.1977916159654054,
+      "volume_peratom": 16.506092127149216,
+      "lattice_a": 3.998371,
+      "lattice_b": 5.045541252241627,
+      "lattice_c": 7.129003,
+      "angle_alpha": 90.0,
+      "angle_beta": 90.0,
+      "angle_gamma": 66.65740085176857,
+      "oqmd_formation_energy": -0.182843854792,
+      "oqmd_volume_peratom": 16.5061
+    },
+    {
+      "oqmd_id": "NOTINOQMD_00001",
+      "formula": "Al2Cu",
+      "potential_energy": -24.206537424859842,
+      "formation_energy": -0.19818098890772204,
+      "volume_peratom": 14.937039642996957,
+      "lattice_a": 4.933413384213713,
+      "lattice_b": 4.933413384213713,
+      "lattice_c": 4.933413384213713,
+      "angle_alpha": 104.07184865310414,
+      "angle_beta": 104.07184865310414,
+      "angle_gamma": 120.91214313379463,
+      "oqmd_formation_energy": null,
+      "oqmd_volume_peratom": null
+    },
+    {
+      "oqmd_id": "NOTINOQMD_00002",
+      "formula": "Al3Cu",
+      "potential_energy": -31.257770526756936,
+      "formation_energy": -0.1027433995181477,
+      "volume_peratom": 15.180480013552982,
+      "lattice_a": 3.982758,
+      "lattice_b": 3.982758,
+      "lattice_c": 7.656101,
+      "angle_alpha": 90.0,
+      "angle_beta": 90.0,
+      "angle_gamma": 90.0,
+      "oqmd_formation_energy": null,
+      "oqmd_volume_peratom": null
     }
   ]
 }

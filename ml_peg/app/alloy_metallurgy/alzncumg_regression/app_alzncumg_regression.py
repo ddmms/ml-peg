@@ -31,6 +31,45 @@ class AlZnCuMgRegressionApp(BaseApp):
             DATA_PATH / "figure_volume_peratom.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
+        lattice_scatter = read_plot(
+            DATA_PATH / "figure_lattice_constants.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        beta_angle_scatter = read_plot(
+            DATA_PATH / "figure_beta_angle.json",
+            id=f"{BENCHMARK_NAME}-figure",
+        )
+        column_to_plot = {
+            "Formation Energy MAE": formation_scatter,
+            "Volume MAE": volume_scatter,
+            "Lattice Constant MAE": lattice_scatter,
+            "Beta Angle MAE": beta_angle_scatter,
+        }
+        optional_plots = {
+            "Solute-Solute Binding MAE": (
+                DATA_PATH / "figure_solute_solute_bindings.json",
+                f"{BENCHMARK_NAME}-solute-figure",
+            ),
+            "Bulk Modulus MAE": (
+                DATA_PATH / "figure_bulk_modulus.json",
+                f"{BENCHMARK_NAME}-figure",
+            ),
+            "Shear Modulus MAE": (
+                DATA_PATH / "figure_shear_modulus.json",
+                f"{BENCHMARK_NAME}-figure",
+            ),
+            "Elastic Constant MAE": (
+                DATA_PATH / "figure_elastic_constants.json",
+                f"{BENCHMARK_NAME}-figure",
+            ),
+        }
+        for column_name, plot_spec in optional_plots.items():
+            plot_path, plot_id = plot_spec
+            if plot_path.exists():
+                column_to_plot[column_name] = read_plot(
+                    plot_path,
+                    id=plot_id,
+                )
 
         structs_dir = next(
             (
@@ -48,10 +87,7 @@ class AlZnCuMgRegressionApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "Formation Energy MAE": formation_scatter,
-                "Volume MAE": volume_scatter,
-            },
+            column_to_plot=column_to_plot,
         )
 
         struct_from_scatter(
@@ -74,8 +110,9 @@ def get_app() -> AlZnCuMgRegressionApp:
     return AlZnCuMgRegressionApp(
         name=BENCHMARK_NAME,
         description=(
-            "Bulk formation-energy and volume errors for the first staged "
-            "Al-Cu-Mg-Zn OQMD structure slice."
+            "Bulk formation-energy, volume, lattice, optional solute-solute, and "
+            "optional elastic-moduli errors for the first staged Al-Cu-Mg-Zn "
+            "structure slice."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "alzncumg_regression_metrics_table.json",

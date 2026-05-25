@@ -26,6 +26,11 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+LATTICE_PROPERTIES = ("lattice_a", "lattice_b", "lattice_c")
+ELASTIC_MODULI_PROPERTIES = ("k_voigt", "g_voigt")
+ELASTIC_CONSTANT_PROPERTIES = tuple(
+    f"C_{row + 1}{column + 1}" for row in range(6) for column in range(row + 1)
+)
 
 
 def load_references() -> dict[str, Any]:
@@ -70,6 +75,35 @@ def reference_value(
         return None
 
 
+def reference_series(references: dict[str, Any], key: str) -> list[float]:
+    """
+    Extract one numeric reference series from evalpot reference data.
+
+    Parameters
+    ----------
+    references
+        Evalpot reference dictionary.
+    key
+        Full evalpot material parameter name.
+
+    Returns
+    -------
+    list[float]
+        Numeric reference series, or an empty list when unavailable.
+    """
+    entry = references.get(key)
+    if not entry or not isinstance(entry[0], list):
+        return []
+
+    values = []
+    for value in entry[0]:
+        try:
+            values.append(float(value))
+        except (TypeError, ValueError):
+            return []
+    return values
+
+
 def load_model_records() -> dict[str, dict[str, dict[str, Any]]]:
     """
     Load calculated scalar records.
@@ -88,6 +122,50 @@ def load_model_records() -> dict[str, dict[str, dict[str, Any]]]:
             data = json.load(file)
         records_by_model[model_name] = {
             record["oqmd_id"]: record for record in data["structures"]
+        }
+    return records_by_model
+
+
+def load_elastic_records() -> dict[str, dict[str, dict[str, Any]]]:
+    """
+    Load calculated elastic-property records.
+
+    Returns
+    -------
+    dict[str, dict[str, dict[str, Any]]]
+        Elastic records keyed by model name and OQMD ID.
+    """
+    records_by_model = {}
+    for model_name in MODELS:
+        record_path = CALC_PATH / model_name / "elastic_properties.json"
+        if not record_path.exists():
+            continue
+        with open(record_path) as file:
+            data = json.load(file)
+        records_by_model[model_name] = {
+            record["oqmd_id"]: record for record in data["structures"]
+        }
+    return records_by_model
+
+
+def load_solute_solute_records() -> dict[str, dict[str, dict[str, Any]]]:
+    """
+    Load calculated solute-solute binding records.
+
+    Returns
+    -------
+    dict[str, dict[str, dict[str, Any]]]
+        Solute-solute records keyed by model name and evalpot reference key.
+    """
+    records_by_model = {}
+    for model_name in MODELS:
+        record_path = CALC_PATH / model_name / "solute_solute_bindings.json"
+        if not record_path.exists():
+            continue
+        with open(record_path) as file:
+            data = json.load(file)
+        records_by_model[model_name] = {
+            record["reference_key"]: record for record in data["interactions"]
         }
     return records_by_model
 
@@ -122,22 +200,467 @@ def common_structure_ids(
         oqmd_id
         for oqmd_id in common_ids
         if reference_value(references, oqmd_id, property_name) is not None
+        and all(
+            property_name in model_records[oqmd_id]
+            for model_records in records_by_model.values()
+        )
     )
 
 
-def get_structure_ids() -> list[str]:
+def get_property_structure_ids(property_name: str) -> list[str]:
     """
-    Get structure IDs used by the formation-energy parity plot.
+    Get structure IDs used by one property parity plot.
+
+    Parameters
+    ----------
+    property_name
+        Evalpot reference property suffix.
 
     Returns
     -------
     list[str]
-        OQMD IDs available across the current outputs.
+        OQMD IDs available across the current outputs and references.
     """
-    return common_structure_ids(load_model_records(), "formation_energy")
+    return common_structure_ids(load_model_records(), property_name)
 
 
-STRUCTURE_IDS = get_structure_ids()
+def get_lattice_component_labels() -> list[str]:
+    """
+    Get labels used by the lattice-constant parity plot.
+
+    Returns
+    -------
+    list[str]
+        Structure and lattice-axis labels available across outputs and references.
+    """
+    records_by_model = load_model_records()
+    labels = []
+    for property_name in LATTICE_PROPERTIES:
+        axis = property_name.removeprefix("lattice_")
+        labels.extend(
+            f"{oqmd_id} {axis}"
+            for oqmd_id in common_structure_ids(records_by_model, property_name)
+        )
+    return labels
+
+
+def scalar_property_values(property_name: str) -> dict[str, list[float]]:
+    """
+    Get reference and predicted scalar values for one property.
+
+    Parameters
+    ----------
+    property_name
+        Evalpot reference property suffix and calc-record key.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model values.
+    """
+    references = load_references()
+    records_by_model = load_model_records()
+    structure_ids = common_structure_ids(records_by_model, property_name)
+
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+    for oqmd_id in structure_ids:
+        ref_value = reference_value(references, oqmd_id, property_name)
+        if ref_value is None:
+            continue
+        results["ref"].append(ref_value)
+        for model_name, model_records in records_by_model.items():
+            results[model_name].append(model_records[oqmd_id][property_name])
+
+    return results
+
+
+def multi_property_values(property_names: tuple[str, ...]) -> dict[str, list[float]]:
+    """
+    Get flattened reference and predicted values for related scalar properties.
+
+    Parameters
+    ----------
+    property_names
+        Evalpot reference property suffixes and calc-record keys.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model values flattened in property then structure order.
+    """
+    references = load_references()
+    records_by_model = load_model_records()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+
+    for property_name in property_names:
+        for oqmd_id in common_structure_ids(records_by_model, property_name):
+            ref_value = reference_value(references, oqmd_id, property_name)
+            if ref_value is None:
+                continue
+            results["ref"].append(ref_value)
+            for model_name, model_records in records_by_model.items():
+                results[model_name].append(model_records[oqmd_id][property_name])
+
+    return results
+
+
+def property_values_from_records(
+    records_by_model: dict[str, dict[str, dict[str, Any]]],
+    property_name: str,
+) -> dict[str, list[float]]:
+    """
+    Get reference and predicted values from a supplied record collection.
+
+    Parameters
+    ----------
+    records_by_model
+        Calculated records keyed by model.
+    property_name
+        Evalpot reference property suffix and calc-record key.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model values.
+    """
+    references = load_references()
+    structure_ids = common_structure_ids(records_by_model, property_name)
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+
+    for oqmd_id in structure_ids:
+        ref_value = reference_value(references, oqmd_id, property_name)
+        if ref_value is None:
+            continue
+        results["ref"].append(ref_value)
+        for model_name, model_records in records_by_model.items():
+            results[model_name].append(model_records[oqmd_id][property_name])
+
+    return results
+
+
+def multi_property_values_from_records(
+    records_by_model: dict[str, dict[str, dict[str, Any]]],
+    property_names: tuple[str, ...],
+) -> dict[str, list[float]]:
+    """
+    Get flattened reference and predicted values from supplied records.
+
+    Parameters
+    ----------
+    records_by_model
+        Calculated records keyed by model.
+    property_names
+        Evalpot reference property suffixes and calc-record keys.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model values flattened in property then structure order.
+    """
+    references = load_references()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+
+    for property_name in property_names:
+        for oqmd_id in common_structure_ids(records_by_model, property_name):
+            ref_value = reference_value(references, oqmd_id, property_name)
+            if ref_value is None:
+                continue
+            results["ref"].append(ref_value)
+            for model_name, model_records in records_by_model.items():
+                results[model_name].append(model_records[oqmd_id][property_name])
+
+    return results
+
+
+def labels_from_records(
+    records_by_model: dict[str, dict[str, dict[str, Any]]],
+    property_name: str,
+) -> list[str]:
+    """
+    Get hover labels for one property from supplied records.
+
+    Parameters
+    ----------
+    records_by_model
+        Calculated records keyed by model.
+    property_name
+        Evalpot reference property suffix and calc-record key.
+
+    Returns
+    -------
+    list[str]
+        Common OQMD IDs.
+    """
+    return common_structure_ids(records_by_model, property_name)
+
+
+def multi_property_labels_from_records(
+    records_by_model: dict[str, dict[str, dict[str, Any]]],
+    property_names: tuple[str, ...],
+) -> list[str]:
+    """
+    Get hover labels for flattened multi-property data.
+
+    Parameters
+    ----------
+    records_by_model
+        Calculated records keyed by model.
+    property_names
+        Evalpot reference property suffixes and calc-record keys.
+
+    Returns
+    -------
+    list[str]
+        Structure and property labels.
+    """
+    labels = []
+    for property_name in property_names:
+        labels.extend(
+            f"{oqmd_id} {property_name}"
+            for oqmd_id in common_structure_ids(records_by_model, property_name)
+        )
+    return labels
+
+
+def has_series_data(values: dict[str, list[float]]) -> bool:
+    """
+    Check whether a parity series contains reference and model data.
+
+    Parameters
+    ----------
+    values
+        Reference and model values.
+
+    Returns
+    -------
+    bool
+        True if the series can be plotted and scored.
+    """
+    return bool(values["ref"]) and any(
+        bool(model_values)
+        for model_name, model_values in values.items()
+        if model_name != "ref"
+    )
+
+
+def write_parity_plot(
+    values: dict[str, list[float]],
+    *,
+    filename: Path,
+    title: str,
+    x_label: str,
+    y_label: str,
+    hoverdata: dict[str, list[str]],
+) -> None:
+    """
+    Write a parity plot for optional analysis data.
+
+    Parameters
+    ----------
+    values
+        Reference and model values.
+    filename
+        Output Plotly JSON path.
+    title
+        Plot title.
+    x_label
+        Predicted-value axis label.
+    y_label
+        Reference-value axis label.
+    hoverdata
+        Hover labels for the plot points.
+    """
+
+    @plot_parity(
+        filename=filename,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+        hoverdata=hoverdata,
+    )
+    def _plot_values() -> dict[str, list[float]]:
+        return values
+
+    _plot_values()
+
+
+def errors_from_values(values: dict[str, list[float]]) -> dict[str, float]:
+    """
+    Get mean absolute errors from reference and model values.
+
+    Parameters
+    ----------
+    values
+        Reference and model values.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE by model.
+    """
+    return {
+        model_name: mae(values["ref"], model_values)
+        for model_name, model_values in values.items()
+        if model_name != "ref"
+    }
+
+
+def solute_solute_binding_values(
+    records_by_model: dict[str, dict[str, dict[str, Any]]],
+) -> tuple[dict[str, list[float]], list[str]]:
+    """
+    Get flattened solute-solute binding values and labels.
+
+    Parameters
+    ----------
+    records_by_model
+        Calculated solute-solute records keyed by model.
+
+    Returns
+    -------
+    tuple[dict[str, list[float]], list[str]]
+        Reference/model values in meV and hover labels for the flattened series.
+    """
+    references = load_references()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+    labels = []
+    if not records_by_model:
+        return results, labels
+
+    common_keys = sorted(
+        set.intersection(*(set(records) for records in records_by_model.values()))
+    )
+    for reference_key in common_keys:
+        reference_values = reference_series(
+            references, f"{reference_key}_BindingEnergy"
+        )
+        if not reference_values:
+            continue
+        model_values_by_name = {
+            model_name: model_records[reference_key]["binding_energies"]
+            for model_name, model_records in records_by_model.items()
+        }
+        common_length = min(
+            len(reference_values),
+            *(len(model_values) for model_values in model_values_by_name.values()),
+        )
+        for index in range(common_length):
+            try:
+                model_values = {
+                    model_name: float(model_values[index])
+                    for model_name, model_values in model_values_by_name.items()
+                }
+            except (TypeError, ValueError):
+                continue
+
+            results["ref"].append(reference_values[index])
+            for model_name, model_value in model_values.items():
+                results[model_name].append(model_value)
+            labels.append(f"{reference_key} shell {index + 1}")
+    return results, labels
+
+
+def solute_solute_metrics() -> dict[str, dict[str, float]]:
+    """
+    Build optional solute-solute binding metrics.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Solute-solute binding MAE by model, or an empty dictionary when outputs
+        are absent.
+    """
+    records_by_model = load_solute_solute_records()
+    if not records_by_model:
+        return {}
+
+    values, labels = solute_solute_binding_values(records_by_model)
+    if not has_series_data(values):
+        return {}
+
+    write_parity_plot(
+        values,
+        filename=OUT_PATH / "figure_solute_solute_bindings.json",
+        title="Solute-solute binding energies",
+        x_label="Predicted binding energy / meV",
+        y_label="DFT binding energy / meV",
+        hoverdata={"Interaction": labels},
+    )
+    return {"Solute-Solute Binding MAE": errors_from_values(values)}
+
+
+def elastic_metrics() -> dict[str, dict[str, float]]:
+    """
+    Build optional elastic-moduli and elastic-constant metrics.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Elastic metrics by model, or an empty dictionary when elastic outputs are
+        absent.
+    """
+    records_by_model = load_elastic_records()
+    if not records_by_model:
+        return {}
+
+    metrics = {}
+    plot_specs = {
+        "k_voigt": (
+            "Bulk Modulus MAE",
+            OUT_PATH / "figure_bulk_modulus.json",
+            "Bulk moduli",
+            "Predicted bulk modulus / GPa",
+            "DFT bulk modulus / GPa",
+        ),
+        "g_voigt": (
+            "Shear Modulus MAE",
+            OUT_PATH / "figure_shear_modulus.json",
+            "Shear moduli",
+            "Predicted shear modulus / GPa",
+            "DFT shear modulus / GPa",
+        ),
+    }
+    for property_name, plot_spec in plot_specs.items():
+        metric_name, filename, title, x_label, y_label = plot_spec
+        values = property_values_from_records(records_by_model, property_name)
+        if not has_series_data(values):
+            continue
+        write_parity_plot(
+            values,
+            filename=filename,
+            title=title,
+            x_label=x_label,
+            y_label=y_label,
+            hoverdata={"OQMD ID": labels_from_records(records_by_model, property_name)},
+        )
+        metrics[metric_name] = errors_from_values(values)
+
+    elastic_constant_values = multi_property_values_from_records(
+        records_by_model,
+        ELASTIC_CONSTANT_PROPERTIES,
+    )
+    if has_series_data(elastic_constant_values):
+        write_parity_plot(
+            elastic_constant_values,
+            filename=OUT_PATH / "figure_elastic_constants.json",
+            title="Elastic constants",
+            x_label="Predicted elastic constant / GPa",
+            y_label="DFT elastic constant / GPa",
+            hoverdata={
+                "Elastic constant": multi_property_labels_from_records(
+                    records_by_model,
+                    ELASTIC_CONSTANT_PROPERTIES,
+                )
+            },
+        )
+        metrics["Elastic Constant MAE"] = errors_from_values(elastic_constant_values)
+
+    return metrics
+
+
+STRUCTURE_IDS = get_property_structure_ids("formation_energy")
+LATTICE_COMPONENT_LABELS = get_lattice_component_labels()
+BETA_STRUCTURE_IDS = get_property_structure_ids("angle_beta")
 
 
 @pytest.fixture
@@ -157,20 +680,7 @@ def formation_energies() -> dict[str, list[float]]:
     dict[str, list[float]]
         Reference and model formation energies in eV/atom.
     """
-    references = load_references()
-    records_by_model = load_model_records()
-    structure_ids = common_structure_ids(records_by_model, "formation_energy")
-
-    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
-    for oqmd_id in structure_ids:
-        ref_value = reference_value(references, oqmd_id, "formation_energy")
-        if ref_value is None:
-            continue
-        results["ref"].append(ref_value)
-        for model_name, model_records in records_by_model.items():
-            results[model_name].append(model_records[oqmd_id]["formation_energy"])
-
-    return results
+    return scalar_property_values("formation_energy")
 
 
 @pytest.fixture
@@ -190,20 +700,47 @@ def volumes_per_atom() -> dict[str, list[float]]:
     dict[str, list[float]]
         Reference and model volumes in Angstrom^3/atom.
     """
-    references = load_references()
-    records_by_model = load_model_records()
-    structure_ids = common_structure_ids(records_by_model, "volume_peratom")
+    return scalar_property_values("volume_peratom")
 
-    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
-    for oqmd_id in structure_ids:
-        ref_value = reference_value(references, oqmd_id, "volume_peratom")
-        if ref_value is None:
-            continue
-        results["ref"].append(ref_value)
-        for model_name, model_records in records_by_model.items():
-            results[model_name].append(model_records[oqmd_id]["volume_peratom"])
 
-    return results
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "figure_lattice_constants.json",
+    title="Lattice constants",
+    x_label="Predicted lattice constant / Angstrom",
+    y_label="DFT lattice constant / Angstrom",
+    hoverdata={"Structure axis": LATTICE_COMPONENT_LABELS},
+)
+def lattice_constants() -> dict[str, list[float]]:
+    """
+    Get reference and predicted lattice constants.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model lattice constants in Angstrom.
+    """
+    return multi_property_values(LATTICE_PROPERTIES)
+
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "figure_beta_angle.json",
+    title="Beta angles",
+    x_label="Predicted beta angle / degrees",
+    y_label="DFT beta angle / degrees",
+    hoverdata={"OQMD ID": BETA_STRUCTURE_IDS},
+)
+def beta_angles() -> dict[str, list[float]]:
+    """
+    Get reference and predicted beta angles.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and model beta angles in degrees.
+    """
+    return scalar_property_values("angle_beta")
 
 
 @pytest.fixture
@@ -253,6 +790,52 @@ def volume_errors(volumes_per_atom: dict[str, list[float]]) -> dict[str, float]:
 
 
 @pytest.fixture
+def lattice_constant_errors(
+    lattice_constants: dict[str, list[float]],
+) -> dict[str, float]:
+    """
+    Get lattice-constant mean absolute errors.
+
+    Parameters
+    ----------
+    lattice_constants
+        Reference and predicted lattice constants.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE by model.
+    """
+    return {
+        model_name: mae(lattice_constants["ref"], values)
+        for model_name, values in lattice_constants.items()
+        if model_name != "ref"
+    }
+
+
+@pytest.fixture
+def beta_angle_errors(beta_angles: dict[str, list[float]]) -> dict[str, float]:
+    """
+    Get beta-angle mean absolute errors.
+
+    Parameters
+    ----------
+    beta_angles
+        Reference and predicted beta angles.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE by model.
+    """
+    return {
+        model_name: mae(beta_angles["ref"], values)
+        for model_name, values in beta_angles.items()
+        if model_name != "ref"
+    }
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "alzncumg_regression_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -262,6 +845,8 @@ def volume_errors(volumes_per_atom: dict[str, list[float]]) -> dict[str, float]:
 def metrics(
     formation_energy_errors: dict[str, float],
     volume_errors: dict[str, float],
+    lattice_constant_errors: dict[str, float],
+    beta_angle_errors: dict[str, float],
 ) -> dict[str, dict[str, float]]:
     """
     Get all first-slice benchmark metrics.
@@ -272,6 +857,10 @@ def metrics(
         Formation-energy MAEs.
     volume_errors
         Volume-per-atom MAEs.
+    lattice_constant_errors
+        Lattice-constant MAEs.
+    beta_angle_errors
+        Beta-angle MAEs.
 
     Returns
     -------
@@ -279,10 +868,15 @@ def metrics(
         Metrics by model.
     """
     copy_structures_to_app_data()
-    return {
+    results = {
         "Formation Energy MAE": formation_energy_errors,
         "Volume MAE": volume_errors,
+        "Lattice Constant MAE": lattice_constant_errors,
+        "Beta Angle MAE": beta_angle_errors,
     }
+    results.update(solute_solute_metrics())
+    results.update(elastic_metrics())
+    return results
 
 
 def copy_structures_to_app_data() -> None:
