@@ -198,7 +198,7 @@ class CustomElasticityBenchmark(Benchmark):
         }
 
 
-def elastic_tensor_to_voigt(x):
+def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | None:
     """
     Convert elastic tensor-like objects to 6x6 Voigt form.
 
@@ -209,41 +209,43 @@ def elastic_tensor_to_voigt(x):
 
     Parameters
     ----------
-    x : object
+    tensor
         Elastic tensor-like object to convert. This may be None, NaN, an object
-        with a voigt attribute, a dictionary containing a raw tensor, a 6x6
-        array, or a 3x3x3x3 array.
+        with a voigt attribute, a dictionary containing tensor data, a 6x6 array,
+        or a 3x3x3x3 array.
 
     Returns
     -------
     numpy.ndarray or None
-        Tensor in 6x6 Voigt form, or None if ``x`` is None or NaN.
+        Tensor in 6x6 Voigt form, or None if ``tensor`` is None or NaN.
 
     Raises
     ------
     TypeError
-        If ``x`` is a dictionary without a raw tensor entry.
+        If ``tensor`` is a dictionary without tensor data.
     ValueError
         If the tensor shape is unsupported.
     """
-    if x is None:
+    if tensor is None:
         return None
 
-    if isinstance(x, float) and np.isnan(x):
+    if isinstance(tensor, float) and np.isnan(tensor):
         return None
 
     # pymatgen Tensor / ElasticTensor case
-    if hasattr(x, "voigt"):
-        return np.asarray(x.voigt)
+    if hasattr(tensor, "voigt"):
+        return np.asarray(tensor.voigt)
 
     # benchmark dict case, e.g. DFT field
-    if isinstance(x, dict):
-        if "raw" in x:
-            x = x["raw"]
+    if isinstance(tensor, dict):
+        if "raw" in tensor:
+            tensor = tensor["raw"]
+        elif "data" in tensor:
+            tensor = tensor["data"]
         else:
-            raise TypeError(f"Cannot convert tensor dict with keys {x.keys()}")
+            raise TypeError(f"Cannot convert tensor dict with keys {tensor.keys()}")
 
-    arr = np.asarray(x)
+    arr = np.asarray(tensor)
 
     # Already Voigt
     if arr.shape == (6, 6):
