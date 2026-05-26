@@ -157,11 +157,11 @@ class CustomElasticityBenchmark(Benchmark):
                 if result is not None
                 else float("nan")
             ),
-            f"crystal_system_{model_name}": get_crystal_system(
-                result["final_structure"]
-            )
-            if result is not None
-            else None,
+            f"crystal_system_{model_name}": (
+                get_crystal_system(result["final_structure"])
+                if result is not None
+                else None
+            ),
         }
 
 
