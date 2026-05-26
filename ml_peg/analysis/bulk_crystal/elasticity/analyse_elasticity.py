@@ -188,6 +188,40 @@ def _str_to_array(s: str) -> np.ndarray:
     return np.fromstring(s_clean, sep=" ").reshape(6, 6)
 
 
+def _elastic_tensor_array(tensor: Any) -> np.ndarray | None:
+    """
+    Convert elastic tensor data to a finite 6x6 array.
+
+    Parameters
+    ----------
+    tensor
+        Tensor value loaded from CSV or passed through as a NumPy array.
+
+    Returns
+    -------
+    np.ndarray | None
+        Finite 6x6 tensor array, or None if tensor data is missing/invalid.
+    """
+    if isinstance(tensor, np.ndarray):
+        arr = tensor
+    elif isinstance(tensor, str):
+        try:
+            arr = _str_to_array(tensor)
+        except ValueError:
+            return None
+    else:
+        return None
+
+    try:
+        arr = np.asarray(arr, dtype=float)
+    except (TypeError, ValueError):
+        return None
+
+    if arr.shape != (6, 6) or not np.all(np.isfinite(arr)):
+        return None
+    return arr.copy()
+
+
 def get_independent_cs(
     c_ref: ArrayLike, c_arr: ArrayLike, crystal_symmetry: str, rtol: float = 0.10
 ) -> tuple[ArrayLike, ArrayLike]:
@@ -310,6 +344,15 @@ def elasticity_stats() -> dict[str, dict[str, Any]]:
         df = pd.read_csv(results_path)
         filtered, excluded = _filter_results(df, model_name)
 
+        structs_path = CALC_PATH / model_name / "relaxed_structures.extxyz"
+        mp_id_to_atoms = {}
+        if structs_path.exists():
+            all_atoms = read(str(structs_path), index=":")
+            mp_id_to_atoms = {str(a.info["mp_id"]): a for a in all_atoms}
+            has_structure = filtered["mp_id"].astype(str).isin(mp_id_to_atoms)
+            excluded += int((~has_structure).sum())
+            filtered = filtered[has_structure].copy()
+
         stats[model_name] = {
             "bulk": {
                 "ref": filtered[f"{K_COLUMN}_DFT"].tolist(),
@@ -331,16 +374,12 @@ def elasticity_stats() -> dict[str, dict[str, Any]]:
             "excluded": excluded,
         }
 
-        structs_path = CALC_PATH / model_name / "relaxed_structures.extxyz"
-        if structs_path.exists():
-            all_atoms = read(str(structs_path), index=":")
-            mp_id_to_atoms = {str(a.info["mp_id"]): a for a in all_atoms}
+        if mp_id_to_atoms:
             struct_dir = OUT_PATH / model_name
             struct_dir.mkdir(parents=True, exist_ok=True)
             for i, mp_id in enumerate(filtered["mp_id"].tolist()):
-                atoms = mp_id_to_atoms.get(str(mp_id))
-                if atoms is not None:
-                    write_xyz(str(struct_dir / f"{i}.xyz"), atoms)
+                atoms = mp_id_to_atoms[str(mp_id)]
+                write_xyz(str(struct_dir / f"{i}.xyz"), atoms)
 
     return stats
 
@@ -418,13 +457,15 @@ def elastic_tensor_mae(
         for r, p, cs in zip(
             prop["ref"], prop["pred"], crystal_system["ref"], strict=False
         ):
-            r_arr = np.asarray(r) if isinstance(r, np.ndarray) else _str_to_array(r)
-            p_arr = np.asarray(p) if isinstance(p, np.ndarray) else _str_to_array(p)
+            r_arr = _elastic_tensor_array(r)
+            p_arr = _elastic_tensor_array(p)
+            if r_arr is None or p_arr is None:
+                continue
             r_arr[np.abs(r_arr) < 0.01] = 0.0
             p_arr[np.abs(p_arr) < 0.01] = 0.0
             r_vals, p_vals = get_independent_cs(r_arr, p_arr, cs)
             tensor_maes.append(mae(r_vals, p_vals))
-        results[model_name] = float(np.mean(tensor_maes))
+        results[model_name] = float(np.mean(tensor_maes)) if tensor_maes else None
     return results
 
 
@@ -482,13 +523,18 @@ def elastic_tensor_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
         for r, p, cs, mp_id in zip(
             prop["ref"], prop["pred"], crystal_system["ref"], mp_ids, strict=False
         ):
-            r_arr = np.asarray(r) if isinstance(r, np.ndarray) else _str_to_array(r)
-            p_arr = np.asarray(p) if isinstance(p, np.ndarray) else _str_to_array(p)
+            r_arr = _elastic_tensor_array(r)
+            p_arr = _elastic_tensor_array(p)
+            if r_arr is None or p_arr is None:
+                continue
             r_arr[np.abs(r_arr) < 0.01] = 0.0
             p_arr[np.abs(p_arr) < 0.01] = 0.0
             r_vals, p_vals = get_independent_cs(r_arr, p_arr, cs)
             tensor_maes.append(mae(r_vals, p_vals))
             labels.append(str(mp_id))
+
+        if not tensor_maes:
+            continue
 
         fig = build_violin_distribution(
             values=tensor_maes,
