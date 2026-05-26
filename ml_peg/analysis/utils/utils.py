@@ -453,8 +453,8 @@ def calc_table_scores(
                 # Weight of zero excludes the metric from scoring requirements
                 continue
 
-            if value is not None:
-                scores_list.append(scores_row[key])
+            if value is not None and (score := scores_row.get(key)) is not None:
+                scores_list.append(score)
                 weights_list.append(weight)
             else:
                 # Track if any (weighted) metric is missing
