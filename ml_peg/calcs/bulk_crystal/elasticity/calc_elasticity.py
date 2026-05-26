@@ -25,38 +25,6 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
-    """
-    Convert an elastic tensor object or array to a 6x6 Voigt matrix.
-
-    Parameters
-    ----------
-    tensor
-        Elastic tensor returned by matcalc.
-
-    Returns
-    -------
-    np.ndarray | float
-        Voigt matrix, or NaN when tensor data is unavailable.
-    """
-    if hasattr(tensor, "voigt"):
-        return np.asarray(tensor.voigt)
-
-    if isinstance(tensor, dict):
-        tensor = tensor.get("data")
-
-    try:
-        tensor_array = np.asarray(tensor, dtype=float)
-    except (TypeError, ValueError):
-        return np.nan
-
-    if tensor_array.shape == (6, 6):
-        return tensor_array
-    if tensor_array.shape == (3, 3, 3, 3):
-        return np.asarray(ElasticTensor(tensor_array).voigt)
-    return np.nan
-
-
 def get_crystal_system(struct: Structure) -> str:
     """
     Determine a crystal-system label.
@@ -198,7 +166,7 @@ class CustomElasticityBenchmark(Benchmark):
         }
 
 
-def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | None:
+def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
     """
     Convert elastic tensor-like objects to 6x6 Voigt form.
 
@@ -216,21 +184,12 @@ def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | None:
 
     Returns
     -------
-    numpy.ndarray or None
-        Tensor in 6x6 Voigt form, or None if ``tensor`` is None or NaN.
-
-    Raises
-    ------
-    TypeError
-        If ``tensor`` is a dictionary without tensor data.
-    ValueError
-        If the tensor shape is unsupported.
+    numpy.ndarray or float
+        Tensor in 6x6 Voigt form, or NaN if ``tensor`` is missing or
+        cannot be converted.
     """
-    if tensor is None:
-        return None
-
-    if isinstance(tensor, float) and np.isnan(tensor):
-        return None
+    if tensor is None or (isinstance(tensor, float) and np.isnan(tensor)):
+        return np.nan
 
     # pymatgen Tensor / ElasticTensor case
     if hasattr(tensor, "voigt"):
@@ -243,32 +202,18 @@ def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | None:
         elif "data" in tensor:
             tensor = tensor["data"]
         else:
-            raise TypeError(f"Cannot convert tensor dict with keys {tensor.keys()}")
+            return np.nan
 
-    arr = np.asarray(tensor)
+    try:
+        arr = np.asarray(tensor, dtype=float)
+    except (TypeError, ValueError):
+        return np.nan
 
-    # Already Voigt
     if arr.shape == (6, 6):
         return arr
-
-    # Full rank-4 tensor C_ijkl
     if arr.shape == (3, 3, 3, 3):
-        voigt_pairs = [
-            (0, 0),
-            (1, 1),
-            (2, 2),
-            (1, 2),
-            (0, 2),
-            (0, 1),
-        ]
-
-        out = np.empty((6, 6), dtype=arr.dtype)
-        for row_idx, (i, j) in enumerate(voigt_pairs):
-            for col_idx, (k, m) in enumerate(voigt_pairs):
-                out[row_idx, col_idx] = arr[i, j, k, m]
-        return out
-
-    raise ValueError(f"Unsupported elastic tensor shape: {arr.shape}")
+        return np.asarray(ElasticTensor(arr).voigt)
+    return np.nan
 
 
 def run_elasticity_benchmark(
