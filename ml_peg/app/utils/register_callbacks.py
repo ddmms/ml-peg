@@ -703,7 +703,10 @@ def register_benchmark_to_category_callback(
 
     outputs = []
     inputs = []
-    for category, category_info in sorted(all_info.items()):
+
+    category_order = sorted(all_info)
+    for category in category_order:
+        category_info = all_info[category]
         category_table_id = f"{category_to_title[category]}-summary-table"
         outputs.append(
             Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True)
@@ -739,20 +742,23 @@ def register_benchmark_to_category_callback(
         list[list[dict]]
             Refreshed cached rows for each category summary table.
         """
-        # Rebuild inputs for each category
+        trigger_id = ctx.triggered_id
         iterator = iter(args)
+        all_category_rows = [no_update for _ in category_order]
 
-        all_category_rows = []
-
-        for category, category_info in sorted(all_info.items()):
+        for category_index, category in enumerate(category_order):
+            category_info = all_info[category]
             category_weights = next(iterator)
-            category_rows = deepcopy(next(iterator))
+            category_rows_source = next(iterator)
 
-            for test_name, table_info in sorted(category_info.items()):
-                benchmark_rows = deepcopy(next(iterator))
+            for _test_name, table_info in sorted(category_info.items()):
+                benchmark_rows = next(iterator)
+                if f"{table_info['benchmark_table_id']}-computed-store" != trigger_id:
+                    continue
+
                 name_map = table_info["model_name_map"]
-
                 benchmark_scores = {}
+
                 for row in benchmark_rows:
                     display_name = row.get("MLIP")
                     original_name = name_map.get(display_name, display_name)
@@ -761,15 +767,24 @@ def register_benchmark_to_category_callback(
                         continue
                     benchmark_scores[original_name] = score
 
+                category_rows = deepcopy(category_rows_source)
+                benchmark_column = table_info["benchmark_column"]
+                rows_updated = False
+
                 for row in category_rows:
                     mlip = row.get("MLIP")
                     if mlip in benchmark_scores:
-                        row[all_info[category][test_name]["benchmark_column"]] = (
-                            benchmark_scores[mlip]
-                        )
+                        new_score = benchmark_scores[mlip]
+                        if row.get(benchmark_column) != new_score:
+                            row[benchmark_column] = new_score
+                            rows_updated = True
 
-            category_rows, _ = update_score_style(category_rows, category_weights)
-            all_category_rows.append(category_rows)
+                if not rows_updated:
+                    break
+
+                category_rows, _ = update_score_style(category_rows, category_weights)
+                all_category_rows[category_index] = category_rows
+                break
 
         return all_category_rows
 
