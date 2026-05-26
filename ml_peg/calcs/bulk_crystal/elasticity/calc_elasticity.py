@@ -25,38 +25,6 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
-def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
-    """
-    Convert an elastic tensor object or array to a 6x6 Voigt matrix.
-
-    Parameters
-    ----------
-    tensor
-        Elastic tensor returned by matcalc.
-
-    Returns
-    -------
-    np.ndarray | float
-        Voigt matrix, or NaN when tensor data is unavailable.
-    """
-    if hasattr(tensor, "voigt"):
-        return np.asarray(tensor.voigt)
-
-    if isinstance(tensor, dict):
-        tensor = tensor.get("data")
-
-    try:
-        tensor_array = np.asarray(tensor, dtype=float)
-    except (TypeError, ValueError):
-        return np.nan
-
-    if tensor_array.shape == (6, 6):
-        return tensor_array
-    if tensor_array.shape == (3, 3, 3, 3):
-        return np.asarray(ElasticTensor(tensor_array).voigt)
-    return np.nan
-
-
 def get_crystal_system(struct: Structure) -> str:
     """
     Determine a crystal-system label.
@@ -198,6 +166,56 @@ class CustomElasticityBenchmark(Benchmark):
         }
 
 
+def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
+    """
+    Convert elastic tensor-like objects to 6x6 Voigt form.
+
+    For some models, matcalc returns the tensor as a plain
+    numpy.ndarray with shape (3, 3, 3, 3), not as a pymatgen
+    tensor object. NumPy arrays do not have .voigt, so the
+    final dataframe conversion fails, so this conversion must handle both forms.
+
+    Parameters
+    ----------
+    tensor
+        Elastic tensor-like object to convert. This may be None, NaN, an object
+        with a voigt attribute, a dictionary containing tensor data, a 6x6 array,
+        or a 3x3x3x3 array.
+
+    Returns
+    -------
+    numpy.ndarray or float
+        Tensor in 6x6 Voigt form, or NaN if ``tensor`` is missing or
+        cannot be converted.
+    """
+    if tensor is None or (isinstance(tensor, float) and np.isnan(tensor)):
+        return np.nan
+
+    # pymatgen Tensor / ElasticTensor case
+    if hasattr(tensor, "voigt"):
+        return np.asarray(tensor.voigt)
+
+    # Reference data and JSON checkpoints can store tensors as dictionaries.
+    if isinstance(tensor, dict):
+        if "raw" in tensor:
+            tensor = tensor["raw"]
+        elif "data" in tensor:
+            tensor = tensor["data"]
+        else:
+            return np.nan
+
+    try:
+        arr = np.asarray(tensor, dtype=float)
+    except (TypeError, ValueError):
+        return np.nan
+
+    if arr.shape == (6, 6):
+        return arr
+    if arr.shape == (3, 3, 3, 3):
+        return np.asarray(ElasticTensor(arr).voigt)
+    return np.nan
+
+
 def run_elasticity_benchmark(
     *,
     calc,
@@ -290,12 +308,8 @@ def run_elasticity_benchmark(
     # Drop structure column before CSV processing
     results = results.drop(columns=["final_structure"], errors="ignore")
 
-    results["elastic_tensor_DFT"] = results["elastic_tensor_DFT"].apply(
-        lambda x: np.array(x["raw"]) if x is not None else None
-    )
-
     for col in results.columns:
-        if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
+        if col.startswith("elastic_tensor_"):
             results[col] = results[col].apply(elastic_tensor_to_voigt)
 
     results.to_csv(out_dir / "moduli_results.csv", index=False)
