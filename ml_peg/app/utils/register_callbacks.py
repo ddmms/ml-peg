@@ -207,6 +207,7 @@ def register_summary_table_callbacks(
         Input("app-location", "pathname"),
         Input("cmap-store", "data"),
         prevent_initial_call="initial_duplicate",
+        optional=True,
     )
     def sync_summary_table(
         selected_models: list[str] | None,
@@ -506,6 +507,7 @@ def register_category_table_callbacks(
                 current_columns, thresholds, show_normalized
             )
             tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
+
             return (
                 filtered_rows,
                 style,
@@ -530,6 +532,7 @@ def register_category_table_callbacks(
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
+            optional=True,
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
@@ -589,6 +592,7 @@ def register_category_table_callbacks(
             Input("app-location", "pathname"),
             Input("cmap-store", "data"),
             prevent_initial_call="initial_duplicate",
+            optional=True,
         )
         def sync_table_from_computed_store(
             computed_store: list[dict] | None,
@@ -796,6 +800,7 @@ def register_weight_callbacks(
         Input(f"{table_id}-reset-button", "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
+        optional=True,
     )
     def store_input_value(
         input_weight: float | None,
@@ -839,6 +844,7 @@ def register_weight_callbacks(
         Input(f"{table_id}-weight-store", "data"),
         Input("app-location", "pathname"),
         prevent_initial_call="initial_duplicate",
+        optional=True,
     )
     def sync_inputs(stored_weights: dict[str, float], _pathname: str) -> float:
         """
@@ -893,6 +899,7 @@ def register_normalization_callbacks(
             Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
             State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
+            optional=True,
         )
         def store_threshold_values(
             good_val, bad_val, n_clicks, stored_thresholds, metric=metric
@@ -976,6 +983,7 @@ def register_normalization_callbacks(
             *threshold_style_outputs,
             Input("cmap-store", "data"),
             prevent_initial_call=False,
+            optional=True,
         )
         def sync_threshold_input_styles(
             cmap_name: str | None,
@@ -1061,6 +1069,7 @@ def register_normalization_callbacks(
             Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
+            optional=True,
         )
         def sync_threshold_inputs(thresholds, metric=metric):
             """Sync threshold input values with stored thresholds."""
@@ -1112,6 +1121,7 @@ def register_image_download_callbacks() -> None:
         State({"type": "image-download-format", "index": MATCH}, "value"),
         State({"type": "image-download-target", "index": MATCH}, "data"),
         prevent_initial_call=True,
+        optional=True,
     )
     def _download_image(n_clicks, fmt, uris):
         """
@@ -1169,6 +1179,7 @@ def register_download_callbacks(table_id: str) -> None:
         State(table_id, "data"),
         State(table_id, "columns"),
         prevent_initial_call=True,
+        optional=True,
     )
     def download_table(
         n_clicks: int,
@@ -1243,4 +1254,5 @@ def register_download_callbacks(table_id: str) -> None:
         Output(f"{table_id}-download", "data", allow_duplicate=True),
         Input(f"{table_id}-download-request", "data"),
         prevent_initial_call=True,
+        optional=True,
     )
