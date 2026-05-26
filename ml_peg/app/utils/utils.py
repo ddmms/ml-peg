@@ -11,6 +11,7 @@ from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
+import numpy as np
 import yaml
 
 from ml_peg.models import MODELS_ROOT
@@ -312,6 +313,29 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def clean_table_data(rows: list[dict]) -> list[dict]:
+    """
+    Ensure data does not exceed int limits.
+
+    Parameters
+    ----------
+    rows
+        List of table rows to clean.
+
+    Returns
+    -------
+    list[dict]
+        Cleaned table rows with values larger than int64 limits set to NaN.
+    """
+    for row in rows:
+        for key, value in row.items():
+            if isinstance(value, int | float) and (
+                value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
+            ):
+                row[key] = np.nan
+    return rows
 
 
 def filter_rows_by_models(
