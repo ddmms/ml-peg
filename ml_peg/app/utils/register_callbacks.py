@@ -744,32 +744,31 @@ def register_benchmark_to_category_callback(
 
         all_category_rows = []
 
-        for category, category_info in sorted(all_info.items()):
+        for _category, category_info in sorted(all_info.items()):
             category_weights = next(iterator)
-            category_rows = deepcopy(next(iterator))
+            current_rows = next(iterator)
+            new_rows = {row["MLIP"]: {"MLIP": row["MLIP"]} for row in current_rows}
 
-            for test_name, table_info in sorted(category_info.items()):
-                benchmark_rows = deepcopy(next(iterator))
+            for _test_name, table_info in sorted(category_info.items()):
+                benchmark_rows = next(iterator)
                 name_map = table_info["model_name_map"]
 
-                benchmark_scores = {}
+                benchmark_column = table_info["benchmark_column"]
                 for row in benchmark_rows:
                     display_name = row.get("MLIP")
                     original_name = name_map.get(display_name, display_name)
-                    score = row.get("Score")
-                    if display_name is None or original_name is None:
+                    if original_name is None:
                         continue
-                    benchmark_scores[original_name] = score
 
-                for row in category_rows:
-                    mlip = row.get("MLIP")
-                    if mlip in benchmark_scores:
-                        row[all_info[category][test_name]["benchmark_column"]] = (
-                            benchmark_scores[mlip]
-                        )
+                    if original_name in new_rows:
+                        new_rows[original_name][benchmark_column] = row.get("Score")
 
-            category_rows, _ = update_score_style(category_rows, category_weights)
-            all_category_rows.append(category_rows)
+            new_rows = list(new_rows.values())
+            new_rows, _ = update_score_style(new_rows, category_weights)
+            if new_rows == current_rows:
+                all_category_rows.append(no_update)
+            else:
+                all_category_rows.append(new_rows)
 
         return all_category_rows
 
