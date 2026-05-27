@@ -12,6 +12,7 @@ from dash import (
     ClientsideFunction,
     Input,
     Output,
+    Patch,
     State,
     callback,
     clientside_callback,
@@ -551,23 +552,15 @@ def register_category_table_callbacks(
 
             trigger_id = ctx.triggered_id
 
-            if trigger_id in ("app-location", "cmap-store"):
-                filtered_rows = filter_rows_by_models(source_data, selected_models)
-                style = (
-                    get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
-                    if filtered_rows
-                    else []
-                )
-                style, tooltip_data = apply_level_of_theory_warnings(
-                    filtered_rows,
-                    style,
-                    model_levels=model_levels,
-                    metric_levels=metric_levels,
-                    model_configs=model_configs,
-                )
-                return filtered_rows, style, tooltip_data, source_data
+            # Recompute scores only when weights changed
+            if trigger_id == f"{table_id}-weight-store":
+                scored_rows, _ = update_score_style(source_data, stored_weights)
+                updated_store = scored_rows
 
-            scored_rows, _ = update_score_style(source_data, stored_weights)
+            else:
+                scored_rows = source_data
+                updated_store = no_update
+
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
             style = (
                 get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
@@ -581,7 +574,26 @@ def register_category_table_callbacks(
                 metric_levels=metric_levels,
                 model_configs=model_configs,
             )
-            return filtered_rows, style, tooltip_data, scored_rows
+
+            if not table_data or len(filtered_rows) != len(table_data):
+                return filtered_rows, style, tooltip_data, scored_rows
+
+            patch = Patch()
+            rows_changed = False
+
+            for row_index, (old_row, new_row) in enumerate(
+                zip(table_data, filtered_rows, strict=True)
+            ):
+                for key, new_value in new_row.items():
+                    if old_row.get(key) != new_value:
+                        patch[row_index][key] = new_value
+                        rows_changed = True
+
+            # No visual change
+            if not rows_changed:
+                return no_update, style, tooltip_data, updated_store
+
+            return patch, style, tooltip_data, updated_store
 
         @callback(
             Output(table_id, "data", allow_duplicate=True),
