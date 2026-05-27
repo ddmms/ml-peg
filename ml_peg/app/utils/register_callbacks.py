@@ -205,7 +205,6 @@ def register_summary_table_callbacks(
         Output("summary-table", "tooltip_data", allow_duplicate=True),
         Input("selected-models-store", "data"),
         Input("summary-table-computed-store", "data"),
-        Input("app-location", "pathname"),
         Input("cmap-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
@@ -213,7 +212,6 @@ def register_summary_table_callbacks(
     def sync_summary_table(
         selected_models: list[str] | None,
         computed_store: list[dict] | None,
-        _pathname: str,
         cmap_name: str | None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
@@ -225,9 +223,6 @@ def register_summary_table_callbacks(
             Models currently selected in the global model filter.
         computed_store
             Cached full summary rows for the overall summary table.
-        _pathname
-            Current pathname. Included so the visible table refreshes when the
-            summary page is opened.
         cmap_name
             Matplotlib colormap name from the cmap store.
 
@@ -373,7 +368,6 @@ def register_category_table_callbacks(
             Output(f"{table_id}-raw-data-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
-            Input("app-location", "pathname"),
             Input(f"{table_id}-normalized-toggle", "value"),
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
@@ -387,7 +381,6 @@ def register_category_table_callbacks(
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
-            _pathname: str,
             toggle_value: list[str] | None,
             selected_models: list[str] | None,
             cmap_name: str | None,
@@ -413,8 +406,6 @@ def register_category_table_callbacks(
                 Stored weights dictionary for table metrics.
             stored_threshold
                 Stored thresholds dictionary for table metric thresholds.
-            _pathname
-                Current URL path. Unused, required to trigger on path change.
             toggle_value
                 Value of toggle to show normalised values.
             selected_models
@@ -434,8 +425,7 @@ def register_category_table_callbacks(
             # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
-                trigger_id
-                in ("app-location", f"{table_id}-normalized-toggle", "cmap-store")
+                trigger_id in (f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
                 display_rows = get_scores(
@@ -528,7 +518,6 @@ def register_category_table_callbacks(
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
             Input("selected-models-store", "data"),
-            Input("app-location", "pathname"),
             Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
@@ -538,7 +527,6 @@ def register_category_table_callbacks(
         def update_table_scores(
             stored_weights: dict[str, float] | None,
             selected_models: list[str] | None,
-            _pathname: str,
             cmap_name: str | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
@@ -601,7 +589,6 @@ def register_category_table_callbacks(
             Output(table_id, "tooltip_data", allow_duplicate=True),
             Input(f"{table_id}-computed-store", "data"),
             Input("selected-models-store", "data"),
-            Input("app-location", "pathname"),
             Input("cmap-store", "data"),
             prevent_initial_call="initial_duplicate",
             optional=True,
@@ -609,7 +596,6 @@ def register_category_table_callbacks(
         def sync_table_from_computed_store(
             computed_store: list[dict] | None,
             selected_models: list[str] | None,
-            _pathname: str,
             cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
             """
@@ -621,9 +607,6 @@ def register_category_table_callbacks(
                 Cached unfiltered rows for the category summary.
             selected_models
                 Currently selected model names.
-            _pathname
-                Current pathname. Unused, required so the callback hydrates when the
-                category page is mounted.
 
             Returns
             -------
@@ -853,11 +836,10 @@ def register_weight_callbacks(
     @callback(
         Output(f"{input_id}-input", "value"),
         Input(f"{table_id}-weight-store", "data"),
-        Input("app-location", "pathname"),
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float], _pathname: str) -> float:
+    def sync_inputs(stored_weights: dict[str, float]) -> float:
         """
         Sync weight values between the text input and Store.
 
@@ -865,9 +847,6 @@ def register_weight_callbacks(
         ----------
         stored_weights
             Stored weight values for each column.
-        _pathname
-            Current pathname. Variable unused, but required as input to trigger on
-            path change.
 
         Returns
         -------
@@ -1081,12 +1060,10 @@ def register_normalization_callbacks(
             Output(f"{table_id}-{metric}-good-threshold", "value"),
             Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
-            Input("app-location", "pathname"),
-            # prevent_initial_call=True,
             optional=True,
         )
         def sync_threshold_inputs(
-            thresholds: Thresholds | None, _pathname: str, metric: str = metric
+            thresholds: Thresholds | None, metric: str = metric
         ) -> tuple[float | None, float | None]:
             """
             Sync threshold input values with stored thresholds.
@@ -1095,9 +1072,6 @@ def register_normalization_callbacks(
             ----------
             thresholds
                 Stored threshold values.
-            _pathname
-                Current pathname. Variable unused, but required as input to trigger on
-                path change.
             metric
                 Metric name corresponding to the threshold inputs.
             """
