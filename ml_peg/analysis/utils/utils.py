@@ -386,7 +386,7 @@ def calc_metric_scores(
     normalizer = normalizer if normalizer is not None else normalize_metric
     cleaned_thresholds = clean_thresholds(thresholds) if thresholds else None
 
-    if cleaned_thresholds is None:
+    if cleaned_thresholds is None or not metrics_data:
         return metrics_data
 
     metric_columns = [
@@ -457,6 +457,9 @@ def calc_table_scores(
     weights = weights if weights else {}
 
     metrics_scores = calc_metric_scores(metrics_data, thresholds, normalizer)
+
+    if not metrics_data:
+        return metrics_data if not return_scores else (metrics_data, metrics_scores)
 
     metric_columns = [
         key for key in metrics_data[0] if key not in {"MLIP", "Score", "id"}
