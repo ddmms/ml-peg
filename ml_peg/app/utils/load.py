@@ -205,9 +205,6 @@ def rebuild_table(
             }
         ],
         sort_action="native",
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
         fill_width=False,
     )
 
