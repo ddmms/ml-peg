@@ -48,6 +48,8 @@ def relaxed_structs() -> dict[str, Atoms]:
                 struct_name = f"{compound}_{state}.xyz"
                 struct = read(structure_dir / struct_name)
                 struct.calc = calc.get_calculator()
+                struct.info.setdefault("charge", 0)
+                struct.info.setdefault("spin", 1)
 
                 geomopt = GeomOpt(
                     struct=struct,
