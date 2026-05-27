@@ -851,28 +851,11 @@ def build_test_layout(
         ]
     )
 
-    # dcc.Store renders no HTML, so its position here doesn't affect layout.
-    # Placed before the table so the table and controls can share one wrapper below.
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-computed-store",
-            storage_type="session",
-            data=table.data,
-        )
-    )
-
     reserved = {"MLIP", "Score", "id"}
     metric_columns = [
         col["id"] for col in table.columns if col.get("id") not in reserved
     ]
 
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-raw-data-store",
-            storage_type="session",
-            data=table.data,
-        )
-    )
     layout_contents.append(
         Store(
             id=f"{table.id}-raw-tooltip-store",
