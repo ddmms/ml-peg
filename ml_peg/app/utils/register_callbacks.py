@@ -736,36 +736,73 @@ def register_benchmark_to_category_callback(
         """
         # Rebuild inputs for each category
         iterator = iter(args)
-
-        all_category_rows = []
+        patched_outputs = []
 
         for _category, category_info in sorted(all_info.items()):
             category_weights = next(iterator)
             current_rows = next(iterator)
-            new_rows = {row["MLIP"]: {"MLIP": row["MLIP"]} for row in current_rows}
+
+            updated_rows = []
+            for row in current_rows:
+                updated_row = row.copy()
+                updated_rows.append(updated_row)
+
+            updated_by_mlip = {row["MLIP"]: row for row in updated_rows}
+
+            benchmark_changed = False
 
             for _test_name, table_info in sorted(category_info.items()):
                 benchmark_rows = next(iterator)
-                name_map = table_info["model_name_map"]
 
+                name_map = table_info["model_name_map"]
                 benchmark_column = table_info["benchmark_column"]
+
                 for row in benchmark_rows:
                     display_name = row.get("MLIP")
                     original_name = name_map.get(display_name, display_name)
-                    if original_name is None:
+                    if original_name not in updated_by_mlip:
                         continue
 
-                    if original_name in new_rows:
-                        new_rows[original_name][benchmark_column] = row.get("Score")
+                    new_score = row.get("Score")
+                    target_row = updated_by_mlip[original_name]
 
-            new_rows = list(new_rows.values())
-            new_rows, _ = update_score_style(new_rows, category_weights)
-            if new_rows == current_rows:
-                all_category_rows.append(no_update)
+                    if target_row.get(benchmark_column) != new_score:
+                        target_row[benchmark_column] = new_score
+                        benchmark_changed = True
+
+            if not benchmark_changed:
+                patched_outputs.append(no_update)
+                continue
+
+            # Recompute overall category scores using existing utility
+            rescored_rows, _ = update_score_style(updated_rows, category_weights)
+
+            patch = Patch()
+            score_changed = False
+
+            for idx, (old_row, new_row) in enumerate(
+                zip(current_rows, rescored_rows, strict=True)
+            ):
+                # Patch benchmark columns
+                for key, value in new_row.items():
+                    if key in {"MLIP", "Score"}:
+                        continue
+
+                    if old_row.get(key) != value:
+                        patch[idx][key] = value
+                        score_changed = True
+
+                # Patch overall score
+                if old_row.get("Score") != new_row.get("Score"):
+                    patch[idx]["Score"] = new_row.get("Score")
+                    score_changed = True
+
+            if score_changed:
+                patched_outputs.append(patch)
             else:
-                all_category_rows.append(new_rows)
+                patched_outputs.append(no_update)
 
-        return all_category_rows
+        return patched_outputs
 
 
 def register_weight_callbacks(
