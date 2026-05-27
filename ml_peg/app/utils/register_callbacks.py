@@ -814,7 +814,7 @@ def register_weight_callbacks(
         input_weight
             Weight value from input box.
         n_clicks
-            Number of clicks. Variable unused, but Input is required to reset weights.
+            Number of clicks.
         stored_weights
             Stored weights dictionary.
 
@@ -829,7 +829,7 @@ def register_weight_callbacks(
             if input_weight is None:
                 raise PreventUpdate
             stored_weights[column] = input_weight
-        elif trigger_id == f"{table_id}-reset-button":
+        elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
             stored_weights.update(
                 (key, default_weights.get(key, 1.0)) for key in stored_weights
             )
@@ -909,6 +909,8 @@ def register_normalization_callbacks(
 
             # Reset to defaults is specified via reset button
             if trigger_id == f"{table_id}-reset-thresholds-button":
+                if not n_clicks:
+                    raise PreventUpdate
                 if cleaned_defaults:
                     return deepcopy(cleaned_defaults)
                 return cleaned_store
@@ -1067,11 +1069,26 @@ def register_normalization_callbacks(
             Output(f"{table_id}-{metric}-good-threshold", "value"),
             Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
-            prevent_initial_call=True,
+            Input("app-location", "pathname"),
+            # prevent_initial_call=True,
             optional=True,
         )
-        def sync_threshold_inputs(thresholds, metric=metric):
-            """Sync threshold input values with stored thresholds."""
+        def sync_threshold_inputs(
+            thresholds: Thresholds | None, _pathname: str, metric: str = metric
+        ) -> tuple[float | None, float | None]:
+            """
+            Sync threshold input values with stored thresholds.
+
+            Parameters
+            ----------
+            thresholds
+                Stored threshold values.
+            _pathname
+                Current pathname. Variable unused, but required as input to trigger on
+                path change.
+            metric
+                Metric name corresponding to the threshold inputs.
+            """
             cleaned_thresholds = clean_thresholds(thresholds)
             if cleaned_thresholds and metric in cleaned_thresholds:
                 entry = cleaned_thresholds[metric]
