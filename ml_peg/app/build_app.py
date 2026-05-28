@@ -342,6 +342,7 @@ def build_sidebar(
 def get_all_tests(
     category: str = "*",
 ) -> tuple[
+    dict[str, dict[str, Dash]],
     dict[str, dict[str, list[Div]]],
     dict[str, dict[str, DataTable]],
     dict[str, dict[str, str]],
@@ -357,12 +358,13 @@ def get_all_tests(
     Returns
     -------
     tuple
-        Layouts, tables, and framework IDs for all categories.
+        Apps by test name, and layouts, tables, and framework IDs for all categories.
     """
     # Find Python files e.g. app_OC157.py in mlip_tesing.app module.
     # We will get the category from the parent's parent directory
     # E.g. ml_peg/app/surfaces/OC157/app_OC157.py -> surfaces
     tests = APP_ROOT.glob(f"{category}/*/app*.py")
+    apps = {}
     layouts = {}
     tables = {}
     frameworks = {}
@@ -377,15 +379,18 @@ def get_all_tests(
                 f"ml_peg.app.{category_name}.{test_name}.app_{test_name}"
             )
             test_app = test_module.get_app()
+            apps[test_name] = test_app
 
             # Get layouts and tables for each category/test
             if category_name not in layouts:
                 layouts[category_name] = {}
                 tables[category_name] = {}
                 frameworks[category_name] = {}
+
             layouts[category_name][test_app.name] = test_app.layout
             tables[category_name][test_app.name] = test_app.table
             frameworks[category_name][test_app.name] = test_app.framework_id
+
         except FileNotFoundError as err:
             warnings.warn(
                 f"Unable to load layout for {test_name} in {category_name} category. "
@@ -405,7 +410,7 @@ def get_all_tests(
             )
             continue
 
-    return layouts, tables, frameworks
+    return apps, layouts, tables, frameworks
 
 
 def build_category(
@@ -439,6 +444,7 @@ def build_category(
     category_views = {}
     category_tables = {}
     category_weights = {}
+    category_to_title = {}
     framework_ids: set[str] = set()
 
     # `category` corresponds to the category's directory name
@@ -458,6 +464,8 @@ def build_category(
             category_weight = 1
             benchmark_weights = {}
 
+        category_to_title[category] = category_title
+
         # Build category summary table
         summary_table = build_summary_table(
             dict(sorted(all_tables[category].items())),
@@ -475,7 +483,6 @@ def build_category(
         weight_components = build_weight_components(
             header="Weights",
             table=summary_table,
-            include_store=False,
             include_download_controls=False,
             column_widths=getattr(summary_table, "column_widths", None),
         )
@@ -500,15 +507,9 @@ def build_category(
             "tests": test_entries,
         }
 
-        # Register benchmark table -> category table callbacks
-        # Category summary table columns add "Score" to name for clarity
-        for test_name, benchmark_table in all_tables[category].items():
-            register_benchmark_to_category_callback(
-                benchmark_table_id=benchmark_table.id,
-                category_table_id=f"{category_title}-summary-table",
-                benchmark_column=test_name + " Score",
-                model_name_map=getattr(benchmark_table, "model_name_map", None),
-            )
+    # Register callback for all benchmark tables -> category table
+    # Category summary table columns add "Score" to name for clarity
+    register_benchmark_to_category_callback(all_tables, category_to_title)
 
     return category_views, category_tables, category_weights, framework_ids
 
@@ -814,9 +815,6 @@ def build_summary_table(
         tooltip_data=tooltip_rows,
         tooltip_delay=100,
         tooltip_duration=None,
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
         tooltip_header=tooltip_header,
         editable=False,
         fill_width=False,
@@ -836,6 +834,7 @@ def build_nav(
     framework_views: dict[str, dict[str, object]],
     summary_table: DataTable,
     weight_components: Div,
+    all_apps: dict[str, Dash],
 ) -> None:
     """
     Build page layouts and sidebar navigation.
@@ -852,6 +851,8 @@ def build_nav(
         Summary table with score from each category.
     weight_components
         Weight sliders, text boxes and reset button.
+    all_apps
+        Dictionary of all test apps.
     """
     category_paths = {
         category_name: _category_to_path(category_name)
@@ -977,6 +978,11 @@ def build_nav(
                 ),
             ]
         )
+
+    test_state_stores = []
+    for app in all_apps.values():
+        test_state_stores.extend(app.stores)
+
     global_state_stores = [
         Store(
             id="summary-table-weight-store",
@@ -985,6 +991,7 @@ def build_nav(
         ),
         Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
+        *test_state_stores,
     ]
 
     full_layout = [
@@ -1261,7 +1268,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         Category to build app for. Default is `*`, corresponding to all categories.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_layouts, all_tables, all_frameworks = get_all_tests(category=category)
+    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(category=category)
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
@@ -1278,7 +1285,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     weight_components = build_weight_components(
         header="Weights",
         table=summary_table,
-        include_store=False,
         include_download_controls=False,
         column_widths=summary_table.column_widths,
     )
@@ -1289,5 +1295,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         framework_views,
         summary_table,
         weight_components,
+        all_apps,
     )
     register_onboarding_callbacks()

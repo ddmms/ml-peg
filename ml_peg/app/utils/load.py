@@ -15,6 +15,7 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
+    clean_table_data,
     clean_thresholds,
     clean_weights,
     is_numeric_column,
@@ -53,6 +54,8 @@ def rebuild_table(
         table_json = json.load(f)
 
     data = table_json["data"]
+    data = clean_table_data(data)
+
     columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -202,9 +205,6 @@ def rebuild_table(
             }
         ],
         sort_action="native",
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
         fill_width=False,
     )
 
