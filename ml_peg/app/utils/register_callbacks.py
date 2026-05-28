@@ -658,19 +658,26 @@ def register_category_table_callbacks(
         """
         # Only category summary tables should write to the global store
         if not table_id.endswith("-summary-table"):
-            return scores_data
+            raise PreventUpdate
 
         if not computed_rows:
-            return scores_data
+            raise PreventUpdate
 
-        if not scores_data:
-            scores_data = {}
-        # Update scores store. Category table IDs are of form "[category]-summary-table"
-        # Table headings are of the form "[category] Score"
-        scores_data[table_id.removesuffix("-summary-table") + " Score"] = {
+        # Category table IDs are of form "[category]-summary-table"
+        category_key = table_id.removesuffix("-summary-table") + " Score"
+
+        new_scores = {
             row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
         }
-        return scores_data
+        current_scores = (scores_data or {}).get(category_key)
+
+        if current_scores == new_scores:
+            return no_update
+
+        patch = Patch()
+        patch[category_key] = new_scores
+
+        return patch
 
 
 def register_benchmark_to_category_callback(
