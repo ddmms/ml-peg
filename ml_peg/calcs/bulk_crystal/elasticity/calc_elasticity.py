@@ -289,7 +289,7 @@ def run_elasticity_benchmark(
 
     # Save relaxed structures to extxyz for visualisation
     atoms_list = []
-    for _, row in results.iterrows():
+    for row in results.to_dict("records"):
         struct = row.get("final_structure")
         if not isinstance(struct, Structure):
             continue
