@@ -12,21 +12,14 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Volume-Scans"
+# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/battery_electrolyte.html#volume_scans"
 DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
-REF_PATH = (
-    download_s3_data(
-        key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
-        filename="volume_scans.zip",
-    )
-    / "volume_scans"
-)
 
 
 class VolumeScansApp(BaseApp):
@@ -49,7 +42,7 @@ class VolumeScansApp(BaseApp):
         }
 
         # Assets dir will be parent directory
-        assets_dir = APP_ROOT / "data/assets/battery_electrolyte/volume_scans"
+        assets_dir = "assets/battery_electrolyte/volume_scans"
         structs = {
             model: {
                 "Solvent": f"{assets_dir}/{model}/solvent_VS_{model}_D3.extxyz",
