@@ -73,36 +73,6 @@ class LiDiffusionApp(BaseApp):
             self.elements = set()
             warnings.warn("Unable to read elements lists.", stacklevel=2)
 
-    def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
-        """
-        Apply elements filter to data.
-
-        Parameters
-        ----------
-        filter_elements
-            List of elements to filter out of data.
-
-        Returns
-        -------
-        dict[str, dict]
-            Metric names and values for all models.
-        """
-        filter_elements = set(filter_elements) if filter_elements else set()
-
-        # Get overlap of deselected elements with each system's elements
-        if bool(self.elements & filter_elements):
-            for row in self.table.data:
-                row["Path B error"] = None
-                row["Path C error"] = None
-        else:
-            for current_row, original_row in zip(
-                self.table.data, self.original_table.data, strict=True
-            ):
-                current_row["Path B error"] = original_row["Path B error"]
-                current_row["Path C error"] = original_row["Path C error"]
-
-        return self.table.data
-
 
 def get_app() -> LiDiffusionApp:
     """

@@ -81,6 +81,9 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        self.metrics = [
+            col for col in self.table.columns if col not in ("MLIP", "Score", "id")
+        ]
         self.original_table = deepcopy(self.table)
         self.layout = self.build_layout()
         if info_path:
@@ -134,7 +137,7 @@ class BaseApp(ABC):
         """Register callbacks with app."""
         pass
 
-    def filter_table(self, filter_elements: list[str] | None) -> None:
+    def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
         """
         Filter data by elements.
 
@@ -148,7 +151,24 @@ class BaseApp(ABC):
         dict[str, dict]
             Updated benchmark table.
         """
-        print(f"No filter_data method defined for {self.name}, skipping.")
+        if self.elements is None:
+            warnings.warn("No elements info available, skipping filter.", stacklevel=2)
+            return self.table.data
+
+        filter_elements = set(filter_elements) if filter_elements else set()
+
+        # Get overlap of deselected elements with each system's elements
+        if bool(self.elements & filter_elements):
+            for row in self.table.data:
+                for metric in self.metrics:
+                    row[metric] = None
+        else:
+            for current_row, original_row in zip(
+                self.table.data, self.original_table.data, strict=True
+            ):
+                for metric in self.metrics:
+                    current_row[metric] = original_row[metric]
+
         return self.table.data
 
     @property
