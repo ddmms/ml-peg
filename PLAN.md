@@ -171,7 +171,7 @@ Important current limitations:
 - Analysis artifacts have been generated for `mace-mp-small` under `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/`, including formation-energy, volume, lattice-constant, and beta-angle parity plots.
 - The app module expects `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/` artifacts from the analysis stage before it can render plots and structures; this path is now populated for `mace-mp-small`.
 - Validation now includes the real `mace-mp-small` ML model calculation, analysis artifact generation, and a live Dash app smoke against generated artifacts.
-- The ML-PEG app CLI and shared analysis table builder were fixed so model selection is applied consistently for app and table generation.
+- Changes to `ml_peg/cli/cli.py` and `ml_peg/analysis/utils/decorators.py` that were introduced during development (fixing `--models` propagation and `build_table` model filtering) were reverted at PR review request; they touched pre-existing code outside the benchmark scope and the new benchmark does not require them.
 
 ## Goal
 
