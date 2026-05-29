@@ -133,12 +133,11 @@ def run_dash_app(
     debug
         Whether to run with Dash debugging. Default is `True`.
     """
-    import ml_peg.models as ml_peg_models
+    from ml_peg.models import models as ml_peg_models
 
     # Overwrite current_models before it is imported elsewhere
     ml_peg_models.current_models = models
-    if models_file:
-        ml_peg_models.models_file = models_file
+    ml_peg_models.models_file = models_file
 
     from ml_peg.app.run_app import run_app
 
