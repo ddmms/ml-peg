@@ -292,7 +292,7 @@ def test_si_defects(metrics: dict[str, dict]) -> None:
         Benchmark metrics table.
     """
     write_struct_info(
-        data_path=CALC_PATH / "mock" / "li_diffusion_b-neb-band.extxyz",
+        data_path=list(CALC_PATH.glob("mock/*/si_defects.extxyz")),
         out_path=OUT_PATH,
         index=0,
     )
