@@ -62,6 +62,22 @@ class AlZnCuMgRegressionApp(BaseApp):
                 DATA_PATH / "figure_elastic_constants.json",
                 f"{BENCHMARK_NAME}-figure",
             ),
+            "Surface Energy MAE": (
+                DATA_PATH / "figure_surface_energies.json",
+                f"{BENCHMARK_NAME}-fault-figure",
+            ),
+            "Stacking Fault Energy MAE": (
+                DATA_PATH / "figure_stacking_fault_energies.json",
+                f"{BENCHMARK_NAME}-fault-figure",
+            ),
+            "GSF Energy MAE": (
+                DATA_PATH / "figure_gsf_energies.json",
+                f"{BENCHMARK_NAME}-fault-figure",
+            ),
+            "Solute-Stacking Fault MAE": (
+                DATA_PATH / "figure_solute_stacking_faults.json",
+                f"{BENCHMARK_NAME}-fault-figure",
+            ),
         }
         for column_name, plot_spec in optional_plots.items():
             plot_path, plot_id = plot_spec
@@ -110,9 +126,9 @@ def get_app() -> AlZnCuMgRegressionApp:
     return AlZnCuMgRegressionApp(
         name=BENCHMARK_NAME,
         description=(
-            "Bulk formation-energy, volume, lattice, optional solute-solute, and "
-            "optional elastic-moduli errors for the first staged Al-Cu-Mg-Zn "
-            "structure slice."
+            "Bulk formation-energy, volume, lattice, solute-solute, elastic, "
+            "surface, stacking-fault, and generalized stacking-fault errors for "
+            "the staged Al-Cu-Mg-Zn structure slice."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "alzncumg_regression_metrics_table.json",

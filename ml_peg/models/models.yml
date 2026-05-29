@@ -10,7 +10,7 @@ mace-mp-0a:
 mace-mp-small:
   module: mace.calculators
   class_name: mace_mp
-  device: "auto"
+  device: "cuda"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:

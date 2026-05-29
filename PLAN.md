@@ -4,7 +4,7 @@
 
 - Working branch: `add-alzncumg-metallurgy-tests`
 - Branch scope: full Al-Zn-Cu-Mg metallurgy regression test-port work, not only the first smoke run.
-- Latest checkpoint: first bulk and precipitate slice, generated `mace-mp-small` calc/analysis/app artifacts, lattice-constant/beta-angle metrics, real `mace-mp-small` finite-strain elastic metrics, real `mace-mp-small` relaxed solute-solute binding metrics, app validation, model-selection wiring fixes, benchmark-specific data/artifact ignore exceptions, and focused helper tests are saved on this branch.
+- Latest checkpoint: first bulk and precipitate slice, generated `mace-mp-small` calc/analysis/app artifacts, lattice-constant/beta-angle metrics, real `mace-mp-small` finite-strain elastic metrics, real `mace-mp-small` legacy surface/stacking-fault/GSF/Solute-SF metrics, app validation, model-selection wiring fixes, benchmark-specific data/artifact ignore exceptions, and focused helper tests are saved on this branch. A follow-up parity audit found that bulk, elastic, surface/fault, mapped GSF, and Solute-SF outputs match the legacy evalpot `mace-mp-small` JSON to floating-point roundoff, but Solute-Solute does not yet match evalpot exactly and is now the handoff blocker.
 - `uv.lock` is intentionally kept with this branch checkpoint after installing/running the MACE extra for validation.
 
 ## Agent Handoff Notes
@@ -20,6 +20,15 @@ Current working tree expectations:
    - `NOTINOQMD_00001`, `NOTINOQMD_00001.json`
    - `NOTINOQMD_00002`, `NOTINOQMD_00002.json`
 - New untracked generated precipitate `.xyz` files are expected in both `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/outputs/mace-mp-small/` and `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/mace-mp-small/`. The mock output directory also has new precipitate `.xyz` files because the ML-PEG calc command collected the mock parametrization too.
+- New untracked GSF layer input files are expected under `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/structures/special/`:
+   - `AIIDA_339739`
+   - `AIIDA_481617`
+- New untracked fault/surface/Solute-SF artifacts are expected:
+   - `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/outputs/mace-mp-small/fault_surface_properties.json`
+   - `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/figure_surface_energies.json`
+   - `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/figure_stacking_fault_energies.json`
+   - `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/figure_gsf_energies.json`
+   - `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/figure_solute_stacking_faults.json`
 - Do not remove the regenerated existing pure-element `.xyz` modifications unless deliberately reverting generated artifacts for the whole slice; they were rewritten during the successful precipitate calc/analyse run.
 - Do not revert `uv.lock`; it was intentionally kept with the MACE validation environment earlier on this branch.
 
@@ -31,19 +40,28 @@ Implementation details already handled:
 - The true DFT metric baseline is `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/references/DFT.json`; the per-structure JSON files provide OQMD metadata/provenance and auxiliary recorded OQMD values.
 - `.gitignore` has narrow exceptions for this benchmark's required JSON and `.xyz` artifacts. Keep those exceptions unless replacing in-repo artifacts with a download/S3 strategy.
 - Elastic-property calculation is now present as an opt-in `very_slow` pytest path in `calc_alzncumg_regression.py`. The real `mace-mp-small` run now writes `elastic_properties.json` with eight records containing `k_voigt`, `g_voigt`, and lower-triangular `C_ij` values.
-- Solute-solute binding calculation is now present as an opt-in `very_slow` pytest path in `calc_alzncumg_regression.py`. It builds legacy-style FCC Al/Cu matrix supercells, evaluates DFT-backed neighbor-shell pairs, and writes `solute_solute_bindings.json`. The real `mace-mp-small` run completed and wrote 12 interactions with 84 shell points.
+- Solute-solute binding calculation is present as an opt-in `very_slow` pytest path in `calc_alzncumg_regression.py`, but it is not yet evalpot-exact. Current output writes 12 interactions and 84 shell points, while the legacy evalpot `mace_mp_small_subset` JSON writes 7 shells for each `8100` pair and 7 shells for each `635950` pair. The current ML-PEG code also omits legacy `8100-SolSol_Zn_Vac` because the DFT metric baseline does not contain that key.
+- Solute-Solute parity audit result against `../evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json`: common-shell binding energies differ by up to about `0.44 meV`, common-shell distances differ by up to about `0.048 A`, and every mapped SolSol record has a length mismatch (`8100`: ML-PEG 8 vs evalpot 7; `635950`: ML-PEG 4 vs evalpot 7). By contrast, bulk, elastic, surface, stacking-fault, mapped GSF, and Solute-SF outputs matched evalpot to floating-point roundoff.
+- Likely Solute-Solute root causes to fix first: evalpot's `get_solsol_binding()` uses `max_index=8` with `for i in range(1, max_index)`, so it emits 7 neighbor shells; ML-PEG currently uses `neighbor_shell_indices(...)[1 : max_shells + 1]`, treating the cap as a count. Evalpot also builds pair structures from the already-relaxed single-solute structure before inserting the second solute, while ML-PEG builds each pair directly from the pure matrix. These differences are in `solute_solute_binding()`, `neighbor_shell_indices()`, `solute_structure()`, and `SOLUTE_SOLUTE_SPECS` in `calc_alzncumg_regression.py`; compare to `evalpot/evalpot/evaluator/_solutesolute_fcc.py` and the `compute_allsolsol_bindings(..., max_index=8)` calls in the copied legacy runner.
+- Immediate continuation for the next agent: make Solute-Solute protocol-compatible with evalpot first, preferably behind helper tests that assert evalpot-style shell slicing and pair construction order. Then regenerate only the real SolSol artifact with CUDA using `uv run pytest -vv ml_peg/calcs/alloy_metallurgy/alzncumg_regression/calc_alzncumg_regression.py::test_alzncumg_solute_solute --models mace-mp-small --run-very-slow --no-run-mock` from `ml-peg/`, rerun `uv run ml_peg analyse --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small`, and repeat the raw-output parity comparison against the evalpot JSON before trusting `Solute-Solute Binding MAE`.
+- Surface, stacking-fault, GSF, and Solute-SF calculation is now present as a normal pytest path in `calc_alzncumg_regression.py`. It writes `fault_surface_properties.json` with FCC/HCP surface records, FCC stable/unstable stacking-fault records, Theta/Theta double-prime GSF curves, and solute-stacking-fault layer interactions. Production follows the legacy relaxation protocols: FCC surfaces relax atoms at fixed cell, HCP surfaces are single-point as in evalpot, FCC stacking faults relax atoms/cell along z only, GSF curves pre-relax the base cell and relax constrained fault structures, and Solute-SF uses the relaxed clean/solute bulk/fault interaction-energy cycle. The real `mace-mp-small` run completed without mock-only fallback in about 3 minutes and wrote 20 surface records, 4 stacking-fault records, 2 GSF records with 20 total points, and 5 Solute-SF records with 20 total layer points.
 
-Validation already run after the precipitate expansion:
+Validation already run for the current checkpoint:
 
 ```shell
 uv run python -m compileall ml_peg/calcs/alloy_metallurgy/alzncumg_regression/calc_alzncumg_regression.py \
    ml_peg/analysis/alloy_metallurgy/alzncumg_regression/analyse_alzncumg_regression.py \
    ml_peg/app/alloy_metallurgy/alzncumg_regression/app_alzncumg_regression.py
-uv run ml_peg calc --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small
+uv run ml_peg calc --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small --no-run-mock
 uv run ml_peg analyse --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small
+uv run pytest ml_peg/calcs/alloy_metallurgy/alzncumg_regression/test_calc_alzncumg_regression_helpers.py \
+   ml_peg/analysis/alloy_metallurgy/alzncumg_regression/test_analyse_alzncumg_regression_helpers.py
 uv run ruff check ml_peg/calcs/alloy_metallurgy/alzncumg_regression/calc_alzncumg_regression.py \
+   ml_peg/calcs/alloy_metallurgy/alzncumg_regression/test_calc_alzncumg_regression_helpers.py \
    ml_peg/analysis/alloy_metallurgy/alzncumg_regression/analyse_alzncumg_regression.py \
+   ml_peg/analysis/alloy_metallurgy/alzncumg_regression/test_analyse_alzncumg_regression_helpers.py \
    ml_peg/app/alloy_metallurgy/alzncumg_regression/app_alzncumg_regression.py
+test -f ml_peg/app/data/alloy_metallurgy/alzncumg_regression/figure_solute_stacking_faults.json
 git diff --check
 ```
 
@@ -65,7 +83,7 @@ How to inspect the alloy outputs in the browser:
 - Wait until Dash finishes hydrating the page. The first snapshot may briefly show `Loading...`.
 - The URL slug comes from the app category title `Alloy Metallurgy`, so the category page is `/category/alloy-metallurgy`.
 - The category page shows a category summary table first, then the `Al-Zn-Cu-Mg regression` benchmark table.
-- Click a metric value or metric column in the benchmark table, for example `Formation Energy MAE`, `Volume MAE`, `Lattice Constant MAE`, or `Beta Angle MAE`. This replaces the `Click a table cell to view its data.` placeholder with the pre-generated Plotly parity plot.
+- Click a metric value or metric column in the benchmark table, for example `Formation Energy MAE`, `Volume MAE`, `Lattice Constant MAE`, `Beta Angle MAE`, `Surface Energy MAE`, `GSF Energy MAE`, or `Solute-Stacking Fault MAE`. This replaces the `Click a table cell to view its data.` placeholder with the pre-generated Plotly parity plot.
 - Click a point in the parity plot to populate the structure viewer below the plot. For this benchmark the viewer is a WEAS iframe loaded from the `.xyz` files copied by analysis into `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/<model>/`.
 - If the page is stale or the plot/table does not match recent code changes, stop the Dash process, rerun the `analyse` command, and restart the app. The browser is only reading JSON/assets from `ml_peg/app/data/...`; it does not recompute analysis.
 
@@ -73,7 +91,7 @@ Quick mental model for ML-PEG plotting in this benchmark:
 
 - Calculation writes raw model outputs under `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/outputs/<model>/`.
 - Analysis fixtures in `analyse_alzncumg_regression.py` read those outputs plus `data/references/DFT.json`.
-- `@plot_parity` writes Plotly JSON files such as `figure_formation_energy.json`, `figure_volume_peratom.json`, `figure_lattice_constants.json`, and `figure_beta_angle.json` under `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/`.
+- `@plot_parity` writes Plotly JSON files such as `figure_formation_energy.json`, `figure_volume_peratom.json`, `figure_lattice_constants.json`, `figure_beta_angle.json`, `figure_surface_energies.json`, `figure_gsf_energies.json`, and `figure_solute_stacking_faults.json` under `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/`.
 - `@build_table` writes `alzncumg_regression_metrics_table.json` in the same app-data directory.
 - `app_alzncumg_regression.py` calls `read_plot(...)` to turn those JSON files back into Dash `Graph` components, then `plot_from_table_column(...)` wires table clicks to the corresponding plot.
 - `struct_from_scatter(...)` wires plot-point clicks to structure visualization; the structure list order must match the point order used in the Plotly hover data.
@@ -81,17 +99,19 @@ Quick mental model for ML-PEG plotting in this benchmark:
 Observed validation facts:
 
 - `bulk_properties.json` for `mace-mp-small` contains eight records with the four pure elements plus `695020`, `10434`, `NOTINOQMD_00001`, and `NOTINOQMD_00002`.
+- `fault_surface_properties.json` for `mace-mp-small` contains 20 surface records, 4 stacking-fault records, 2 GSF curves with 20 total points, and 5 Solute-SF curves with 20 total layer points.
+- Raw-output parity against the legacy evalpot `mace_mp_small_subset` JSON is clean to floating-point roundoff for bulk, elastic, surface, stacking-fault, mapped GSF, and Solute-SF outputs. Solute-Solute is the exception and needs protocol fixes before the metric should be treated as legacy-compatible.
 - Both calc and app `mace-mp-small` structure directories contain eight `.xyz` files.
 - The four new precipitate metadata JSON files parse with `python -m json.tool` and now appear in `git status`.
-- VS Code diagnostics were clean for `PLAN.md`, `.gitignore`, and `calc_alzncumg_regression.py` after the last edits.
+- VS Code diagnostics were clean for the touched calc, analysis, app, metrics, docs, and plan files after the last edits.
 
 Recommended next task:
 
-Current continuation result: the real `mace-mp-small` opt-in solute-solute binding calculation completed after the elastic slice. The run writes 12 interaction records and 84 shell points, analysis adds `Solute-Solute Binding MAE`, and the app displays `figure_solute_solute_bindings.json` without stealing the existing structure click-through callback.
+Current continuation result: the surface, stacking-fault, GSF, and Solute-SF slice completed and now cross-checks cleanly against the legacy evalpot runner to floating-point roundoff. The Solute-Solute slice is the active handoff issue: it has real `mace-mp-small` outputs and app plumbing, but the raw values and shell counts are not evalpot-exact.
 
-1. Choose the next scientific expansion after bulk/elastic/solute plumbing: Theta/Theta'' GSF is now the best-aligned option. Keep interface energies deferred until the commented legacy bug in `compute_AllTests.py` is understood.
-2. Decide whether broader non-precipitate OQMD alloy structures should be sampled before or after the next precipitate-specific property family.
-3. Consider splitting the now-larger `calc_alzncumg_regression.py` into focused helper modules before adding another expensive property family.
+1. Fix Solute-Solute evalpot parity before starting a new property family. Match evalpot's shell slicing (`max_index=8` -> 7 emitted shells), pair construction from the relaxed single-solute structure, and legacy key coverage decisions (`Zn_Vac` exists in evalpot but not in the DFT metric baseline).
+2. Add or update helper tests around the Solute-Solute protocol so the next real CUDA run is not the first signal of the mismatch.
+3. After Solute-Solute parity is clean, choose the next scientific expansion: antisite or cluster/triplet tests are the best-aligned options. Keep interface energies deferred until the commented legacy bug in `compute_AllTests.py` is understood.
 
 ## TODO
 
@@ -115,8 +135,11 @@ Current continuation result: the real `mace-mp-small` opt-in solute-solute bindi
 | Done | Harden first-slice behavior | Added unit tests for helper functions, partial-calculation failures, missing-output analysis behavior, and mixed `OQMD_*`/`NOTINOQMD_*` identifiers. Fixed reference-energy discovery so failed structures are skipped. |
 | Done | Add first lattice metrics | Added lattice-constant and beta-angle parity plots and MAE table metrics using existing calc records and DFT reference values. |
 | Done | Add elastic metrics | Added a `very_slow` finite-strain elastic calc path plus analysis/app metrics for bulk modulus, shear modulus, and elastic constants. Generated real `mace-mp-small` elastic outputs and app artifacts. |
-| Done | Add solute-solute metrics | Added a `very_slow` FCC neighbor-shell solute binding calc path plus analysis/app metric plumbing. Mock and real `mace-mp-small` validation passed. |
-| Todo | Add remaining property families | Port surface, stacking fault, GSF, antisite, cluster, and triplet tests incrementally. |
+| Todo | Fix Solute-Solute evalpot parity | Existing `very_slow` calc and analysis/app plumbing works, but raw `mace-mp-small` SolSol output is not evalpot-exact: shell counts differ and common-shell values differ by up to about `0.44 meV`. |
+| Done | Add surface/fault/GSF metrics | Added legacy-compatible FCC/HCP surface, relaxed FCC stable/unstable stacking-fault, and relaxed Theta/Theta double-prime GSF calculations plus analysis/app metrics. |
+| Done | Add solute-stacking-fault metrics | Added relaxed Solute-SF layer interaction calculations plus analysis/app metrics. |
+| Done | Run full legacy subset via evalpot runner | Copied `compute_AllTests.py` to `evalpot/generic_regression/mace_mp_small_subset/`, wired to `mace-mp-small` + `float64`, ran all tests on the eight staged OQMD IDs. Output: `evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json`. Fixed NumPy 2.x compatibility break (`np.argwhere` → `np.flatnonzero`) in `get_solSF_structure`. |
+| Todo | Add remaining property families | Port antisite, cluster, triplet, and interface tests incrementally. |
 | Done | Validate app end-to-end | Ran the alloy app after analysis artifacts existed and verified table, plot switching, and structure click-through. |
 
 ## Current Implementation Snapshot
@@ -132,11 +155,17 @@ Implemented in this workspace:
 - Git ignore exceptions: required benchmark reference JSON, OQMD metadata JSON, calc outputs, and app data under the `alloy_metallurgy/alzncumg_regression` paths are explicitly unignored so newly staged precipitate metadata and generated structure assets are visible.
 - Lightweight smoke-test model: `mace-mp-small`, configured in `ml_peg/models/models.yml` as `mace.calculators.mace_mp(model="small")`
 - Elastic metrics: `test_alzncumg_elasticity` is marked `very_slow` and estimates elastic tensors from central finite differences of ASE stresses. Analysis reads `elastic_properties.json` when present and now includes `Bulk Modulus MAE`, `Shear Modulus MAE`, and `Elastic Constant MAE` for `mace-mp-small`.
-- Solute metrics: `test_alzncumg_solute_solute` is marked `very_slow` and ports the legacy FCC Al-matrix/Cu-matrix neighbor-shell binding energy cycle. Analysis reads `solute_solute_bindings.json` when present and adds `Solute-Solute Binding MAE` plus a parity plot.
+- Solute metrics: `test_alzncumg_solute_solute` is marked `very_slow` and has analysis/app plumbing for `Solute-Solute Binding MAE`, but the current calculation is not yet evalpot-protocol-exact. Treat generated `solute_solute_bindings.json` and the app Solute-Solute metric as provisional until the parity issue above is fixed and rerun.
+- Fault/surface metrics: `test_alzncumg_fault_surfaces` is a normal pytest path and ports legacy-compatible FCC/HCP surface energies, relaxed FCC stable/unstable stacking-fault energies, relaxed Theta/Theta double-prime GSF curves, and relaxed Solute-SF layer interaction energies. Analysis reads `fault_surface_properties.json` when present and adds `Surface Energy MAE`, `Stacking Fault Energy MAE`, `GSF Energy MAE`, and `Solute-Stacking Fault MAE` plus parity plots.
+- Legacy full-suite baseline run: `evalpot/generic_regression/mace_mp_small_subset/compute_AllTests.py` is a patched copy of the original `compute_AllTests.py` that runs all `run_tests()` sections against the eight staged OQMD IDs using `mace.calculators.mace_mp(model="small", default_dtype="float64", device=auto)`. The checkpoint (evalpot `Potential` JSON format) is at `evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json`. The MACE model loaded during this run was `~/.cache/mace/20231210mace128L0_energy_epoch249model` (Materials Project MACE-MP-0, small variant). This output is the legacy-format reference for cross-checking ML-PEG metric values and for porting antisite, cluster, triplet, and misfit-volume property families. To resume a partial run without recomputing completed keys, invoke without `--clobber`:
+  ```shell
+  cd evalpot && uv run python generic_regression/mace_mp_small_subset/compute_AllTests.py
+  ```
+  Patches applied to the copy relative to the original: `argparse`-based CLI, hardcoded eight-ID subset, `mace_mp` calculator replacing MatterSimCalculator, `result_dir` defaulting to `outputs/` beside the script, and `np.flatnonzero` replacing `np.argwhere` in `get_solSF_structure` for NumPy 2.x compatibility.
 
 Important current limitations:
 
-- The default calculation stage is still a single-point bulk-property slice. Elastic constants and solute-solute bindings are available through opt-in `very_slow` paths. Solute-solute binding follows the legacy relaxed-supercell comparison and has real `mace-mp-small` outputs for the staged Al/Cu matrix interaction set.
+- The default calculation stage now includes the single-point bulk-property slice plus legacy-compatible surface, stacking-fault, GSF, and Solute-SF calculations with their required production relaxations. Elastic constants and solute-solute bindings remain available through opt-in `very_slow` paths. Solute-solute binding has real `mace-mp-small` outputs for the staged Al/Cu matrix interaction set, but those outputs are not yet evalpot-exact and should be regenerated after the protocol fix.
 - The staged first slice now contains pure Al, Cu, Mg, and Zn endpoints plus the first legacy Al-Cu and Al-Cu-Mg precipitate bulk structures. It still does not cover the full generic OQMD alloy list.
 - Analysis artifacts have been generated for `mace-mp-small` under `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/`, including formation-energy, volume, lattice-constant, and beta-angle parity plots.
 - The app module expects `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/` artifacts from the analysis stage before it can render plots and structures; this path is now populated for `mace-mp-small`.
@@ -411,6 +440,11 @@ Completed cheap validation checks:
 - Real solute runtime validation: `uv run ml_peg calc --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small --run-very-slow --no-run-mock` passed all three alloy calc tests and wrote `solute_solute_bindings.json` for `mace-mp-small` with 12 interactions and 84 shell points.
 - Solute analysis regeneration: `uv run ml_peg analyse --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small` passed after real solute outputs existed and wrote `figure_solute_solute_bindings.json`. The app metrics table now includes `Solute-Solute Binding MAE` = 14.8393 meV.
 - Browser dashboard validation after solute regeneration: restarted `uv run ml_peg app --category alloy_metallurgy --models mace-mp-small --port 8055 --no-debug`, verified the dashboard table shows score 0.580 and all bulk/lattice/solute/elastic metrics, clicked solute/bulk/shear/elastic/formation metric cells to render the expected parity plots, and clicked a formation-energy point to populate the WEAS viewer for `OQMD_10434.xyz`. The browser console still reports transient Dash callback-ID warnings during hydration, but the page recovers and callbacks return HTTP 200.
+- Fault/surface helper validation: `uv run pytest ml_peg/calcs/alloy_metallurgy/alzncumg_regression/test_calc_alzncumg_regression_helpers.py ml_peg/analysis/alloy_metallurgy/alzncumg_regression/test_analyse_alzncumg_regression_helpers.py` passed after adding helper coverage for GSF zero-referencing, Solute-SF interaction cycles, and fault/surface analysis flattening.
+- Fault/surface runtime validation: `uv run ml_peg calc --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small --no-run-mock` passed the normal bulk and fault/surface calc tests with the real model and skipped only the opt-in `very_slow` elastic and solute tests. It wrote `fault_surface_properties.json` for `mace-mp-small` with 20 surface records, 4 stacking-fault records, 2 GSF records with 20 total GSF points, and 5 Solute-SF records with 20 layer points.
+- Fault/surface analysis regeneration: `uv run ml_peg analyse --category alloy_metallurgy --test alzncumg_regression --models mace-mp-small` passed and wrote `figure_surface_energies.json`, `figure_stacking_fault_energies.json`, `figure_gsf_energies.json`, and `figure_solute_stacking_faults.json`. The app metrics table now includes `Surface Energy MAE`, `Stacking Fault Energy MAE`, `GSF Energy MAE`, and `Solute-Stacking Fault MAE`.
+- Post-fault/surface code validation: compileall, ruff, and the focused helper pytest command passed on the touched calc, analysis, app, and helper-test files.
+- Evalpot raw-output parity audit: bulk, elastic, surface, stacking-fault, mapped GSF, and Solute-SF values match `evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json` to floating-point roundoff. Solute-Solute does not: shell counts differ and common-shell binding values differ by up to about `0.44 meV`, so the current Solute-Solute app metric is provisional.
 
 ## First Implementation Slice
 
@@ -422,7 +456,7 @@ Current first-slice target:
 4. Done: generated parity plots with structure click-through assets copied during analysis.
 5. Done: documentation entry and app category registration.
 
-This slice proves the ML-PEG data flow without immediately porting expensive GSF, antisite, surface, and cluster workflows. The next expansion should preserve the legacy emphasis on Al-Cu and Al-Cu-Mg precipitates by adding Theta/Theta'' GSF before revisiting the commented interface-energy path.
+This slice proves the ML-PEG data flow for bulk, elastic, surface, stacking-fault, GSF, and Solute-SF workflows without immediately porting antisite, cluster, triplet, and interface-energy workflows. Solute-Solute has working plumbing but still needs evalpot parity repair before it should count as completed scientific coverage.
 
 ## Open Questions
 
@@ -435,6 +469,6 @@ This slice proves the ML-PEG data flow without immediately porting expensive GSF
 
 ## Immediate Next Steps
 
-1. Port Theta/Theta'' GSF next. Keep interface energies deferred until the commented legacy bug is understood.
-2. Decide whether broader non-precipitate OQMD alloy structures should be sampled before or after the next precipitate-specific property family.
-3. Refactor the growing alloy calc/analysis modules into focused helpers before adding another large property family if the next slice touches more than one workflow.
+1. Fix Solute-Solute evalpot parity: match evalpot shell slicing, pair construction from the relaxed single-solute structure, and decide how to handle `Zn_Vac` given the mismatch between evalpot coverage and the DFT metric baseline.
+2. Add helper tests for the Solute-Solute protocol, then regenerate `solute_solute_bindings.json` with the real `mace-mp-small` very-slow path and rerun analysis.
+3. Repeat the raw-output parity comparison against `evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json`. Only after Solute-Solute is clean should the next property family, likely antisite or cluster/triplet, start.
