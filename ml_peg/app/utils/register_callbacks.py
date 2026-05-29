@@ -1324,7 +1324,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         )
 
     outputs = []
-    for entry in sorted(app_entries):
+    for entry in app_entries:
         app = entry["app"]
         outputs.extend(
             [
@@ -1334,7 +1334,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         )
 
     states = []
-    for entry in sorted(app_entries):
+    for entry in app_entries:
         states.extend([entry["weight_state"], entry["threshold_state"]])
 
     @callback(
@@ -1360,7 +1360,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         per_app_state = {}
         iterator = iter(args)
 
-        for entry in sorted(app_entries):
+        for entry in app_entries:
             app = entry["app"]
             per_app_state[app.table_id] = {
                 "weights": next(iterator),
@@ -1369,7 +1369,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
 
         results = []
 
-        for entry in sorted(app_entries):
+        for entry in app_entries:
             app = entry["app"]
             state = per_app_state[app.table_id]
             weights = state["weights"]
