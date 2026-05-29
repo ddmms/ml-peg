@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
+import json
 from pathlib import Path
+import warnings
 
 from dash.dcc import Store
 from dash.development.base_component import Component
@@ -33,6 +36,8 @@ class BaseApp(ABC):
     framework_id
         Framework identifier used for benchmark attribution tags. Default is
         `"ml_peg"`.
+    info_path
+        Path to json file containing additional info for filtering. Default is None.
     """
 
     def __init__(
@@ -43,6 +48,7 @@ class BaseApp(ABC):
         extra_components: list[Component],
         docs_url: str | None = None,
         framework_id: str = "ml_peg",
+        info_path: Path | None = None,
     ):
         """
         Initiaise class.
@@ -62,6 +68,8 @@ class BaseApp(ABC):
         framework_id
             Framework identifier used for benchmark attribution tags.
             Default is `"ml_peg"`.
+        info_path
+            Path to json file containing additional info for filtering. Default is None.
         """
         self.name = name
         self.description = description
@@ -73,7 +81,31 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        self.original_table = deepcopy(self.table)
         self.layout = self.build_layout()
+        if info_path:
+            self.load_info(info_path)
+        else:
+            self.info = None
+            warnings.warn("No info_path provided.", stacklevel=2)
+        if hasattr(self, "set_elements"):
+            self.set_elements()
+        else:
+            self.elements = None
+
+    def load_info(self, info_path: Path) -> None:
+        """
+        Load additional info for app.
+
+        Parameters
+        ----------
+        info_path
+            Path to json file containing additional info for filtering.
+        """
+        if not info_path.exists():
+            warnings.warn(f"{info_path} does not exist, skipping.", stacklevel=2)
+        with open(info_path) as f:
+            self.info = json.load(f)
 
     def build_layout(self) -> Div:
         """
@@ -101,6 +133,23 @@ class BaseApp(ABC):
     def register_callbacks(self):
         """Register callbacks with app."""
         pass
+
+    def filter_table(self, filter_elements: list[str] | None) -> None:
+        """
+        Filter data by elements.
+
+        Parameters
+        ----------
+        filter_elements
+            List of elements to filter out of data.
+
+        Returns
+        -------
+        dict[str, dict]
+            Updated benchmark table.
+        """
+        print(f"No filter_data method defined for {self.name}, skipping.")
+        return self.table.data
 
     @property
     def stores(self) -> list[Store]:
