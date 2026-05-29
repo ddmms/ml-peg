@@ -887,28 +887,37 @@ def get_struct_info(
     return info
 
 
-def write_struct_info(data_path: Path, out_path: Path, index: str = ":") -> None:
+def write_struct_info(
+    data_path: Path | list[Path], out_path: Path, index: str = ":"
+) -> None:
     """
     Write out element info on structures used in benchmark.
 
     Parameters
     ----------
     data_path
-        Path to calculation structure file.
+        Path to calculation structure file or list of paths.
     out_path
         Path to write out info.
     index
         Index to read from structure files. Default is ":".
     """
     elements = []
-    if not data_path.exists():
-        raise ValueError(f"{data_path} does not exist. Please run mock calculation.")
 
-    structs = read(data_path, index=index)
-    if isinstance(structs, Atoms):
-        structs = [structs]
-    for struct in structs:
-        elements.append(sorted(set(struct.get_chemical_symbols())))
+    if isinstance(data_path, Path):
+        data_path = [data_path]
+
+    for path in data_path:
+        if not path.exists():
+            raise ValueError(f"{path} does not exist. Please run mock calculation.")
+
+        structs = read(path, index=index)
+        if isinstance(structs, Atoms):
+            structs = [structs]
+        for struct in structs:
+            elements.append(sorted(set(struct.get_chemical_symbols())))
+
+    elements = sorted({e for sublist in elements for e in sublist})
 
     out_path.mkdir(parents=True, exist_ok=True)
     with (out_path / "info.json").open("w", encoding="utf8") as f:
