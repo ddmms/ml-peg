@@ -1,0 +1,451 @@
+{
+  "surfaces": [
+    {
+      "reference_key": "8100-SurfaceEnergy_111",
+      "structure_label": "8100",
+      "surface_label": "111",
+      "surface_energy": 644.6973547010463
+    },
+    {
+      "reference_key": "8100-SurfaceEnergy_100",
+      "structure_label": "8100",
+      "surface_label": "100",
+      "surface_energy": 818.2901098668519
+    },
+    {
+      "reference_key": "8100-SurfaceEnergy_110",
+      "structure_label": "8100",
+      "surface_label": "110",
+      "surface_energy": 867.8369135923139
+    },
+    {
+      "reference_key": "635950-SurfaceEnergy_111",
+      "structure_label": "635950",
+      "surface_label": "111",
+      "surface_energy": 1316.273523520709
+    },
+    {
+      "reference_key": "635950-SurfaceEnergy_100",
+      "structure_label": "635950",
+      "surface_label": "100",
+      "surface_energy": 1550.0451866152755
+    },
+    {
+      "reference_key": "635950-SurfaceEnergy_110",
+      "structure_label": "635950",
+      "surface_label": "110",
+      "surface_energy": 1647.4380780314946
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_0001",
+      "structure_label": "9226",
+      "surface_label": "0001",
+      "surface_direction": [
+        0,
+        0,
+        1
+      ],
+      "surface_energy": 582.4937866944722
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_10m10",
+      "structure_label": "9226",
+      "surface_label": "10m10",
+      "surface_direction": [
+        1,
+        0,
+        0
+      ],
+      "surface_energy": 625.6959528253524
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_11m20",
+      "structure_label": "9226",
+      "surface_label": "11m20",
+      "surface_direction": [
+        1,
+        1,
+        0
+      ],
+      "surface_energy": 725.1124672213093
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_1m101",
+      "structure_label": "9226",
+      "surface_label": "1m101",
+      "surface_direction": [
+        1,
+        0,
+        1
+      ],
+      "surface_energy": 845.5087144185943
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_10m12",
+      "structure_label": "9226",
+      "surface_label": "10m12",
+      "surface_direction": [
+        1,
+        0,
+        2
+      ],
+      "surface_energy": 697.5405121896707
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_11m21",
+      "structure_label": "9226",
+      "surface_label": "11m21",
+      "surface_direction": [
+        1,
+        1,
+        1
+      ],
+      "surface_energy": 757.1654684857282
+    },
+    {
+      "reference_key": "9226-SurfaceHCP_11m22",
+      "structure_label": "9226",
+      "surface_label": "11m22",
+      "surface_direction": [
+        1,
+        1,
+        2
+      ],
+      "surface_energy": 729.9293795835181
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_0001",
+      "structure_label": "122929",
+      "surface_label": "0001",
+      "surface_direction": [
+        0,
+        0,
+        1
+      ],
+      "surface_energy": 550.451218391978
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_10m10",
+      "structure_label": "122929",
+      "surface_label": "10m10",
+      "surface_direction": [
+        1,
+        0,
+        0
+      ],
+      "surface_energy": 581.8552557318001
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_11m20",
+      "structure_label": "122929",
+      "surface_label": "11m20",
+      "surface_direction": [
+        1,
+        1,
+        0
+      ],
+      "surface_energy": 671.5256631256548
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_1m101",
+      "structure_label": "122929",
+      "surface_label": "1m101",
+      "surface_direction": [
+        1,
+        0,
+        1
+      ],
+      "surface_energy": 757.4411605990215
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_10m12",
+      "structure_label": "122929",
+      "surface_label": "10m12",
+      "surface_direction": [
+        1,
+        0,
+        2
+      ],
+      "surface_energy": 655.4443253021637
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_11m21",
+      "structure_label": "122929",
+      "surface_label": "11m21",
+      "surface_direction": [
+        1,
+        1,
+        1
+      ],
+      "surface_energy": 704.5496822779685
+    },
+    {
+      "reference_key": "122929-SurfaceHCP_11m22",
+      "structure_label": "122929",
+      "surface_label": "11m22",
+      "surface_direction": [
+        1,
+        1,
+        2
+      ],
+      "surface_energy": 693.2412998269552
+    }
+  ],
+  "stacking_faults": [
+    {
+      "reference_key": "8100-StableSF",
+      "structure_label": "8100",
+      "fault_label": "StableSF",
+      "stacking_fault_energy": -7.662522101655831
+    },
+    {
+      "reference_key": "8100-UnStableSF",
+      "structure_label": "8100",
+      "fault_label": "UnStableSF",
+      "stacking_fault_energy": 61.047263049091626
+    },
+    {
+      "reference_key": "635950-StableSF",
+      "structure_label": "635950",
+      "fault_label": "StableSF",
+      "stacking_fault_energy": 15.379298799149108
+    },
+    {
+      "reference_key": "635950-UnStableSF",
+      "structure_label": "635950",
+      "fault_label": "UnStableSF",
+      "stacking_fault_energy": 137.30371841576562
+    }
+  ],
+  "gsf": [
+    {
+      "reference_key": "NOTINOQMD_00002-GSF_111",
+      "structure_label": "NOTINOQMD_00002",
+      "surface_label": "111",
+      "displacements": [
+        [
+          0.66666666,
+          0.91666666
+        ],
+        [
+          0.33333333,
+          0.83333333
+        ],
+        [
+          0.0,
+          0.75
+        ],
+        [
+          0.66666666,
+          0.66666666
+        ],
+        [
+          0.33333333,
+          0.58333333
+        ],
+        [
+          0.0,
+          0.5
+        ],
+        [
+          0.66666666,
+          0.41666666
+        ],
+        [
+          0.33333333,
+          0.33333333
+        ],
+        [
+          0.0,
+          0.25
+        ],
+        [
+          0.66666666,
+          0.16666666
+        ],
+        [
+          0.33333333,
+          0.08333333
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "raw_energies": [
+        -4.675259814407903,
+        -4.691310056223181,
+        -4.695806845749149,
+        -4.675987891107034,
+        -4.695807039421302,
+        -4.693601332587265,
+        -4.671728735009631,
+        -4.698994896354754,
+        -4.6968894829399845,
+        -4.658836763280165,
+        -4.69874701680251,
+        -4.704060076781377
+      ],
+      "norm_energies": [
+        0.02880026237347355,
+        0.01275002055819563,
+        0.008253231032227859,
+        0.02807218567434333,
+        0.008253037360074877,
+        0.010458744194111524,
+        0.032331341771746125,
+        0.005065180426623073,
+        0.007170593841392403,
+        0.04522331350121167,
+        0.005313059978867329,
+        0.0
+      ]
+    },
+    {
+      "reference_key": "NOTINOQMD_00001-GSF_0m11",
+      "structure_label": "NOTINOQMD_00001",
+      "surface_label": "0m11",
+      "displacements": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.2,
+          0.35
+        ],
+        [
+          0.3,
+          0.0
+        ],
+        [
+          0.4,
+          0.2
+        ],
+        [
+          0.4,
+          0.45
+        ],
+        [
+          0.6,
+          0.6
+        ],
+        [
+          0.65,
+          0.25
+        ],
+        [
+          0.9,
+          0.6
+        ]
+      ],
+      "raw_energies": [
+        -10.27514698472457,
+        -10.241424063510214,
+        -10.220824890239559,
+        -10.225451039711272,
+        -10.206520023867801,
+        -10.234862659327622,
+        -10.211857975087312,
+        -10.214690939034876
+      ],
+      "norm_energies": [
+        0.0,
+        0.033722921214355495,
+        0.05432209448501091,
+        0.04969594501329766,
+        0.06862696085676845,
+        0.04028432539694826,
+        0.06328900963725737,
+        0.06045604568969409
+      ]
+    }
+  ],
+  "solute_stacking_faults": [
+    {
+      "reference_key": "8100-SolSF_Cu",
+      "matrix_oqmd_id": "8100",
+      "solute_element": "Cu",
+      "solute_layers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "interaction_energies": [
+        -0.006453091880644024,
+        0.0006465406871711821,
+        -0.0005944250531229045,
+        -0.0004775062998305657
+      ]
+    },
+    {
+      "reference_key": "8100-SolSF_Mg",
+      "matrix_oqmd_id": "8100",
+      "solute_element": "Mg",
+      "solute_layers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "interaction_energies": [
+        -0.002843963279246964,
+        0.0006595690991844094,
+        -0.00037567852803022106,
+        -0.00037469717540261627
+      ]
+    },
+    {
+      "reference_key": "8100-SolSF_Zn",
+      "matrix_oqmd_id": "8100",
+      "solute_element": "Zn",
+      "solute_layers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "interaction_energies": [
+        0.00016031207110245305,
+        0.00014681548452699644,
+        -0.0003099733161207041,
+        -0.00030639690146472276
+      ]
+    },
+    {
+      "reference_key": "8100-SolSF_Si",
+      "matrix_oqmd_id": "8100",
+      "solute_element": "Si",
+      "solute_layers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "interaction_energies": [
+        -0.008045215472748168,
+        -0.017141498059231708,
+        -0.016522842808512905,
+        -0.016663600433162173
+      ]
+    },
+    {
+      "reference_key": "635950-SolSF_Al",
+      "matrix_oqmd_id": "635950",
+      "solute_element": "Al",
+      "solute_layers": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "interaction_energies": [
+        -0.01299045117264086,
+        0.0002497438717341538,
+        -0.00016128073337995374,
+        -0.00022298139776921744
+      ]
+    }
+  ]
+}

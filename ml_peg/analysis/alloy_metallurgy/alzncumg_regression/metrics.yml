@@ -47,3 +47,27 @@ metrics:
     unit: GPa
     tooltip: "Mean absolute error of opt-in finite-strain elastic constants for the staged Al-Cu-Mg-Zn structure slice compared to DFT"
     level_of_theory: PBE
+  Surface Energy MAE:
+    good: 0.0
+    bad: 500.0
+    unit: mJ/m²
+    tooltip: "Mean absolute error of legacy FCC and HCP surface energies for pure Al, Cu, Mg, and Zn references compared to DFT"
+    level_of_theory: PBE
+  Stacking Fault Energy MAE:
+    good: 0.0
+    bad: 500.0
+    unit: mJ/m²
+    tooltip: "Mean absolute error of relaxed FCC stable and unstable stacking-fault energies for pure Al and Cu references compared to DFT"
+    level_of_theory: PBE
+  GSF Energy MAE:
+    good: 0.0
+    bad: 0.1
+    unit: eV/Å²
+    tooltip: "Mean absolute error of relaxed Theta and Theta double-prime generalized stacking-fault energy points compared to DFT"
+    level_of_theory: PBE
+  Solute-Stacking Fault MAE:
+    good: 0.0
+    bad: 0.1
+    unit: eV
+    tooltip: "Mean absolute error of relaxed solute-stacking-fault interaction energies by solute layer compared to DFT"
+    level_of_theory: PBE
