@@ -1,3 +1,0 @@
-1
-Lattice="1.804222 -1.804222 0.0 -1.804222 0.0 -1.804222 1.804222 1.804222 0.0" Properties=species:S:1:pos:R:3 oqmd_id=635950 name=OQMD_635950 oqmd_composition=Cu oqmd_formation_energy=0.0 oqmd_volume_per_atom=11.7463 formula=Cu potential_energy=0.0 formation_energy=0.0 volume_peratom=11.746268343583896 lattice_a=2.55155522193191 lattice_b=2.55155522193191 lattice_c=2.55155522193191 angle_alpha=120.00000000000001 angle_beta=90.0 angle_gamma=120.00000000000001 oqmd_volume_peratom=11.7463 energy=0.0 pbc="T T T"
-Cu       0.00000000       0.00000000       0.00000000

@@ -1,3 +1,0 @@
-1
-Lattice="2.019908 -2.019908 0.0 -2.019908 0.0 -2.019908 2.019908 2.019908 0.0" Properties=species:S:1:pos:R:3 oqmd_id=8100 name=OQMD_8100 oqmd_composition=Al oqmd_formation_energy=0.00078878 oqmd_volume_per_atom=16.4826 formula=Al potential_energy=0.0 formation_energy=0.0 volume_peratom=16.48256372178212 lattice_a=2.8565812883459136 lattice_b=2.8565812883459136 lattice_c=2.8565812883459136 angle_alpha=120.00000000000001 angle_beta=90.0 angle_gamma=120.00000000000001 oqmd_volume_peratom=16.4826 energy=0.0 pbc="T T T"
-Al       0.00000000       0.00000000       0.00000000
