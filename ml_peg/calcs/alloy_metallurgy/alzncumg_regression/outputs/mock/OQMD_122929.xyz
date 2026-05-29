@@ -1,4 +1,0 @@
-2
-Lattice="2.640824 0.0 0.0 -1.320412 2.287013 0.0 0.0 0.0 5.025683" Properties=species:S:1:pos:R:3 oqmd_id=122929 name=OQMD_122929 oqmd_composition=Zn oqmd_formation_energy=0.0 oqmd_volume_per_atom=15.1766 formula=Zn potential_energy=0.0 formation_energy=0.0 volume_peratom=15.176554555010485 lattice_a=2.640824 lattice_b=2.6408173567880455 lattice_c=5.025683 angle_alpha=90.0 angle_beta=90.0 angle_gamma=120.00008321505996 oqmd_volume_peratom=15.1766 energy=0.0 pbc="T T T"
-Zn       1.32041000       0.76245000       3.76926000
-Zn       0.00000000       1.52457000       1.25642000
