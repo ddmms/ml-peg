@@ -50,8 +50,8 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
     structure_paths = data_path.glob("*.extxyz")
 
     for struct_path in structure_paths:
-        file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
-        asset_prefix = assets_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
+        file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.extxyz"
+        asset_prefix = assets_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.extxyz"
         configs = read(struct_path, ":")
         for at in configs:
             at.calc = copy(calc)

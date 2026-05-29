@@ -59,7 +59,7 @@ def get_volscan_results(
 
         else:
             configs = read(
-                CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.xyz", ":"
+                CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.extxyz", ":"
             )
 
         energies = [
