@@ -1,6 +1,4 @@
 *.json
-!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/references/*.json
-!ml_peg/calcs/alloy_metallurgy/alzncumg_regression/data/structures/OQMD-Dumps/*.json
 *.html
 *.dat
 *.lock
