@@ -2,15 +2,15 @@
 Battery Electrolyte
 =============
 
-These tests are related to the model's ability to accurately predict density and diffusivity for battery electrolytes.
-
 Inter-Intra Properties
 =================
 
 Summary
 -------
 
-Evaluate models on a mix of 200 LIB full electrolyte and neat solvent configs across a range of densities. The following predicted properties will be tested against PBE DFT:
+These tests examine the model's ability to accurately predict inter- and intra- molecular properties of a common LIB battery electrolyte and solvent.
+Inter-molecular forces heavily influence the prediction of density and diffusivity for liquids. Evaluate models on a mix of 200 LIB full electrolyte
+and neat solvent configs across a range of densities. The following predicted properties will be tested against PBE DFT:
 
 Intra-forces
 Inter-forces
@@ -18,7 +18,7 @@ Inter-energy
 Intra-virial
 Inter-virial
 
-These tests are related to the model's ability to accurately predict density and diffusivity for these systems.
+
 
 Metrics
 -------
