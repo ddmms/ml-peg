@@ -32,9 +32,7 @@ from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-SPECIAL_STRUCTURE_PATH = DATA_PATH / "structures" / "special"
 
 _S3_KEY = "inputs/alloy_metallurgy/alzncumg_regression/alzncumg_regression.zip"
 _S3_FILENAME = "alzncumg_regression.zip"
@@ -1764,8 +1762,12 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
     for spec in GSF_SPECS:
         reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
         try:
+            # Special structures expected at:
+            # alzncumg_regression/structures/special/<structure_file>
+            # within the S3 zip (to be added to zip by data maintainer)
             base_structure = read(
-                SPECIAL_STRUCTURE_PATH / spec["structure_file"], format="vasp"
+                _data_root() / "structures" / "special" / spec["structure_file"],
+                format="vasp",
             )
             raw_energies, norm_energies = generalized_stacking_fault_energies(
                 base_structure,
