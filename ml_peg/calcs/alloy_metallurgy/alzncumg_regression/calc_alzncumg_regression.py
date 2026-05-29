@@ -5,18 +5,24 @@ from __future__ import annotations
 from collections import Counter
 from copy import copy
 import json
-import math
 from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from ase import Atoms
-from ase.build import bulk
+from ase import Atoms, units
+from ase.build import bulk, fcc100, fcc110, fcc111, surface
 from ase.calculators.calculator import Calculator
+from ase.constraints import FixedLine
+from ase.filters import UnitCellFilter
+from ase.geometry import get_layers
 from ase.io import read, write
-from ase.optimize import FIRE
+from ase.optimize import BFGS
 from ase.units import GPa
 import numpy as np
+from pymatgen.analysis.elasticity import DeformedStructureSet, ElasticTensor
+from pymatgen.analysis.elasticity.stress import Stress
+from pymatgen.analysis.structure_analyzer import SpacegroupAnalyzer
+from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
 
 from ml_peg.models import current_models
@@ -27,6 +33,7 @@ MODELS = load_models(current_models)
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 OQMD_PATH = DATA_PATH / "structures" / "OQMD-Dumps"
+SPECIAL_STRUCTURE_PATH = DATA_PATH / "structures" / "special"
 STRUCTURE_IDS = (
     "8100",
     "635950",
@@ -48,6 +55,7 @@ SOLUTE_SOLUTE_SPECS = (
             ("Zn", "Zn"),
             ("Zn", "Cu"),
             ("Zn", "Mg"),
+            ("Zn", "Vac"),
             ("Cu", "Cu"),
             ("Cu", "Mg"),
             ("Cu", "Vac"),
@@ -58,10 +66,96 @@ SOLUTE_SOLUTE_SPECS = (
         (4, 4, 4),
         8,
     ),
-    ("635950", (("Al", "Al"), ("Al", "Vac"), ("Vac", "Vac")), (3, 3, 3), 4),
+    ("635950", (("Al", "Al"), ("Al", "Vac"), ("Vac", "Vac")), (3, 3, 3), 8),
 )
 SOLUTE_RELAX_STEPS = 50
 SOLUTE_RELAX_FMAX = 0.005
+BULK_RELAX_STEPS = 1000
+BULK_RELAX_FMAX = 1e-6
+BULK_RELAX_STRAIN_MASK = (1, 1, 1, 1, 1, 1)
+SURFACE_RELAX_STEPS = 1000
+SURFACE_RELAX_FMAX = 1e-6
+STACKING_FAULT_RELAX_STEPS = 100
+STACKING_FAULT_RELAX_FMAX = 0.005
+GSF_PRERELAX_STEPS = 1000
+GSF_PRERELAX_FMAX = 1e-6
+EV_PER_A2_TO_MJ_PER_M2 = units.eV / (units.kJ * 1e-6) / (
+    (units.Angstrom / units.m) ** 2
+)
+FCC_SURFACE_IDS = ("8100", "635950")
+FCC_SURFACE_LABELS = ("111", "100", "110")
+HCP_SURFACE_SPECS = {
+    "9226": {
+        "0001": (0, 0, 1),
+        "10m10": (1, 0, 0),
+        "11m20": (1, 1, 0),
+        "1m101": (1, 0, 1),
+        "10m12": (1, 0, 2),
+        "11m21": (1, 1, 1),
+        "11m22": (1, 1, 2),
+    },
+    "122929": {
+        "0001": (0, 0, 1),
+        "10m10": (1, 0, 0),
+        "11m20": (1, 1, 0),
+        "1m101": (1, 0, 1),
+        "10m12": (1, 0, 2),
+        "11m21": (1, 1, 1),
+        "11m22": (1, 1, 2),
+    },
+}
+FCC_STACKING_FAULT_SPECS = {
+    "StableSF": 2.0 / 3.0,
+    "UnStableSF": 5.0 / 6.0,
+}
+GSF_SPECS = (
+    {
+        "structure_label": "NOTINOQMD_00002",
+        "surface_label": "111",
+        "structure_file": "AIIDA_339739",
+        "displacements": (
+            (0.66666666, 0.91666666),
+            (0.33333333, 0.83333333),
+            (0.0, 0.75),
+            (0.66666666, 0.66666666),
+            (0.33333333, 0.58333333),
+            (0.0, 0.5),
+            (0.66666666, 0.41666666),
+            (0.33333333, 0.33333333),
+            (0.0, 0.25),
+            (0.66666666, 0.16666666),
+            (0.33333333, 0.08333333),
+            (0.0, 0.0),
+        ),
+        "zlayers": 8,
+        "relax_method": "atoms_z",
+        "relax_steps": 200,
+        "relax_fmax": 0.005,
+    },
+    {
+        "structure_label": "NOTINOQMD_00001",
+        "surface_label": "0m11",
+        "structure_file": "AIIDA_481617",
+        "displacements": (
+            (0.0, 0.0),
+            (0.20, 0.35),
+            (0.30, 0.00),
+            (0.40, 0.20),
+            (0.40, 0.45),
+            (0.60, 0.60),
+            (0.65, 0.25),
+            (0.90, 0.60),
+        ),
+        "zlayers": 10,
+        "relax_method": "atoms_cell_z",
+        "relax_steps": 200,
+        "relax_fmax": 0.005,
+    },
+)
+SOLUTE_STACKING_FAULT_SPECS = (
+    ("8100", ("Cu", "Mg", "Zn", "Si"), 4, 4, (0, 1, 2, 3)),
+    ("635950", ("Al",), 3, 4, (0, 1, 2, 3)),
+)
 
 
 def ordered_solute_pairs(elements: tuple[str, ...]) -> list[tuple[str, str]]:
@@ -79,24 +173,23 @@ def solute_pair_reference_key(
     solute_2: str,
 ) -> str:
     """Build the evalpot reference key prefix for a solute-solute pair."""
-    ordered_pair = sorted((solute_1, solute_2))
-    return f"{matrix_oqmd_id}-SolSol_{ordered_pair[0]}_{ordered_pair[1]}"
+    return f"{matrix_oqmd_id}-SolSol_{solute_1}_{solute_2}"
 
 
 def conventional_fcc_supercell(
     matrix_oqmd_id: str,
     repeats: tuple[int, int, int],
+    calculator: Calculator,
 ) -> Atoms:
     """Build a conventional FCC matrix supercell from a staged pure structure."""
-    primitive = load_oqmd_structure(matrix_oqmd_id)
-    counts = element_counts(primitive)
+    relaxed = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
+    counts = element_counts(relaxed)
     if len(counts) != 1:
         raise ValueError(f"OQMD_{matrix_oqmd_id} is not a pure-element matrix")
 
     matrix_element = next(iter(counts))
-    conventional_lattice = min(primitive.cell.lengths()) * math.sqrt(2.0)
-    supercell = bulk(matrix_element, "fcc", a=conventional_lattice, cubic=True)
-    supercell = supercell.repeat(repeats)
+    conventional = legacy_conventional_structure(relaxed)
+    supercell = conventional.repeat(repeats)
     supercell.info["oqmd_id"] = matrix_oqmd_id
     supercell.info["matrix_element"] = matrix_element
     return supercell
@@ -133,6 +226,357 @@ def attach_calculator(atoms: Atoms, calculator: Calculator) -> Atoms:
     return atoms
 
 
+def surface_area(atoms: Atoms) -> float:
+    """Return the area spanned by the first two cell vectors."""
+    return float(np.linalg.norm(np.cross(atoms.cell[0], atoms.cell[1])))
+
+
+def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
+    """Calculate the energy per atom for a pure elemental reference structure."""
+    attach_calculator(atoms, calculator)
+    return float(atoms.get_potential_energy()) / len(atoms)
+
+
+def relaxed_oqmd_structure(oqmd_id: str, calculator: Calculator) -> Atoms:
+    """Load and relax one OQMD structure using the legacy bulk protocol."""
+    atoms = load_oqmd_structure(oqmd_id)
+    attach_calculator(atoms, calculator)
+    return relax_cell_and_atoms(
+        atoms,
+        strain_mask=BULK_RELAX_STRAIN_MASK,
+        steps=BULK_RELAX_STEPS,
+        fmax=BULK_RELAX_FMAX,
+    )
+
+
+def relax_with_fixed_cell(
+    atoms: Atoms,
+    *,
+    steps: int = SURFACE_RELAX_STEPS,
+    fmax: float = SURFACE_RELAX_FMAX,
+) -> Atoms:
+    """Relax atomic positions while keeping the cell fixed."""
+    BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    return atoms
+
+
+def relax_cell_and_atoms(
+    atoms: Atoms,
+    *,
+    strain_mask: tuple[int, int, int, int, int, int],
+    steps: int,
+    fmax: float,
+) -> Atoms:
+    """Relax atomic positions and selected cell components."""
+    filtered = UnitCellFilter(atoms, mask=strain_mask)
+    BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
+    return filtered.atoms
+
+
+def relax_cell_and_atoms_direction(
+    atoms: Atoms,
+    *,
+    strain_mask: tuple[int, int, int, int, int, int],
+    atom_direction: tuple[int, int, int],
+    steps: int,
+    fmax: float,
+) -> Atoms:
+    """Relax selected cell components and constrain atoms to one direction."""
+    atoms.set_constraint(
+        [FixedLine(index, atom_direction) for index in range(len(atoms))]
+    )
+    filtered = UnitCellFilter(atoms, mask=strain_mask)
+    BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
+    return filtered.atoms
+
+
+def relax_atoms_direction(
+    atoms: Atoms,
+    *,
+    atom_direction: tuple[int, int, int],
+    steps: int,
+    fmax: float,
+) -> Atoms:
+    """Relax atoms along a constrained direction while keeping the cell fixed."""
+    atoms.set_constraint(
+        [FixedLine(index, atom_direction) for index in range(len(atoms))]
+    )
+    BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    return atoms
+
+
+def legacy_conventional_structure(atoms: Atoms) -> Atoms:
+    """Return pymatgen's conventional standard structure as ASE Atoms."""
+    structure = AseAtomsAdaptor.get_structure(atoms)
+    conventional = SpacegroupAnalyzer(structure).get_conventional_standard_structure()
+    return AseAtomsAdaptor.get_atoms(conventional)
+
+
+def fcc_lattice_and_element(reference: Atoms) -> tuple[float, str]:
+    """Get a conventional FCC lattice constant and element from a pure structure."""
+    counts = element_counts(reference)
+    if len(counts) != 1:
+        raise ValueError("Reference structure is not a pure-element FCC reference")
+
+    element = next(iter(counts))
+    conventional = legacy_conventional_structure(reference)
+    return float(conventional.cell[0][0]), element
+
+
+def build_fcc_surface(element: str, lattice: float, surface_label: str) -> Atoms:
+    """Build one periodic FCC slab used by the legacy surface-energy tests."""
+    if surface_label == "111":
+        slab = fcc111(element, (1, 2, 6), orthogonal=True, a=lattice, periodic=True)
+    elif surface_label == "100":
+        slab = fcc100(element, (1, 1, 6), a=lattice, periodic=True)
+    elif surface_label == "110":
+        slab = fcc110(element, (1, 1, 6), a=lattice, periodic=True)
+    else:
+        raise ValueError(f"Unsupported FCC surface label: {surface_label}")
+    slab.cell[2][2] += 8.0
+    return slab
+
+
+def fcc_surface_energy(
+    reference: Atoms,
+    surface_label: str,
+    calculator: Calculator,
+    reference_energy: float,
+) -> float:
+    """Calculate an unrelaxed FCC surface energy in mJ/m^2."""
+    lattice, element = fcc_lattice_and_element(reference)
+    slab = build_fcc_surface(element, lattice, surface_label)
+    attach_calculator(slab, calculator)
+    slab = relax_with_fixed_cell(slab)
+    excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
+    return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
+
+
+def hcp_surface_energy(
+    reference: Atoms,
+    surface_label: str,
+    direction: tuple[int, int, int],
+    calculator: Calculator,
+    reference_energy: float,
+) -> float:
+    """Calculate an unrelaxed HCP surface energy in mJ/m^2."""
+    counts = element_counts(reference)
+    if len(counts) != 1:
+        raise ValueError("Reference structure is not a pure-element HCP reference")
+
+    element = next(iter(counts))
+    structure_info = legacy_structure_info(reference)
+    lattice_a = structure_info["lattice_a"]
+    lattice_c = structure_info["lattice_c"]
+    slab = surface(
+        bulk(element, "hcp", a=lattice_a, covera=lattice_c / lattice_a),
+        direction,
+        3,
+    )
+    slab.center(vacuum=20.0, axis=2)
+    slab.set_pbc([True, True, True])
+    attach_calculator(slab, calculator)
+    excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
+    return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
+
+
+def fcc_stacking_fault_energy(
+    reference: Atoms,
+    displacement_fraction: float,
+    calculator: Calculator,
+    reference_energy: float,
+) -> float:
+    """Calculate an unrelaxed FCC stacking-fault energy in mJ/m^2."""
+    lattice, element = fcc_lattice_and_element(reference)
+    fault = fcc111(element, (1, 2, 6), orthogonal=True, a=lattice, periodic=True)
+    fault.cell[2] += fault.cell[1] * displacement_fraction
+    attach_calculator(fault, calculator)
+    fault = relax_cell_and_atoms_direction(
+        fault,
+        strain_mask=(0, 0, 1, 0, 0, 0),
+        atom_direction=(0, 0, 1),
+        steps=STACKING_FAULT_RELAX_STEPS,
+        fmax=STACKING_FAULT_RELAX_FMAX,
+    )
+    excess_energy = float(fault.get_potential_energy()) - len(fault) * reference_energy
+    return excess_energy / surface_area(fault) * EV_PER_A2_TO_MJ_PER_M2
+
+
+def fcc_stacking_fault_structure(
+    reference: Atoms,
+    inplane_repeats: int,
+    zplane_repeats: int,
+    *,
+    undistorted: bool = False,
+) -> Atoms:
+    """Build the FCC slab used by legacy solute-stacking-fault tests."""
+    lattice, element = fcc_lattice_and_element(reference)
+    fault = fcc111(
+        element,
+        (inplane_repeats, inplane_repeats, 3 * zplane_repeats),
+        a=lattice,
+        periodic=True,
+    )
+    if not undistorted:
+        inplane_1 = fault.cell[0] / inplane_repeats
+        inplane_2 = fault.cell[1] / inplane_repeats
+        fault.cell[2] += (inplane_1 + inplane_2) / 3.0
+    return fault
+
+
+def relaxed_stacking_fault_energy(
+    atoms: Atoms,
+    calculator: Calculator,
+) -> tuple[Atoms, float]:
+    """Relax a stacking-fault slab with the legacy z-only constraints."""
+    structure = atoms.copy()
+    attach_calculator(structure, calculator)
+    structure = relax_cell_and_atoms_direction(
+        structure,
+        strain_mask=(0, 0, 1, 0, 0, 0),
+        atom_direction=(0, 0, 1),
+        steps=STACKING_FAULT_RELAX_STEPS,
+        fmax=STACKING_FAULT_RELAX_FMAX,
+    )
+    return structure, float(structure.get_potential_energy())
+
+
+def solute_stacking_fault_structure(
+    base_structure: Atoms,
+    solute_element: str,
+    solute_layer: int,
+) -> Atoms:
+    """Substitute one atom in a requested z-layer of a relaxed fault slab."""
+    structure = base_structure.copy()
+    layers, _ = get_layers(structure, (0, 0, 1))
+    matching_indices = np.argwhere(layers == solute_layer).ravel()
+    if len(matching_indices) == 0:
+        raise ValueError(f"Layer {solute_layer} is absent from the fault slab")
+    structure[int(matching_indices[0])].symbol = solute_element
+    return structure
+
+
+def solute_stacking_fault_interaction(
+    matrix_oqmd_id: str,
+    solute_element: str,
+    calculator: Calculator,
+    *,
+    inplane_repeats: int,
+    zplane_repeats: int,
+    solute_layers: tuple[int, ...],
+) -> list[float]:
+    """Calculate relaxed solute-stacking-fault interaction energies in eV."""
+    reference = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
+    fault_structure = fcc_stacking_fault_structure(
+        reference,
+        inplane_repeats,
+        zplane_repeats,
+    )
+    bulk_structure = fcc_stacking_fault_structure(
+        reference,
+        inplane_repeats,
+        zplane_repeats,
+        undistorted=True,
+    )
+
+    fault_structure, fault_energy = relaxed_stacking_fault_energy(
+        fault_structure,
+        calculator,
+    )
+    bulk_structure, bulk_energy = relaxed_stacking_fault_energy(
+        bulk_structure,
+        calculator,
+    )
+    solute_bulk_structure = solute_stacking_fault_structure(
+        bulk_structure,
+        solute_element,
+        0,
+    )
+    _, solute_bulk_energy = relaxed_stacking_fault_energy(
+        solute_bulk_structure,
+        calculator,
+    )
+
+    interaction_energies = []
+    for solute_layer in solute_layers:
+        solute_fault_structure = solute_stacking_fault_structure(
+            fault_structure,
+            solute_element,
+            solute_layer,
+        )
+        _, solute_fault_energy = relaxed_stacking_fault_energy(
+            solute_fault_structure,
+            calculator,
+        )
+        interaction_energies.append(
+            solute_fault_energy - fault_energy - solute_bulk_energy + bulk_energy
+        )
+    return interaction_energies
+
+
+def tilted_structure(base_structure: Atoms, displacement: tuple[float, float]) -> Atoms:
+    """Tilt a cell by a crystallographic displacement in the in-plane basis."""
+    tilted = base_structure.copy()
+    tilted.cell[2] += base_structure.cell[0] * displacement[0]
+    tilted.cell[2] += base_structure.cell[1] * displacement[1]
+    return tilted
+
+
+def generalized_stacking_fault_energies(
+    base_structure: Atoms,
+    calculator: Calculator,
+    displacements: tuple[tuple[float, float], ...],
+    *,
+    zlayers: int,
+    relax_method: str,
+    relax_steps: int,
+    relax_fmax: float,
+) -> tuple[list[float], list[float]]:
+    """Calculate relaxed GSF raw and zero-referenced energies in eV/A^2."""
+    if (0.0, 0.0) not in displacements:
+        raise ValueError("GSF displacements must include the undisplaced structure")
+
+    attach_calculator(base_structure, calculator)
+    base_structure = relax_cell_and_atoms(
+        base_structure,
+        strain_mask=(1, 1, 1, 0, 0, 0),
+        steps=GSF_PRERELAX_STEPS,
+        fmax=GSF_PRERELAX_FMAX,
+    )
+    repeated = base_structure.repeat((1, 1, zlayers))
+    area = surface_area(repeated)
+    raw_energies = []
+    reference_energy = None
+    for displacement in displacements:
+        tilted = tilted_structure(repeated, displacement)
+        attach_calculator(tilted, calculator)
+        if relax_method == "atoms_z":
+            tilted = relax_atoms_direction(
+                tilted,
+                atom_direction=(0, 0, 1),
+                steps=relax_steps,
+                fmax=relax_fmax,
+            )
+        elif relax_method == "atoms_cell_z":
+            tilted = relax_cell_and_atoms_direction(
+                tilted,
+                strain_mask=(0, 0, 1, 0, 0, 0),
+                atom_direction=(0, 0, 1),
+                steps=relax_steps,
+                fmax=relax_fmax,
+            )
+        else:
+            raise ValueError(f"Unsupported GSF relaxation method: {relax_method}")
+        energy = float(tilted.get_potential_energy()) / area
+        raw_energies.append(energy)
+        if displacement == (0.0, 0.0):
+            reference_energy = energy
+
+    if reference_energy is None:
+        raise ValueError("GSF displacements must include the undisplaced structure")
+    return raw_energies, [energy - reference_energy for energy in raw_energies]
+
+
 def relax_atoms(
     atoms: Atoms,
     *,
@@ -142,7 +586,7 @@ def relax_atoms(
     """Relax atomic positions in-place when requested."""
     if steps <= 0:
         return
-    FIRE(atoms, logfile=None).run(fmax=fmax, steps=steps)
+    BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
 
 
 def solute_structure(
@@ -189,21 +633,27 @@ def solute_solute_binding(
     solute_1: str,
     solute_2: str,
     *,
-    max_shells: int,
+    max_index: int,
     relax_steps: int = SOLUTE_RELAX_STEPS,
     relax_fmax: float = SOLUTE_RELAX_FMAX,
 ) -> tuple[list[float], list[float]]:
     """Calculate solute-solute binding energies for FCC neighbor shells."""
-    shell_indices = neighbor_shell_indices(pure_structure)[1 : max_shells + 1]
+    shell_indices = neighbor_shell_indices(pure_structure)[1:max_index]
     pure_energy = relaxed_energy(
         pure_structure.copy(), calculator, relax_steps=0, relax_fmax=relax_fmax
     )
+    single_1_structure = solute_structure(pure_structure, solute_1)
     single_1_energy = relaxed_energy(
-        solute_structure(pure_structure, solute_1),
+        single_1_structure,
         calculator,
         relax_steps=relax_steps,
         relax_fmax=relax_fmax,
     )
+    if solute_1 == "Vac":
+        first_solute_pair_base = pure_structure.copy()
+    else:
+        first_solute_pair_base = single_1_structure
+
     if solute_1 == solute_2:
         single_2_energy = single_1_energy
     else:
@@ -217,19 +667,20 @@ def solute_solute_binding(
     distances = []
     binding_energies = []
     for shell_index in shell_indices:
-        pair_structure = solute_structure(
-            pure_structure,
-            solute_1,
-            solute_2,
-            second_solute_index=shell_index,
-        )
+        pair_structure = first_solute_pair_base.copy()
+        distances.append(float(np.linalg.norm(pair_structure[shell_index].position)))
+        if solute_2 == "Vac":
+            del pair_structure[shell_index]
+        else:
+            pair_structure[shell_index].symbol = solute_2
+        if solute_1 == "Vac":
+            del pair_structure[0]
         pair_energy = relaxed_energy(
             pair_structure,
             calculator,
             relax_steps=relax_steps,
             relax_fmax=relax_fmax,
         )
-        distances.append(float(np.linalg.norm(pure_structure[shell_index].position)))
         binding_energies.append(
             1000.0 * (pair_energy + pure_energy - single_1_energy - single_2_energy)
         )
@@ -338,6 +789,41 @@ def finite_strain_elastic_tensor(
             stress_voigt(positive, calculator) - stress_voigt(negative, calculator)
         ) / (2.0 * strain * GPa)
     return (tensor + tensor.T) / 2.0
+
+
+def legacy_elastic_tensor(
+    atoms: Atoms,
+    calculator: Calculator,
+    *,
+    strain_amounts: tuple[float, ...] = (-0.01, -0.005, 0.005, 0.01),
+) -> np.ndarray:
+    """Calculate elastic constants using the legacy pymatgen strain fit."""
+    reference = atoms.copy()
+    attach_calculator(reference, calculator)
+    eq_stress = Stress.from_voigt(reference.get_stress())
+    structure = AseAtomsAdaptor.get_structure(reference)
+    deformed_set = DeformedStructureSet(
+        structure,
+        norm_strains=strain_amounts,
+        shear_strains=strain_amounts,
+    )
+
+    applied_strains = []
+    resultant_stresses = []
+    for deformation in deformed_set.deformations:
+        applied_strains.append(deformation.green_lagrange_strain)
+        deformed_structure = deformation.apply_to_structure(structure.copy())
+        deformed_atoms = AseAtomsAdaptor.get_atoms(deformed_structure)
+        attach_calculator(deformed_atoms, calculator)
+        relax_with_fixed_cell(deformed_atoms, steps=100, fmax=0.001)
+        resultant_stresses.append(Stress.from_voigt(deformed_atoms.get_stress()))
+
+    tensor = ElasticTensor.from_independent_strains(
+        strains=applied_strains,
+        stresses=resultant_stresses,
+        eq_stress=eq_stress,
+    )
+    return np.asarray(tensor.voigt_symmetrized.voigt) * (GPa**-1)
 
 
 def elastic_properties(atoms: Atoms, elastic_tensor: np.ndarray) -> dict[str, Any]:
@@ -486,6 +972,28 @@ def formation_energy_per_atom(
     return (total_energy - reference_total) / len(atoms)
 
 
+def legacy_structure_info(atoms: Atoms) -> dict[str, Any]:
+    """Build structure metadata using the legacy evalpot convention."""
+    structure = AseAtomsAdaptor.get_structure(atoms)
+    structure = structure.get_primitive_structure()
+    structure = structure.get_reduced_structure()
+    angles = [structure.lattice.alpha, structure.lattice.beta, structure.lattice.gamma]
+    angles = [180.0 - angle if angle > 91.0 else angle for angle in angles]
+    symmetry = SpacegroupAnalyzer(structure)
+    return {
+        "formula": structure.formula.replace(" ", "").replace("1", ""),
+        "volume_peratom": structure.volume / len(structure),
+        "lattice_a": structure.lattice.a,
+        "lattice_b": structure.lattice.b,
+        "lattice_c": structure.lattice.c,
+        "angle_alpha": angles[0],
+        "angle_beta": angles[1],
+        "angle_gamma": angles[2],
+        "symmetry_number": symmetry.get_space_group_number(),
+        "symmetry_symbol": symmetry.get_space_group_symbol(),
+    }
+
+
 def get_elemental_reference_energies(
     structures: dict[str, Atoms],
     energies: dict[str, float],
@@ -542,24 +1050,16 @@ def structure_properties(
     dict[str, Any]
         JSON-serialisable scalar properties.
     """
-    lengths = atoms.cell.lengths()
-    angles = atoms.cell.angles()
+    structure_info = legacy_structure_info(atoms)
     return {
         "oqmd_id": atoms.info["oqmd_id"],
-        "formula": atoms.get_chemical_formula(empirical=True),
         "potential_energy": total_energy,
         "formation_energy": formation_energy_per_atom(
             atoms, total_energy, reference_energies
         ),
-        "volume_peratom": atoms.get_volume() / len(atoms),
-        "lattice_a": lengths[0],
-        "lattice_b": lengths[1],
-        "lattice_c": lengths[2],
-        "angle_alpha": angles[0],
-        "angle_beta": angles[1],
-        "angle_gamma": angles[2],
         "oqmd_formation_energy": atoms.info.get("oqmd_formation_energy"),
         "oqmd_volume_peratom": atoms.info.get("oqmd_volume_per_atom"),
+        **structure_info,
     }
 
 
@@ -584,6 +1084,13 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
     for oqmd_id, atoms in structures.items():
         atoms.calc = copy(calc)
         try:
+            atoms = relax_cell_and_atoms(
+                atoms,
+                strain_mask=BULK_RELAX_STRAIN_MASK,
+                steps=BULK_RELAX_STEPS,
+                fmax=BULK_RELAX_FMAX,
+            )
+            structures[oqmd_id] = atoms
             energies[oqmd_id] = float(atoms.get_potential_energy())
         except Exception as exc:
             warn(
@@ -611,6 +1118,185 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
         )
 
 
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
+    """
+    Run fast surface, stacking-fault, and GSF metallurgy calculations.
+
+    Parameters
+    ----------
+    mlip
+        Model name and model instance used to get an ASE calculator.
+    """
+    model_name, model = mlip
+    calc = model.get_calculator(precision="high")
+    output_dir = OUT_PATH / model_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    pure_reference_structures = {
+        oqmd_id: relaxed_oqmd_structure(oqmd_id, calc)
+        for oqmd_id in (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
+    }
+    pure_reference_energies = {
+        oqmd_id: float(atoms.get_potential_energy()) / len(atoms)
+        for oqmd_id, atoms in pure_reference_structures.items()
+    }
+
+    surface_records = []
+    for oqmd_id in FCC_SURFACE_IDS:
+        for surface_label in FCC_SURFACE_LABELS:
+            reference_key = f"{oqmd_id}-SurfaceEnergy_{surface_label}"
+            try:
+                surface_energy = fcc_surface_energy(
+                    pure_reference_structures[oqmd_id],
+                    surface_label,
+                    calc,
+                    pure_reference_energies[oqmd_id],
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating {reference_key} with {model_name}: {exc}",
+                    stacklevel=2,
+                )
+                continue
+            surface_records.append(
+                {
+                    "reference_key": reference_key,
+                    "structure_label": oqmd_id,
+                    "surface_label": surface_label,
+                    "surface_energy": surface_energy,
+                }
+            )
+
+    for oqmd_id, surface_specs in HCP_SURFACE_SPECS.items():
+        for surface_label, direction in surface_specs.items():
+            reference_key = f"{oqmd_id}-SurfaceHCP_{surface_label}"
+            try:
+                surface_energy = hcp_surface_energy(
+                    pure_reference_structures[oqmd_id],
+                    surface_label,
+                    direction,
+                    calc,
+                    pure_reference_energies[oqmd_id],
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating {reference_key} with {model_name}: {exc}",
+                    stacklevel=2,
+                )
+                continue
+            surface_records.append(
+                {
+                    "reference_key": reference_key,
+                    "structure_label": oqmd_id,
+                    "surface_label": surface_label,
+                    "surface_direction": direction,
+                    "surface_energy": surface_energy,
+                }
+            )
+
+    stacking_fault_records = []
+    for oqmd_id in FCC_SURFACE_IDS:
+        for fault_label, displacement_fraction in FCC_STACKING_FAULT_SPECS.items():
+            reference_key = f"{oqmd_id}-{fault_label}"
+            try:
+                stacking_fault_energy = fcc_stacking_fault_energy(
+                    pure_reference_structures[oqmd_id],
+                    displacement_fraction,
+                    calc,
+                    pure_reference_energies[oqmd_id],
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating {reference_key} with {model_name}: {exc}",
+                    stacklevel=2,
+                )
+                continue
+            stacking_fault_records.append(
+                {
+                    "reference_key": reference_key,
+                    "structure_label": oqmd_id,
+                    "fault_label": fault_label,
+                    "stacking_fault_energy": stacking_fault_energy,
+                }
+            )
+
+    gsf_records = []
+    for spec in GSF_SPECS:
+        reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
+        try:
+            base_structure = read(
+                SPECIAL_STRUCTURE_PATH / spec["structure_file"], format="vasp"
+            )
+            raw_energies, norm_energies = generalized_stacking_fault_energies(
+                base_structure,
+                calc,
+                spec["displacements"],
+                zlayers=spec["zlayers"],
+                relax_method=spec["relax_method"],
+                relax_steps=spec["relax_steps"],
+                relax_fmax=spec["relax_fmax"],
+            )
+        except Exception as exc:
+            warn(
+                f"Error calculating {reference_key} with {model_name}: {exc}",
+                stacklevel=2,
+            )
+            continue
+        gsf_records.append(
+            {
+                "reference_key": reference_key,
+                "structure_label": spec["structure_label"],
+                "surface_label": spec["surface_label"],
+                "displacements": spec["displacements"],
+                "raw_energies": raw_energies,
+                "norm_energies": norm_energies,
+            }
+        )
+
+    solute_stacking_fault_records = []
+    for spec in SOLUTE_STACKING_FAULT_SPECS:
+        matrix_oqmd_id, solute_elements, inplane_repeats, zplane_repeats, layers = spec
+        for solute_element in solute_elements:
+            reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
+            try:
+                interaction_energies = solute_stacking_fault_interaction(
+                    matrix_oqmd_id,
+                    solute_element,
+                    calc,
+                    inplane_repeats=inplane_repeats,
+                    zplane_repeats=zplane_repeats,
+                    solute_layers=layers,
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating {reference_key} with {model_name}: {exc}",
+                    stacklevel=2,
+                )
+                continue
+            solute_stacking_fault_records.append(
+                {
+                    "reference_key": reference_key,
+                    "matrix_oqmd_id": matrix_oqmd_id,
+                    "solute_element": solute_element,
+                    "solute_layers": layers,
+                    "interaction_energies": interaction_energies,
+                }
+            )
+
+    with open(output_dir / "fault_surface_properties.json", "w") as file:
+        json.dump(
+            {
+                "surfaces": surface_records,
+                "stacking_faults": stacking_fault_records,
+                "gsf": gsf_records,
+                "solute_stacking_faults": solute_stacking_fault_records,
+            },
+            file,
+            indent=2,
+        )
+
+
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
@@ -629,9 +1315,9 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
 
     records = []
     for oqmd_id in STRUCTURE_IDS:
-        atoms = load_oqmd_structure(oqmd_id)
         try:
-            tensor = finite_strain_elastic_tensor(atoms, calc)
+            atoms = relaxed_oqmd_structure(oqmd_id, calc)
+            tensor = legacy_elastic_tensor(atoms, calc)
         except Exception as exc:
             warn(
                 f"Error calculating elastic properties for OQMD_{oqmd_id} "
@@ -665,8 +1351,8 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for matrix_oqmd_id, solute_pairs, repeats, max_shells in SOLUTE_SOLUTE_SPECS:
-        pure_structure = conventional_fcc_supercell(matrix_oqmd_id, repeats)
+    for matrix_oqmd_id, solute_pairs, repeats, max_index in SOLUTE_SOLUTE_SPECS:
+        pure_structure = conventional_fcc_supercell(matrix_oqmd_id, repeats, calc)
         for solute_1, solute_2 in solute_pairs:
             reference_key = solute_pair_reference_key(
                 matrix_oqmd_id, solute_1, solute_2
@@ -677,7 +1363,7 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
                     calc,
                     solute_1,
                     solute_2,
-                    max_shells=max_shells,
+                    max_index=max_index,
                 )
             except Exception as exc:
                 warn(

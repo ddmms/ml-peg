@@ -37,6 +37,28 @@ def write_solute_solute_properties(
     )
 
 
+def write_fault_surface_properties(
+    output_dir,
+    *,
+    surfaces: list[dict[str, object]] | None = None,
+    stacking_faults: list[dict[str, object]] | None = None,
+    gsf: list[dict[str, object]] | None = None,
+    solute_stacking_faults: list[dict[str, object]] | None = None,
+) -> None:
+    """Write a minimal fault/surface output file for one model."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "fault_surface_properties.json").write_text(
+        json.dumps(
+            {
+                "surfaces": surfaces or [],
+                "stacking_faults": stacking_faults or [],
+                "gsf": gsf or [],
+                "solute_stacking_faults": solute_stacking_faults or [],
+            }
+        )
+    )
+
+
 def test_reference_value_returns_numeric_values_only() -> None:
     """Reference extraction handles missing and nonnumeric evalpot entries."""
     references = {
@@ -288,4 +310,115 @@ def test_solute_solute_metrics_are_optional_and_write_available_plot(
             "figure_solute_solute_bindings.json",
             ["8100-SolSol_Cu_Cu shell 1", "8100-SolSol_Cu_Cu shell 2"],
         )
+    ]
+
+
+def test_solute_solute_metrics_accept_sorted_dft_pair_keys(
+    tmp_path, monkeypatch
+) -> None:
+    """Solute-solute analysis handles evalpot output order and sorted DFT keys."""
+    monkeypatch.setattr(analyse, "CALC_PATH", tmp_path / "outputs")
+    monkeypatch.setattr(analyse, "MODELS", ["solute-model"])
+    monkeypatch.setattr(
+        analyse,
+        "load_references",
+        lambda: {
+            "8100-SolSol_Cu_Zn_BindingEnergy": [[10.0, 20.0], "meV"],
+        },
+    )
+    write_solute_solute_properties(
+        tmp_path / "outputs" / "solute-model",
+        [
+            {
+                "reference_key": "8100-SolSol_Zn_Cu",
+                "binding_energies": [11.0, 18.0],
+            }
+        ],
+    )
+    written_plots = []
+
+    def collect_plot(values, *, filename, title, x_label, y_label, hoverdata):
+        written_plots.append((filename.name, hoverdata["Interaction"]))
+
+    monkeypatch.setattr(analyse, "write_parity_plot", collect_plot)
+
+    metrics = analyse.solute_solute_metrics()
+
+    assert metrics == {
+        "Solute-Solute Binding MAE": {"solute-model": pytest.approx(1.5)},
+    }
+    assert written_plots == [
+        (
+            "figure_solute_solute_bindings.json",
+            ["8100-SolSol_Zn_Cu shell 1", "8100-SolSol_Zn_Cu shell 2"],
+        )
+    ]
+
+
+def test_fault_surface_metrics_are_optional_and_write_available_plots(
+    tmp_path, monkeypatch
+) -> None:
+    """Surface, stacking-fault, and GSF metrics are added when outputs exist."""
+    monkeypatch.setattr(analyse, "CALC_PATH", tmp_path / "outputs")
+    monkeypatch.setattr(analyse, "MODELS", ["fault-model", "missing-model"])
+    monkeypatch.setattr(
+        analyse,
+        "load_references",
+        lambda: {
+            "8100-SurfaceEnergy_111": [1000.0, "mJ/m^2"],
+            "8100-StableSF": [150.0, "mJ/m^2"],
+            "NOTINOQMD_00001-GSF_0m11_normE": [[0.0, 0.04], "eV/A^2"],
+            "8100-SolSF_Cu": [[0.1, 0.2], "eV"],
+        },
+    )
+    write_fault_surface_properties(
+        tmp_path / "outputs" / "fault-model",
+        surfaces=[
+            {"reference_key": "8100-SurfaceEnergy_111", "surface_energy": 1100.0}
+        ],
+        stacking_faults=[
+            {"reference_key": "8100-StableSF", "stacking_fault_energy": 180.0}
+        ],
+        gsf=[
+            {
+                "reference_key": "NOTINOQMD_00001-GSF_0m11",
+                "norm_energies": [0.0, 0.05],
+            }
+        ],
+        solute_stacking_faults=[
+            {
+                "reference_key": "8100-SolSF_Cu",
+                "interaction_energies": [0.15, 0.18],
+            }
+        ],
+    )
+    written_plots = []
+
+    def collect_plot(values, *, filename, title, x_label, y_label, hoverdata):
+        written_plots.append((filename.name, next(iter(hoverdata.values()))))
+
+    monkeypatch.setattr(analyse, "write_parity_plot", collect_plot)
+
+    metrics = analyse.fault_surface_metrics()
+
+    assert metrics == {
+        "Surface Energy MAE": {"fault-model": pytest.approx(100.0)},
+        "Stacking Fault Energy MAE": {"fault-model": pytest.approx(30.0)},
+        "GSF Energy MAE": {"fault-model": pytest.approx(0.005)},
+        "Solute-Stacking Fault MAE": {"fault-model": pytest.approx(0.035)},
+    }
+    assert written_plots == [
+        ("figure_surface_energies.json", ["8100-SurfaceEnergy_111"]),
+        ("figure_stacking_fault_energies.json", ["8100-StableSF"]),
+        (
+            "figure_gsf_energies.json",
+            [
+                "NOTINOQMD_00001-GSF_0m11 point 1",
+                "NOTINOQMD_00001-GSF_0m11 point 2",
+            ],
+        ),
+        (
+            "figure_solute_stacking_faults.json",
+            ["8100-SolSF_Cu layer 0", "8100-SolSF_Cu layer 1"],
+        ),
     ]
