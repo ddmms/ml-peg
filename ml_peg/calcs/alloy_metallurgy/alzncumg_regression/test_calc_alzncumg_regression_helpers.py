@@ -203,9 +203,7 @@ def test_structure_file_stem_handles_numeric_and_legacy_ids(
 
 def test_solute_pair_reference_key_preserves_legacy_pair_order() -> None:
     """Solute reference keys preserve the ordering used by evalpot outputs."""
-    assert calc.solute_pair_reference_key("8100", "Zn", "Cu") == (
-        "8100-SolSol_Zn_Cu"
-    )
+    assert calc.solute_pair_reference_key("8100", "Zn", "Cu") == ("8100-SolSol_Zn_Cu")
     assert calc.solute_pair_reference_key("635950", "Vac", "Al") == (
         "635950-SolSol_Vac_Al"
     )

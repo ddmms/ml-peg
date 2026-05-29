@@ -79,8 +79,8 @@ STACKING_FAULT_RELAX_STEPS = 100
 STACKING_FAULT_RELAX_FMAX = 0.005
 GSF_PRERELAX_STEPS = 1000
 GSF_PRERELAX_FMAX = 1e-6
-EV_PER_A2_TO_MJ_PER_M2 = units.eV / (units.kJ * 1e-6) / (
-    (units.Angstrom / units.m) ** 2
+EV_PER_A2_TO_MJ_PER_M2 = (
+    units.eV / (units.kJ * 1e-6) / ((units.Angstrom / units.m) ** 2)
 )
 FCC_SURFACE_IDS = ("8100", "635950")
 FCC_SURFACE_LABELS = ("111", "100", "110")
@@ -159,7 +159,19 @@ SOLUTE_STACKING_FAULT_SPECS = (
 
 
 def ordered_solute_pairs(elements: tuple[str, ...]) -> list[tuple[str, str]]:
-    """Return unique solute-pair combinations in legacy evalpot order."""
+    """
+    Return unique solute-pair combinations in legacy evalpot order.
+
+    Parameters
+    ----------
+    elements
+        Solute element symbols to pair.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        All unique ordered pairs ``(a, b)`` with ``a <= b`` by element index.
+    """
     pairs = []
     for first_index, first_element in enumerate(elements):
         for second_element in elements[first_index:]:
@@ -172,7 +184,23 @@ def solute_pair_reference_key(
     solute_1: str,
     solute_2: str,
 ) -> str:
-    """Build the evalpot reference key prefix for a solute-solute pair."""
+    """
+    Build the evalpot reference key prefix for a solute-solute pair.
+
+    Parameters
+    ----------
+    matrix_oqmd_id
+        OQMD identifier for the host matrix structure.
+    solute_1
+        First solute element symbol (or ``Vac`` for vacancy).
+    solute_2
+        Second solute element symbol (or ``Vac`` for vacancy).
+
+    Returns
+    -------
+    str
+        Key string of the form ``<oqmd_id>-SolSol_<s1>_<s2>``.
+    """
     return f"{matrix_oqmd_id}-SolSol_{solute_1}_{solute_2}"
 
 
@@ -181,7 +209,23 @@ def conventional_fcc_supercell(
     repeats: tuple[int, int, int],
     calculator: Calculator,
 ) -> Atoms:
-    """Build a conventional FCC matrix supercell from a staged pure structure."""
+    """
+    Build a conventional FCC matrix supercell from a staged pure structure.
+
+    Parameters
+    ----------
+    matrix_oqmd_id
+        OQMD identifier for the pure-element host matrix.
+    repeats
+        Repetition factors along each lattice direction.
+    calculator
+        ASE calculator used to relax the primitive cell.
+
+    Returns
+    -------
+    Atoms
+        Relaxed supercell with matrix element info attached.
+    """
     relaxed = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
     counts = element_counts(relaxed)
     if len(counts) != 1:
@@ -196,7 +240,19 @@ def conventional_fcc_supercell(
 
 
 def neighbor_shell_indices(atoms: Atoms) -> list[int]:
-    """Get one representative atom index for each distance shell from atom zero."""
+    """
+    Get one representative atom index for each distance shell from atom zero.
+
+    Parameters
+    ----------
+    atoms
+        Structure whose atoms are ordered at positions relative to the origin.
+
+    Returns
+    -------
+    list[int]
+        One atom index per unique shell distance, sorted by increasing distance.
+    """
     positions = atoms.get_positions()
     cell_lengths = atoms.cell.lengths()
     tolerance = 0.1
@@ -221,24 +277,78 @@ def neighbor_shell_indices(atoms: Atoms) -> list[int]:
 
 
 def attach_calculator(atoms: Atoms, calculator: Calculator) -> Atoms:
-    """Attach a copied calculator to an atoms object and return the atoms."""
+    """
+    Attach a copied calculator to an atoms object and return the atoms.
+
+    Parameters
+    ----------
+    atoms
+        Structure to attach the calculator to.
+    calculator
+        ASE calculator to copy and attach.
+
+    Returns
+    -------
+    Atoms
+        The same ``atoms`` object with a fresh copy of ``calculator`` set.
+    """
     atoms.calc = copy(calculator)
     return atoms
 
 
 def surface_area(atoms: Atoms) -> float:
-    """Return the area spanned by the first two cell vectors."""
+    """
+    Return the area spanned by the first two cell vectors.
+
+    Parameters
+    ----------
+    atoms
+        Structure whose cell vectors are used.
+
+    Returns
+    -------
+    float
+        In-plane cell area in Angstrom^2.
+    """
     return float(np.linalg.norm(np.cross(atoms.cell[0], atoms.cell[1])))
 
 
 def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
-    """Calculate the energy per atom for a pure elemental reference structure."""
+    """
+    Calculate the energy per atom for a pure elemental reference structure.
+
+    Parameters
+    ----------
+    atoms
+        Pure-element structure with a calculator already attached.
+    calculator
+        ASE calculator used for the single-point energy.
+
+    Returns
+    -------
+    float
+        Total potential energy divided by number of atoms, in eV/atom.
+    """
     attach_calculator(atoms, calculator)
     return float(atoms.get_potential_energy()) / len(atoms)
 
 
 def relaxed_oqmd_structure(oqmd_id: str, calculator: Calculator) -> Atoms:
-    """Load and relax one OQMD structure using the legacy bulk protocol."""
+    """
+    Load and relax one OQMD structure using the legacy bulk protocol.
+
+    Parameters
+    ----------
+    oqmd_id
+        OQMD identifier (numeric or ``NOTINOQMD_*``) of the structure to load.
+    calculator
+        ASE calculator used for the cell-and-atoms relaxation.
+
+    Returns
+    -------
+    Atoms
+        Relaxed structure with OQMD metadata attached.
+    """
     atoms = load_oqmd_structure(oqmd_id)
     attach_calculator(atoms, calculator)
     return relax_cell_and_atoms(
@@ -255,7 +365,23 @@ def relax_with_fixed_cell(
     steps: int = SURFACE_RELAX_STEPS,
     fmax: float = SURFACE_RELAX_FMAX,
 ) -> Atoms:
-    """Relax atomic positions while keeping the cell fixed."""
+    """
+    Relax atomic positions while keeping the cell fixed.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relax in-place.
+    steps
+        Maximum number of BFGS steps.
+    fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    Atoms
+        The relaxed ``atoms`` object.
+    """
     BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
     return atoms
 
@@ -267,7 +393,25 @@ def relax_cell_and_atoms(
     steps: int,
     fmax: float,
 ) -> Atoms:
-    """Relax atomic positions and selected cell components."""
+    """
+    Relax atomic positions and selected cell components.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relax.
+    strain_mask
+        Six-element Voigt mask selecting which cell degrees of freedom to relax.
+    steps
+        Maximum number of BFGS steps.
+    fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    Atoms
+        The relaxed structure extracted from the ``UnitCellFilter``.
+    """
     filtered = UnitCellFilter(atoms, mask=strain_mask)
     BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
     return filtered.atoms
@@ -281,7 +425,27 @@ def relax_cell_and_atoms_direction(
     steps: int,
     fmax: float,
 ) -> Atoms:
-    """Relax selected cell components and constrain atoms to one direction."""
+    """
+    Relax selected cell components and constrain atoms to one direction.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relax.
+    strain_mask
+        Six-element Voigt mask selecting which cell degrees of freedom to relax.
+    atom_direction
+        Cartesian direction vector for the ``FixedLine`` constraint.
+    steps
+        Maximum number of BFGS steps.
+    fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    Atoms
+        The relaxed structure extracted from the ``UnitCellFilter``.
+    """
     atoms.set_constraint(
         [FixedLine(index, atom_direction) for index in range(len(atoms))]
     )
@@ -297,7 +461,25 @@ def relax_atoms_direction(
     steps: int,
     fmax: float,
 ) -> Atoms:
-    """Relax atoms along a constrained direction while keeping the cell fixed."""
+    """
+    Relax atoms along a constrained direction while keeping the cell fixed.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relax.
+    atom_direction
+        Cartesian direction vector for the ``FixedLine`` constraint.
+    steps
+        Maximum number of BFGS steps.
+    fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    Atoms
+        The relaxed ``atoms`` object.
+    """
     atoms.set_constraint(
         [FixedLine(index, atom_direction) for index in range(len(atoms))]
     )
@@ -306,14 +488,38 @@ def relax_atoms_direction(
 
 
 def legacy_conventional_structure(atoms: Atoms) -> Atoms:
-    """Return pymatgen's conventional standard structure as ASE Atoms."""
+    """
+    Return pymatgen's conventional standard structure as ASE Atoms.
+
+    Parameters
+    ----------
+    atoms
+        Input ASE structure to standardise.
+
+    Returns
+    -------
+    Atoms
+        Conventional standard structure in ASE format.
+    """
     structure = AseAtomsAdaptor.get_structure(atoms)
     conventional = SpacegroupAnalyzer(structure).get_conventional_standard_structure()
     return AseAtomsAdaptor.get_atoms(conventional)
 
 
 def fcc_lattice_and_element(reference: Atoms) -> tuple[float, str]:
-    """Get a conventional FCC lattice constant and element from a pure structure."""
+    """
+    Get a conventional FCC lattice constant and element from a pure structure.
+
+    Parameters
+    ----------
+    reference
+        Relaxed pure-element FCC structure.
+
+    Returns
+    -------
+    tuple[float, str]
+        Conventional lattice constant in Angstrom and element symbol.
+    """
     counts = element_counts(reference)
     if len(counts) != 1:
         raise ValueError("Reference structure is not a pure-element FCC reference")
@@ -324,7 +530,23 @@ def fcc_lattice_and_element(reference: Atoms) -> tuple[float, str]:
 
 
 def build_fcc_surface(element: str, lattice: float, surface_label: str) -> Atoms:
-    """Build one periodic FCC slab used by the legacy surface-energy tests."""
+    """
+    Build one periodic FCC slab used by the legacy surface-energy tests.
+
+    Parameters
+    ----------
+    element
+        Chemical symbol of the FCC element.
+    lattice
+        Conventional FCC lattice constant in Angstrom.
+    surface_label
+        Miller-index label: ``"111"``, ``"100"``, or ``"110"``.
+
+    Returns
+    -------
+    Atoms
+        Slab structure with 8 Angstrom vacuum added.
+    """
     if surface_label == "111":
         slab = fcc111(element, (1, 2, 6), orthogonal=True, a=lattice, periodic=True)
     elif surface_label == "100":
@@ -343,7 +565,25 @@ def fcc_surface_energy(
     calculator: Calculator,
     reference_energy: float,
 ) -> float:
-    """Calculate an unrelaxed FCC surface energy in mJ/m^2."""
+    """
+    Calculate an unrelaxed FCC surface energy in mJ/m^2.
+
+    Parameters
+    ----------
+    reference
+        Relaxed pure-element FCC structure used to extract lattice parameters.
+    surface_label
+        Miller-index label: ``"111"``, ``"100"``, or ``"110"``.
+    calculator
+        ASE calculator for the slab energy.
+    reference_energy
+        Elemental reference energy in eV/atom.
+
+    Returns
+    -------
+    float
+        Surface energy in mJ/m^2.
+    """
     lattice, element = fcc_lattice_and_element(reference)
     slab = build_fcc_surface(element, lattice, surface_label)
     attach_calculator(slab, calculator)
@@ -359,7 +599,27 @@ def hcp_surface_energy(
     calculator: Calculator,
     reference_energy: float,
 ) -> float:
-    """Calculate an unrelaxed HCP surface energy in mJ/m^2."""
+    """
+    Calculate an unrelaxed HCP surface energy in mJ/m^2.
+
+    Parameters
+    ----------
+    reference
+        Relaxed pure-element HCP structure used to extract lattice parameters.
+    surface_label
+        Human-readable label for the surface (used as a record key).
+    direction
+        Miller index triplet defining the surface orientation.
+    calculator
+        ASE calculator for the slab energy.
+    reference_energy
+        Elemental reference energy in eV/atom.
+
+    Returns
+    -------
+    float
+        Surface energy in mJ/m^2.
+    """
     counts = element_counts(reference)
     if len(counts) != 1:
         raise ValueError("Reference structure is not a pure-element HCP reference")
@@ -386,7 +646,25 @@ def fcc_stacking_fault_energy(
     calculator: Calculator,
     reference_energy: float,
 ) -> float:
-    """Calculate an unrelaxed FCC stacking-fault energy in mJ/m^2."""
+    """
+    Calculate an unrelaxed FCC stacking-fault energy in mJ/m^2.
+
+    Parameters
+    ----------
+    reference
+        Relaxed pure-element FCC structure.
+    displacement_fraction
+        In-plane displacement as a fraction of the in-plane lattice vector.
+    calculator
+        ASE calculator for the faulted slab energy.
+    reference_energy
+        Elemental reference energy in eV/atom.
+
+    Returns
+    -------
+    float
+        Stacking-fault energy in mJ/m^2.
+    """
     lattice, element = fcc_lattice_and_element(reference)
     fault = fcc111(element, (1, 2, 6), orthogonal=True, a=lattice, periodic=True)
     fault.cell[2] += fault.cell[1] * displacement_fraction
@@ -409,7 +687,25 @@ def fcc_stacking_fault_structure(
     *,
     undistorted: bool = False,
 ) -> Atoms:
-    """Build the FCC slab used by legacy solute-stacking-fault tests."""
+    """
+    Build the FCC slab used by legacy solute-stacking-fault tests.
+
+    Parameters
+    ----------
+    reference
+        Relaxed pure-element FCC reference structure.
+    inplane_repeats
+        Number of repetitions along each in-plane lattice direction.
+    zplane_repeats
+        Number of stacking-fault period repetitions along z.
+    undistorted
+        When ``True``, omit the fault displacement (undistorted bulk slab).
+
+    Returns
+    -------
+    Atoms
+        FCC slab with or without the intrinsic stacking fault.
+    """
     lattice, element = fcc_lattice_and_element(reference)
     fault = fcc111(
         element,
@@ -428,7 +724,21 @@ def relaxed_stacking_fault_energy(
     atoms: Atoms,
     calculator: Calculator,
 ) -> tuple[Atoms, float]:
-    """Relax a stacking-fault slab with the legacy z-only constraints."""
+    """
+    Relax a stacking-fault slab with the legacy z-only constraints.
+
+    Parameters
+    ----------
+    atoms
+        Stacking-fault slab to relax.
+    calculator
+        ASE calculator for the relaxation and energy evaluation.
+
+    Returns
+    -------
+    tuple[Atoms, float]
+        Relaxed slab structure and its total potential energy in eV.
+    """
     structure = atoms.copy()
     attach_calculator(structure, calculator)
     structure = relax_cell_and_atoms_direction(
@@ -446,7 +756,23 @@ def solute_stacking_fault_structure(
     solute_element: str,
     solute_layer: int,
 ) -> Atoms:
-    """Substitute one atom in a requested z-layer of a relaxed fault slab."""
+    """
+    Substitute one atom in a requested z-layer of a relaxed fault slab.
+
+    Parameters
+    ----------
+    base_structure
+        Relaxed fault or bulk slab to modify.
+    solute_element
+        Chemical symbol of the solute to insert.
+    solute_layer
+        Zero-based layer index along the z direction.
+
+    Returns
+    -------
+    Atoms
+        Copy of ``base_structure`` with one atom replaced by the solute.
+    """
     structure = base_structure.copy()
     layers, _ = get_layers(structure, (0, 0, 1))
     matching_indices = np.argwhere(layers == solute_layer).ravel()
@@ -465,7 +791,29 @@ def solute_stacking_fault_interaction(
     zplane_repeats: int,
     solute_layers: tuple[int, ...],
 ) -> list[float]:
-    """Calculate relaxed solute-stacking-fault interaction energies in eV."""
+    """
+    Calculate relaxed solute-stacking-fault interaction energies in eV.
+
+    Parameters
+    ----------
+    matrix_oqmd_id
+        OQMD identifier for the pure-element host matrix.
+    solute_element
+        Chemical symbol of the solute to insert.
+    calculator
+        ASE calculator for all relaxation and energy evaluations.
+    inplane_repeats
+        Number of repetitions along each in-plane lattice direction.
+    zplane_repeats
+        Number of stacking-fault period repetitions along z.
+    solute_layers
+        Zero-based layer indices at which to place the solute.
+
+    Returns
+    -------
+    list[float]
+        Interaction energy in eV for each requested solute layer.
+    """
     reference = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
     fault_structure = fcc_stacking_fault_structure(
         reference,
@@ -515,7 +863,21 @@ def solute_stacking_fault_interaction(
 
 
 def tilted_structure(base_structure: Atoms, displacement: tuple[float, float]) -> Atoms:
-    """Tilt a cell by a crystallographic displacement in the in-plane basis."""
+    """
+    Tilt a cell by a crystallographic displacement in the in-plane basis.
+
+    Parameters
+    ----------
+    base_structure
+        Structure whose cell will be tilted.
+    displacement
+        Fractional displacements along the first and second cell vectors.
+
+    Returns
+    -------
+    Atoms
+        Copy of ``base_structure`` with the third cell vector displaced.
+    """
     tilted = base_structure.copy()
     tilted.cell[2] += base_structure.cell[0] * displacement[0]
     tilted.cell[2] += base_structure.cell[1] * displacement[1]
@@ -532,7 +894,33 @@ def generalized_stacking_fault_energies(
     relax_steps: int,
     relax_fmax: float,
 ) -> tuple[list[float], list[float]]:
-    """Calculate relaxed GSF raw and zero-referenced energies in eV/A^2."""
+    """
+    Calculate relaxed GSF raw and zero-referenced energies in eV/A^2.
+
+    Parameters
+    ----------
+    base_structure
+        Base cell to pre-relax and tile before applying fault displacements.
+    calculator
+        ASE calculator for all energy evaluations.
+    displacements
+        Sequence of ``(frac_a, frac_b)`` fault displacements; must include
+        ``(0.0, 0.0)`` for the reference energy.
+    zlayers
+        Number of times to repeat the structure along z.
+    relax_method
+        Relaxation protocol: ``"atoms_z"`` or ``"atoms_cell_z"``.
+    relax_steps
+        Maximum number of BFGS steps for each fault structure.
+    relax_fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Raw energies per area and energies normalised to the undisplaced point,
+        both in eV/Angstrom^2, ordered to match ``displacements``.
+    """
     if (0.0, 0.0) not in displacements:
         raise ValueError("GSF displacements must include the undisplaced structure")
 
@@ -583,7 +971,18 @@ def relax_atoms(
     steps: int = 0,
     fmax: float = SOLUTE_RELAX_FMAX,
 ) -> None:
-    """Relax atomic positions in-place when requested."""
+    """
+    Relax atomic positions in-place when requested.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relax in-place.
+    steps
+        Maximum number of BFGS steps; no relaxation is performed when zero.
+    fmax
+        Force convergence threshold in eV/Angstrom.
+    """
     if steps <= 0:
         return
     BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
@@ -595,7 +994,27 @@ def solute_structure(
     solute_2: str | None = None,
     second_solute_index: int | None = None,
 ) -> Atoms:
-    """Build a single-solute or solute-pair structure from a pure matrix."""
+    """
+    Build a single-solute or solute-pair structure from a pure matrix.
+
+    Parameters
+    ----------
+    pure_structure
+        Pure-element host matrix supercell.
+    solute_1
+        Element symbol for the origin-site solute (or ``"Vac"`` for vacancy).
+    solute_2
+        Element symbol for the second solute when building a pair, or
+        ``None`` for a single-solute structure.
+    second_solute_index
+        Atom index for the second solute site; required when ``solute_2`` is
+        not ``None``.
+
+    Returns
+    -------
+    Atoms
+        Copy of ``pure_structure`` with the requested substitution(s) applied.
+    """
     structure = pure_structure.copy()
     if solute_2 is not None:
         if second_solute_index is None:
@@ -621,7 +1040,25 @@ def relaxed_energy(
     relax_steps: int,
     relax_fmax: float,
 ) -> float:
-    """Calculate an energy after optional atomic relaxation."""
+    """
+    Calculate an energy after optional atomic relaxation.
+
+    Parameters
+    ----------
+    atoms
+        Structure to evaluate.
+    calculator
+        ASE calculator to attach before evaluation.
+    relax_steps
+        Maximum number of BFGS steps; no relaxation when zero.
+    relax_fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    float
+        Total potential energy in eV after optional relaxation.
+    """
     attach_calculator(atoms, calculator)
     relax_atoms(atoms, steps=relax_steps, fmax=relax_fmax)
     return float(atoms.get_potential_energy())
@@ -637,7 +1074,34 @@ def solute_solute_binding(
     relax_steps: int = SOLUTE_RELAX_STEPS,
     relax_fmax: float = SOLUTE_RELAX_FMAX,
 ) -> tuple[list[float], list[float]]:
-    """Calculate solute-solute binding energies for FCC neighbor shells."""
+    """
+    Calculate solute-solute binding energies for FCC neighbor shells.
+
+    Parameters
+    ----------
+    pure_structure
+        Relaxed pure-element FCC supercell built from the matrix.
+    calculator
+        ASE calculator for all energy evaluations.
+    solute_1
+        First solute element symbol (or ``"Vac"`` for vacancy).
+    solute_2
+        Second solute element symbol (or ``"Vac"`` for vacancy).
+    max_index
+        Upper bound for the neighbor shell slice (exclusive); shells
+        ``1`` through ``max_index - 1`` are computed, matching evalpot
+        ``range(1, max_index)``.
+    relax_steps
+        Maximum number of BFGS steps for solute structures.
+    relax_fmax
+        Force convergence threshold in eV/Angstrom.
+
+    Returns
+    -------
+    tuple[list[float], list[float]]
+        Shell distances in Angstrom and binding energies in meV,
+        ordered from nearest to furthest shell.
+    """
     shell_indices = neighbor_shell_indices(pure_structure)[1:max_index]
     pure_energy = relaxed_energy(
         pure_structure.copy(), calculator, relax_steps=0, relax_fmax=relax_fmax
@@ -797,7 +1261,23 @@ def legacy_elastic_tensor(
     *,
     strain_amounts: tuple[float, ...] = (-0.01, -0.005, 0.005, 0.01),
 ) -> np.ndarray:
-    """Calculate elastic constants using the legacy pymatgen strain fit."""
+    """
+    Calculate elastic constants using the legacy pymatgen strain fit.
+
+    Parameters
+    ----------
+    atoms
+        Structure to evaluate.
+    calculator
+        ASE calculator that supports stress.
+    strain_amounts
+        Engineering strain magnitudes applied for the finite-difference fit.
+
+    Returns
+    -------
+    np.ndarray
+        6x6 elastic tensor in GPa.
+    """
     reference = atoms.copy()
     attach_calculator(reference, calculator)
     eq_stress = Stress.from_voigt(reference.get_stress())
@@ -876,7 +1356,20 @@ def elastic_properties(atoms: Atoms, elastic_tensor: np.ndarray) -> dict[str, An
 
 
 def structure_file_stem(oqmd_id: str) -> str:
-    """Get the staged structure filename stem for an OQMD-like identifier."""
+    """
+    Get the staged structure filename stem for an OQMD-like identifier.
+
+    Parameters
+    ----------
+    oqmd_id
+        OQMD numeric identifier or a ``NOTINOQMD_*`` legacy identifier.
+
+    Returns
+    -------
+    str
+        Filename stem: ``OQMD_<oqmd_id>`` for numeric IDs, or the raw ID
+        for ``NOTINOQMD_*`` identifiers.
+    """
     if oqmd_id.startswith("NOTINOQMD_"):
         return oqmd_id
     return f"OQMD_{oqmd_id}"
@@ -919,7 +1412,19 @@ def load_oqmd_structure(oqmd_id: str) -> Atoms:
 
 
 def _float_or_none(value: object) -> float | None:
-    """Convert string metadata values to floats when possible."""
+    """
+    Convert string metadata values to floats when possible.
+
+    Parameters
+    ----------
+    value
+        Value to convert; typically a string from OQMD JSON metadata.
+
+    Returns
+    -------
+    float | None
+        Parsed float, or ``None`` if conversion fails.
+    """
     try:
         return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -973,7 +1478,20 @@ def formation_energy_per_atom(
 
 
 def legacy_structure_info(atoms: Atoms) -> dict[str, Any]:
-    """Build structure metadata using the legacy evalpot convention."""
+    """
+    Build structure metadata using the legacy evalpot convention.
+
+    Parameters
+    ----------
+    atoms
+        Structure to describe.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON-serialisable metadata including formula, volume, lattice
+        parameters, angles, and symmetry information.
+    """
     structure = AseAtomsAdaptor.get_structure(atoms)
     structure = structure.get_primitive_structure()
     structure = structure.get_reduced_structure()
