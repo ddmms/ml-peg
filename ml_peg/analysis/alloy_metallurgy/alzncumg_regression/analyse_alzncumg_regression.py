@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -107,7 +110,21 @@ def reference_series(references: dict[str, Any], key: str) -> list[float]:
 def solute_solute_reference_series(
     references: dict[str, Any], reference_key: str
 ) -> list[float]:
-    """Extract solute-solute references, allowing sorted DFT pair keys."""
+    """
+    Extract solute-solute references, allowing sorted DFT pair keys.
+
+    Parameters
+    ----------
+    references
+        Evalpot-format DFT reference dictionary.
+    reference_key
+        Solute-solute record key (e.g. ``8100-SolSol_Cu_Zn``).
+
+    Returns
+    -------
+    list[float]
+        Binding energies for the requested pair, or an empty list if not found.
+    """
     values = reference_series(references, f"{reference_key}_BindingEnergy")
     if values:
         return values
@@ -552,6 +569,14 @@ def write_parity_plot(
         hoverdata=hoverdata,
     )
     def _plot_values() -> dict[str, list[float]]:
+        """
+        Return pre-collected reference and model value arrays.
+
+        Returns
+        -------
+        dict[str, list[float]]
+            Reference and per-model value lists passed to the parity decorator.
+        """
         return values
 
     _plot_values()
@@ -576,6 +601,243 @@ def errors_from_values(values: dict[str, list[float]]) -> dict[str, float]:
         for model_name, model_values in values.items()
         if model_name != "ref"
     }
+
+
+def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
+    """
+    Write a multi-panel Plotly JSON of solute-solute binding energies.
+
+    Parameters
+    ----------
+    records_by_model
+        Mapping of model name to solute-solute binding record dicts.
+    filename
+        Output path for the Plotly JSON figure.
+    """
+    references = load_references()
+    common_keys = sorted(
+        set.intersection(*(set(records) for records in records_by_model.values()))
+    )
+    if not common_keys:
+        return
+    num_keys = len(common_keys)
+    cols = min(3, num_keys)
+    rows = math.ceil(num_keys / max(1, cols))
+
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    colors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+    ]
+
+    for i, reference_key in enumerate(common_keys):
+        row = i // cols + 1
+        col = i % cols + 1
+
+        reference_values = solute_solute_reference_series(references, reference_key)
+        if reference_values:
+            x_vals = list(range(1, len(reference_values) + 1))
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=reference_values,
+                    mode="lines+markers",
+                    name="DFT",
+                    marker={"color": "black", "symbol": "square"},
+                    showlegend=(i == 0),
+                ),
+                row=row,
+                col=col,
+            )
+
+        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+            if reference_key in model_records:
+                model_vals = model_records[reference_key]["binding_energies"]
+                x_vals = list(range(1, len(model_vals) + 1))
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_vals,
+                        y=model_vals,
+                        mode="lines+markers",
+                        name=model_name,
+                        marker={
+                            "color": colors[c_idx % len(colors)],
+                            "symbol": "circle",
+                        },
+                        showlegend=(i == 0),
+                    ),
+                    row=row,
+                    col=col,
+                )
+
+    fig.update_layout(
+        title_text="Solute-solute binding energies", height=max(400, 300 * rows)
+    )
+    for i in range(1, num_keys + 1):
+        fig.layout[f"yaxis{i}"].title = "Binding energy / meV"
+        fig.layout[f"xaxis{i}"].title = "Neighbor Shell"
+
+    fig.write_json(filename)
+
+
+def write_custom_gsf_plot(records_by_model: dict, filename: Path):
+    """
+    Write a multi-panel Plotly JSON of generalized stacking-fault energies.
+
+    Parameters
+    ----------
+    records_by_model
+        Mapping of model name to fault-surface property record dicts.
+    filename
+        Output path for the Plotly JSON figure.
+    """
+    references = load_references()
+    common_keys = sorted(
+        set.intersection(
+            *(set(records["gsf"]) for records in records_by_model.values())
+        )
+    )
+    if not common_keys:
+        return
+    num_keys = len(common_keys)
+    cols = min(3, num_keys)
+    rows = math.ceil(num_keys / max(1, cols))
+
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#e377c2"]
+
+    for i, reference_key in enumerate(common_keys):
+        row = i // cols + 1
+        col = i % cols + 1
+        reference_values = reference_series(references, f"{reference_key}_normE")
+        if reference_values:
+            x_vals = list(range(1, len(reference_values) + 1))
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=reference_values,
+                    mode="lines+markers",
+                    name="DFT",
+                    marker={"color": "black", "symbol": "square"},
+                    showlegend=(i == 0),
+                ),
+                row=row,
+                col=col,
+            )
+
+        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+            if reference_key in model_records["gsf"]:
+                model_vals = model_records["gsf"][reference_key]["norm_energies"]
+                x_vals = list(range(1, len(model_vals) + 1))
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_vals,
+                        y=model_vals,
+                        mode="lines+markers",
+                        name=model_name,
+                        marker={
+                            "color": colors[c_idx % len(colors)],
+                            "symbol": "circle",
+                        },
+                        showlegend=(i == 0),
+                    ),
+                    row=row,
+                    col=col,
+                )
+
+    fig.update_layout(
+        title_text="Generalized stacking-fault energies", height=max(400, 300 * rows)
+    )
+    for i in range(1, num_keys + 1):
+        fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / eV A^-2"
+        fig.layout[f"xaxis{i}"].title = "GSF Point"
+
+    fig.write_json(filename)
+
+
+def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
+    """
+    Write a multi-panel Plotly JSON of solute-stacking-fault interaction energies.
+
+    Parameters
+    ----------
+    records_by_model
+        Mapping of model name to fault-surface property record dicts.
+    filename
+        Output path for the Plotly JSON figure.
+    """
+    references = load_references()
+    common_keys = sorted(
+        set.intersection(
+            *(
+                set(records["solute_stacking_faults"])
+                for records in records_by_model.values()
+            )
+        )
+    )
+    if not common_keys:
+        return
+    num_keys = len(common_keys)
+    cols = min(3, num_keys)
+    rows = math.ceil(num_keys / max(1, cols))
+
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#e377c2"]
+
+    for i, reference_key in enumerate(common_keys):
+        row = i // cols + 1
+        col = i % cols + 1
+        reference_values = reference_series(references, reference_key)
+        if reference_values:
+            x_vals = list(range(1, len(reference_values) + 1))  # layer indices
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=reference_values,
+                    mode="lines+markers",
+                    name="DFT",
+                    marker={"color": "black", "symbol": "square"},
+                    showlegend=(i == 0),
+                ),
+                row=row,
+                col=col,
+            )
+
+        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+            if reference_key in model_records["solute_stacking_faults"]:
+                model_vals = model_records["solute_stacking_faults"][reference_key][
+                    "interaction_energies"
+                ]
+                x_vals = list(range(1, len(model_vals) + 1))
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_vals,
+                        y=model_vals,
+                        mode="lines+markers",
+                        name=model_name,
+                        marker={
+                            "color": colors[c_idx % len(colors)],
+                            "symbol": "circle",
+                        },
+                        showlegend=(i == 0),
+                    ),
+                    row=row,
+                    col=col,
+                )
+
+    fig.update_layout(
+        title_text="Solute-stacking-fault interactions", height=max(400, 300 * rows)
+    )
+    for i in range(1, num_keys + 1):
+        fig.layout[f"yaxis{i}"].title = "Interaction energy / eV"
+        fig.layout[f"xaxis{i}"].title = "Layer"
+
+    fig.write_json(filename)
 
 
 def solute_solute_binding_values(
@@ -649,13 +911,9 @@ def solute_solute_metrics() -> dict[str, dict[str, float]]:
     if not has_series_data(values):
         return {}
 
-    write_parity_plot(
-        values,
+    write_custom_solute_solute_plot(
+        records_by_model,
         filename=OUT_PATH / "figure_solute_solute_bindings.json",
-        title="Solute-solute binding energies",
-        x_label="Predicted binding energy / meV",
-        y_label="DFT binding energy / meV",
-        hoverdata={"Interaction": labels},
     )
     return {"Solute-Solute Binding MAE": errors_from_values(values)}
 
@@ -877,27 +1135,17 @@ def fault_surface_metrics() -> dict[str, dict[str, float]]:
 
     gsf_energy_values, gsf_labels = gsf_values(records_by_model)
     if has_series_data(gsf_energy_values):
-        write_parity_plot(
-            gsf_energy_values,
+        write_custom_gsf_plot(
+            records_by_model,
             filename=OUT_PATH / "figure_gsf_energies.json",
-            title="Generalized stacking-fault energies",
-            x_label="Predicted normalized GSF energy / eV A^-2",
-            y_label="DFT normalized GSF energy / eV A^-2",
-            hoverdata={"GSF point": gsf_labels},
         )
         metrics["GSF Energy MAE"] = errors_from_values(gsf_energy_values)
 
-    solute_sf_values, solute_sf_labels = solute_stacking_fault_values(
-        records_by_model
-    )
+    solute_sf_values, solute_sf_labels = solute_stacking_fault_values(records_by_model)
     if has_series_data(solute_sf_values):
-        write_parity_plot(
-            solute_sf_values,
+        write_custom_solute_sf_plot(
+            records_by_model,
             filename=OUT_PATH / "figure_solute_stacking_faults.json",
-            title="Solute-stacking-fault interactions",
-            x_label="Predicted interaction energy / eV",
-            y_label="DFT interaction energy / eV",
-            hoverdata={"Solute-SF layer": solute_sf_labels},
         )
         metrics["Solute-Stacking Fault MAE"] = errors_from_values(solute_sf_values)
 

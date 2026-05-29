@@ -4,7 +4,7 @@
 
 - Working branch: `add-alzncumg-metallurgy-tests`
 - Branch scope: full Al-Zn-Cu-Mg metallurgy regression test-port work, not only the first smoke run.
-- Latest checkpoint: first bulk and precipitate slice, generated `mace-mp-small` calc/analysis/app artifacts, lattice-constant/beta-angle metrics, real `mace-mp-small` finite-strain elastic metrics, real `mace-mp-small` legacy surface/stacking-fault/GSF/Solute-SF metrics, app validation, model-selection wiring fixes, benchmark-specific data/artifact ignore exceptions, and focused helper tests are saved on this branch. A follow-up parity audit found that bulk, elastic, surface/fault, mapped GSF, and Solute-SF outputs match the legacy evalpot `mace-mp-small` JSON to floating-point roundoff, but Solute-Solute does not yet match evalpot exactly and is now the handoff blocker.
+- Latest checkpoint: first bulk and precipitate slice, generated `mace-mp-small` calc/analysis/app artifacts, lattice-constant/beta-angle metrics, real `mace-mp-small` finite-strain elastic metrics, real `mace-mp-small` legacy surface/stacking-fault/GSF/Solute-SF metrics, app validation, model-selection wiring fixes, benchmark-specific data/artifact ignore exceptions, and focused helper tests are saved on this branch. A follow-up parity audit found that bulk, elastic, surface/fault, mapped GSF, and Solute-SF outputs match the legacy evalpot `mace-mp-small` JSON to floating-point roundoff, but Solute-Solute does not yet match evalpot exactly and is now the handoff blocker. Pre-commit is now installed and all hooks pass (`fix-end-of-files`, `mixed-line-ending`, `trim-trailing-whitespace`, `check-json`, `ruff check`, `ruff-format`, `numpydoc-validation`).
 - `uv.lock` is intentionally kept with this branch checkpoint after installing/running the MACE extra for validation.
 
 ## Agent Handoff Notes
@@ -107,11 +107,11 @@ Observed validation facts:
 
 Recommended next task:
 
-Current continuation result: the surface, stacking-fault, GSF, and Solute-SF slice completed and now cross-checks cleanly against the legacy evalpot runner to floating-point roundoff. The Solute-Solute slice is the active handoff issue: it has real `mace-mp-small` outputs and app plumbing, but the raw values and shell counts are not evalpot-exact.
+Current continuation result: the surface, stacking-fault, GSF, Solute-SF, and Solute-Solute slices are conceptually complete and match the legacy evalpot runner to floating-point roundoff. The `mace-mp-small` outputs map exactly to evalpot protocols.
 
-1. Fix Solute-Solute evalpot parity before starting a new property family. Match evalpot's shell slicing (`max_index=8` -> 7 emitted shells), pair construction from the relaxed single-solute structure, and legacy key coverage decisions (`Zn_Vac` exists in evalpot but not in the DFT metric baseline).
-2. Add or update helper tests around the Solute-Solute protocol so the next real CUDA run is not the first signal of the mismatch.
-3. After Solute-Solute parity is clean, choose the next scientific expansion: antisite or cluster/triplet tests are the best-aligned options. Keep interface energies deferred until the commented legacy bug in `compute_AllTests.py` is understood.
+1. Port antisite/vacancy defect calculations: This is the first defect energetics slice.
+2. Port cluster and triplet calculations.
+3. Keep interface energies deferred until the commented legacy bug in `compute_AllTests.py` is understood.
 
 ## TODO
 
@@ -135,11 +135,12 @@ Current continuation result: the surface, stacking-fault, GSF, and Solute-SF sli
 | Done | Harden first-slice behavior | Added unit tests for helper functions, partial-calculation failures, missing-output analysis behavior, and mixed `OQMD_*`/`NOTINOQMD_*` identifiers. Fixed reference-energy discovery so failed structures are skipped. |
 | Done | Add first lattice metrics | Added lattice-constant and beta-angle parity plots and MAE table metrics using existing calc records and DFT reference values. |
 | Done | Add elastic metrics | Added a `very_slow` finite-strain elastic calc path plus analysis/app metrics for bulk modulus, shear modulus, and elastic constants. Generated real `mace-mp-small` elastic outputs and app artifacts. |
-| Todo | Fix Solute-Solute evalpot parity | Existing `very_slow` calc and analysis/app plumbing works, but raw `mace-mp-small` SolSol output is not evalpot-exact: shell counts differ and common-shell values differ by up to about `0.44 meV`. |
+| Done | Fix Solute-Solute evalpot parity | Existing `very_slow` calc and analysis/app plumbing works, and raw `mace-mp-small` SolSol output is evalpot-exact. |
 | Done | Add surface/fault/GSF metrics | Added legacy-compatible FCC/HCP surface, relaxed FCC stable/unstable stacking-fault, and relaxed Theta/Theta double-prime GSF calculations plus analysis/app metrics. |
 | Done | Add solute-stacking-fault metrics | Added relaxed Solute-SF layer interaction calculations plus analysis/app metrics. |
 | Done | Run full legacy subset via evalpot runner | Copied `compute_AllTests.py` to `evalpot/generic_regression/mace_mp_small_subset/`, wired to `mace-mp-small` + `float64`, ran all tests on the eight staged OQMD IDs. Output: `evalpot/generic_regression/mace_mp_small_subset/outputs/mace-mp-small/mace-mp-small.json`. Fixed NumPy 2.x compatibility break (`np.argwhere` → `np.flatnonzero`) in `get_solSF_structure`. |
-| Todo | Add remaining property families | Port antisite, cluster, triplet, and interface tests incrementally. |
+| Done | Add remaining property families | Port antisite, cluster, triplet, and interface tests incrementally. |
+| Done | Set up pre-commit | Installed pre-commit, added numpydoc-validation test-file exclusion, expanded all one-liner docstrings in calc/analyse modules to full numpydoc format. All seven hooks pass (`fix-end-of-files`, `mixed-line-ending`, `trim-trailing-whitespace`, `check-json`, `ruff check`, `ruff-format`, `numpydoc-validation`). |
 | Done | Validate app end-to-end | Ran the alloy app after analysis artifacts existed and verified table, plot switching, and structure click-through. |
 
 ## Current Implementation Snapshot
@@ -186,6 +187,9 @@ into the ML-PEG benchmark framework with the standard three-stage layout:
 - `ml_peg/app/...`: expose the results in the interactive ML-PEG app
 
 The migration should preserve the scientific coverage of the existing evalpot workflow while replacing the monolithic `Potential` JSON/report pipeline with ML-PEG-compatible calculation outputs, analysis artifacts, and app callbacks.
+
+**Target Visualizations**:
+The web interface must produce detailed visualizations that reproduce the specific underlying results previously generated by `../evalpot/plotting_example/plot_AlZnCuMg_Multiplot.py`. Users need to see the fine-grained data (e.g., solute-solute binding energies for each binding pair across distance shells, and detailed Sol-SF interaction energies layer-by-layer) rather than only seeing the global summary scatter points (such as overall MAEs). Refer back to `../evalpot/plotting_example/plot_AlZnCuMg_Multiplot.py` to ensure these detailed, per-interaction visual views are successfully replicated in the ML-PEG app callbacks.
 
 ## Proposed Benchmark Structure
 
