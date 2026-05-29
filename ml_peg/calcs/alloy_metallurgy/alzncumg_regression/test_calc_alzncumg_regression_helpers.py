@@ -120,6 +120,73 @@ class PairDistanceCalculator(Calculator):
         self.results["energy"] = energy
 
 
+class PairDistanceWithVacancyCalculator(Calculator):
+    """Return pair-distance binding terms for Cu solutes and vacancies."""
+
+    implemented_properties = ["energy"]
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+    ) -> None:
+        """Calculate an energy whose binding term is the Cu-vacancy distance."""
+        super().calculate(atoms, properties, system_changes)
+        if atoms is None:
+            raise ValueError("Atoms are required")
+
+        symbols = atoms.get_chemical_symbols()
+        cu_indices = [index for index, symbol in enumerate(symbols) if symbol == "Cu"]
+        vacancy_count = 4 - len(atoms)
+        energy = 0.2 * len(cu_indices) + 0.3 * vacancy_count
+        if len(cu_indices) == 1 and vacancy_count == 1:
+            energy += atoms[cu_indices[0]].position[0] / 1000.0
+        self.results["energy"] = energy
+
+
+class CellTiltCalculator(Calculator):
+    """Return energy from the in-plane tilt of the third cell vector."""
+
+    implemented_properties = ["energy"]
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+    ) -> None:
+        """Calculate a deterministic cell-tilt energy."""
+        super().calculate(atoms, properties, system_changes)
+        if atoms is None:
+            raise ValueError("Atoms are required")
+
+        self.results["energy"] = 10.0 + atoms.cell[2, 0] + 2.0 * atoms.cell[2, 1]
+
+
+class FormulaEnergyCalculator(Calculator):
+    """Return configured energies keyed by chemical formula."""
+
+    implemented_properties = ["energy"]
+
+    def __init__(self, energies: dict[str, float]):
+        super().__init__()
+        self.energies = energies
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+    ) -> None:
+        """Calculate a configured energy for the current formula."""
+        super().calculate(atoms, properties, system_changes)
+        if atoms is None:
+            raise ValueError("Atoms are required")
+
+        self.results["energy"] = self.energies[atoms.get_chemical_formula()]
+
+
 @pytest.mark.parametrize(
     ("oqmd_id", "expected_stem"),
     [
@@ -134,13 +201,13 @@ def test_structure_file_stem_handles_numeric_and_legacy_ids(
     assert calc.structure_file_stem(oqmd_id) == expected_stem
 
 
-def test_solute_pair_reference_key_sorts_legacy_pairs() -> None:
-    """Solute reference keys match the ordering used in the DFT JSON."""
+def test_solute_pair_reference_key_preserves_legacy_pair_order() -> None:
+    """Solute reference keys preserve the ordering used by evalpot outputs."""
     assert calc.solute_pair_reference_key("8100", "Zn", "Cu") == (
-        "8100-SolSol_Cu_Zn"
+        "8100-SolSol_Zn_Cu"
     )
     assert calc.solute_pair_reference_key("635950", "Vac", "Al") == (
-        "635950-SolSol_Al_Vac"
+        "635950-SolSol_Vac_Al"
     )
 
 
@@ -210,8 +277,8 @@ def test_finite_strain_elastic_tensor_recovers_linear_response() -> None:
     assert properties["C_21"] == pytest.approx(55.0)
 
 
-def test_solute_solute_binding_uses_neighbor_shells_and_energy_cycle() -> None:
-    """Solute-solute binding uses the legacy pair-minus-single energy cycle."""
+def test_solute_solute_binding_uses_evalpot_max_index_and_energy_cycle() -> None:
+    """Solute-solute binding uses evalpot shell slicing and energy cycle."""
     pure_structure = bulk("Al", "fcc", a=4.0, cubic=True).repeat((2, 2, 2))
 
     distances, binding_energies = calc.solute_solute_binding(
@@ -219,12 +286,146 @@ def test_solute_solute_binding_uses_neighbor_shells_and_energy_cycle() -> None:
         PairDistanceCalculator(),
         "Cu",
         "Cu",
-        max_shells=2,
+        max_index=3,
         relax_steps=0,
     )
 
     assert len(distances) == 2
     assert binding_energies == pytest.approx(distances)
+
+
+def test_solute_solute_pair_starts_from_relaxed_first_solute(monkeypatch) -> None:
+    """Solute pair shells preserve the relaxed first-solute structure."""
+    pure_structure = Atoms(
+        "Al4",
+        positions=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]],
+        cell=[8.0, 8.0, 8.0],
+        pbc=True,
+    )
+
+    def fake_relax_atoms(atoms, *, steps=0, fmax=0.0):
+        if steps > 0 and atoms.get_chemical_symbols().count("Cu") == 1:
+            atoms.positions[1, 0] = 1.5
+
+    monkeypatch.setattr(calc, "relax_atoms", fake_relax_atoms)
+
+    distances, binding_energies = calc.solute_solute_binding(
+        pure_structure,
+        PairDistanceCalculator(),
+        "Cu",
+        "Cu",
+        max_index=2,
+        relax_steps=1,
+    )
+
+    assert distances == pytest.approx([1.5])
+    assert binding_energies == pytest.approx([1.5])
+
+
+def test_solute_solute_vacancy_pair_preserves_evalpot_delete_order() -> None:
+    """Vacancy pair structures delete the shell atom before the origin vacancy."""
+    pure_structure = Atoms(
+        "Al4",
+        positions=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]],
+        cell=[8.0, 8.0, 8.0],
+        pbc=True,
+    )
+
+    distances, binding_energies = calc.solute_solute_binding(
+        pure_structure,
+        PairDistanceWithVacancyCalculator(),
+        "Vac",
+        "Cu",
+        max_index=2,
+        relax_steps=0,
+    )
+
+    assert distances == pytest.approx([1.0])
+    assert binding_energies == pytest.approx([1.0])
+
+
+def test_surface_area_uses_first_two_cell_vectors() -> None:
+    """Surface area is the norm of the in-plane cell-vector cross product."""
+    atoms = Atoms("Al", cell=[[2.0, 0.0, 0.0], [0.5, 3.0, 0.0], [0.0, 0.0, 4.0]])
+
+    assert calc.surface_area(atoms) == pytest.approx(6.0)
+
+
+def test_generalized_stacking_fault_energies_are_zero_referenced(monkeypatch) -> None:
+    """GSF energies are normalized to the undisplaced point regardless of order."""
+    atoms = Atoms("Al", cell=np.eye(3), pbc=True)
+
+    monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
+    monkeypatch.setattr(calc, "relax_atoms_direction", lambda atoms, **kwargs: atoms)
+
+    raw_energies, norm_energies = calc.generalized_stacking_fault_energies(
+        atoms,
+        CellTiltCalculator(),
+        ((0.5, 0.0), (0.0, 0.0), (0.0, 0.25)),
+        zlayers=1,
+        relax_method="atoms_z",
+        relax_steps=0,
+        relax_fmax=0.0,
+    )
+
+    assert raw_energies == pytest.approx([10.5, 10.0, 10.5])
+    assert norm_energies == pytest.approx([0.5, 0.0, 0.5])
+
+
+def test_solute_stacking_fault_interaction_uses_relaxed_energy_cycle(
+    monkeypatch,
+) -> None:
+    """Solute-SF interaction follows the legacy fault-minus-bulk cycle."""
+    fault_structure = Atoms(
+        "Al2", positions=[[0, 0, 0], [0, 0, 1]], cell=np.eye(3), pbc=True
+    )
+    bulk_structure = Atoms(
+        "Al2", positions=[[0, 0, 0], [0, 0, 1]], cell=np.eye(3), pbc=True
+    )
+    fault_structure.info["kind"] = "fault"
+    bulk_structure.info["kind"] = "bulk"
+
+    def fake_fault_structure(
+        oqmd_id, inplane_repeats, zplane_repeats, *, undistorted=False
+    ):
+        return bulk_structure.copy() if undistorted else fault_structure.copy()
+
+    def fake_solute_structure(base_structure, solute_element, solute_layer):
+        structure = base_structure.copy()
+        structure.info["kind"] = f"{base_structure.info['kind']}-solute-{solute_layer}"
+        structure[solute_layer].symbol = solute_element
+        return structure
+
+    energies = {
+        "fault": 10.0,
+        "bulk": 8.0,
+        "bulk-solute-0": 8.5,
+        "fault-solute-0": 10.25,
+        "fault-solute-1": 10.75,
+    }
+
+    def fake_relaxed_energy(atoms, calculator):
+        return atoms, energies[atoms.info["kind"]]
+
+    monkeypatch.setattr(
+        calc,
+        "relaxed_oqmd_structure",
+        lambda oqmd_id, calculator: bulk_structure,
+    )
+    monkeypatch.setattr(calc, "fcc_stacking_fault_structure", fake_fault_structure)
+    monkeypatch.setattr(calc, "solute_stacking_fault_structure", fake_solute_structure)
+    monkeypatch.setattr(calc, "relaxed_stacking_fault_energy", fake_relaxed_energy)
+
+    interaction_energies = calc.solute_stacking_fault_interaction(
+        "8100",
+        "Cu",
+        FormulaEnergyCalculator({}),
+        inplane_repeats=1,
+        zplane_repeats=1,
+        solute_layers=(0, 1),
+    )
+
+    assert interaction_energies == pytest.approx([-0.25, 0.25])
 
 
 def test_calculation_writes_successful_records_after_partial_failure(
@@ -247,6 +448,7 @@ def test_calculation_writes_successful_records_after_partial_failure(
     monkeypatch.setattr(calc, "STRUCTURE_IDS", tuple(structures))
     monkeypatch.setattr(calc, "OUT_PATH", tmp_path)
     monkeypatch.setattr(calc, "load_oqmd_structure", structures.__getitem__)
+    monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
 
     with pytest.warns(UserWarning, match="Error calculating OQMD_broken"):
         calc.test_alzncumg_regression(("stub-model", model))

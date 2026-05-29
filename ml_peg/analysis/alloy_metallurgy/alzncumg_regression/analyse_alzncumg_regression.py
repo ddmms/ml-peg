@@ -104,6 +104,49 @@ def reference_series(references: dict[str, Any], key: str) -> list[float]:
     return values
 
 
+def solute_solute_reference_series(
+    references: dict[str, Any], reference_key: str
+) -> list[float]:
+    """Extract solute-solute references, allowing sorted DFT pair keys."""
+    values = reference_series(references, f"{reference_key}_BindingEnergy")
+    if values:
+        return values
+
+    matrix_id, _, pair_label = reference_key.partition("-SolSol_")
+    pair = pair_label.split("_")
+    if not matrix_id or len(pair) != 2:
+        return []
+    sorted_key = f"{matrix_id}-SolSol_{'_'.join(sorted(pair))}"
+    if sorted_key == reference_key:
+        return []
+    return reference_series(references, f"{sorted_key}_BindingEnergy")
+
+
+def scalar_reference(references: dict[str, Any], key: str) -> float | None:
+    """
+    Extract one scalar reference value by full evalpot key.
+
+    Parameters
+    ----------
+    references
+        Evalpot reference dictionary.
+    key
+        Full evalpot material parameter name.
+
+    Returns
+    -------
+    float | None
+        Scalar value if present and numeric.
+    """
+    entry = references.get(key)
+    if not entry:
+        return None
+    try:
+        return float(entry[0])
+    except (TypeError, ValueError):
+        return None
+
+
 def load_model_records() -> dict[str, dict[str, dict[str, Any]]]:
     """
     Load calculated scalar records.
@@ -166,6 +209,36 @@ def load_solute_solute_records() -> dict[str, dict[str, dict[str, Any]]]:
             data = json.load(file)
         records_by_model[model_name] = {
             record["reference_key"]: record for record in data["interactions"]
+        }
+    return records_by_model
+
+
+def load_fault_surface_records() -> dict[str, dict[str, dict[str, dict[str, Any]]]]:
+    """
+    Load calculated surface, stacking-fault, and GSF records.
+
+    Returns
+    -------
+    dict[str, dict[str, dict[str, dict[str, Any]]]]
+        Records keyed by model name, record group, and evalpot reference key.
+    """
+    records_by_model = {}
+    for model_name in MODELS:
+        record_path = CALC_PATH / model_name / "fault_surface_properties.json"
+        if not record_path.exists():
+            continue
+        with open(record_path) as file:
+            data = json.load(file)
+        records_by_model[model_name] = {
+            group_name: {
+                record["reference_key"]: record for record in data.get(group_name, [])
+            }
+            for group_name in (
+                "surfaces",
+                "stacking_faults",
+                "gsf",
+                "solute_stacking_faults",
+            )
         }
     return records_by_model
 
@@ -531,9 +604,7 @@ def solute_solute_binding_values(
         set.intersection(*(set(records) for records in records_by_model.values()))
     )
     for reference_key in common_keys:
-        reference_values = reference_series(
-            references, f"{reference_key}_BindingEnergy"
-        )
+        reference_values = solute_solute_reference_series(references, reference_key)
         if not reference_values:
             continue
         model_values_by_name = {
@@ -587,6 +658,250 @@ def solute_solute_metrics() -> dict[str, dict[str, float]]:
         hoverdata={"Interaction": labels},
     )
     return {"Solute-Solute Binding MAE": errors_from_values(values)}
+
+
+def fault_surface_scalar_values(
+    records_by_model: dict[str, dict[str, dict[str, dict[str, Any]]]],
+    group_name: str,
+    value_key: str,
+) -> tuple[dict[str, list[float]], list[str]]:
+    """
+    Get flattened scalar fault/surface values and labels.
+
+    Parameters
+    ----------
+    records_by_model
+        Fault/surface records keyed by model and group.
+    group_name
+        Record group inside ``fault_surface_properties.json``.
+    value_key
+        Scalar value key inside each record.
+
+    Returns
+    -------
+    tuple[dict[str, list[float]], list[str]]
+        Reference/model values and hover labels.
+    """
+    references = load_references()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+    labels = []
+    if not records_by_model:
+        return results, labels
+
+    model_groups = records_by_model.values()
+    common_keys = sorted(
+        set.intersection(
+            *(set(model_records[group_name]) for model_records in model_groups)
+        )
+    )
+    for reference_key in common_keys:
+        ref_value = scalar_reference(references, reference_key)
+        if ref_value is None:
+            continue
+        try:
+            model_values = {
+                model_name: float(model_records[group_name][reference_key][value_key])
+                for model_name, model_records in records_by_model.items()
+            }
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        results["ref"].append(ref_value)
+        for model_name, model_value in model_values.items():
+            results[model_name].append(model_value)
+        labels.append(reference_key)
+    return results, labels
+
+
+def gsf_values(
+    records_by_model: dict[str, dict[str, dict[str, dict[str, Any]]]],
+) -> tuple[dict[str, list[float]], list[str]]:
+    """
+    Get flattened GSF normalized energies and labels.
+
+    Parameters
+    ----------
+    records_by_model
+        Fault/surface records keyed by model and group.
+
+    Returns
+    -------
+    tuple[dict[str, list[float]], list[str]]
+        Reference/model values in eV/A^2 and hover labels.
+    """
+    references = load_references()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+    labels = []
+    if not records_by_model:
+        return results, labels
+
+    common_keys = sorted(
+        set.intersection(
+            *(set(model_records["gsf"]) for model_records in records_by_model.values())
+        )
+    )
+    for reference_key in common_keys:
+        reference_values = reference_series(references, f"{reference_key}_normE")
+        if not reference_values:
+            continue
+        model_values_by_name = {
+            model_name: model_records["gsf"][reference_key]["norm_energies"]
+            for model_name, model_records in records_by_model.items()
+        }
+        common_length = min(
+            len(reference_values),
+            *(len(model_values) for model_values in model_values_by_name.values()),
+        )
+        for index in range(common_length):
+            try:
+                model_values = {
+                    model_name: float(model_values[index])
+                    for model_name, model_values in model_values_by_name.items()
+                }
+            except (TypeError, ValueError):
+                continue
+
+            results["ref"].append(reference_values[index])
+            for model_name, model_value in model_values.items():
+                results[model_name].append(model_value)
+            labels.append(f"{reference_key} point {index + 1}")
+    return results, labels
+
+
+def solute_stacking_fault_values(
+    records_by_model: dict[str, dict[str, dict[str, dict[str, Any]]]],
+) -> tuple[dict[str, list[float]], list[str]]:
+    """
+    Get flattened solute-stacking-fault interaction values and labels.
+
+    Parameters
+    ----------
+    records_by_model
+        Fault/surface records keyed by model and group.
+
+    Returns
+    -------
+    tuple[dict[str, list[float]], list[str]]
+        Reference/model values in eV and hover labels.
+    """
+    references = load_references()
+    results = {"ref": []} | {model_name: [] for model_name in records_by_model}
+    labels = []
+    if not records_by_model:
+        return results, labels
+
+    common_keys = sorted(
+        set.intersection(
+            *(
+                set(model_records["solute_stacking_faults"])
+                for model_records in records_by_model.values()
+            )
+        )
+    )
+    for reference_key in common_keys:
+        reference_values = reference_series(references, reference_key)
+        if not reference_values:
+            continue
+        model_values_by_name = {
+            model_name: model_records["solute_stacking_faults"][reference_key][
+                "interaction_energies"
+            ]
+            for model_name, model_records in records_by_model.items()
+        }
+        common_length = min(
+            len(reference_values),
+            *(len(model_values) for model_values in model_values_by_name.values()),
+        )
+        for index in range(common_length):
+            try:
+                model_values = {
+                    model_name: float(model_values[index])
+                    for model_name, model_values in model_values_by_name.items()
+                }
+            except (TypeError, ValueError):
+                continue
+
+            results["ref"].append(reference_values[index])
+            for model_name, model_value in model_values.items():
+                results[model_name].append(model_value)
+            labels.append(f"{reference_key} layer {index}")
+    return results, labels
+
+
+def fault_surface_metrics() -> dict[str, dict[str, float]]:
+    """
+    Build optional surface, stacking-fault, and GSF metrics.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Fault/surface metrics by model, or an empty dictionary when outputs are
+        absent.
+    """
+    records_by_model = load_fault_surface_records()
+    if not records_by_model:
+        return {}
+
+    metrics = {}
+    surface_values, surface_labels = fault_surface_scalar_values(
+        records_by_model,
+        "surfaces",
+        "surface_energy",
+    )
+    if has_series_data(surface_values):
+        write_parity_plot(
+            surface_values,
+            filename=OUT_PATH / "figure_surface_energies.json",
+            title="Surface energies",
+            x_label="Predicted surface energy / mJ m^-2",
+            y_label="DFT surface energy / mJ m^-2",
+            hoverdata={"Surface": surface_labels},
+        )
+        metrics["Surface Energy MAE"] = errors_from_values(surface_values)
+
+    stacking_values, stacking_labels = fault_surface_scalar_values(
+        records_by_model,
+        "stacking_faults",
+        "stacking_fault_energy",
+    )
+    if has_series_data(stacking_values):
+        write_parity_plot(
+            stacking_values,
+            filename=OUT_PATH / "figure_stacking_fault_energies.json",
+            title="Stacking-fault energies",
+            x_label="Predicted stacking-fault energy / mJ m^-2",
+            y_label="DFT stacking-fault energy / mJ m^-2",
+            hoverdata={"Fault": stacking_labels},
+        )
+        metrics["Stacking Fault Energy MAE"] = errors_from_values(stacking_values)
+
+    gsf_energy_values, gsf_labels = gsf_values(records_by_model)
+    if has_series_data(gsf_energy_values):
+        write_parity_plot(
+            gsf_energy_values,
+            filename=OUT_PATH / "figure_gsf_energies.json",
+            title="Generalized stacking-fault energies",
+            x_label="Predicted normalized GSF energy / eV A^-2",
+            y_label="DFT normalized GSF energy / eV A^-2",
+            hoverdata={"GSF point": gsf_labels},
+        )
+        metrics["GSF Energy MAE"] = errors_from_values(gsf_energy_values)
+
+    solute_sf_values, solute_sf_labels = solute_stacking_fault_values(
+        records_by_model
+    )
+    if has_series_data(solute_sf_values):
+        write_parity_plot(
+            solute_sf_values,
+            filename=OUT_PATH / "figure_solute_stacking_faults.json",
+            title="Solute-stacking-fault interactions",
+            x_label="Predicted interaction energy / eV",
+            y_label="DFT interaction energy / eV",
+            hoverdata={"Solute-SF layer": solute_sf_labels},
+        )
+        metrics["Solute-Stacking Fault MAE"] = errors_from_values(solute_sf_values)
+
+    return metrics
 
 
 def elastic_metrics() -> dict[str, dict[str, float]]:
@@ -876,6 +1191,7 @@ def metrics(
     }
     results.update(solute_solute_metrics())
     results.update(elastic_metrics())
+    results.update(fault_surface_metrics())
     return results
 
 
