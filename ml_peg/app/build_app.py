@@ -14,7 +14,7 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.filter import get_element_filter, get_model_filter
+from ml_peg.app.filters import get_element_filter, get_model_filter
 from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_faqs,
