@@ -277,7 +277,15 @@ OQMD provenance to carry with any copied OQMD files:
 
 Packaging note: evalpot's current `pyproject.toml` package-data entry only names `data/OQMD-Dumps/*`. The legacy code also reads `data/structures/*`, so ML-PEG should explicitly package or download those files rather than relying on evalpot package data. The current ML-PEG first-slice data is committed under the package tree; decide before expansion whether larger OQMD/manual datasets stay in-repo or move behind `download_s3_data()`.
 
-Git tracking note: the repository has broad `*.json`, `*.xyz`, and `ml_peg/app/data/*` ignores. This benchmark now has explicit exceptions for its reference JSON, per-structure OQMD metadata JSON, calc outputs, and app data artifacts, because the DFT reference JSON, OQMD metadata, regenerated Plotly/table JSON, and structure assets are required for the migrated first slice and app click-through.
+Git tracking note: the repository has broad `*.json`, `*.xyz`, and `ml_peg/app/data/*` ignores on `main`. The `.gitignore` changes in this PR add narrow `!` exceptions scoped entirely to `ml_peg/calcs/alloy_metallurgy/alzncumg_regression/` and `ml_peg/app/data/alloy_metallurgy/alzncumg_regression/`. Without these exceptions the following benchmark-required files would be invisible to git:
+
+1. **DFT reference values** (`data/references/DFT.json`): the authoritative DFT energy/volume/elastic baseline used by all analysis metrics. This is a small static file — it is not a generated output.
+2. **OQMD input structures** (`data/structures/OQMD-Dumps/OQMD_*/` and `NOTINOQMD_*/`): 8 VASP POSCAR files plus 8 JSON metadata files from the Open Quantum Materials Database (CC-BY 4.0). These are the fixed atomic configurations fed to the calculator.
+3. **Special GSF layer structures** (`data/structures/special/AIIDA_339739`, `AIIDA_481617`): two VASP POSCAR files for the Theta and Theta'' GSF base cells, derived from AiiDA/DFT calculations.
+4. **Calc outputs for `mace-mp-small`** (`outputs/mace-mp-small/*.json` and `*.xyz`): pre-generated model output files committed so CI and app rendering work without re-running the GPU calc. These are the same pattern as committed outputs in other ML-PEG benchmarks.
+5. **App data artifacts** (`ml_peg/app/data/alloy_metallurgy/alzncumg_regression/**`): Plotly figure JSON files and the metrics summary table JSON, plus 8 relaxed `.xyz` structures for structure viewer click-through. These are also pre-generated outputs committed alongside the benchmark, consistent with the existing `onboarding` and `table_download` exceptions already in `.gitignore`.
+
+The `.gitignore` changes do not alter ignore rules for any other benchmark or any existing benchmark path. Removing them would make all the above files untracked and break the benchmark.
 
 ## Implementation Phases
 

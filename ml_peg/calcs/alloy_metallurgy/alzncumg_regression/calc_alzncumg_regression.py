@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import copy
+from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from pymatgen.analysis.structure_analyzer import SpacegroupAnalyzer
 from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -32,8 +34,25 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-OQMD_PATH = DATA_PATH / "structures" / "OQMD-Dumps"
 SPECIAL_STRUCTURE_PATH = DATA_PATH / "structures" / "special"
+
+_S3_KEY = "inputs/alloy_metallurgy/alzncumg_regression/alzncumg_regression.zip"
+_S3_FILENAME = "alzncumg_regression.zip"
+
+
+@lru_cache(maxsize=1)
+def _data_root() -> Path:
+    """
+    Download and cache the benchmark input data from S3.
+
+    Returns
+    -------
+    Path
+        Path to the extracted ``alzncumg_regression`` directory.
+    """
+    return download_s3_data(key=_S3_KEY, filename=_S3_FILENAME) / "alzncumg_regression"
+
+
 STRUCTURE_IDS = (
     "8100",
     "635950",
@@ -1390,7 +1409,9 @@ def load_oqmd_structure(oqmd_id: str) -> Atoms:
     Atoms
         ASE structure with OQMD metadata attached to ``atoms.info``.
     """
-    structure_path = OQMD_PATH / structure_file_stem(oqmd_id)
+    structure_path = (
+        _data_root() / "structures" / "OQMD-Dumps" / structure_file_stem(oqmd_id)
+    )
     metadata_path = structure_path.with_suffix(".json")
 
     atoms = read(structure_path, format="vasp")
