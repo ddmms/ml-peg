@@ -1334,7 +1334,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         )
 
     states = []
-    for entry in app_entries:
+    for entry in sorted(app_entries):
         states.extend([entry["weight_state"], entry["threshold_state"]])
 
     @callback(
