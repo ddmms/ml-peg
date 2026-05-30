@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import functools
 from importlib import metadata
 from pathlib import Path
 import time
@@ -509,6 +511,24 @@ def build_image_download_controls(image_id: str, uris: dict) -> Div:
     )
 
 
+@functools.cache
+def _load_faqs() -> list[dict[str, str]] | None:
+    """
+    Load and cache FAQs from the YAML file.
+
+    Returns
+    -------
+    list[dict[str, str]] | None
+        Loaded FAQs list or None if not found.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return None
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -519,12 +539,8 @@ def build_faqs() -> Div:
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
     # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
-
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    faqs_data_cached = _load_faqs()
+    if faqs_data_cached is None:
         return Div(
             "FAQs file not found",
             style={
@@ -533,6 +549,7 @@ def build_faqs() -> Div:
                 "fontStyle": "italic",
             },
         )
+    faqs_data = copy.deepcopy(faqs_data_cached)
 
     if not faqs_data or not isinstance(faqs_data, list):
         return Div("No FAQs available")
