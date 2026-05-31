@@ -18,30 +18,9 @@ from dash import html
 import matplotlib.pyplot as plt
 
 
-def _load_json(path: Path) -> Any:
-    """
-    Load a JSON file from disk.
-
-    Parameters
-    ----------
-    path
-        Path to a JSON file.
-
-    Returns
-    -------
-    Any
-        Parsed JSON payload.
-    """
-    with path.open("r", encoding="utf8") as f:
-        return json.load(f)
-
-
 def lookup_system_entry(
     model_entry: Mapping[str, Any],
     point_id: str | int,
-    *,
-    data_root: Path,
-    assets_prefix: str,
 ) -> dict[str, Any] | None:
     """
     Resolve a scatter (model, point) selection into a data-path payload.
@@ -52,10 +31,6 @@ def lookup_system_entry(
         Model entry from the interactive dataset (contains ``model`` and ``metrics``).
     point_id
         Point identifier selected in the scatter.
-    data_root
-        Root directory for app data (kept for API compatibility; unused here).
-    assets_prefix
-        Assets prefix for app data (kept for API compatibility; unused here).
 
     Returns
     -------
@@ -63,9 +38,6 @@ def lookup_system_entry(
         Selection dictionary containing ``model``, ``system``, and ``data_paths`` if the
         point is found; otherwise ``None``.
     """
-    _ = data_root
-    _ = assets_prefix
-
     model_name = (
         model_entry.get("model") or model_entry.get("id") or model_entry.get("name")
     )
@@ -251,7 +223,7 @@ def _render_npz_to_data_uri(
         meta_path = Path(meta_path_str)
         if meta_path.exists():
             try:
-                meta = _load_json(meta_path)
+                meta = json.loads(meta_path.read_text(encoding="utf8"))
                 labels = meta.get("labels", None) if isinstance(meta, dict) else None
                 if not isinstance(labels, list):
                     labels = None

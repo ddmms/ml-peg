@@ -21,6 +21,7 @@ from ml_peg.app.utils.plot_helpers import (
     build_serialized_scatter_content,
     resolve_scatter_selection,
 )
+from ml_peg.calcs import CALCS_ROOT
 
 BENCHMARK_NAME = "ti64_phonons"
 
@@ -28,7 +29,7 @@ DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
 TABLE_PATH = DATA_PATH / "ti64_phonons_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "ti64_phonons_interactive.json"
 
-CALC_ROOT = APP_ROOT.parent / "calcs" / "bulk_crystal" / BENCHMARK_NAME
+CALC_ROOT = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
 
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#phonons"
@@ -93,16 +94,13 @@ class Ti64PhononsApp(BaseApp):
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers=column_handlers,
             default_handler=omega_only_handler,
+            scatter_id=SCATTER_GRAPH_ID,
         )
 
         selection_lookup = partial(
             resolve_scatter_selection,
             models_data=models_data,
-            system_lookup=partial(
-                lookup_system_entry,
-                data_root=DATA_PATH,  # kept for API compatibility; unused by new helper
-                assets_prefix=f"bulk_crystal/{BENCHMARK_NAME}",  # unused by new helper
-            ),
+            system_lookup=lookup_system_entry,
         )
 
         dispersion_renderer = partial(render_dispersion_component, calc_root=CALC_ROOT)

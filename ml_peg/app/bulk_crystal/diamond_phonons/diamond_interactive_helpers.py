@@ -1,10 +1,4 @@
-"""
-Utilities for diamond phonon interactive assets (bands-only).
-
-Supports rendering a dispersion preview from:
-- Predicted Phonopy band.yaml (THz)
-- Reference dft_band.npz with keys: distance, qpoints, frequencies (cm^-1)
-"""
+"""Utilities for diamond phonon interactive assets (bands-only)."""
 
 from __future__ import annotations
 
@@ -12,6 +6,7 @@ import base64
 from collections.abc import Mapping
 from io import BytesIO
 from pathlib import Path
+import pickle
 from typing import Any
 
 import matplotlib
@@ -21,8 +16,35 @@ from dash import html
 import matplotlib.pyplot as plt
 import numpy as np
 
-THZ_TO_CM1 = 33.35640951981521
+CM1_TO_THZ = 1.0 / 33.35640951981521
+
+# FCC diamond BZ path: Γ→X→W→K→Γ→L→U→W→L→K→X
 HS_LABELS = [r"$\Gamma$", "X", "W", "K", r"$\Gamma$", "L", "U", "W", "L", "K", "X"]
+
+
+def _detect_hs_boundaries(qpoints: np.ndarray) -> list[int]:
+    """
+    Return indices of high-symmetry points along the q-path.
+
+    Detects direction changes by comparing consecutive step directions.
+    Always includes the first and last index.
+
+    Parameters
+    ----------
+    qpoints
+        Array of q-point coordinates, shape ``(N, 3)``.
+
+    Returns
+    -------
+    list[int]
+        Indices of high-symmetry points including the first and last.
+    """
+    dq = np.diff(qpoints, axis=0)
+    dq_norm = np.linalg.norm(dq, axis=1)
+    dq_unit = dq / (dq_norm[:, None] + 1e-12)
+    cosang = np.sum(dq_unit[1:] * dq_unit[:-1], axis=1)
+    turns = list(np.where(cosang < 0.95)[0] + 1)
+    return [0] + turns + [len(qpoints) - 1]
 
 
 def render_dispersion_component(
@@ -38,18 +60,18 @@ def render_dispersion_component(
 
     Parameters
     ----------
-    selection_context : Mapping[str, Any]
-        Selection context; expects selection["band_yaml"] and optional label/id.
-    calc_root : Path
-        Root directory used to resolve files.
-    frequency_scale : float
+    selection_context
+        Selection context; expects ``selection["band_npz"]`` relative to ``calc_root``.
+    calc_root
+        Root directory used to resolve relative file paths.
+    frequency_scale
         Multiplicative scale applied to frequencies.
-    frequency_unit : str
+    frequency_unit
         Y-axis unit label.
-    reference_label : str
+    reference_label
         Legend label for the reference overlay.
-    reference_band_npz : Path | None
-        Optional reference .npz (distance, qpoints, frequencies in cm^-1).
+    reference_band_npz
+        Optional absolute path to the DFT reference ``.npz`` (frequencies in cm⁻¹).
 
     Returns
     -------
@@ -58,16 +80,15 @@ def render_dispersion_component(
     """
     model_display = selection_context.get("model")
     selected = selection_context.get("selection") or {}
-
-    band_yaml = selected.get("band_yaml")
+    band_npz = selected.get("band_npz")
     label = selected.get("label") or selected.get("id", "")
 
-    if not band_yaml:
+    if not band_npz:
         return None
 
-    image_src = render_band_yaml_png(
-        calc_root=calc_root,
-        band_yaml=str(band_yaml),
+    image_src = _render_png(
+        calc_root=Path(calc_root),
+        band_npz=str(band_npz),
         reference_band_npz=reference_band_npz,
         frequency_scale=float(frequency_scale),
         frequency_unit=str(frequency_unit),
@@ -98,10 +119,10 @@ def render_dispersion_component(
     )
 
 
-def render_band_yaml_png(
+def _render_png(
     *,
     calc_root: Path,
-    band_yaml: str,
+    band_npz: str,
     reference_band_npz: Path | None,
     frequency_scale: float,
     frequency_unit: str,
@@ -109,168 +130,125 @@ def render_band_yaml_png(
     prediction_label: str,
 ) -> str | None:
     """
-    Render a dispersion PNG from band.yaml with optional reference overlay.
+    Render a dispersion PNG from a pickle band structure with optional DFT overlay.
 
     Parameters
     ----------
-    calc_root : Path
-        Root directory used to resolve files.
-    band_yaml : str
-        Predicted Phonopy band.yaml path (relative to calc_root).
-    reference_band_npz : Path | None
-        Optional reference .npz (distance, qpoints, frequencies in cm^-1).
-    frequency_scale : float
-        Multiplicative scale applied to frequencies.
-    frequency_unit : str
+    calc_root
+        Root directory used to resolve ``band_npz``.
+    band_npz
+        Relative path to the pickled band-structure file.
+    reference_band_npz
+        Absolute path to the DFT reference ``.npz`` (frequencies in cm⁻¹).
+    frequency_scale
+        Multiplicative scale applied to all frequencies.
+    frequency_unit
         Y-axis unit label.
-    reference_label : str
-        Legend label for the reference overlay.
-    prediction_label : str
-        Legend label for the prediction.
+    reference_label
+        Legend label for the DFT reference trace.
+    prediction_label
+        Legend label for the MLIP prediction trace.
 
     Returns
     -------
     str | None
         Base64 PNG data URI, or None on failure.
     """
-    import yaml  # type: ignore
-
-    def _detect_symmetry_boundaries(q_ref: np.ndarray) -> list[int]:
-        """
-        Return indices of k-path corners (including first and last).
-
-        Parameters
-        ----------
-        q_ref : np.ndarray
-            Array of q-points with shape (N, 3) along the band path.
-
-        Returns
-        -------
-        list[int]
-            Sorted indices of symmetry boundaries (path corners), including
-            indices 0 and N-1.
-        """
-        dq = np.diff(q_ref, axis=0)
-        dq_norm = np.linalg.norm(dq, axis=1)
-        eps = 1e-12
-        dq_unit = dq / (dq_norm[:, None] + eps)
-        cosang = np.sum(dq_unit[1:] * dq_unit[:-1], axis=1)
-        cand = np.where(cosang < 0.95)[0] + 1
-
-        boundaries = [0]
-        for i in cand:
-            boundaries.append(int(i))
-
-        boundaries = sorted(set(boundaries))
-        if boundaries[0] != 0:
-            boundaries = [0] + boundaries
-        if boundaries[-1] != len(q_ref) - 1:
-            boundaries.append(len(q_ref) - 1)
-        return boundaries
-
-    pred_path = Path(calc_root) / band_yaml
+    pred_path = calc_root / band_npz
     if not pred_path.exists():
         return None
 
     try:
-        with pred_path.open("r", encoding="utf8") as f:
-            y = yaml.safe_load(f)
+        with pred_path.open("rb") as f:
+            band_data = pickle.load(f)
     except Exception:
         return None
 
-    phonon = y.get("phonon", None)
-    if not isinstance(phonon, list) or not phonon:
+    distances = band_data.get("distances", [])
+    frequencies = band_data.get("frequencies", [])
+    if not distances or not frequencies:
         return None
 
-    s_pred = np.asarray([p.get("distance", np.nan) for p in phonon], dtype=float)
+    s_pred = np.concatenate(distances)
+    freqs_pred = np.vstack(frequencies) * frequency_scale
 
-    freqs_pred_thz = np.asarray(
-        [[b.get("frequency", np.nan) for b in p.get("band", [])] for p in phonon],
-        dtype=float,
-    )
-    if freqs_pred_thz.ndim != 2 or not np.isfinite(freqs_pred_thz).all():
+    if not np.isfinite(freqs_pred).all():
         return None
-
-    freqs_pred_thz = freqs_pred_thz * float(frequency_scale)
 
     s_ref: np.ndarray | None = None
+    freqs_ref: np.ndarray | None = None
     q_ref: np.ndarray | None = None
-    freqs_ref_thz: np.ndarray | None = None
-    sym_pos: np.ndarray | None = None
 
-    if reference_band_npz is not None:
-        ref_path = Path(calc_root) / reference_band_npz
-        if ref_path.exists():
-            obj = np.load(ref_path, allow_pickle=False)
-
+    if reference_band_npz is not None and Path(reference_band_npz).exists():
+        try:
+            obj = np.load(Path(reference_band_npz), allow_pickle=False)
             s_ref = np.asarray(obj["distance"], dtype=float)
             q_ref = np.asarray(obj["qpoints"], dtype=float)
-            freqs_ref_cm1 = np.asarray(obj["frequencies"], dtype=float)
-
-            if freqs_ref_cm1.ndim == 3 and freqs_ref_cm1.shape[0] == 1:
-                freqs_ref_cm1 = freqs_ref_cm1[0]
-
+            freqs_ref_cm1 = np.asarray(obj["freqs_cm1"], dtype=float)
             if freqs_ref_cm1.ndim == 2 and np.isfinite(freqs_ref_cm1).all():
-                freqs_ref_thz = (freqs_ref_cm1 / THZ_TO_CM1) * float(frequency_scale)
-                bounds = _detect_symmetry_boundaries(q_ref)
-                sym_pos = s_ref[bounds]
+                freqs_ref = freqs_ref_cm1 * CM1_TO_THZ * frequency_scale
             else:
                 s_ref = None
                 q_ref = None
-                freqs_ref_thz = None
-                sym_pos = None
+        except Exception:
+            s_ref = None
+            q_ref = None
 
-    use_ref_x = s_ref is not None and len(s_ref) == len(s_pred)
-    x = s_ref if use_ref_x else s_pred
+    x = s_ref if (s_ref is not None and len(s_ref) == len(s_pred)) else s_pred
+
+    # Detect HS boundaries: prefer DFT q-points, fall back to MLIP q-points.
+    boundary_indices: list[int] | None = None
+    if q_ref is not None and len(q_ref) == len(s_pred):
+        boundary_indices = _detect_hs_boundaries(q_ref)
+    elif "qpoints" in band_data:
+        q_pred = np.concatenate(band_data["qpoints"])
+        if len(q_pred) == len(s_pred):
+            boundary_indices = _detect_hs_boundaries(q_pred)
 
     fig, ax = plt.subplots(figsize=(10, 7))
 
-    for j in range(freqs_pred_thz.shape[1]):
+    for j in range(freqs_pred.shape[1]):
         ax.plot(
             x,
-            freqs_pred_thz[:, j],
+            freqs_pred[:, j],
             color="#1f77b4",
             lw=2.0,
             label=prediction_label if j == 0 else None,
         )
 
-    if freqs_ref_thz is not None and s_ref is not None:
-        x_ref = x if use_ref_x else s_ref
-        for j in range(freqs_ref_thz.shape[1]):
+    if freqs_ref is not None and s_ref is not None:
+        x_ref = x if len(s_ref) == len(s_pred) else s_ref
+        for j in range(freqs_ref.shape[1]):
             ax.plot(
                 x_ref,
-                freqs_ref_thz[:, j],
+                freqs_ref[:, j],
                 color="k",
                 lw=2.0,
                 ls="--",
                 label=reference_label if j == 0 else None,
             )
 
-    if sym_pos is not None and len(sym_pos) == len(HS_LABELS):
-        for xpos in sym_pos:
-            ax.axvline(float(xpos), color="k", lw=1.0, alpha=0.6)
-        ax.set_xticks(sym_pos)
-        ax.set_xticklabels(HS_LABELS)
-        ax.set_xlim(float(x[0]), float(x[-1]))
+    if boundary_indices is not None and len(boundary_indices) == len(HS_LABELS):
+        sym_pos = [float(x[i]) for i in boundary_indices]
+        tick_labels = HS_LABELS
+    else:
+        sym_pos = [float(x[0]), float(x[-1])]
+        tick_labels = [r"$\Gamma$", "X"]
 
+    for xpos in sym_pos:
+        ax.axvline(xpos, color="k", lw=1.0, alpha=0.6)
+    ax.set_xticks(sym_pos, tick_labels, fontsize=12)
+    ax.set_xlim(sym_pos[0], sym_pos[-1])
     ax.set_xlabel("Wave vector", fontsize=18)
     ax.set_ylabel(f"Frequency ({frequency_unit})", fontsize=18)
     ax.axhline(0.0, color="k", lw=1.5)
     ax.grid(axis="x")
-    ax.set_ylim(
-        float(
-            min(
-                np.nanmin(freqs_pred_thz),
-                np.nanmin(freqs_ref_thz) if freqs_ref_thz is not None else np.inf,
-            )
-        ),
-        float(
-            max(
-                np.nanmax(freqs_pred_thz),
-                np.nanmax(freqs_ref_thz) if freqs_ref_thz is not None else -np.inf,
-            )
-        ),
-    )
+
+    all_freqs = [freqs_pred]
+    if freqs_ref is not None:
+        all_freqs.append(freqs_ref)
+    all_flat = np.concatenate([f.ravel() for f in all_freqs])
+    ax.set_ylim(float(np.nanmin(all_flat)), float(np.nanmax(all_flat)))
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles, strict=False))
@@ -278,7 +256,6 @@ def render_band_yaml_png(
         ax.legend(by_label.values(), by_label.keys(), loc=1, fontsize=14)
 
     fig.tight_layout()
-
     buffer = BytesIO()
     fig.savefig(buffer, format="png", dpi=200)
     plt.close(fig)

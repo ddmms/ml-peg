@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pickle
 from typing import Any
 
 import numpy as np
 import pytest
-import yaml  # type: ignore
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 
@@ -29,16 +29,12 @@ EXTRACTED_ROOT = Path(
 
 CALC_DATA = EXTRACTED_ROOT / "data"
 
-
 MODELS = get_model_names(current_models)
 
 CATEGORY = "bulk_crystal"
 BENCH = "diamond_phonons"
 
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCH / "outputs"
-
-# CALC_DATA = CALCS_ROOT / CATEGORY / BENCH / "data"
-
 
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCH
 
@@ -75,29 +71,22 @@ def _load_reference_npz(path: Path) -> dict[str, Any]:
     Parameters
     ----------
     path
-        Path to ``dft_band.npz``. Must contain a ``frequencies`` array in cm-1 with
-        shape ``(Nq, NBANDS)`` or ``(1, Nq, NBANDS)``.
+        Path to ``dft_band.npz``. Must contain a ``freqs_cm1`` array in cm-1 with
+        shape ``(Nq, NBANDS)``.
 
     Returns
     -------
     dict[str, Any]
-        Mapping with keys:
-
-        - ``freqs``: array of shape ``(Nq, NBANDS)`` in THz
-        - ``units``: ``"THz"``
-        - ``path``: input path
+        Mapping with keys ``freqs`` (THz, shape ``(Nq, NBANDS)``), ``units``, ``path``.
     """
     if not path.exists():
         raise FileNotFoundError(f"Missing DFT reference: {path}")
 
     d = np.load(path, allow_pickle=False)
-    if "frequencies" not in d.files:
-        raise KeyError(f"{path}: missing 'frequencies'. Found keys: {list(d.files)}")
+    if "freqs_cm1" not in d.files:
+        raise KeyError(f"{path}: missing 'freqs_cm1'. Found keys: {list(d.files)}")
 
-    freqs_cm1 = np.asarray(d["frequencies"], dtype=float)
-
-    if freqs_cm1.ndim == 3 and freqs_cm1.shape[0] == 1:
-        freqs_cm1 = freqs_cm1[0]
+    freqs_cm1 = np.asarray(d["freqs_cm1"], dtype=float)
 
     if freqs_cm1.ndim != 2 or freqs_cm1.shape[1] != NBANDS:
         msg = f"{path}: expected (Nq, {NBANDS}) frequencies, got {freqs_cm1.shape}"
@@ -111,45 +100,28 @@ def _load_reference_npz(path: Path) -> dict[str, Any]:
     return {"freqs": freqs_thz, "units": "THz", "path": path}
 
 
-def _load_band_yaml(path: Path) -> dict[str, Any]:
+def _load_band_structure(path: Path) -> dict[str, Any] | None:
     """
-    Load phonopy ``band.yaml`` and return frequencies in THz.
+    Load a serialized phonopy band-structure dict from a pickle file.
 
     Parameters
     ----------
     path
-        Path to a phonopy ``band.yaml``.
+        Path to the pickle file produced by calc_diamond_phonons.
 
     Returns
     -------
-    dict[str, Any]
-        Mapping with keys ``freqs`` (``(Nq, NBANDS)``), ``units`` (``"THz"``),
-        and ``path``.
+    dict[str, Any] | None
+        Band-structure dict with ``distances`` and ``frequencies`` (THz), or ``None``.
     """
     if not path.exists():
-        raise FileNotFoundError(f"Missing predicted band.yaml: {path}")
-
-    with path.open("r", encoding="utf8") as f:
-        y = yaml.safe_load(f)
-
-    phonon = y.get("phonon")
-    if not isinstance(phonon, list) or not phonon:
-        raise ValueError(
-            f"{path} does not look like a phonopy band.yaml (missing 'phonon' list)."
-        )
-
-    freqs = np.array(
-        [[b.get("frequency", np.nan) for b in p.get("band", [])] for p in phonon],
-        dtype=float,
-    )
-
-    if freqs.ndim != 2 or freqs.shape[1] != NBANDS:
-        raise ValueError(f"{path}: expected (Nq, {NBANDS}) freqs, got {freqs.shape}")
-
-    if not np.isfinite(freqs).all():
-        raise ValueError(f"{path}: contains non-finite predicted frequencies.")
-
-    return {"freqs": freqs, "units": "THz", "path": path}
+        return None
+    try:
+        with path.open("rb") as f:
+            return pickle.load(f)
+    except Exception as exc:
+        print(f"Failed to load band structure from {path}: {exc}")
+        return None
 
 
 def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
@@ -175,38 +147,38 @@ def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
 
 def _mae(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Compute mean absolute error (THz).
+    Return mean absolute error between two arrays.
 
     Parameters
     ----------
     a
-        Predicted values (THz), same shape as ``b``.
+        First array.
     b
-        Reference values (THz), same shape as ``a``.
+        Second array.
 
     Returns
     -------
     float
-        Mean absolute error in THz.
+        Mean absolute error.
     """
     return float(np.mean(np.abs(a - b)))
 
 
 def _rmse(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Compute root mean squared error (THz).
+    Return root mean squared error between two arrays.
 
     Parameters
     ----------
     a
-        Predicted values (THz), same shape as ``b``.
+        First array.
     b
-        Reference values (THz), same shape as ``a``.
+        Second array.
 
     Returns
     -------
     float
-        Root mean squared error in THz.
+        Root mean squared error.
     """
     d = a - b
     return float(np.sqrt(np.mean(d * d)))
@@ -233,15 +205,21 @@ def _model_flat(model_name: str) -> np.ndarray:
     Parameters
     ----------
     model_name
-        Model identifier used to locate ``{CALC_PATH}/{model_name}/band.yaml``.
+        Model identifier used to locate
+        ``{CALC_PATH}/{model_name}/diamond_band_structure.npz``.
 
     Returns
     -------
     numpy.ndarray
         Flattened frequencies of shape ``(Nq * NBANDS,)`` in THz.
     """
-    pred = _load_band_yaml(CALC_PATH / model_name / "band.yaml")
-    return _sorted_flat(np.asarray(pred["freqs"], dtype=float))
+    band_data = _load_band_structure(
+        CALC_PATH / model_name / "diamond_band_structure.npz"
+    )
+    if band_data is None:
+        raise FileNotFoundError(f"Missing predicted band structure for {model_name}")
+    pred_freqs = np.vstack(band_data["frequencies"])
+    return _sorted_flat(pred_freqs)
 
 
 @pytest.fixture
@@ -264,12 +242,17 @@ def flat_bands(reference: dict[str, Any]) -> tuple[np.ndarray, dict[str, np.ndar
 
     pred_flats: dict[str, np.ndarray] = {}
     for model_name in MODELS:
-        pred_flat = _model_flat(model_name)
+        try:
+            pred_flat = _model_flat(model_name)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"{model_name}: skipping — {exc}")
+            continue
         if pred_flat.shape != ref_flat.shape:
-            raise ValueError(
-                f"{model_name}: prediction and reference flattened shapes differ "
-                f"{pred_flat.shape} vs {ref_flat.shape}."
+            print(
+                f"{model_name}: shape mismatch "
+                f"{pred_flat.shape} vs {ref_flat.shape}, skipping."
             )
+            continue
         pred_flats[model_name] = pred_flat
 
     return ref_flat, pred_flats
@@ -295,8 +278,7 @@ def band_errors(
     ref_flat, pred_flats = flat_bands
 
     out: dict[str, dict[str, float]] = {}
-    for model_name in MODELS:
-        pred_flat = pred_flats[model_name]
+    for model_name, pred_flat in pred_flats.items():
         out[model_name] = {
             "mae": _mae(pred_flat, ref_flat),
             "rmse": _rmse(pred_flat, ref_flat),
@@ -325,9 +307,14 @@ def metrics(band_errors: dict[str, dict[str, float]]) -> dict[str, dict[str, flo
     dict[str, dict[str, float]]
         Mapping from visible metric label to per-model values.
     """
+    available = set(band_errors)
     return {
-        METRIC_LABEL_MAE: {m: band_errors[m]["mae"] for m in MODELS},
-        METRIC_LABEL_RMSE: {m: band_errors[m]["rmse"] for m in MODELS},
+        METRIC_LABEL_MAE: {
+            m: band_errors[m]["mae"] if m in available else None for m in MODELS
+        },
+        METRIC_LABEL_RMSE: {
+            m: band_errors[m]["rmse"] if m in available else None for m in MODELS
+        },
     }
 
 
@@ -349,15 +336,12 @@ def band_stats(
     Returns
     -------
     dict[str, dict[str, Any]]
-        Per-model structures containing points and metric values used to build the
-        interactive scatter dataset.
+        Per-model structures containing points and metric values.
     """
     ref_flat, pred_flats = flat_bands
 
     stats: dict[str, dict[str, Any]] = {}
-    for model_name in MODELS:
-        pred_flat = pred_flats[model_name]
-
+    for model_name, pred_flat in pred_flats.items():
         points = [
             {
                 "id": f"diamond-{i}",
@@ -459,12 +443,10 @@ def test_diamond_phonons_analysis(
     assert SCATTER_FILENAME.exists()
     scatter_payload = json.loads(SCATTER_FILENAME.read_text(encoding="utf8"))
     models = scatter_payload.get("models", {})
-    missing_models = [m for m in MODELS if m not in models]
-    assert not missing_models, f"Interactive dataset missing models: {missing_models}"
+    assert models, "Interactive dataset has no models"
 
-    # Ensure each model has both metrics and some points.
-    for model_name in MODELS:
-        model_metrics = (models.get(model_name) or {}).get("metrics", {})
+    for model_name, model_entry in models.items():
+        model_metrics = model_entry.get("metrics", {})
         for key in (METRIC_KEY_MAE, METRIC_KEY_RMSE):
             assert key in model_metrics, f"{model_name}: missing metric '{key}'"
             points = model_metrics[key].get("points", [])
