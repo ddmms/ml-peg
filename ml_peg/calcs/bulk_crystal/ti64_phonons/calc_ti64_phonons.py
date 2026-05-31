@@ -18,14 +18,17 @@ from typing import Any
 import ase.io
 from ase.optimize import LBFGS
 import numpy as np
+from phonopy import Phonopy
+from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
+from phonopy.structure.atoms import PhonopyAtoms
 import pytest
 
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.ASE_to_phonons import AtomsToPDOS, AtomsToPhonons
+from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import get_fc2_and_freqs
 from ml_peg.calcs.utils.CASTEP_reader_phonon_dispersion import PhononFromCastep
 from ml_peg.calcs.utils.utils import download_github_data
-from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names, load_models
 
 GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 
@@ -43,6 +46,7 @@ OUT_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
 FMAX = 0.001
 STEPS = 10000
 MESH_202020 = [20, 20, 20]
+KPOINTS = 100
 
 
 def _json_default(obj: Any) -> Any:
@@ -82,11 +86,6 @@ def write_case_npz(case_name: str, model_name: str, **arrays: Any) -> None:
         Model identifier used in the output directory.
     **arrays
         Keyword arrays to store in the NPZ file.
-
-    Notes
-    -----
-    Output path:
-    ``outputs/<model_name>/<case_name>.npz``
     """
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -105,19 +104,10 @@ def write_case_metadata(case_name: str, model_name: str, meta: dict[str, Any]) -
         Model identifier used in the output directory.
     meta
         Metadata mapping to write.
-
-    Notes
-    -----
-    Output path:
-    ``outputs/<model_name>/<case_name>.json``
     """
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    meta_out = dict(meta)
-    meta_out["case"] = case_name
-    meta_out["model_name"] = model_name
-
+    meta_out = {"case": case_name, "model_name": model_name, **meta}
     out_file = out_dir / f"{case_name}.json"
     with out_file.open("w", encoding="utf8") as handle:
         json.dump(meta_out, handle, indent=2, default=_json_default)
@@ -126,9 +116,6 @@ def write_case_metadata(case_name: str, model_name: str, meta: dict[str, Any]) -
 def patch_ase_castep_reader_dummy_energy(dummy_energy: float = 0.0) -> None:
     """
     Patch ASE CASTEP reader to tolerate missing energy keys.
-
-    ASE's CASTEP reader can raise ``KeyError`` for CASTEP phonon/qpoints outputs.
-    This patch only adds dummy values when ASE raises ``KeyError``.
 
     Parameters
     ----------
@@ -141,7 +128,7 @@ def patch_ase_castep_reader_dummy_energy(dummy_energy: float = 0.0) -> None:
 
     def _safe_set_energy_and_free_energy(results: dict[str, Any]) -> None:
         """
-        Set energy/free_energy keys, tolerating missing values.
+        Set energy keys, tolerating missing values from CASTEP phonon outputs.
 
         Parameters
         ----------
@@ -199,17 +186,6 @@ class PhononFromCastepPDOS(PhononFromCastep):
         self.get_weights()
         delattr(self, "filelines")
 
-    def __str__(self) -> str:
-        """
-        Return a short human-readable description of this object.
-
-        Returns
-        -------
-        str
-            Description string.
-        """
-        return "Phonon q-point frequencies+weights from CASTEP file object"
-
     def get_weights(self) -> None:
         """Extract q-point weights from filelines."""
         float_re = re.compile(r"[-+]?(?:\d*\.\d+|\d+)(?:[Ee][-+]?\d+)?")
@@ -219,7 +195,6 @@ class PhononFromCastepPDOS(PhononFromCastep):
             if "q-pt" not in line:
                 continue
 
-            # 1) Preferred: explicit 'weight='
             match = re.search(
                 r"weight\s*=\s*(" + float_re.pattern + r")",
                 line,
@@ -229,7 +204,6 @@ class PhononFromCastepPDOS(PhononFromCastep):
                 weights.append(float(match.group(1)))
                 continue
 
-            # 2) Fallback: take the last float on the q-pt line
             nums = float_re.findall(line)
             if nums:
                 weights.append(float(nums[-1]))
@@ -237,11 +211,9 @@ class PhononFromCastepPDOS(PhononFromCastep):
         nq_freq = self.frequencies.shape[0]
 
         if not weights:
-            # 3) No weights printed -> assume uniform weights
             self.weights = np.ones(nq_freq, dtype=float)
             return
 
-        # Some files include extra q-pt header lines; align length
         w = np.array(weights, dtype=float)
         if w.shape[0] > nq_freq:
             w = w[-nq_freq:]
@@ -276,7 +248,7 @@ def run_case(
     case_name
         Case identifier.
     structure_file
-        CASTEP structure file path (relative to repository root).
+        CASTEP structure file path.
     qpoints_file
         Optional CASTEP qpoints file path.
     kpath
@@ -304,32 +276,41 @@ def run_case(
     # Relax
     atoms = ase.io.read(structure_file)
     atoms.calc = calc
-    dyn = LBFGS(atoms, logfile=None)
-    dyn.run(fmax=FMAX, steps=STEPS)
+    LBFGS(atoms, logfile=None).run(fmax=FMAX, steps=STEPS)
 
-    # ML dispersion
-    atp_ml = AtomsToPhonons(
-        primitive_cell=atoms,
-        phonon_grid=grid,
-        displacement=disp_phonons,
-        kpath=[kpath],
-        calculator=calc,
-        plusminus=True,
+    # Build phonopy unitcell from relaxed atoms
+    unitcell = PhonopyAtoms(
+        symbols=atoms.get_chemical_symbols(),
+        cell=atoms.cell,
+        scaled_positions=atoms.get_scaled_positions(),
     )
+
+    # ML dispersion (plus/minus displacements)
+    ph_disp = Phonopy(unitcell, grid)
+    ph_disp.generate_displacements(distance=disp_phonons, is_plusminus=True)
+    ph_disp, _, _ = get_fc2_and_freqs(ph_disp, calc, symmetrize_fc2=False)
+    qpts, conns = get_band_qpoints_and_path_connections([kpath], npoints=KPOINTS)
+    ph_disp.run_band_structure(qpts, with_eigenvectors=True, path_connections=conns)
+    bs = ph_disp.get_band_structure_dict()
+    ml_frequencies = np.vstack(bs["frequencies"])
+    normal_ticks = np.array([i * KPOINTS for i in range(len(kpath))], dtype=float)
 
     # ML DOS/PDOS
-    atp_pdos = AtomsToPDOS(
-        primitive_cell=atoms,
-        phonon_grid=grid,
-        displacement=disp_pdos,
-        calculator=calc,
-    )
-    atp_pdos.get_pdos(MESH_202020)
-    atp_pdos.get_dos(MESH_202020)
+    ph_pdos = Phonopy(unitcell, grid)
+    ph_pdos.generate_displacements(distance=disp_pdos)
+    ph_pdos, _, _ = get_fc2_and_freqs(ph_pdos, calc, symmetrize_fc2=False)
+    ph_pdos.run_mesh(MESH_202020, with_eigenvectors=True, is_mesh_symmetry=False)
+    ph_pdos.run_projected_dos()
+    ph_pdos.run_total_dos()
+    pdos = ph_pdos.get_projected_dos_dict()
+    dos = ph_pdos.get_total_dos_dict()
 
     # ML thermo
+    tp_dict: dict[str, Any] = {}
     if do_tp:
-        atp_pdos.get_tp(MESH_202020, tmax=2000, tstep=1)
+        ph_pdos.run_mesh(MESH_202020)
+        ph_pdos.run_thermal_properties(t_step=1, t_max=2000, t_min=0)
+        tp_dict = ph_pdos.get_thermal_properties_dict()
 
     # DFT qpoints
     q_weights: np.ndarray | None = None
@@ -366,39 +347,29 @@ def run_case(
         "dft_x": np.asarray(pfc.xscale, dtype=float),
         "dft_frequencies": np.asarray(pfc.frequencies, dtype=float),
         # ML dispersion
-        "ml_frequencies": np.asarray(atp_ml.frequencies, dtype=float),
+        "ml_frequencies": ml_frequencies,
+        "ml_normal_ticks": normal_ticks,
     }
 
-    if hasattr(atp_ml, "normal_ticks") and atp_ml.normal_ticks is not None:
-        arrays["ml_normal_ticks"] = np.asarray(atp_ml.normal_ticks, dtype=float)
-
     # PDOS
-    if "frequency_points" in atp_pdos.pdos:
+    if "frequency_points" in pdos:
         arrays["pdos_frequency_points"] = np.asarray(
-            atp_pdos.pdos["frequency_points"],
-            dtype=float,
+            pdos["frequency_points"], dtype=float
         )
-    if "projected_dos" in atp_pdos.pdos:
-        arrays["pdos_projected"] = np.asarray(
-            atp_pdos.pdos["projected_dos"], dtype=float
-        )
-    if "dos" in atp_pdos.pdos:
-        arrays["dos_total"] = np.asarray(atp_pdos.pdos["dos"], dtype=float)
+    if "projected_dos" in pdos:
+        arrays["pdos_projected"] = np.asarray(pdos["projected_dos"], dtype=float)
+    if "dos" in dos:
+        arrays["dos_total"] = np.asarray(dos["dos"], dtype=float)
 
     # TP
-    if do_tp and hasattr(atp_pdos, "tp_dict") and atp_pdos.tp_dict:
-        if "temperatures" in atp_pdos.tp_dict:
-            arrays["tp_temperatures"] = np.asarray(
-                atp_pdos.tp_dict["temperatures"], dtype=float
-            )
-        if "free_energy" in atp_pdos.tp_dict:
-            arrays["tp_free_energy"] = np.asarray(
-                atp_pdos.tp_dict["free_energy"], dtype=float
-            )
+    if do_tp and tp_dict:
+        if "temperatures" in tp_dict:
+            arrays["tp_temperatures"] = np.asarray(tp_dict["temperatures"], dtype=float)
+        if "free_energy" in tp_dict:
+            arrays["tp_free_energy"] = np.asarray(tp_dict["free_energy"], dtype=float)
 
-    # qpoints
+    # DFT qpoints
     if qpoints_file is not None:
-        # These are defined whenever qpoints_file is not None (see above).
         arrays["q_weights"] = np.asarray(q_weights, dtype=float)  # type: ignore[arg-type]
         arrays["q_frequencies_dft"] = np.asarray(q_freq_dft, dtype=float)  # type: ignore[arg-type]
 
@@ -412,8 +383,7 @@ def _hex_path() -> tuple[list[list[float]], list[str]]:
     Returns
     -------
     tuple[list[list[float]], list[str]]
-        ``(kpath, labels)`` where ``kpath`` is a list of fractional k-points and
-        ``labels`` are the corresponding tick labels.
+        ``(kpath, labels)`` for the hexagonal BZ.
     """
     gam = [0, 0, 0]
     a_pt = [0, 0, 1 / 2]
@@ -429,8 +399,7 @@ def _bcc_path() -> tuple[list[list[float]], list[str]]:
     Returns
     -------
     tuple[list[list[float]], list[str]]
-        ``(kpath, labels)`` where ``kpath`` is a list of fractional k-points and
-        ``labels`` are the corresponding tick labels.
+        ``(kpath, labels)`` for the BCC BZ.
     """
     gam = [0, 0, 0]
     h_pt = [0.5, -0.5, 0.5]
@@ -560,24 +529,22 @@ CASES: list[dict[str, Any]] = [
 ]
 
 
-MODELS = load_models(current_models)
-MODEL_ITEMS = list(MODELS.items())
-MODEL_IDS = [name for name, _ in MODEL_ITEMS]
+MODEL_NAMES = get_model_names(current_models)
 
 
-@pytest.mark.parametrize("mlip", MODEL_ITEMS, ids=MODEL_IDS)
-def test_phonon_suite(mlip: tuple[str, Any]) -> None:
+@pytest.mark.parametrize("model_name", MODEL_NAMES)
+def test_phonon_suite(model_name: str) -> None:
     """
     Run the full Ti64 phonon suite for one model and write artifacts.
 
     Parameters
     ----------
-    mlip
-        Tuple ``(model_name, model)`` from ``MODEL_ITEMS``.
+    model_name
+        Name of the ML-PEG model to evaluate.
     """
     patch_ase_castep_reader_dummy_energy(dummy_energy=0.0)
 
-    model_name, model = mlip
+    model = load_models(model_name)[model_name]
     calc = model.get_calculator()
 
     for spec in CASES:

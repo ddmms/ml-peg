@@ -38,9 +38,9 @@ DFT_REF_PATH = DATA_PATH / "dft_band.npz"
 
 BENCHMARK_NAME = "diamond_phonons"
 
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
-TABLE_PATH = DATA_PATH / "diamond_phonons_bands_table.json"
-SCATTER_PATH = DATA_PATH / "diamond_phonons_bands_interactive.json"
+APP_DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
+TABLE_PATH = APP_DATA_PATH / "diamond_phonons_bands_table.json"
+SCATTER_PATH = APP_DATA_PATH / "diamond_phonons_bands_interactive.json"
 
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
@@ -48,7 +48,6 @@ DOCS_URL = (
 )
 
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
-# DFT_REF_PATH = Path("data") / "dft_band.npz"
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
@@ -65,7 +64,7 @@ def model_only_lookup(
     Build a selection context for the dispersion preview.
 
     For this benchmark we ignore which scatter point was clicked and return a
-    single dispersion preview per model. The returned ``band_yaml`` must be
+    single dispersion preview per model. The returned ``band_npz`` must be
     resolvable under the app's ``calc_root`` passed to the renderer.
 
     Parameters
@@ -88,7 +87,7 @@ def model_only_lookup(
         "selection": {
             "id": "diamond",
             "label": "Carbon diamond",
-            "band_yaml": f"outputs/{model}/band.yaml",
+            "band_npz": f"outputs/{model}/diamond_band_structure.npz",
         },
     }
 
@@ -118,15 +117,15 @@ class DiamondPhononApp(BaseApp):
             instructions=refresh_msg,
         )
 
-        # Bands-only benchmark: no BZ violin panel and no stability panel.
         scatter_and_assets_from_table(
             table_id=self.table_id,
             table_data=self.table.data,
             plot_container_id=PLOT_CONTAINER_ID,
             scatter_metadata_store_id=SCATTER_METADATA_STORE_ID,
             last_cell_store_id=LAST_CELL_STORE_ID,
-            column_handlers={},  # only metric scatter
+            column_handlers={},
             default_handler=metric_handler,
+            scatter_id=SCATTER_GRAPH_ID,
         )
 
         dispersion_renderer = partial(
@@ -195,7 +194,7 @@ def get_app() -> DiamondPhononApp:
 
 
 if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
+    full_app = Dash(__name__, assets_folder=APP_DATA_PATH.parent.parent)
     diamond_phonon_app = get_app()
     full_app.layout = diamond_phonon_app.layout
     diamond_phonon_app.register_callbacks()

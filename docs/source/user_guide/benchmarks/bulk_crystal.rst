@@ -160,7 +160,10 @@ The RMSE is computed using the same sorted, mode-unlabelled comparison procedure
 Computational cost
 ------------------
 
-Medium: tests typically take a few minutes to run on CPU.
+Medium: tests typically take a few minutes to run on CPU. Calculations were run as a
+single process on CPU on an x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7;
+4 cores / 8 threads). No explicit parallel execution (MPI or multiprocessing) was used
+in the benchmark driver.
 
 
 Data availability
@@ -168,8 +171,7 @@ Data availability
 
 Input structures:
 
-* A primitive bulk diamond unit cell containing two carbon atoms, used to generate a
-  phonopy displacement dataset on a 4×4×4 supercell.
+* A primitive diamond unit cell containing two carbon atoms.
 
 Reference data:
 
