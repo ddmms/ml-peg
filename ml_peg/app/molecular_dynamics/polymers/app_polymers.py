@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dash.html import Div
 
+from ml_peg.analysis.molecular_dynamics.polymers.analyse_polymers import (
+    labels as polymer_labels,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
@@ -30,15 +33,17 @@ class PolymerDensitiesApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
-            structs = [
-                f"/assets/molecular_dynamics/polymers/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
+        model_for_structs = next(
+            (m for m in MODELS if any((DATA_PATH / m).glob("*.xyz"))),
+            None,
+        )
+        structs = [
+            f"/assets/molecular_dynamics/polymers/{model_for_structs}/{label}.xyz"
+            if model_for_structs
+            and (DATA_PATH / model_for_structs / f"{label}.xyz").exists()
+            else None
+            for label in polymer_labels()
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,
