@@ -29,6 +29,16 @@ CALC_PATH = calcs.CALCS_ROOT / "molecular_dynamics" / "polymers" / "outputs"
 DATA_CSV = (
     calcs.CALCS_ROOT / "molecular_dynamics" / "polymers" / "resources" / "data.csv"
 )
+POLYMER_SETS_DIR = (
+    calcs.CALCS_ROOT / "molecular_dynamics" / "polymers" / "resources" / "polymer_sets"
+)
+POLYMER_SETS: dict[str, frozenset[str]] = {
+    "MAE (small)": frozenset((POLYMER_SETS_DIR / "small.txt").read_text().splitlines()),
+    "MAE (medium)": frozenset(
+        (POLYMER_SETS_DIR / "medium.txt").read_text().splitlines()
+    ),
+    "MAE (large)": frozenset((POLYMER_SETS_DIR / "large.txt").read_text().splitlines()),
+}
 OUT_PATH = app.APP_ROOT / "data" / "molecular_dynamics" / "polymers"
 
 METRICS_CONFIG_PATH = pathlib.Path(__file__).with_name("metrics.yml")
@@ -163,9 +173,11 @@ def polymer_densities() -> dict[str, list[float]]:
 
 
 @pytest.fixture
-def get_mae(polymer_densities: dict[str, list[float]]) -> dict[str, float]:
+def get_mae_by_subset(
+    polymer_densities: dict[str, list[float]],
+) -> dict[str, dict[str, float]]:
     """
-    Compute the mean absolute density error per model, ignoring NaN entries.
+    Compute per-subset MAE for each model, ignoring NaN entries.
 
     Parameters
     ----------
@@ -174,21 +186,25 @@ def get_mae(polymer_densities: dict[str, list[float]]) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        Per-model MAE in g/cm³.
+    dict[str, dict[str, float]]
+        ``{"MAE (small)": {model: mae, ...}, "MAE (medium)": ..., "MAE (large)": ...}``.
     """
+    poly_ids = labels()
     ref = np.asarray(polymer_densities["ref"], dtype=float)
-    out: dict[str, float] = {}
-    for model_name in MODELS:
-        pred = np.asarray(polymer_densities[model_name], dtype=float)
-        mask = np.isfinite(ref) & np.isfinite(pred)
-        if not mask.any():
-            out[model_name] = float("nan")
-        else:
-            out[model_name] = float(
-                analysis_utils.mae(ref[mask].tolist(), pred[mask].tolist())
+    result: dict[str, dict[str, float]] = {}
+    for set_name, poly_set in POLYMER_SETS.items():
+        subset_mask = np.array([pid in poly_set for pid in poly_ids])
+        model_maes: dict[str, float] = {}
+        for model_name in MODELS:
+            pred = np.asarray(polymer_densities[model_name], dtype=float)
+            mask = subset_mask & np.isfinite(ref) & np.isfinite(pred)
+            model_maes[model_name] = (
+                float(analysis_utils.mae(ref[mask].tolist(), pred[mask].tolist()))
+                if mask.sum() == subset_mask.sum()
+                else None
             )
-    return out
+        result[set_name] = model_maes
+    return result
 
 
 @pytest.fixture
@@ -198,24 +214,26 @@ def get_mae(polymer_densities: dict[str, list[float]]) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float]) -> dict[str, dict[str, float]]:
+def metrics(
+    get_mae_by_subset: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
     """
     Assemble the metric table consumed by the dashboard.
 
     Parameters
     ----------
-    get_mae
-        Per-model MAE in g/cm³.
+    get_mae_by_subset
+        Per-subset, per-model MAE in g/cm³.
 
     Returns
     -------
     dict[str, dict]
-        ``{"MAE": {<model>: <value>, ...}}``.
+        ``{"MAE (small)": {...}, "MAE (medium)": {...}, "MAE (large)": {...}}``.
     """
-    return {"MAE": get_mae}
+    return get_mae_by_subset
 
 
-def test_polymers(metrics: dict[str, dict[str, float]]) -> None:
+def test_polymers(metrics: dict[str, dict[str, float]]) -> None:  # noqa: PT019
     """
     Materialize the polymer metric table (no assertions).
 
