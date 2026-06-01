@@ -291,7 +291,7 @@ def run_elasticity_benchmark(
     atoms_list = []
     # Bolt: Iterate over records dictionary instead of iterrows()
     # for faster iteration while preserving dict access.
-    for row in results.to_dict('records'):
+    for row in results.to_dict("records"):
         struct = row.get("final_structure")
         if not isinstance(struct, Structure):
             continue
