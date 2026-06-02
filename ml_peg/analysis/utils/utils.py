@@ -771,7 +771,7 @@ def normalize_metric(
     return max(min(1.0, float(t)), 0.0)
 
 
-def clean_info(info: dict[str, Any] | list[Any]) -> dict[str, Any]:
+def clean_info(info: dict[str, Any] | list[Any]) -> None:
     """
     Ensure all data is JSON serializable.
 
@@ -779,11 +779,6 @@ def clean_info(info: dict[str, Any] | list[Any]) -> dict[str, Any]:
     ----------
     info
         Dictionary of info to clean.
-
-    Returns
-    -------
-    dict[str, Any]
-        Cleaned info.
     """
     if isinstance(info, list):
         for i, item in enumerate(info):
