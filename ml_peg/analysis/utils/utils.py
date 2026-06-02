@@ -848,7 +848,7 @@ def get_struct_info(
             "`out_path` must be specified if `write_info` or `write_structs` is `True`."
         )
     info_keys = info_keys or []
-    info = {"elements": []} | dict.fromkeys(info_keys, [])
+    info = {"elements": []} | {key: [] for key in info_keys}
     if include_filenames:
         info["filenames"] = []
 
