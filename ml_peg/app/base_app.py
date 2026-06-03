@@ -174,19 +174,21 @@ class BaseApp(ABC):
 
         filter_elements = set(filter_elements) if filter_elements else set()
 
+        table_data = deepcopy(self.table.data)
+
         # Get overlap of deselected elements with each system's elements
         if bool(self.elements & filter_elements):
-            for row in self.table.data:
+            for row in table_data:
                 for metric in self.metrics:
                     row[metric] = None
         else:
             for current_row, original_row in zip(
-                self.table.data, self.original_table.data, strict=True
+                table_data, self.original_table.data, strict=True
             ):
                 for metric in self.metrics:
                     current_row[metric] = original_row[metric]
 
-        return self.table.data
+        return table_data
 
     @property
     def stores(self) -> list[Store]:
