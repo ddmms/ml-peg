@@ -35,41 +35,16 @@ EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 KJ_PER_MOL_TO_KCAL_PER_MOL = units.kJ / units.kcal
 
 
-def get_info() -> dict[str, list[str]]:
-    """
-    Get CPOSS209 system names, polymorphs, and file names.
-
-    Returns
-    -------
-    dict[str, list[str]]
-        Dictationary of info returned from first non-empty model directory.
-    """
-    info = {"systems": [], "polymorphs": []}
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for system_dir in sorted(model_dir.iterdir()):
-                if system_dir.is_dir():
-                    system_name = system_dir.name
-                    info["systems"].append(system_name)
-
-                    system_info = get_struct_info(
-                        system_dir,
-                        glob_pattern="crystal*.xyz",
-                        info_keys=["polymorph_name"],
-                        write_info=True,
-                        write_structs=True,
-                        out_path=OUT_PATH / model_name / system_name,
-                    )
-                    info["polymorphs"].extend(system_info["polymorph_name"])
-
-            # Break after processing first model to avoid duplicates
-            if info["systems"] and info["polymorphs"]:
-                return info
-    return info
-
-
-INFO = get_info()
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="**/crystal*.xyz",
+    info_keys=["polymorph_name"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+    include_dirs=True,
+)
+INFO["systems"] = sorted(set(INFO["dirs"]))
 
 
 @pytest.fixture
@@ -305,7 +280,7 @@ def lattice_energies_raw() -> tuple[
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def absolute_lattice_energies(
@@ -350,7 +325,7 @@ def absolute_lattice_energies(
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def relative_lattice_energies(
@@ -395,7 +370,7 @@ def relative_lattice_energies(
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def absolute_lattice_energies_small_rigid_molecules(
@@ -441,7 +416,7 @@ def absolute_lattice_energies_small_rigid_molecules(
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def relative_lattice_energies_small_rigid_molecules(
@@ -487,7 +462,7 @@ def relative_lattice_energies_small_rigid_molecules(
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def absolute_lattice_energies_carbamazepine_family(
@@ -533,7 +508,7 @@ def absolute_lattice_energies_carbamazepine_family(
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def relative_lattice_energies_carbamazepine_family(
@@ -579,7 +554,7 @@ def relative_lattice_energies_carbamazepine_family(
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def absolute_lattice_energies_fenamate_family(
@@ -625,7 +600,7 @@ def absolute_lattice_energies_fenamate_family(
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def relative_lattice_energies_fenamate_family(
@@ -672,7 +647,7 @@ def relative_lattice_energies_fenamate_family(
     x_label="Predicted lattice energy / kcal/mol",
     y_label="Reference lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def absolute_lattice_energies_small_drug_molecule_family(
@@ -719,7 +694,7 @@ def absolute_lattice_energies_small_drug_molecule_family(
     x_label="Predicted relative lattice energy / kcal/mol",
     y_label="Reference relative lattice energy / kcal/mol",
     hoverdata={
-        "Crystal": INFO["polymorphs"],
+        "Crystal": INFO["polymorph_name"],
     },
 )
 def relative_lattice_energies_small_drug_molecule_family(
