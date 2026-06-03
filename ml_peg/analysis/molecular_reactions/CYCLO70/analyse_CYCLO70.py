@@ -43,7 +43,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KCAL = units.mol / units.kcal
 
 INFO = get_struct_info(
-    CALC_PATH / next(iter(MODELS)),
+    calc_path=CALC_PATH,
+    model_name=next(iter(MODELS)),
     glob_pattern="*_forward.xyz",
     include_filenames=True,
     write_info=True,

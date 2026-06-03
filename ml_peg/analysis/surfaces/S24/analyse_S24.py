@@ -29,7 +29,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PAT
 
 # Extract system metadata from mock calculation
 SYSTEM_INFO = get_struct_info(
-    CALC_PATH,
+    calc_path=CALC_PATH,
     info_keys=["system_name", "sys_id"],
     write_info=True,
     write_structs=True,

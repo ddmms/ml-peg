@@ -29,7 +29,7 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
 INFO = get_struct_info(
-    CALC_PATH,
+    calc_path=CALC_PATH,
     glob_pattern="*.xyz",
     index=":",
     info_keys=["composition"],
