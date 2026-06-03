@@ -12,7 +12,7 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -25,6 +25,15 @@ OUT_PATH = APP_ROOT / "data" / "molecular" / "BMIMCl_RDF"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="md.xyz",
+    index=0,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
 )
 
 # RDF parameters
