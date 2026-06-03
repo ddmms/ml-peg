@@ -17,6 +17,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Li diffusion"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#li-diffusion"
 DATA_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class LiDiffusionApp(BaseApp):
@@ -82,7 +83,7 @@ def get_app() -> LiDiffusionApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
-        info_path=DATA_PATH / "info.json",
+        info_path=INFO_PATH,
     )
 
 

@@ -22,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#wiggle150"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular" / "Wiggle150"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class Wiggle150App(BaseApp):
@@ -79,6 +80,7 @@ def get_app() -> Wiggle150App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

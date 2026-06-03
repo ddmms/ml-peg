@@ -69,6 +69,7 @@ class GSCDB138BenchmarkApp(BaseApp):
                 Div(id=f"{name}-figure-placeholder"),
                 Div(id=f"{name}-struct-placeholder"),
             ],
+            info_path=self.data_path / "info.json",
         )
 
     def get_system_paths(self, dataset: str) -> list[str]:
