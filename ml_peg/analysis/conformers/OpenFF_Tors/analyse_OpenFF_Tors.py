@@ -16,6 +16,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -37,13 +38,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_KCAL = units.mol / units.kcal
 
-
-LABELS: list = []
-for model_name in MODELS:
-    model_dir = CALC_PATH / model_name
-    if model_dir.exists():
-        LABELS = [path.stem for path in sorted(model_dir.glob("*.xyz"))]
-        break
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -53,7 +55,7 @@ for model_name in MODELS:
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": LABELS,
+        "Labels": INFO["filenames"],
     },
 )
 def conformer_energies() -> dict[str, list]:
@@ -69,7 +71,7 @@ def conformer_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in LABELS:
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
