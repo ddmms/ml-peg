@@ -798,18 +798,21 @@ def clean_info(info: dict[str, Any] | list[Any]) -> None:
 
 
 def get_struct_info(
+    *,
     calc_path: Path,
     model_name: str = "mock",
     glob_pattern: str = "*.xyz",
+    sort_key: Callable | None = None,
     index: str = ":",
     info_keys: list[str] | None = None,
     write_info: bool = True,
     write_structs: bool = True,
     out_path: Path | None = None,
     include_filenames: bool = False,
+    include_dirs: bool = False,
 ) -> dict[str, Any]:
     """
-    Get info from structure files.
+    Get info from structure files and optionally write out info structures.
 
     Parameters
     ----------
@@ -819,6 +822,8 @@ def get_struct_info(
         Model name to read structures for. Default is "mock".
     glob_pattern
         Glob pattern to match structure files.
+    sort_key
+        Key passed to `sorted` when sorting files returned by glob. Default is `None`.
     index
         Index to read from structure files. Default is ":".
     info_keys
@@ -832,6 +837,8 @@ def get_struct_info(
         Path to write out info for each system. Required if `write_info` is `True`.
     include_filenames
         Whether to include filenames in the output info. Default is False.
+    include_dirs
+        Whether to include directory names in the output info. Default is False.
 
     Returns
     -------
@@ -842,24 +849,32 @@ def get_struct_info(
         raise ValueError(
             "`out_path` must be specified if `write_info` or `write_structs` is `True`."
         )
+
     info_keys = info_keys or []
     info = {"elements": []} | {key: [] for key in info_keys}
+
     if include_filenames:
         info["filenames"] = []
+
+    if include_dirs:
+        info["dirs"] = []
 
     model_dir = calc_path / model_name
     if not model_dir.exists():
         raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
-    files = sorted(model_dir.glob(glob_pattern))
+
+    files = sorted(model_dir.glob(glob_pattern), key=sort_key)
     if not files:
         raise ValueError(
             f"No file matches in {model_dir}. Please run mock calculation."
         )
 
     for file in files:
-        # Record filename/stem if requested (one entry per file)
         if include_filenames:
             info["filenames"].append(file.stem)
+
+        if include_dirs:
+            info["dirs"].append(file.parent.name)
 
         structs = read(file, index=index)
         if isinstance(structs, Atoms):
