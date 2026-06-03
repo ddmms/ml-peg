@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 from dash import Dash
 from dash.html import Div
 
@@ -64,14 +62,6 @@ class LiDiffusionApp(BaseApp):
                     structs=structs[model][f"Path {path.upper()} error"],
                     mode="traj",
                 )
-
-    def set_elements(self) -> None:
-        """Get element sets for filtering."""
-        try:
-            self.elements = set(self.info["elements"][0])
-        except (AttributeError, KeyError, TypeError):
-            self.elements = set()
-            warnings.warn("Unable to read elements lists.", stacklevel=2)
 
 
 def get_app() -> LiDiffusionApp:

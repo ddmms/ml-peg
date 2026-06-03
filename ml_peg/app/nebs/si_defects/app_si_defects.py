@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import warnings
 
 from dash import Dash
 from dash.html import Div
@@ -90,14 +89,6 @@ class SiDefectNebSinglepointsApp(BaseApp):
                     structs=structs,
                     mode="traj",
                 )
-
-    def set_elements(self) -> None:
-        """Get element sets for filtering."""
-        try:
-            self.elements = set(self.info["elements"])
-        except (AttributeError, KeyError, TypeError):
-            self.elements = set()
-            warnings.warn("Unable to read elements lists.", stacklevel=2)
 
 
 def get_app() -> SiDefectNebSinglepointsApp:

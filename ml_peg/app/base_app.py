@@ -139,6 +139,23 @@ class BaseApp(ABC):
         """Register callbacks with app."""
         pass
 
+    def set_elements(self) -> None:
+        """Get element sets for filtering."""
+        try:
+            if isinstance(self.info["elements"][0], list):
+                self.elements = {
+                    [
+                        elements
+                        for sublist in self.info["elements"]
+                        for elements in sublist
+                    ]
+                }
+            else:
+                self.elements = set(self.info["elements"])
+        except (AttributeError, KeyError, TypeError):
+            self.elements = set()
+            warnings.warn("Unable to read elements lists.", stacklevel=2)
+
     def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
         """
         Filter data by elements.
