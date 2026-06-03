@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -33,35 +34,36 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KCAL = units.mol / units.kcal
 
 
-def get_info() -> dict[str, list[int]]:
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
+
+
+def _get_charged() -> list[bool]:
     """
-    Get dictionary of info for PLF547 structures.
+    Return per-file bool: True if any sub-structure has non-zero charge.
 
     Returns
     -------
-    dict[str, list[int]]
-        Dictionary of system indices, complex atom counts, and complex charges.
+    list[bool]
+        Per-system flag indicating presence of any charged sub-structure.
     """
-    info = {"labels": [], "charged": []}
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-
-            info["labels"] = [path.stem for path in xyz_files]
-
-            for xyz_file in xyz_files:
-                structs = read(xyz_file, index=":")
-                info["charged"].append(
-                    any(struct.info.get("charge") != 0 for struct in structs)
-                )
-            break
-
-    return info
+            return [
+                any(s.info.get("charge") != 0 for s in read(f, index=":"))
+                for f in sorted(model_dir.glob("*.xyz"))
+            ]
+    return []
 
 
-INFO = get_info()
+CHARGED = _get_charged()
 
 
 @pytest.fixture
@@ -71,8 +73,8 @@ INFO = get_info()
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": INFO["labels"],
-        "Charged": INFO["charged"],
+        "Labels": INFO["filenames"],
+        "Charged": CHARGED,
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -89,7 +91,7 @@ def interaction_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in INFO["labels"]:
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=0)
 
             if not ref_stored:
@@ -145,7 +147,7 @@ def charged_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for charged systems.
     """
     # Get charges for filtering
-    charged_indices = [i for i, charged in enumerate(INFO["charged"]) if charged]
+    charged_indices = [i for i, charged in enumerate(CHARGED) if charged]
 
     results = {}
     for model_name in MODELS:
@@ -176,7 +178,7 @@ def neutral_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for neutral systems.
     """
     # Get charges for filtering
-    charged_indices = [i for i, charged in enumerate(INFO["charged"]) if not charged]
+    charged_indices = [i for i, charged in enumerate(CHARGED) if not charged]
 
     results = {}
     for model_name in MODELS:

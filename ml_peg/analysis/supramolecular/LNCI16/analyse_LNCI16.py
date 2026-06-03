@@ -24,7 +24,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 INFO = get_struct_info(
-    CALC_PATH,
+    calc_path=CALC_PATH,
     glob_pattern="*.xyz",
     info_keys=["system", "complex_charge"],
     include_filenames=True,
