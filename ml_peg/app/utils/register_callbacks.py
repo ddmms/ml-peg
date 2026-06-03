@@ -1145,32 +1145,6 @@ def register_plot_download_callbacks() -> None:
     )
 
 
-def register_image_download_callbacks() -> None:
-    """
-    Register one generic image download callback once per Dash app.
-
-    The image payloads are already stored in the browser as data URIs. Keeping
-    this callback client-side avoids posting large phonon dispersion images back
-    to Dash, which can exceed request-size limits.
-    """
-    app = dash.get_app()
-    output = Output({"type": "image-download", "index": MATCH}, "data")
-    if str(output) in app.callback_map:
-        return
-
-    app.clientside_callback(
-        ClientsideFunction(
-            namespace="image_download",
-            function_name="downloadImage",
-        ),
-        output,
-        Input({"type": "image-download-button", "index": MATCH}, "n_clicks"),
-        State({"type": "image-download-format", "index": MATCH}, "value"),
-        State({"type": "image-download-target", "index": MATCH}, "data"),
-        prevent_initial_call=True,
-    )
-
-
 def register_download_callbacks(table_id: str) -> None:
     """
     Register minimal table download callbacks for CSV, PNG, and SVG.

@@ -455,60 +455,6 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
-def build_image_download_controls(image_id: str, uris: dict) -> Div:
-    """
-    Build download controls for a pre-rendered image (PNG/SVG/JSON).
-
-    Parameters
-    ----------
-    image_id
-        Unique identifier for the image (used as pattern-match index).
-    uris
-        Mapping of format keys (``"png"``, ``"svg"``, ``"json"``) to data URIs.
-
-    Returns
-    -------
-    Div
-        Download controls and hidden components.
-    """
-    options = [{"label": k.upper(), "value": k} for k in uris]
-    return Div(
-        [
-            Dropdown(
-                id={"type": "image-download-format", "index": image_id},
-                className="download-format plot-download-format",
-                options=options,
-                value=options[0]["value"] if options else "png",
-                clearable=False,
-                searchable=False,
-                style={"width": "76px", "height": "30px", "fontSize": "12px"},
-            ),
-            Button(
-                "Download plot",
-                id={"type": "image-download-button", "index": image_id},
-                className="download-button plot-download-button",
-                n_clicks=0,
-                style={"width": "112px"},
-            ),
-            Download(id={"type": "image-download", "index": image_id}),
-            Store(
-                id={"type": "image-download-target", "index": image_id},
-                storage_type="memory",
-                data=uris,
-            ),
-        ],
-        style={
-            "display": "flex",
-            "flexDirection": "row",
-            "alignItems": "flex-end",
-            "gap": "8px",
-            "flexShrink": "0",
-            "marginTop": "12px",
-            "marginBottom": "0px",
-        },
-    )
-
-
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
