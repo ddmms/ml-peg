@@ -12,8 +12,6 @@ from typing import Any
 
 import matplotlib
 
-from ml_peg.app.utils.build_components import build_image_download_controls
-
 matplotlib.use("Agg")
 from dash import dcc, html
 from matplotlib import gridspec
@@ -317,27 +315,41 @@ def render_dispersion_component(
     if not image_src:
         return None
 
-    filename = f"{label}_phonon_dispersion.png" if label else "phonon_dispersion.png"
+    stem = f"{label}_phonon_dispersion" if label else "phonon_dispersion"
+    link_style = {
+        "display": "inline-flex",
+        "alignItems": "center",
+        "gap": "8px",
+        "marginTop": "4px",
+        "marginBottom": "0px",
+    }
     if uris:
-        download_controls = build_image_download_controls(label or "dispersion", uris)
+        download_controls = html.Div(
+            [
+                html.A(
+                    fmt.upper(),
+                    href=uri,
+                    download=f"{stem}.{fmt}",
+                    className="download-button plot-download-button",
+                    style={"width": "60px"},
+                )
+                for fmt, uri in uris.items()
+            ],
+            style=link_style,
+        )
     else:
         download_controls = html.Div(
             html.A(
                 "Download plot",
                 href=image_src,
-                download=filename,
+                download=f"{stem}.png",
                 className="download-button plot-download-button",
                 style={"width": "112px"},
             ),
-            style={
-                "display": "flex",
-                "justifyContent": "flex-end",
-                "marginTop": "12px",
-                "marginBottom": "0px",
-            },
+            style=link_style,
         )
     children = [
-        html.H4(label),
+        html.H4(label, style={"marginTop": "10px", "marginBottom": "4px"}),
         download_controls,
         html.Img(
             src=image_src,
