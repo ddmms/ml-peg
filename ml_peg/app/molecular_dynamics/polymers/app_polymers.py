@@ -33,14 +33,14 @@ class PolymerDensitiesApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_for_structs = next(
+        struct_dir_name = next(
             (m for m in MODELS if any((DATA_PATH / m).glob("*.xyz"))),
             None,
         )
         structs = [
-            f"/assets/molecular_dynamics/polymers/{model_for_structs}/{label}.xyz"
-            if model_for_structs
-            and (DATA_PATH / model_for_structs / f"{label}.xyz").exists()
+            f"/assets/molecular_dynamics/polymers/{struct_dir_name}/{label}.xyz"
+            if struct_dir_name
+            and (DATA_PATH / struct_dir_name / f"{label}.xyz").exists()
             else None
             for label in polymer_labels()
         ]
@@ -52,6 +52,7 @@ class PolymerDensitiesApp(BaseApp):
                 "MAE (small)": scatter,
                 "MAE (medium)": scatter,
                 "MAE (large)": scatter,
+                "MAE (X-large)": scatter,
             },
         )
 
