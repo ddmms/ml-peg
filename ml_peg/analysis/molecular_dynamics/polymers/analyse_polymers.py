@@ -15,12 +15,19 @@ import pytest
 from ml_peg import app, calcs
 from ml_peg.analysis.utils import decorators
 from ml_peg.analysis.utils import utils as analysis_utils
-from ml_peg.models import get_models, models
+from ml_peg.models.get_models import get_model_names
+from ml_peg.models.models import current_models
 
 LOG = logging.getLogger(__name__)
 
-MODELS = get_models.load_models(models.current_models)
-D3_MODEL_NAMES = analysis_utils.build_dispersion_name_map(MODELS)
+MODELS = get_model_names(current_models)
+DISPERSION_NAME_MAP = analysis_utils.build_dispersion_name_map(MODELS)
+PRECOMPUTED_DENSITY_MODELS: tuple[str, ...] = (
+    "MACE-OFF23-S",
+    "PCFF",
+    "uma-s-1p1-omol",
+    "vivance",
+)
 
 AU_TO_G_CM3 = 1e24 / ase_units.mol
 PRODUCTION_STAGE = "23_step22_final_npt"
@@ -38,8 +45,20 @@ POLYMER_SETS: dict[str, frozenset[str]] = {
         (POLYMER_SETS_DIR / "medium.txt").read_text().splitlines()
     ),
     "MAE (large)": frozenset((POLYMER_SETS_DIR / "large.txt").read_text().splitlines()),
+    "MAE (X-large)": frozenset(
+        (POLYMER_SETS_DIR / "x-large.txt").read_text().splitlines()
+    ),
 }
 OUT_PATH = app.APP_ROOT / "data" / "molecular_dynamics" / "polymers"
+LOCAL_STRUCTURES_DIR = calcs.CALCS_ROOT / "molecular_dynamics" / "polymers" / "polymers"
+TRAJECTORY_MODEL_NAMES = tuple(
+    model_name
+    for model_name in MODELS
+    if any((CALC_PATH / model_name).glob(f"*/{PRODUCTION_STAGE}.traj"))
+)
+DENSITY_MODEL_NAMES = list(
+    dict.fromkeys((*PRECOMPUTED_DENSITY_MODELS, *TRAJECTORY_MODEL_NAMES))
+)
 
 METRICS_CONFIG_PATH = pathlib.Path(__file__).with_name("metrics.yml")
 # `load_metrics_config` actually returns a 3-tuple (thresholds, tooltips,
@@ -78,6 +97,55 @@ def labels() -> list[str]:
         Polymer ids from ``data.csv``, in sorted order.
     """
     return [str(poly_id) for poly_id in POLYMER_TABLE.index]
+
+
+def _load_density_csv(model_name: str) -> dict[str, float]:
+    """
+    Load precomputed model densities from ``outputs/<model>/densities.csv``.
+
+    Parameters
+    ----------
+    model_name
+        Model/output directory name.
+
+    Returns
+    -------
+    dict[str, float]
+        Mapping from polymer id to density in g/cm³.
+    """
+    csv_path = CALC_PATH / model_name / "densities.csv"
+    if not csv_path.exists():
+        LOG.warning(f"Missing precomputed density CSV: {csv_path}")
+        return {}
+    df = pd.read_csv(csv_path, comment="#")
+    return dict(
+        zip(df["poly_id"].astype(str), df["density"].astype(float), strict=False)
+    )
+
+
+def _write_polymer_structure(
+    poly_id: str,
+    structs_dir: pathlib.Path,
+    atoms=None,
+) -> None:
+    """
+    Write a polymer structure into a model-specific app data directory.
+
+    Parameters
+    ----------
+    poly_id
+        Polymer identifier.
+    structs_dir
+        Model-specific app data directory.
+    atoms
+        Final trajectory frame to write. If None, write the input structure.
+    """
+    if atoms is None:
+        input_structure = LOCAL_STRUCTURES_DIR / f"{poly_id}.xyz"
+        if not input_structure.exists():
+            return
+        atoms = ase.io.read(input_structure)
+    ase.io.write(str(structs_dir / f"{poly_id}.xyz"), atoms)
 
 
 def _open_trajectory(traj_path: pathlib.Path) -> ase_traj.TrajectoryReader | None:
@@ -143,31 +211,45 @@ def polymer_densities() -> dict[str, list[float]]:
         Missing, unreadable, or empty trajectories contribute ``NaN``.
     """
     poly_ids = labels()
+
     results: dict[str, list[float]] = {"ref": []}
-    for name in MODELS:
+    for name in DENSITY_MODEL_NAMES:
         results[name] = []
 
     for poly_id in poly_ids:
         ref_density = float(POLYMER_TABLE.loc[poly_id, "density"])
         results["ref"].append(ref_density)
 
-    for model_name in MODELS:
+    for model_name in DENSITY_MODEL_NAMES:
         # Per project convention, the dashboard/app must not read from the
         # calc outputs directory: anything the app needs (here, the final
         # production-stage frame for visualisation) is copied here, into the
         # app's data tree, during analysis.
+        csv_densities = (
+            _load_density_csv(model_name)
+            if model_name in PRECOMPUTED_DENSITY_MODELS
+            else {}
+        )
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
         for poly_id in poly_ids:
-            # Average over the full production-NPT stage; the preceding
-            # `npt_equilibration` stage is the warm-up window.
             traj_path = CALC_PATH / model_name / poly_id / f"{PRODUCTION_STAGE}.traj"
             traj = _open_trajectory(traj_path)
+            if traj is None or len(traj) == 0:
+                _write_polymer_structure(poly_id, structs_dir)
+            else:
+                _write_polymer_structure(poly_id, structs_dir, traj[-1])
+
+            if poly_id in csv_densities:
+                results[model_name].append(csv_densities[poly_id])
+                continue
+
+            # Average over the full production-NPT stage; the preceding
+            # `npt_equilibration` stage is the warm-up window.
             if traj is None or len(traj) == 0:
                 results[model_name].append(float("nan"))
                 continue
             results[model_name].append(_mean_density_g_cm3(traj))
-            ase.io.write(str(structs_dir / f"{poly_id}.xyz"), traj[-1])
 
     return results
 
@@ -187,7 +269,8 @@ def get_mae_by_subset(
     Returns
     -------
     dict[str, dict[str, float]]
-        ``{"MAE (small)": {model: mae, ...}, "MAE (medium)": ..., "MAE (large)": ...}``.
+        ``{"MAE (small)": {model: mae, ...}, "MAE (medium)": ..., ...}``.
+        A subset MAE is reported only when all polymers in that subset are available.
     """
     poly_ids = labels()
     ref = np.asarray(polymer_densities["ref"], dtype=float)
@@ -195,7 +278,7 @@ def get_mae_by_subset(
     for set_name, poly_set in POLYMER_SETS.items():
         subset_mask = np.array([pid in poly_set for pid in poly_ids])
         model_maes: dict[str, float] = {}
-        for model_name in MODELS:
+        for model_name in DENSITY_MODEL_NAMES:
             pred = np.asarray(polymer_densities[model_name], dtype=float)
             mask = subset_mask & np.isfinite(ref) & np.isfinite(pred)
             model_maes[model_name] = (
@@ -212,7 +295,7 @@ def get_mae_by_subset(
     filename=str(OUT_PATH / "polymers_metrics_table.json"),
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     get_mae_by_subset: dict[str, dict[str, float]],
