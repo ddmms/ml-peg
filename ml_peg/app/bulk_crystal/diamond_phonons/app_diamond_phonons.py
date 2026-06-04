@@ -104,6 +104,10 @@ class DiamondPhononApp(BaseApp):
         models_data = interactive_data.get("models", {})
         metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
+        # Thermal metric columns have no per-point scatter data; fall back to
+        # the band frequency parity plot so any cell click produces a response.
+        for thermal_col in ["Δγ", "Δθ_D (K)", "Δκ_L (W/m/K)"]:
+            label_to_key[thermal_col] = "band_mae"
 
         refresh_msg = (
             "Click on a metric to view DFT vs predicted frequency scatter plots."

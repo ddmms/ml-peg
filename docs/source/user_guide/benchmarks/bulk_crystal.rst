@@ -522,11 +522,14 @@ Diamond phonons
 Summary
 -------
 
-Performance in predicting the phonon dispersion of bulk diamond (carbon).
+Performance in predicting the phonon dispersion and thermal properties of bulk
+diamond (carbon).
 
-The benchmark evaluates the accuracy of phonon frequencies along a fixed
-high-symmetry path in the Brillouin zone for a single reference crystal
-structure of diamond.
+The benchmark evaluates (1) phonon frequency accuracy along a fixed high-symmetry
+path in the Brillouin zone, and (2) the Grüneisen parameter, Debye temperature, and
+Slack-formula lattice thermal conductivity — all compared against RSCAN DFT references.
+The thermal metrics probe two physically independent aspects of the force constants:
+anharmonicity (Grüneisen parameter) and absolute stiffness (Debye temperature).
 
 
 Metrics
@@ -549,13 +552,109 @@ Root mean squared error (RMSE) between predicted and reference phonon frequencie
 The RMSE is computed using the same sorted, mode-unlabelled comparison procedure as in
 (1), over all q-points and all phonon branches.
 
+3. Δγ
+
+Absolute error in the mean Grüneisen parameter relative to the DFT reference.
+The mean Grüneisen parameter is computed on a 20×20×20 q-mesh by finite differences
+between force constants at volumes V\ :sub:`0` ± 1% (see the Method section below).
+The DFT reference is produced by the same pipeline using DFT force constants.
+
+4. Δθ\ :sub:`D` (K)
+
+Absolute error in the Debye temperature relative to the DFT reference. The Debye
+temperature is estimated from the maximum phonon frequency on a 20×20×20 mesh:
+θ\ :sub:`D` = ℏω\ :sub:`max` / k\ :sub:`B`.
+
+5. Δκ\ :sub:`L` (W/m·K)
+
+Absolute error in the Slack-formula lattice thermal conductivity at 300 K relative
+to the DFT reference. Both prediction and reference use the identical Slack formula,
+so this metric isolates MLIP error in the force constants rather than Slack
+approximation error.
+
+
+Method
+------
+
+All MLIP calculations (band structure and thermal) use the **512-atom conventional
+supercell** (cubic 8-atom cell × 4×4×4). All DFT references (band structure and
+thermal) use the **128-atom primitive supercell** (CASTEP/RSCAN), which is sufficient
+for DFT due to the rapid decay of diamond's interatomic force constants.
+
+**Phonon band structure**
+
+Force constants are computed using the same displacement dataset as the DFT reference
+(``diamond.yaml``). MLIP forces are evaluated for each displaced supercell and used to
+produce second-order force constants via phonopy, which are then symmetrised. The force
+constants are Fourier-interpolated to the q-point path stored in ``dft_band.npz``, and
+phonon frequencies are compared mode-by-mode after sorting to avoid branch-labelling
+ambiguities.
+
+**Grüneisen parameter**
+
+The mode Grüneisen parameter describes how phonon frequencies shift with volume:
+
+.. math::
+
+   \gamma_i(\mathbf{q}) = -\frac{V}{\omega_i(\mathbf{q})}
+   \frac{\partial \omega_i(\mathbf{q})}{\partial V}
+
+It is computed from three sets of second-order force constants:
+
+1. Equilibrium volume :math:`V_0` — force constants at the relaxed volume.
+2. Expanded volume :math:`V_0(1 + \delta)` — force constants at +1% volumetric strain.
+3. Compressed volume :math:`V_0(1 - \delta)` — force constants at −1% volumetric strain.
+
+The volumetric strain is applied as a uniform scaling of the unit cell
+(:math:`\delta = 0.01` by default). Atomic positions are scaled affinely with the cell;
+no re-relaxation is performed at the strained volumes. Mode Grüneisen parameters are
+evaluated on a 20×20×20 sampling mesh via phonopy's ``PhonopyGruneisen`` interface. The
+reported scalar :math:`\bar{\gamma}` is the q-point- and mode-weighted mean over all
+positive-frequency modes.
+
+**Debye temperature**
+
+The Debye temperature is estimated from the maximum phonon frequency on the sampling
+mesh:
+
+.. math::
+
+   \theta_D = \frac{\hbar \omega_{\max}}{k_B}
+
+where :math:`\omega_{\max} = 2\pi f_{\max}` and :math:`f_{\max}` is the largest
+frequency (THz) found on the 20×20×20 mesh.
+
+**Lattice thermal conductivity**
+
+The lattice thermal conductivity is estimated using the Slack formula (Slack, 1973):
+
+.. math::
+
+   \kappa_L = A \frac{\bar{M} \, \theta_D^3 \, \delta_a}
+                     {\bar{\gamma}^2 \, n^{2/3} \, T}
+
+where :math:`A = 2.43 \times 10^{-6}`, :math:`\bar{M}` is the mean atomic mass (amu),
+:math:`\delta_a = (V_\text{prim}/n)^{1/3}` is the cube root of the volume per atom (Å),
+:math:`\bar{\gamma}` is the mean Grüneisen parameter, :math:`n` is the number of atoms
+in the primitive cell, and :math:`T` is temperature (K). The result is in W/(m·K).
+
+The Slack formula is a semi-empirical approximation that captures the dominant anharmonic
+scattering channel. It does not include phonon–phonon scattering from third-order force
+constants and should be treated as an order-of-magnitude estimate.
+
 
 Computational cost
 ------------------
 
-Medium: tests typically take a few minutes to run on CPU. Calculations were run as a single process on CPU on an
+Medium: band-structure and thermal-property calculations together typically take
+several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
+conventional supercell. The thermal step requires three force-constant evaluations
+(V\ :sub:`0`, V\ :sub:`0` + δ, V\ :sub:`0` − δ), so total wall time is roughly four
+times the band-structure-only run. Calculations were run as a single process on CPU on an
 x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
 parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+
+
 
 
 Data availability
@@ -563,13 +662,24 @@ Data availability
 
 Input structures (https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
 
-* A primitive diamond unit cell containing two carbon atoms.
+* ``diamond.yaml``: conventional cubic cell (8 atoms, a = 3.56 Å) × 4×4×4 = 512-atom
+  supercell, used for all MLIP band and thermal calculations.
 
 Reference data:
 
-* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, provided
-  as ``dft_band.npz``.
-* RSCAN.
+* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, computed
+  with CASTEP using the RSCAN functional. Provided as ``dft_band.npz``.
+
+* DFT Grüneisen parameter and lattice thermal conductivity computed using the same
+  Grüneisen + Slack pipeline as the MLIP predictions, with CASTEP/RSCAN force constants
+  at V\ :sub:`0`, V\ :sub:`0` + 1%, and V\ :sub:`0` − 1% on a 128-atom primitive
+  supercell. Stored as ``diamond_thermal_ref.json``.
+
+Thermal conductivity method:
+
+* Slack, G.A. (1973). Nonmetallic crystals with high thermal conductivity.
+  *Journal of Physics and Chemistry of Solids*, 34(2), 321–335.
+  https://doi.org/10.1016/0022-3697(73)90092-9
 
 
 Ti64 phonons
@@ -645,6 +755,10 @@ Computational cost
 
 Medium: dispersion, DOS/PDOS and thermodynamic calculations typically take minutes per model on CPU.
 Thermodynamic calculations are enabled for a 7/10 subset of cases.
+Ti64 calculations were run as a single process on CPU on an
+x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
+parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+
 
 
 Data availability
@@ -675,10 +789,3 @@ Reference data:
   (subset), used to compute reference Helmholtz free energies in the harmonic
   approximation.
 * PBE
-
-Computational environment
--------------------------
-
-Ti64 phonon calculations were run as a single process on CPU on an
-x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
-parallel execution (MPI or multiprocessing) was used in the benchmark driver.
