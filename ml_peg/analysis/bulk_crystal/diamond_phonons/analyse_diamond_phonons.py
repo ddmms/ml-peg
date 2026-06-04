@@ -49,12 +49,24 @@ METRIC_KEY_RMSE = "band_rmse"
 
 METRIC_LABEL_MAE = "Band MAE"
 METRIC_LABEL_RMSE = "Band RMSE"
+METRIC_LABEL_GAMMA = "Δγ"
+METRIC_LABEL_THETA_D = "Δθ_D (K)"
+METRIC_LABEL_KAPPA = "Δκ_L (W/m/K)"
 
+# DFT reference thermal properties — downloaded as part of diamond_data/data.zip
+# alongside dft_band.npz and diamond.yaml.
+THERMAL_REF_PATH = CALC_DATA / "diamond_thermal_ref.json"
 
 METRICS_YML = Path(__file__).with_name("metrics.yml")
 THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-_expected_metric_labels = {METRIC_LABEL_MAE, METRIC_LABEL_RMSE}
+_expected_metric_labels = {
+    METRIC_LABEL_MAE,
+    METRIC_LABEL_RMSE,
+    METRIC_LABEL_GAMMA,
+    METRIC_LABEL_THETA_D,
+    METRIC_LABEL_KAPPA,
+}
 _yaml_metric_labels = set(THRESHOLDS.keys())
 missing = _expected_metric_labels - _yaml_metric_labels
 if missing:
@@ -198,6 +210,84 @@ def reference() -> dict[str, Any]:
     return _load_reference_npz(CALC_DATA / "dft_band.npz")
 
 
+def _load_thermal(model_name: str) -> dict[str, float] | None:
+    """
+    Load thermal property results for one model.
+
+    Parameters
+    ----------
+    model_name
+        Model identifier used to locate
+        ``{CALC_PATH}/{model_name}/diamond_thermal.json``.
+
+    Returns
+    -------
+    dict[str, float] or None
+        Mapping with keys ``mean_gamma``, ``debye_temperature_K``,
+        ``kappa_W_per_mK``, or ``None`` if the file is absent or unreadable.
+    """
+    path = CALC_PATH / model_name / "diamond_thermal.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf8"))
+    except Exception as exc:
+        print(f"{model_name}: failed to load thermal data — {exc}")
+        return None
+
+
+def _load_thermal_ref() -> dict[str, float] | None:
+    """
+    Load DFT reference thermal properties.
+
+    Returns
+    -------
+    dict[str, float] or None
+        Mapping with keys ``mean_gamma``, ``debye_temperature_K``,
+        ``kappa_W_per_mK``, or ``None`` if the reference file is absent.
+    """
+    if not THERMAL_REF_PATH.exists():
+        return None
+    try:
+        return json.loads(THERMAL_REF_PATH.read_text(encoding="utf8"))
+    except Exception as exc:
+        print(f"Failed to load DFT thermal reference from {THERMAL_REF_PATH}: {exc}")
+        return None
+
+
+@pytest.fixture
+def thermal_errors() -> dict[str, dict[str, float]]:
+    """
+    Compute absolute errors vs DFT reference for thermal properties.
+
+    Returns an empty dict if the DFT reference file does not yet exist,
+    so the table is still produced without thermal columns in that case.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Mapping ``model_name -> {"gamma_error", "theta_d_error", "kappa_error"}``.
+        Models without a thermal JSON, or runs without a DFT reference, are omitted.
+    """
+    ref = _load_thermal_ref()
+    if ref is None:
+        return {}
+
+    out: dict[str, dict[str, float]] = {}
+    for model_name in MODELS:
+        data = _load_thermal(model_name)
+        if data is None:
+            continue
+        out[model_name] = {
+            "gamma_error": abs(data["mean_gamma"] - ref["mean_gamma"]),
+            "theta_d_error": abs(
+                data["debye_temperature_K"] - ref["debye_temperature_K"]
+            ),
+            "kappa_error": abs(data["kappa_W_per_mK"] - ref["kappa_W_per_mK"]),
+        }
+    return out
+
+
 def _model_flat(model_name: str) -> np.ndarray:
     """
     Load and flatten one model's predicted bands (THz).
@@ -293,7 +383,10 @@ def band_errors(
     metric_tooltips=METRIC_TOOLTIPS,
     weights=WEIGHTS,
 )
-def metrics(band_errors: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+def metrics(
+    band_errors: dict[str, dict[str, float]],
+    thermal_errors: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
     """
     Build the metrics table mapping for the Dash table.
 
@@ -301,19 +394,34 @@ def metrics(band_errors: dict[str, dict[str, float]]) -> dict[str, dict[str, flo
     ----------
     band_errors
         Per-model MAE/RMSE mapping as returned by :func:`band_errors`.
+    thermal_errors
+        Per-model thermal property errors as returned by :func:`thermal_errors`.
 
     Returns
     -------
     dict[str, dict[str, float]]
         Mapping from visible metric label to per-model values.
     """
-    available = set(band_errors)
+    available_band = set(band_errors)
+    available_thermal = set(thermal_errors)
     return {
         METRIC_LABEL_MAE: {
-            m: band_errors[m]["mae"] if m in available else None for m in MODELS
+            m: band_errors[m]["mae"] if m in available_band else None for m in MODELS
         },
         METRIC_LABEL_RMSE: {
-            m: band_errors[m]["rmse"] if m in available else None for m in MODELS
+            m: band_errors[m]["rmse"] if m in available_band else None for m in MODELS
+        },
+        METRIC_LABEL_GAMMA: {
+            m: thermal_errors[m]["gamma_error"] if m in available_thermal else None
+            for m in MODELS
+        },
+        METRIC_LABEL_THETA_D: {
+            m: thermal_errors[m]["theta_d_error"] if m in available_thermal else None
+            for m in MODELS
+        },
+        METRIC_LABEL_KAPPA: {
+            m: thermal_errors[m]["kappa_error"] if m in available_thermal else None
+            for m in MODELS
         },
     }
 
@@ -416,7 +524,9 @@ def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
 
 
 def test_diamond_phonons_analysis(
-    metrics: dict[str, Any], interactive_dataset: dict[str, Any]
+    metrics: dict[str, Any],
+    interactive_dataset: dict[str, Any],
+    thermal_errors: dict[str, dict[str, float]],
 ) -> None:
     """
     Generate JSON artifacts for the diamond phonons benchmark.
@@ -427,9 +537,12 @@ def test_diamond_phonons_analysis(
         Table fixture output (decorator writes JSON).
     interactive_dataset
         Scatter fixture output (decorator writes JSON).
+    thermal_errors
+        Per-model thermal error mapping as returned by :func:`thermal_errors`.
     """
     assert isinstance(metrics, dict)
     assert isinstance(interactive_dataset, dict)
+    assert isinstance(thermal_errors, dict)
 
     table_path = OUT_PATH / "diamond_phonons_bands_table.json"
     assert table_path.exists()

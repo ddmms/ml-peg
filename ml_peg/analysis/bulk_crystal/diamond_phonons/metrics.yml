@@ -14,3 +14,27 @@ metrics:
     tooltip: "Root mean squared error of phonon frequencies for diamond over all sampled q-points and phonon branches along the chosen band path."
     weight: 1.0
     level_of_theory: RSCAN
+
+  Δγ:
+    good: 0.0
+    bad: 0.5
+    unit: null
+    tooltip: "Absolute error in the mean Grüneisen parameter relative to the DFT reference computed at V₀±1% volumetric strain."
+    weight: 0.5
+    level_of_theory: RSCAN
+
+  Δθ_D (K):
+    good: 0.0
+    bad: 300.0
+    unit: K
+    tooltip: "Absolute error in the Debye temperature (estimated from maximum mesh frequency) relative to the DFT reference."
+    weight: 0.5
+    level_of_theory: RSCAN
+
+  Δκ_L (W/m/K):
+    good: 0.0
+    bad: 150.0
+    unit: W/m/K
+    tooltip: "Absolute error in the Slack-formula lattice thermal conductivity at 300 K relative to the DFT reference. Both prediction and reference use the same Slack formula, so this isolates MLIP error in the force constants rather than Slack approximation error."
+    weight: 0.5
+    level_of_theory: RSCAN

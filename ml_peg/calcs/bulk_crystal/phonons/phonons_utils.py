@@ -195,7 +195,9 @@ def init_phonopy_from_ref(
     if displacement_dataset is not None:
         phonons.dataset = displacement_dataset
     elif displacement_distance is not None:
-        phonons.generate_displacements(distance=displacement_distance)
+        phonons.generate_displacements(
+            distance=displacement_distance, is_plusminus=True
+        )
     else:
         raise ValueError(
             'Either "displacement_dataset" or "displacement_distance" is required when '
