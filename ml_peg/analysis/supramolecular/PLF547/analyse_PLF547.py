@@ -38,32 +38,17 @@ INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
     include_filenames=True,
+    per_file_info={
+        "charged": lambda structs: any(
+            atoms.info.get("charge", 0) != 0 for atoms in structs
+        ),
+    },
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
 
-
-def _get_charged() -> list[bool]:
-    """
-    Return per-file bool: True if any sub-structure has non-zero charge.
-
-    Returns
-    -------
-    list[bool]
-        Per-system flag indicating presence of any charged sub-structure.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            return [
-                any(s.info.get("charge") != 0 for s in read(f, index=":"))
-                for f in sorted(model_dir.glob("*.xyz"))
-            ]
-    return []
-
-
-CHARGED = _get_charged()
+CHARGED = INFO["charged"]
 
 
 @pytest.fixture

@@ -39,45 +39,18 @@ INFO = get_struct_info(
     glob_pattern="*.xyz",
     index=0,
     info_keys=["identifier", "interaction_type"],
+    per_file_info={
+        "complex_atoms": lambda structs: len(structs[0]),
+        "complex_charges": lambda structs: structs[0].info["charge"],
+        "ligand_atoms": lambda structs: len(structs[1]),
+        "ligand_charges": lambda structs: structs[1].info["charge"],
+        "protein_atoms": lambda structs: len(structs[2]),
+        "protein_charges": lambda structs: structs[2].info["charge"],
+    },
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
-
-
-def _get_sub_info() -> dict[str, list]:
-    """
-    Return atom counts and charges for complex, ligand, and protein sub-structures.
-
-    Returns
-    -------
-    dict[str, list]
-        Atom counts and charges for each sub-structure type.
-    """
-    out: dict[str, list] = {
-        "complex_atoms": [],
-        "complex_charges": [],
-        "ligand_atoms": [],
-        "ligand_charges": [],
-        "protein_atoms": [],
-        "protein_charges": [],
-    }
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for xyz_file in sorted(model_dir.glob("*.xyz")):
-                atoms = read(xyz_file, index=":")
-                out["complex_atoms"].append(len(atoms[0]))
-                out["complex_charges"].append(atoms[0].info["charge"])
-                out["ligand_atoms"].append(len(atoms[1]))
-                out["ligand_charges"].append(atoms[1].info["charge"])
-                out["protein_atoms"].append(len(atoms[2]))
-                out["protein_charges"].append(atoms[2].info["charge"])
-            break
-    return out
-
-
-SUB_INFO = _get_sub_info()
 
 
 @pytest.fixture
@@ -88,12 +61,12 @@ SUB_INFO = _get_sub_info()
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
         "System": INFO["identifier"],
-        "Complex Atoms": SUB_INFO["complex_atoms"],
-        "Ligand Atoms": SUB_INFO["ligand_atoms"],
-        "Protein Atoms": SUB_INFO["protein_atoms"],
-        "Complex Charge": SUB_INFO["complex_charges"],
-        "Ligand Charge": SUB_INFO["ligand_charges"],
-        "Protein Charge": SUB_INFO["protein_charges"],
+        "Complex Atoms": INFO["complex_atoms"],
+        "Ligand Atoms": INFO["ligand_atoms"],
+        "Protein Atoms": INFO["protein_atoms"],
+        "Complex Charge": INFO["complex_charges"],
+        "Ligand Charge": INFO["ligand_charges"],
+        "Protein Charge": INFO["protein_charges"],
         "Interaction Type": INFO["interaction_type"],
     },
 )

@@ -803,13 +803,14 @@ def get_struct_info(
     model_name: str = "mock",
     glob_pattern: str = "*.xyz",
     sort_key: Callable | None = None,
-    index: str = ":",
+    index: int | str = ":",
     info_keys: list[str] | None = None,
     write_info: bool = True,
     write_structs: bool = True,
     out_path: Path | None = None,
     include_filenames: bool = False,
     include_dirs: bool = False,
+    per_file_info: dict[str, Callable[[list[Atoms]], Any]] | None = None,
 ) -> dict[str, Any]:
     """
     Get info from structure files and optionally write out info structures.
@@ -839,6 +840,9 @@ def get_struct_info(
         Whether to include filenames in the output info. Default is False.
     include_dirs
         Whether to include directory names in the output info. Default is False.
+    per_file_info
+        Per-file info extractors. Each callable receives all frames from the file
+        and should return one value to append. Default is None.
 
     Returns
     -------
@@ -851,6 +855,7 @@ def get_struct_info(
         )
 
     info_keys = info_keys or []
+    per_file_info = per_file_info or {}
     info = {"elements": []} | {key: [] for key in info_keys}
 
     if include_filenames:
@@ -858,6 +863,9 @@ def get_struct_info(
 
     if include_dirs:
         info["dirs"] = []
+
+    for key in per_file_info:
+        info[key] = []
 
     model_dir = calc_path / model_name
     if not model_dir.exists():
@@ -879,6 +887,12 @@ def get_struct_info(
         structs = read(file, index=index)
         if isinstance(structs, Atoms):
             structs = [structs]
+        if per_file_info:
+            all_structs = structs if index == ":" else read(file, index=":")
+            if isinstance(all_structs, Atoms):
+                all_structs = [all_structs]
+            for key, extractor in per_file_info.items():
+                info[key].append(extractor(all_structs))
         for struct in structs:
             for key in info_keys:
                 info[key].append(struct.info[key])
