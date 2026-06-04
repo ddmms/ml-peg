@@ -2,11 +2,10 @@
 
 These files define the polymer subsets.
 
-- `small.txt`: 10 polymers. This is a hand-picked subset:
-  `PE`, `PIB`, `PET`, `PCTFE`, `PS`, `PVMS`, `PVC`, `PAN`, `PTPC`, `PODPM`.
-- `medium.txt`: 50 polymers. This is the `small.txt` subset, followed by the
-  first 40 polymers from `../data.csv` that are not already in `small.txt`.
-- `large.txt`: 130 polymers. This contains all polymer IDs from `../data.csv`.
+- `small.txt`: 7 polymers common to all precomputed CSV outputs.
+- `medium.txt`: 30 polymers common to `MACE-OFF23-S`, `PCFF`, and `vivance`.
+- `large.txt`: 85 polymers common to `MACE-OFF23-S`, `PCFF`, and `vivance`.
+- `x-large.txt`: the full 130-polymer set
 
 Each file contains one polymer ID per line. Use the line number as the array
 task index, for example:
