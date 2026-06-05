@@ -141,6 +141,8 @@ def load_models(
         MockCalc,
         OrbCalc,
         PetMadCalc,
+        SevenNetCalc,
+        UPETCalc,
     )
 
     if run_mock is None:
@@ -198,6 +200,24 @@ def load_models(
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "UPETCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = UPETCalc(
+                    model=kwargs["model"],
+                    version=kwargs["version"],
+                    device=cfg.get("device", "cpu"),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "SevenNetCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = SevenNetCalc(
+                    model=kwargs["model"],
+                    device=cfg.get("device", "cpu"),
+                    kwargs={k: v for k, v in kwargs.items() if k != "model"},
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
