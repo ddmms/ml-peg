@@ -86,9 +86,9 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
     )
     ref_energies = {}
 
-    for row in df.iterrows():
-        label = row[1][0]
-        ref_energies[label] = float(row[1][2]) * KCAL_TO_EV
+    for row in df.itertuples(index=False, name=None):
+        label = row[0]
+        ref_energies[label] = float(row[2]) * KCAL_TO_EV
 
     return ref_energies
 
@@ -122,6 +122,7 @@ def test_mpconf196(mlip: tuple[str, Any]) -> None:
         model_abs_energies = []
         ref_abs_energies = []
         current_molecule_labels = []
+        cached_atoms = []
 
         # Get reference and predicted energy for each conformer
         for label, e_ref in ref_energies.items():
@@ -143,24 +144,25 @@ def test_mpconf196(mlip: tuple[str, Any]) -> None:
                 model_abs_energies.append(np.nan)
             ref_abs_energies.append(e_ref)
             current_molecule_labels.append(label)
+            cached_atoms.append(atoms)
+
+        # ⚡ Bolt: Hoist constant mean calculation out of loop
+        mean_ref = np.mean(ref_abs_energies)
+        mean_model = np.mean(model_abs_energies)
 
         # Get energies relative to average conformer energies
-        for label, e_model in zip(
-            current_molecule_labels, model_abs_energies, strict=True
+        for label, e_model, atoms in zip(
+            current_molecule_labels, model_abs_energies, cached_atoms, strict=True
         ):
             molecule_label = label.split("_")[0]
-            conformer_label = label.split("_")[1]
-            if label[-1].isnumeric():
-                xyz_fname = f"{molecule_label}{conformer_label}.xyz"
-            else:
-                xyz_fname = f"{molecule_label}_{conformer_label}.xyz"
-            atoms = get_atoms(data_path / xyz_fname)
+            if molecule != molecule_label:
+                continue
+
             atoms.translate(-atoms.get_center_of_mass())
-            atoms.info["ref_rel_energy"] = ref_energies[label] - np.mean(
-                ref_abs_energies
-            )
-            atoms.info["model_rel_energy"] = e_model - np.mean(model_abs_energies)
+            atoms.info["ref_rel_energy"] = ref_energies[label] - mean_ref
+            atoms.info["model_rel_energy"] = e_model - mean_model
 
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)
+            atoms.calc = None
             write(write_dir / f"{label}.xyz", atoms)
