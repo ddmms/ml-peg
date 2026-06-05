@@ -141,6 +141,7 @@ def load_models(
         MockCalc,
         OrbCalc,
         PetMadCalc,
+        VivaceCalc,
     )
 
     if run_mock is None:
@@ -198,6 +199,17 @@ def load_models(
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "MLFFCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = VivaceCalc(
+                    model_path=kwargs["model_path"],
+                    device=cfg.get("device", "auto"),
+                    kwargs={
+                        key: val for key, val in kwargs.items() if key != "model_path"
+                    },
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )

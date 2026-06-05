@@ -179,6 +179,15 @@ pet-mad:
   dispersion_kwargs:
     xc: pbesol
 
+# Vivace:
+#   module: simpoly.vivace.calculator
+#   class_name: MLFFCalculator
+#   device: "cuda"
+#   trained_on_dispersion: true
+#   level_of_theory: r2SCAN+D3
+#   kwargs:
+#     model_path: /path/to/model.pt
+
 # mace-polar-1-s:
 #   module: mace.calculators
 #   class_name: mace_polar

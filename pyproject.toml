@@ -73,6 +73,12 @@ pet-mad = [
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
+vivace = [
+    "simpoly[vivace,cuda13] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform == 'linux'",
+    "simpoly[vivace] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform != 'linux'",
+    "cuequivariance ==0.8.1; sys_platform != 'linux'",
+    "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
+]
 
 [project.scripts]
 ml_peg = "ml_peg.cli.cli:app"
@@ -205,6 +211,10 @@ conflicts = [
     [
       { extra = "mattersim" },
       { extra = "grace" },
+    ],
+    [
+      { extra = "vivace" },
+      { extra = "mace" },
     ],
 ]
 
