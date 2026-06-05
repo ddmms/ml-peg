@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import base64
 from collections.abc import Iterable, Mapping
-from io import BytesIO
 from typing import Any
 
 from ase.io import read
 import matplotlib
 
 matplotlib.use("Agg")
-from dash import html
-import matplotlib.pyplot as plt
+from dash import dcc, html
+from dash.html import Iframe
 import numpy as np
+import plotly.graph_objects as go
+
+from ml_peg.app.utils.weas import generate_weas_html
 
 
 def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
@@ -65,9 +66,13 @@ def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
 def render_neb_profile(
     selection_context: Mapping[str, Any],
     reference_label: str,
-):
+    scatter_id: str,
+) -> html.Div | None:
     """
-    Render a Matplotlib dispersion PNG or fallback image for a selection.
+    Render an interactive Plotly NEB profile for a selection.
+
+    The returned ``dcc.Graph`` uses ``scatter_id`` so that downstream callbacks
+    wired to that ID can detect clicks on individual NEB images.
 
     Parameters
     ----------
@@ -75,94 +80,237 @@ def render_neb_profile(
         Dictionary containing ``model`` and resolved ``selection`` data.
     reference_label
         Legend label for the reference trace.
+    scatter_id
+        Dash component ID assigned to the rendered ``dcc.Graph``.
 
     Returns
     -------
     dash.html.Div | None
-        Component containing the image preview, or ``None`` if missing.
+        Component containing the interactive profile graph, or ``None`` if
+        no data is available.
     """
     model_display = selection_context.get("model")
     selected = selection_context.get("selection") or {}
     data_paths = selected.get("data_paths")
     label = selected.get("label") or selected.get("reaction", "")
-    image_src = None
-    if data_paths:
-        image_src = render_neb_profile_png(
-            paths=data_paths,
-            model_label=model_display,
-            system_label=label,
-            reference_label=reference_label,
-            prediction_label=model_display,
-        )
-    elif selected.get("image"):
-        image_src = f"/{selected['image']}"
-    if not image_src:
+
+    if not data_paths:
         return None
+
+    fig = _build_neb_profile_figure(
+        paths=data_paths,
+        model_label=model_display,
+        system_label=label,
+        reference_label=reference_label,
+    )
+    if fig is None:
+        return None
+
     return html.Div(
         [
             html.H4(label),
-            html.Img(
-                src=image_src,
-                style={"maxWidth": "100%", "border": "1px solid #ccc"},
+            html.P(
+                "Click on a point to view the DFT and MLIP geometries side-by-side.",
+                style={"color": "#666", "fontSize": "13px", "margin": "4px 0 8px"},
+            ),
+            dcc.Graph(
+                id=scatter_id,
+                figure=fig,
+                config={"displayModeBar": True, "scrollZoom": False},
+                style={"height": "420px"},
             ),
         ]
     )
 
 
-def render_neb_profile_png(
+def _build_neb_profile_figure(
     *,
     paths: Mapping[str, str | None],
     model_label: str,
     system_label: str,
     reference_label: str = "Reference",
-    prediction_label: str = "Prediction",
-) -> str | None:
+) -> go.Figure | None:
     """
-    Render NEB profiles of Reference and Predicted as a PNG data URI.
+    Build an interactive Plotly figure showing DFT and MLIP NEB energy profiles.
+
+    Each data point is individually clickable; ``pointNumber`` maps directly to
+    the NEB image index in the trajectory files.
 
     Parameters
     ----------
     paths
-        Mapping with ``"ref_profile"``, ``"pred_profile"``.
+        Mapping with ``"ref_profile"`` and ``"pred_profile"`` trajectory paths.
     model_label
-        Label for the predicted model trace.
+        Display name for the predicted model trace.
     system_label
         Title displayed above the plot.
     reference_label
-        Legend label for the reference trace.
-    prediction_label
-        Legend label for the predicted trace.
+        Legend label for the reference (DFT) trace.
 
     Returns
     -------
-    str | None
-        Base64-encoded data URI or ``None`` when assets are missing.
+    go.Figure | None
+        Interactive Plotly figure or ``None`` when trajectory files are missing
+        or unreadable.
     """
-    ref_profile = read(paths["ref_profile"], ":")
-    pred_profile = read(paths["pred_profile"], ":")
+    ref_path = paths.get("ref_profile")
+    pred_path = paths.get("pred_profile")
+    if not ref_path or not pred_path:
+        return None
 
-    ref_energies = np.array([at.info["DFT_energy"] for at in ref_profile])
-    pred_energies = np.array([at.get_potential_energy() for at in pred_profile])
+    try:
+        ref_profile = read(ref_path, ":")
+        pred_profile = read(pred_path, ":")
+    except Exception:
+        return None
 
-    fig = plt.figure(figsize=(7, 6))
+    try:
+        ref_energies = np.array([at.info["DFT_energy"] for at in ref_profile])
+        pred_energies = np.array([at.get_potential_energy() for at in pred_profile])
+    except Exception:
+        return None
 
-    fontsize = 18
-    plt.plot(ref_energies - ref_energies[0], c="b", marker="o", label="RPBE")
-    plt.plot(
-        pred_energies - pred_energies[0],
-        c="r",
-        linestyle="--",
-        marker="o",
-        label=f"{model_label}",
+    ref_shifted = ref_energies - ref_energies[0]
+    pred_shifted = pred_energies - pred_energies[0]
+    image_indices = list(range(len(ref_shifted)))
+
+    hover_ref = [
+        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
+        for i, e in enumerate(ref_shifted)
+    ]
+    hover_pred = [
+        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
+        for i, e in enumerate(pred_shifted)
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=image_indices,
+            y=ref_shifted.tolist(),
+            mode="lines+markers",
+            name=reference_label,
+            line={"color": "#1f77b4", "width": 2},
+            marker={"size": 10, "symbol": "circle", "color": "#1f77b4"},
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=hover_ref,
+        )
     )
-    plt.xlabel("# Image", fontsize=fontsize)
-    plt.ylabel(r"$\Delta$Energy (eV)", fontsize=fontsize)
-    plt.tick_params(axis="both", which="major", labelsize=fontsize)
-    plt.title(f"{system_label}", fontsize=fontsize)
-    plt.legend(fontsize=fontsize, frameon=False)
 
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+    pred_color = "#d62728"
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(pred_shifted))),
+            y=pred_shifted.tolist(),
+            mode="lines+markers",
+            name=model_label or "MLIP",
+            line={"color": pred_color, "width": 2, "dash": "dash"},
+            marker={"size": 10, "symbol": "circle", "color": pred_color},
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=hover_pred,
+        )
+    )
+
+    fig.update_layout(
+        title={"text": system_label, "font": {"size": 15}},
+        xaxis={
+            "title": "NEB Image Index",
+            "tickmode": "linear",
+            "dtick": 1,
+            "gridcolor": "#eee",
+        },
+        yaxis={"title": "ΔEnergy (eV)", "gridcolor": "#eee"},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        hovermode="closest",
+        margin={"l": 60, "r": 20, "t": 60, "b": 50},
+        clickmode="event",
+    )
+
+    return fig
+
+
+def render_geometry_comparison(
+    click_context: Mapping[str, Any],
+) -> html.Div | None:
+    """
+    Render DFT and MLIP geometries side-by-side for a clicked NEB image.
+
+    Parameters
+    ----------
+    click_context
+        Dictionary containing ``ref_profile``, ``pred_profile`` (trajectory
+        file paths) and ``image_index`` (the clicked NEB image number).
+
+    Returns
+    -------
+    dash.html.Div | None
+        Side-by-side WEAS structure viewers, or ``None`` when data is missing.
+    """
+    ref_path = click_context.get("ref_profile")
+    pred_path = click_context.get("pred_profile")
+    image_index = click_context.get("image_index", 0)
+    system_label = click_context.get("system_label", "")
+
+    if not ref_path or not pred_path:
+        return None
+
+    iframe_style = {
+        "height": "450px",
+        "width": "100%",
+        "border": "1px solid #ddd",
+        "borderRadius": "5px",
+    }
+    label_style = {
+        "textAlign": "center",
+        "fontWeight": "bold",
+        "marginBottom": "6px",
+        "fontSize": "14px",
+    }
+
+    try:
+        ref_html = generate_weas_html(ref_path, "traj", image_index)
+        pred_html = generate_weas_html(pred_path, "traj", image_index)
+    except Exception:
+        return None
+
+    return html.Div(
+        [
+            html.H5(
+                f"NEB Image {image_index}"
+                + (f" — {system_label}" if system_label else ""),
+                style={"marginBottom": "12px"},
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.P("DFT (Reference)", style=label_style),
+                            Iframe(srcDoc=ref_html, style=iframe_style),
+                        ],
+                        style={"flex": "1", "minWidth": 0},
+                    ),
+                    html.Div(
+                        [
+                            html.P("MLIP (Predicted)", style=label_style),
+                            Iframe(srcDoc=pred_html, style=iframe_style),
+                        ],
+                        style={"flex": "1", "minWidth": 0},
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "gap": "16px",
+                    "alignItems": "stretch",
+                },
+            ),
+        ]
+    )
