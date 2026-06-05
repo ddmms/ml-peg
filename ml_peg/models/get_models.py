@@ -204,11 +204,12 @@ def load_models(
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "UPETCalculator":
-                kwargs = cfg.get("kwargs", {})
                 loaded_models[name] = UPETCalc(
-                    model=kwargs["model"],
-                    version=kwargs["version"],
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )

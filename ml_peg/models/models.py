@@ -7,8 +7,9 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
-from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
+
+from mlipx import GenericASECalculator as MlipxGenericASECalc
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
@@ -283,3 +284,61 @@ class MockCalc(SumCalc):
         from ml_peg.models.mock import MockCalculator
 
         return MockCalculator()
+
+
+@dataclasses.dataclass(kw_only=True)
+class UPETCalc(GenericASECalc):
+    """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Any keyword arguments to pass to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded upet ASE calculator.
+        """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
+        if self.default_dtype is not None:
+            kwargs["dtype"] = self.default_dtype
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class SevenNetCalc(SumCalc):
+    """Dataclass for SevenNet calculator."""
+
+    model: str
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored).
+
+        Returns
+        -------
+        Calculator
+            Loaded SevenNet ASE calculator.
+        """
+        from sevenn.sevennet_calculator import SevenNetCalculator
+
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        device_str = device.value if isinstance(device, Device) else (device or "cpu")
+        return SevenNetCalculator(model=self.model, device=device_str, **self.kwargs)
