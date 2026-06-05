@@ -97,7 +97,7 @@ def plot_from_table_cell(
         Output(plot_id, "children"),
         Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
-        Input(table_id, "data"),
+        State(table_id, "data"),
     )
     def show_plot(active_cell, current_table_data) -> Div:
         """

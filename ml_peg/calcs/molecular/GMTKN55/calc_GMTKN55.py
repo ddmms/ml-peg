@@ -15,8 +15,8 @@ from tqdm import tqdm
 import yaml
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -41,9 +41,7 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)

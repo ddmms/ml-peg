@@ -175,7 +175,7 @@ def rmse(ref: list, prediction: list) -> float:
     float
         Root mean squared error.
     """
-    return mean_squared_error(ref, prediction)
+    return np.sqrt(mean_squared_error(ref, prediction))
 
 
 DENSITY_GRID_SIZE = 80

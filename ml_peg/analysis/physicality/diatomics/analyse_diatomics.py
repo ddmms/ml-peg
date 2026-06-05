@@ -13,8 +13,8 @@ from ml_peg.analysis.utils.decorators import build_table, periodic_curve_gallery
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "diatomics" / "outputs"

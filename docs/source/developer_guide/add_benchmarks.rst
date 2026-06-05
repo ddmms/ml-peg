@@ -34,6 +34,16 @@ the error with respect to DFT predictions of energies.
 Reference data may also include experimental data, or higher-accuracy theoretical predictions,
 e.g. CCSD(T).
 
+Each metric in ``metrics.yml`` should have a ``level_of_theory`` field identifying its reference
+method. The app compares this string against the ``level_of_theory`` set in ``models.yml`` for each
+MLIP, flagging mismatches using the traffic light system. An exact string match is required.
+
+.. warning::
+
+    Use the standard strings defined in :doc:`Levels of theory </developer_guide/levels_of_theory>`.
+    A typo or inconsistent capitalisation (e.g. ``experiment`` instead of ``Experimental``) will
+    cause incorrect warnings.
+
 In some cases, metrics may also encode correct behaviour without a specific reference,
 such as by quantifying features of a known distribution (curvature, minima, etc.),
 or quantifying the stability of a simulation.
@@ -99,7 +109,7 @@ the same calculation is run for each model name-model pair:
 .. code-block:: python3
 
     from ml_peg.models.get_models import load_models
-    from ml_peg.models.models import current_models
+    from ml_peg.models import current_models
 
     MODELS = load_models(current_models)
     DATA_PATH = Path(__file__).parent / "data"
@@ -340,7 +350,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
     from ml_peg.app import APP_ROOT
     from ml_peg.calcs import CALCS_ROOT
     from ml_peg.models.get_models import get_model_names
-    from ml_peg.models.models import current_models
+    from ml_peg.models import current_models
 
     MODELS = get_model_names(current_models)
     CALC_PATH = CALCS_ROOT / [category] / [benchmark_name] / "outputs"

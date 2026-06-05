@@ -90,6 +90,7 @@ class BaseApp(ABC):
             docs_url=self.docs_url,
             framework_id=self.framework_id,
             table=self.table,
+            column_widths=getattr(self.table, "column_widths", None),
             thresholds=getattr(self.table, "thresholds", None),
             extra_components=self.extra_components,
         )
