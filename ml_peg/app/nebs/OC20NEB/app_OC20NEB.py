@@ -23,8 +23,8 @@ from ml_peg.app.utils.plot_helpers import (
     resolve_scatter_selection,
 )
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -72,6 +72,7 @@ class OC20NEBApp(BaseApp):
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers={},
             default_handler=metric_handler,
+            scatter_id=SCATTER_GRAPH_ID,
         )
 
         selection_lookup = partial(
