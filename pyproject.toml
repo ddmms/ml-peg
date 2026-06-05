@@ -80,6 +80,12 @@ pet-mad = [
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
+upet = [
+    "upet",
+]
+sevenn = [
+    "sevenn",
+]
 
 [project.scripts]
 ml_peg = "ml_peg.cli.cli:app"
@@ -216,6 +222,10 @@ conflicts = [
     [
       { extra = "mlipaudit" },
       { extra = "grace" },
+    ],
+    [
+      { extra = "pet-mad" },
+      { extra = "upet" },
     ],
 ]
 
