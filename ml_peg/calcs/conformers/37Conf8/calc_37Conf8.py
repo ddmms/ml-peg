@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pandas as pd
 import pytest
 from tqdm import tqdm
@@ -65,14 +67,26 @@ def test_37conf8_conformer_energies(mlip: tuple[str, Any]) -> None:
             zero_conf.info["charge"] = 0
             zero_conf.info["spin"] = 1
             zero_conf.calc = calc
-            e_model_zero_conf = zero_conf.get_potential_energy()
+            try:
+                e_model_zero_conf = zero_conf.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+                e_model_zero_conf = np.nan
         else:
             atoms = read(data_path / "PBEPBE-D3" / f"{label}_PBEPBE-D3.xyz")
             atoms.info["charge"] = 0
             atoms.info["spin"] = 1
             atoms.calc = calc
-            atoms.info["model_rel_energy"] = (
-                atoms.get_potential_energy() - e_model_zero_conf
-            )
+            try:
+                atoms.info["model_rel_energy"] = (
+                    atoms.get_potential_energy() - e_model_zero_conf
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating relative energy for {label}: {exc}",
+                    stacklevel=2,
+                )
+                atoms.info["model_rel_energy"] = np.nan
+
             atoms.info["ref_energy"] = float(df.iloc[i][2]) * KCAL_TO_EV
             write(write_dir / f"{label}.xyz", atoms)

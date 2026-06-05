@@ -22,6 +22,9 @@ from ml_peg.app.utils.build_callbacks import (
     scatter_and_assets_from_table,
 )
 from ml_peg.app.utils.plot_helpers import (
+    INSTRUCTION_STYLE,
+    POINT_HINT,
+    TABLE_HINT,
     build_classification_panel,
     build_serialized_scatter_content,
     resolve_scatter_selection,
@@ -61,20 +64,18 @@ class PhononApp(BaseApp):
         stability_column = interactive_data.get(
             "stability_column", "Stability Classification (F1)"
         )
-        refresh_msg = "Click on a metric to view scatter plots."
-
         metric_handler = partial(
             build_serialized_scatter_content,
             models_data=models_data,
             label_map=label_to_key,
             scatter_id=SCATTER_GRAPH_ID,
-            instructions=refresh_msg,
+            instructions=POINT_HINT,
         )
         bz_handler = partial(
             build_bz_violin_content,
             models_data=models_data,
             scatter_id=SCATTER_GRAPH_ID,
-            instructions="Click a violin sample to preview the phonon dispersion.",
+            instructions=POINT_HINT,
             yaxis_title="|Error| / K",
             hovertemplate="System: %{text}<br>|Error|: %{y:.3f} K<extra></extra>",
         )
@@ -83,7 +84,7 @@ class PhononApp(BaseApp):
             models_data=models_data,
             scatter_id=SCATTER_GRAPH_ID,
             confusion_id=f"{SCATTER_GRAPH_ID}-confusion",
-            instructions="Click a data point to preview the phonon dispersion plot.",
+            instructions=POINT_HINT,
             scatter_hovertemplate=(
                 "System: %{text}<br>Reference: %{x:.3f} K<br>"
                 "Prediction: %{y:.3f} K<extra></extra>"
@@ -106,6 +107,7 @@ class PhononApp(BaseApp):
             last_cell_store_id=LAST_CELL_STORE_ID,
             column_handlers=column_handlers,
             default_handler=metric_handler,
+            scatter_id=SCATTER_GRAPH_ID,
         )
 
         selection_lookup = partial(
@@ -127,7 +129,7 @@ class PhononApp(BaseApp):
             asset_container_id=DISPERSION_CONTAINER_ID,
             data_lookup=selection_lookup,
             asset_renderer=dispersion_renderer,
-            empty_message="Click on a data point to preview the phonon dispersion.",
+            empty_message="",
             missing_message="No dispersion plot available for this point.",
         )
 
@@ -158,17 +160,19 @@ def get_app() -> PhononApp:
             html.Div(
                 [
                     html.Div(
-                        "Click on a metric to view scatter plots.",
+                        html.P(
+                            TABLE_HINT,
+                            style=INSTRUCTION_STYLE,
+                        ),
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
-                    Loading(
-                        html.Div(
-                            "Click on a scatter point to view the dispersion plot.",
-                            id=DISPERSION_CONTAINER_ID,
-                            style={"flex": "1", "minWidth": 0},
+                    html.Div(
+                        Loading(
+                            html.Div(id=DISPERSION_CONTAINER_ID),
+                            type="circle",
                         ),
-                        type="circle",
+                        style={"flex": "1", "minWidth": 0},
                     ),
                 ],
                 style={

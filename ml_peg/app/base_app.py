@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import Div
 
@@ -31,7 +32,7 @@ class BaseApp(ABC):
         URL for online documentation. Default is None.
     framework_id
         Framework identifier used for benchmark attribution tags. Default is
-        ``"ml_peg"``.
+        `"ml_peg"`.
     """
 
     def __init__(
@@ -60,6 +61,7 @@ class BaseApp(ABC):
             URL to online documentation. Default is None.
         framework_id
             Framework identifier used for benchmark attribution tags.
+            Default is `"ml_peg"`.
         """
         self.name = name
         self.description = description
@@ -91,7 +93,7 @@ class BaseApp(ABC):
             framework_id=self.framework_id,
             table=self.table,
             column_widths=getattr(self.table, "column_widths", None),
-            thresholds=getattr(self.table, "thresholds", None),
+            thresholds=self.table.thresholds,
             extra_components=self.extra_components,
         )
 
@@ -99,3 +101,36 @@ class BaseApp(ABC):
     def register_callbacks(self):
         """Register callbacks with app."""
         pass
+
+    @property
+    def stores(self) -> list[Store]:
+        """
+        List Stores to be registered with full app.
+
+        Returns
+        -------
+        list[Store]
+            List of Stores to be registered with full app.
+        """
+        return [
+            Store(
+                id=f"{self.table_id}-computed-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-raw-data-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-weight-store",
+                storage_type="session",
+                data=self.table.weights,
+            ),
+            Store(
+                id=f"{self.table_id}-thresholds-store",
+                storage_type="session",
+                data=self.table.thresholds,
+            ),
+        ]

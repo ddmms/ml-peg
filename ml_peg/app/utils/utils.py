@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from copy import deepcopy
 from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
+from matplotlib import colormaps
+import numpy as np
 import yaml
 
 from ml_peg.models import MODELS_ROOT
@@ -24,6 +27,82 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+def colour_from_cmap(cmap_name: str | None, position: float) -> str:
+    """
+    Return a CSS RGB colour sampled from a Matplotlib colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap. Falls back to ``viridis_r`` if
+        missing or invalid.
+    position
+        Position in the colormap from 0.0 to 1.0.
+
+    Returns
+    -------
+    str
+        CSS ``rgb(...)`` colour string.
+    """
+    try:
+        cmap = colormaps[cmap_name or "viridis_r"]
+    except KeyError:
+        cmap = colormaps["viridis_r"]
+
+    clamped = min(max(position, 0.0), 1.0)
+    rgb = tuple(int(255 * channel) for channel in cmap(clamped)[:3])
+    return f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+
+
+def get_threshold_colours(cmap_name: str | None = "viridis_r") -> dict[str, str]:
+    """
+    Get good/bad threshold colours for the active table colormap.
+
+    Normalised table cells map a good score of 1.0 to the start of the colormap
+    and a bad score of 0.0 to the end of the colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap.
+
+    Returns
+    -------
+    dict[str, str]
+        CSS colours keyed by ``"good"`` and ``"bad"``.
+    """
+    return {
+        "good": colour_from_cmap(cmap_name, 0.0),
+        "bad": colour_from_cmap(cmap_name, 1.0),
+    }
+
+
+def build_threshold_input_style(border_colour: str) -> dict[str, str]:
+    """
+    Build the inline style for a threshold value input.
+
+    Parameters
+    ----------
+    border_colour
+        CSS colour used for the input border.
+
+    Returns
+    -------
+    dict[str, str]
+        Inline Dash style dictionary.
+    """
+    return {
+        "width": "60px",
+        "fontSize": "12px",
+        "padding": "2px 4px",
+        "border": f"2px solid {border_colour}",
+        "borderRadius": "3px",
+        "boxSizing": "border-box",
+        "margin": "0 auto",
+        "display": "block",
+    }
 
 
 class FrameworkEntry(TypedDict):
@@ -234,6 +313,29 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def clean_table_data(rows: list[dict]) -> list[dict]:
+    """
+    Ensure data does not exceed int limits.
+
+    Parameters
+    ----------
+    rows
+        List of table rows to clean.
+
+    Returns
+    -------
+    list[dict]
+        Cleaned table rows with values larger than int64 limits set to NaN.
+    """
+    for row in rows:
+        for key, value in row.items():
+            if isinstance(value, int | float) and (
+                value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
+            ):
+                row[key] = np.nan
+    return rows
 
 
 def filter_rows_by_models(
@@ -927,6 +1029,7 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
+@lru_cache(maxsize=1)
 def load_framework_registry() -> dict[str, FrameworkEntry]:
     """
     Load framework badge metadata from ``frameworks.yml``.
@@ -1005,7 +1108,7 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
     normalized_id = normalize_framework_id(framework_id)
     registry = load_framework_registry()
     try:
-        return registry[normalized_id]
+        return deepcopy(registry[normalized_id])
     except KeyError as exc:
         known_ids = ", ".join(sorted(registry))
         raise ValueError(

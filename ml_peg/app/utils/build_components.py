@@ -8,7 +8,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Store
+from dash.dcc import Checklist, Download, Dropdown, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -17,11 +17,17 @@ import yaml
 from ml_peg.analysis.utils.utils import Thresholds
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
+    register_download_callbacks,
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
-from ml_peg.app.utils.utils import calculate_column_widths, get_framework_config
+from ml_peg.app.utils.utils import (
+    build_threshold_input_style,
+    calculate_column_widths,
+    get_framework_config,
+    get_threshold_colours,
+)
 
 
 def grid_template_from_widths(
@@ -132,7 +138,7 @@ def build_weight_components(
     table: DataTable,
     *,
     use_thresholds: bool = False,
-    include_store: bool = True,
+    include_download_controls: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
 ) -> Div:
@@ -149,10 +155,8 @@ def build_weight_components(
         Whether this table also exposes normalization thresholds. When True,
         weight callbacks will reuse the raw-data store and normalization store to
         recompute Scores consistently.
-    include_store
-        Whether to include this table's weight ``dcc.Store`` in the returned
-        component. Set to ``False`` when that store is already created elsewhere,
-        for example in the main app layout.
+    include_download_controls
+        Whether to render download controls in the Score column slot.
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
@@ -249,7 +253,9 @@ def build_weight_components(
                     "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
-            Div(
+            build_download_controls(table.id)
+            if include_download_controls
+            else Div(
                 "",
                 style={
                     "width": "100%",
@@ -271,7 +277,7 @@ def build_weight_components(
             "padding": "2px 0px",
             "backgroundColor": "#f8f9fa",
             "border": "1px solid transparent"
-            if header == "Metric Weights"
+            if header == "Weights"
             else "1px solid #dee2e6",
             "borderRadius": "6px",
             "width": "100%",
@@ -281,14 +287,6 @@ def build_weight_components(
     )
 
     layout = [container]
-    if include_store:
-        layout.append(
-            Store(
-                id=f"{table.id}-weight-store",
-                storage_type="session",
-                data=weights,
-            )
-        )
 
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
@@ -320,7 +318,141 @@ def build_weight_components(
             default_weights=getattr(table, "weights", None),
         )
 
+    register_download_callbacks(table.id)
+
     return Div(layout)
+
+
+def build_download_controls(table_id: str, *, row: bool = False) -> Div:
+    """
+    Build minimal table download controls.
+
+    Parameters
+    ----------
+    table_id
+        ID of the table to export.
+    row
+        When True, arrange the dropdown and button horizontally.
+
+    Returns
+    -------
+    Div
+        Download controls and target components.
+    """
+    if row:
+        container_style = {
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "flex-end",
+            "gap": "8px",
+            "flexShrink": "0",
+            "marginBottom": "16px",
+        }
+    else:
+        container_style = {
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "gap": "6px",
+            "width": "100%",
+            "padding": "2px 0px",
+        }
+
+    return Div(
+        [
+            Dropdown(
+                id=f"{table_id}-download-format",
+                className="download-format table-download-format",
+                options=[
+                    {"label": "CSV", "value": "csv"},
+                    {"label": "PNG", "value": "png"},
+                    {"label": "SVG", "value": "svg"},
+                ],
+                value="csv",
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "76px",
+                    "height": "30px",
+                    "fontSize": "12px",
+                },
+            ),
+            Button(
+                "Download table",
+                id=f"{table_id}-download-button",
+                className="download-button table-download-button",
+                n_clicks=0,
+                style={
+                    "width": "118px",
+                },
+            ),
+            Download(id=f"{table_id}-download"),
+            Store(id=f"{table_id}-download-request", storage_type="memory"),
+        ],
+        style=container_style,
+    )
+
+
+def build_plot_download_controls(graph_id: str) -> Div:
+    """
+    Build plot download controls for CSV, PNG, SVG, and HTML exports.
+
+    Parameters
+    ----------
+    graph_id
+        ID of the Plotly graph to export.
+
+    Returns
+    -------
+    Div
+        Download controls and target components.
+    """
+    return Div(
+        [
+            Dropdown(
+                id={"type": "plot-download-format", "index": graph_id},
+                className="download-format plot-download-format",
+                options=[
+                    {"label": "CSV", "value": "csv"},
+                    {"label": "PNG", "value": "png"},
+                    {"label": "SVG", "value": "svg"},
+                    {"label": "HTML", "value": "html"},
+                ],
+                value="csv",
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "76px",
+                    "height": "30px",
+                    "fontSize": "12px",
+                },
+            ),
+            Button(
+                "Download plot",
+                id={"type": "plot-download-button", "index": graph_id},
+                className="download-button plot-download-button",
+                n_clicks=0,
+                style={
+                    "width": "112px",
+                },
+            ),
+            Download(id={"type": "plot-download", "index": graph_id}),
+            Store(
+                id={"type": "plot-download-target", "index": graph_id},
+                storage_type="memory",
+                data=graph_id,
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "flex-end",
+            "gap": "8px",
+            "flexShrink": "0",
+            "marginTop": "12px",
+            "marginBottom": "0px",
+        },
+    )
 
 
 def build_faqs() -> Div:
@@ -588,10 +720,10 @@ def build_test_layout(
     description: str,
     framework_id: str,
     table: DataTable,
+    thresholds: Thresholds,
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -607,6 +739,9 @@ def build_test_layout(
     table
         Dash Table with metric results. Can include a `weights` attribute to be used by
         `build_weight_components`.
+    thresholds
+        Normalization metadata (metric -> (good, bad, unit)) supplied via the
+        analysis pipeline. Inline threshold controls are rendered automatically.
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
@@ -614,10 +749,6 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
-    thresholds
-        Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
-        analysis pipeline. When provided, inline threshold controls are rendered
-        automatically.
 
     Returns
     -------
@@ -662,34 +793,15 @@ def build_test_layout(
                     # "borderRadius": "5px",
                 },
             ),
-            Br(),
+            Div(style={"height": "4px"}),
         ]
     )
-
-    # dcc.Store renders no HTML, so its position here doesn't affect layout.
-    # Placed before the table so the table and controls can share one wrapper below.
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-computed-store",
-            storage_type="session",
-            data=table.data,
-        )
-    )
-
-    if thresholds is None:
-        raise ValueError("Threshold metadata must be provided for benchmark layouts.")
 
     reserved = {"MLIP", "Score", "id"}
     metric_columns = [
         col["id"] for col in table.columns if col.get("id") not in reserved
     ]
-    layout_contents.append(
-        Store(
-            id=f"{table.id}-raw-data-store",
-            storage_type="session",
-            data=table.data,
-        )
-    )
+
     layout_contents.append(
         Store(
             id=f"{table.id}-raw-tooltip-store",
@@ -697,6 +809,7 @@ def build_test_layout(
             data=table.tooltip_header,
         )
     )
+
     threshold_controls = build_threshold_inputs(
         table_columns=metric_columns,
         thresholds=thresholds,
@@ -706,9 +819,10 @@ def build_test_layout(
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
-        header="Metric Weights",
+        header="Weights",
         table=table,
-        use_thresholds=True,
+        use_thresholds=thresholds is not None,
+        include_download_controls=False,
         column_widths=column_widths,
         thresholds=thresholds,
     )
@@ -732,7 +846,12 @@ def build_test_layout(
         },
     )
 
-    table_section = [Div(table), Br(), controls_visual]
+    table_section = [
+        build_download_controls(table.id, row=True),
+        Div(table),
+        Br(),
+        controls_visual,
+    ]
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:
@@ -788,6 +907,7 @@ def build_threshold_inputs(
 
     cells: list[Div] = []
     default_thresholds: Thresholds = {}
+    threshold_colours = get_threshold_colours()
 
     cells.append(
         Div(
@@ -875,7 +995,7 @@ def build_threshold_inputs(
                 "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "lightseagreen",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -887,15 +1007,7 @@ def build_threshold_inputs(
                 value=good_val,
                 step=0.0001,
                 debounce=True,
-                style={
-                    "width": "60px",
-                    "fontSize": "12px",
-                    "padding": "2px 4px",
-                    "border": "1px solid lightseagreen",
-                    "borderRadius": "3px",
-                    "margin": "0 auto",
-                    "display": "block",
-                },
+                style=build_threshold_input_style(threshold_colours["good"]),
             ),
         ]
         if unit_label:
@@ -919,7 +1031,7 @@ def build_threshold_inputs(
                 "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#dc3545",
+                    "color": "#6c757d",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -934,15 +1046,7 @@ def build_threshold_inputs(
                 value=bad_val,
                 step=0.0001,
                 debounce=True,
-                style={
-                    "width": "60px",
-                    "fontSize": "12px",
-                    "padding": "2px 4px",
-                    "border": "1px solid #dc3545",
-                    "borderRadius": "3px",
-                    "margin": "0 auto",
-                    "display": "block",
-                },
+                style=build_threshold_input_style(threshold_colours["bad"]),
             ),
         ]
         if unit_label:
@@ -1006,12 +1110,6 @@ def build_threshold_inputs(
             )
         )
 
-    store = Store(
-        id=f"{table_id}-thresholds-store",
-        storage_type="session",
-        data=default_thresholds,
-    )
-
     # Register callbacks for these metrics, pass default_thresholds for reset
     register_normalization_callbacks(
         table_id,
@@ -1020,9 +1118,4 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    return Div(
-        [
-            Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
-            store,
-        ]
-    )
+    return Div([Div(cells, id=f"{table_id}-threshold-grid", style=container_style)])

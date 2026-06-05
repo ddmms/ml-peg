@@ -15,6 +15,7 @@ from yaml import safe_load
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import (
+    build_download_controls,
     build_faqs,
     build_footer,
     build_weight_components,
@@ -341,6 +342,7 @@ def build_sidebar(
 def get_all_tests(
     category: str = "*",
 ) -> tuple[
+    dict[str, dict[str, Dash]],
     dict[str, dict[str, list[Div]]],
     dict[str, dict[str, DataTable]],
     dict[str, dict[str, str]],
@@ -356,12 +358,13 @@ def get_all_tests(
     Returns
     -------
     tuple
-        Layouts, tables, and framework IDs for all categories.
+        Apps by test name, and layouts, tables, and framework IDs for all categories.
     """
     # Find Python files e.g. app_OC157.py in mlip_tesing.app module.
     # We will get the category from the parent's parent directory
     # E.g. ml_peg/app/surfaces/OC157/app_OC157.py -> surfaces
     tests = APP_ROOT.glob(f"{category}/*/app*.py")
+    apps = {}
     layouts = {}
     tables = {}
     frameworks = {}
@@ -376,15 +379,18 @@ def get_all_tests(
                 f"ml_peg.app.{category_name}.{test_name}.app_{test_name}"
             )
             test_app = test_module.get_app()
+            apps[test_name] = test_app
 
             # Get layouts and tables for each category/test
             if category_name not in layouts:
                 layouts[category_name] = {}
                 tables[category_name] = {}
                 frameworks[category_name] = {}
+
             layouts[category_name][test_app.name] = test_app.layout
             tables[category_name][test_app.name] = test_app.table
             frameworks[category_name][test_app.name] = test_app.framework_id
+
         except FileNotFoundError as err:
             warnings.warn(
                 f"Unable to load layout for {test_name} in {category_name} category. "
@@ -404,7 +410,7 @@ def get_all_tests(
             )
             continue
 
-    return layouts, tables, frameworks
+    return apps, layouts, tables, frameworks
 
 
 def build_category(
@@ -438,6 +444,7 @@ def build_category(
     category_views = {}
     category_tables = {}
     category_weights = {}
+    category_to_title = {}
     framework_ids: set[str] = set()
 
     # `category` corresponds to the category's directory name
@@ -457,9 +464,11 @@ def build_category(
             category_weight = 1
             benchmark_weights = {}
 
+        category_to_title[category] = category_title
+
         # Build category summary table
         summary_table = build_summary_table(
-            all_tables[category],
+            dict(sorted(all_tables[category].items())),
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
             weights={f"{key} Score": value for key, value in benchmark_weights.items()},
@@ -472,14 +481,14 @@ def build_category(
 
         # Build weight components for category summary table
         weight_components = build_weight_components(
-            header="Benchmark weights",
+            header="Weights",
             table=summary_table,
-            include_store=False,
+            include_download_controls=False,
             column_widths=getattr(summary_table, "column_widths", None),
         )
 
         test_entries = []
-        for test_name in all_layouts[category]:
+        for test_name in sorted(all_layouts[category]):
             framework_id = all_frameworks[category][test_name]
             framework_ids.add(framework_id)
             test_entries.append(
@@ -498,15 +507,9 @@ def build_category(
             "tests": test_entries,
         }
 
-        # Register benchmark table -> category table callbacks
-        # Category summary table columns add "Score" to name for clarity
-        for test_name, benchmark_table in all_tables[category].items():
-            register_benchmark_to_category_callback(
-                benchmark_table_id=benchmark_table.id,
-                category_table_id=f"{category_title}-summary-table",
-                benchmark_column=test_name + " Score",
-                model_name_map=getattr(benchmark_table, "model_name_map", None),
-            )
+    # Register callback for all benchmark tables -> category table
+    # Category summary table columns add "Score" to name for clarity
+    register_benchmark_to_category_callback(all_tables, category_to_title)
 
     return category_views, category_tables, category_weights, framework_ids
 
@@ -542,7 +545,12 @@ def build_category_page_layout(
             H1(category_title),
             H3(category_description),
             Div(
-                [Div(summary_table), Br(), weight_components],
+                [
+                    build_download_controls(summary_table.id, row=True),
+                    Div(summary_table),
+                    Br(),
+                    weight_components,
+                ],
                 style={"width": "fit-content"},
             ),
             Div(
@@ -807,9 +815,6 @@ def build_summary_table(
         tooltip_data=tooltip_rows,
         tooltip_delay=100,
         tooltip_duration=None,
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
         tooltip_header=tooltip_header,
         editable=False,
         fill_width=False,
@@ -829,6 +834,7 @@ def build_nav(
     framework_views: dict[str, dict[str, object]],
     summary_table: DataTable,
     weight_components: Div,
+    all_apps: dict[str, Dash],
 ) -> None:
     """
     Build page layouts and sidebar navigation.
@@ -845,10 +851,12 @@ def build_nav(
         Summary table with score from each category.
     weight_components
         Weight sliders, text boxes and reset button.
+    all_apps
+        Dictionary of all test apps.
     """
     category_paths = {
         category_name: _category_to_path(category_name)
-        for category_name in category_views
+        for category_name in sorted(category_views)
     }
     framework_order = sorted(
         framework_views,
@@ -885,9 +893,11 @@ def build_nav(
                         options=model_options,
                         value=MODELS,
                         multi=True,
+                        maxHeight=600,
+                        optionHeight=10,
                         placeholder="Select visible models",
                         closeOnSelect=False,
-                        style={"fontSize": "13px"},
+                        style={"fontSize": "12px"},
                     ),
                 ],
                 style={"padding": "8px 12px"},
@@ -895,6 +905,42 @@ def build_nav(
         ],
         id="model-filter-details",
         open=True,
+        style={"marginBottom": "8px", "fontSize": "13px"},
+    )
+
+    _summary_label_style = {
+        "cursor": "pointer",
+        "fontWeight": "600",
+        "fontSize": "11px",
+        "textTransform": "uppercase",
+        "letterSpacing": "0.07em",
+        "color": "#6c757d",
+        "padding": "5px",
+    }
+    cmap_selector = Details(
+        [
+            Summary("Colour scheme", style=_summary_label_style),
+            Div(
+                Dropdown(
+                    id="cmap-dropdown",
+                    options=[
+                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
+                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
+                        {
+                            "label": "Green-Red",
+                            "value": "RdYlGn_r",
+                        },
+                    ],
+                    value="viridis_r",
+                    clearable=False,
+                    persistence=True,
+                    persistence_type="local",
+                    persisted_props=["value"],
+                    style={"fontSize": "13px"},
+                ),
+                style={"padding": "8px 12px"},
+            ),
+        ],
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
@@ -932,13 +978,20 @@ def build_nav(
                 ),
             ]
         )
+
+    test_state_stores = []
+    for app in all_apps.values():
+        test_state_stores.extend(app.stores)
+
     global_state_stores = [
         Store(
             id="summary-table-weight-store",
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
+        Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
+        *test_state_stores,
     ]
 
     full_layout = [
@@ -989,6 +1042,7 @@ def build_nav(
                         Div(
                             [
                                 model_filter,
+                                cmap_selector,
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -1074,6 +1128,42 @@ def build_nav(
         raise PreventUpdate
 
     @callback(
+        Output("cmap-dropdown", "value"),
+        Output("cmap-store", "data"),
+        Input("cmap-dropdown", "value"),
+        Input("cmap-store", "data"),
+        prevent_initial_call=False,
+    )
+    def sync_cmap(
+        cmap_name: str | None, stored_cmap: str | None
+    ) -> tuple[str, str | object]:
+        """
+        Keep the colour scheme dropdown and backing store synchronised.
+
+        Parameters
+        ----------
+        cmap_name
+            Matplotlib colormap name selected from the dropdown control.
+        stored_cmap
+            Previously persisted colormap name from ``cmap-store``.
+
+        Returns
+        -------
+        tuple[str, str | object]
+            Dropdown value and store payload, or ``dash.no_update`` when only
+            the dropdown needs syncing from the stored value.
+        """
+        trigger_id = ctx.triggered_id
+
+        if trigger_id in (None, "cmap-store"):
+            selected = stored_cmap or "viridis_r"
+            return selected, no_update
+        if trigger_id == "cmap-dropdown":
+            selected = cmap_name or "viridis_r"
+            return selected, selected
+        raise PreventUpdate
+
+    @callback(
         Output("model-filter-details", "open"),
         Input("app-location", "pathname"),
         prevent_initial_call=False,
@@ -1138,7 +1228,12 @@ def build_nav(
                         },
                     ),
                     Div(
-                        [Div(summary_table), Br(), weight_components],
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            Div(summary_table),
+                            Br(),
+                            weight_components,
+                        ],
                         style={"width": "fit-content"},
                     ),
                     build_faqs(),
@@ -1173,7 +1268,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         Category to build app for. Default is `*`, corresponding to all categories.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_layouts, all_tables, all_frameworks = get_all_tests(category=category)
+    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(category=category)
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
@@ -1184,11 +1279,13 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
     )
     framework_views = build_framework_views(cat_views, framework_ids)
     # Build overall summary table
-    summary_table = build_summary_table(cat_tables, weights=cat_weights)
+    summary_table = build_summary_table(
+        dict(sorted(cat_tables.items())), weights=cat_weights
+    )
     weight_components = build_weight_components(
-        header="Category weights",
+        header="Weights",
         table=summary_table,
-        include_store=False,
+        include_download_controls=False,
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation
@@ -1198,5 +1295,6 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         framework_views,
         summary_table,
         weight_components,
+        all_apps,
     )
     register_onboarding_callbacks()
