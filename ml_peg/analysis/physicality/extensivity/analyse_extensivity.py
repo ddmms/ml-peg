@@ -8,7 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -21,6 +21,14 @@ OUT_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="slabs.xyz",
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
 )
 
 
