@@ -184,7 +184,7 @@ pet-mad-1.5-s:
   class_name: UPETCalculator
   device: "cpu"
   trained_on_dispersion: false
-  level_of_theory: PBEsol
+  level_of_theory: r2SCAN
   kwargs:
     model: "pet-mad-s"
     version: "1.5.0"
