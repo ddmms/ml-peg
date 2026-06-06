@@ -8,7 +8,7 @@ from ase import units
 from ase.io import read, write
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, mae
+from ml_peg.analysis.utils.utils import build_dispersion_name_map, get_struct_info, mae
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -17,34 +17,6 @@ MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
-
-
-def get_system_names(calc_path: Path, dataset: str) -> list[str]:
-    """
-    Get list of system names from the first available model for a dataset.
-
-    Parameters
-    ----------
-    calc_path
-        Path to calculation outputs.
-    dataset
-        Dataset to get relative energies for.
-
-    Returns
-    -------
-    list[str]
-        List of systems in the dataset.
-    """
-    for model_name in MODELS:
-        model_dir = calc_path / model_name
-        if model_dir.exists():
-            system_names = []
-            for system_path in sorted(model_dir.glob(f"{dataset}_*.xyz")):
-                system_name = system_path.stem[len(dataset) + 1 :]
-                system_names.append(system_name)
-            if system_names:
-                return system_names
-    return []
 
 
 def get_relative_energy(
@@ -67,7 +39,15 @@ def get_relative_energy(
     dict[str, list]
         Dictionary of all reference and predicted relative energies for a dataset.
     """
-    system_names = get_system_names(calc_path=calc_path, dataset=dataset)
+    info = get_struct_info(
+        calc_path=calc_path,
+        glob_pattern=f"{dataset}_*.xyz",
+        include_filenames=True,
+        write_info=False,
+        write_structs=True,
+        out_path=out_path,
+    )
+    system_names = [name[len(dataset) + 1 :] for name in info["filenames"]]
 
     @plot_parity(
         filename=out_path / f"figure_gscdb138_{dataset}.json",
@@ -170,6 +150,13 @@ def get_gscdb138_metrics(
     weights
         Default weights for metrics.
     """
+    get_struct_info(
+        calc_path=calc_path,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=False,
+        out_path=out_path,
+    )
 
     @build_table(
         filename=out_path / "gscdb138_metrics_table.json",
