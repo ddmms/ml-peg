@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase.io import read, write
@@ -9,7 +10,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -53,6 +54,20 @@ def get_crystal_formulae() -> list[str]:
 
 
 FORMULAE = get_crystal_formulae()
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*-traj.extxyz",
+    index="-1",
+    write_info=False,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
+# SiC has one traj file but two scatter points (cubic and hexagonal); duplicate entry
+sic_idx = next(i for i, e in enumerate(INFO["elements"]) if set(e) == {"C", "Si"})
+INFO["elements"].insert(sic_idx + 1, INFO["elements"][sic_idx])
+with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
+    json.dump(INFO, f, indent=1)
 
 
 @pytest.fixture
