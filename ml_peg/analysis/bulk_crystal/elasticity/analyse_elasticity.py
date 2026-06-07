@@ -19,6 +19,7 @@ from ml_peg.analysis.utils.decorators import (
 )
 from ml_peg.analysis.utils.utils import (
     build_density_inputs,
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
@@ -42,6 +43,14 @@ K_COLUMN = "K_vrh"
 G_COLUMN = "G_vrh"
 E_TENSOR_COLUMN = "elastic_tensor"
 SYMMETRY_COLUMN = "crystal_system"
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="relaxed_structures.extxyz",
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 # Sources:
 # Physical Properties of Crystals: An Introduction (pp 215)
