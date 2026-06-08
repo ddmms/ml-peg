@@ -9,6 +9,7 @@ import dash
 from dash import (
     MATCH,
     ClientsideFunction,
+    Dash,
     Input,
     Output,
     Patch,
@@ -1244,5 +1245,88 @@ def register_download_callbacks(table_id: str) -> None:
         Output(f"{table_id}-download", "data", allow_duplicate=True),
         Input(f"{table_id}-download-request", "data"),
         prevent_initial_call=True,
-        optional=True,
     )
+
+
+def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
+    """
+    Update all tables when filter dropdown value changes.
+
+    Parameters
+    ----------
+    apps
+        Dictionary of test apps to register callbacks for.
+    """
+    app_entries = []
+    for app in apps.values():
+        app_entries.append(
+            {
+                "app": app,
+                "weight_state": State(f"{app.table_id}-weight-store", "data"),
+                "threshold_state": State(f"{app.table_id}-thresholds-store", "data"),
+            }
+        )
+
+    outputs = []
+    for entry in app_entries:
+        app = entry["app"]
+        outputs.extend(
+            [
+                Output(f"{app.table_id}-computed-store", "data"),
+                Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
+            ]
+        )
+
+    states = []
+    for entry in app_entries:
+        states.extend([entry["weight_state"], entry["threshold_state"]])
+
+    @callback(
+        outputs, Input("element-filter", "value"), states, prevent_initial_call=True
+    )
+    def recompute_tables(elements, *args):
+        """
+        Recompute all benchmark tables when element filter is applied.
+
+        Parameters
+        ----------
+        elements
+            List of selected elements to filter by.
+        *args
+            Weight and threshold states for each app.
+
+        Returns
+        -------
+        list[list[dict]]
+            Updated rows for each app's computed store and raw data stores.
+        """
+        # Rebuild inputs for each app
+        per_app_state = {}
+        iterator = iter(args)
+
+        for entry in app_entries:
+            app = entry["app"]
+            per_app_state[app.table_id] = {
+                "weights": next(iterator),
+                "thresholds": next(iterator),
+            }
+
+        results = []
+
+        for entry in app_entries:
+            app = entry["app"]
+            state = per_app_state[app.table_id]
+            weights = state["weights"]
+            thresholds = state["thresholds"]
+
+            updated_data = app.filter_table(elements)
+
+            # Update overall table score for new weights and thresholds
+            metrics_data = calc_table_scores(updated_data, weights, thresholds)
+
+            # Update stored scores per metric
+            scored_rows = calc_metric_scores(updated_data, thresholds)
+
+            results.extend([scored_rows, metrics_data])
+
+        return results

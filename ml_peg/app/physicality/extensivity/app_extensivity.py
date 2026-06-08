@@ -18,6 +18,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#extensivity"
 )
 DATA_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ExtensivityApp(BaseApp):
@@ -57,6 +58,7 @@ def get_app() -> ExtensivityApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

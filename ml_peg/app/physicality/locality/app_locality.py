@@ -18,6 +18,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#locality"
 )
 DATA_PATH = APP_ROOT / "data" / "physicality" / "locality"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class LocalityApp(BaseApp):
@@ -58,6 +59,7 @@ def get_app() -> LocalityApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

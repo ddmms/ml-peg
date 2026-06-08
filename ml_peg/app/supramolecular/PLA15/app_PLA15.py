@@ -19,6 +19,7 @@ MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "PLA15"
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class PLA15App(BaseApp):
@@ -81,6 +82,7 @@ def get_app() -> PLA15App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
