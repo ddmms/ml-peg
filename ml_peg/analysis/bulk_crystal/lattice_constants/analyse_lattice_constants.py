@@ -26,46 +26,20 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def get_crystal_formulae() -> list[str]:
-    """
-    Get list of crystal formulae.
-
-    Returns
-    -------
-    list[str]
-        List of crystal formulae from structure files.
-    """
-    formulae = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            continue
-        struct_files = sorted(model_dir.glob("*-traj.extxyz"))
-        for struct_file in struct_files:
-            atoms = read(struct_file)
-            name = atoms.info["name"]
-            if name == "SiC":
-                formulae.extend(("SiC(a)", "SiC(c)"))
-            else:
-                formulae.append(name)
-        break
-
-    return formulae
-
-
-FORMULAE = get_crystal_formulae()
-
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*-traj.extxyz",
     index="-1",
     write_info=False,
+    info_keys=["name"],
     write_structs=False,
     out_path=OUT_PATH,
 )
 # SiC has one traj file but two scatter points (cubic and hexagonal); duplicate entry
 sic_idx = next(i for i, e in enumerate(INFO["elements"]) if set(e) == {"C", "Si"})
 INFO["elements"].insert(sic_idx + 1, INFO["elements"][sic_idx])
+INFO["name"][sic_idx] = "SiC(a)"
+INFO["name"].insert(sic_idx + 1, "SiC(c)")
 with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
     json.dump(INFO, f, indent=1)
 
@@ -77,7 +51,7 @@ with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
     x_label="Predicted lattice constant / Å",
     y_label="Experimental lattice constant / Å",
     hoverdata={
-        "Formula": FORMULAE,
+        "Formula": INFO["name"],
     },
 )
 def lattice_constants_exp() -> dict[str, list]:
@@ -149,7 +123,7 @@ def lattice_constants_exp() -> dict[str, list]:
     x_label="Predicted lattice constant / Å",
     y_label="DFT lattice constant / Å",
     hoverdata={
-        "Formula": FORMULAE,
+        "Formula": INFO["name"],
     },
 )
 def lattice_constants_dft() -> dict[str, list]:
