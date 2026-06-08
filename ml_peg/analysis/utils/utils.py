@@ -895,7 +895,7 @@ def get_struct_info(
                 info[key].append(extractor(all_structs))
         for struct in structs:
             for key in info_keys:
-                info[key].append(struct.info[key])
+                info[key].append(struct.info.get(key))
             info["elements"].append(sorted(set(struct.get_chemical_symbols())))
         if write_structs:
             (out_path / model_name).mkdir(parents=True, exist_ok=True)
