@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from functools import lru_cache
 from importlib import metadata
 from pathlib import Path
 import time
@@ -455,6 +457,24 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+@lru_cache(maxsize=1)
+def _load_faqs_data() -> list[dict[str, str]]:
+    """
+    Load and cache FAQs from YAML file.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        List of FAQ entries or empty list if not found.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f) or []
+    except FileNotFoundError:
+        return []
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -464,13 +484,11 @@ def build_faqs() -> Div:
     Div
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
-    # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
+    # ⚡ Bolt: Use cached YAML load to avoid repeated file I/O and parsing overhead
+    # Must deepcopy to avoid mutating the cached list of dictionaries
+    faqs_data = deepcopy(_load_faqs_data())
 
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    if not faqs_data:
         return Div(
             "FAQs file not found",
             style={

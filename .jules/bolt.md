@@ -5,3 +5,7 @@
 ## 2024-05-19 - Caching YAML Load for Framework Registry
 **Learning:** `yaml.safe_load` on `frameworks.yml` within `load_framework_registry()` was taking ~2-3 ms per call and it was repeatedly called for every framework entry via `get_framework_config()`. This was a micro-bottleneck, especially when dealing with lists or multiple frameworks.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to `load_framework_registry()` and `get_framework_config()` to avoid caching a mutable dictionary directly and avoid repeated YAML I/O parsing.
+
+## 2024-05-19 - Caching YAML Load for FAQs Registry
+**Learning:** `yaml.safe_load` on `faqs.yml` within `build_faqs()` was creating unnecessary disk I/O and parsing overhead (~6ms per call). It was called dynamically when building Dash components.
+**Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to avoid repeated YAML I/O parsing when fetching FAQs content.
