@@ -9,3 +9,7 @@
 ## 2024-05-19 - Caching YAML Load for FAQs Registry
 **Learning:** `yaml.safe_load` on `faqs.yml` within `build_faqs()` was creating unnecessary disk I/O and parsing overhead (~6ms per call). It was called dynamically when building Dash components.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to avoid repeated YAML I/O parsing when fetching FAQs content.
+
+## 2024-05-19 - Network Restrictions with urllib.request
+**Learning:** Functions that download models dynamically using `urllib.request` (like `download_mace_mp_checkpoint`) can cause CI test suites to hang and fail with `HTTP Error 504: Gateway Time-out` in environments with strict network restrictions (like GitHub Actions runners configured without external network access or experiencing temporary connectivity issues).
+**Action:** Always specify timeouts when using `urllib.request` to prevent hanging, or proactively mock or pre-download dependencies in CI environments to avoid network timeouts during test execution.
