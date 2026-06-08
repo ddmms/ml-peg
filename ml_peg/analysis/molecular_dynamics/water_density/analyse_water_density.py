@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -42,10 +43,15 @@ EXPERIMENTAL_DATA = {
 }
 
 
-LABELS = []
-for model_name in MODELS:
-    LABELS = [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    break
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.traj",
+    index=0,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+    include_filenames=True,
+)
 
 
 def compute_density(fname, density_col=13):
@@ -82,7 +88,7 @@ def compute_density(fname, density_col=13):
     x_label="Predicted density / kcal/mol",
     y_label="Reference density / kcal/mol",
     hoverdata={
-        "Labels": LABELS,
+        "Labels": INFO["filenames"],
     },
 )
 def water_density() -> dict[str, list]:
@@ -98,7 +104,7 @@ def water_density() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in LABELS:
+        for label in INFO["filenames"]:
             atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
 
             results[model_name].append(
