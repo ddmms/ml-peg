@@ -815,6 +815,11 @@ def get_struct_info(
     """
     Get info from structure files and optionally write out info structures.
 
+    Typically used in analysis where many calculation output structures are read to
+    extract data saved to info, such as labels for scatter plot hoverdata. `write_info`
+    should usually be set to `True` to store elemental info, as this is required for
+    filtering.
+
     Parameters
     ----------
     calc_path
@@ -916,6 +921,9 @@ def write_struct_info(
 ) -> None:
     """
     Write out element info on structures used in benchmark.
+
+    Typically used when structures are not iterated through during analysis, but
+    elemental info is still required for filtering.
 
     Parameters
     ----------
