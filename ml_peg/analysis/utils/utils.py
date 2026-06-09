@@ -158,6 +158,8 @@ def mae(ref: list, prediction: list) -> float:
     float
         Mean absolute error.
     """
+    if np.isnan(np.sum(prediction)):
+        return np.nan
     return mean_absolute_error(ref, prediction)
 
 
@@ -177,6 +179,8 @@ def rmse(ref: list, prediction: list) -> float:
     float
         Root mean squared error.
     """
+    if np.isnan(np.sum(prediction)):
+        return np.nan
     return np.sqrt(mean_squared_error(ref, prediction))
 
 
