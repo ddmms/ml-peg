@@ -44,7 +44,7 @@ EV_TO_KCAL = units.mol / units.kcal
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
-    model_name=next(iter(MODELS)),
+    model_name="mock",
     glob_pattern="*_forward.xyz",
     include_filenames=True,
     write_info=True,
