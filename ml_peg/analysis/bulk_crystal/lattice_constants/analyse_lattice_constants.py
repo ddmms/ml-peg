@@ -40,6 +40,7 @@ sic_idx = next(i for i, e in enumerate(INFO["elements"]) if set(e) == {"C", "Si"
 INFO["elements"].insert(sic_idx + 1, INFO["elements"][sic_idx])
 INFO["name"][sic_idx] = "SiC(a)"
 INFO["name"].insert(sic_idx + 1, "SiC(c)")
+OUT_PATH.mkdir(parents=True, exist_ok=True)
 with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
     json.dump(INFO, f, indent=1)
 
