@@ -305,9 +305,11 @@ def _build_preset_section() -> Div:
             Span(
                 "Presets",
                 style={
-                    "fontSize": "12px",
+                    "fontSize": "11px",
                     "fontWeight": "600",
-                    "color": "#343a40",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.07em",
+                    "color": "#6c757d",
                 },
             ),
             *groups,
@@ -316,7 +318,9 @@ def _build_preset_section() -> Div:
             "display": "flex",
             "flexDirection": "column",
             "gap": "6px",
-            "marginTop": "10px",
+            "marginTop": "8px",
+            "paddingTop": "10px",
+            "borderTop": "1px solid #dee2e6",
         },
     )
 
@@ -451,7 +455,15 @@ def get_element_filter() -> Div:
             "alignItems": "center",
         },
     )
-    filter_body = Div([grid_with_legend, _build_preset_section(), actions])
+    filter_body = Div(
+        [
+            Div(
+                [grid_with_legend, _build_preset_section()],
+                style={"width": "fit-content"},
+            ),
+            actions,
+        ]
+    )
 
     return Div(
         [
