@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
+
+from dash import dcc
 from dash.html import Div
+import plotly.graph_objects as go
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
-from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 
@@ -16,17 +19,13 @@ BENCHMARK_NAME = "diverse carbon structures"
 DATA_PATH = APP_ROOT / "data" / "carbon" / "diverse_carbon_structures"
 ASSETS_PREFIX = "assets/carbon/diverse_carbon_structures"
 
-# (category_folder, metric_name, figure_filename)
+# (category_folder, metric_name matching table column and scatter JSON key)
 ENERGY_CONFIG = [
-    ("sp2", "sp2 bonded MAE", "figure_sp2_density.json"),
-    ("sp3", "sp3 bonded MAE", "figure_sp3_density.json"),
-    ("amorphous", "amorphous/liquid MAE", "figure_amorphous_density.json"),
-    ("general_bulk", "general bulk MAE", "figure_general_bulk_density.json"),
-    (
-        "general_clusters",
-        "general clusters MAE",
-        "figure_general_clusters_density.json",
-    ),
+    ("sp2", "sp2 Bonded MAE"),
+    ("sp3", "sp3 Bonded MAE"),
+    ("amorphous", "Amorphous/Liquid MAE"),
+    ("general_bulk", "General Bulk MAE"),
+    ("general_clusters", "General Clusters MAE"),
 ]
 
 
@@ -35,17 +34,23 @@ class DiverseCarbonStructuresApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        # Build {model: {metric_name: density_graph}} for plot_from_table_cell
+        scatter_path = DATA_PATH / "diverse_carbon_structures_scatter.json"
         cell_plots: dict[str, dict] = {model: {} for model in MODELS}
-        for cat_folder, metric_name, figure_file in ENERGY_CONFIG:
-            for model in MODELS:
-                graph = read_density_plot_for_model(
-                    filename=DATA_PATH / figure_file,
-                    model=model,
-                    id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
-                )
-                if graph is not None:
-                    cell_plots[model][metric_name] = graph
+
+        if scatter_path.exists():
+            with scatter_path.open(encoding="utf8") as f:
+                scatter_data = json.load(f)
+            models_data = scatter_data.get("models", {})
+            for cat_folder, metric_name in ENERGY_CONFIG:
+                for model in MODELS:
+                    fig_dict = (
+                        models_data.get(model, {}).get("figures", {}).get(metric_name)
+                    )
+                    if fig_dict:
+                        cell_plots[model][metric_name] = dcc.Graph(
+                            figure=go.Figure(fig_dict),
+                            id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
+                        )
 
         plot_from_table_cell(
             table_id=self.table_id,
@@ -53,21 +58,20 @@ class DiverseCarbonStructuresApp(BaseApp):
             cell_to_plot=cell_plots,
         )
 
-        # Wire each energy density scatter to the structure viewer
-        for cat_folder, _, _ in ENERGY_CONFIG:
-            struct_trajs = collect_traj_assets(
-                data_path=DATA_PATH,
-                assets_prefix=ASSETS_PREFIX,
-                models=MODELS,
-                traj_dirname=f"density_traj_{cat_folder}",
-            )
-            for model, asset_paths in struct_trajs.items():
-                struct_from_scatter(
-                    scatter_id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
-                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=asset_paths,
-                    mode="traj",
-                )
+        for cat_folder, _ in ENERGY_CONFIG:
+            for model in MODELS:
+                model_dir = DATA_PATH / model / cat_folder
+                if model_dir.exists():
+                    structs = sorted(model_dir.glob("*.xyz"), key=lambda p: int(p.stem))
+                    asset_paths = [
+                        f"/{ASSETS_PREFIX}/{model}/{cat_folder}/{p.name}"
+                        for p in structs
+                    ]
+                    struct_from_scatter(
+                        scatter_id=f"{BENCHMARK_NAME}-{model}-{cat_folder}",
+                        struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                        structs=asset_paths,
+                    )
 
 
 def get_app() -> DiverseCarbonStructuresApp:
