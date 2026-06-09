@@ -1282,7 +1282,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         states.extend([entry["weight_state"], entry["threshold_state"]])
 
     @callback(
-        outputs, Input("element-filter", "value"), states, prevent_initial_call=True
+        outputs, Input("element-filter", "data"), states, prevent_initial_call=True
     )
     def recompute_tables(elements, *args):
         """

@@ -18,7 +18,7 @@ from dash.html import Div, Iframe
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.decorators import (
+from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_COLS,
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,

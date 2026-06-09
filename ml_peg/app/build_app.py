@@ -14,7 +14,11 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.filters import get_element_filter, get_model_filter
+from ml_peg.app.filters import (
+    get_element_filter,
+    get_model_filter,
+    register_element_filter_callbacks,
+)
 from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_faqs,
@@ -1242,6 +1246,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     register_filter_tables_callback(all_apps)
+    register_element_filter_callbacks()
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(
