@@ -41,28 +41,12 @@ INFO = get_struct_info(
     write_info=True,
     write_structs=False,
     out_path=OUT_PATH,
+    per_file_info={
+        "counts": lambda structs: len(structs[0]),
+    },
 )
 # S30L systems indexed 0-29 in files, 1-30 in original data
 INDICES = list(range(1, len(INFO["complex_charge"]) + 1))
-
-
-def _get_counts() -> list[int]:
-    """
-    Return per-structure atom counts from the first available model dir.
-
-    Returns
-    -------
-    list[int]
-        Number of atoms in each complex structure.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            return [len(read(f)) for f in sorted(model_dir.glob("*.xyz"))]
-    return []
-
-
-COUNTS = _get_counts()
 
 
 @pytest.fixture
@@ -73,7 +57,7 @@ COUNTS = _get_counts()
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
         "System": INDICES,
-        "Complex Atoms": COUNTS,
+        "Complex Atoms": INFO["counts"],
         "Charge": INFO["complex_charge"],
     },
 )
