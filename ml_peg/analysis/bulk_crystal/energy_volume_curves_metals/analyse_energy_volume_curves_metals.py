@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -27,7 +27,16 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-ELEMENTS = [f.name.split("_")[0] for f in CALC_PATH.glob("*DFT*")]
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    write_info=True,
+    index=0,
+    write_structs=True,
+    out_path=OUT_PATH,
+    include_filenames=True,
+)
+ELEMENTS = [filename.split("_")[0] for filename in INFO["filenames"]]
 
 
 def _fit_bm_clean(volumes: np.ndarray, energies: np.ndarray) -> tuple | None:

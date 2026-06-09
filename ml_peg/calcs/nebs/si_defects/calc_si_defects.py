@@ -125,7 +125,7 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
 
     for case in CASES:
         frames = _read_frames(data_dir / case.ref_file)
-        out_dir = OUT_PATH / case.key / model_name
+        out_dir = OUT_PATH / model_name / case.key
         out_dir.mkdir(parents=True, exist_ok=True)
 
         results: list[Atoms] = []

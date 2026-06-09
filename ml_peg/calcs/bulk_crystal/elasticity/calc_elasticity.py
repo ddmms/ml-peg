@@ -287,10 +287,24 @@ def run_elasticity_benchmark(
         include_full_results=True,
     )
 
-    # Save relaxed structures to extxyz for visualisation
+    # Save relaxed structures to extxyz for visualisation.
+    # Mock calc produces zero stress so final_structure is never populated;
+    # fall back to reference structures so info.json can record elements later.
+    mock_ref_map = (
+        {
+            gt_row[benchmark.index_name]: struct
+            for struct, gt_row in zip(
+                benchmark.structures, benchmark.ground_truth, strict=True
+            )
+        }
+        if model_name == "mock"
+        else {}
+    )
     atoms_list = []
     for _, row in results.iterrows():
         struct = row.get("final_structure")
+        if not isinstance(struct, Structure):
+            struct = mock_ref_map.get(row[benchmark.index_name])
         if not isinstance(struct, Structure):
             continue
         atoms = AseAtomsAdaptor.get_atoms(struct).copy()

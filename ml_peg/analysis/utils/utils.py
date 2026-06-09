@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable
+import json
 from pathlib import Path
 from typing import Any
 
+from ase import Atoms
 from ase.io import read, write
 from matplotlib import colormaps
 from matplotlib.colors import Colormap
@@ -767,3 +769,188 @@ def normalize_metric(
 
     # Clip to [0, 1]
     return max(min(1.0, float(t)), 0.0)
+
+
+def clean_info(info: dict[str, Any] | list[Any]) -> None:
+    """
+    Ensure all data is JSON serializable.
+
+    Parameters
+    ----------
+    info
+        Dictionary of info to clean.
+    """
+    if isinstance(info, list):
+        for i, item in enumerate(info):
+            if isinstance(item, dict | list):
+                clean_info(item)
+            else:
+                if isinstance(item, np.int64):
+                    info[i] = int(item)
+
+    elif isinstance(info, dict):
+        for key, value in info.items():
+            if isinstance(value, dict | list):
+                clean_info(value)
+
+            if isinstance(value, np.int64):
+                info[key] = int(value)
+
+
+def get_struct_info(
+    *,
+    calc_path: Path,
+    model_name: str = "mock",
+    glob_pattern: str = "*.xyz",
+    sort_key: Callable | None = None,
+    index: int | str = ":",
+    info_keys: list[str] | None = None,
+    write_info: bool = True,
+    write_structs: bool = True,
+    out_path: Path | None = None,
+    include_filenames: bool = False,
+    include_dirs: bool = False,
+    per_file_info: dict[str, Callable[[list[Atoms]], Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Get info from structure files and optionally write out info structures.
+
+    Typically used in analysis where many calculation output structures are read to
+    extract data saved to info, such as labels for scatter plot hoverdata. `write_info`
+    should usually be set to `True` to store elemental info, as this is required for
+    filtering.
+
+    Parameters
+    ----------
+    calc_path
+        Path to calculation outputs.
+    model_name
+        Model name to read structures for. Default is "mock".
+    glob_pattern
+        Glob pattern to match structure files.
+    sort_key
+        Key passed to `sorted` when sorting files returned by glob. Default is `None`.
+    index
+        Index to read from structure files. Default is ":".
+    info_keys
+        List of info keys to extract from structure files. Default is None.
+    write_info
+        Whether to write out info for each system. Default is True. Requires `out_path`.
+    write_structs
+        Whether to write out structure files for each system. Default is `True` if
+        `out_path` is specified.
+    out_path
+        Path to write out info for each system. Required if `write_info` is `True`.
+    include_filenames
+        Whether to include filenames in the output info. Default is False.
+    include_dirs
+        Whether to include directory names in the output info. Default is False.
+    per_file_info
+        Per-file info extractors. Each callable receives all frames from the file
+        and should return one value to append. Default is None.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of system info for all systems.
+    """
+    if out_path is None and (write_info or write_structs):
+        raise ValueError(
+            "`out_path` must be specified if `write_info` or `write_structs` is `True`."
+        )
+
+    info_keys = info_keys or []
+    per_file_info = per_file_info or {}
+    info = {"elements": []} | {key: [] for key in info_keys}
+
+    if include_filenames:
+        info["filenames"] = []
+
+    if include_dirs:
+        info["dirs"] = []
+
+    for key in per_file_info:
+        info[key] = []
+
+    model_dir = calc_path / model_name
+    if not model_dir.exists():
+        raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
+
+    files = sorted(model_dir.glob(glob_pattern), key=sort_key)
+    if not files:
+        raise ValueError(
+            f"No file matches in {model_dir}. Please run mock calculation."
+        )
+
+    for file in files:
+        if include_filenames:
+            info["filenames"].append(file.stem)
+
+        if include_dirs:
+            info["dirs"].append(file.parent.name)
+
+        structs = read(file, index=index)
+        if isinstance(structs, Atoms):
+            structs = [structs]
+        if per_file_info:
+            all_structs = structs if index == ":" else read(file, index=":")
+            if isinstance(all_structs, Atoms):
+                all_structs = [all_structs]
+            for key, extractor in per_file_info.items():
+                info[key].append(extractor(all_structs))
+        for struct in structs:
+            for key in info_keys:
+                info[key].append(struct.info.get(key))
+            info["elements"].append(sorted(set(struct.get_chemical_symbols())))
+        if write_structs:
+            (out_path / model_name).mkdir(parents=True, exist_ok=True)
+            write(out_path / model_name / file.name, structs)
+
+    if write_info:
+        out_path.mkdir(parents=True, exist_ok=True)
+        out_file = out_path / "info.json"
+        with out_file.open("w", encoding="utf8") as f:
+            clean_info(info)
+            json.dump(info, f, indent=1)
+
+    return info
+
+
+def write_struct_info(
+    data_path: Path | list[Path], out_path: Path, index: str = ":"
+) -> None:
+    """
+    Write out element info on structures used in benchmark.
+
+    Typically used when structures are not iterated through during analysis, but
+    elemental info is still required for filtering.
+
+    Parameters
+    ----------
+    data_path
+        Path to calculation structure file or list of paths.
+    out_path
+        Path to write out info.
+    index
+        Index to read from structure files. Default is ":".
+    """
+    elements = []
+
+    if isinstance(data_path, Path):
+        data_path = [data_path]
+
+    for path in data_path:
+        if not path.exists():
+            raise ValueError(f"{path} does not exist. Please run mock calculation.")
+
+        structs = read(path, index=index)
+        if isinstance(structs, Atoms):
+            structs = [structs]
+        for struct in structs:
+            elements.append(sorted(set(struct.get_chemical_symbols())))
+
+    elements = sorted({e for sublist in elements for e in sublist})
+
+    out_path.mkdir(parents=True, exist_ok=True)
+    with (out_path / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": elements}, f, indent=1)
