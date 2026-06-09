@@ -50,7 +50,7 @@ SCORES_LOADING_OVERLAY_VISIBLE_STYLE = {
     "right": "0",
     "bottom": "0",
     "left": "0",
-    "minHeight": "420px",
+    "minHeight": "180px",
     "display": "flex",
     "alignItems": "center",
     "justifyContent": "center",

@@ -556,7 +556,7 @@ def build_category_page_layout(
             Div(
                 [
                     build_download_controls(summary_table.id, row=True),
-                    Div(summary_table),
+                    _build_loading_summary_table(summary_table),
                     Br(),
                     weight_components,
                 ],
@@ -837,6 +837,117 @@ def build_summary_table(
     return table
 
 
+def _build_scores_loading_spinner() -> Div:
+    """
+    Build the score-update loading spinner overlay.
+
+    Returns
+    -------
+    Div
+        Loading overlay with spinner and status text.
+    """
+    return Div(
+        [
+            Loading(
+                Div(),
+                display="show",
+                type="circle",
+                color="#119DFF",
+            ),
+            Div(
+                "Updating scores...",
+                style={
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#212529",
+                },
+            ),
+        ],
+        style=SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
+    )
+
+
+def _build_page_loading_spinner() -> Div:
+    """
+    Build the initial page-load spinner overlay.
+
+    Returns
+    -------
+    Div
+        Page-wide loading overlay with spinner and status text.
+    """
+    return Div(
+        [
+            Loading(
+                Div(),
+                display="show",
+                type="circle",
+                color="#119DFF",
+            ),
+            Div(
+                "Loading page...",
+                style={
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#212529",
+                },
+            ),
+        ],
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "minHeight": "420px",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "flexDirection": "column",
+            "gap": "14px",
+            "paddingTop": "96px",
+            "boxSizing": "border-box",
+            "backgroundColor": "rgba(255, 255, 255, 0.78)",
+            "zIndex": "1400",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def _build_loading_summary_table(table: DataTable) -> Loading:
+    """
+    Wrap a summary table with its score-update loading overlay.
+
+    Parameters
+    ----------
+    table
+        Summary table to wrap.
+
+    Returns
+    -------
+    Loading
+        Loading component scoped to the table container.
+    """
+    return Loading(
+        Div(table, style={"position": "relative", "width": "fit-content"}),
+        fullscreen=False,
+        custom_spinner=_build_scores_loading_spinner(),
+        target_components={
+            "scores-loading-store": "data",
+            table.id: ["data", "style_data_conditional", "tooltip_data"],
+        },
+        delay_hide=700,
+        overlay_style={
+            "visibility": "visible",
+            "opacity": 1,
+        },
+        parent_style={
+            "position": "relative",
+            "width": "fit-content",
+        },
+    )
+
+
 def build_nav(
     full_app: Dash,
     category_views: dict[str, dict[str, object]],
@@ -962,6 +1073,7 @@ def build_nav(
             data=_default_weight_store_data(summary_table),
         ),
         Store(id="cmap-store", storage_type="local", data="viridis_r"),
+        Store(id="scores-loading-store"),
         *category_state_stores,
         *test_state_stores,
     ]
@@ -1026,44 +1138,17 @@ def build_nav(
                                     storage_type="session",
                                     data=summary_table.data,
                                 ),
-                                Div(
-                                    [
-                                        Loading(
-                                            Div(
-                                                [
-                                                    Store(id="scores-loading-store"),
-                                                    Div(id="page-content"),
-                                                ]
-                                            ),
-                                            fullscreen=False,
-                                            custom_spinner=Div(
-                                                [
-                                                    Loading(
-                                                        Div(),
-                                                        display="show",
-                                                        type="circle",
-                                                        color="#119DFF",
-                                                    ),
-                                                    Div(
-                                                        "Updating scores...",
-                                                        style={
-                                                            "fontSize": "16px",
-                                                            "fontWeight": "600",
-                                                            "color": "#212529",
-                                                        },
-                                                    ),
-                                                ],
-                                                style=SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
-                                            ),
-                                            delay_hide=700,
-                                            overlay_style={
-                                                "visibility": "visible",
-                                                "opacity": 1,
-                                            },
-                                            parent_style={"position": "relative"},
-                                        ),
-                                    ],
-                                    style={
+                                Loading(
+                                    Div(id="page-content"),
+                                    fullscreen=False,
+                                    custom_spinner=_build_page_loading_spinner(),
+                                    target_components={"page-content": "children"},
+                                    delay_hide=300,
+                                    overlay_style={
+                                        "visibility": "visible",
+                                        "opacity": 1,
+                                    },
+                                    parent_style={
                                         "position": "relative",
                                         "minHeight": "60vh",
                                     },
@@ -1230,7 +1315,7 @@ def build_nav(
                     Div(
                         [
                             build_download_controls(summary_table.id, row=True),
-                            Div(summary_table),
+                            _build_loading_summary_table(summary_table),
                             Br(),
                             weight_components,
                         ],
