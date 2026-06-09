@@ -31,6 +31,7 @@ from ml_peg.app.utils.onboarding import (
     register_onboarding_callbacks,
 )
 from ml_peg.app.utils.register_callbacks import (
+    SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
     register_benchmark_to_category_callback,
     register_filter_tables_callback,
 )
@@ -1025,20 +1026,47 @@ def build_nav(
                                     storage_type="session",
                                     data=summary_table.data,
                                 ),
-                                Loading(
-                                    Div(id="page-content"),
-                                    type="circle",
-                                    color="#119DFF",
-                                    fullscreen=False,
-                                    target_components={"page-content": "children"},
+                                Div(
+                                    [
+                                        Loading(
+                                            Div(
+                                                [
+                                                    Store(id="scores-loading-store"),
+                                                    Div(id="page-content"),
+                                                ]
+                                            ),
+                                            fullscreen=False,
+                                            custom_spinner=Div(
+                                                [
+                                                    Loading(
+                                                        Div(),
+                                                        display="show",
+                                                        type="circle",
+                                                        color="#119DFF",
+                                                    ),
+                                                    Div(
+                                                        "Updating scores...",
+                                                        style={
+                                                            "fontSize": "16px",
+                                                            "fontWeight": "600",
+                                                            "color": "#212529",
+                                                        },
+                                                    ),
+                                                ],
+                                                style=SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
+                                            ),
+                                            delay_hide=700,
+                                            overlay_style={
+                                                "visibility": "visible",
+                                                "opacity": 1,
+                                            },
+                                            parent_style={"position": "relative"},
+                                        ),
+                                    ],
                                     style={
-                                        "position": "fixed",
-                                        "top": "300px",
-                                        "left": "50%",
-                                        "transform": "translateX(-50%)",
-                                        "zIndex": "1100",
+                                        "position": "relative",
+                                        "minHeight": "60vh",
                                     },
-                                    parent_style={"position": "relative"},
                                 ),
                             ],
                             style={"flex": "1", "padding": "16px 16px"},

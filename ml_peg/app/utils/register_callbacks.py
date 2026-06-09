@@ -44,6 +44,22 @@ from ml_peg.app.utils.utils import (
 
 THRESHOLD_INPUT_STEP = 0.0001
 THRESHOLD_ROUND_DIGITS = 10
+SCORES_LOADING_OVERLAY_VISIBLE_STYLE = {
+    "position": "absolute",
+    "top": "0",
+    "right": "0",
+    "bottom": "0",
+    "left": "0",
+    "minHeight": "420px",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "flexDirection": "column",
+    "gap": "14px",
+    "backgroundColor": "rgba(255, 255, 255, 0.78)",
+    "zIndex": "1500",
+    "pointerEvents": "auto",
+}
 
 
 def enforce_threshold_direction(
@@ -1276,13 +1292,16 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
             ]
         )
-
+    outputs.append(Output("scores-loading-store", "data"))
     states = []
     for entry in app_entries:
         states.extend([entry["weight_state"], entry["threshold_state"]])
 
     @callback(
-        outputs, Input("element-filter", "data"), states, prevent_initial_call=True
+        outputs,
+        Input("element-filter", "data"),
+        states,
+        prevent_initial_call=True,
     )
     def recompute_tables(elements, *args):
         """
@@ -1297,8 +1316,9 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
 
         Returns
         -------
-        list[list[dict]]
-            Updated rows for each app's computed store and raw data stores.
+        list
+            Updated rows for each app's computed store and raw data stores,
+            followed by a loading marker payload.
         """
         # Rebuild inputs for each app
         per_app_state = {}
@@ -1329,4 +1349,5 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
 
             results.extend([scored_rows, metrics_data])
 
+        results.append({"excluded_elements": elements or []})
         return results

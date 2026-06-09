@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dash import ALL, Input, Output, State, callback, ctx, no_update
-from dash.dcc import Dropdown, Loading, Store
+from dash.dcc import Dropdown, Store
 from dash.exceptions import PreventUpdate
 from dash.html import Button, Details, Div, Span, Summary
 
@@ -104,6 +104,21 @@ _BTN_EXCLUDED = {
     "fontWeight": "700",
 }
 
+_LEGEND_SWATCH_BASE = {
+    "display": "inline-block",
+    "width": "14px",
+    "height": "14px",
+    "borderRadius": "2px",
+    "border": _BTN_BASE["border"],
+    "backgroundColor": _BTN_BASE["backgroundColor"],
+}
+
+_LEGEND_SWATCH_EXCLUDED = {
+    **_LEGEND_SWATCH_BASE,
+    "border": _BTN_EXCLUDED["border"],
+    "backgroundColor": _BTN_EXCLUDED["backgroundColor"],
+}
+
 
 def _btn_style(symbol: str, excluded: bool) -> dict:
     """
@@ -131,8 +146,9 @@ def get_element_filter() -> Div:
     Get element filter component with clickable periodic table.
 
     Clicking an element marks it for exclusion (highlighted red). The filter
-    is applied only when the "Apply" button is clicked. "Clear" resets the
-    selection. The committed selection is held in ``dcc.Store(id="element-filter")``.
+    is applied only when the "Apply" button is clicked. "Exclude all" marks
+    every element for exclusion. "Clear" resets the selection. The committed
+    selection is held in ``dcc.Store(id="element-filter")``.
 
     Returns
     -------
@@ -158,6 +174,50 @@ def get_element_filter() -> Div:
             "gap": "1px",
         },
     )
+    legend = Div(
+        [
+            Div(
+                [
+                    Span("Included:", style={"minWidth": "62px"}),
+                    Span(style=_LEGEND_SWATCH_BASE),
+                ],
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "gap": "6px",
+                },
+            ),
+            Div(
+                [
+                    Span("Excluded:", style={"minWidth": "62px"}),
+                    Span(style=_LEGEND_SWATCH_EXCLUDED),
+                ],
+                style={
+                    "display": "flex",
+                    "alignItems": "center",
+                    "gap": "6px",
+                },
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "gap": "6px",
+            "fontSize": "12px",
+            "color": "#343a40",
+            "paddingTop": "2px",
+            "whiteSpace": "nowrap",
+        },
+    )
+    grid_with_legend = Div(
+        [grid, legend],
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "12px",
+            "flexWrap": "wrap",
+        },
+    )
 
     actions = Div(
         [
@@ -176,6 +236,20 @@ def get_element_filter() -> Div:
                 },
             ),
             Button(
+                "Exclude all",
+                id="element-filter-exclude-all",
+                n_clicks=0,
+                style={
+                    "padding": "4px 12px",
+                    "fontSize": "12px",
+                    "backgroundColor": "#fff5f5",
+                    "color": "#842029",
+                    "border": "1px solid #f1aeb5",
+                    "borderRadius": "4px",
+                    "cursor": "pointer",
+                },
+            ),
+            Button(
                 "Clear",
                 id="element-filter-clear",
                 n_clicks=0,
@@ -189,19 +263,6 @@ def get_element_filter() -> Div:
                     "cursor": "pointer",
                 },
             ),
-            Loading(
-                Span(
-                    id="element-filter-spinner",
-                    style={
-                        "width": "16px",
-                        "height": "16px",
-                        "display": "inline-block",
-                    },
-                ),
-                target_components={"summary-table-computed-store": "data"},
-                type="circle",
-                color="#228be6",
-            ),
         ],
         style={
             "display": "flex",
@@ -210,13 +271,14 @@ def get_element_filter() -> Div:
             "alignItems": "center",
         },
     )
+    filter_body = Div([grid_with_legend, actions])
 
     return Div(
         [
             Details(
                 [
                     Summary("Exclude elements", style=_SUMMARY_STYLE),
-                    Div([grid, actions], style={"padding": "8px 12px"}),
+                    Div(filter_body, style={"padding": "8px 12px"}),
                 ],
                 id="element-filter-details",
                 open=False,
@@ -291,18 +353,21 @@ def register_element_filter_callbacks() -> None:
         Output("element-filter", "data"),
         Output("element-filter-pending", "data", allow_duplicate=True),
         Input("element-filter-apply", "n_clicks"),
+        Input("element-filter-exclude-all", "n_clicks"),
         Input("element-filter-clear", "n_clicks"),
         State("element-filter-pending", "data"),
         prevent_initial_call=True,
     )
-    def apply_or_clear(_apply, _clear, pending):
+    def apply_or_clear(_apply, _exclude_all, _clear, pending):
         """
-        Apply the pending selection or clear the committed filter.
+        Apply, clear, or bulk-update the element exclusion selection.
 
         Parameters
         ----------
         _apply
             Click count for the Apply button.
+        _exclude_all
+            Click count for the Exclude all button.
         _clear
             Click count for the Clear button.
         pending
@@ -316,6 +381,8 @@ def register_element_filter_callbacks() -> None:
         trigger = ctx.triggered_id
         if trigger == "element-filter-apply":
             return pending or [], no_update
+        if trigger == "element-filter-exclude-all":
+            return no_update, all_symbols
         if trigger == "element-filter-clear":
             return [], []
         raise PreventUpdate
