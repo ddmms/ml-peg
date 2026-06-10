@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ase import units
 from ase.io import read
+import numpy as np
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_dispersion_name_map, get_struct_info, mae
@@ -69,6 +70,9 @@ def get_relative_energy(
             for system_name in system_names:
                 xyz_name = f"{dataset}_{system_name}.xyz"
                 xyz_path = model_dir / xyz_name
+                if not xyz_path.is_file():
+                    results[model_name].append(np.nan)
+                    continue
                 atoms_list = read(xyz_path, ":")
 
                 results[model_name].append(

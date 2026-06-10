@@ -350,6 +350,9 @@ def elasticity_stats() -> dict[str, dict[str, Any]]:
     stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
         results_path = CALC_PATH / model_name / "moduli_results.csv"
+        if not results_path.exists():
+            stats[model_name] = {}
+            continue
         df = pd.read_csv(results_path)
         filtered, excluded = _filter_results(df, model_name)
 
@@ -410,8 +413,11 @@ def bulk_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | N
     """
     results: dict[str, float | None] = {}
     for model_name in MODELS:
-        prop = elasticity_stats.get(model_name, {}).get("bulk")
-        results[model_name] = mae(prop["ref"], prop["pred"])
+        prop = elasticity_stats[model_name].get("bulk")
+        if prop:
+            results[model_name] = mae(prop["ref"], prop["pred"])
+        else:
+            results[model_name] = None
     return results
 
 
@@ -433,7 +439,10 @@ def shear_mae(elasticity_stats: dict[str, dict[str, Any]]) -> dict[str, float | 
     results: dict[str, float | None] = {}
     for model_name in MODELS:
         prop = elasticity_stats.get(model_name, {}).get("shear")
-        results[model_name] = mae(prop["ref"], prop["pred"])
+        if prop:
+            results[model_name] = mae(prop["ref"], prop["pred"])
+        else:
+            results[model_name] = None
     return results
 
 
@@ -490,7 +499,9 @@ def density_trajectories(elasticity_stats: dict[str, dict[str, Any]]) -> None:
     """
     for model_name in MODELS:
         stats = elasticity_stats[model_name]
-        mp_ids = stats["mp_ids"]
+        mp_ids = stats.get("mp_ids")
+        if mp_ids is None:
+            continue
         struct_dir = OUT_PATH / model_name
         for prop_key, traj_subdir in [
             ("bulk", "density_bulk"),

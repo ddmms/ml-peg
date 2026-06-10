@@ -93,7 +93,7 @@ class BaseApp(ABC):
         else:
             self.info = None
             warnings.warn("No info_path provided.", stacklevel=2)
-        if hasattr(self, "set_elements"):
+        if self.info is not None and hasattr(self, "set_elements"):
             self.set_elements()
         else:
             self.elements = None
@@ -150,9 +150,11 @@ class BaseApp(ABC):
                 }
             else:
                 self.elements = set(self.info["elements"])
-        except (AttributeError, KeyError, TypeError) as err:
+        except (AttributeError, KeyError, TypeError, IndexError) as err:
             self.elements = set()
-            warnings.warn(f"Unable to read elements lists: {err}", stacklevel=2)
+            warnings.warn(
+                f"Unable to read elements lists for {self.name}: {err}", stacklevel=2
+            )
 
     def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
         """

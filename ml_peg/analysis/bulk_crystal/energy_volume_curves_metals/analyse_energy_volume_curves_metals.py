@@ -201,12 +201,16 @@ def _phase_metrics_from_eos_mev(
         )
         for phase in phases
     ]
-    model_fits = [
-        _fit_bm_clean(
-            model_data[f"V/atom_{phase}"].values, model_data[f"{phase}_E"].values
-        )
-        for phase in phases
-    ]
+
+    try:
+        model_fits = [
+            _fit_bm_clean(
+                model_data[f"V/atom_{phase}"].values, model_data[f"{phase}_E"].values
+            )
+            for phase in phases
+        ]
+    except KeyError:
+        return np.nan, np.nan
 
     if any(fit is None for fit in dft_fits + model_fits):
         return np.nan, np.nan
@@ -297,7 +301,12 @@ def plot_eos_figure(model: str, element: str) -> go.Figure | None:
                 marker={"symbol": "x", "color": colour, "size": 8},
             )
         )
-        model_v = model_data[f"V/atom_{phase}"]
+
+        try:
+            model_v = model_data[f"V/atom_{phase}"]
+        except KeyError:
+            continue
+
         model_delta_e = model_data[f"{phase}_E"] - model_data[f"{phases[0]}_E"].min()
         fig.add_trace(
             go.Scatter(
