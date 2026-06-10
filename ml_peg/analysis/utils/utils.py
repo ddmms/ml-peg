@@ -613,23 +613,27 @@ def get_table_style(
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
+        nan_row_indices: list[int] = []  # Track rows with NaN values
         for i, row in enumerate(data):
             if col not in row:
                 continue
             raw_value = row[col]
-            # Track None values separately for styling
+            # Track missing values separately for styling
             is_none = raw_value is None
             is_nan = (
                 isinstance(raw_value, float) and np.isnan(raw_value)
             ) or raw_value == "NaN"
-            if is_none or is_nan:
+            if is_none:
                 none_row_indices.append(i)
+                continue
+            if is_nan:
+                nan_row_indices.append(i)
                 continue
             # Skip if unable to convert to float
             try:
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):
-                none_row_indices.append(i)
+                nan_row_indices.append(i)
                 continue
 
             # Get scored value, if is exists
@@ -640,7 +644,7 @@ def get_table_style(
 
             numeric_entries.append((raw_value, numeric_value, scored_value))
 
-        # Apply styling for None/missing values: gray hashed pattern
+        # Apply styling for None values: gray hashed pattern
         for row_idx in none_row_indices:
             mlip_name = data[row_idx].get("MLIP", "")
             style_data_conditional.append(
@@ -657,6 +661,30 @@ def get_table_style(
                         "transparent 5px, "
                         "#d0d0d0 5px, "
                         "#d0d0d0 10px"
+                        ")"
+                    ),
+                    "color": "transparent",
+                    "fontStyle": "italic",
+                }
+            )
+
+        # Apply styling for NaN values: red-tinted hash
+        for row_idx in nan_row_indices:
+            mlip_name = data[row_idx].get("MLIP", "")
+            style_data_conditional.append(
+                {
+                    "if": {
+                        "filter_query": f"{{MLIP}} = '{mlip_name}'",
+                        "column_id": col,
+                    },
+                    "backgroundColor": "#f4e3e3",
+                    "backgroundImage": (
+                        "repeating-linear-gradient("
+                        "45deg, "
+                        "transparent, "
+                        "transparent 5px, "
+                        "#e6bcbc 5px, "
+                        "#e6bcbc 10px"
                         ")"
                     ),
                     "color": "transparent",
