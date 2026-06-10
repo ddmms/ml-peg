@@ -426,7 +426,6 @@ def calc_table_scores(
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
-    require_all_metrics: bool = True,
     return_scores: bool = False,
 ) -> list[MetricRow] | tuple[list[MetricRow], list[MetricRow]]:
     """
@@ -446,10 +445,6 @@ def calc_table_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
-    require_all_metrics
-        If True, score is set to None unless all metrics are present (not None).
-        If False, score is calculated from available metrics only.
-        Default is True.
     return_scores
         If True, also return the normalised metric rows used to calculate scores.
         Default is False.
