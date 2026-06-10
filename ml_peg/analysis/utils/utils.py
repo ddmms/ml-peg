@@ -296,6 +296,9 @@ def build_density_inputs(
     for model_name in models:
         stats = model_results.get(model_name, {})
         prop = stats.get(property_key)
+        if prop is None:
+            inputs[model_name] = {}
+            continue
         excluded = stats.get("excluded")
 
         ref_vals = prop.get("ref", [])
