@@ -28,6 +28,7 @@ METRICS = [
     ("Phase energy", "phase_energy_periodic_table"),
     ("Phase stability", "phase_stability_periodic_table"),
 ]
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class EquationOfStateApp(BaseApp):
@@ -126,6 +127,7 @@ def get_app() -> EquationOfStateApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=EOS_CURVE_ID),
         ],
+        info_path=INFO_PATH,
     )
 
 

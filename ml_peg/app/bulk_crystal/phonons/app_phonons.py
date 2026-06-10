@@ -39,6 +39,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#phonons"
 )
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / "phonons"
+INFO_PATH = DATA_PATH / "info.json"
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
@@ -183,6 +184,7 @@ def get_app() -> PhononApp:
                 },
             ),
         ],
+        info_path=INFO_PATH,
     )
 
 
