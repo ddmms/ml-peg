@@ -684,7 +684,7 @@ def test_iron_properties(metrics: dict[str, dict]) -> None:
         Dictionary of iron properties metrics from the metrics fixture.
     """
     write_struct_info(
-        data_path=CALC_PATH / "mock" / "equilibrium_bcc.extxyz",
+        data_path=CALC_PATH / "mock" / "structures" / "equilibrium_bcc.extxyz",
         out_path=OUT_PATH,
         index=0,
     )
