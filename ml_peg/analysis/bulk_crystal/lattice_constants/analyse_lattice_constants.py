@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -34,10 +35,14 @@ INFO = get_struct_info(
     info_keys=["name"],
     write_structs=False,
     out_path=OUT_PATH,
+    include_filenames=True,
 )
 # SiC has one traj file but two scatter points (cubic and hexagonal); duplicate entry
 sic_idx = next(i for i, e in enumerate(INFO["elements"]) if set(e) == {"C", "Si"})
 INFO["elements"].insert(sic_idx + 1, INFO["elements"][sic_idx])
+
+# Copy names to zip with structure files
+FORMULAE = copy.copy(INFO["name"])
 INFO["name"][sic_idx] = "SiC(a)"
 INFO["name"].insert(sic_idx + 1, "SiC(c)")
 OUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -71,15 +76,22 @@ def lattice_constants_exp() -> dict[str, list]:
         model_dir = CALC_PATH / model_name
 
         if not model_dir.exists():
-            continue
+            results[model_name] = [np.nan] * len(INFO["name"])
 
-        struct_files = sorted(model_dir.glob("*-traj.extxyz"))
-        if not struct_files:
-            continue
+        struct_files = [
+            model_dir / f"{filename}.extxyz" for filename in INFO["filenames"]
+        ]
 
-        for struct_file in struct_files:
+        for struct_file, name in zip(struct_files, FORMULAE, strict=True):
+            # If file missing, set result to NaN(s) to maintain order
+            if not struct_file.is_file():
+                if name == "SiC":
+                    results[model_name].extend([np.nan, np.nan])
+                else:
+                    results[model_name].append(np.nan)
+                continue
+
             structs = read(struct_file, index=":")
-
             formula = structs[-1].info["name"]
             lattice_type = structs[-1].info["lattice_type"]
 
@@ -112,7 +124,12 @@ def lattice_constants_exp() -> dict[str, list]:
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{structs[-1].info['name']}.xyz", structs)
 
-        ref_stored = True
+        if not ref_stored:
+            # If some structures missing, reset
+            if len(results["ref"]) == len(INFO["name"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
 
     return results
 
@@ -143,15 +160,22 @@ def lattice_constants_dft() -> dict[str, list]:
         model_dir = CALC_PATH / model_name
 
         if not model_dir.exists():
-            continue
+            results[model_name] = [np.nan] * len(INFO["name"])
 
-        struct_files = sorted(model_dir.glob("*-traj.extxyz"))
-        if not struct_files:
-            continue
+        struct_files = [
+            model_dir / f"{filename}.extxyz" for filename in INFO["filenames"]
+        ]
 
-        for struct_file in struct_files:
+        for struct_file, name in zip(struct_files, FORMULAE, strict=True):
+            # If file missing, set result to NaN(s) to maintain order
+            if not struct_file.is_file():
+                if name == "SiC":
+                    results[model_name].extend([np.nan, np.nan])
+                else:
+                    results[model_name].append(np.nan)
+                continue
+
             structs = read(struct_file, index=":")
-
             formula = structs[-1].info["name"]
             lattice_type = structs[-1].info["lattice_type"]
 
@@ -179,7 +203,12 @@ def lattice_constants_dft() -> dict[str, list]:
                 if c_dft:
                     results["ref"].append(c_dft)
 
-        ref_stored = True
+        if not ref_stored:
+            # If some structures missing, reset
+            if len(results["ref"]) == len(INFO["name"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
 
     return results
 
