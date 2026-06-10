@@ -848,11 +848,16 @@ def _build_scores_loading_spinner() -> Div:
     """
     return Div(
         [
-            Loading(
-                Div(),
-                display="show",
-                type="circle",
-                color="#119DFF",
+            Div(
+                style={
+                    "width": "42px",
+                    "height": "42px",
+                    "border": "4px solid #d0ebff",
+                    "borderTopColor": "#119DFF",
+                    "borderRadius": "50%",
+                    "animation": "ml-peg-spin 0.8s linear infinite",
+                    "boxSizing": "border-box",
+                },
             ),
             Div(
                 "Updating scores...",
@@ -878,11 +883,16 @@ def _build_page_loading_spinner() -> Div:
     """
     return Div(
         [
-            Loading(
-                Div(),
-                display="show",
-                type="circle",
-                color="#119DFF",
+            Div(
+                style={
+                    "width": "52px",
+                    "height": "52px",
+                    "border": "5px solid #d0ebff",
+                    "borderTopColor": "#119DFF",
+                    "borderRadius": "50%",
+                    "animation": "ml-peg-spin 0.8s linear infinite",
+                    "boxSizing": "border-box",
+                },
             ),
             Div(
                 "Loading page...",
@@ -1142,7 +1152,6 @@ def build_nav(
                                     Div(id="page-content"),
                                     fullscreen=False,
                                     custom_spinner=_build_page_loading_spinner(),
-                                    target_components={"page-content": "children"},
                                     delay_hide=300,
                                     overlay_style={
                                         "visibility": "visible",
