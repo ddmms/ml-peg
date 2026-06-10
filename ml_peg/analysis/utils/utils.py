@@ -475,22 +475,18 @@ def calc_table_scores(
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         weighted_sum = 0.0
         weight_sum = 0.0
-
-        all_metrics_present = True
         contains_nan = False
 
         for key in metric_columns:
-            if (weight := metric_weights[key]) == 0:
+            score = scores_row[key]
+            weight = metric_weights[key]
+
+            # If weight is zero or score is None, no contribution to overall score
+            if weight == 0 or score is None:
                 continue
 
-            value = metrics_row.get(key)
-            score = scores_row.get(key)
-
-            if value is None or score is None:
-                all_metrics_present = False
-                continue
-
-            if isinstance(score, float) and np.isnan(score):
+            # If score is NaN, overall score will be NaN
+            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
                 contains_nan = True
                 break
 
@@ -498,9 +494,7 @@ def calc_table_scores(
             weight_sum += weight
 
         if contains_nan:
-            metrics_row["Score"] = np.nan
-        elif require_all_metrics and not all_metrics_present:
-            metrics_row["Score"] = None
+            metrics_row["Score"] = "NaN"
         elif weight_sum > 0:
             metrics_row["Score"] = weighted_sum / weight_sum
         else:
@@ -625,7 +619,9 @@ def get_table_style(
             raw_value = row[col]
             # Track None values separately for styling
             is_none = raw_value is None
-            is_nan = isinstance(raw_value, float) and np.isnan(raw_value)
+            is_nan = (
+                isinstance(raw_value, float) and np.isnan(raw_value)
+            ) or raw_value == "NaN"
             if is_none or is_nan:
                 none_row_indices.append(i)
                 continue
@@ -663,7 +659,7 @@ def get_table_style(
                         "#d0d0d0 10px"
                         ")"
                     ),
-                    "color": "#888888",
+                    "color": "transparent",
                     "fontStyle": "italic",
                 }
             )
@@ -760,7 +756,7 @@ def normalize_metric(
 
     try:
         # Handle NaNs robustly
-        if np.isnan([value, good_threshold, bad_threshold]).any():
+        if np.isnan([value, good_threshold, bad_threshold]).any() or value == "NaN":
             return np.nan
     except TypeError:
         return np.nan

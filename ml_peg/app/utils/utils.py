@@ -327,13 +327,15 @@ def clean_table_data(rows: list[dict]) -> list[dict]:
     Returns
     -------
     list[dict]
-        Cleaned table rows with values larger than int64 limits set to NaN.
+        Cleaned table rows with values larger than int64 limits or `None` set to NaN.
     """
     for row in rows:
         for key, value in row.items():
             if isinstance(value, int | float) and (
                 value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
             ):
+                row[key] = np.nan
+            if value is None:
                 row[key] = np.nan
     return rows
 
