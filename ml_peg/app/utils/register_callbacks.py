@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from numbers import Number
 from typing import Any, Literal
 
 import dash
@@ -41,58 +40,11 @@ from ml_peg.app.utils.utils import (
     format_tooltip_headers,
     get_scores,
     get_threshold_colours,
+    store_data_equal,
 )
 
 THRESHOLD_INPUT_STEP = 0.0001
 THRESHOLD_ROUND_DIGITS = 10
-
-
-def _store_data_equal(left: Any, right: Any) -> bool:
-    """
-    Check whether two Dash store payloads represent the same table state.
-
-    Used before returning callback outputs so unchanged stores can be returned
-    as ``dash.no_update``. This treats matching ``NaN`` values as equal because
-    table rows can contain missing numeric values, and Python's normal equality
-    would otherwise treat unchanged rows as different.
-
-    Parameters
-    ----------
-    left
-        First Dash store payload to compare.
-    right
-        Second Dash store payload to compare.
-
-    Returns
-    -------
-    bool
-        Whether both payloads can be treated as unchanged.
-    """
-    if left is right:
-        return True
-
-    if isinstance(left, Number) and isinstance(right, Number):
-        try:
-            if pd.isna(left) and pd.isna(right):
-                return True
-        except TypeError:
-            pass
-        return left == right
-
-    if isinstance(left, dict) and isinstance(right, dict):
-        if left.keys() != right.keys():
-            return False
-        return all(_store_data_equal(left[key], right[key]) for key in left)
-
-    if isinstance(left, list) and isinstance(right, list):
-        if len(left) != len(right):
-            return False
-        return all(
-            _store_data_equal(left_item, right_item)
-            for left_item, right_item in zip(left, right, strict=True)
-        )
-
-    return left == right
 
 
 def enforce_threshold_direction(
@@ -1394,12 +1346,14 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             # Update stored scores per metric
             scored_rows = calc_metric_scores(updated_data, thresholds)
 
-            if _store_data_equal(scored_rows, current_scored_rows):
+            # Only update stores whose filtered data changed. This prevents
+            # downstream table callbacks from re-running after no-op filter events.
+            if store_data_equal(scored_rows, current_scored_rows):
                 results.append(no_update)
             else:
                 results.append(scored_rows)
 
-            if _store_data_equal(metrics_data, current_metrics_data):
+            if store_data_equal(metrics_data, current_metrics_data):
                 results.append(no_update)
             else:
                 results.append(metrics_data)
