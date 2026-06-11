@@ -429,7 +429,6 @@ def calc_table_scores(
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
-    require_all_metrics: bool = True,
     return_scores: bool = False,
 ) -> list[MetricRow] | tuple[list[MetricRow], list[MetricRow]]:
     """
@@ -449,10 +448,6 @@ def calc_table_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
-    require_all_metrics
-        If True, score is set to None unless all metrics are present (not None).
-        If False, score is calculated from available metrics only.
-        Default is True.
     return_scores
         If True, also return the normalised metric rows used to calculate scores.
         Default is False.
@@ -478,22 +473,18 @@ def calc_table_scores(
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         weighted_sum = 0.0
         weight_sum = 0.0
-
-        all_metrics_present = True
         contains_nan = False
 
         for key in metric_columns:
-            if (weight := metric_weights[key]) == 0:
+            score = scores_row[key]
+            weight = metric_weights[key]
+
+            # If weight is zero or score is None, no contribution to overall score
+            if weight == 0 or score is None:
                 continue
 
-            value = metrics_row.get(key)
-            score = scores_row.get(key)
-
-            if value is None or score is None:
-                all_metrics_present = False
-                continue
-
-            if isinstance(score, float) and np.isnan(score):
+            # If score is NaN, overall score will be NaN
+            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
                 contains_nan = True
                 break
 
@@ -501,9 +492,7 @@ def calc_table_scores(
             weight_sum += weight
 
         if contains_nan:
-            metrics_row["Score"] = np.nan
-        elif require_all_metrics and not all_metrics_present:
-            metrics_row["Score"] = None
+            metrics_row["Score"] = "NaN"
         elif weight_sum > 0:
             metrics_row["Score"] = weighted_sum / weight_sum
         else:
@@ -622,21 +611,27 @@ def get_table_style(
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
+        nan_row_indices: list[int] = []  # Track rows with NaN values
         for i, row in enumerate(data):
             if col not in row:
                 continue
             raw_value = row[col]
-            # Track None values separately for styling
+            # Track missing values separately for styling
             is_none = raw_value is None
-            is_nan = isinstance(raw_value, float) and np.isnan(raw_value)
-            if is_none or is_nan:
+            is_nan = (
+                isinstance(raw_value, float) and np.isnan(raw_value)
+            ) or raw_value == "NaN"
+            if is_none:
                 none_row_indices.append(i)
+                continue
+            if is_nan:
+                nan_row_indices.append(i)
                 continue
             # Skip if unable to convert to float
             try:
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):
-                none_row_indices.append(i)
+                nan_row_indices.append(i)
                 continue
 
             # Get scored value, if is exists
@@ -647,7 +642,7 @@ def get_table_style(
 
             numeric_entries.append((raw_value, numeric_value, scored_value))
 
-        # Apply styling for None/missing values: gray hashed pattern
+        # Apply styling for None values: gray hashed pattern
         for row_idx in none_row_indices:
             mlip_name = data[row_idx].get("MLIP", "")
             style_data_conditional.append(
@@ -666,7 +661,31 @@ def get_table_style(
                         "#d0d0d0 10px"
                         ")"
                     ),
-                    "color": "#888888",
+                    "color": "transparent",
+                    "fontStyle": "italic",
+                }
+            )
+
+        # Apply styling for NaN values: red-tinted hash
+        for row_idx in nan_row_indices:
+            mlip_name = data[row_idx].get("MLIP", "")
+            style_data_conditional.append(
+                {
+                    "if": {
+                        "filter_query": f"{{MLIP}} = '{mlip_name}'",
+                        "column_id": col,
+                    },
+                    "backgroundColor": "#f4e3e3",
+                    "backgroundImage": (
+                        "repeating-linear-gradient("
+                        "45deg, "
+                        "transparent, "
+                        "transparent 5px, "
+                        "#e6bcbc 5px, "
+                        "#e6bcbc 10px"
+                        ")"
+                    ),
+                    "color": "transparent",
                     "fontStyle": "italic",
                 }
             )
@@ -763,7 +782,7 @@ def normalize_metric(
 
     try:
         # Handle NaNs robustly
-        if np.isnan([value, good_threshold, bad_threshold]).any():
+        if np.isnan([value, good_threshold, bad_threshold]).any() or value == "NaN":
             return np.nan
     except TypeError:
         return np.nan

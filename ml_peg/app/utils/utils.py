@@ -315,7 +315,7 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
     return weights
 
 
-def clean_table_data(rows: list[dict]) -> list[dict]:
+def clean_table_data(rows: list[dict]):
     """
     Ensure data does not exceed int limits.
 
@@ -323,19 +323,30 @@ def clean_table_data(rows: list[dict]) -> list[dict]:
     ----------
     rows
         List of table rows to clean.
-
-    Returns
-    -------
-    list[dict]
-        Cleaned table rows with values larger than int64 limits set to NaN.
     """
     for row in rows:
         for key, value in row.items():
             if isinstance(value, int | float) and (
                 value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
             ):
-                row[key] = np.nan
-    return rows
+                row[key] = "NaN"
+            if value is None:
+                row[key] = "NaN"
+
+
+def none_to_nan(rows: list[dict]) -> None:
+    """
+    Replace None values with NaN.
+
+    Parameters
+    ----------
+    rows
+        List of table rows to replace None values in.
+    """
+    for row in rows:
+        for key, value in row.items():
+            if value is None or (isinstance(value, float) and np.isnan(value)):
+                row[key] = "NaN"
 
 
 def filter_rows_by_models(
