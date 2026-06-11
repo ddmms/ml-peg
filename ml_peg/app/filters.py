@@ -330,9 +330,9 @@ def get_element_filter() -> Div:
     Get element filter component with clickable periodic table.
 
     Clicking an element marks it for exclusion (highlighted red). The filter
-    is applied only when the "Apply" button is clicked. "Exclude all" marks
-    every element for exclusion. "Clear" resets the selection. The committed
-    selection is held in ``dcc.Store(id="element-filter")``.
+    is applied only when the "Apply" button is clicked. "Exclude all" and
+    "Clear" update the pending selection. The committed selection is held in
+    ``dcc.Store(id="element-filter")``.
 
     Returns
     -------
@@ -588,9 +588,9 @@ def register_element_filter_callbacks() -> None:
                 raise PreventUpdate
             return no_update, all_symbols
         if trigger == "element-filter-clear":
-            if not current and not pending:
+            if not pending:
                 raise PreventUpdate
-            return [], []
+            return no_update, []
         if isinstance(trigger, dict) and trigger.get("type") == "element-filter-preset":
             preset_excluded = _preset_excluded_symbols(trigger["index"])
             if sorted(preset_excluded) == pending:
