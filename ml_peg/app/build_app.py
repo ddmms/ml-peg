@@ -31,7 +31,6 @@ from ml_peg.app.utils.onboarding import (
     register_onboarding_callbacks,
 )
 from ml_peg.app.utils.register_callbacks import (
-    SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
     register_benchmark_to_category_callback,
     register_filter_tables_callback,
 )
@@ -837,41 +836,6 @@ def build_summary_table(
     return table
 
 
-def _build_scores_loading_spinner() -> Div:
-    """
-    Build the score-update loading spinner overlay.
-
-    Returns
-    -------
-    Div
-        Loading overlay with spinner and status text.
-    """
-    return Div(
-        [
-            Div(
-                style={
-                    "width": "42px",
-                    "height": "42px",
-                    "border": "4px solid #d0ebff",
-                    "borderTopColor": "#119DFF",
-                    "borderRadius": "50%",
-                    "animation": "ml-peg-spin 0.8s linear infinite",
-                    "boxSizing": "border-box",
-                },
-            ),
-            Div(
-                "Updating scores...",
-                style={
-                    "fontSize": "16px",
-                    "fontWeight": "600",
-                    "color": "#212529",
-                },
-            ),
-        ],
-        style=SCORES_LOADING_OVERLAY_VISIBLE_STYLE,
-    )
-
-
 def _build_page_loading_spinner() -> Div:
     """
     Build the initial page-load spinner overlay.
@@ -924,9 +888,9 @@ def _build_page_loading_spinner() -> Div:
     )
 
 
-def _build_loading_summary_table(table: DataTable) -> Loading:
+def _build_loading_summary_table(table: DataTable) -> Div:
     """
-    Wrap a summary table with its score-update loading overlay.
+    Build a summary table wrapper.
 
     Parameters
     ----------
@@ -935,27 +899,10 @@ def _build_loading_summary_table(table: DataTable) -> Loading:
 
     Returns
     -------
-    Loading
-        Loading component scoped to the table container.
+    Div
+        Table wrapper sized to the rendered table.
     """
-    return Loading(
-        Div(table, style={"position": "relative", "width": "fit-content"}),
-        fullscreen=False,
-        custom_spinner=_build_scores_loading_spinner(),
-        target_components={
-            "scores-loading-store": "data",
-            table.id: ["data", "style_data_conditional", "tooltip_data"],
-        },
-        delay_hide=700,
-        overlay_style={
-            "visibility": "visible",
-            "opacity": 1,
-        },
-        parent_style={
-            "position": "relative",
-            "width": "fit-content",
-        },
-    )
+    return Div(table, style={"position": "relative", "width": "fit-content"})
 
 
 def build_nav(
@@ -1083,7 +1030,6 @@ def build_nav(
             data=_default_weight_store_data(summary_table),
         ),
         Store(id="cmap-store", storage_type="local", data="viridis_r"),
-        Store(id="scores-loading-store"),
         *category_state_stores,
         *test_state_stores,
     ]
