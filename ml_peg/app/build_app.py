@@ -23,6 +23,7 @@ from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_faqs,
     build_footer,
+    build_loading_summary_table,
     build_page_loading_spinner,
     build_weight_components,
 )
@@ -556,7 +557,7 @@ def build_category_page_layout(
             Div(
                 [
                     build_download_controls(summary_table.id, row=True),
-                    _build_summary_table_wrapper(summary_table),
+                    build_loading_summary_table(summary_table),
                     Br(),
                     weight_components,
                 ],
@@ -835,26 +836,6 @@ def build_summary_table(
     table.model_configs = model_configs
     table.weights = weights
     return table
-
-
-def _build_summary_table_wrapper(table: DataTable) -> Div:
-    """
-    Wrap a summary DataTable in a small layout box.
-
-    Returning the table directly from route callbacks can make Dash repeatedly
-    remount and remeasure it, causing a maximum update depth error.
-
-    Parameters
-    ----------
-    table
-        Summary table to wrap.
-
-    Returns
-    -------
-    Div
-        Positioned wrapper sized to the rendered table.
-    """
-    return Div(table, style={"position": "relative", "width": "fit-content"})
 
 
 def build_nav(
@@ -1223,7 +1204,7 @@ def build_nav(
                     Div(
                         [
                             build_download_controls(summary_table.id, row=True),
-                            _build_summary_table_wrapper(summary_table),
+                            build_loading_summary_table(summary_table),
                             Br(),
                             weight_components,
                         ],

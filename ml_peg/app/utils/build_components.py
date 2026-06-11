@@ -8,7 +8,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Download, Dropdown, Store
+from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -442,6 +442,92 @@ def build_page_loading_spinner() -> Div:
             "zIndex": "1400",
             "pointerEvents": "auto",
         },
+    )
+
+
+def build_table_loading_spinner() -> Div:
+    """
+    Build a compact table loading spinner.
+
+    Returns
+    -------
+    Div
+        Table-sized loading overlay with the same ring style as page loading.
+    """
+    return Div(
+        Div(
+            style={
+                "width": "34px",
+                "height": "34px",
+                "border": "4px solid #d0ebff",
+                "borderTopColor": "#119DFF",
+                "borderRadius": "50%",
+                "animation": "ml-peg-spin 0.8s linear infinite",
+                "boxSizing": "border-box",
+            },
+        ),
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "backgroundColor": "rgba(255, 255, 255, 0.65)",
+            "zIndex": "1200",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def _build_summary_table_wrapper(table: DataTable) -> Div:
+    """
+    Wrap a summary DataTable in a small layout box.
+
+    Returning the table directly from route callbacks can make Dash repeatedly
+    remount and remeasure it, causing a maximum update depth error.
+
+    Parameters
+    ----------
+    table
+        Summary table to wrap.
+
+    Returns
+    -------
+    Div
+        Positioned wrapper sized to the rendered table.
+    """
+    return Div(table, style={"position": "relative", "width": "fit-content"})
+
+
+def build_loading_summary_table(table: DataTable) -> Loading:
+    """
+    Wrap a summary DataTable with a local loading spinner.
+
+    Parameters
+    ----------
+    table
+        Summary table to show as loading while Dash applies filters and updates
+        its rendered data.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to applied filter changes and table updates.
+    """
+    return Loading(
+        _build_summary_table_wrapper(table),
+        fullscreen=False,
+        custom_spinner=build_table_loading_spinner(),
+        target_components={
+            "element-filter": "data",
+            table.id: ["data", "style_data_conditional"],
+        },
+        delay_hide=250,
+        overlay_style={"visibility": "visible", "opacity": 1},
+        parent_style={"position": "relative", "width": "fit-content"},
     )
 
 
