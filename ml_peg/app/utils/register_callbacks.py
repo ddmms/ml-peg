@@ -1356,7 +1356,10 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         Returns
         -------
         list
-            Updated rows for each app's computed store and raw data stores.
+            Callback outputs ordered as two entries per benchmark app: the
+            rescored table rows used for normalised display, followed by the
+            filtered metric rows used as the raw table source. Unchanged outputs
+            are returned as ``dash.no_update``.
         """
         # Rebuild inputs for each app
         per_app_state = {}
