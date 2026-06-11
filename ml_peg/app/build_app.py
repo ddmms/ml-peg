@@ -1098,6 +1098,7 @@ def build_nav(
                                     Div(id="page-content"),
                                     fullscreen=False,
                                     custom_spinner=_build_page_loading_spinner(),
+                                    target_components={"page-content": "children"},
                                     delay_hide=300,
                                     overlay_style={
                                         "visibility": "visible",
