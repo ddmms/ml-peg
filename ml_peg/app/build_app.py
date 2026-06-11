@@ -23,6 +23,7 @@ from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_faqs,
     build_footer,
+    build_page_loading_spinner,
     build_weight_components,
 )
 from ml_peg.app.utils.onboarding import (
@@ -555,7 +556,7 @@ def build_category_page_layout(
             Div(
                 [
                     build_download_controls(summary_table.id, row=True),
-                    _build_loading_summary_table(summary_table),
+                    _build_summary_table_wrapper(summary_table),
                     Br(),
                     weight_components,
                 ],
@@ -836,61 +837,12 @@ def build_summary_table(
     return table
 
 
-def _build_page_loading_spinner() -> Div:
+def _build_summary_table_wrapper(table: DataTable) -> Div:
     """
-    Build the initial page-load spinner overlay.
+    Wrap a summary DataTable in a small layout box.
 
-    Returns
-    -------
-    Div
-        Page-wide loading overlay with spinner and status text.
-    """
-    return Div(
-        [
-            Div(
-                style={
-                    "width": "52px",
-                    "height": "52px",
-                    "border": "5px solid #d0ebff",
-                    "borderTopColor": "#119DFF",
-                    "borderRadius": "50%",
-                    "animation": "ml-peg-spin 0.8s linear infinite",
-                    "boxSizing": "border-box",
-                },
-            ),
-            Div(
-                "Loading page...",
-                style={
-                    "fontSize": "16px",
-                    "fontWeight": "600",
-                    "color": "#212529",
-                },
-            ),
-        ],
-        style={
-            "position": "absolute",
-            "top": "0",
-            "right": "0",
-            "bottom": "0",
-            "left": "0",
-            "minHeight": "420px",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "flex-start",
-            "flexDirection": "column",
-            "gap": "14px",
-            "paddingTop": "96px",
-            "boxSizing": "border-box",
-            "backgroundColor": "rgba(255, 255, 255, 0.78)",
-            "zIndex": "1400",
-            "pointerEvents": "auto",
-        },
-    )
-
-
-def _build_loading_summary_table(table: DataTable) -> Div:
-    """
-    Build a summary table wrapper.
+    Returning the table directly from route callbacks can make Dash repeatedly
+    remount and remeasure it, causing a maximum update depth error.
 
     Parameters
     ----------
@@ -900,7 +852,7 @@ def _build_loading_summary_table(table: DataTable) -> Div:
     Returns
     -------
     Div
-        Table wrapper sized to the rendered table.
+        Positioned wrapper sized to the rendered table.
     """
     return Div(table, style={"position": "relative", "width": "fit-content"})
 
@@ -1097,7 +1049,7 @@ def build_nav(
                                 Loading(
                                     Div(id="page-content"),
                                     fullscreen=False,
-                                    custom_spinner=_build_page_loading_spinner(),
+                                    custom_spinner=build_page_loading_spinner(),
                                     target_components={"page-content": "children"},
                                     delay_hide=300,
                                     overlay_style={
@@ -1271,7 +1223,7 @@ def build_nav(
                     Div(
                         [
                             build_download_controls(summary_table.id, row=True),
-                            _build_loading_summary_table(summary_table),
+                            _build_summary_table_wrapper(summary_table),
                             Br(),
                             weight_components,
                         ],

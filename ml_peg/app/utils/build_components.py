@@ -393,6 +393,58 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
     )
 
 
+def build_page_loading_spinner() -> Div:
+    """
+    Build the initial page-load spinner overlay.
+
+    Returns
+    -------
+    Div
+        Page-wide loading overlay with spinner and status text.
+    """
+    return Div(
+        [
+            Div(
+                style={
+                    "width": "52px",
+                    "height": "52px",
+                    "border": "5px solid #d0ebff",
+                    "borderTopColor": "#119DFF",
+                    "borderRadius": "50%",
+                    "animation": "ml-peg-spin 0.8s linear infinite",
+                    "boxSizing": "border-box",
+                },
+            ),
+            Div(
+                "Loading page...",
+                style={
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#212529",
+                },
+            ),
+        ],
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "minHeight": "420px",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "flexDirection": "column",
+            "gap": "14px",
+            "paddingTop": "96px",
+            "boxSizing": "border-box",
+            "backgroundColor": "rgba(255, 255, 255, 0.78)",
+            "zIndex": "1400",
+            "pointerEvents": "auto",
+        },
+    )
+
+
 def build_plot_download_controls(graph_id: str) -> Div:
     """
     Build plot download controls for CSV, PNG, SVG, and HTML exports.
