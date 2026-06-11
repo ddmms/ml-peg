@@ -49,10 +49,12 @@ THRESHOLD_ROUND_DIGITS = 10
 
 def _store_data_equal(left: Any, right: Any) -> bool:
     """
-    Compare Dash store payloads while treating NaN values as equal.
+    Check whether two Dash store payloads represent the same table state.
 
-    Python's normal equality treats ``nan != nan``, which would make unchanged
-    table payloads look different and retrigger downstream callbacks.
+    Used before returning callback outputs so unchanged stores can be returned
+    as ``dash.no_update``. This treats matching ``NaN`` values as equal because
+    table rows can contain missing numeric values, and Python's normal equality
+    would otherwise treat unchanged rows as different.
 
     Parameters
     ----------
@@ -64,7 +66,7 @@ def _store_data_equal(left: Any, right: Any) -> bool:
     Returns
     -------
     bool
-        Whether both payloads are equivalent for update-skipping purposes.
+        Whether both payloads can be treated as unchanged.
     """
     if left is right:
         return True
