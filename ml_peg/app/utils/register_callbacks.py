@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from numbers import Number
 from typing import Any, Literal
 
 import dash
@@ -44,22 +45,52 @@ from ml_peg.app.utils.utils import (
 
 THRESHOLD_INPUT_STEP = 0.0001
 THRESHOLD_ROUND_DIGITS = 10
-SCORES_LOADING_OVERLAY_VISIBLE_STYLE = {
-    "position": "absolute",
-    "top": "0",
-    "right": "0",
-    "bottom": "0",
-    "left": "0",
-    "minHeight": "180px",
-    "display": "flex",
-    "alignItems": "center",
-    "justifyContent": "center",
-    "flexDirection": "column",
-    "gap": "14px",
-    "backgroundColor": "rgba(255, 255, 255, 0.78)",
-    "zIndex": "1500",
-    "pointerEvents": "auto",
-}
+
+
+def _store_data_equal(left: Any, right: Any) -> bool:
+    """
+    Compare Dash store payloads while treating NaN values as equal.
+
+    Python's normal equality treats ``nan != nan``, which would make unchanged
+    table payloads look different and retrigger downstream callbacks.
+
+    Parameters
+    ----------
+    left
+        First Dash store payload to compare.
+    right
+        Second Dash store payload to compare.
+
+    Returns
+    -------
+    bool
+        Whether both payloads are equivalent for update-skipping purposes.
+    """
+    if left is right:
+        return True
+
+    if isinstance(left, Number) and isinstance(right, Number):
+        try:
+            if pd.isna(left) and pd.isna(right):
+                return True
+        except TypeError:
+            pass
+        return left == right
+
+    if isinstance(left, dict) and isinstance(right, dict):
+        if left.keys() != right.keys():
+            return False
+        return all(_store_data_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, list) and isinstance(right, list):
+        if len(left) != len(right):
+            return False
+        return all(
+            _store_data_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+
+    return left == right
 
 
 def enforce_threshold_direction(
@@ -1280,6 +1311,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 "app": app,
                 "weight_state": State(f"{app.table_id}-weight-store", "data"),
                 "threshold_state": State(f"{app.table_id}-thresholds-store", "data"),
+                "computed_state": State(f"{app.table_id}-computed-store", "data"),
+                "raw_state": State(f"{app.table_id}-raw-data-store", "data"),
             }
         )
 
@@ -1292,10 +1325,16 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
             ]
         )
-    outputs.append(Output("scores-loading-store", "data"))
     states = []
     for entry in app_entries:
-        states.extend([entry["weight_state"], entry["threshold_state"]])
+        states.extend(
+            [
+                entry["weight_state"],
+                entry["threshold_state"],
+                entry["computed_state"],
+                entry["raw_state"],
+            ]
+        )
 
     @callback(
         outputs,
@@ -1317,8 +1356,7 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         Returns
         -------
         list
-            Updated rows for each app's computed store and raw data stores,
-            followed by a loading marker payload.
+            Updated rows for each app's computed store and raw data stores.
         """
         # Rebuild inputs for each app
         per_app_state = {}
@@ -1329,6 +1367,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             per_app_state[app.table_id] = {
                 "weights": next(iterator),
                 "thresholds": next(iterator),
+                "computed": next(iterator),
+                "raw": next(iterator),
             }
 
         results = []
@@ -1338,6 +1378,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             state = per_app_state[app.table_id]
             weights = state["weights"]
             thresholds = state["thresholds"]
+            current_scored_rows = state["computed"]
+            current_metrics_data = state["raw"]
 
             updated_data = app.filter_table(elements)
 
@@ -1347,7 +1389,14 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             # Update stored scores per metric
             scored_rows = calc_metric_scores(updated_data, thresholds)
 
-            results.extend([scored_rows, metrics_data])
+            if _store_data_equal(scored_rows, current_scored_rows):
+                results.append(no_update)
+            else:
+                results.append(scored_rows)
 
-        results.append({"excluded_elements": elements or []})
+            if _store_data_equal(metrics_data, current_metrics_data):
+                results.append(no_update)
+            else:
+                results.append(metrics_data)
+
         return results

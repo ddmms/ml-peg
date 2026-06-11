@@ -548,10 +548,11 @@ def register_element_filter_callbacks() -> None:
         Input("element-filter-exclude-all", "n_clicks"),
         Input("element-filter-clear", "n_clicks"),
         Input({"type": "element-filter-preset", "index": ALL}, "n_clicks"),
+        State("element-filter", "data"),
         State("element-filter-pending", "data"),
         prevent_initial_call=True,
     )
-    def apply_or_clear(_apply, _exclude_all, _clear, _presets, pending):
+    def apply_or_clear(_apply, _exclude_all, _clear, _presets, current, pending):
         """
         Apply, clear, or bulk-update the element exclusion selection.
 
@@ -565,6 +566,8 @@ def register_element_filter_callbacks() -> None:
             Click count for the Clear button.
         _presets
             Click counts for preset element-set buttons.
+        current
+            Currently committed element exclusion selection.
         pending
             Currently pending element exclusion selection.
 
@@ -574,12 +577,23 @@ def register_element_filter_callbacks() -> None:
             Committed element filter value and updated pending selection.
         """
         trigger = ctx.triggered_id
+        current = sorted(current or [])
+        pending = sorted(pending or [])
         if trigger == "element-filter-apply":
-            return pending or [], no_update
+            if pending == current:
+                raise PreventUpdate
+            return pending, no_update
         if trigger == "element-filter-exclude-all":
+            if sorted(all_symbols) == pending:
+                raise PreventUpdate
             return no_update, all_symbols
         if trigger == "element-filter-clear":
+            if not current and not pending:
+                raise PreventUpdate
             return [], []
         if isinstance(trigger, dict) and trigger.get("type") == "element-filter-preset":
-            return no_update, _preset_excluded_symbols(trigger["index"])
+            preset_excluded = _preset_excluded_symbols(trigger["index"])
+            if sorted(preset_excluded) == pending:
+                raise PreventUpdate
+            return no_update, preset_excluded
         raise PreventUpdate
