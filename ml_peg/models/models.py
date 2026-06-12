@@ -7,8 +7,9 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
-from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
+
+from mlipx import GenericASECalculator as MlipxGenericASECalc
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
@@ -124,6 +125,45 @@ class PetMadCalc(GenericASECalc):
             kwargs["dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class VivaceCalc(SumCalc):
+    """Dataclass for Vivace calculator."""
+
+    model_path: str
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Unused precision argument, kept for the common model API.
+        **kwargs
+            Keyword arguments passed to the Vivace calculator.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE calculator.
+        """
+        from simpoly.vivace.calculator import MLFFCalculator
+
+        kwargs.update(self.kwargs)
+        calc = MLFFCalculator(model_path=self.model_path, **kwargs)
+
+        # Vivace sets dtype from checkpoint metadata inside MLFFCalculator.
+        # Leave precision/overwrite_dtype untouched unless SimPoly exposes it.
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        if device is not None:
+            calc.device = device
+            calc.model = calc.model.to(device=device)
+
+        return calc
 
 
 # https://github.com/orbital-materials/orb-models
