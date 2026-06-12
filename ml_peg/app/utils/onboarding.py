@@ -38,6 +38,9 @@ ONBOARDING_SLIDES: list[dict[str, str]] = [
     },
 ]
 
+TUTORIAL_BUTTON_Z_INDEX = "1600"
+ONBOARDING_MODAL_Z_INDEX = "2000"
+
 
 def _overlay_style(display: bool = False) -> dict[str, str]:
     """
@@ -63,7 +66,7 @@ def _overlay_style(display: bool = False) -> dict[str, str]:
         "display": "flex",
         "alignItems": "center",
         "justifyContent": "center",
-        "zIndex": "1050",
+        "zIndex": ONBOARDING_MODAL_Z_INDEX,
         "padding": "20px",
     }
     base["display"] = "flex" if display else "none"
@@ -179,7 +182,7 @@ def build_tutorial_button() -> html.Button:
             "cursor": "pointer",
             "fontWeight": 600,
             "fontSize": "14px",
-            "zIndex": "1000",
+            "zIndex": TUTORIAL_BUTTON_Z_INDEX,
             "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
             "transition": "all 0.2s ease",
         },
