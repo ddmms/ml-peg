@@ -525,6 +525,7 @@ def build_loading_summary_table(table: DataTable) -> Loading:
             "element-filter": "data",
             table.id: ["data", "style_data_conditional"],
         },
+        show_initially=False,
         delay_hide=250,
         overlay_style={"visibility": "visible", "opacity": 1},
         parent_style={"position": "relative", "width": "fit-content"},

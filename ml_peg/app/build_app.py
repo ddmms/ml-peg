@@ -1032,6 +1032,7 @@ def build_nav(
                                     fullscreen=False,
                                     custom_spinner=build_page_loading_spinner(),
                                     target_components={"page-content": "children"},
+                                    show_initially=False,
                                     delay_hide=300,
                                     overlay_style={
                                         "visibility": "visible",
