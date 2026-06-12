@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase import units
 from ase.io import read, write
 import numpy as np
 import pytest

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import units
 from ase.constraints import FixAtoms
 from ase.io import read, write
 from ase.optimize import BFGS
@@ -49,6 +48,8 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
 
     for system in systems:
         slab = read(surface_configurations / f"{system}.xyz")
+        slab.info.setdefault("charge", 0)
+        slab.info.setdefault("spin", 1)
         slab.info["system"] = system
         slab.calc = calc
 
