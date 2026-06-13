@@ -122,6 +122,7 @@ def test_mpconf196(mlip: tuple[str, Any]) -> None:
         model_abs_energies = []
         ref_abs_energies = []
         current_molecule_labels = []
+        current_atoms_list = []
 
         # Get reference and predicted energy for each conformer
         for label, e_ref in ref_energies.items():
@@ -143,23 +144,22 @@ def test_mpconf196(mlip: tuple[str, Any]) -> None:
                 model_abs_energies.append(np.nan)
             ref_abs_energies.append(e_ref)
             current_molecule_labels.append(label)
+            current_atoms_list.append(atoms)
+
+        # ⚡ Bolt: Cache structures and hoist mean calculation to prevent I/O
+        # and redundant math
+        mean_ref_abs_energies = np.mean(ref_abs_energies)
+        mean_model_abs_energies = np.mean(model_abs_energies)
 
         # Get energies relative to average conformer energies
-        for label, e_model in zip(
-            current_molecule_labels, model_abs_energies, strict=True
+        for label, e_model, atoms in zip(
+            current_molecule_labels, model_abs_energies, current_atoms_list, strict=True
         ):
-            molecule_label = label.split("_")[0]
-            conformer_label = label.split("_")[1]
-            if label[-1].isnumeric():
-                xyz_fname = f"{molecule_label}{conformer_label}.xyz"
-            else:
-                xyz_fname = f"{molecule_label}_{conformer_label}.xyz"
-            atoms = get_atoms(data_path / xyz_fname)
             atoms.translate(-atoms.get_center_of_mass())
-            atoms.info["ref_rel_energy"] = ref_energies[label] - np.mean(
-                ref_abs_energies
-            )
-            atoms.info["model_rel_energy"] = e_model - np.mean(model_abs_energies)
+            atoms.info["ref_rel_energy"] = ref_energies[label] - mean_ref_abs_energies
+            atoms.info["model_rel_energy"] = e_model - mean_model_abs_energies
+
+            atoms.calc = None
 
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)

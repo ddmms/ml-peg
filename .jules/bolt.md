@@ -5,3 +5,7 @@
 ## 2024-05-19 - Caching YAML Load for Framework Registry
 **Learning:** `yaml.safe_load` on `frameworks.yml` within `load_framework_registry()` was taking ~2-3 ms per call and it was repeatedly called for every framework entry via `get_framework_config()`. This was a micro-bottleneck, especially when dealing with lists or multiple frameworks.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to `load_framework_registry()` and `get_framework_config()` to avoid caching a mutable dictionary directly and avoid repeated YAML I/O parsing.
+
+## 2024-05-19 - Caching and Hoisting in Conformer Calculations
+**Learning:** Conformer energy calculations typically contain redundant file reads (e.g. using `read()` repeatedly for the same structure) and repeated `np.mean` calculations within nested loops, causing unnecessary I/O and computation overhead.
+**Action:** Cache structure objects (`ase.Atoms`) in a list during the first pass and reuse them. Hoist constant calculations like `np.mean` out of loops. When reusing `ase.Atoms` objects across loops, explicitly clear the calculator (`atoms.calc = None`) before disk output if a structure-only write is required, and ensure that original geometry-modifying operations are preserved right before writing to avoid functional regressions.
