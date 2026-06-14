@@ -5,3 +5,7 @@
 ## 2024-05-19 - Caching YAML Load for Framework Registry
 **Learning:** `yaml.safe_load` on `frameworks.yml` within `load_framework_registry()` was taking ~2-3 ms per call and it was repeatedly called for every framework entry via `get_framework_config()`. This was a micro-bottleneck, especially when dealing with lists or multiple frameworks.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to `load_framework_registry()` and `get_framework_config()` to avoid caching a mutable dictionary directly and avoid repeated YAML I/O parsing.
+
+## 2024-05-20 - Pandas iteration and redundant IO in nested loops
+**Learning:** Using `iterrows()` is a known pandas bottleneck. When iterating through structures, reading `ase.Atoms` repeatedly inside inner loops multiplies the IO penalty, especially when operations like `translate()` are re-run on identically read files.
+**Action:** Always replace `iterrows()` with `itertuples()` or `to_dict('records')` for faster row access. Cache `ase.Atoms` objects in lists when processing them in multi-pass loops to prevent redundant disk IO and repeated calculations.
