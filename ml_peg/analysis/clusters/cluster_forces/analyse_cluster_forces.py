@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ase.atoms import Atoms
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    load_metrics_config,
+    mae,
+    sample_density_grid,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -30,37 +35,30 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _metric_name(cluster_size: int) -> str:
-    """
-    Return the metric name for a cluster size.
+REFERENCES = (
+    {
+        "key": "mad2",
+        "label": "MAD2",
+        "force_key": "mad2_ref_forces",
+        "level_of_theory": "r2SCAN",
+    },
+    {
+        "key": "omol25",
+        "label": "OMOL25",
+        "force_key": "omol25_ref_forces",
+        "level_of_theory": "ωB97M-V/def2-TZVPD",
+    },
+)
+PRED_FORCES_KEY = "pred_forces"
 
-    Parameters
-    ----------
-    cluster_size
-        Number of atoms in the cluster.
 
-    Returns
-    -------
-    str
-        Metric label.
-    """
-    return f"Force MAE ({cluster_size} atoms)"
+def _metric_name(reference: dict[str, str], cluster_size: int) -> str:
+    # build metric names consistently with metrics.yml and the app
+    return f"{reference['label']} Force MAE ({cluster_size} atoms)"
 
 
 def _load_structs(model: str) -> list[Atoms] | None:
-    """
-    Load evaluated clusters for a model.
-
-    Parameters
-    ----------
-    model
-        Model identifier.
-
-    Returns
-    -------
-    list[ase.atoms.Atoms] | None
-        Evaluated clusters, or ``None`` when no output exists.
-    """
+    # load evaluated clusters for a model, if present
     path = CALC_PATH / model / BENCHMARK_FILENAME
     if not path.exists():
         return None
@@ -70,49 +68,8 @@ def _load_structs(model: str) -> list[Atoms] | None:
     return structs
 
 
-def _forces(structs: list[Atoms]) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Extract flattened reference and predicted force components.
-
-    Parameters
-    ----------
-    structs
-        Evaluated clusters.
-
-    Returns
-    -------
-    tuple[numpy.ndarray, numpy.ndarray]
-        Flattened reference and predicted force components.
-    """
-    ref = np.concatenate(
-        [
-            np.asarray(atoms.arrays["ref_forces"], dtype=float).reshape(-1)
-            for atoms in structs
-        ]
-    )
-    pred = np.concatenate(
-        [
-            np.asarray(atoms.arrays["pred_forces"], dtype=float).reshape(-1)
-            for atoms in structs
-        ]
-    )
-    return ref, pred
-
-
 def _group_by_cluster_size(structs: list[Atoms]) -> dict[int, list[Atoms]]:
-    """
-    Group evaluated clusters by atom count.
-
-    Parameters
-    ----------
-    structs
-        Evaluated clusters.
-
-    Returns
-    -------
-    dict[int, list[ase.atoms.Atoms]]
-        Clusters grouped by number of atoms.
-    """
+    # group evaluated clusters by atom count
     grouped: dict[int, list[Atoms]] = {size: [] for size in CLUSTER_SIZES}
     for atoms in structs:
         cluster_size = len(atoms)
@@ -121,153 +78,220 @@ def _group_by_cluster_size(structs: list[Atoms]) -> dict[int, list[Atoms]]:
     return grouped
 
 
+def _force_components(
+    structs: list[Atoms],
+    reference: dict[str, str],
+) -> tuple[np.ndarray, np.ndarray, list[Atoms], int]:
+    # extract finite force components and remember source structures for plotting
+    ref_components: list[np.ndarray] = []
+    pred_components: list[np.ndarray] = []
+    component_structs: list[Atoms] = []
+    excluded_components = 0
+
+    for atoms in structs:
+        ref_forces = np.asarray(atoms.arrays[reference["force_key"]], dtype=float)
+        ref_flat = ref_forces.reshape(-1)
+        pred_flat = np.asarray(atoms.arrays[PRED_FORCES_KEY], dtype=float).reshape(-1)
+        finite_mask = np.isfinite(ref_flat) & np.isfinite(pred_flat)
+
+        excluded_components += int((~finite_mask).sum())
+        if not finite_mask.any():
+            continue
+
+        ref_components.append(ref_flat[finite_mask])
+        pred_components.append(pred_flat[finite_mask])
+        component_structs.extend([atoms] * int(finite_mask.sum()))
+
+    if not ref_components:
+        return np.array([]), np.array([]), [], excluded_components
+
+    return (
+        np.concatenate(ref_components),
+        np.concatenate(pred_components),
+        component_structs,
+        excluded_components,
+    )
+
+
+def _write_density_trajectories(
+    *,
+    ref_vals: np.ndarray,
+    pred_vals: np.ndarray,
+    component_structs: list[Atoms],
+    traj_dir: Path,
+) -> None:
+    # write one extxyz trajectory per sampled density point for structure viewing
+    if len(ref_vals) == 0 or len(pred_vals) == 0:
+        return
+
+    _, _, sampled_mapping = sample_density_grid(ref_vals, pred_vals)
+    traj_dir.mkdir(parents=True, exist_ok=True)
+    for point_idx, source_indices in enumerate(sampled_mapping):
+        frames = [component_structs[source_idx] for source_idx in source_indices]
+        write(traj_dir / f"{point_idx}.extxyz", frames)
+
+
 @pytest.fixture
-def force_data() -> dict[str, dict[int, dict[str, object]]]:
+def force_data() -> dict[str, dict[str, dict[int, dict[str, Any]]]]:
     """
-    Load force components for all available model outputs, split by cluster size.
+    Load force components for all available model outputs.
 
     Returns
     -------
-    dict[str, dict[int, dict[str, object]]]
-        Mapping from model name and cluster size to flattened force arrays and metadata.
+    dict[str, dict[str, dict[int, dict[str, Any]]]]
+        Mapping from model name, reference key, and cluster size to force arrays and
+        metadata.
     """
-    results: dict[str, dict[int, dict[str, object]]] = {}
+    results: dict[str, dict[str, dict[int, dict[str, Any]]]] = {}
     for model in MODELS:
         structs = _load_structs(model)
         if structs is None:
             continue
 
-        model_results: dict[int, dict[str, object]] = {}
-        for cluster_size, grouped_structs in _group_by_cluster_size(structs).items():
-            if not grouped_structs:
-                continue
+        grouped_structs = _group_by_cluster_size(structs)
+        model_results: dict[str, dict[int, dict[str, Any]]] = {
+            reference["key"]: {} for reference in REFERENCES
+        }
+        for reference in REFERENCES:
+            for cluster_size, structs_for_size in grouped_structs.items():
+                if not structs_for_size:
+                    continue
 
-            ref, pred = _forces(grouped_structs)
-            reference_targets = sorted(
-                {
-                    str(atoms.info.get("reference_target", "unknown"))
-                    for atoms in grouped_structs
+                ref, pred, component_structs, excluded_components = _force_components(
+                    structs_for_size, reference
+                )
+                if ref.size == 0:
+                    continue
+
+                model_results[reference["key"]][cluster_size] = {
+                    "ref": ref,
+                    "pred": pred,
+                    "component_structs": component_structs,
+                    "excluded_components": excluded_components,
+                    "n_clusters": len(structs_for_size),
+                    "n_components": int(ref.size),
+                    "reference": reference["label"],
+                    "level_of_theory": reference["level_of_theory"],
                 }
-            )
-            model_results[cluster_size] = {
-                "ref": ref,
-                "pred": pred,
-                "reference_target": ", ".join(reference_targets),
-                "n_clusters": len(grouped_structs),
-                "n_components": int(ref.size),
-                "cluster_size": cluster_size,
-            }
-        if model_results:
+
+        if any(model_results[reference["key"]] for reference in REFERENCES):
             results[model] = model_results
     return results
 
 
 @pytest.fixture
 def force_mae(
-    force_data: dict[str, dict[int, dict[str, object]]],
+    force_data: dict[str, dict[str, dict[int, dict[str, Any]]]],
 ) -> dict[str, dict[str, float]]:
     """
-    Calculate component-wise force MAE by cluster size for all available models.
+    Calculate component-wise force MAE by reference and cluster size.
 
     Parameters
     ----------
     force_data
-        Flattened force data by model and cluster size.
+        Flattened force data by model, reference, and cluster size.
 
     Returns
     -------
     dict[str, dict[str, float]]
-        Force MAE by cluster-size metric and model.
+        Force MAE by metric and model.
     """
-    results = {_metric_name(size): {} for size in CLUSTER_SIZES}
+    results = {
+        _metric_name(reference, size): {}
+        for reference in REFERENCES
+        for size in CLUSTER_SIZES
+    }
     for model, model_data in force_data.items():
-        for cluster_size, data in model_data.items():
-            results[_metric_name(cluster_size)][model] = mae(data["ref"], data["pred"])
+        for reference in REFERENCES:
+            for cluster_size, data in model_data.get(reference["key"], {}).items():
+                results[_metric_name(reference, cluster_size)][model] = float(
+                    mae(data["ref"], data["pred"])
+                )
     return results
 
 
 def _write_force_parity_plot(
+    reference: dict[str, str],
     cluster_size: int,
-    force_data: dict[str, dict[int, dict[str, object]]],
+    force_data: dict[str, dict[str, dict[int, dict[str, Any]]]],
 ) -> dict[str, dict]:
-    """
-    Write force parity data for a cluster size.
-
-    Parameters
-    ----------
-    cluster_size
-        Number of atoms in the clusters to plot.
-    force_data
-        Flattened force data by model and cluster size.
-
-    Returns
-    -------
-    dict[str, dict]
-        Density-scatter input by model for the requested cluster size.
-    """
-    data_for_size = {
-        model: model_data[cluster_size]
+    # write force parity plot data and sampled structure trajectories
+    data_for_plot = {
+        model: model_data[reference["key"]][cluster_size]
         for model, model_data in force_data.items()
-        if cluster_size in model_data
+        if cluster_size in model_data.get(reference["key"], {})
     }
 
     @plot_density_scatter(
-        filename=OUT_PATH / f"figure_force_parity_{cluster_size}mer.json",
-        title=f"{cluster_size}-atom cluster force components",
+        filename=OUT_PATH
+        / f"figure_force_parity_{reference['key']}_{cluster_size}atoms.json",
+        title=f"{reference['label']} {cluster_size}-atom cluster force components",
         x_label="Reference force / (eV/A)",
         y_label="Predicted force / (eV/A)",
         annotation_metadata={
-            "reference_target": "Reference",
+            "level_of_theory": "Level",
             "n_clusters": "Clusters",
             "n_components": "Components",
+            "excluded_components": "Excluded components",
         },
     )
     def plot() -> dict[str, dict]:
-        """
-        Build density-scatter input for the requested cluster size.
-
-        Returns
-        -------
-        dict[str, dict]
-            Density-scatter input by model.
-        """
+        # build density-scatter input
         return {
             model: {
                 "ref": data["ref"],
                 "pred": data["pred"],
                 "meta": {
-                    "reference_target": data["reference_target"],
+                    "level_of_theory": data["level_of_theory"],
                     "n_clusters": data["n_clusters"],
                     "n_components": data["n_components"],
+                    "excluded_components": data["excluded_components"],
                 },
             }
-            for model, data in data_for_size.items()
+            for model, data in data_for_plot.items()
         }
+
+    for model, data in data_for_plot.items():
+        _write_density_trajectories(
+            ref_vals=data["ref"],
+            pred_vals=data["pred"],
+            component_structs=data["component_structs"],
+            traj_dir=OUT_PATH
+            / model
+            / "density_traj"
+            / f"{reference['key']}_{cluster_size}atoms",
+        )
 
     return plot()
 
 
 @pytest.fixture
 def force_parity_plots(
-    force_data: dict[str, dict[int, dict[str, object]]],
-) -> dict[int, dict[str, dict]]:
+    force_data: dict[str, dict[str, dict[int, dict[str, Any]]]],
+) -> dict[str, dict[str, dict]]:
     """
-    Write force parity plots for each cluster size.
+    Write force parity plots for each reference and cluster size.
 
     Parameters
     ----------
     force_data
-        Flattened force data by model and cluster size.
+        Flattened force data by model, reference, and cluster size.
 
     Returns
     -------
-    dict[int, dict[str, dict]]
-        Plot input data by cluster size.
+    dict[str, dict[str, dict]]
+        Plot input data by metric name.
     """
     return {
-        cluster_size: _write_force_parity_plot(cluster_size, force_data)
+        _metric_name(reference, cluster_size): _write_force_parity_plot(
+            reference, cluster_size, force_data
+        )
+        for reference in REFERENCES
         for cluster_size in CLUSTER_SIZES
-        if any(cluster_size in model_data for model_data in force_data.values())
+        if any(
+            cluster_size in model_data.get(reference["key"], {})
+            for model_data in force_data.values()
+        )
     }
 
 
@@ -280,7 +304,7 @@ def force_parity_plots(
 )
 def metrics(
     force_mae: dict[str, dict[str, float]],
-    force_parity_plots: dict[int, dict[str, dict]],
+    force_parity_plots: dict[str, dict[str, dict]],
 ) -> dict[str, dict]:
     """
     Build the benchmark table JSON.
@@ -288,7 +312,7 @@ def metrics(
     Parameters
     ----------
     force_mae
-        Component-wise force MAE by cluster-size metric and model.
+        Component-wise force MAE by metric and model.
     force_parity_plots
         Force parity plot data; included to ensure the figures are written.
 
