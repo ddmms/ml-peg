@@ -34,6 +34,7 @@ from ml_peg.app.utils.onboarding import (
 )
 from ml_peg.app.utils.register_callbacks import (
     register_benchmark_to_category_callback,
+    register_filter_loading_callback,
     register_filter_tables_callback,
 )
 from ml_peg.app.utils.utils import (
@@ -1027,6 +1028,10 @@ def build_nav(
                                     storage_type="session",
                                     data=summary_table.data,
                                 ),
+                                Store(
+                                    id="filter-recompute-done",
+                                    storage_type="memory",
+                                ),
                                 Loading(
                                     Div(id="page-content"),
                                     fullscreen=False,
@@ -1250,6 +1255,7 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
 
     register_filter_tables_callback(all_apps)
     register_element_filter_callbacks()
+    register_filter_loading_callback()
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(

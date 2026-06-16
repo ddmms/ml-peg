@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import time
 from typing import Any, Literal
 
 import dash
 from dash import (
+    ALL,
     MATCH,
     ClientsideFunction,
     Dash,
@@ -1279,6 +1281,9 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
             ]
         )
+    # Always-set "done" tick so the filter-loading overlay can hide once the
+    # recompute has finished, regardless of which table stores actually changed.
+    outputs.append(Output("filter-recompute-done", "data"))
     states = []
     for entry in app_entries:
         states.extend(
@@ -1315,6 +1320,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             filtered metric rows used as the raw table source. Unchanged outputs
             are returned as ``dash.no_update``.
         """
+        start = time.monotonic()
+
         # Rebuild inputs for each app
         per_app_state = {}
         iterator = iter(args)
@@ -1358,4 +1365,86 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             else:
                 results.append(metrics_data)
 
+        # Hold the result until a minimum time has elapsed so the loading overlay
+        # stays visible long enough to read instead of flashing on fast recomputes.
+        min_loading_s = 0.15
+        remaining = min_loading_s - (time.monotonic() - start)
+        if remaining > 0:
+            time.sleep(remaining)
+
+        results.append(time.monotonic())
         return results
+
+
+def register_filter_loading_callback() -> None:
+    """
+    Drive the filter-loading overlays and disable Apply during a recompute.
+
+    Applying an element filter is the only action that commits ``element-filter``
+    and kicks off the (slow) table recompute. Show and hide are split into two
+    independent callbacks on purpose: ``show`` is triggered by ``element-filter``
+    only, so Dash can run it immediately and in parallel with ``recompute_tables``
+    rather than gating it behind the recompute's output. ``hide`` is triggered by
+    the ``filter-recompute-done`` tick that ``recompute_tables`` sets when it
+    finishes, reverting overlays to ``"auto"`` (so their ``target_components``
+    cover the brief post-recompute render) and re-enabling Apply.
+
+    Pattern-matching ``ALL`` only targets overlays present in the current layout,
+    so the spinner is automatically scoped to the visible table. ``element-filter``
+    never changes on initial load, so ``show`` never latches at rest.
+    """
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("element-filter", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def show_filter_loading(_filter_data, overlay_ids):
+        """
+        Show overlays and disable Apply when a filter is committed.
+
+        Parameters
+        ----------
+        _filter_data
+            Committed element filter; its change triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"show"`` for every present overlay and ``True`` to disable Apply.
+        """
+        return ["show"] * len(overlay_ids), True
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("filter-recompute-done", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def hide_filter_loading(_done, overlay_ids):
+        """
+        Revert overlays to auto and re-enable Apply once recompute finishes.
+
+        Parameters
+        ----------
+        _done
+            Recompute completion tick from ``recompute_tables``; its change
+            triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"auto"`` for every present overlay and ``False`` to enable Apply.
+        """
+        return ["auto"] * len(overlay_ids), False

@@ -502,6 +502,42 @@ def _build_summary_table_wrapper(table: DataTable) -> Div:
     return Div(table, style={"position": "relative", "width": "fit-content"})
 
 
+def build_filter_overlay(table_id: str, child) -> Loading:
+    """
+    Wrap a table in a filter-aware loading overlay.
+
+    The overlay id uses the ``{"type": "filter-overlay", "index": table_id}``
+    pattern so a single callback can drive every table's spinner. ``display``
+    starts as ``"auto"`` (driven by ``target_components`` for weight/threshold
+    and post-recompute renders); the filter-loading callback flips it to
+    ``"show"`` for the duration of an Apply recompute, then back to ``"auto"``.
+
+    Parameters
+    ----------
+    table_id
+        Id of the wrapped DataTable, used for both the overlay pattern index and
+        the loading target component.
+    child
+        Component tree to render under the overlay.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to the table.
+    """
+    return Loading(
+        child,
+        id={"type": "filter-overlay", "index": table_id},
+        fullscreen=False,
+        custom_spinner=build_table_loading_spinner(),
+        target_components={table_id: ["data", "style_data_conditional"]},
+        show_initially=False,
+        delay_hide=250,
+        overlay_style={"visibility": "visible", "opacity": 1},
+        parent_style={"position": "relative", "width": "fit-content"},
+    )
+
+
 def build_loading_summary_table(table: DataTable) -> Loading:
     """
     Wrap a summary DataTable with a local loading spinner.
@@ -517,19 +553,7 @@ def build_loading_summary_table(table: DataTable) -> Loading:
     Loading
         Loading wrapper scoped to applied filter changes and table updates.
     """
-    return Loading(
-        _build_summary_table_wrapper(table),
-        fullscreen=False,
-        custom_spinner=build_table_loading_spinner(),
-        target_components={
-            "element-filter": "data",
-            table.id: ["data", "style_data_conditional"],
-        },
-        show_initially=False,
-        delay_hide=250,
-        overlay_style={"visibility": "visible", "opacity": 1},
-        parent_style={"position": "relative", "width": "fit-content"},
-    )
+    return build_filter_overlay(table.id, _build_summary_table_wrapper(table))
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
@@ -987,7 +1011,7 @@ def build_test_layout(
 
     table_section = [
         build_download_controls(table.id, row=True),
-        Div(table),
+        build_filter_overlay(table.id, Div(table)),
         Br(),
         controls_visual,
     ]
