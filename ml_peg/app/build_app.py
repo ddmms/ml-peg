@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, ctx, no_update
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, Br, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
@@ -992,6 +992,20 @@ def build_nav(
                                 "fontWeight": "500",
                                 "letterSpacing": "0.01em",
                                 "color": "#6c757d",
+                            },
+                        ),
+                        A(
+                            "📖 Read the documentation →",
+                            href="https://ddmms.github.io/ml-peg/",
+                            target="_blank",
+                            rel="noopener noreferrer",
+                            style={
+                                "display": "block",
+                                "marginTop": "6px",
+                                "fontSize": "0.5em",
+                                "fontWeight": "600",
+                                "color": "#119DFF",
+                                "textDecoration": "none",
                             },
                         ),
                     ],
