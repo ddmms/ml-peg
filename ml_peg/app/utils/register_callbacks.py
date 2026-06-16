@@ -43,6 +43,7 @@ from ml_peg.app.utils.utils import (
     get_scores,
     get_threshold_colours,
     store_data_equal,
+    weight_input_style,
 )
 
 THRESHOLD_INPUT_STEP = 0.0001
@@ -890,11 +891,12 @@ def register_weight_callbacks(
 
     @callback(
         Output(f"{input_id}-input", "value"),
+        Output(f"{input_id}-input", "style"),
         Input(f"{table_id}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float]) -> float:
+    def sync_inputs(stored_weights: dict[str, float]) -> tuple[float, dict[str, str]]:
         """
         Sync weight values between the text input and Store.
 
@@ -905,10 +907,11 @@ def register_weight_callbacks(
 
         Returns
         -------
-        float
-            Weight to set text input value.
+        tuple[float, dict[str, str]]
+            Weight to set text input value, and its style (greyed when zero).
         """
-        return stored_weights[column]
+        weight = stored_weights[column]
+        return weight, weight_input_style(weight)
 
 
 def register_normalization_callbacks(
