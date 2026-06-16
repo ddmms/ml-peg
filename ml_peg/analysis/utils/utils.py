@@ -399,7 +399,7 @@ def calc_metric_scores(
         return metrics_data
 
     metric_columns = [
-        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id"}
+        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id", "link"}
     ]
     threshold_lookup = {
         key: (entry["good"], entry["bad"]) for key, entry in cleaned_thresholds.items()
@@ -466,7 +466,7 @@ def calc_table_scores(
         return metrics_data if not return_scores else (metrics_data, metrics_scores)
 
     metric_columns = [
-        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id"}
+        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id", "link"}
     ]
     metric_weights = {key: weights.get(key, 1.0) for key in metric_columns}
 

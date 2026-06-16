@@ -875,7 +875,7 @@ def format_metric_columns(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     updated_columns: list[dict[str, object]] = []
 
     for column in columns:
@@ -957,7 +957,7 @@ def format_tooltip_headers(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
 
     updated: dict[str, Any] = {}
     for key, entry in tooltip_header.items():

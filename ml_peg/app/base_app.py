@@ -84,7 +84,7 @@ class BaseApp(ABC):
         self.metrics = [
             col["id"]
             for col in self.table.columns
-            if col["id"] not in ("MLIP", "Score", "id")
+            if col["id"] not in ("MLIP", "Score", "id", "link")
         ]
         self.original_table = deepcopy(self.table)
         self.layout = self.build_layout()

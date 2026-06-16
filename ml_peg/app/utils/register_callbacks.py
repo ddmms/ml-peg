@@ -247,6 +247,14 @@ def register_summary_table_callbacks(
             metric_levels=metric_levels,
             model_configs=model_configs,
         )
+        # Keep the model-link column white, even on greyed no-data rows.
+        style_with_warnings = style_with_warnings + [
+            {
+                "if": {"column_id": "link"},
+                "backgroundColor": "white",
+                "backgroundImage": "none",
+            }
+        ]
         return filtered_rows, style_with_warnings, tooltip_data
 
 
