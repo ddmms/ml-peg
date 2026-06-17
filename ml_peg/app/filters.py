@@ -554,12 +554,12 @@ def register_element_filter_callbacks() -> None:
     )
     def apply_or_clear(_apply, _exclude_all, _clear, _presets, current, pending):
         """
-        Apply, clear, or bulk-update the element exclusion selection.
+        Handle "Apply", clear, or bulk-update element exclusion actions.
 
         Parameters
         ----------
         _apply
-            Click count for the Apply button.
+            Click count for the "Apply" button.
         _exclude_all
             Click count for the Exclude all button.
         _clear

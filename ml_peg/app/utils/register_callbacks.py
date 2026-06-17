@@ -1318,7 +1318,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             Callback outputs ordered as two entries per benchmark app: the
             rescored table rows used for normalised display, followed by the
             filtered metric rows used as the raw table source. Unchanged outputs
-            are returned as ``dash.no_update``.
+            are returned as ``dash.no_update``. The final entry is the
+            ``filter-recompute-done`` tick that tells the loading overlay to hide.
         """
         start = time.monotonic()
 
@@ -1372,13 +1373,17 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         if remaining > 0:
             time.sleep(remaining)
 
+        # Final output drives the filter-recompute-done store. It is a timestamp
+        # so the value changes on every recompute: hide_filter_loading
+        # fires only when filter-recompute-done changes, so a constant value would
+        # stop hiding the overlay after the first apply.
         results.append(time.monotonic())
         return results
 
 
 def register_filter_loading_callback() -> None:
     """
-    Drive the filter-loading overlays and disable "Apply" button during a recompute.
+    Drive the filter-loading overlays and disable the "Apply" button during a recompute.
 
     Clicking the "Apply" button is the only action that commits ``element-filter``
     and kicks off the (slow) table recompute. Show and hide are split into two
@@ -1387,11 +1392,11 @@ def register_filter_loading_callback() -> None:
     rather than gating it behind the recompute's output. ``hide`` is triggered by
     the ``filter-recompute-done`` tick that ``recompute_tables`` sets when it
     finishes, reverting overlays to ``"auto"`` (so their ``target_components``
-    cover the brief post-recompute render) and re-enabling Apply.
+    cover the brief post-recompute render) and re-enabling the "Apply" button.
 
     Pattern-matching ``ALL`` only targets overlays present in the current layout,
     so the spinner is automatically scoped to the visible table. ``element-filter``
-    never changes on initial load, so ``show`` never latches at rest.
+    only changes after "Apply", so the show callback does not run on initial load.
     """
 
     @callback(
@@ -1405,7 +1410,7 @@ def register_filter_loading_callback() -> None:
     )
     def show_filter_loading(_filter_data, overlay_ids):
         """
-        Show overlays and disable "Apply" button when a filter is committed.
+        Show overlays and disable the "Apply" button when a filter is committed.
 
         Parameters
         ----------
@@ -1417,7 +1422,8 @@ def register_filter_loading_callback() -> None:
         Returns
         -------
         tuple
-            ``"show"`` for every present overlay and ``True`` to disable Apply.
+            ``"show"`` for every present overlay and ``True`` to disable the
+            "Apply" button.
         """
         return ["show"] * len(overlay_ids), True
 
@@ -1432,7 +1438,7 @@ def register_filter_loading_callback() -> None:
     )
     def hide_filter_loading(_done, overlay_ids):
         """
-        Revert overlays to auto and re-enable Apply once recompute finishes.
+        Hide overlays and re-enable the "Apply" button.
 
         Parameters
         ----------
@@ -1445,6 +1451,7 @@ def register_filter_loading_callback() -> None:
         Returns
         -------
         tuple
-            ``"auto"`` for every present overlay and ``False`` to enable Apply.
+            ``"auto"`` for every present overlay and ``False`` to enable the
+            "Apply" button.
         """
         return ["auto"] * len(overlay_ids), False

@@ -482,26 +482,6 @@ def build_table_loading_spinner() -> Div:
     )
 
 
-def _build_summary_table_wrapper(table: DataTable) -> Div:
-    """
-    Wrap a summary DataTable in a small layout box.
-
-    Returning the table directly from route callbacks can make Dash repeatedly
-    remount and remeasure it, causing a maximum update depth error.
-
-    Parameters
-    ----------
-    table
-        Summary table to wrap.
-
-    Returns
-    -------
-    Div
-        Positioned wrapper sized to the rendered table.
-    """
-    return Div(table, style={"position": "relative", "width": "fit-content"})
-
-
 def build_filter_overlay(table_id: str, child) -> Loading:
     """
     Wrap a table in a filter-aware loading overlay.
@@ -510,7 +490,7 @@ def build_filter_overlay(table_id: str, child) -> Loading:
     pattern so a single callback can drive every table's spinner. ``display``
     starts as ``"auto"`` (driven by ``target_components`` for weight/threshold
     and post-recompute renders); the filter-loading callback flips it to
-    ``"show"`` for the duration of an Apply recompute, then back to ``"auto"``.
+    ``"show"`` for the duration of an "Apply" recompute, then back to ``"auto"``.
 
     Parameters
     ----------
@@ -553,7 +533,7 @@ def build_loading_summary_table(table: DataTable) -> Loading:
     Loading
         Loading wrapper scoped to applied filter changes and table updates.
     """
-    return build_filter_overlay(table.id, _build_summary_table_wrapper(table))
+    return build_filter_overlay(table.id, Div(table))
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
