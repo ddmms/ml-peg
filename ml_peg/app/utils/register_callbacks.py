@@ -1378,9 +1378,9 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
 
 def register_filter_loading_callback() -> None:
     """
-    Drive the filter-loading overlays and disable Apply during a recompute.
+    Drive the filter-loading overlays and disable "Apply" button during a recompute.
 
-    Applying an element filter is the only action that commits ``element-filter``
+    Clicking the "Apply" button is the only action that commits ``element-filter``
     and kicks off the (slow) table recompute. Show and hide are split into two
     independent callbacks on purpose: ``show`` is triggered by ``element-filter``
     only, so Dash can run it immediately and in parallel with ``recompute_tables``
@@ -1405,7 +1405,7 @@ def register_filter_loading_callback() -> None:
     )
     def show_filter_loading(_filter_data, overlay_ids):
         """
-        Show overlays and disable Apply when a filter is committed.
+        Show overlays and disable "Apply" button when a filter is committed.
 
         Parameters
         ----------
