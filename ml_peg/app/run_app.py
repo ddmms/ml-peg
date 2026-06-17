@@ -34,35 +34,6 @@ app = Dash(
     update_title=None,  # prevent the tab changing to Updating... during callbacks
 )
 
-# Compact, underline-free styling for the summary-table model docs-link column.
-# Injected here because the assets folder (DATA_PATH) is not version controlled.
-app.index_string = """<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>{%title%}</title>
-        {%favicon%}
-        {%css%}
-        <style>
-            td[data-dash-column="link"] { font-size: 14px; padding: 0; }
-            td[data-dash-column="link"] .dash-cell-value p { margin: 0; }
-            td[data-dash-column="link"] a {
-                text-decoration: none;
-                display: inline-block;
-                padding: 5px 8px;
-            }
-        </style>
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>"""
-
 # Only build app when in production, otherwise run_app's layout is missing
 if bool(os.environ.get("ML_PEG_PROD", False)):
     _build_full_app(app, "*")

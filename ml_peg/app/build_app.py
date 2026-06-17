@@ -795,9 +795,9 @@ def build_summary_table(
     tooltip_header["Score"] = "Weighted average of scores (higher is better)"
 
     # Per-model docs link, on the overall summary table only, rendered as an
-    # icon just after the model name. Icon size / underline removal live in the
-    # inline <style> in run_app.py (app.index_string), not a separate CSS file;
-    # NaN/level-of-theory greying is kept off the link column.
+    # icon just after the model name. Its styling lives in
+    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
+    # NaN/level-of-theory greying is kept off for the link column.
     if table_id == "summary-table":
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
         for row in data:
