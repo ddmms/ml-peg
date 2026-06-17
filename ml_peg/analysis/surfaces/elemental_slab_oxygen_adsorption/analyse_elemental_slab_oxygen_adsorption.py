@@ -143,7 +143,7 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if adsorption_energies[model_name]:
+        if adsorption_energies.get(model_name):
             results[model_name] = mae(
                 adsorption_energies["ref"], adsorption_energies[model_name]
             )
