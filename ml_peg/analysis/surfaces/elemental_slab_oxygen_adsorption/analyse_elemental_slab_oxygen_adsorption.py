@@ -42,7 +42,7 @@ def get_info() -> dict[str, list]:
     return get_struct_info(
         calc_path=CALC_PATH,
         glob_pattern="*.xyz",
-        index="0",
+        index="1",
         include_filenames=True,
         out_path=OUT_PATH,
     )
