@@ -1,6 +1,7 @@
 mace-mp-0a:
   module: mace.calculators
   class_name: mace_mp
+  datasets: [MPtrj]
   device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -10,6 +11,7 @@ mace-mp-0a:
 mace-mp-0b3:
   module: mace.calculators
   class_name: mace_mp
+  datasets: [MPtrj]
   device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -19,6 +21,7 @@ mace-mp-0b3:
 mace-mpa-0:
   module: mace.calculators
   class_name: mace_mp
+  datasets: [MPtrj, Alexandria]
   device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -28,6 +31,7 @@ mace-mpa-0:
 mace-omat-0:
   module: mace.calculators
   class_name: mace_mp
+  datasets: [OMAT]
   device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -60,6 +64,7 @@ mace-matpes-r2scan:
 orb-v3-consv-inf-omat:
   module: orb_models.inference.calculator
   class_name: OrbCalc
+  datasets: [OMAT]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -69,6 +74,7 @@ orb-v3-consv-inf-omat:
 orb-v3-consv-omol:
   module: orb_models.forcefield.inference.calculator
   class_name: OrbCalc
+  datasets: [OMOL]
   device: "cpu"
   trained_on_dispersion: true
   level_of_theory: PBE
