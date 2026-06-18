@@ -137,6 +137,22 @@ _PRESET_BUTTON_STYLE = {
     "cursor": "pointer",
 }
 
+_APPLY_BUTTON_STYLE = {
+    "padding": "4px 12px",
+    "fontSize": "12px",
+    "backgroundColor": "#228be6",
+    "color": "#fff",
+    "border": "none",
+    "borderRadius": "4px",
+    "cursor": "pointer",
+}
+
+# Apply style when the staged selection differs from the committed filter.
+_APPLY_BUTTON_STYLE_PENDING = {
+    **_APPLY_BUTTON_STYLE,
+    "boxShadow": "0 0 0 3px rgba(34, 139, 230, 0.35)",
+}
+
 _ELEMENT_COVERAGE_PATH = APP_ROOT / "data" / "element_coverage.json"
 
 
@@ -182,8 +198,8 @@ def _dataset_presets() -> tuple[ElementPreset, ...]:
 
     Returns
     -------
-    tuple[dict, ...]
-        One preset dict per group of identical-coverage datasets.
+    tuple[ElementPreset, ...]
+        One preset per group of identical-coverage datasets.
     """
     datasets = _load_element_coverage().get("datasets", {})
     groups: dict[frozenset[str], list[str]] = {}
@@ -556,15 +572,7 @@ def get_element_filter() -> Div:
                 "Apply",
                 id="element-filter-apply",
                 n_clicks=0,
-                style={
-                    "padding": "4px 12px",
-                    "fontSize": "12px",
-                    "backgroundColor": "#228be6",
-                    "color": "#fff",
-                    "border": "none",
-                    "borderRadius": "4px",
-                    "cursor": "pointer",
-                },
+                style=_APPLY_BUTTON_STYLE,
             ),
             Button(
                 "Exclude all",
@@ -612,12 +620,25 @@ def get_element_filter() -> Div:
         },
     )
 
+    total = len(PERIODIC_TABLE_SYMBOLS)
+    count_display = Span(
+        f"Keeping {total} / {total} elements",
+        id="element-filter-count",
+        style={
+            "display": "block",
+            "fontSize": "12px",
+            "color": "#6c757d",
+            "marginTop": "8px",
+        },
+    )
+
     filter_body = Div(
         [
             Div(
                 [grid_caption, grid_with_legend, _build_preset_section()],
                 style={"width": "fit-content"},
             ),
+            count_display,
             actions,
         ]
     )
@@ -678,12 +699,13 @@ def register_element_filter_callbacks() -> None:
 
     @callback(
         Output({"type": "element-btn", "index": ALL}, "style"),
+        Output("element-filter-count", "children"),
         Input("element-filter-pending", "data"),
         prevent_initial_call=True,
     )
     def sync_button_styles(pending):
         """
-        Synchronise element button styles with the pending selection.
+        Synchronise element button styles and kept-count with the selection.
 
         Parameters
         ----------
@@ -692,11 +714,40 @@ def register_element_filter_callbacks() -> None:
 
         Returns
         -------
-        list
-            Style dictionaries for all periodic-table element buttons.
+        tuple
+            Style dictionaries for all element buttons, and the kept-count text.
         """
         excluded = set(pending or [])
-        return [_btn_style(sym, sym in excluded) for sym in all_symbols]
+        styles = [_btn_style(sym, sym in excluded) for sym in all_symbols]
+        kept = len(all_symbols) - len(excluded & set(all_symbols))
+        return styles, f"Keeping {kept} / {len(all_symbols)} elements"
+
+    @callback(
+        Output("element-filter-apply", "children"),
+        Output("element-filter-apply", "style"),
+        Input("element-filter-pending", "data"),
+        Input("element-filter", "data"),
+        prevent_initial_call=False,
+    )
+    def flag_unapplied(pending, committed):
+        """
+        Mark the Apply button when the staged selection is not yet committed.
+
+        Parameters
+        ----------
+        pending
+            Currently pending element exclusion selection.
+        committed
+            Currently committed element filter.
+
+        Returns
+        -------
+        tuple
+            Apply button label and style reflecting whether changes are pending.
+        """
+        if set(pending or []) != set(committed or []):
+            return "Apply •", _APPLY_BUTTON_STYLE_PENDING
+        return "Apply", _APPLY_BUTTON_STYLE
 
     @callback(
         Output("element-filter", "data"),
