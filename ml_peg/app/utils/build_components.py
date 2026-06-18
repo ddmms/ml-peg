@@ -173,7 +173,7 @@ def build_weight_components(
             "Threshold metadata must be provided when use_thresholds=True."
         )
     # Identify metric columns (exclude reserved columns)
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
 
     if not columns:
@@ -797,7 +797,7 @@ def build_test_layout(
         ]
     )
 
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [
         col["id"] for col in table.columns if col.get("id") not in reserved
     ]

@@ -7,4 +7,5 @@ User guide
 
     get_started
     about
+    models
     benchmarks/index

@@ -141,7 +141,7 @@ def _default_weight_store_data(table: DataTable) -> dict[str, float]:
         and input-sync callbacks always see a complete dictionary in the
         backing ``dcc.Store``.
     """
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     weights = dict(getattr(table, "weights", None) or {})
     for column in table.columns:
         column_id = column.get("id")
@@ -794,10 +794,43 @@ def build_summary_table(
 
     tooltip_header["Score"] = "Weighted average of scores (higher is better)"
 
+    # Per-model docs link, on the overall summary table only, rendered as an
+    # icon just after the model name. Its styling lives in
+    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
+    # NaN/level-of-theory greying is kept off for the link column.
+    if table_id == "summary-table":
+        models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
+        for row in data:
+            anchor = row.get("MLIP")
+            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
+        columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
+        style_cell_conditional.append(
+            {
+                "if": {"column_id": "link"},
+                "width": "36px",
+                "minWidth": "36px",
+                "maxWidth": "36px",
+                "textAlign": "left",
+                "padding": "0",
+                "borderLeft": "none",
+            }
+        )
+        style_cell_conditional.append(
+            {"if": {"column_id": "MLIP"}, "borderRight": "none"}
+        )
+        style_with_warnings = style_with_warnings + [
+            {
+                "if": {"column_id": "link"},
+                "backgroundColor": "white",
+                "backgroundImage": "none",
+            }
+        ]
+
     table = DataTable(
         data=data,
         columns=columns,
         id=table_id,
+        markdown_options={"link_target": "_blank"},
         sort_action="native",
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
