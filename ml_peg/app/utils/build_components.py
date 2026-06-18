@@ -29,6 +29,10 @@ from ml_peg.app.utils.utils import (
     get_threshold_colours,
 )
 
+# Width (px) of the docs-link column of the summary table (see build_app.py).
+# kept so the weights row can be translated to align with cols
+LINK_COLUMN_WIDTH = 36
+
 
 def grid_template_from_widths(
     widths: dict[str, int],
@@ -189,6 +193,16 @@ def build_weight_components(
     widths = calculate_column_widths(columns, column_widths)
     grid_template = grid_template_from_widths(widths, columns)
 
+    # The overall summary table has a "link" column inserted after MLIP. Reserve
+    # a matching spacer track (and grid cell) so the weight boxes stay aligned.
+    has_link_column = any(col.get("id") == "link" for col in table.columns)
+    link_spacer: list[Div] = []
+    if has_link_column:
+        tracks = grid_template.split(" ")
+        tracks.insert(1, f"{LINK_COLUMN_WIDTH}px")
+        grid_template = " ".join(tracks)
+        link_spacer = [Div(style={"border": "1px solid transparent"})]
+
     weight_inputs = [
         build_weight_input(
             input_id=f"{input_id}-input",
@@ -253,6 +267,7 @@ def build_weight_components(
                     "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
+            *link_spacer,
             build_download_controls(table.id)
             if include_download_controls
             else Div(
