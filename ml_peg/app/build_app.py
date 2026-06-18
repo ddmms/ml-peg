@@ -12,6 +12,7 @@ from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.filters import (
@@ -1179,6 +1180,52 @@ def build_nav(
         Output("startup-mask", "style"),
         Output("startup-mask-poll", "disabled"),
         Input("startup-mask-poll", "n_intervals"),
+    )
+
+    # Clear all browser-persisted dcc.Store data (session + local) and reload, so
+    # stale cached state after an update can be wiped from the footer button.
+    clientside_callback(
+        """
+        function (n_clicks) {
+            if (n_clicks && window.confirm(
+                "Clear cached app data and reload? Saved weights and thresholds"
+                + "will be reset."
+            )) {
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+                window.location.reload();
+            }
+            return "";
+        }
+        """,
+        Output("clear-storage-dummy", "children"),
+        Input("clear-storage-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    # Auto-clear browser-persisted stores when the released version changes, so a
+    # new release drops stale cached state automatically. The
+    # version is recorded in localStorage; a real change (not a first visit) clears
+    # both storages and reloads so the dcc.Stores reinitialise from fresh defaults.
+    clientside_callback(
+        f"""
+        function (pathname) {{
+            const current = "{__version__}";
+            const stored = window.localStorage.getItem("ml-peg-store-version");
+            if (stored !== current) {{
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+                window.localStorage.setItem("ml-peg-store-version", current);
+                if (stored !== null) {{
+                    window.location.reload();
+                }}
+            }}
+            return "";
+        }}
+        """,
+        Output("storage-version-dummy", "children"),
+        Input("app-location", "pathname"),
+        prevent_initial_call=False,
     )
 
     @callback(
