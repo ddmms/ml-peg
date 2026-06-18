@@ -8,7 +8,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Download, Dropdown, Store
+from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -391,6 +391,149 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
         ],
         style=container_style,
     )
+
+
+def build_page_loading_spinner() -> Div:
+    """
+    Build the initial page-load spinner overlay.
+
+    Returns
+    -------
+    Div
+        Page-wide loading overlay with spinner and status text.
+    """
+    return Div(
+        [
+            Div(
+                style={
+                    "width": "52px",
+                    "height": "52px",
+                    "border": "5px solid #d0ebff",
+                    "borderTopColor": "#119DFF",
+                    "borderRadius": "50%",
+                    "animation": "ml-peg-spin 0.8s linear infinite",
+                    "boxSizing": "border-box",
+                },
+            ),
+            Div(
+                "Loading page...",
+                style={
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#212529",
+                },
+            ),
+        ],
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "minHeight": "420px",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "flexDirection": "column",
+            "gap": "14px",
+            "paddingTop": "96px",
+            "boxSizing": "border-box",
+            "backgroundColor": "rgba(255, 255, 255, 0.78)",
+            "zIndex": "1400",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def build_table_loading_spinner() -> Div:
+    """
+    Build a compact table loading spinner.
+
+    Returns
+    -------
+    Div
+        Table-sized loading overlay with the same ring style as page loading.
+    """
+    return Div(
+        Div(
+            style={
+                "width": "34px",
+                "height": "34px",
+                "border": "4px solid #d0ebff",
+                "borderTopColor": "#119DFF",
+                "borderRadius": "50%",
+                "animation": "ml-peg-spin 0.8s linear infinite",
+                "boxSizing": "border-box",
+            },
+        ),
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "backgroundColor": "rgba(255, 255, 255, 0.65)",
+            "zIndex": "1200",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def build_filter_overlay(table_id: str, child) -> Loading:
+    """
+    Wrap a table in a filter-aware loading overlay.
+
+    The overlay id uses the ``{"type": "filter-overlay", "index": table_id}``
+    pattern so a single callback can drive every table's spinner. ``display``
+    starts as ``"auto"`` (driven by ``target_components`` for weight/threshold
+    and post-recompute renders); the filter-loading callback flips it to
+    ``"show"`` for the duration of an "Apply" recompute, then back to ``"auto"``.
+
+    Parameters
+    ----------
+    table_id
+        Id of the wrapped DataTable, used for both the overlay pattern index and
+        the loading target component.
+    child
+        Component tree to render under the overlay.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to the table.
+    """
+    return Loading(
+        child,
+        id={"type": "filter-overlay", "index": table_id},
+        fullscreen=False,
+        custom_spinner=build_table_loading_spinner(),
+        target_components={table_id: ["data", "style_data_conditional"]},
+        show_initially=False,
+        delay_hide=250,
+        overlay_style={"visibility": "visible", "opacity": 1},
+        parent_style={"position": "relative", "width": "fit-content"},
+    )
+
+
+def build_loading_summary_table(table: DataTable) -> Loading:
+    """
+    Wrap a summary DataTable with a local loading spinner.
+
+    Parameters
+    ----------
+    table
+        Summary table to show as loading while Dash applies filters and updates
+        its rendered data.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to applied filter changes and table updates.
+    """
+    return build_filter_overlay(table.id, Div(table))
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
@@ -848,7 +991,7 @@ def build_test_layout(
 
     table_section = [
         build_download_controls(table.id, row=True),
-        Div(table),
+        build_filter_overlay(table.id, Div(table)),
         Br(),
         controls_visual,
     ]

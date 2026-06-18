@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import time
 from typing import Any, Literal
 
 import dash
 from dash import (
+    ALL,
     MATCH,
     ClientsideFunction,
     Dash,
@@ -40,6 +42,7 @@ from ml_peg.app.utils.utils import (
     format_tooltip_headers,
     get_scores,
     get_threshold_colours,
+    store_data_equal,
 )
 
 THRESHOLD_INPUT_STEP = 0.0001
@@ -1272,6 +1275,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 "app": app,
                 "weight_state": State(f"{app.table_id}-weight-store", "data"),
                 "threshold_state": State(f"{app.table_id}-thresholds-store", "data"),
+                "computed_state": State(f"{app.table_id}-computed-store", "data"),
+                "raw_state": State(f"{app.table_id}-raw-data-store", "data"),
             }
         )
 
@@ -1284,13 +1289,25 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
                 Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
             ]
         )
-
+    # Always-set "done" tick so the filter-loading overlay can hide once the
+    # recompute has finished, regardless of which table stores actually changed.
+    outputs.append(Output("filter-recompute-done", "data"))
     states = []
     for entry in app_entries:
-        states.extend([entry["weight_state"], entry["threshold_state"]])
+        states.extend(
+            [
+                entry["weight_state"],
+                entry["threshold_state"],
+                entry["computed_state"],
+                entry["raw_state"],
+            ]
+        )
 
     @callback(
-        outputs, Input("element-filter", "value"), states, prevent_initial_call=True
+        outputs,
+        Input("element-filter", "data"),
+        states,
+        prevent_initial_call=True,
     )
     def recompute_tables(elements, *args):
         """
@@ -1305,9 +1322,15 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
 
         Returns
         -------
-        list[list[dict]]
-            Updated rows for each app's computed store and raw data stores.
+        list
+            Callback outputs ordered as two entries per benchmark app: the
+            rescored table rows used for normalised display, followed by the
+            filtered metric rows used as the raw table source. Unchanged outputs
+            are returned as ``dash.no_update``. The final entry is the
+            ``filter-recompute-done`` tick that tells the loading overlay to hide.
         """
+        start = time.monotonic()
+
         # Rebuild inputs for each app
         per_app_state = {}
         iterator = iter(args)
@@ -1317,6 +1340,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             per_app_state[app.table_id] = {
                 "weights": next(iterator),
                 "thresholds": next(iterator),
+                "computed": next(iterator),
+                "raw": next(iterator),
             }
 
         results = []
@@ -1326,6 +1351,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             state = per_app_state[app.table_id]
             weights = state["weights"]
             thresholds = state["thresholds"]
+            current_scored_rows = state["computed"]
+            current_metrics_data = state["raw"]
 
             updated_data = app.filter_table(elements)
 
@@ -1335,6 +1362,104 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
             # Update stored scores per metric
             scored_rows = calc_metric_scores(updated_data, thresholds)
 
-            results.extend([scored_rows, metrics_data])
+            # Only update stores whose filtered data changed. This prevents
+            # downstream table callbacks from re-running after no-op filter events.
+            if store_data_equal(scored_rows, current_scored_rows):
+                results.append(no_update)
+            else:
+                results.append(scored_rows)
 
+            if store_data_equal(metrics_data, current_metrics_data):
+                results.append(no_update)
+            else:
+                results.append(metrics_data)
+
+        # Hold the result until a minimum time has elapsed so the loading overlay
+        # stays visible long enough to read instead of flashing on fast recomputes.
+        min_loading_s = 0.15
+        remaining = min_loading_s - (time.monotonic() - start)
+        if remaining > 0:
+            time.sleep(remaining)
+
+        # Final output drives the filter-recompute-done store. It is a timestamp
+        # so the value changes on every recompute: hide_filter_loading
+        # fires only when filter-recompute-done changes, so a constant value would
+        # stop hiding the overlay after the first apply.
+        results.append(time.monotonic())
         return results
+
+
+def register_filter_loading_callback() -> None:
+    """
+    Drive the filter-loading overlays and disable the "Apply" button during a recompute.
+
+    Clicking the "Apply" button is the only action that commits ``element-filter``
+    and kicks off the (slow) table recompute. Show and hide are split into two
+    independent callbacks on purpose: ``show`` is triggered by ``element-filter``
+    only, so Dash can run it immediately and in parallel with ``recompute_tables``
+    rather than gating it behind the recompute's output. ``hide`` is triggered by
+    the ``filter-recompute-done`` tick that ``recompute_tables`` sets when it
+    finishes, reverting overlays to ``"auto"`` (so their ``target_components``
+    cover the brief post-recompute render) and re-enabling the "Apply" button.
+
+    Pattern-matching ``ALL`` only targets overlays present in the current layout,
+    so the spinner is automatically scoped to the visible table. ``element-filter``
+    only changes after "Apply", so the show callback does not run on initial load.
+    """
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("element-filter", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def show_filter_loading(_filter_data, overlay_ids):
+        """
+        Show overlays and disable the "Apply" button when a filter is committed.
+
+        Parameters
+        ----------
+        _filter_data
+            Committed element filter; its change triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"show"`` for every present overlay and ``True`` to disable the
+            "Apply" button.
+        """
+        return ["show"] * len(overlay_ids), True
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("filter-recompute-done", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def hide_filter_loading(_done, overlay_ids):
+        """
+        Hide overlays and re-enable the "Apply" button.
+
+        Parameters
+        ----------
+        _done
+            Recompute completion tick from ``recompute_tables``; its change
+            triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"auto"`` for every present overlay and ``False`` to enable the
+            "Apply" button.
+        """
+        return ["auto"] * len(overlay_ids), False

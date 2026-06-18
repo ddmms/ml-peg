@@ -793,8 +793,10 @@ def normalize_metric(
     # Linear map: Y -> 0, X -> 1
     t = (value - bad_threshold) / (good_threshold - bad_threshold)
 
-    # Clip to [0, 1]
-    return max(min(1.0, float(t)), 0.0)
+    # Clip to [0, 1] and turn -0.0 into 0.0. Dash saves Store data as JSON,
+    # which reads -0.0 back as 0.0; returning 0.0 directly keeps the stored
+    # score stable across page loads.
+    return max(min(1.0, float(t)), 0.0) + 0.0
 
 
 def clean_info(info: dict[str, Any] | list[Any]) -> None:

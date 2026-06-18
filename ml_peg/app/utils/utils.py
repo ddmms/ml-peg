@@ -6,6 +6,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from functools import lru_cache
 import json
+from numbers import Number
 from pathlib import Path
 from typing import Any, NotRequired, TypedDict
 
@@ -27,6 +28,54 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+def store_data_equal(left: Any, right: Any) -> bool:
+    """
+    Check whether two Dash store values represent the same table state.
+
+    Used before returning callback outputs so unchanged stores can be returned
+    as ``dash.no_update``. This treats matching ``NaN`` values as equal because
+    table rows can contain missing numeric values, and Python's normal equality
+    would otherwise treat unchanged rows as different.
+
+    Parameters
+    ----------
+    left
+        First Dash store value to compare.
+    right
+        Second Dash store value to compare.
+
+    Returns
+    -------
+    bool
+        Whether both values can be treated as unchanged.
+    """
+    if left is right:
+        return True
+
+    if isinstance(left, Number) and isinstance(right, Number):
+        try:
+            if np.isnan(left) and np.isnan(right):
+                return True
+        except TypeError:
+            pass
+        return left == right
+
+    if isinstance(left, dict) and isinstance(right, dict):
+        if left.keys() != right.keys():
+            return False
+        return all(store_data_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, list) and isinstance(right, list):
+        if len(left) != len(right):
+            return False
+        return all(
+            store_data_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+
+    return left == right
 
 
 def colour_from_cmap(cmap_name: str | None, position: float) -> str:

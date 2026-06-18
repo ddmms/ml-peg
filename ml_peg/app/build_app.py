@@ -14,11 +14,17 @@ from yaml import safe_load
 
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
-from ml_peg.app.filters import get_element_filter, get_model_filter
+from ml_peg.app.filters import (
+    get_element_filter,
+    get_model_filter,
+    register_element_filter_callbacks,
+)
 from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_faqs,
     build_footer,
+    build_loading_summary_table,
+    build_page_loading_spinner,
     build_weight_components,
 )
 from ml_peg.app.utils.onboarding import (
@@ -28,6 +34,7 @@ from ml_peg.app.utils.onboarding import (
 )
 from ml_peg.app.utils.register_callbacks import (
     register_benchmark_to_category_callback,
+    register_filter_loading_callback,
     register_filter_tables_callback,
 )
 from ml_peg.app.utils.utils import (
@@ -551,7 +558,7 @@ def build_category_page_layout(
             Div(
                 [
                     build_download_controls(summary_table.id, row=True),
-                    Div(summary_table),
+                    build_loading_summary_table(summary_table),
                     Br(),
                     weight_components,
                 ],
@@ -1068,20 +1075,25 @@ def build_nav(
                                     storage_type="session",
                                     data=summary_table.data,
                                 ),
+                                Store(
+                                    id="filter-recompute-done",
+                                    storage_type="memory",
+                                ),
                                 Loading(
                                     Div(id="page-content"),
-                                    type="circle",
-                                    color="#119DFF",
                                     fullscreen=False,
+                                    custom_spinner=build_page_loading_spinner(),
                                     target_components={"page-content": "children"},
-                                    style={
-                                        "position": "fixed",
-                                        "top": "300px",
-                                        "left": "50%",
-                                        "transform": "translateX(-50%)",
-                                        "zIndex": "1100",
+                                    show_initially=False,
+                                    delay_hide=300,
+                                    overlay_style={
+                                        "visibility": "visible",
+                                        "opacity": 1,
                                     },
-                                    parent_style={"position": "relative"},
+                                    parent_style={
+                                        "position": "relative",
+                                        "minHeight": "60vh",
+                                    },
                                 ),
                             ],
                             style={"flex": "1", "padding": "16px 16px"},
@@ -1245,7 +1257,7 @@ def build_nav(
                     Div(
                         [
                             build_download_controls(summary_table.id, row=True),
-                            Div(summary_table),
+                            build_loading_summary_table(summary_table),
                             Br(),
                             weight_components,
                         ],
@@ -1289,6 +1301,8 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         raise ValueError("No tests were built successfully")
 
     register_filter_tables_callback(all_apps)
+    register_element_filter_callbacks()
+    register_filter_loading_callback()
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(
