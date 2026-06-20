@@ -11,13 +11,15 @@ import plotly.graph_objects as go
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
+from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "graphene oxide"
 DATA_PATH = APP_ROOT / "data" / "carbon" / "graphene_oxide"
-METRIC_KEY = "Energy MAE"
+ENERGY_METRIC_KEY = "Energy MAE"
+FORCE_METRIC_KEY = "Force MAE"
 
 
 class GrapheneOxideApp(BaseApp):
@@ -33,12 +35,22 @@ class GrapheneOxideApp(BaseApp):
                 scatter_data = json.load(f)
             models_data = scatter_data.get("models", {})
             for model in MODELS:
-                fig_dict = models_data.get(model, {}).get("figures", {}).get(METRIC_KEY)
+                fig_dict = (
+                    models_data.get(model, {}).get("figures", {}).get(ENERGY_METRIC_KEY)
+                )
                 if fig_dict:
-                    cell_plots[model][METRIC_KEY] = dcc.Graph(
+                    cell_plots[model][ENERGY_METRIC_KEY] = dcc.Graph(
                         figure=go.Figure(fig_dict),
                         id=f"{BENCHMARK_NAME}-{model}-scatter",
                     )
+
+        for model in MODELS:
+            force_plot_path = DATA_PATH / f"figure_{model}_force_mae.json"
+            if force_plot_path.exists():
+                cell_plots[model][FORCE_METRIC_KEY] = read_plot(
+                    force_plot_path,
+                    id=f"{BENCHMARK_NAME}-{model}-force-scatter",
+                )
 
         plot_from_table_cell(
             table_id=self.table_id,
@@ -55,6 +67,11 @@ class GrapheneOxideApp(BaseApp):
                 ]
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-scatter",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=asset_paths,
+                )
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-force-scatter",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
                     structs=asset_paths,
                 )
@@ -75,7 +92,7 @@ def get_app() -> GrapheneOxideApp:
             "Graphene oxide benchmark covering 3813 structures with varying oxidation "
             "coverage (O/C ratio 0.1–0.5), hydroxyl/epoxide ratio (OH/O 0–1), and "
             "edge functionalisation. Energies relative to isolated C, H, O atoms "
-            "(DFT/PBE)."
+            "and forces from DFT/PBE."
         ),
         table_path=DATA_PATH / "graphene_oxide_metrics_table.json",
         extra_components=[

@@ -11,6 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.io import read, write
+import numpy as np
+import plotly.graph_objects as go
 import pytest
 from tqdm import tqdm
 
@@ -31,7 +33,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-METRIC_KEY = "Energy MAE"
+ENERGY_METRIC_KEY = "Energy MAE"
+FORCE_METRIC_KEY = "Force MAE"
 
 
 def _decode_config(config_type: str) -> str:
@@ -57,9 +60,9 @@ def _decode_config(config_type: str) -> str:
 
 
 @pytest.fixture
-def all_energies() -> dict[str, dict]:
+def all_results() -> dict[str, dict]:
     """
-    Load calc results for all models, energies relative to the first structure.
+    Load calc results for all models.
 
     ``ref_energy_rel`` / ``pred_energy_rel`` are per-atom formation energies
     (isolated-atom subtracted) written by the calc. Subtracting the first
@@ -70,10 +73,19 @@ def all_energies() -> dict[str, dict]:
     Returns
     -------
     dict[str, dict]
-        Model -> {ref, pred, config_type} lists.
+        Model -> energy, force, and metadata lists for plotting and metrics.
     """
     data: dict[str, dict] = {
-        model: {"ref": [], "pred": [], "config_type": []} for model in MODELS
+        model: {
+            "ref": [],
+            "pred": [],
+            "config_type": [],
+            "force_mae": [],
+            "force_abs_error_sum": 0.0,
+            "force_component_count": 0,
+            "structure_idx": [],
+        }
+        for model in MODELS
     }
 
     for model in MODELS:
@@ -91,6 +103,15 @@ def all_energies() -> dict[str, dict]:
                 atoms.info["pred_energy_rel"] - atoms_0.info["pred_energy_rel"]
             )
             data[model]["config_type"].append(atoms.info.get("config_type", "unknown"))
+            data[model]["structure_idx"].append(idx)
+
+            ref_forces = np.asarray(atoms.arrays["ref_forces"], dtype=float)
+            pred_forces = np.asarray(atoms.arrays["pred_forces"], dtype=float)
+            force_abs_error = np.abs(pred_forces - ref_forces)
+            data[model]["force_mae"].append(float(np.mean(force_abs_error)))
+            data[model]["force_abs_error_sum"] += float(np.sum(force_abs_error))
+            data[model]["force_component_count"] += int(force_abs_error.size)
+
             write(struct_dir / f"{idx}.xyz", atoms)
 
     return data
@@ -102,14 +123,14 @@ def all_energies() -> dict[str, dict]:
     x_label="Predicted energy / eV atom⁻¹",
     y_label="Reference energy / eV atom⁻¹",
 )
-def interactive_dataset(all_energies: dict) -> dict:
+def interactive_dataset(all_results: dict) -> dict:
     """
     Build cell_to_scatter dataset with config_type as hover label.
 
     Parameters
     ----------
-    all_energies
-        Model -> {ref, pred, config_type} from all_energies fixture.
+    all_results
+        Model -> energy, force, and metadata lists from all_results fixture.
 
     Returns
     -------
@@ -117,17 +138,62 @@ def interactive_dataset(all_energies: dict) -> dict:
         Data bundle consumed by cell_to_scatter decorator.
     """
     dataset: dict = {
-        "metrics": {METRIC_KEY: METRIC_KEY},
+        "metrics": {ENERGY_METRIC_KEY: ENERGY_METRIC_KEY},
         "models": {},
     }
     for model in MODELS:
-        d = all_energies[model]
+        d = all_results[model]
         points = [
             {"id": _decode_config(ct), "ref": r, "pred": p}
             for ct, r, p in zip(d["config_type"], d["ref"], d["pred"], strict=True)
         ]
-        dataset["models"][model] = {"metrics": {METRIC_KEY: {"points": points}}}
+        dataset["models"][model] = {"metrics": {ENERGY_METRIC_KEY: {"points": points}}}
     return dataset
+
+
+@pytest.fixture
+def force_error_plots(all_results: dict) -> dict[str, Path]:
+    """
+    Write per-structure force error plots for each model.
+
+    Parameters
+    ----------
+    all_results
+        Model -> energy, force, and metadata lists from all_results fixture.
+
+    Returns
+    -------
+    dict[str, Path]
+        Model -> written Plotly JSON path.
+    """
+    paths: dict[str, Path] = {}
+    for model in MODELS:
+        d = all_results[model]
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=d["structure_idx"],
+                y=d["force_mae"],
+                mode="markers",
+                customdata=[[_decode_config(ct)] for ct in d["config_type"]],
+                hovertemplate=(
+                    "<b>Structure: </b>%{x}<br>"
+                    "<b>Force MAE: </b>%{y:.4f} eV/Å<br>"
+                    "<b>Config: </b>%{customdata[0]}<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+        fig.update_layout(
+            title={"text": f"{model} - {FORCE_METRIC_KEY}"},
+            xaxis={"title": {"text": "Structure index"}},
+            yaxis={"title": {"text": "Mean absolute force error / eV/Å"}},
+        )
+        path = OUT_PATH / f"figure_{model}_force_mae.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.write_json(path)
+        paths[model] = path
+    return paths
 
 
 @pytest.fixture
@@ -136,14 +202,14 @@ def interactive_dataset(all_energies: dict) -> dict:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
-def metrics(all_energies: dict) -> dict:
+def metrics(all_results: dict) -> dict:
     """
-    Compute overall energy MAE per model.
+    Compute overall energy and force MAE per model.
 
     Parameters
     ----------
-    all_energies
-        Model -> {ref, pred, config_type} from all_energies fixture.
+    all_results
+        Model -> energy, force, and metadata lists from all_results fixture.
 
     Returns
     -------
@@ -151,22 +217,35 @@ def metrics(all_energies: dict) -> dict:
         Metric name -> model -> MAE value.
     """
     return {
-        METRIC_KEY: {
-            model: mae(all_energies[model]["ref"], all_energies[model]["pred"])
+        ENERGY_METRIC_KEY: {
+            model: mae(all_results[model]["ref"], all_results[model]["pred"])
             for model in MODELS
-        }
+        },
+        FORCE_METRIC_KEY: {
+            model: (
+                all_results[model]["force_abs_error_sum"]
+                / all_results[model]["force_component_count"]
+            )
+            for model in MODELS
+        },
     }
 
 
-def test_graphene_oxide(interactive_dataset: dict, metrics: dict) -> None:
+def test_graphene_oxide(
+    interactive_dataset: dict,
+    force_error_plots: dict[str, Path],
+    metrics: dict,
+) -> None:
     """
     Run graphene oxide analysis (drives all fixtures).
 
     Parameters
     ----------
     interactive_dataset
-        Pre-generated scatter figures from cell_to_scatter fixture.
+        Pre-generated energy scatter figures from cell_to_scatter fixture.
+    force_error_plots
+        Pre-generated force error plot paths.
     metrics
-        Energy MAE per model from metrics fixture.
+        Energy and force MAE per model from metrics fixture.
     """
     return
