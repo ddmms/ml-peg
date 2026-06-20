@@ -1,5 +1,5 @@
 """
-Compute single-point energies for the graphene oxide dataset.
+Compute single-point energies and forces for the graphene oxide dataset.
 
 3813 graphene oxide structures (C/H/O) with varying oxidation coverage.
 Config types encode O/C ratio, OH/O ratio, and optionally edge R/(R+H) ratio.
@@ -29,7 +29,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
     """
-    Run single-point energy calculations for all graphene oxide structures.
+    Run single-point energy and force calculations for all graphene oxide structures.
 
     Parameters
     ----------
@@ -62,8 +62,10 @@ def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
         n = len(atoms)
         syms = atoms.get_chemical_symbols()
         ref_energy = atoms.info["QM_energy"]
+        ref_forces = atoms.arrays["QM_forces"]
         atoms.calc = calc
         pred_energy = float(atoms.get_potential_energy())
+        pred_forces = atoms.get_forces()
         atoms.calc = None
 
         e_offset_dft = sum(e0_dft[s] for s in syms)
@@ -73,6 +75,8 @@ def test_graphene_oxide(mlip: tuple[str, Any]) -> None:
         atoms.info["pred_energy"] = pred_energy
         atoms.info["ref_energy_rel"] = (ref_energy - e_offset_dft) / n
         atoms.info["pred_energy_rel"] = (pred_energy - e_offset_mlip) / n
+        atoms.arrays["ref_forces"] = ref_forces
+        atoms.arrays["pred_forces"] = pred_forces
 
         results.append(atoms)
 
