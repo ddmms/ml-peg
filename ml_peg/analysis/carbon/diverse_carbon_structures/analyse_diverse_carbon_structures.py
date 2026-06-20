@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.io import read, write
+import numpy as np
+import plotly.graph_objects as go
 import pytest
 from tqdm import tqdm
 
@@ -28,56 +30,76 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Maps dataset category string -> (folder name for file paths, display metric name)
+# Maps dataset category string -> folder name and table metric names
 CATEGORIES = {
-    "sp2 bonded": ("sp2", "sp2 Bonded MAE"),
-    "sp3 bonded": ("sp3", "sp3 Bonded MAE"),
-    "amorphous/liquid": ("amorphous", "Amorphous/Liquid MAE"),
-    "general bulk": ("general_bulk", "General Bulk MAE"),
-    "general clusters": ("general_clusters", "General Clusters MAE"),
+    "sp2 bonded": ("sp2", "sp2 Bonded MAE", "sp2 Bonded Force MAE"),
+    "sp3 bonded": ("sp3", "sp3 Bonded MAE", "sp3 Bonded Force MAE"),
+    "amorphous/liquid": (
+        "amorphous",
+        "Amorphous/Liquid MAE",
+        "Amorphous/Liquid Force MAE",
+    ),
+    "general bulk": ("general_bulk", "General Bulk MAE", "General Bulk Force MAE"),
+    "general clusters": (
+        "general_clusters",
+        "General Clusters MAE",
+        "General Clusters Force MAE",
+    ),
 }
 
 
 @pytest.fixture
-def all_energies() -> dict[str, dict]:
+def all_results() -> dict[str, dict]:
     """
     Load calc results for all models, split by category, write per-structure files.
 
     Returns
     -------
     dict[str, dict]
-        Nested dict: model -> category_folder -> {ref, pred, labels}.
+        Nested dict with energy, force, and label data by model and category.
     """
-    folders = [folder for folder, _ in CATEGORIES.values()]
-    empty: dict = {
-        "ref": [],
-        "pred": [],
-        "labels": [],
-    }
     data: dict[str, dict] = {
-        model: {folder: {k: list(v) for k, v in empty.items()} for folder in folders}
+        model: {
+            folder: {
+                "ref": [],
+                "pred": [],
+                "labels": [],
+                "force_mae": [],
+                "force_abs_error_sum": 0.0,
+                "force_component_count": 0,
+            }
+            for folder, _, _ in CATEGORIES.values()
+        }
         for model in MODELS
     }
 
     for model in MODELS:
-        cat_counters: dict[str, int] = dict.fromkeys(folders, 0)
+        cat_counters: dict[str, int] = {
+            folder: 0 for folder, _, _ in CATEGORIES.values()
+        }
         atoms_list = read(CALC_PATH / model / "results.xyz", ":")
 
         for atoms in tqdm(atoms_list):
             cat = atoms.info.get("category")
             if cat not in CATEGORIES:
                 continue
-            folder, _ = CATEGORIES[cat]
+            folder, _, _ = CATEGORIES[cat]
 
             n_atoms = len(atoms)
             ref_e = atoms.info["ref_energy"] / n_atoms
             pred_e = atoms.info["pred_energy"] / n_atoms
+            ref_forces = np.asarray(atoms.arrays["ref_forces"], dtype=float)
+            pred_forces = np.asarray(atoms.arrays["pred_forces"], dtype=float)
+            force_abs_error = np.abs(pred_forces - ref_forces)
             idx = cat_counters[folder]
             cat_counters[folder] += 1
 
             data[model][folder]["ref"].append(ref_e)
             data[model][folder]["pred"].append(pred_e)
             data[model][folder]["labels"].append(str(idx))
+            data[model][folder]["force_mae"].append(float(np.mean(force_abs_error)))
+            data[model][folder]["force_abs_error_sum"] += float(np.sum(force_abs_error))
+            data[model][folder]["force_component_count"] += int(force_abs_error.size)
 
             struct_dir = OUT_PATH / model / folder
             struct_dir.mkdir(parents=True, exist_ok=True)
@@ -92,14 +114,14 @@ def all_energies() -> dict[str, dict]:
     x_label="Predicted energy / eV atom⁻¹",
     y_label="Reference energy / eV atom⁻¹",
 )
-def interactive_dataset(all_energies: dict) -> dict:
+def interactive_dataset(all_results: dict) -> dict:
     """
     Build cell_to_scatter dataset with one metric per category.
 
     Parameters
     ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
+    all_results
+        Nested dict with energy, force, and label data by model and category.
 
     Returns
     -------
@@ -107,20 +129,66 @@ def interactive_dataset(all_energies: dict) -> dict:
         Data bundle consumed by cell_to_scatter decorator.
     """
     dataset: dict = {
-        "metrics": {metric_name: metric_name for _, metric_name in CATEGORIES.values()},
+        "metrics": {
+            energy_metric: energy_metric for _, energy_metric, _ in CATEGORIES.values()
+        },
         "models": {},
     }
     for model in MODELS:
         model_metrics = {}
-        for _cat, (folder, metric_name) in CATEGORIES.items():
-            d = all_energies[model][folder]
+        for _cat, (folder, energy_metric, _) in CATEGORIES.items():
+            d = all_results[model][folder]
             points = [
                 {"id": label, "ref": r, "pred": p}
                 for label, r, p in zip(d["labels"], d["ref"], d["pred"], strict=True)
             ]
-            model_metrics[metric_name] = {"points": points}
+            model_metrics[energy_metric] = {"points": points}
         dataset["models"][model] = {"metrics": model_metrics}
     return dataset
+
+
+@pytest.fixture
+def force_error_plots(all_results: dict) -> dict[tuple[str, str], Path]:
+    """
+    Write per-structure force error plots for each model/category pair.
+
+    Parameters
+    ----------
+    all_results
+        Nested dict with energy, force, and label data by model and category.
+
+    Returns
+    -------
+    dict[tuple[str, str], Path]
+        ``(model, category_folder)`` -> written Plotly JSON path.
+    """
+    paths: dict[tuple[str, str], Path] = {}
+    for model in MODELS:
+        for _cat, (folder, _, force_metric) in CATEGORIES.items():
+            d = all_results[model][folder]
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=d["labels"],
+                    y=d["force_mae"],
+                    mode="markers",
+                    hovertemplate=(
+                        "<b>Structure: </b>%{x}<br>"
+                        "<b>Force MAE: </b>%{y:.4f} eV/Å<extra></extra>"
+                    ),
+                    showlegend=False,
+                )
+            )
+            fig.update_layout(
+                title={"text": f"{model} - {force_metric}"},
+                xaxis={"title": {"text": "Structure index"}},
+                yaxis={"title": {"text": "Mean absolute force error / eV/Å"}},
+            )
+            path = OUT_PATH / f"figure_{model}_{folder}_force_mae.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(path)
+            paths[(model, folder)] = path
+    return paths
 
 
 @pytest.fixture
@@ -129,14 +197,14 @@ def interactive_dataset(all_energies: dict) -> dict:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
-def metrics(all_energies: dict) -> dict[str, dict]:
+def metrics(all_results: dict) -> dict[str, dict]:
     """
-    Compute per-category energy MAE for each model.
+    Compute per-category energy and force MAE for each model.
 
     Parameters
     ----------
-    all_energies
-        Nested dict of calc results keyed by model then category folder.
+    all_results
+        Nested dict with energy, force, and label data by model and category.
 
     Returns
     -------
@@ -144,11 +212,18 @@ def metrics(all_energies: dict) -> dict[str, dict]:
         Metric name → model → MAE value.
     """
     result: dict[str, dict] = {}
-    for _cat, (folder, metric_name) in CATEGORIES.items():
-        result[metric_name] = {
+    for _cat, (folder, energy_metric, force_metric) in CATEGORIES.items():
+        result[energy_metric] = {
             model: mae(
-                all_energies[model][folder]["ref"],
-                all_energies[model][folder]["pred"],
+                all_results[model][folder]["ref"],
+                all_results[model][folder]["pred"],
+            )
+            for model in MODELS
+        }
+        result[force_metric] = {
+            model: (
+                all_results[model][folder]["force_abs_error_sum"]
+                / all_results[model][folder]["force_component_count"]
             )
             for model in MODELS
         }
@@ -157,6 +232,7 @@ def metrics(all_energies: dict) -> dict[str, dict]:
 
 def test_diverse_carbon_structures(
     interactive_dataset: dict,
+    force_error_plots: dict[tuple[str, str], Path],
     metrics: dict,
 ) -> None:
     """
@@ -166,7 +242,9 @@ def test_diverse_carbon_structures(
     ----------
     interactive_dataset
         Per-category scatter inputs from interactive_dataset fixture.
+    force_error_plots
+        Per-category force error plot paths.
     metrics
-        Per-category energy MAE for each model.
+        Per-category energy and force MAE for each model.
     """
     return

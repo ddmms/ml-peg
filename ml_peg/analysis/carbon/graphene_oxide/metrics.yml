@@ -5,3 +5,9 @@ metrics:
     unit: eV/atom
     tooltip: Mean absolute error of relative energy per atom (relative to isolated C, H, O atoms, DFT/PBE reference)
     level_of_theory: PBE
+  Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components (DFT/PBE reference)
+    level_of_theory: PBE

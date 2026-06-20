@@ -5,12 +5,24 @@ metrics:
     unit: eV/atom
     tooltip: Mean absolute error of energy per atom for sp2-bonded structures (graphene, graphite, fullerenes, nanotubes, incl. defects)
     level_of_theory: PBE
+  sp2 Bonded Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components for sp2-bonded structures (DFT/PBE reference)
+    level_of_theory: PBE
 
   sp3 Bonded MAE:
     good: 0.0
     bad: 1
     unit: eV/atom
     tooltip: Mean absolute error of energy per atom for sp3-bonded structures (cubic and hexagonal diamond, high-pressure phases, incl. defects)
+    level_of_theory: PBE
+  sp3 Bonded Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components for sp3-bonded structures (DFT/PBE reference)
     level_of_theory: PBE
 
   Amorphous/Liquid MAE:
@@ -19,6 +31,12 @@ metrics:
     unit: eV/atom
     tooltip: Mean absolute error of energy per atom for amorphous and liquid carbon structures
     level_of_theory: PBE
+  Amorphous/Liquid Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components for amorphous and liquid carbon structures (DFT/PBE reference)
+    level_of_theory: PBE
 
   General Bulk MAE:
     good: 0.0
@@ -26,10 +44,22 @@ metrics:
     unit: eV/atom
     tooltip: Mean absolute error of energy per atom for general bulk crystal structures (fcc, hcp, bcc, sc, A15, etc.)
     level_of_theory: PBE
+  General Bulk Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components for general bulk crystal structures (DFT/PBE reference)
+    level_of_theory: PBE
 
   General Clusters MAE:
     good: 0.0
     bad: 1
     unit: eV/atom
     tooltip: Mean absolute error of energy per atom for non-periodic carbon clusters (1-6 atoms)
+    level_of_theory: PBE
+  General Clusters Force MAE:
+    good: 0.0
+    bad: 1.0
+    unit: eV/Å
+    tooltip: Mean absolute error across all force components for non-periodic carbon clusters (DFT/PBE reference)
     level_of_theory: PBE
