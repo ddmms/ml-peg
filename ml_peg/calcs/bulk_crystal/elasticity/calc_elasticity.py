@@ -303,7 +303,7 @@ def run_elasticity_benchmark(
     atoms_list = []
     # ⚡ Bolt: to_dict('records') avoids pandas Series creation per row,
     # improving performance
-    for row in results.to_dict('records'):
+    for row in results.to_dict("records"):
         struct = row.get("final_structure")
         if not isinstance(struct, Structure):
             struct = mock_ref_map.get(row[benchmark.index_name])
