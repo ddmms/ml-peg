@@ -353,6 +353,7 @@ def build_sidebar(
 
 def get_all_tests(
     category: str = "*",
+    test: str = "*",
 ) -> tuple[
     dict[str, dict[str, Dash]],
     dict[str, dict[str, list[Div]]],
@@ -366,6 +367,8 @@ def get_all_tests(
     ----------
     category
         Name of category directory to search for tests. Default is '*'.
+    test
+        Name of test directory to search for. Default is '*'.
 
     Returns
     -------
@@ -375,7 +378,7 @@ def get_all_tests(
     # Find Python files e.g. app_OC157.py in mlip_tesing.app module.
     # We will get the category from the parent's parent directory
     # E.g. ml_peg/app/surfaces/OC157/app_OC157.py -> surfaces
-    tests = APP_ROOT.glob(f"{category}/*/app*.py")
+    tests = APP_ROOT.glob(f"{category}/{test}/app*.py")
     apps = {}
     layouts = {}
     tables = {}
@@ -1344,7 +1347,7 @@ def build_nav(
         )
 
 
-def build_full_app(full_app: Dash, category: str = "*") -> None:
+def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None:
     """
     Build full app layout and register callbacks.
 
@@ -1354,9 +1357,13 @@ def build_full_app(full_app: Dash, category: str = "*") -> None:
         Full application with all sub-apps.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    test
+        Test to build app for. Default is `*`, corresponding to all tests.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(category=category)
+    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(
+        category=category, test=test
+    )
 
     if not all_layouts:
         raise ValueError("No tests were built successfully")
