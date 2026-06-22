@@ -20,6 +20,7 @@ from ml_peg.app.filters import (
     register_element_filter_callbacks,
 )
 from ml_peg.app.utils.build_components import (
+    LINK_COLUMN_WIDTH,
     build_download_controls,
     build_faqs,
     build_footer,
@@ -814,9 +815,9 @@ def build_summary_table(
         style_cell_conditional.append(
             {
                 "if": {"column_id": "link"},
-                "width": "36px",
-                "minWidth": "36px",
-                "maxWidth": "36px",
+                "width": f"{LINK_COLUMN_WIDTH}px",
+                "minWidth": f"{LINK_COLUMN_WIDTH}px",
+                "maxWidth": f"{LINK_COLUMN_WIDTH}px",
                 "textAlign": "left",
                 "padding": "0",
                 "borderLeft": "none",
