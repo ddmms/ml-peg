@@ -5,9 +5,9 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback, ctx, no_update
+from dash import Dash, Input, Output, callback, clientside_callback, ctx, no_update
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Link, Loading, Location, Store
+from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
@@ -1003,6 +1003,48 @@ def build_nav(
     ]
 
     full_layout = [
+        # Start-up mask: covers the page and tutorial with a spinner until the
+        # page is interactive, so the tutorial isn't shown on a still-rendering
+        # page where it feels frozen. Hidden by the callback below.
+        Div(
+            [
+                Div(
+                    style={
+                        "width": "52px",
+                        "height": "52px",
+                        "border": "5px solid #d0ebff",
+                        "borderTopColor": "#119DFF",
+                        "borderRadius": "50%",
+                        "animation": "ml-peg-spin 0.8s linear infinite",
+                        "boxSizing": "border-box",
+                    },
+                ),
+                Div(
+                    "Loading ML-PEG…",
+                    style={
+                        "fontSize": "16px",
+                        "fontWeight": "600",
+                        "color": "#212529",
+                    },
+                ),
+            ],
+            id="startup-mask",
+            style={
+                "position": "fixed",
+                "top": "0",
+                "right": "0",
+                "bottom": "0",
+                "left": "0",
+                "display": "flex",
+                "flexDirection": "column",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "gap": "14px",
+                "backgroundColor": "#ffffff",
+                "zIndex": "2100",  # Above the onboarding modal (2000).
+            },
+        ),
+        Interval(id="startup-mask-poll", interval=250, n_intervals=0),
         build_onboarding_modal(),
         build_tutorial_button(),
         Location(id="app-location", refresh=False),
@@ -1116,6 +1158,24 @@ def build_nav(
     full_app.layout = Div(
         full_layout,
         style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+    )
+
+    # Hide the start-up mask once the page has rendered, or after a timeout as
+    # a safety net, then stop polling. Clientside, so it adds no server load.
+    clientside_callback(
+        """
+        function(n) {
+            var nu = window.dash_clientside.no_update;
+            var ready = document.querySelector('#page-content table tbody tr');
+            if (ready || n > 40) {
+                return [{'display': 'none'}, true];
+            }
+            return [nu, nu];
+        }
+        """,
+        Output("startup-mask", "style"),
+        Output("startup-mask-poll", "disabled"),
+        Input("startup-mask-poll", "n_intervals"),
     )
 
     @callback(
