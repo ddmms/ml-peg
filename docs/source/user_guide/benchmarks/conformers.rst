@@ -69,7 +69,7 @@ reported, averaged across all systems.
 Computational cost
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Medium: tests may take hours on CPU.
 
 Data availability
 -----------------
