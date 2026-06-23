@@ -47,15 +47,16 @@ mace-matpes-r2scan:
     xc: r2scan
     label: D4
 
-# mace-mh-1-omat:
-#   module: mace.calculators
-#   class_name: mace_mp
-#   device: "auto"
-#   trained_on_dispersion: false
-#   level_of_theory: PBE
-#   kwargs:
-#     model: "mh-1"
-#     head: omat_pbe
+mace-mh-1-omat:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  default_dtype: float32
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "mh-1"
+    head: omat_pbe
 
 orb-v3-consv-inf-omat:
   module: orb_models.inference.calculator
@@ -128,15 +129,16 @@ orb-v3-consv-omol:
 #   kwargs:
 #     model: "extra_large"
 
-# mace-mh-1-omol:
-#   module: mace.calculators
-#   class_name: mace_mp
-#   device: "auto"
-#   trained_on_dispersion: true
-#   level_of_theory: ωB97M-V/def2-TZVPD
-#   kwargs:
-#     model: "mh-1"
-#     head: omol
+mace-mh-1-omol:
+  module: mace.calculators
+  class_name: mace_mp
+  device: "auto"
+  default_dtype: float32
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model: "mh-1"
+    head: omol
 
 # uma-s-1p1-omol:
 #   module: fairchem.core

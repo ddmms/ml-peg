@@ -18,3 +18,4 @@ Benchmarks
     conformers
     molecular_dynamics
     defect
+    wise_electrolytes
