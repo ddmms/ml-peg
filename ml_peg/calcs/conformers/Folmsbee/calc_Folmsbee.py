@@ -4,7 +4,7 @@ Compute the Folmsbee dataset of molecular conformers.
 Assessing conformer energies using electronic structure and
 machine learning methods
 
-Dakota Folmsbee, Geoffrey Hutchinson
+Dakota Folmsbee, Geoffrey Hutchison
 International Journal of Quantum Chemistry 2020 121 (1) e26381
 DOI: 10.1002/qua.26381
 """
@@ -37,7 +37,6 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    model.default_dtype = "float64"
     calc = model.get_calculator()
     calc = model.add_d3_calculator(calc)
 
