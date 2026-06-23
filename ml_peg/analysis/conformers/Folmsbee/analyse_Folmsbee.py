@@ -21,7 +21,7 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.utils import download_s3_data  # noqa: F401
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -80,10 +80,14 @@ def conformer_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/conformer_selection.zip",
-        filename="conformer_selection.zip",
-    )
+    # Load input data from the local directory (under ml_peg/calcs/...).
+    data_input_dir = CALCS_ROOT / "conformers" / "Folmsbee" / "data"
+
+    # To load from S3 instead, comment out the line above and uncomment below:
+    # data_input_dir = download_s3_data(
+    #     key="inputs/conformers/Folmsbee/conformer_selection.zip",
+    #     filename="conformer_selection.zip",
+    # )
 
     for model_name in MODELS:
         benchmark = MlPegConformerSelectionBenchmark(
@@ -133,13 +137,23 @@ def get_mae(conformer_energies) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Dictionary of predicted conformer energies errors for all models.
+        Per-molecule MAE averaged over all molecules, for each model.
     """
+    label_mols = [lbl.rsplit("_conf", 1)[0] for lbl in labels()]
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            conformer_energies["ref"], conformer_energies[model_name]
-        )
+        groups: dict[str, tuple[list, list]] = {}
+        for mol, ref, pred in zip(
+            label_mols,
+            conformer_energies["ref"],
+            conformer_energies[model_name],
+            strict=True,
+        ):
+            groups.setdefault(mol, ([], []))
+            groups[mol][0].append(ref)
+            groups[mol][1].append(pred)
+        mol_maes = [mae(ref, pred) for ref, pred in groups.values()]
+        results[model_name] = sum(mol_maes) / len(mol_maes)
     return results
 
 
