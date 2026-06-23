@@ -80,14 +80,10 @@ def conformer_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    # Load input data from the local directory (under ml_peg/calcs/...).
-    data_input_dir = CALCS_ROOT / "conformers" / "Folmsbee" / "data"
-
-    # To load from S3 instead, comment out the line above and uncomment below:
-    # data_input_dir = download_s3_data(
-    #     key="inputs/conformers/Folmsbee/conformer_selection.zip",
-    #     filename="conformer_selection.zip",
-    # )
+    data_input_dir = download_s3_data(
+        key="inputs/conformers/Folmsbee/conformer_selection.zip",
+        filename="conformer_selection.zip",
+    )
 
     for model_name in MODELS:
         benchmark = MlPegConformerSelectionBenchmark(
