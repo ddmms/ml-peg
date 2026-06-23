@@ -16,3 +16,4 @@ mlip_audit:
   color: "#1d4ed8"
   text_color: "#ffffff"
   url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
+  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
