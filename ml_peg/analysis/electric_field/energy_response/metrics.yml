@@ -4,14 +4,14 @@ metrics:
     bad: 5.0
     unit: eV
     tooltip: "Mean Absolute Error for all systems"
-    level_of_theory: wB97V-M
+    level_of_theory: wB97M-V
     weight: 0
   Alkanes MAE: &dataset_mae
     good: 0.01
     bad: 5.0
     unit: eV
     tooltip: "Mean Absolute Error for Alkanes"
-    level_of_theory: wB97V-M
+    level_of_theory: wB97M-V
     weight: 1
   Cumulenes MAE:
     <<: *dataset_mae

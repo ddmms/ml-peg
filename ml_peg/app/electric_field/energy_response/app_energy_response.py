@@ -29,28 +29,57 @@ class EnergyResponseApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
+        scatter_total = read_plot(
             DATA_PATH / "figure_energy_responses.json",
-            id=f"{BENCHMARK_NAME}-figure",
+            id=f"{BENCHMARK_NAME}-figure-total",
+        )
+        scatter_alkane = read_plot(
+            DATA_PATH / "figure_alkane_energy_responses.json",
+            id=f"{BENCHMARK_NAME}-figure-alkane",
+        )
+        scatter_cumulene = read_plot(
+            DATA_PATH / "figure_cumulene_energy_responses.json",
+            id=f"{BENCHMARK_NAME}-figure-cumulene",
         )
 
-        # Assets dir will be parent directory - individual files for each system
         structs_dir = DATA_PATH / MODELS[0]
-        structs = [
-            f"assets/electric_field/energy_response/{MODELS[0]}/{struct_file.stem}.xyz"
-            for struct_file in sorted(structs_dir.glob("*.xyz"))
+        assets_prefix = f"assets/electric_field/energy_response/{MODELS[0]}"
+
+        alkane_structs = [
+            f"{assets_prefix}/{p.name}"
+            for p in sorted(structs_dir.glob("ALKANES_[0-9]*.xyz"))
+        ]
+        cumulene_structs = [
+            f"{assets_prefix}/{p.name}"
+            for p in sorted(structs_dir.glob("CUMULENES_[0-9]*.xyz"))
         ]
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={
+                "Total MAE": scatter_total,
+                "Alkanes MAE": scatter_alkane,
+                "Cumulenes MAE": scatter_cumulene,
+            },
         )
 
         struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
+            scatter_id=f"{BENCHMARK_NAME}-figure-total",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
+            structs=alkane_structs + cumulene_structs,
+            mode="struct",
+        )
+        struct_from_scatter(
+            scatter_id=f"{BENCHMARK_NAME}-figure-alkane",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=alkane_structs,
+            mode="struct",
+        )
+        struct_from_scatter(
+            scatter_id=f"{BENCHMARK_NAME}-figure-cumulene",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=cumulene_structs,
             mode="struct",
         )
 
