@@ -9,7 +9,7 @@ from dash import Dash, Input, Output, callback, clientside_callback, ctx, no_upd
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, A, Br, Button, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg import __version__
@@ -1050,7 +1050,47 @@ def build_nav(
         ),
         Interval(id="startup-mask-poll", interval=250, n_intervals=0),
         build_onboarding_modal(),
-        build_tutorial_button(),
+        # Fixed header controls (top-right): clear-cache button next to the
+        # tutorial button. The hidden Divs are the clear-storage and
+        # version-check clientside-callback targets.
+        Div(
+            [
+                Button(
+                    "Clear cache",
+                    id="clear-storage-button",
+                    n_clicks=0,
+                    title=(
+                        "Clear browser-stored app state (weights, thresholds, "
+                        "tutorial progress) and reload. Use after an update if "
+                        "the app shows stale data."
+                    ),
+                    style={
+                        "padding": "8px 16px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #cbd5e1",
+                        "background": "white",
+                        "color": "#475569",
+                        "cursor": "pointer",
+                        "fontWeight": 600,
+                        "fontSize": "14px",
+                        "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+                        "transition": "all 0.2s ease",
+                    },
+                ),
+                build_tutorial_button(),
+                Div(id="clear-storage-dummy", style={"display": "none"}),
+                Div(id="storage-version-dummy", style={"display": "none"}),
+            ],
+            style={
+                "position": "fixed",
+                "top": "20px",
+                "right": "20px",
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "10px",
+                "zIndex": "1600",  # Above loading overlays (1200/1400).
+            },
+        ),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -1189,7 +1229,7 @@ def build_nav(
         function (n_clicks) {
             if (n_clicks && window.confirm(
                 "Clear cached app data and reload? Saved weights and thresholds"
-                + "will be reset."
+                + " will be reset."
             )) {
                 window.localStorage.clear();
                 window.sessionStorage.clear();
