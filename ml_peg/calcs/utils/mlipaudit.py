@@ -9,6 +9,7 @@ from mlipaudit.benchmarks import (
     RingPlanarityBenchmark,
     TautomersBenchmark,
 )
+from mlipaudit.benchmarks.stability.stability import StabilityBenchmark
 
 
 class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
@@ -62,6 +63,17 @@ class MlPegRingPlanarityBenchmark(RingPlanarityBenchmark):
 class MlPegTautomersBenchmark(TautomersBenchmark):
     """
     TautomersBenchmark wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
+    do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegStabilityBenchmark(StabilityBenchmark):
+    """
+    StabilityBenchmark wired up for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
     do not expose ``allowed_atomic_numbers``.
