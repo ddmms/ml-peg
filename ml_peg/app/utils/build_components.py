@@ -792,34 +792,6 @@ def build_footer() -> html.Footer:
                 ),
                 style={"marginTop": "6px"},
             ),
-            Div(
-                [
-                    html.Button(
-                        "Clear cached data",
-                        id="clear-storage-button",
-                        n_clicks=0,
-                        title=(
-                            "Clear browser-stored app state (weights, thresholds, "
-                            "tutorial progress) and reload. Use after an update if "
-                            "the app shows stale data."
-                        ),
-                        style={
-                            "fontSize": "11px",
-                            "padding": "4px 10px",
-                            "backgroundColor": "transparent",
-                            "color": "#6c757d",
-                            "border": "1px solid #ced4da",
-                            "borderRadius": "4px",
-                            "cursor": "pointer",
-                        },
-                    ),
-                    # Hidden output targets for the clear-storage and
-                    # version-check clientside callbacks.
-                    Div(id="clear-storage-dummy", style={"display": "none"}),
-                    Div(id="storage-version-dummy", style={"display": "none"}),
-                ],
-                style={"marginTop": "10px"},
-            ),
         ],
         style={
             "marginTop": "24px",
