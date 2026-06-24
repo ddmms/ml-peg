@@ -223,9 +223,16 @@ def _register_point_highlight(scatter_id: str) -> None:
                     line: {color: '#ff1493', width: 3},
                 },
             });
+            // Record the clicked curve so a playing WEAS trajectory can move
+            // this ring to the matching frame's point (weas_frame_follow.js).
+            window.__mlPegActiveTraj = {
+                scatterId: "__SCATTER_ID__",
+                x: src.x || [],
+                y: src.y || [],
+            };
             return Object.assign({}, figure, {data: data});
         }
-        """,
+        """.replace("__SCATTER_ID__", scatter_id),
         Output(scatter_id, "figure", allow_duplicate=True),
         Input(scatter_id, "clickData"),
         State(scatter_id, "figure"),
