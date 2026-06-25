@@ -40,7 +40,7 @@ class ODiffusionTMDsApp(BaseApp):
         }
 
         # Assets dir will be parent directory
-        assets_dir = "assets/nebs/O_diffusion_2D_TMDs"
+        assets_dir = "/assets/nebs/O_diffusion_2D_TMDs"
         structs = {
             model: {
                 f"{compound} barrier error": (
