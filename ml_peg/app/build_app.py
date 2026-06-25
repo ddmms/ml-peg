@@ -1031,6 +1031,22 @@ def build_nav(
                         "color": "#212529",
                     },
                 ),
+                # Time-based progress bar: fills continuously over ~10s, easing
+                # toward ~95% (keyframe in loading.css; same single-element bar
+                # as the pre-hydration loader in dash_loading.css). It vanishes
+                # with the mask when ready, so it never reaches a fake 100%.
+                Div(
+                    style={
+                        "width": "200px",
+                        "height": "6px",
+                        "borderRadius": "3px",
+                        "background": (
+                            "linear-gradient(#119DFF, #119DFF) left center "
+                            "/ 5% 100% no-repeat, #d0ebff"
+                        ),
+                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
+                    },
+                ),
             ],
             id="startup-mask",
             style={
@@ -1206,6 +1222,7 @@ def build_nav(
 
     # Hide the start-up mask once the page has rendered, or after a timeout as
     # a safety net, then stop polling. Clientside, so it adds no server load.
+    # (The progress bar fills via a CSS animation, not this callback.)
     clientside_callback(
         """
         function(n) {
