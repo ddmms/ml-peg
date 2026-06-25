@@ -11,8 +11,8 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "nebs" / "O_diffusion_2D_TMDs" / "outputs"
@@ -66,7 +66,7 @@ def plot_nebs(model: str, compound: str) -> None:
         """
         results: dict[str, tuple[list[float], list[float]]] = {}
         structs = read(
-            CALC_PATH / f"O_diffusion_{compound}-{model}-neb-band.extxyz",
+            CALC_PATH / model / f"O_diffusion_{compound}-neb-band.extxyz",
             index=":",
         )
         energies = [struct.get_potential_energy() for struct in structs]
@@ -112,7 +112,7 @@ def barrier_errors() -> dict[str, dict[str, float]]:
         for compound in COMPOUNDS:
             plot_nebs(model_name, compound)
             with open(
-                CALC_PATH / f"O_diffusion_{compound}-{model_name}-neb-results.dat",
+                CALC_PATH / model_name / f"O_diffusion_{compound}-neb-results.dat",
                 encoding="utf8",
             ) as f:
                 data = f.readlines()
