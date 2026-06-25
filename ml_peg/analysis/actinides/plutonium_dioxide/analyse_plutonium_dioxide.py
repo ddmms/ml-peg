@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import io, units
+from ase import io
 import numpy as np
 import pytest
 
@@ -15,11 +15,12 @@ from ml_peg.analysis.utils.utils import (
     load_metrics_config,
     mae,
     write_density_trajectories,
+    write_struct_info,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "actinides" / "plutonium_dioxide" / "outputs"
@@ -29,8 +30,6 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
-
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 
 @pytest.fixture
@@ -43,7 +42,6 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
     dict[str, dict[str, Any]]
         Processed information per model (energy, force, stress, labels).
     """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
     stats: dict[str, dict[str, Any]] = {}
 
     for model_name in MODELS:
@@ -60,37 +58,40 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
         energy_labels: list[str] = []
         force_labels: list[str] = []
         stress_labels: list[str] = []
-        excluded = 0
         frame_idx = 0
 
-        for xyz_file in sorted(model_dir.glob("*.xyz")):
-            frames = io.read(xyz_file, ":")
-            for atoms in frames:
-                label = str(frame_idx)
-                natoms = atoms.get_number_of_atoms()
-                e_ref = atoms.info.get("energy_xtb")
-                f_ref = atoms.arrays.get("forces_xtb")
-                s_ref = atoms.info.get("REF_stress")
+        xyz_file = next(model_dir.glob("*.xyz"), None)
+        if xyz_file is None:
+            continue
 
-                io.write(struct_dir / f"{label}.xyz", atoms)
+        write_struct_info(
+            data_path=xyz_file,
+            out_path=OUT_PATH,
+            index=0,
+        )
 
-                if e_ref is not None:
-                    energies_ref.append(e_ref / natoms)
-                    energies_pred.append(atoms.get_total_energy() / natoms)
-                    energy_labels.append(label)
+        frames = io.read(xyz_file, ":")
+        for frame_idx, atoms in enumerate(frames):
+            label = str(frame_idx)
+            natoms = atoms.get_number_of_atoms()
+            e_ref = atoms.info.get("energy_xtb")
+            f_ref = atoms.arrays.get("forces_xtb")
+            s_ref = atoms.info.get("REF_stress")
 
-                if f_ref is not None:
-                    forces_ref.append(f_ref.ravel())
-                    forces_pred.append(atoms.get_forces().ravel())
-                    force_labels.extend([label] * (natoms * 3))
+            io.write(struct_dir / f"{label}.xyz", atoms)
 
-                if s_ref is not None:
-                    s_ref_flat = np.asarray(s_ref).ravel().tolist()
-                    stress_ref.extend(s_ref_flat)
-                    stress_pred.extend(atoms.get_stress(voigt=False).ravel())
-                    stress_labels.extend([label] * len(s_ref_flat))
+            energies_ref.append(e_ref / natoms)
+            energies_pred.append(atoms.get_total_energy() / natoms)
+            energy_labels.append(label)
 
-                frame_idx += 1
+            forces_ref.append(f_ref.ravel())
+            forces_pred.append(atoms.get_forces().ravel())
+            force_labels.extend([label] * (natoms * 3))
+
+            s_ref_flat = np.asarray(s_ref).ravel().tolist()
+            stress_ref.extend(s_ref_flat)
+            stress_pred.extend(atoms.get_stress(voigt=False).ravel())
+            stress_labels.extend([label] * len(s_ref_flat))
 
         stats[model_name] = {
             "energies": {
@@ -105,7 +106,6 @@ def puo2_stats() -> dict[str, dict[str, Any]]:
                 "ref": stress_ref,
                 "pred": stress_pred,
             },
-            "excluded": excluded,
             "energy_labels": energy_labels,
             "force_labels": force_labels,
             "stress_labels": stress_labels,
@@ -338,13 +338,24 @@ def metrics(
     }
 
 
-def test_puo2(metrics: dict[str, dict]) -> None:
+def test_puo2(
+    metrics: dict[str, dict],
+    energy_density: dict[str, dict],
+    force_density: dict[str, dict],
+    stress_density: dict[str, dict],
+) -> None:
     """
-    Run puo2 analysis.
+    Run puo2 analysis and generate density plots.
 
     Parameters
     ----------
     metrics
         Benchmark metric values.
+    energy_density
+        Density scatter input for energy.
+    force_density
+        Density scatter input for force.
+    stress_density
+        Density scatter input for stress.
     """
     return

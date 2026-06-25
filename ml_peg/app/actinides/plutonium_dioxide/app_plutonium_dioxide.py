@@ -14,8 +14,9 @@ from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Plutonium Dioxide"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/actinides.html#plutonium_dioxide"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/actinides.html#plutonium-dioxide"
 DATA_PATH = APP_ROOT / "data" / "actinides" / "plutonium_dioxide"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class PuO2App(BaseApp):
@@ -100,6 +101,7 @@ def get_app() -> PuO2App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

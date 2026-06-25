@@ -4,21 +4,21 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
-from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -45,18 +45,34 @@ def test_puo2_parity(mlip: tuple[str, Any]) -> None:
     ref_file = puo2_data_dir / "dft_ref_data.xyz"
     ref_structures = read(ref_file, ":")
 
-    results_to_save = []
-
-    for atoms in ref_structures:
-        atoms.calc = (
-            model.get_calculator()
-        )  # must be called each time as number of atoms changes.
-        atoms.get_potential_energy()
-        atoms.get_forces()
-        atoms.get_stress()
-
-        results_to_save.append(atoms)
+    calculator = model.get_calculator()
 
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
-    write(write_dir / "puo2_results.xyz", results_to_save)
+
+    for atoms in tqdm(ref_structures, desc="Evaluating energy, forces and stress"):
+        atoms.calc = calculator
+        # Set default charge and spin
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
+
+        try:
+            atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy: {exc}", stacklevel=2)
+            atoms.info["energy"] = np.nan
+
+        try:
+            atoms.get_forces()
+        except Exception as exc:
+            warn(f"Error calculating forces: {exc}", stacklevel=2)
+            n_atoms = len(atoms)
+            atoms.arrays["forces"] = np.full((n_atoms, 3), np.nan)
+
+        try:
+            atoms.get_stress()
+        except Exception as exc:
+            warn(f"Error calculating stress: {exc}", stacklevel=2)
+            atoms.info["stress"] = np.full(6, np.nan)
+
+        write(write_dir / "puo2_results.xyz", atoms, append=True)
