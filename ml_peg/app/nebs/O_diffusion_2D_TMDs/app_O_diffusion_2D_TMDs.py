@@ -92,7 +92,7 @@ def get_app() -> ODiffusionTMDsApp:
 
 if __name__ == "__main__":
     # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
+    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
 
     # Construct layout and register callbacks
     o_diffusion_app = get_app()
