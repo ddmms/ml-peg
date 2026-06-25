@@ -12,13 +12,14 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CYCLO70"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#cyclo70"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "CYCLO70"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class CYCLO70App(BaseApp):
@@ -37,7 +38,7 @@ class CYCLO70App(BaseApp):
                 [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_forward.xyz")]
             )
             structs = [
-                f"assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
+                f"/assets/molecular_reactions/CYCLO70/{MODELS[0]}/{label}_{direction}.xyz"
                 for label in labels
                 for direction in ("forward", "reverse")
             ]
@@ -80,6 +81,7 @@ def get_app() -> CYCLO70App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

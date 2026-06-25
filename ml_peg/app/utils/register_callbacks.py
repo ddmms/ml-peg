@@ -3,10 +3,28 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+import time
+from typing import Any, Literal
 
-from dash import Input, Output, State, callback, ctx
+import dash
+from dash import (
+    ALL,
+    MATCH,
+    ClientsideFunction,
+    Dash,
+    Input,
+    Output,
+    Patch,
+    State,
+    callback,
+    clientside_callback,
+    ctx,
+    dcc,
+    no_update,
+)
+from dash.dash_table import DataTable
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from ml_peg.analysis.utils.utils import (
     calc_metric_scores,
@@ -17,14 +35,108 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.utils import (
     Thresholds,
     build_level_of_theory_warnings,
+    build_threshold_input_style,
     clean_thresholds,
+    filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
     get_scores,
+    get_threshold_colours,
+    store_data_equal,
 )
+
+THRESHOLD_INPUT_STEP = 0.0001
+THRESHOLD_ROUND_DIGITS = 10
+
+
+def enforce_threshold_direction(
+    *,
+    edited_field: Literal["good", "bad"],
+    good: float,
+    bad: float,
+    default_good: float,
+    default_bad: float,
+    min_gap: float = THRESHOLD_INPUT_STEP,
+) -> tuple[float, float]:
+    """
+    Preserve the original good/bad threshold direction after a user edit.
+
+    Parameters
+    ----------
+    edited_field
+        Which threshold input the user changed.
+    good
+        Candidate good threshold value after the edit.
+    bad
+        Candidate bad threshold value after the edit.
+    default_good
+        Original good threshold from benchmark metadata.
+    default_bad
+        Original bad threshold from benchmark metadata.
+    min_gap
+        Minimum allowed separation between the two thresholds.
+
+    Returns
+    -------
+    tuple[float, float]
+        Corrected ``(good, bad)`` thresholds.
+    """
+    if default_good == default_bad:
+        return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
+
+    good_is_higher = default_good > default_bad
+    if good_is_higher and good <= bad:
+        if edited_field == "good":
+            bad = good - min_gap
+        else:
+            good = bad + min_gap
+    elif not good_is_higher and good >= bad:
+        if edited_field == "good":
+            bad = good + min_gap
+        else:
+            good = bad - min_gap
+
+    return round(good, THRESHOLD_ROUND_DIGITS), round(bad, THRESHOLD_ROUND_DIGITS)
+
+
+def apply_level_of_theory_warnings(
+    rows: list[dict[str, Any]],
+    base_style: list[dict[str, Any]],
+    model_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | None] | None = None,
+    model_configs: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Append level-of-theory warnings and tooltip rows to existing table styles.
+
+    Parameters
+    ----------
+    rows
+        Table rows currently being displayed.
+    base_style
+        Existing conditional style rules for those rows.
+    model_levels
+        Mapping from model name to its level-of-theory metadata.
+    metric_levels
+        Mapping from metric column name to its benchmark level-of-theory metadata.
+    model_configs
+        Optional configuration metadata for each model.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], list[dict[str, Any]]]
+        Augmented style rules and tooltip rows.
+    """
+    warning_styles, tooltip_rows = build_level_of_theory_warnings(
+        rows, model_levels, metric_levels, model_configs
+    )
+    style_with_warnings = base_style + warning_styles
+    tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
+    return style_with_warnings, tooltip_data
 
 
 def register_summary_table_callbacks(
+    initial_rows: list[dict] | None = None,
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
@@ -34,6 +146,9 @@ def register_summary_table_callbacks(
 
     Parameters
     ----------
+    initial_rows
+        Starting full summary rows. These are used to seed the summary-table
+        cache before any callback has written updated rows to it.
     model_levels
         Mapping from model name to its level of theory badge text.
     metric_levels
@@ -41,58 +156,109 @@ def register_summary_table_callbacks(
     model_configs
         Optional metadata/configuration dictionary for each model.
     """
+    default_rows = deepcopy(initial_rows) if initial_rows else []
 
     @callback(
-        Output("summary-table", "data"),
-        Output("summary-table", "style_data_conditional"),
-        Output(
-            "summary-table", "tooltip_data"
-        ),  # Needed to display model config & level of theory tooltips
-        Input("all-tabs", "value"),
+        Output("summary-table-computed-store", "data", allow_duplicate=True),
+        Input("summary-table-scores-store", "data"),
         Input("summary-table-weight-store", "data"),
-        State("summary-table-scores-store", "data"),
-        State("summary-table", "data"),
-        prevent_initial_call=False,
+        State("summary-table-computed-store", "data"),
+        prevent_initial_call=True,
     )
-    def update_summary_table(
-        tabs_value: str,
+    def update_summary_computed_store(
+        stored_scores: dict[str, dict[str, float]] | None,
         stored_weights: dict[str, float],
-        stored_scores: dict[str, dict[str, float]],
-        summary_data: list[dict],
-    ) -> tuple[list[dict], list[dict], list[dict]]:
+        computed_store: list[dict] | None,
+    ) -> list[dict]:
         """
-        Update summary table when scores/weights change, and sync on tab change.
+        Update cached summary rows when category scores or summary weights change.
 
         Parameters
         ----------
-        tabs_value
-            Value of selected tab. Parameter unused, but required to register Input.
-        stored_weights
-            Stored summary weights dictionary.
         stored_scores
-            Stored scores for table scores.
-        summary_data
-            Data from summary table to be updated.
+            Latest category-summary scores, grouped by category column.
+        stored_weights
+            Current weights applied to the overall summary table.
+        computed_store
+            Cached full summary rows. When available, these are updated and
+            reused as the source of truth.
+
+        Returns
+        -------
+        list[dict]
+            Updated unfiltered rows written back to the cached summary store.
+        """
+        source_data = deepcopy(computed_store or default_rows)
+        if not source_data:
+            raise PreventUpdate
+
+        # Update table from stored scores
+        if stored_scores:
+            for row in source_data:
+                for tab, values in stored_scores.items():
+                    if row["MLIP"] in values:
+                        row[tab] = values[row["MLIP"]]
+
+        updated_rows, _ = update_score_style(source_data, stored_weights)
+        return updated_rows
+
+    @callback(
+        Output("summary-table", "data", allow_duplicate=True),
+        Output("summary-table", "style_data_conditional", allow_duplicate=True),
+        Output("summary-table", "tooltip_data", allow_duplicate=True),
+        Input("selected-models-store", "data"),
+        Input("summary-table-computed-store", "data"),
+        Input("cmap-store", "data"),
+        prevent_initial_call="initial_duplicate",
+        optional=True,
+    )
+    def sync_summary_table(
+        selected_models: list[str] | None,
+        computed_store: list[dict] | None,
+        cmap_name: str | None,
+    ) -> tuple[list[dict], list[dict], list[dict]]:
+        """
+        Sync the visible summary table from cached unfiltered rows.
+
+        Parameters
+        ----------
+        selected_models
+            Models currently selected in the global model filter.
+        computed_store
+            Cached full summary rows for the overall summary table.
+        cmap_name
+            Matplotlib colormap name from the cmap store.
 
         Returns
         -------
         tuple[list[dict], list[dict], list[dict]]
-            Updated rows, conditional styling rules, and tooltip rows.
+            Filtered rows, style rules, and tooltip rows for the visible table.
         """
-        # Update table from stored scores
-        if stored_scores:
-            for row in summary_data:
-                for tab, values in stored_scores.items():
-                    row[tab] = values[row["MLIP"]]
+        if not computed_store:
+            raise PreventUpdate
 
-        # Update table contents
-        updated_rows, base_style = update_score_style(summary_data, stored_weights)
-
-        warning_styles, tooltip_rows = build_level_of_theory_warnings(
-            updated_rows, model_levels, metric_levels, model_configs
+        filtered_rows = filter_rows_by_models(computed_store, selected_models)
+        base_style = (
+            get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+            if filtered_rows
+            else []
         )
-        style_with_warnings = base_style + warning_styles
-        return updated_rows, style_with_warnings, tooltip_rows
+        style_with_warnings, tooltip_data = apply_level_of_theory_warnings(
+            filtered_rows,
+            base_style,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+        )
+        # Keep the model-link column white, even on greyed no-data rows.
+        style_with_warnings = style_with_warnings + [
+            {
+                "if": {"column_id": "link"},
+                "backgroundColor": "white",
+                "backgroundImage": "none",
+            }
+        ]
+        return filtered_rows, style_with_warnings, tooltip_data
 
 
 def register_category_table_callbacks(
@@ -120,6 +286,86 @@ def register_category_table_callbacks(
     model_configs
         Optional configuration metadata for each model.
     """
+
+    @callback(
+        Output(table_id, "data", allow_duplicate=True),
+        Output(table_id, "style_data_conditional", allow_duplicate=True),
+        Input(f"{table_id}-raw-data-store", "data"),
+        State(f"{table_id}-computed-store", "data"),
+        State(f"{table_id}-weight-store", "data"),
+        State(f"{table_id}-thresholds-store", "data"),
+        State(f"{table_id}-normalized-toggle", "value"),
+        State("selected-models-store", "data"),
+        State("cmap-store", "data"),
+        State(f"{table_id}-raw-tooltip-store", "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+        optional=True,
+    )
+    def update_table_from_store(
+        stored_raw_data: list[dict] | None,
+        stored_computed_data: list[dict] | None,
+        weights: dict[str, float] | None,
+        thresholds: dict | None,
+        toggle_value: list[str] | None,
+        selected_models: list[str] | None,
+        cmap_name: str | None,
+        raw_tooltips: dict[str, str] | None,
+        current_columns: list[dict] | None,
+    ) -> list[dict]:
+        """
+        Update visible table from cached data when the raw data store changes.
+
+        Parameters
+        ----------
+        stored_raw_data
+            Stored raw table data.
+        stored_computed_data
+            Stored computed table data.
+        weights
+            Stored weights for the table.
+        thresholds
+            Stored thresholds for the table.
+        toggle_value
+            Value of toggle to show normalised values.
+        selected_models
+            List of model names currently selected in the model filter.
+        cmap_name
+            Colourmap name from the cmap store.
+        raw_tooltips
+            Stored raw tooltip text for the table.
+        current_columns
+            Current table columns.
+
+        Returns
+        -------
+        list[dict]
+            Updated rows for the visible table.
+        """
+        display_rows = get_scores(
+            stored_raw_data, stored_computed_data, thresholds, toggle_value
+        )
+        scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+        filtered_rows = filter_rows_by_models(display_rows, selected_models)
+        filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+        style = (
+            get_table_style(
+                filtered_rows,
+                scored_data=filtered_scores,
+                cmap_name=cmap_name or "viridis_r",
+            )
+            if filtered_rows
+            else []
+        )
+        style, tooltip_data = apply_level_of_theory_warnings(
+            filtered_rows,
+            style,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+        )
+        return filtered_rows, style
+
     # Benchmark tables
     if use_thresholds:
 
@@ -130,22 +376,25 @@ def register_category_table_callbacks(
             Output(table_id, "columns", allow_duplicate=True),
             Output(table_id, "tooltip_header", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
-            Output(f"{table_id}-raw-data-store", "data"),
+            Output(f"{table_id}-raw-data-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
             Input(f"{table_id}-thresholds-store", "data"),
-            Input("all-tabs", "value"),
             Input(f"{table_id}-normalized-toggle", "value"),
+            Input("selected-models-store", "data"),
+            Input("cmap-store", "data"),
             State(f"{table_id}-raw-data-store", "data"),
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
             prevent_initial_call="initial_duplicate",
+            optional=True,
         )
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
             stored_threshold: dict | None,
-            _tabs_value: str,
             toggle_value: list[str] | None,
+            selected_models: list[str] | None,
+            cmap_name: str | None,
             stored_raw_data: list[dict] | None,
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
@@ -160,7 +409,7 @@ def register_category_table_callbacks(
             list[dict],
         ]:
             """
-            Update table when stored weights/threshold change, or tab is changed.
+            Update table when stored weights/threshold change, or page is changed.
 
             Parameters
             ----------
@@ -168,10 +417,10 @@ def register_category_table_callbacks(
                 Stored weights dictionary for table metrics.
             stored_threshold
                 Stored thresholds dictionary for table metric thresholds.
-            _tabs_value
-                Current tab identifier (unused, required to trigger on tab change).
             toggle_value
                 Value of toggle to show normalised values.
+            selected_models
+                List of model names currently selected in the model filter.
             stored_raw_data
                 Table data.
             stored_computed_data
@@ -184,28 +433,34 @@ def register_category_table_callbacks(
             show_normalized = bool(toggle_value) and toggle_value[0] == "norm"
             trigger_id = ctx.triggered_id
 
-            def apply_levels_of_theory(
-                rows: list[dict], base_style: list[dict]
-            ) -> tuple[list[dict], list[dict]]:
-                warning_styles, tooltip_rows = build_level_of_theory_warnings(
-                    rows, model_levels, metric_levels, model_configs
-                )
-                combined_style = base_style + warning_styles
-                tooltip_data = tooltip_rows if tooltip_rows else [{} for _ in rows]
-                return combined_style, tooltip_data
-
-            # Tab switches and toggle flips reuse the cached scored rows rather than
+            # Page changes and toggle flips reuse the cached scored rows rather than
             # recalculating scores, we only re-score when weights/thresholds change.
             if (
-                trigger_id in ("all-tabs", f"{table_id}-normalized-toggle")
+                trigger_id in (f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
                 display_rows = get_scores(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
-                style = get_table_style(display_rows, scored_data=scored_rows)
-                style, tooltip_data = apply_levels_of_theory(display_rows, style)
+                filtered_rows = filter_rows_by_models(display_rows, selected_models)
+                filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+                style = (
+                    get_table_style(
+                        filtered_rows,
+                        scored_data=filtered_scores,
+                        cmap_name=cmap_name or "viridis_r",
+                    )
+                    if filtered_rows
+                    else []
+                )
+                style, tooltip_data = apply_level_of_theory_warnings(
+                    filtered_rows,
+                    style,
+                    model_levels=model_levels,
+                    metric_levels=metric_levels,
+                    model_configs=model_configs,
+                )
                 columns = format_metric_columns(
                     current_columns, thresholds, show_normalized
                 )
@@ -213,7 +468,7 @@ def register_category_table_callbacks(
                     raw_tooltips, thresholds, show_normalized
                 )
                 return (
-                    display_rows,
+                    filtered_rows,
                     style,
                     tooltip_data,
                     columns,
@@ -232,14 +487,31 @@ def register_category_table_callbacks(
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
-            style = get_table_style(display_rows, scored_data=scored_rows)
-            style, tooltip_data = apply_levels_of_theory(display_rows, style)
+            filtered_rows = filter_rows_by_models(display_rows, selected_models)
+            filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+            style = (
+                get_table_style(
+                    filtered_rows,
+                    scored_data=filtered_scores,
+                    cmap_name=cmap_name or "viridis_r",
+                )
+                if filtered_rows
+                else []
+            )
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
             columns = format_metric_columns(
                 current_columns, thresholds, show_normalized
             )
             tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
+
             return (
-                display_rows,
+                filtered_rows,
                 style,
                 tooltip_data,
                 columns,
@@ -256,49 +528,128 @@ def register_category_table_callbacks(
             Output(table_id, "tooltip_data", allow_duplicate=True),
             Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
             Input(f"{table_id}-weight-store", "data"),
-            Input("all-tabs", "value"),
+            Input("selected-models-store", "data"),
+            Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
             prevent_initial_call="initial_duplicate",
+            optional=True,
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
-            _tabs_value: str,
+            selected_models: list[str] | None,
+            cmap_name: str | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
-            trigger_id = ctx.triggered_id
-
-            def apply_levels(
-                rows: list[dict], base_style: list[dict]
-            ) -> tuple[list[dict], list[dict]]:
-                warning_styles, tooltip_rows = build_level_of_theory_warnings(
-                    rows, model_levels, metric_levels, model_configs
-                )
-                combined_style = base_style + warning_styles
-                tooltips = tooltip_rows if tooltip_rows else [{} for _ in rows]
-                return combined_style, tooltips
-
-            if trigger_id == "all-tabs" and computed_store:
-                style = get_table_style(computed_store)
-                style, tooltip_data = apply_levels(computed_store, style)
-                return computed_store, style, tooltip_data, computed_store
-
-            if not table_data:
+            # Always use computed_store (full unfiltered rows) as the source so
+            # that re-selecting a model restores it. Fall back to table_data only
+            # on first load before the store is populated.
+            source_data = computed_store or table_data
+            if not source_data:
                 raise PreventUpdate
 
-            scored_rows, style = update_score_style(table_data, stored_weights)
-            style, tooltip_data = apply_levels(scored_rows, style)
-            return scored_rows, style, tooltip_data, scored_rows
+            trigger_id = ctx.triggered_id
+
+            # Recompute scores only when weights changed
+            if trigger_id == f"{table_id}-weight-store":
+                scored_rows, _ = update_score_style(source_data, stored_weights)
+                updated_store = scored_rows
+
+            else:
+                scored_rows = source_data
+                updated_store = no_update
+
+            filtered_rows = filter_rows_by_models(scored_rows, selected_models)
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
+
+            if not table_data or len(filtered_rows) != len(table_data):
+                return filtered_rows, style, tooltip_data, scored_rows
+
+            patch = Patch()
+            rows_changed = False
+
+            for row_index, (old_row, new_row) in enumerate(
+                zip(table_data, filtered_rows, strict=True)
+            ):
+                for key, new_value in new_row.items():
+                    if old_row.get(key) != new_value:
+                        patch[row_index][key] = new_value
+                        rows_changed = True
+
+            # No visual change
+            if not rows_changed:
+                return no_update, style, tooltip_data, updated_store
+
+            return patch, style, tooltip_data, updated_store
+
+        @callback(
+            Output(table_id, "data", allow_duplicate=True),
+            Output(table_id, "style_data_conditional", allow_duplicate=True),
+            Output(table_id, "tooltip_data", allow_duplicate=True),
+            Input(f"{table_id}-computed-store", "data"),
+            Input("selected-models-store", "data"),
+            Input("cmap-store", "data"),
+            prevent_initial_call="initial_duplicate",
+            optional=True,
+        )
+        def sync_table_from_computed_store(
+            computed_store: list[dict] | None,
+            selected_models: list[str] | None,
+            cmap_name: str | None,
+        ) -> tuple[list[dict], list[dict], list[dict]]:
+            """
+            Sync the visible category table from its cached unfiltered rows.
+
+            Parameters
+            ----------
+            computed_store
+                Cached unfiltered rows for the category summary.
+            selected_models
+                Currently selected model names.
+
+            Returns
+            -------
+            tuple[list[dict], list[dict], list[dict]]
+                Filtered rows, style rules, and tooltip rows for the visible table.
+            """
+            if not computed_store:
+                raise PreventUpdate
+
+            filtered_rows = filter_rows_by_models(computed_store, selected_models)
+            style = (
+                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                if filtered_rows
+                else []
+            )
+            style, tooltip_data = apply_level_of_theory_warnings(
+                filtered_rows,
+                style,
+                model_levels=model_levels,
+                metric_levels=metric_levels,
+                model_configs=model_configs,
+            )
+            return filtered_rows, style, tooltip_data
 
     @callback(
         Output("summary-table-scores-store", "data", allow_duplicate=True),
-        Input(table_id, "data"),
+        Input(f"{table_id}-computed-store", "data"),
         State("summary-table-scores-store", "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_scores_store(
-        table_data: list[dict],
+        computed_rows: list[dict] | None,
         scores_data: dict[str, dict[str, float]],
     ) -> dict[str, dict[str, float]]:
         """
@@ -306,117 +657,170 @@ def register_category_table_callbacks(
 
         Parameters
         ----------
-        table_data
-            Data from `table_id` to be updated.
+        computed_rows
+            Cached full rows for the category summary table.
         scores_data
-            Dictionary of scores for each tab.
+            Stored overall-summary inputs, keyed by category score column.
 
         Returns
         -------
         dict[str, dict[str, float]]
-            List of scoress indexed by table_id.
+            Updated summary-score mapping.
         """
         # Only category summary tables should write to the global store
         if not table_id.endswith("-summary-table"):
-            return scores_data
+            raise PreventUpdate
 
-        if not scores_data:
-            scores_data = {}
-        # Update scores store. Category table IDs are of form "[category]-summary-table"
-        # Table headings are of the form "[category] Score"
-        scores_data[table_id.removesuffix("-summary-table") + " Score"] = {
-            row["MLIP"]: row["Score"] for row in table_data
+        if not computed_rows:
+            raise PreventUpdate
+
+        # Category table IDs are of form "[category]-summary-table"
+        category_key = table_id.removesuffix("-summary-table") + " Score"
+
+        new_scores = {
+            row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
         }
-        return scores_data
+        current_scores = (scores_data or {}).get(category_key)
+
+        if current_scores == new_scores:
+            return no_update
+
+        patch = Patch()
+        patch[category_key] = new_scores
+
+        return patch
 
 
 def register_benchmark_to_category_callback(
-    benchmark_table_id: str,
-    category_table_id: str,
-    benchmark_column: str,
-    use_threshold_store: bool = False,
-    model_name_map: dict[str, str] | None = None,
+    all_tables: dict[str, dict[str, DataTable]], category_to_title: dict[str, str]
 ) -> None:
     """
     Propagate a benchmark table's Score into its category summary table column.
 
     Parameters
     ----------
-    benchmark_table_id
-        ID of the benchmark test table (e.g., "OC157-table").
-    category_table_id
-        ID of the category summary table (e.g., "Surfaces-summary-table").
-    benchmark_column
-        Column name in the category summary table corresponding to the benchmark.
-    use_threshold_store
-        Whether the benchmark table exposes a normalization store for metrics.
-    model_name_map
-        Optional mapping of displayed benchmark MLIP names -> original model names.
+    all_tables
+        Tables for all tests, grouped by category.
+    category_to_title
+        Dictionary mapping category directory names to their display titles/table IDs.
     """
-    _ = use_threshold_store  # cached rows handle normalization
-    # flag kept for compatibility with existing call sites
-    name_map = dict(model_name_map or {})
+    all_info = {}
+    for category, tables in all_tables.items():
+        all_info[category] = {}
+        for test_name, benchmark_table in tables.items():
+            all_info[category][test_name] = {
+                "benchmark_table_id": benchmark_table.id,
+                "benchmark_column": test_name + " Score",
+                "model_name_map": getattr(benchmark_table, "model_name_map", {}),
+            }
 
-    @callback(
-        Output(category_table_id, "data", allow_duplicate=True),
-        Output(category_table_id, "style_data_conditional", allow_duplicate=True),
-        Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True),
-        Input(f"{benchmark_table_id}-computed-store", "data"),
-        Input("all-tabs", "value"),
-        State(category_table_id, "data"),
-        State(f"{category_table_id}-weight-store", "data"),
-        State(f"{category_table_id}-computed-store", "data"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def update_category_from_benchmark(
-        benchmark_computed_store: list[dict] | None,
-        _tabs_value: str,
-        category_data: list[dict] | None,
-        category_weights: dict[str, float] | None,
-        category_computed_store: list[dict] | None,
-    ) -> tuple[list[dict], list[dict], list[dict]]:
+    outputs = []
+    inputs = []
+    for category, category_info in sorted(all_info.items()):
+        category_table_id = f"{category_to_title[category]}-summary-table"
+        outputs.append(
+            Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True)
+        )
+
+        inputs.extend(
+            [
+                State(f"{category_table_id}-weight-store", "data"),
+                State(f"{category_table_id}-computed-store", "data"),
+            ]
+        )
+        inputs.extend(
+            [
+                Input(f"{table_info['benchmark_table_id']}-computed-store", "data")
+                for _, table_info in sorted(category_info.items())
+            ]
+        )
+
+    @callback(outputs, inputs, prevent_initial_call=True)
+    def update_category_from_benchmark(*args) -> list[list[dict]]:
         """
-        Update a category summary table from cached benchmark scores.
+        Update cached category summary rows from all benchmarks' cached scores.
 
         Parameters
         ----------
-        benchmark_computed_store
-            Latest scored benchmark rows emitted by the benchmark table.
-        _tabs_value
-            Current tab identifier (unused, required to trigger on tab change).
-        category_data
-            Existing category table rows shown to the user.
-        category_weights
-            Stored weights for the category summary metrics.
-        category_computed_store
-            Cached scored rows for the category summary.
+        *args
+            States and Inputs for all category summary tables and benchmark tables.
+            Ordered by category. For each category, the weights, computed store, and
+            benchmark computed stores are listed sequentially.
 
         Returns
         -------
-        tuple[list[dict], list[dict], list[dict]]
-            Updated table data, updated style, and refreshed cached rows.
+        list[list[dict]]
+            Refreshed cached rows for each category summary table.
         """
-        # Default to pre-computed category data to avoid multiple updates on tab change
-        category_rows = category_computed_store or category_data
-        if not category_rows:
-            raise PreventUpdate
+        # Rebuild inputs for each category
+        iterator = iter(args)
+        patched_outputs = []
 
-        benchmark_scores: dict[str, float] = {}
-        for row in benchmark_computed_store:
-            display_name = row.get("MLIP")
-            original_name = name_map.get(display_name, display_name)
-            score = row.get("Score")
-            if display_name is None or original_name is None or score is None:
+        for _category, category_info in sorted(all_info.items()):
+            category_weights = next(iterator)
+            current_rows = next(iterator)
+
+            updated_rows = []
+            for row in current_rows:
+                updated_row = row.copy()
+                updated_rows.append(updated_row)
+
+            updated_by_mlip = {row["MLIP"]: row for row in updated_rows}
+
+            benchmark_changed = False
+
+            for _test_name, table_info in sorted(category_info.items()):
+                benchmark_rows = next(iterator)
+
+                name_map = table_info["model_name_map"]
+                benchmark_column = table_info["benchmark_column"]
+
+                for row in benchmark_rows:
+                    display_name = row.get("MLIP")
+                    original_name = name_map.get(display_name, display_name)
+                    if original_name not in updated_by_mlip:
+                        continue
+
+                    new_score = row.get("Score")
+                    target_row = updated_by_mlip[original_name]
+
+                    if target_row.get(benchmark_column) != new_score:
+                        target_row[benchmark_column] = new_score
+                        benchmark_changed = True
+
+            if not benchmark_changed:
+                patched_outputs.append(no_update)
                 continue
-            benchmark_scores[original_name] = score
 
-        for row in category_rows:
-            mlip = row.get("MLIP")
-            if mlip in benchmark_scores:
-                row[benchmark_column] = benchmark_scores[mlip]
+            # Recompute overall category scores using existing utility
+            rescored_rows, _ = update_score_style(updated_rows, category_weights)
 
-        category_rows, style = update_score_style(category_rows, category_weights)
-        return category_rows, style, category_rows
+            patch = Patch()
+            score_changed = False
+
+            for idx, (old_row, new_row) in enumerate(
+                zip(current_rows, rescored_rows, strict=True)
+            ):
+                # Patch benchmark columns
+                for key, value in new_row.items():
+                    if key in {"MLIP", "Score"}:
+                        continue
+
+                    if old_row.get(key) != value:
+                        patch[idx][key] = value
+                        score_changed = True
+
+                # Patch overall score
+                if old_row.get("Score") != new_row.get("Score"):
+                    patch[idx]["Score"] = new_row.get("Score")
+                    score_changed = True
+
+            if score_changed:
+                patched_outputs.append(patch)
+            else:
+                patched_outputs.append(no_update)
+
+        return patched_outputs
 
 
 def register_weight_callbacks(
@@ -445,6 +849,7 @@ def register_weight_callbacks(
         Input(f"{table_id}-reset-button", "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
+        optional=True,
     )
     def store_input_value(
         input_weight: float | None,
@@ -459,7 +864,7 @@ def register_weight_callbacks(
         input_weight
             Weight value from input box.
         n_clicks
-            Number of clicks. Variable unused, but Input is required to reset weights.
+            Number of clicks.
         stored_weights
             Stored weights dictionary.
 
@@ -474,7 +879,7 @@ def register_weight_callbacks(
             if input_weight is None:
                 raise PreventUpdate
             stored_weights[column] = input_weight
-        elif trigger_id == f"{table_id}-reset-button":
+        elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
             stored_weights.update(
                 (key, default_weights.get(key, 1.0)) for key in stored_weights
             )
@@ -486,10 +891,10 @@ def register_weight_callbacks(
     @callback(
         Output(f"{input_id}-input", "value"),
         Input(f"{table_id}-weight-store", "data"),
-        Input("all-tabs", "value"),
         prevent_initial_call="initial_duplicate",
+        optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float], tabs_value: str) -> float:
+    def sync_inputs(stored_weights: dict[str, float]) -> float:
         """
         Sync weight values between the text input and Store.
 
@@ -497,8 +902,6 @@ def register_weight_callbacks(
         ----------
         stored_weights
             Stored weight values for each column.
-        tabs_value
-            Tab name. Variable unused, but required as input to trigger on tab change.
 
         Returns
         -------
@@ -541,6 +944,7 @@ def register_normalization_callbacks(
             Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
             State(f"{table_id}-thresholds-store", "data"),
             prevent_initial_call=True,
+            optional=True,
         )
         def store_threshold_values(
             good_val, bad_val, n_clicks, stored_thresholds, metric=metric
@@ -551,6 +955,8 @@ def register_normalization_callbacks(
 
             # Reset to defaults is specified via reset button
             if trigger_id == f"{table_id}-reset-thresholds-button":
+                if not n_clicks:
+                    raise PreventUpdate
                 if cleaned_defaults:
                     return deepcopy(cleaned_defaults)
                 return cleaned_store
@@ -575,16 +981,83 @@ def register_normalization_callbacks(
             if trigger_id == f"{table_id}-{metric}-good-threshold":
                 if good_val is None or bad_threshold is None:
                     raise PreventUpdate
-                entry["good"] = float(good_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="good",
+                    good=float(good_val),
+                    bad=float(bad_threshold),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
 
             elif trigger_id == f"{table_id}-{metric}-bad-threshold":
                 if bad_val is None or good_threshold is None:
                     raise PreventUpdate
-                entry["bad"] = float(bad_val)
+                default_entry = cleaned_defaults.get(metric)
+                if default_entry is None:
+                    raise PreventUpdate
+
+                good, bad = enforce_threshold_direction(
+                    edited_field="bad",
+                    good=float(good_threshold),
+                    bad=float(bad_val),
+                    default_good=default_entry["good"],
+                    default_bad=default_entry["bad"],
+                )
+                entry["good"] = good
+                entry["bad"] = bad
             else:
                 raise PreventUpdate
 
             return cleaned_store
+
+    if metrics:
+        threshold_style_outputs = [
+            output
+            for metric in metrics
+            for output in (
+                Output(f"{table_id}-{metric}-good-threshold", "style"),
+                Output(f"{table_id}-{metric}-bad-threshold", "style"),
+            )
+        ]
+
+        @callback(
+            *threshold_style_outputs,
+            Input("cmap-store", "data"),
+            prevent_initial_call=False,
+            optional=True,
+        )
+        def sync_threshold_input_styles(
+            cmap_name: str | None,
+        ) -> tuple[dict[str, str], ...]:
+            """
+            Colour threshold input borders to match the selected table colour scale.
+
+            Parameters
+            ----------
+            cmap_name
+                Current table colormap name from the shared colour-scheme store.
+
+            Returns
+            -------
+            tuple[dict[str, str], ...]
+                Alternating good/bad input styles for each metric.
+            """
+            colours = get_threshold_colours(cmap_name)
+            styles: list[dict[str, str]] = []
+            for _metric in metrics:
+                styles.extend(
+                    [
+                        build_threshold_input_style(colours["good"]),
+                        build_threshold_input_style(colours["bad"]),
+                    ]
+                )
+            return tuple(styles)
 
     if register_toggle:
         # Toggle display between raw and normalized values without recomputing scores
@@ -598,7 +1071,9 @@ def register_normalization_callbacks(
             State(f"{table_id}-thresholds-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
+            State("cmap-store", "data"),
             prevent_initial_call=True,
+            optional=True,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
@@ -606,6 +1081,7 @@ def register_normalization_callbacks(
             thresholds: dict[str, Any] | None,
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
+            cmap_name: str | None,
         ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
@@ -619,7 +1095,11 @@ def register_normalization_callbacks(
             display_rows = get_scores(
                 raw_data, scored_rows, cleaned_thresholds, show_normalized
             )
-            style = get_table_style(display_rows, scored_data=scored_rows)
+            style = get_table_style(
+                display_rows,
+                scored_data=scored_rows,
+                cmap_name=cmap_name or "viridis_r",
+            )
             columns = format_metric_columns(
                 current_columns, cleaned_thresholds, normalized_active
             )
@@ -635,12 +1115,351 @@ def register_normalization_callbacks(
             Output(f"{table_id}-{metric}-good-threshold", "value"),
             Output(f"{table_id}-{metric}-bad-threshold", "value"),
             Input(f"{table_id}-thresholds-store", "data"),
-            prevent_initial_call=True,
+            optional=True,
         )
-        def sync_threshold_inputs(thresholds, metric=metric):
-            """Sync threshold input values with stored thresholds."""
+        def sync_threshold_inputs(
+            thresholds: Thresholds | None, metric: str = metric
+        ) -> tuple[float | None, float | None]:
+            """
+            Sync threshold input values with stored thresholds.
+
+            Parameters
+            ----------
+            thresholds
+                Stored threshold values.
+            metric
+                Metric name corresponding to the threshold inputs.
+            """
             cleaned_thresholds = clean_thresholds(thresholds)
             if cleaned_thresholds and metric in cleaned_thresholds:
                 entry = cleaned_thresholds[metric]
                 return entry.get("good"), entry.get("bad")
             raise PreventUpdate
+
+
+def register_plot_download_callbacks() -> None:
+    """Register one generic plot download callback once per Dash app."""
+    app = dash.get_app()
+    output = Output({"type": "plot-download", "index": MATCH}, "data")
+    if str(output) in app.callback_map:
+        return
+
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace="plot_download",
+            function_name="downloadPlot",
+        ),
+        output,
+        Input({"type": "plot-download-button", "index": MATCH}, "n_clicks"),
+        State({"type": "plot-download-format", "index": MATCH}, "value"),
+        State({"type": "plot-download-target", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
+
+
+def register_download_callbacks(table_id: str) -> None:
+    """
+    Register minimal table download callbacks for CSV, PNG, and SVG.
+
+    CSV exports are generated from the table's Dash data payload. PNG/SVG exports
+    are different: Python sends a small request to the browser, then the browser
+    captures the table exactly as it has already been drawn on the page. That is
+    what preserves conditional colours, warning styles, current column headers, and
+    the table's CSS layout.
+
+    Parameters
+    ----------
+    table_id
+        ID of table to export.
+    """
+
+    @callback(
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Output(f"{table_id}-download-request", "data"),
+        Input(f"{table_id}-download-button", "n_clicks"),
+        State(f"{table_id}-download-format", "value"),
+        State(table_id, "data"),
+        State(table_id, "columns"),
+        prevent_initial_call=True,
+        optional=True,
+    )
+    def download_table(
+        n_clicks: int,
+        download_format: str,
+        table_data: list[dict] | None,
+        columns: list[dict] | None,
+    ) -> tuple[dict | Any, dict | Any]:
+        """
+        Dispatch table download request.
+
+        Parameters
+        ----------
+        n_clicks
+            Number of clicks on the download button.
+        download_format
+            Requested format, one of ``csv``, ``png``, or ``svg``.
+        table_data
+            Currently visible table rows.
+        columns
+            Current table column metadata.
+
+        Returns
+        -------
+        tuple[dict | Any, dict | Any]
+            Pair of payloads for ``download`` and ``download-request`` stores.
+            For CSV, the first item is a Dash download payload and the second is
+            ``no_update``. For PNG/SVG, the first item is ``no_update`` and the
+            second item is the client-side capture request.
+        """
+        if not n_clicks or not columns:
+            raise PreventUpdate
+
+        fmt = (download_format or "csv").lower()
+        filename_base = table_id.replace("_", "-")
+        column_ids = [col["id"] for col in columns if isinstance(col.get("id"), str)]
+        export_cols = [col for col in column_ids if col != "id"]
+
+        if fmt == "csv":
+            if table_data:
+                frame = pd.DataFrame(table_data)
+                frame = frame.reindex(columns=export_cols)
+            else:
+                frame = pd.DataFrame(columns=export_cols)
+            return (
+                dcc.send_data_frame(
+                    frame.to_csv,
+                    filename=f"{filename_base}.csv",
+                    index=False,
+                ),
+                no_update,
+            )
+
+        if fmt in {"png", "svg"}:
+            # Image exports need the already-rendered table, not a new table recreated
+            # from raw values. Send the target table id to the browser-side asset.
+            return (
+                no_update,
+                {
+                    "element_id": table_id,
+                    "format": fmt,
+                    "filename": f"{filename_base}.{fmt}",
+                },
+            )
+
+        raise PreventUpdate
+
+    clientside_callback(
+        ClientsideFunction(
+            namespace="table_download",
+            function_name="captureTable",
+        ),
+        Output(f"{table_id}-download", "data", allow_duplicate=True),
+        Input(f"{table_id}-download-request", "data"),
+        prevent_initial_call=True,
+    )
+
+
+def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
+    """
+    Update all tables when filter dropdown value changes.
+
+    Parameters
+    ----------
+    apps
+        Dictionary of test apps to register callbacks for.
+    """
+    app_entries = []
+    for app in apps.values():
+        app_entries.append(
+            {
+                "app": app,
+                "weight_state": State(f"{app.table_id}-weight-store", "data"),
+                "threshold_state": State(f"{app.table_id}-thresholds-store", "data"),
+                "computed_state": State(f"{app.table_id}-computed-store", "data"),
+                "raw_state": State(f"{app.table_id}-raw-data-store", "data"),
+            }
+        )
+
+    outputs = []
+    for entry in app_entries:
+        app = entry["app"]
+        outputs.extend(
+            [
+                Output(f"{app.table_id}-computed-store", "data"),
+                Output(f"{app.table_id}-raw-data-store", "data", allow_duplicate=True),
+            ]
+        )
+    # Always-set "done" tick so the filter-loading overlay can hide once the
+    # recompute has finished, regardless of which table stores actually changed.
+    outputs.append(Output("filter-recompute-done", "data"))
+    states = []
+    for entry in app_entries:
+        states.extend(
+            [
+                entry["weight_state"],
+                entry["threshold_state"],
+                entry["computed_state"],
+                entry["raw_state"],
+            ]
+        )
+
+    @callback(
+        outputs,
+        Input("element-filter", "data"),
+        states,
+        prevent_initial_call=True,
+    )
+    def recompute_tables(elements, *args):
+        """
+        Recompute all benchmark tables when element filter is applied.
+
+        Parameters
+        ----------
+        elements
+            List of selected elements to filter by.
+        *args
+            Weight and threshold states for each app.
+
+        Returns
+        -------
+        list
+            Callback outputs ordered as two entries per benchmark app: the
+            rescored table rows used for normalised display, followed by the
+            filtered metric rows used as the raw table source. Unchanged outputs
+            are returned as ``dash.no_update``. The final entry is the
+            ``filter-recompute-done`` tick that tells the loading overlay to hide.
+        """
+        start = time.monotonic()
+
+        # Rebuild inputs for each app
+        per_app_state = {}
+        iterator = iter(args)
+
+        for entry in app_entries:
+            app = entry["app"]
+            per_app_state[app.table_id] = {
+                "weights": next(iterator),
+                "thresholds": next(iterator),
+                "computed": next(iterator),
+                "raw": next(iterator),
+            }
+
+        results = []
+
+        for entry in app_entries:
+            app = entry["app"]
+            state = per_app_state[app.table_id]
+            weights = state["weights"]
+            thresholds = state["thresholds"]
+            current_scored_rows = state["computed"]
+            current_metrics_data = state["raw"]
+
+            updated_data = app.filter_table(elements)
+
+            # Update overall table score for new weights and thresholds
+            metrics_data = calc_table_scores(updated_data, weights, thresholds)
+
+            # Update stored scores per metric
+            scored_rows = calc_metric_scores(updated_data, thresholds)
+
+            # Only update stores whose filtered data changed. This prevents
+            # downstream table callbacks from re-running after no-op filter events.
+            if store_data_equal(scored_rows, current_scored_rows):
+                results.append(no_update)
+            else:
+                results.append(scored_rows)
+
+            if store_data_equal(metrics_data, current_metrics_data):
+                results.append(no_update)
+            else:
+                results.append(metrics_data)
+
+        # Hold the result until a minimum time has elapsed so the loading overlay
+        # stays visible long enough to read instead of flashing on fast recomputes.
+        min_loading_s = 0.15
+        remaining = min_loading_s - (time.monotonic() - start)
+        if remaining > 0:
+            time.sleep(remaining)
+
+        # Final output drives the filter-recompute-done store. It is a timestamp
+        # so the value changes on every recompute: hide_filter_loading
+        # fires only when filter-recompute-done changes, so a constant value would
+        # stop hiding the overlay after the first apply.
+        results.append(time.monotonic())
+        return results
+
+
+def register_filter_loading_callback() -> None:
+    """
+    Drive the filter-loading overlays and disable the "Apply" button during a recompute.
+
+    Clicking the "Apply" button is the only action that commits ``element-filter``
+    and kicks off the (slow) table recompute. Show and hide are split into two
+    independent callbacks on purpose: ``show`` is triggered by ``element-filter``
+    only, so Dash can run it immediately and in parallel with ``recompute_tables``
+    rather than gating it behind the recompute's output. ``hide`` is triggered by
+    the ``filter-recompute-done`` tick that ``recompute_tables`` sets when it
+    finishes, reverting overlays to ``"auto"`` (so their ``target_components``
+    cover the brief post-recompute render) and re-enabling the "Apply" button.
+
+    Pattern-matching ``ALL`` only targets overlays present in the current layout,
+    so the spinner is automatically scoped to the visible table. ``element-filter``
+    only changes after "Apply", so the show callback does not run on initial load.
+    """
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("element-filter", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def show_filter_loading(_filter_data, overlay_ids):
+        """
+        Show overlays and disable the "Apply" button when a filter is committed.
+
+        Parameters
+        ----------
+        _filter_data
+            Committed element filter; its change triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"show"`` for every present overlay and ``True`` to disable the
+            "Apply" button.
+        """
+        return ["show"] * len(overlay_ids), True
+
+    @callback(
+        Output(
+            {"type": "filter-overlay", "index": ALL}, "display", allow_duplicate=True
+        ),
+        Output("element-filter-apply", "disabled", allow_duplicate=True),
+        Input("filter-recompute-done", "data"),
+        State({"type": "filter-overlay", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def hide_filter_loading(_done, overlay_ids):
+        """
+        Hide overlays and re-enable the "Apply" button.
+
+        Parameters
+        ----------
+        _done
+            Recompute completion tick from ``recompute_tables``; its change
+            triggers this callback.
+        overlay_ids
+            Ids of the filter overlays currently in the layout.
+
+        Returns
+        -------
+        tuple
+            ``"auto"`` for every present overlay and ``False`` to enable the
+            "Apply" button.
+        """
+        return ["auto"] * len(overlay_ids), False

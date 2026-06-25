@@ -5,16 +5,18 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -111,9 +113,7 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         pytest.skip(f"No isomer structures found under {isomer_complexes_dir}.")
 
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     for entry in tqdm(entries, desc=f"Calculating energies for {model_name}"):
         atoms = read(entry["xyz"])
@@ -127,7 +127,11 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         atoms.info["spin_multiplicity"] = entry["multiplicity"]
         atoms.info["spin"] = entry["multiplicity"]
         atoms.calc = copy(calc)
-        atoms.info["model_energy"] = atoms.get_potential_energy()
+        try:
+            atoms.info["model_energy"] = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {entry['xyz']}: {exc}", stacklevel=2)
+            atoms.info["model_energy"] = np.nan
 
         atoms.info["model"] = model_name
         atoms.info["system"] = entry["system"]

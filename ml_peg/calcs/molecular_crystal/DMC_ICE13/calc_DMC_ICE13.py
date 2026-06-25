@@ -6,13 +6,15 @@ from copy import copy
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -31,9 +33,7 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
@@ -60,7 +60,11 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     # Set default charge and spin
     water.info.setdefault("charge", 0)
     water.info.setdefault("spin", 1)
-    water.get_potential_energy()
+    try:
+        water.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        water.info["energy"] = np.nan
 
     for polymorph in polymorphs:
         polymorph_path = data_dir / polymorph / "POSCAR"
@@ -71,7 +75,11 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         # Set default charge and spin
         struct.info.setdefault("charge", 0)
         struct.info.setdefault("spin", 1)
-        struct.get_potential_energy()
+        try:
+            struct.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {polymorph}: {exc}", stacklevel=2)
+            struct.info["energy"] = np.nan
         struct.info["ref"] = ref
         struct.info["polymorph"] = polymorph
 

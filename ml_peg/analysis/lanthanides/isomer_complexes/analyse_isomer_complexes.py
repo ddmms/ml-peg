@@ -9,11 +9,11 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
@@ -26,48 +26,22 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_KCAL = units.mol / units.kcal
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    write_info=True,
+    write_structs=False,
+    include_filenames=True,
+    out_path=OUT_PATH,
+)
 
-def get_system_names() -> list[str]:
-    """
-    Get sorted list of system names.
-
-    Returns
-    -------
-    list[str]
-        Sorted list of system names.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            # Get unique labels without _iso1.xyz suffix
-            return sorted(
-                {path.stem.split("_iso")[0] for path in model_dir.glob("*.xyz")}
-            )
-
-    return []
-
-
-def get_labels() -> list[tuple[str, str]]:
-    """
-    Get sorted list of (system, isomer) tuples for consistent ordering.
-
-    Returns
-    -------
-    list[tuple[str, str]]
-        List of (system, isomer) tuples sorted by system then isomer.
-    """
-    labels = {}
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for system in get_system_names():
-                labels[system] = sorted(
-                    [
-                        path.stem.split("_")[2]
-                        for path in model_dir.glob(f"{system}_iso*.xyz")
-                    ]
-                )
-    return labels
+LABELS = {}
+for stem in INFO["filenames"]:
+    system = stem.split("_iso")[0]
+    parts = stem.split("_")
+    isomer = parts[2]
+    LABELS.setdefault(system, []).append(isomer)
+for k in LABELS:
+    LABELS[k] = sorted(LABELS[k])
 
 
 def build_hoverdata() -> dict[str, list[str]]:
@@ -79,10 +53,9 @@ def build_hoverdata() -> dict[str, list[str]]:
     dict[str, list[str]]
         Dictionary with "System" and "Isomer" keys for hover information.
     """
-    labels = get_labels()
     return {
-        "System": [key for key, values in labels.items() for _ in values],
-        "Isomer": [value for values in labels.values() for value in values],
+        "System": [stem.split("_iso")[0] for stem in INFO["filenames"]],
+        "Isomer": [stem.split("_")[2] for stem in INFO["filenames"]],
     }
 
 
@@ -110,17 +83,17 @@ def isomer_relative_energies() -> dict[str, list]:
         model_dir = CALC_PATH / model_name
         if not model_dir.exists():
             # Model directory doesn't exist, fill with None
-            results[model_name] = [None] * len(get_labels())
+            total = sum(len(v) for v in LABELS.values())
+            results[model_name] = [None] * total
             continue
 
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
-        labels = get_labels()
-        for system in labels:
+        for system in LABELS:
             pred_energies = []
             ref_energies = []
-            for isomer in labels[system]:
+            for isomer in LABELS[system]:
                 xyz_path = model_dir / f"{system}_{isomer}.xyz"
                 atoms = read(xyz_path)
 

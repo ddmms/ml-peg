@@ -11,11 +11,15 @@ from numpy.typing import NDArray
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -25,6 +29,15 @@ OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*/*.xyz",
+    index=0,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
 )
 
 # Unit conversion

@@ -10,16 +10,18 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pandas as pd
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -103,9 +105,7 @@ def test_maltose222(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -124,7 +124,11 @@ def test_maltose222(mlip: tuple[str, Any]) -> None:
         data_path / "Maltose_structures" / f"{lowest_conf_label}.xyz"
     )
     conf_lowest.calc = calc
-    e_conf_lowest_model = conf_lowest.get_potential_energy()
+    try:
+        e_conf_lowest_model = conf_lowest.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy for {lowest_conf_label}: {exc}", stacklevel=2)
+        e_conf_lowest_model = np.nan
 
     for label, e_ref in tqdm(ref_energies.items()):
         # Skip the reference conformer for which the error is automatically zero
@@ -133,9 +137,13 @@ def test_maltose222(mlip: tuple[str, Any]) -> None:
 
         atoms = get_atoms(data_path / "Maltose_structures" / f"{label}.xyz")
         atoms.calc = calc
-        atoms.info["model_rel_energy"] = (
-            atoms.get_potential_energy() - e_conf_lowest_model
-        )
+        try:
+            atoms.info["model_rel_energy"] = (
+                atoms.get_potential_energy() - e_conf_lowest_model
+            )
+        except Exception as exc:
+            warn(f"Error calculating relative energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_rel_energy"] = np.nan
         atoms.info["ref_energy"] = e_ref
 
         write_dir = OUT_PATH / model_name

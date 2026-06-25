@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -18,8 +19,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -102,9 +103,7 @@ def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -141,7 +140,11 @@ def test_solvmpconf196(mlip: tuple[str, Any]) -> None:
             )
             atoms.translate(-atoms.get_center_of_mass())
             atoms.calc = calc
-            model_abs_energies.append(atoms.get_potential_energy())
+            try:
+                model_abs_energies.append(atoms.get_potential_energy())
+            except Exception as exc:
+                warn(f"Error calculating energy for {xyz_label}: {exc}", stacklevel=2)
+                model_abs_energies.append(np.nan)
             ref_abs_energies.append(e_ref)
             current_molecule_labels.append(label)
 

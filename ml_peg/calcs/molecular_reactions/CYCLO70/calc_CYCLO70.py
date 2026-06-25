@@ -12,15 +12,17 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -40,9 +42,7 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -96,7 +96,15 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                     atoms.info["charge"] = int(atoms.info["charge"])
                 else:
                     atoms.info["charge"] = 0
-                bh_forward_model -= atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(
+                        f"Error calculating energy for {atoms_label} in {rxn}: {exc}",
+                        stacklevel=2,
+                    )
+                    energy = np.nan
+                bh_forward_model -= energy
                 atoms.info["label"] = atoms_label
                 atoms.calc = None
                 structs_forward.append(atoms)
@@ -112,7 +120,15 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                     atoms.info["charge"] = int(atoms.info["charge"])
                 else:
                     atoms.info["charge"] = 0
-                bh_reverse_model -= atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(
+                        f"Error calculating energy for {atoms_label} in {rxn}: {exc}",
+                        stacklevel=2,
+                    )
+                    energy = np.nan
+                bh_reverse_model -= energy
                 atoms.info["label"] = atoms_label
                 atoms.calc = None
                 structs_reverse.append(atoms)
@@ -128,8 +144,16 @@ def test_cyclo70(mlip: tuple[str, Any]) -> None:
                     atoms.info["charge"] = int(atoms.info["charge"])
                 else:
                     atoms.info["charge"] = 0
-                bh_forward_model += atoms.get_potential_energy()
-                bh_reverse_model += atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(
+                        f"Error calculating energy for {atoms_label} in {rxn}: {exc}",
+                        stacklevel=2,
+                    )
+                    energy = np.nan
+                bh_forward_model += energy
+                bh_reverse_model += energy
 
                 atoms.info["ref_forward_bh"] = bh_forward_ref
                 atoms.info["ref_reverse_bh"] = bh_reverse_ref

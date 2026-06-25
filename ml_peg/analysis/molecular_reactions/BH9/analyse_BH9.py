@@ -16,13 +16,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -35,24 +36,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
+
 EV_TO_KCAL = units.mol / units.kcal
-
-
-def get_system_names() -> list[str]:
-    """
-    Get list of reaction system names from the first available model.
-
-    Returns
-    -------
-    list[str]
-        List of system names (reaction identifiers).
-    """
-    for model_name in sorted(CALC_PATH.glob("*")):
-        if model_name.is_dir():
-            # Note: sorting different to rxn_count order in calc
-            xyz_paths = sorted((CALC_PATH / model_name).glob("*.xyz"))
-            return [path.stem for path in xyz_paths]
-    return []
 
 
 def get_reaction_numbers() -> list[int]:
@@ -64,7 +58,7 @@ def get_reaction_numbers() -> list[int]:
     list[int]
         List of reaction numbers (e.g., [1, 2, 3, ...]).
     """
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     reaction_nums = []
     for name in system_names:
         # Extract reaction number from format like "01_1" -> 1
@@ -83,7 +77,7 @@ def get_structure_numbers() -> list[int]:
     list[int]
         List of structure numbers for each reaction.
     """
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     struct_nums = []
     for name in system_names:
         # Extract structure number from format like "01_1" -> 1
@@ -102,7 +96,7 @@ def get_structure_numbers() -> list[int]:
     hoverdata={
         "Reaction": get_reaction_numbers(),
         "Structure": get_structure_numbers(),
-        "System ID": get_system_names(),
+        "System ID": SYSTEM_INFO["filenames"],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -117,7 +111,7 @@ def barrier_heights() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     for model_name in MODELS:
         model_barriers = []
         ref_barriers = []

@@ -12,13 +12,14 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "UpU46"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#upu46"
 DATA_PATH = APP_ROOT / "data" / "conformers" / "UpU46"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class UpU46App(BaseApp):
@@ -35,7 +36,7 @@ class UpU46App(BaseApp):
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"assets/conformers/UpU46/{MODELS[0]}/{label}.xyz" for label in labels
+                f"/assets/conformers/UpU46/{MODELS[0]}/{label}.xyz" for label in labels
             ]
         else:
             structs = []
@@ -77,6 +78,7 @@ def get_app() -> UpU46App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

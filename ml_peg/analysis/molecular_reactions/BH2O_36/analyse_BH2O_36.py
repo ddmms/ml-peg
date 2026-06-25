@@ -15,13 +15,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -34,41 +35,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of reaction system names from the first available model.
-
-    Returns
-    -------
-    list[str]
-        List of base system names (without suffixes).
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            system_names = []
-            for system_path in sorted(model_dir.glob("*_ts.xyz")):
-                system_names.append(system_path.stem.replace("_ts", ""))
-            if system_names:
-                return system_names
-    return []
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    glob_pattern="*_ts.xyz",
+)
 
 
-def get_barrier_labels() -> list[str]:
-    """
-    Get list of barrier labels for plotting (two per reaction system).
-
-    Returns
-    -------
-    list[str]
-        List of barrier labels with reaction context.
-    """
-    return [
-        label
-        for system in get_system_names()
-        for label in [f"{system} (TS-Reactants)", f"{system} (TS-Products)"]
-    ]
+SYSTEM_NAMES = [name.replace("_ts", "") for name in INFO["filenames"]]
 
 
 @pytest.fixture
@@ -78,14 +55,10 @@ def get_barrier_labels() -> list[str]:
     x_label="Predicted barrier / eV",
     y_label="Reference barrier / eV",
     hoverdata={
-        "System": [
-            system_name
-            for system_name in get_system_names()
-            for _ in range(2)  # Duplicate each system name for both barriers
-        ],
+        "System": [n for n in SYSTEM_NAMES for _ in range(2)],
         "Barrier Type": [
             barrier_type
-            for _ in get_system_names()
+            for _ in SYSTEM_NAMES
             for barrier_type in ["TS-Reactants", "TS-Products"]
         ],
     },
@@ -102,7 +75,7 @@ def barrier_heights() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    system_names = get_system_names()
+    system_names = SYSTEM_NAMES
     for model_name in MODELS:
         for system_name in system_names:
             atoms_rct = read(CALC_PATH / model_name / f"{system_name}_rct.xyz")

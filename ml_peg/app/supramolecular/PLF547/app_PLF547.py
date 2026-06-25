@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from dash import Dash
 from dash.html import Div
 
@@ -14,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -24,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#plf547"
 )
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLF547"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 def _structure_paths(model_name: str) -> list[str]:
@@ -42,8 +41,8 @@ def _structure_paths(model_name: str) -> list[str]:
     """
     struct_dir = DATA_PATH / model_name
     xyz_files = sorted(struct_dir.glob("*.xyz"))
-    prefix = Path("assets") / "supramolecular" / "PLF547" / model_name
-    return [str(prefix / path.name) for path in xyz_files]
+    prefix = f"/assets/supramolecular/PLF547/{model_name}"
+    return [prefix + f"/{path.name}" for path in xyz_files]
 
 
 class PLF547App(BaseApp):
@@ -98,6 +97,7 @@ def get_app() -> PLF547App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "RDB7"
@@ -21,6 +21,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#rdb7"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "RDB7"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class RDB7App(BaseApp):
@@ -52,7 +53,7 @@ class RDB7App(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/molecular_reactions/RDB7",
+            assets_prefix="/assets/molecular_reactions/RDB7",
             models=MODELS,
         )
 
@@ -87,6 +88,7 @@ def get_app() -> RDB7App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

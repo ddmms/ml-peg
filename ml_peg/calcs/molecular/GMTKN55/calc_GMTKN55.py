@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import write
@@ -15,8 +16,8 @@ from tqdm import tqdm
 import yaml
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -41,9 +42,7 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
@@ -99,7 +98,17 @@ def test_gmtkn55(mlip: tuple[str, Any]) -> None:
                 atoms.pbc = False
 
                 atoms.calc = copy(calc)
-                atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(
+                        f"Error calculating energy for {species_name}: {exc}",
+                        stacklevel=2,
+                    )
+                    energy = np.nan
+
+                atoms.info["energy"] = energy
+                atoms.calc = None
 
                 system_structs.append(atoms)
 

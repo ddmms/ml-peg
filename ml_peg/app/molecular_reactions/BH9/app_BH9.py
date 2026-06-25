@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "BH9"
@@ -22,6 +22,7 @@ DOCS_URL = (
     "molecular.html#bh9-reaction-barriers"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH9"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class BH9App(BaseApp):
@@ -39,7 +40,7 @@ class BH9App(BaseApp):
             # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*.xyz"))
             structs = [
-                f"assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
+                f"/assets/molecular_reactions/BH9/{MODELS[0]}/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:
@@ -81,6 +82,7 @@ def get_app() -> BH9App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

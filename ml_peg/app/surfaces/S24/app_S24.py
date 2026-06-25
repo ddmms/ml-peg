@@ -12,14 +12,15 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "S24"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#s24"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "S24"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class S24App(BaseApp):
@@ -36,7 +37,7 @@ class S24App(BaseApp):
 
         # Assets dir will be parent directory
         structs = [
-            f"assets/surfaces/S24/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/S24/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -75,6 +76,7 @@ def get_app() -> S24App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

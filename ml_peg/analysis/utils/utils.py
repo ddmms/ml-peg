@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable
+import json
 from pathlib import Path
 from typing import Any
 
+from ase import Atoms
 from ase.io import read, write
-from matplotlib import cm
+from matplotlib import colormaps
 from matplotlib.colors import Colormap
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -156,6 +158,8 @@ def mae(ref: list, prediction: list) -> float:
     float
         Mean absolute error.
     """
+    if np.isnan(np.sum(prediction)):
+        return np.nan
     return mean_absolute_error(ref, prediction)
 
 
@@ -175,7 +179,9 @@ def rmse(ref: list, prediction: list) -> float:
     float
         Root mean squared error.
     """
-    return mean_squared_error(ref, prediction)
+    if np.isnan(np.sum(prediction)):
+        return np.nan
+    return np.sqrt(mean_squared_error(ref, prediction))
 
 
 DENSITY_GRID_SIZE = 80
@@ -290,6 +296,9 @@ def build_density_inputs(
     for model_name in models:
         stats = model_results.get(model_name, {})
         prop = stats.get(property_key)
+        if prop is None:
+            inputs[model_name] = {}
+            continue
         excluded = stats.get("excluded")
 
         ref_vals = prop.get("ref", [])
@@ -386,17 +395,31 @@ def calc_metric_scores(
     normalizer = normalizer if normalizer is not None else normalize_metric
     cleaned_thresholds = clean_thresholds(thresholds) if thresholds else None
 
-    metrics_scores = [row.copy() for row in metrics_data]
-    for row in metrics_scores:
-        for key, value in row.items():
-            # Value may be ``None`` if missing for a benchmark
-            if key not in {"MLIP", "Score", "id"} and value is not None:
-                if cleaned_thresholds is None or key not in cleaned_thresholds:
-                    row[key] = value
-                    continue
+    if cleaned_thresholds is None or not metrics_data:
+        return metrics_data
 
-                entry = cleaned_thresholds[key]
-                row[key] = normalizer(value, entry["good"], entry["bad"])
+    metric_columns = [
+        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id", "link"}
+    ]
+    threshold_lookup = {
+        key: (entry["good"], entry["bad"]) for key, entry in cleaned_thresholds.items()
+    }
+
+    metrics_scores = []
+    for row in metrics_data:
+        new_row = row.copy()
+
+        for key in metric_columns:
+            if (value := row.get(key)) is None:
+                continue
+
+            if (thresholds_entry := threshold_lookup.get(key)) is None:
+                continue
+
+            good, bad = thresholds_entry
+            new_row[key] = normalizer(value, good, bad)
+
+        metrics_scores.append(new_row)
 
     return metrics_scores
 
@@ -406,8 +429,8 @@ def calc_table_scores(
     weights: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
     normalizer: Callable[[float, float, float], float] | None = None,
-    require_all_metrics: bool = True,
-) -> list[MetricRow]:
+    return_scores: bool = False,
+) -> list[MetricRow] | tuple[list[MetricRow], list[MetricRow]]:
     """
     Calculate (normalised) score for each model and add to table data.
 
@@ -425,53 +448,58 @@ def calc_table_scores(
     normalizer
         Optional function to map (value, good, bad) -> normalised score.
         If `None`, and thresholds are specified, uses `normalize_metric`.
-    require_all_metrics
-        If True, score is set to None unless all metrics are present (not None).
-        If False, score is calculated from available metrics only.
-        Default is True.
+    return_scores
+        If True, also return the normalised metric rows used to calculate scores.
+        Default is False.
 
     Returns
     -------
-    list[MetricRow]
-        Rows of data with combined score for each model added.
+    list[MetricRow] | tuple[list[MetricRow], list[MetricRow]]
+        Rows of data with combined score for each model added. If `return_scores` is
+        `True`, the normalised metric rows are also returned.
     """
     weights = weights if weights else {}
 
     metrics_scores = calc_metric_scores(metrics_data, thresholds, normalizer)
 
+    if not metrics_data:
+        return metrics_data if not return_scores else (metrics_data, metrics_scores)
+
+    metric_columns = [
+        key for key in metrics_data[0] if key not in {"MLIP", "Score", "id", "link"}
+    ]
+    metric_weights = {key: weights.get(key, 1.0) for key in metric_columns}
+
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
-        scores_list = []
-        weights_list = []
-        all_metrics_present = True
+        weighted_sum = 0.0
+        weight_sum = 0.0
+        contains_nan = False
 
-        for key, value in metrics_row.items():
-            if key in {"MLIP", "Score", "id"}:
+        for key in metric_columns:
+            score = scores_row[key]
+            weight = metric_weights[key]
+
+            # If weight is zero or score is None, no contribution to overall score
+            if weight == 0 or score is None:
                 continue
 
-            weight = weights.get(key, 1.0)
-            if weight == 0:
-                # Weight of zero excludes the metric from scoring requirements
-                continue
+            # If score is NaN, overall score will be NaN
+            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
+                contains_nan = True
+                break
 
-            if value is not None:
-                scores_list.append(scores_row[key])
-                weights_list.append(weight)
-            else:
-                # Track if any (weighted) metric is missing
-                all_metrics_present = False
+            weighted_sum += score * weight
+            weight_sum += weight
 
-        # Calculate score only if conditions are met
-        if require_all_metrics and not all_metrics_present:
-            # Strict mode: require all metrics to be present
-            metrics_row["Score"] = None
-        elif scores_list:
-            # Calculate weighted average of available metrics
-            try:
-                metrics_row["Score"] = np.average(scores_list, weights=weights_list)
-            except ZeroDivisionError:
-                metrics_row["Score"] = np.mean(scores_list)
+        if contains_nan:
+            metrics_row["Score"] = "NaN"
+        elif weight_sum > 0:
+            metrics_row["Score"] = weighted_sum / weight_sum
         else:
             metrics_row["Score"] = None
+
+    if return_scores:
+        return metrics_data, metrics_scores
 
     return metrics_data
 
@@ -483,6 +511,7 @@ def get_table_style(
     normalized: bool = True,
     all_cols: bool = True,
     col_names: list[str] | str | None = None,
+    cmap_name: str = "viridis_r",
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -500,15 +529,19 @@ def get_table_style(
         Whether to colour all numerical columns.
     col_names
         Column name or list of names to be coloured.
+    cmap_name
+        Matplotlib colormap name. Default is ``"viridis_r"``.
 
     Returns
     -------
     list[TableRow]
         Conditional style data to apply to table.
     """
-    cmap = cm.get_cmap("viridis_r")
+    cmap = colormaps[cmap_name]
 
-    def rgba_from_val(val: float, vmin: float, vmax: float, cmap: Colormap) -> str:
+    def rgb_from_val(
+        val: float, vmin: float, vmax: float, cmap: Colormap
+    ) -> tuple[int, int, int]:
         """
         Get RGB values for a cell.
 
@@ -525,13 +558,40 @@ def get_table_style(
 
         Returns
         -------
-        str
-            RGB colours in backgroundColor format.
+        tuple[int, int, int]
+            RGB colour channels from 0 to 255.
         """
         norm = (val - vmin) / (vmax - vmin) if vmax != vmin else 0
         rgba = cmap(norm)
-        r, g, b = [int(255 * x) for x in rgba[:3]]
-        return f"rgb({r}, {g}, {b})"
+        return tuple(int(255 * x) for x in rgba[:3])
+
+    def text_colour_for_background(rgb: tuple[int, int, int]) -> str:
+        """
+        Choose black or white text for the given cell background.
+
+        Parameters
+        ----------
+        rgb
+            RGB colour channels from 0 to 255.
+
+        Returns
+        -------
+        str
+            Text colour with the stronger contrast against the background.
+        """
+        linear_channels = []
+        for channel in rgb:
+            scaled = channel / 255
+            if scaled <= 0.03928:
+                linear_channels.append(scaled / 12.92)
+            else:
+                linear_channels.append(((scaled + 0.055) / 1.055) ** 2.4)
+
+        r, g, b = linear_channels
+        luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        contrast_with_black = (luminance + 0.05) / 0.05
+        contrast_with_white = 1.05 / (luminance + 0.05)
+        return "black" if contrast_with_black >= contrast_with_white else "white"
 
     style_data_conditional: list[TableRow] = []
 
@@ -551,21 +611,27 @@ def get_table_style(
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
+        nan_row_indices: list[int] = []  # Track rows with NaN values
         for i, row in enumerate(data):
             if col not in row:
                 continue
             raw_value = row[col]
-            # Track None values separately for styling
+            # Track missing values separately for styling
             is_none = raw_value is None
-            is_nan = isinstance(raw_value, float) and np.isnan(raw_value)
-            if is_none or is_nan:
+            is_nan = (
+                isinstance(raw_value, float) and np.isnan(raw_value)
+            ) or raw_value == "NaN"
+            if is_none:
                 none_row_indices.append(i)
+                continue
+            if is_nan:
+                nan_row_indices.append(i)
                 continue
             # Skip if unable to convert to float
             try:
                 numeric_value = float(raw_value)
             except (TypeError, ValueError):
-                none_row_indices.append(i)
+                nan_row_indices.append(i)
                 continue
 
             # Get scored value, if is exists
@@ -576,7 +642,7 @@ def get_table_style(
 
             numeric_entries.append((raw_value, numeric_value, scored_value))
 
-        # Apply styling for None/missing values: gray hashed pattern
+        # Apply styling for None values: gray hashed pattern
         for row_idx in none_row_indices:
             mlip_name = data[row_idx].get("MLIP", "")
             style_data_conditional.append(
@@ -595,7 +661,31 @@ def get_table_style(
                         "#d0d0d0 10px"
                         ")"
                     ),
-                    "color": "#888888",
+                    "color": "transparent",
+                    "fontStyle": "italic",
+                }
+            )
+
+        # Apply styling for NaN values: red-tinted hash
+        for row_idx in nan_row_indices:
+            mlip_name = data[row_idx].get("MLIP", "")
+            style_data_conditional.append(
+                {
+                    "if": {
+                        "filter_query": f"{{MLIP}} = '{mlip_name}'",
+                        "column_id": col,
+                    },
+                    "backgroundColor": "#f4e3e3",
+                    "backgroundImage": (
+                        "repeating-linear-gradient("
+                        "45deg, "
+                        "transparent, "
+                        "transparent 5px, "
+                        "#e6bcbc 5px, "
+                        "#e6bcbc 10px"
+                        ")"
+                    ),
+                    "color": "transparent",
                     "fontStyle": "italic",
                 }
             )
@@ -613,22 +703,18 @@ def get_table_style(
             max_value = max(numeric_values)
 
         for raw_value, _, scored_value in numeric_entries:
-            # Determine direction of values
-            mid = (min_value + max_value) / 2
-            increasing = max_value >= min_value
-
+            background_rgb = rgb_from_val(scored_value, min_value, max_value, cmap)
+            background_color = (
+                f"rgb({background_rgb[0]}, {background_rgb[1]}, {background_rgb[2]})"
+            )
             style_data_conditional.append(
                 {
                     "if": {
                         "filter_query": f"{{{col}}} = {raw_value}",
                         "column_id": col,
                     },
-                    "backgroundColor": rgba_from_val(
-                        scored_value, min_value, max_value, cmap
-                    ),
-                    "color": "white"
-                    if (scored_value > mid if increasing else scored_value < mid)
-                    else "black",
+                    "backgroundColor": background_color,
+                    "color": text_colour_for_background(background_rgb),
                 }
             )
 
@@ -659,8 +745,7 @@ def update_score_style(
         Updated table rows and style data.
     """
     weights = clean_weights(weights)
-    data = calc_table_scores(data, weights, thresholds)
-    scored_data = calc_metric_scores(data, thresholds)
+    data, scored_data = calc_table_scores(data, weights, thresholds, return_scores=True)
     style = get_table_style(data, scored_data=scored_data)
     return data, style
 
@@ -697,10 +782,10 @@ def normalize_metric(
 
     try:
         # Handle NaNs robustly
-        if np.isnan([value, good_threshold, bad_threshold]).any():
-            return None
+        if np.isnan([value, good_threshold, bad_threshold]).any() or value == "NaN":
+            return np.nan
     except TypeError:
-        return None
+        return np.nan
 
     if good_threshold == bad_threshold:
         return 1.0 if value == good_threshold else 0.0
@@ -708,5 +793,192 @@ def normalize_metric(
     # Linear map: Y -> 0, X -> 1
     t = (value - bad_threshold) / (good_threshold - bad_threshold)
 
-    # Clip to [0, 1]
-    return max(min(1.0, float(t)), 0.0)
+    # Clip to [0, 1] and turn -0.0 into 0.0. Dash saves Store data as JSON,
+    # which reads -0.0 back as 0.0; returning 0.0 directly keeps the stored
+    # score stable across page loads.
+    return max(min(1.0, float(t)), 0.0) + 0.0
+
+
+def clean_info(info: dict[str, Any] | list[Any]) -> None:
+    """
+    Ensure all data is JSON serializable.
+
+    Parameters
+    ----------
+    info
+        Dictionary of info to clean.
+    """
+    if isinstance(info, list):
+        for i, item in enumerate(info):
+            if isinstance(item, dict | list):
+                clean_info(item)
+            else:
+                if isinstance(item, np.int64):
+                    info[i] = int(item)
+
+    elif isinstance(info, dict):
+        for key, value in info.items():
+            if isinstance(value, dict | list):
+                clean_info(value)
+
+            if isinstance(value, np.int64):
+                info[key] = int(value)
+
+
+def get_struct_info(
+    *,
+    calc_path: Path,
+    model_name: str = "mock",
+    glob_pattern: str = "*.xyz",
+    sort_key: Callable | None = None,
+    index: int | str = ":",
+    info_keys: list[str] | None = None,
+    write_info: bool = True,
+    write_structs: bool = True,
+    out_path: Path | None = None,
+    include_filenames: bool = False,
+    include_dirs: bool = False,
+    per_file_info: dict[str, Callable[[list[Atoms]], Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Get info from structure files and optionally write out info structures.
+
+    Typically used in analysis where many calculation output structures are read to
+    extract data saved to info, such as labels for scatter plot hoverdata. `write_info`
+    should usually be set to `True` to store elemental info, as this is required for
+    filtering.
+
+    Parameters
+    ----------
+    calc_path
+        Path to calculation outputs.
+    model_name
+        Model name to read structures for. Default is "mock".
+    glob_pattern
+        Glob pattern to match structure files.
+    sort_key
+        Key passed to `sorted` when sorting files returned by glob. Default is `None`.
+    index
+        Index to read from structure files. Default is ":".
+    info_keys
+        List of info keys to extract from structure files. Default is None.
+    write_info
+        Whether to write out info for each system. Default is True. Requires `out_path`.
+    write_structs
+        Whether to write out structure files for each system. Default is `True` if
+        `out_path` is specified.
+    out_path
+        Path to write out info for each system. Required if `write_info` is `True`.
+    include_filenames
+        Whether to include filenames in the output info. Default is False.
+    include_dirs
+        Whether to include directory names in the output info. Default is False.
+    per_file_info
+        Per-file info extractors. Each callable receives all frames from the file
+        and should return one value to append. Default is None.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of system info for all systems.
+    """
+    if out_path is None and (write_info or write_structs):
+        raise ValueError(
+            "`out_path` must be specified if `write_info` or `write_structs` is `True`."
+        )
+
+    info_keys = info_keys or []
+    per_file_info = per_file_info or {}
+    info = {"elements": []} | {key: [] for key in info_keys}
+
+    if include_filenames:
+        info["filenames"] = []
+
+    if include_dirs:
+        info["dirs"] = []
+
+    for key in per_file_info:
+        info[key] = []
+
+    model_dir = calc_path / model_name
+    if not model_dir.exists():
+        raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
+
+    files = sorted(model_dir.glob(glob_pattern), key=sort_key)
+    if not files:
+        raise ValueError(
+            f"No file matches in {model_dir}. Please run mock calculation."
+        )
+
+    for file in files:
+        if include_filenames:
+            info["filenames"].append(file.stem)
+
+        if include_dirs:
+            info["dirs"].append(file.parent.name)
+
+        structs = read(file, index=index)
+        if isinstance(structs, Atoms):
+            structs = [structs]
+        if per_file_info:
+            all_structs = structs if index == ":" else read(file, index=":")
+            if isinstance(all_structs, Atoms):
+                all_structs = [all_structs]
+            for key, extractor in per_file_info.items():
+                info[key].append(extractor(all_structs))
+        for struct in structs:
+            for key in info_keys:
+                info[key].append(struct.info.get(key))
+            info["elements"].append(sorted(set(struct.get_chemical_symbols())))
+        if write_structs:
+            (out_path / model_name).mkdir(parents=True, exist_ok=True)
+            write(out_path / model_name / file.name, structs)
+
+    if write_info:
+        out_path.mkdir(parents=True, exist_ok=True)
+        out_file = out_path / "info.json"
+        with out_file.open("w", encoding="utf8") as f:
+            clean_info(info)
+            json.dump(info, f, indent=1)
+
+    return info
+
+
+def write_struct_info(
+    data_path: Path | list[Path], out_path: Path, index: str = ":"
+) -> None:
+    """
+    Write out element info on structures used in benchmark.
+
+    Typically used when structures are not iterated through during analysis, but
+    elemental info is still required for filtering.
+
+    Parameters
+    ----------
+    data_path
+        Path to calculation structure file or list of paths.
+    out_path
+        Path to write out info.
+    index
+        Index to read from structure files. Default is ":".
+    """
+    elements = []
+
+    if isinstance(data_path, Path):
+        data_path = [data_path]
+
+    for path in data_path:
+        if not path.exists():
+            raise ValueError(f"{path} does not exist. Please run mock calculation.")
+
+        structs = read(path, index=index)
+        if isinstance(structs, Atoms):
+            structs = [structs]
+        for struct in structs:
+            elements.append(sorted(set(struct.get_chemical_symbols())))
+
+    elements = sorted({e for sublist in elements for e in sublist})
+
+    out_path.mkdir(parents=True, exist_ok=True)
+    with (out_path / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": elements}, f, indent=1)

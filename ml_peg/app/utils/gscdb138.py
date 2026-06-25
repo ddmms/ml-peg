@@ -9,8 +9,8 @@ from dash.html import Div
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
@@ -69,9 +69,10 @@ class GSCDB138BenchmarkApp(BaseApp):
                 Div(id=f"{name}-figure-placeholder"),
                 Div(id=f"{name}-struct-placeholder"),
             ],
+            info_path=self.data_path / "info.json",
         )
 
-    def get_system_paths(self, dataset: str) -> list[Path]:
+    def get_system_paths(self, dataset: str) -> list[str]:
         """
         Get list of paths to system from the first available model for a dataset.
 
@@ -82,18 +83,17 @@ class GSCDB138BenchmarkApp(BaseApp):
 
         Returns
         -------
-        list[Path]
-            List of systems in the dataset.
+        list[str]
+            List of absolute paths for systems in the dataset.
         """
         for model_name in MODELS:
             model_dir = self.data_path / model_name
             if model_dir.exists():
                 system_paths = sorted(model_dir.glob(f"{dataset}_*.xyz"))
                 if system_paths:
-                    # Get path starting from assets directory
+                    # Get absolute paths for systems in assets directory
                     return [
-                        Path("assets")
-                        / system_path.relative_to(self.data_path.parent.parent)
+                        f"/assets/{system_path.relative_to(self.data_path.parent.parent).as_posix()}"
                         for system_path in system_paths
                     ]
         return []

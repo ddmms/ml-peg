@@ -11,13 +11,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -33,50 +34,23 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KCAL = units.mol / units.kcal
 
 
-def get_info() -> dict[str, list[int]]:
-    """
-    Get dictionary of info for PLA15 structures.
-
-    Returns
-    -------
-    dict[str, list[int]]
-        Dictionary of info.
-    """
-    info = {
-        "identifiers": [],
-        "complex_atoms": [],
-        "complex_charges": [],
-        "ligand_atoms": [],
-        "ligand_charges": [],
-        "protein_atoms": [],
-        "protein_charges": [],
-        "interaction_types": [],
-    }
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file, index=":")
-                    info["identifiers"].append(atoms[0].info["identifier"])
-                    info["interaction_types"].append(atoms[0].info["interaction_type"])
-
-                    info["complex_atoms"].append(len(atoms[0]))
-                    info["complex_charges"].append(atoms[0].info["charge"])
-
-                    info["ligand_atoms"].append(len(atoms[1]))
-                    info["ligand_charges"].append(atoms[1].info["charge"])
-
-                    info["protein_atoms"].append(len(atoms[2]))
-                    info["protein_charges"].append(atoms[2].info["charge"])
-
-                return info
-    return info
-
-
-INFO = get_info()
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index=0,
+    info_keys=["identifier", "interaction_type"],
+    per_file_info={
+        "complex_atoms": lambda structs: len(structs[0]),
+        "complex_charges": lambda structs: structs[0].info["charge"],
+        "ligand_atoms": lambda structs: len(structs[1]),
+        "ligand_charges": lambda structs: structs[1].info["charge"],
+        "protein_atoms": lambda structs: len(structs[2]),
+        "protein_charges": lambda structs: structs[2].info["charge"],
+    },
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -86,14 +60,14 @@ INFO = get_info()
     x_label="Predicted interaction energy / kcal/mol",
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
-        "System": INFO["identifiers"],
+        "System": INFO["identifier"],
         "Complex Atoms": INFO["complex_atoms"],
         "Ligand Atoms": INFO["ligand_atoms"],
         "Protein Atoms": INFO["protein_atoms"],
         "Complex Charge": INFO["complex_charges"],
         "Ligand Charge": INFO["ligand_charges"],
         "Protein Charge": INFO["protein_charges"],
-        "Interaction Type": INFO["interaction_types"],
+        "Interaction Type": INFO["interaction_type"],
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -202,9 +176,8 @@ def pla15_ion_ion_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for ion-ion systems.
     """
     # Get interaction types for filtering
-    interaction_types = INFO["interaction_types"]
     ion_ion_indices = [
-        i for i, itype in enumerate(interaction_types) if itype == "ion-ion"
+        i for i, itype in enumerate(INFO["interaction_type"]) if itype == "ion-ion"
     ]
 
     results = {}
@@ -236,9 +209,8 @@ def pla15_ion_neutral_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for ion-neutral systems.
     """
     # Get interaction types for filtering
-    interaction_types = INFO["interaction_types"]
     ion_neutral_indices = [
-        i for i, itype in enumerate(interaction_types) if itype == "ion-neutral"
+        i for i, itype in enumerate(INFO["interaction_type"]) if itype == "ion-neutral"
     ]
 
     results = {}

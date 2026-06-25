@@ -12,8 +12,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -23,6 +23,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#s30l"
 )
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class S30LApp(BaseApp):
@@ -37,7 +38,7 @@ class S30LApp(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/supramolecular/S30L/{MODELS[0]}/{i}.xyz"
+            f"/assets/supramolecular/S30L/{MODELS[0]}/{i}.xyz"
             for i in range(30)  # S30L has 30 systems
         ]
 
@@ -80,6 +81,7 @@ def get_app() -> S30LApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

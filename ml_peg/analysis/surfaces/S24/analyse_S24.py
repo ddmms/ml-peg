@@ -10,13 +10,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -25,6 +26,15 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "S24"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    info_keys=["system_name", "sys_id"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 def compute_adsorption_energy(
@@ -50,48 +60,6 @@ def compute_adsorption_energy(
     return mol_surf_e - (surface_e + molecule_e)
 
 
-def system_names() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for system_path in sorted(model_dir.glob("*.xyz")):
-                mol_surface = read(system_path)
-                if "system_name" in mol_surface.info:
-                    system_names.append(mol_surface.info["system_name"])
-            break
-    return system_names
-
-
-def sys_ids() -> list:
-    """
-    Get list of system IDs.
-
-    Returns
-    -------
-    list
-        List of all system IDs.
-    """
-    sys_ids = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for system_path in sorted(model_dir.glob("*.xyz")):
-                mol_surface = read(system_path)
-                if "sys_id" in mol_surface.info:
-                    sys_ids.append(mol_surface.info["sys_id"])
-            break
-    return sys_ids
-
-
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_adsorption_energies.json",
@@ -99,8 +67,8 @@ def sys_ids() -> list:
     x_label="Predicted adsorption energy / eV",
     y_label="Reference adsorption energy / eV",
     hoverdata={
-        "System": system_names(),
-        "Sys ID": sys_ids(),
+        "System": SYSTEM_INFO["system_name"],
+        "Sys ID": SYSTEM_INFO["sys_id"],
     },
 )
 def adsorption_energies() -> dict[str, list]:

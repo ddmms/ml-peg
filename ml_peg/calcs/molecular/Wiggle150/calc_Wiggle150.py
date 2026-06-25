@@ -5,16 +5,18 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -111,7 +113,11 @@ def get_energy(atoms: Atoms, calc: Calculator) -> float:
     """
     atoms_copy = atoms.copy()
     atoms_copy.calc = calc
-    energy = atoms_copy.get_potential_energy()
+    try:
+        energy = atoms_copy.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        return np.nan
     return float(energy)
 
 
@@ -185,9 +191,7 @@ def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     print(f"\nEvaluating with model: {model_name}")
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)

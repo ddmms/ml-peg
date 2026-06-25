@@ -11,13 +11,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -45,35 +46,15 @@ def _sorted_xyz_files(model_dir: Path) -> list[Path]:
     return sorted(model_dir.glob("*.xyz"), key=lambda path: int(path.stem))
 
 
-def _extract_metadata() -> dict[str, list[str]]:
-    """
-    Return structure identifiers and molecule labels from the first model output.
-
-    Returns
-    -------
-    dict[str, list[str]]
-        Ordered structure identifiers and molecule labels keyed by ``"structures"``
-        and ``"molecules"``.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            continue
-        xyz_files = _sorted_xyz_files(model_dir)
-        if not xyz_files:
-            continue
-
-        structures: list[str] = []
-        molecules: list[str] = []
-        for xyz_file in xyz_files:
-            atoms = read(xyz_file)
-            structures.append(atoms.info.get("structure", xyz_file.stem))
-            molecules.append(atoms.info.get("molecule", ""))
-        return {"structures": structures, "molecules": molecules}
-    return {"structures": [], "molecules": []}
-
-
-METADATA = _extract_metadata()
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    sort_key=lambda path: int(path.stem),
+    info_keys=["structure", "molecule"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -83,8 +64,8 @@ METADATA = _extract_metadata()
     x_label="Predicted relative energy / kcal/mol",
     y_label="Reference relative energy / kcal/mol",
     hoverdata={
-        "Structure": METADATA["structures"],
-        "Molecule": METADATA["molecules"],
+        "Structure": INFO["structure"],
+        "Molecule": INFO["molecule"],
     },
 )
 def relative_energies() -> dict[str, list[float]]:
