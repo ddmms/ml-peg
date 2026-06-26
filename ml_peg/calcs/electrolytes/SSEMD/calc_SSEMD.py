@@ -103,19 +103,6 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
 
     poscar_dir, temperature, system_name = systems[system_id]
     poscar_file: Path = poscar_dir / "POSCAR"
-    atoms_initial: Atoms | list[Atoms] = io.read(filename=poscar_file, format="vasp")
-
-    atoms: Atoms = atoms_initial.copy()  # type: ignore[assignment]
-    atoms.info.update({"charge": 0, "spin": 1})
-
-    atoms.calc = copy(calc)
-
-    rng = np.random.RandomState(seed=SEED)
-    MaxwellBoltzmannDistribution(
-        atoms, temperature_K=temperature, force_temp=True, rng=rng
-    )
-    Stationary(atoms)
-    ZeroRotation(atoms)
 
     file_name = f"{system_name}_{model_name}"
 
@@ -126,6 +113,34 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     log_path: Path = write_dir / f"{file_name}.log"
     traj_path: Path = write_dir / f"{file_name}.traj"
 
+    # Restart if existing
+    nsteps_done: int = 0
+    if traj_path.exists():
+        try:
+            existing = Trajectory(filename=str(traj_path))
+            atoms: Atoms = existing[-1]
+            nsteps_done = (len(existing) - 1) * FRAME_FREQUENCY
+            existing.close()
+        except Exception as exc:  # noqa: BLE001
+            print(f"Could not restart from {traj_path}: {exc}")
+            nsteps_done = 0
+
+    if nsteps_done == 0:
+        atoms_initial: Atoms | list[Atoms] = io.read(
+            filename=poscar_file, format="vasp"
+        )
+        atoms = atoms_initial.copy()  # type: ignore[assignment]
+
+        rng = np.random.RandomState(seed=SEED)
+        MaxwellBoltzmannDistribution(
+            atoms, temperature_K=temperature, force_temp=True, rng=rng
+        )
+        Stationary(atoms)
+        ZeroRotation(atoms)
+
+    atoms.info.update({"charge": 0, "spin": 1})
+    atoms.calc = copy(calc)
+
     md_nvt = NoseHooverChainNVT(
         atoms=atoms,
         timestep=timestep,
@@ -133,12 +148,13 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
         tdamp=tdamp,
         tchain=TCHAIN,
         logfile=str(log_path),
+        trajectory=str(traj_path),
+        loginterval=FRAME_FREQUENCY,
+        append_trajectory=True,
     )
+    md_nvt.nsteps = nsteps_done
 
-    traj = Trajectory(filename=str(traj_path), mode="w", atoms=atoms)
-    md_nvt.attach(function=traj.write, interval=FRAME_FREQUENCY)
-
-    md_nvt.run(steps=NSTEPS)
+    md_nvt.run(steps=NSTEPS - nsteps_done)
 
     # Read trajectory, skip equilibration frames and subsample
     ase_traj: Atoms | list[Atoms] = io.read(
