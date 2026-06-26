@@ -61,5 +61,5 @@ Reference data:
 * AIMD reference RDFs computed with VASP using the PBE functional from
 
 * López, C., Rurali, R. & Cazorla, C. How Concerted Are Ionic Hops in 
-Inorganic Solid-State Electrolytes? J. Am. Chem. Soc. 146, 8269–8279 (2024).
+  Inorganic Solid-State Electrolytes? J. Am. Chem. Soc. 146, 8269–8279 (2024).
 
