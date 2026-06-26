@@ -105,6 +105,8 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     atoms_initial: Atoms | list[Atoms] = io.read(filename=poscar_file, format="vasp")
 
     atoms: Atoms = atoms_initial.copy()  # type: ignore[assignment]
+    atoms.info.update({"charge": 0, "spin": 1})
+
     atoms.calc = copy(calc)
 
     rng = np.random.RandomState(seed=SEED)
