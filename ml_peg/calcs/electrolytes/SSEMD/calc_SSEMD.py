@@ -66,6 +66,7 @@ def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None
         yield temp_dir, temperature, system_name
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize(argnames="mlip", argvalues=MODELS.items())
 def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     """
