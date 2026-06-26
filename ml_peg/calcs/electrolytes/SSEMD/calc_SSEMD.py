@@ -82,7 +82,7 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
         Identifier of the SSE system to run MD on.
     """
     model_name, model = mlip
-    calc: Calculator = model.get_calculator()
+    calc: Calculator = model.get_calculator(precision="low")
 
     timestep: float = DELTA_T_FS * units.fs
     tdamp: float = 100 * timestep
