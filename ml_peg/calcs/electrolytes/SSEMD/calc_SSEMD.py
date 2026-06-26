@@ -89,10 +89,10 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
 
     data_dir = (
         download_s3_data(
-            key="inputs/electrolytes/SSE/SSE.zip",
-            filename="SSE.zip",
+            key="inputs/electrolytes/SSEMD/SSEMD.zip",
+            filename="SSEMD.zip",
         )
-        / "SSE"
+        / "SSEMD"
     )
 
     systems = list(get_systems(data_dir=data_dir))
