@@ -26,8 +26,8 @@ from ml_peg.calcs.electrolytes.SSEMD.calc_SSEMD import (
     N_EQUI_FRAMES,
 )
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
