@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import copy
-from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any
@@ -25,8 +24,8 @@ from pymatgen.analysis.elasticity.stress import Stress
 from pymatgen.analysis.structure_analyzer import SpacegroupAnalyzer
 from pymatgen.io.ase import AseAtomsAdaptor
 import pytest
-
 from tqdm import tqdm
+
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -39,7 +38,6 @@ _S3_KEY = "inputs/alloy_metallurgy/alzncumg_regression/alzncumg_regression.zip"
 _S3_FILENAME = "alzncumg_regression.zip"
 
 
-@lru_cache(maxsize=1)
 def _data_root() -> Path:
     """
     Download and cache the benchmark input data from S3.
@@ -1839,7 +1837,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
         )
 
 
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
     """
@@ -1876,7 +1874,7 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
         json.dump({"structures": records}, file, indent=2)
 
 
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     """
@@ -1893,7 +1891,9 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for matrix_oqmd_id, solute_pairs, repeats, max_index in tqdm(SOLUTE_SOLUTE_SPECS, desc=f"{model_name} solute-solute matrices"):
+    for matrix_oqmd_id, solute_pairs, repeats, max_index in tqdm(
+        SOLUTE_SOLUTE_SPECS, desc=f"{model_name} solute-solute matrices"
+    ):
         pure_structure = conventional_fcc_supercell(matrix_oqmd_id, repeats, calc)
         for solute_1, solute_2 in solute_pairs:
             reference_key = solute_pair_reference_key(
