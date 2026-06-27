@@ -1893,7 +1893,7 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for matrix_oqmd_id, solute_pairs, repeats, max_index in SOLUTE_SOLUTE_SPECS:
+    for matrix_oqmd_id, solute_pairs, repeats, max_index in tqdm(SOLUTE_SOLUTE_SPECS, desc=f"{model_name} solute-solute matrices"):
         pure_structure = conventional_fcc_supercell(matrix_oqmd_id, repeats, calc)
         for solute_1, solute_2 in solute_pairs:
             reference_key = solute_pair_reference_key(
