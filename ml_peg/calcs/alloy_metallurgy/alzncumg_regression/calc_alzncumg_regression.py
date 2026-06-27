@@ -1796,7 +1796,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
         )
 
     solute_stacking_fault_records = []
-    for spec in SOLUTE_STACKING_FAULT_SPECS:
+    for spec in tqdm(SOLUTE_STACKING_FAULT_SPECS, desc=f"{model_name} solute-SF"):
         matrix_oqmd_id, solute_elements, inplane_repeats, zplane_repeats, layers = spec
         for solute_element in solute_elements:
             reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
