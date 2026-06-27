@@ -1854,7 +1854,7 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for oqmd_id in STRUCTURE_IDS:
+    for oqmd_id in tqdm(STRUCTURE_IDS, desc=f"{model_name} elasticity"):
         try:
             atoms = relaxed_oqmd_structure(oqmd_id, calc)
             tensor = legacy_elastic_tensor(atoms, calc)
