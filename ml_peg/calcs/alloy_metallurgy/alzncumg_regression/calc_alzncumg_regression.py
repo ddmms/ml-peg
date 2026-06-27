@@ -1759,7 +1759,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
             )
 
     gsf_records = []
-    for spec in GSF_SPECS:
+    for spec in tqdm(GSF_SPECS, desc=f"{model_name} GSF"):
         reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
         try:
             # Special structures expected at:
