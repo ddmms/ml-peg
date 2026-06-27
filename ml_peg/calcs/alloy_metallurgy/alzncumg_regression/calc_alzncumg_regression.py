@@ -1671,9 +1671,10 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
     output_dir = OUT_PATH / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    reference_ids = (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
     pure_reference_structures = {
         oqmd_id: relaxed_oqmd_structure(oqmd_id, calc)
-        for oqmd_id in (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
+        for oqmd_id in tqdm(reference_ids, desc=f"{model_name} reference relaxations")
     }
     pure_reference_energies = {
         oqmd_id: float(atoms.get_potential_energy()) / len(atoms)
