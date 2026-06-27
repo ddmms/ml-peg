@@ -34,7 +34,7 @@ SEED: int = 0
 FRAME_FREQUENCY: int = 15
 NSTEPS: int = int(TOTAL_TIME_NS * 1e6 / DELTA_T_FS)
 
-EQUI_TIME_NS: float = 0.005 # 5 ps
+EQUI_TIME_NS: float = 0.005  # 5 ps
 N_EQUI_STEPS: int = int(EQUI_TIME_NS * 1e6 / DELTA_T_FS)
 N_EQUI_FRAMES: int = N_EQUI_STEPS // FRAME_FREQUENCY
 TCHAIN: int = 10
@@ -167,4 +167,3 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
         frame.info["temperature"] = temperature
         frame.info["delta_t"] = DELTA_T_FS
         frame.info["nsteps"] = NSTEPS
-
