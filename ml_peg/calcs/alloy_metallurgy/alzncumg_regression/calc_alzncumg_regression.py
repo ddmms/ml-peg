@@ -1617,7 +1617,7 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
     structures = {oqmd_id: load_oqmd_structure(oqmd_id) for oqmd_id in STRUCTURE_IDS}
     energies: dict[str, float] = {}
 
-    for oqmd_id, atoms in structures.items():
+    for oqmd_id, atoms in tqdm(structures.items(), desc=f"{model_name} bulk relaxations"):
         atoms.calc = copy(calc)
         try:
             atoms = relax_cell_and_atoms(
@@ -1669,9 +1669,10 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
     output_dir = OUT_PATH / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    reference_ids = (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
     pure_reference_structures = {
         oqmd_id: relaxed_oqmd_structure(oqmd_id, calc)
-        for oqmd_id in (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
+        for oqmd_id in tqdm(reference_ids, desc=f"{model_name} reference relaxations")
     }
     pure_reference_energies = {
         oqmd_id: float(atoms.get_potential_energy()) / len(atoms)
@@ -1758,7 +1759,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
             )
 
     gsf_records = []
-    for spec in GSF_SPECS:
+    for spec in tqdm(GSF_SPECS, desc=f"{model_name} GSF"):
         reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
         try:
             # Special structures expected at:
@@ -1795,7 +1796,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
         )
 
     solute_stacking_fault_records = []
-    for spec in SOLUTE_STACKING_FAULT_SPECS:
+    for spec in tqdm(SOLUTE_STACKING_FAULT_SPECS, desc=f"{model_name} solute-SF"):
         matrix_oqmd_id, solute_elements, inplane_repeats, zplane_repeats, layers = spec
         for solute_element in solute_elements:
             reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
@@ -1854,7 +1855,7 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for oqmd_id in STRUCTURE_IDS:
+    for oqmd_id in tqdm(STRUCTURE_IDS, desc=f"{model_name} elasticity"):
         try:
             atoms = relaxed_oqmd_structure(oqmd_id, calc)
             tensor = legacy_elastic_tensor(atoms, calc)
