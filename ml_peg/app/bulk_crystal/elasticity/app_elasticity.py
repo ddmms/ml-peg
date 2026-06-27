@@ -22,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#elasticity"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity"
+INFO_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity" / "info.json"
 
 
 class ElasticityApp(BaseApp):
@@ -128,6 +129,7 @@ def get_app() -> ElasticityApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

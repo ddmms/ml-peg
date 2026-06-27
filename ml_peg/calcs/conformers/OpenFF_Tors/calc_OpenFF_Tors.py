@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import write
@@ -81,14 +82,25 @@ def test_openff_tors(mlip: tuple[str, Any]) -> None:
 
             if i == 0:
                 e_ref_zero_conf = ref_energy * units.Hartree
-                e_model_zero_conf = atoms.get_potential_energy()
+                try:
+                    e_model_zero_conf = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+                    e_model_zero_conf = np.nan
             else:
                 atoms.info["ref_rel_energy"] = (
                     ref_energy * units.Hartree - e_ref_zero_conf
                 )
-                atoms.info["model_rel_energy"] = (
-                    atoms.get_potential_energy() - e_model_zero_conf
-                )
+                try:
+                    atoms.info["model_rel_energy"] = (
+                        atoms.get_potential_energy() - e_model_zero_conf
+                    )
+                except Exception as exc:
+                    warn(
+                        f"Error calculating relative energy for {label}: {exc}",
+                        stacklevel=2,
+                    )
+                    atoms.info["model_rel_energy"] = np.nan
                 write_dir = OUT_PATH / model_name
                 write_dir.mkdir(parents=True, exist_ok=True)
                 write(write_dir / f"{label}.xyz", atoms)

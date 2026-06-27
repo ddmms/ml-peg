@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -66,8 +68,7 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     data_path = download_s3_data(
         key="inputs/defect/Defectstab/Defectstab.zip",
@@ -106,7 +107,14 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
         # Assuming existing logic for fe_sia where ref.poscar header has E_bulk
         # And we need to calculate E_bulk_pred
         atoms_ref.calc = calc
-        e_ref_bulk_pred = atoms_ref.get_potential_energy()
+        try:
+            e_ref_bulk_pred = atoms_ref.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating bulk reference energy for {ref_file}: {exc}",
+                stacklevel=2,
+            )
+            e_ref_bulk_pred = np.nan
         n_bulk = len(atoms_ref)
 
         # Save ref calculation
@@ -127,7 +135,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             e_dft = get_ref_energy(poscar_path)
 
             atoms.calc = calc
-            e_pred = atoms.get_potential_energy()
+            try:
+                e_pred = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {poscar_path}: {exc}", stacklevel=2)
+                e_pred = np.nan
 
             atoms.info["energy_dft"] = e_dft
             atoms.info["energy_pred"] = e_pred
@@ -176,7 +188,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             atoms.info.setdefault("spin", 1)
             e_dft = get_ref_energy(p_path)
             atoms.calc = calc
-            e_pred = atoms.get_potential_energy()  # Just to verify/store if needed
+            try:
+                e_pred = atoms.get_potential_energy()  # Just to verify/store if needed
+            except Exception as exc:
+                warn(f"Error calculating energy for {p_path}: {exc}", stacklevel=2)
+                e_pred = np.nan
 
             n_atoms = len(atoms)
             ref_energies[f"E_{el}_dft"] = e_dft / n_atoms
@@ -201,7 +217,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             atoms_nd.info.setdefault("charge", 0)
             atoms_nd.info.setdefault("spin", 1)
             atoms_nd.calc = calc
-            e_no_defect_pred = atoms_nd.get_potential_energy()
+            try:
+                e_no_defect_pred = atoms_nd.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {f}: {exc}", stacklevel=2)
+                e_no_defect_pred = np.nan
             break
 
     # Process Boron Carbide Subsets
@@ -218,7 +238,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             e_dft = get_ref_energy(poscar_path)
 
             atoms.calc = calc
-            e_pred = atoms.get_potential_energy()
+            try:
+                e_pred = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {poscar_path}: {exc}", stacklevel=2)
+                e_pred = np.nan
 
             atoms.info["energy_dft"] = e_dft
             atoms.info["energy_pred"] = e_pred
@@ -277,7 +301,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             atoms_mai.info.setdefault("charge", 0)
             atoms_mai.info.setdefault("spin", 1)
             atoms_mai.calc = calc
-            e_mai_pred = atoms_mai.get_potential_energy()
+            try:
+                e_mai_pred = atoms_mai.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {p}: {exc}", stacklevel=2)
+                e_mai_pred = np.nan
         elif "pristine" in p.name:
             e_pris_dft = get_ref_energy(p)
             atoms_pris = read(p)
@@ -285,7 +313,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
             atoms_pris.info.setdefault("charge", 0)
             atoms_pris.info.setdefault("spin", 1)
             atoms_pris.calc = calc
-            e_pris_pred = atoms_pris.get_potential_energy()
+            try:
+                e_pris_pred = atoms_pris.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {p}: {exc}", stacklevel=2)
+                e_pris_pred = np.nan
 
     for poscar_path in mapi_files:
         atoms = read(poscar_path)
@@ -295,7 +327,11 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
         e_dft = get_ref_energy(poscar_path)
 
         atoms.calc = calc
-        e_pred = atoms.get_potential_energy()
+        try:
+            e_pred = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {poscar_path}: {exc}", stacklevel=2)
+            e_pred = np.nan
 
         atoms.info["energy_dft"] = e_dft
         atoms.info["energy_pred"] = e_pred

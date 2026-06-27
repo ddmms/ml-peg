@@ -9,12 +9,14 @@ from pathlib import Path
 import random
 from typing import Any
 import urllib.request
+from warnings import warn
 
 from ase import Atoms
 from ase.constraints import FixSymmetry
 from ase.io import write as ase_write
 from ase.units import GPa
 from janus_core.calculations.geom_opt import GeomOpt
+import numpy as np
 import pandas as pd
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.io.ase import AseAtomsAdaptor
@@ -200,13 +202,17 @@ def relax_with_pressure(
                 converged = True
             counter += 1
             atoms = relaxed
-    except Exception as e:
-        print(f"Relaxation failed: {e}")
-        return None, False, None
+    except Exception as exc:
+        warn(f"Relaxation failed: {exc}", stacklevel=2)
+        return None, False, np.nan
     if not converged:
-        return None, False, None
+        return None, False, np.nan
     # Calculate enthalpy: H = E + PV
-    energy = relaxed.get_potential_energy()
+    try:
+        energy = relaxed.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        energy = np.nan
     volume = relaxed.get_volume()
     enthalpy = energy + pressure_gpa * GPa * volume
     n_atoms = len(relaxed)
@@ -229,8 +235,7 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         Index into PRESSURES list.
     """
     model_name, model = mlip
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     pressure_gpa = PRESSURES[pressure_idx]
     pressure_label = PRESSURE_LABELS[pressure_idx]
@@ -243,6 +248,8 @@ def test_high_pressure_relaxation(mlip: tuple[str, Any], pressure_idx: int) -> N
         structures, desc=f"{model_name} @ {pressure_gpa} GPa", leave=False
     ):
         atoms = struct_data["atoms"].copy()
+        atoms.info.setdefault("charge", 0)
+        atoms.info.setdefault("spin", 1)
         atoms.calc = copy(calc)
         mat_id = struct_data["mat_id"]
 

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
+import json
 from pathlib import Path
+import warnings
 
+from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import Div
 
@@ -31,7 +35,9 @@ class BaseApp(ABC):
         URL for online documentation. Default is None.
     framework_id
         Framework identifier used for benchmark attribution tags. Default is
-        ``"ml_peg"``.
+        `"ml_peg"`.
+    info_path
+        Path to json file containing additional info for filtering. Default is None.
     """
 
     def __init__(
@@ -42,6 +48,7 @@ class BaseApp(ABC):
         extra_components: list[Component],
         docs_url: str | None = None,
         framework_id: str = "ml_peg",
+        info_path: Path | None = None,
     ):
         """
         Initiaise class.
@@ -60,6 +67,9 @@ class BaseApp(ABC):
             URL to online documentation. Default is None.
         framework_id
             Framework identifier used for benchmark attribution tags.
+            Default is `"ml_peg"`.
+        info_path
+            Path to json file containing additional info for filtering. Default is None.
         """
         self.name = name
         self.description = description
@@ -71,7 +81,36 @@ class BaseApp(ABC):
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
         )
+        self.metrics = [
+            col["id"]
+            for col in self.table.columns
+            if col["id"] not in ("MLIP", "Score", "id", "link")
+        ]
+        self.original_table = deepcopy(self.table)
         self.layout = self.build_layout()
+        if info_path:
+            self.load_info(info_path)
+        else:
+            self.info = None
+            warnings.warn("No info_path provided.", stacklevel=2)
+        if self.info is not None and hasattr(self, "set_elements"):
+            self.set_elements()
+        else:
+            self.elements = None
+
+    def load_info(self, info_path: Path) -> None:
+        """
+        Load additional info for app.
+
+        Parameters
+        ----------
+        info_path
+            Path to json file containing additional info for filtering.
+        """
+        if not info_path.exists():
+            warnings.warn(f"{info_path} does not exist, skipping.", stacklevel=2)
+        with open(info_path) as f:
+            self.info = json.load(f)
 
     def build_layout(self) -> Div:
         """
@@ -91,7 +130,7 @@ class BaseApp(ABC):
             framework_id=self.framework_id,
             table=self.table,
             column_widths=getattr(self.table, "column_widths", None),
-            thresholds=getattr(self.table, "thresholds", None),
+            thresholds=self.table.thresholds,
             extra_components=self.extra_components,
         )
 
@@ -99,3 +138,89 @@ class BaseApp(ABC):
     def register_callbacks(self):
         """Register callbacks with app."""
         pass
+
+    def set_elements(self) -> None:
+        """Get element sets for filtering."""
+        try:
+            if isinstance(self.info["elements"][0], list):
+                self.elements = {
+                    elements
+                    for sublist in self.info["elements"]
+                    for elements in sublist
+                }
+            else:
+                self.elements = set(self.info["elements"])
+        except (AttributeError, KeyError, TypeError, IndexError) as err:
+            self.elements = set()
+            warnings.warn(
+                f"Unable to read elements lists for {self.name}: {err}", stacklevel=2
+            )
+
+    def filter_table(self, filter_elements: list[str] | None) -> dict[str, dict]:
+        """
+        Filter data by elements.
+
+        Parameters
+        ----------
+        filter_elements
+            List of elements to filter out of data.
+
+        Returns
+        -------
+        dict[str, dict]
+            Updated benchmark table.
+        """
+        if self.elements is None:
+            warnings.warn("No elements info available, skipping filter.", stacklevel=2)
+            return self.table.data
+
+        filter_elements = set(filter_elements) if filter_elements else set()
+
+        table_data = deepcopy(self.table.data)
+
+        # Get overlap of deselected elements with each system's elements
+        if bool(self.elements & filter_elements):
+            for row in table_data:
+                for metric in self.metrics:
+                    row[metric] = None
+        else:
+            for current_row, original_row in zip(
+                table_data, self.original_table.data, strict=True
+            ):
+                for metric in self.metrics:
+                    current_row[metric] = original_row[metric]
+
+        return table_data
+
+    @property
+    def stores(self) -> list[Store]:
+        """
+        List Stores to be registered with full app.
+
+        Returns
+        -------
+        list[Store]
+            List of Stores to be registered with full app.
+        """
+        return [
+            Store(
+                id=f"{self.table_id}-computed-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-raw-data-store",
+                storage_type="session",
+                data=self.table.data,
+            ),
+            Store(
+                id=f"{self.table_id}-weight-store",
+                storage_type="session",
+                data=self.table.weights,
+            ),
+            Store(
+                id=f"{self.table_id}-thresholds-store",
+                storage_type="session",
+                data=self.table.thresholds,
+            ),
+        ]

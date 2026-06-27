@@ -8,7 +8,7 @@ import time
 
 from dash import html
 from dash.dash_table import DataTable
-from dash.dcc import Checklist, Download, Dropdown, Store
+from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
@@ -28,6 +28,10 @@ from ml_peg.app.utils.utils import (
     get_framework_config,
     get_threshold_colours,
 )
+
+# Width (px) of the docs-link column of the summary table (see build_app.py).
+# kept so the weights row can be translated to align with cols
+LINK_COLUMN_WIDTH = 36
 
 
 def grid_template_from_widths(
@@ -139,7 +143,6 @@ def build_weight_components(
     *,
     use_thresholds: bool = False,
     include_download_controls: bool = True,
-    include_store: bool = True,
     column_widths: dict[str, int] | None = None,
     thresholds: Thresholds | None = None,
 ) -> Div:
@@ -158,10 +161,6 @@ def build_weight_components(
         recompute Scores consistently.
     include_download_controls
         Whether to render download controls in the Score column slot.
-    include_store
-        Whether to include this table's weight ``dcc.Store`` in the returned
-        component. Set to ``False`` when that store is already created elsewhere,
-        for example in the main app layout.
     column_widths
         Optional mapping of table column IDs to pixel widths used to align the
         inputs with the rendered table.
@@ -178,7 +177,7 @@ def build_weight_components(
             "Threshold metadata must be provided when use_thresholds=True."
         )
     # Identify metric columns (exclude reserved columns)
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     columns = [col["id"] for col in table.columns if col.get("id") not in reserved]
 
     if not columns:
@@ -193,6 +192,16 @@ def build_weight_components(
 
     widths = calculate_column_widths(columns, column_widths)
     grid_template = grid_template_from_widths(widths, columns)
+
+    # The overall summary table has a "link" column inserted after MLIP. Reserve
+    # a matching spacer track (and grid cell) so the weight boxes stay aligned.
+    has_link_column = any(col.get("id") == "link" for col in table.columns)
+    link_spacer: list[Div] = []
+    if has_link_column:
+        tracks = grid_template.split(" ")
+        tracks.insert(1, f"{LINK_COLUMN_WIDTH}px")
+        grid_template = " ".join(tracks)
+        link_spacer = [Div(style={"border": "1px solid transparent"})]
 
     weight_inputs = [
         build_weight_input(
@@ -258,6 +267,7 @@ def build_weight_components(
                     "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
+            *link_spacer,
             build_download_controls(table.id)
             if include_download_controls
             else Div(
@@ -292,14 +302,6 @@ def build_weight_components(
     )
 
     layout = [container]
-    if include_store:
-        layout.append(
-            Store(
-                id=f"{table.id}-weight-store",
-                storage_type="session",
-                data=weights,
-            )
-        )
 
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
@@ -404,6 +406,149 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
         ],
         style=container_style,
     )
+
+
+def build_page_loading_spinner() -> Div:
+    """
+    Build the initial page-load spinner overlay.
+
+    Returns
+    -------
+    Div
+        Page-wide loading overlay with spinner and status text.
+    """
+    return Div(
+        [
+            Div(
+                style={
+                    "width": "52px",
+                    "height": "52px",
+                    "border": "5px solid #d0ebff",
+                    "borderTopColor": "#119DFF",
+                    "borderRadius": "50%",
+                    "animation": "ml-peg-spin 0.8s linear infinite",
+                    "boxSizing": "border-box",
+                },
+            ),
+            Div(
+                "Loading page...",
+                style={
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#212529",
+                },
+            ),
+        ],
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "minHeight": "420px",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "flexDirection": "column",
+            "gap": "14px",
+            "paddingTop": "96px",
+            "boxSizing": "border-box",
+            "backgroundColor": "rgba(255, 255, 255, 0.78)",
+            "zIndex": "1400",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def build_table_loading_spinner() -> Div:
+    """
+    Build a compact table loading spinner.
+
+    Returns
+    -------
+    Div
+        Table-sized loading overlay with the same ring style as page loading.
+    """
+    return Div(
+        Div(
+            style={
+                "width": "34px",
+                "height": "34px",
+                "border": "4px solid #d0ebff",
+                "borderTopColor": "#119DFF",
+                "borderRadius": "50%",
+                "animation": "ml-peg-spin 0.8s linear infinite",
+                "boxSizing": "border-box",
+            },
+        ),
+        style={
+            "position": "absolute",
+            "top": "0",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "backgroundColor": "rgba(255, 255, 255, 0.65)",
+            "zIndex": "1200",
+            "pointerEvents": "auto",
+        },
+    )
+
+
+def build_filter_overlay(table_id: str, child) -> Loading:
+    """
+    Wrap a table in a filter-aware loading overlay.
+
+    The overlay id uses the ``{"type": "filter-overlay", "index": table_id}``
+    pattern so a single callback can drive every table's spinner. ``display``
+    starts as ``"auto"`` (driven by ``target_components`` for weight/threshold
+    and post-recompute renders); the filter-loading callback flips it to
+    ``"show"`` for the duration of an "Apply" recompute, then back to ``"auto"``.
+
+    Parameters
+    ----------
+    table_id
+        Id of the wrapped DataTable, used for both the overlay pattern index and
+        the loading target component.
+    child
+        Component tree to render under the overlay.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to the table.
+    """
+    return Loading(
+        child,
+        id={"type": "filter-overlay", "index": table_id},
+        fullscreen=False,
+        custom_spinner=build_table_loading_spinner(),
+        target_components={table_id: ["data", "style_data_conditional"]},
+        show_initially=False,
+        delay_hide=250,
+        overlay_style={"visibility": "visible", "opacity": 1},
+        parent_style={"position": "relative", "width": "fit-content"},
+    )
+
+
+def build_loading_summary_table(table: DataTable) -> Loading:
+    """
+    Wrap a summary DataTable with a local loading spinner.
+
+    Parameters
+    ----------
+    table
+        Summary table to show as loading while Dash applies filters and updates
+        its rendered data.
+
+    Returns
+    -------
+    Loading
+        Loading wrapper scoped to applied filter changes and table updates.
+    """
+    return build_filter_overlay(table.id, Div(table))
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
@@ -733,10 +878,10 @@ def build_test_layout(
     description: str,
     framework_id: str,
     table: DataTable,
+    thresholds: Thresholds,
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
-    thresholds: Thresholds | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -752,6 +897,9 @@ def build_test_layout(
     table
         Dash Table with metric results. Can include a `weights` attribute to be used by
         `build_weight_components`.
+    thresholds
+        Normalization metadata (metric -> (good, bad, unit)) supplied via the
+        analysis pipeline. Inline threshold controls are rendered automatically.
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
@@ -759,10 +907,6 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
-    thresholds
-        Optional normalization metadata (metric -> (good, bad, unit)) supplied via the
-        analysis pipeline. When provided, inline threshold controls are rendered
-        automatically.
 
     Returns
     -------
@@ -811,43 +955,25 @@ def build_test_layout(
         ]
     )
 
-    # dcc.Store renders no HTML, so its position here doesn't affect layout.
-    # Placed before the table so the table and controls can share one wrapper below.
+    reserved = {"MLIP", "Score", "id", "link"}
+    metric_columns = [
+        col["id"] for col in table.columns if col.get("id") not in reserved
+    ]
+
     layout_contents.append(
         Store(
-            id=f"{table.id}-computed-store",
+            id=f"{table.id}-raw-tooltip-store",
             storage_type="session",
-            data=table.data,
+            data=table.tooltip_header,
         )
     )
 
-    # Inline normalization thresholds when metadata is supplied
-    threshold_controls = None
-    if thresholds is not None:
-        reserved = {"MLIP", "Score", "id"}
-        metric_columns = [
-            col["id"] for col in table.columns if col.get("id") not in reserved
-        ]
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-data-store",
-                storage_type="session",
-                data=table.data,
-            )
-        )
-        layout_contents.append(
-            Store(
-                id=f"{table.id}-raw-tooltip-store",
-                storage_type="session",
-                data=table.tooltip_header,
-            )
-        )
-        threshold_controls = build_threshold_inputs(
-            table_columns=metric_columns,
-            thresholds=thresholds,
-            table_id=table.id,
-            column_widths=column_widths,
-        )
+    threshold_controls = build_threshold_inputs(
+        table_columns=metric_columns,
+        thresholds=thresholds,
+        table_id=table.id,
+        column_widths=column_widths,
+    )
 
     # Add metric-weight controls for every benchmark table
     metric_weights = build_weight_components(
@@ -862,28 +988,25 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    if thresholds is not None:
-        controls_visual = Div(
-            [
-                Div(threshold_controls, style={"marginBottom": "0px"}),
-                Div(metric_weights, style={"marginTop": "0"}),
-            ],
-            style={
-                "backgroundColor": "#f8f9fa",
-                "border": "1px solid #dee2e6",
-                "borderRadius": "6px",
-                "padding": "0px 0px 0px 0px",  # top right bottom left
-                "marginTop": "-5px",
-                "boxSizing": "border-box",
-                "width": "100%",
-            },
-        )
-    else:
-        controls_visual = metric_weights
+    controls_visual = Div(
+        [
+            Div(threshold_controls, style={"marginBottom": "0px"}),
+            Div(metric_weights, style={"marginTop": "0"}),
+        ],
+        style={
+            "backgroundColor": "#f8f9fa",
+            "border": "1px solid #dee2e6",
+            "borderRadius": "6px",
+            "padding": "0px 0px 0px 0px",  # top right bottom left
+            "marginTop": "-5px",
+            "boxSizing": "border-box",
+            "width": "100%",
+        },
+    )
 
     table_section = [
         build_download_controls(table.id, row=True),
-        Div(table),
+        build_filter_overlay(table.id, Div(table)),
         Br(),
         controls_visual,
     ]
@@ -1145,12 +1268,6 @@ def build_threshold_inputs(
             )
         )
 
-    store = Store(
-        id=f"{table_id}-thresholds-store",
-        storage_type="session",
-        data=default_thresholds,
-    )
-
     # Register callbacks for these metrics, pass default_thresholds for reset
     register_normalization_callbacks(
         table_id,
@@ -1159,9 +1276,4 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    return Div(
-        [
-            Div(cells, id=f"{table_id}-threshold-grid", style=container_style),
-            store,
-        ]
-    )
+    return Div([Div(cells, id=f"{table_id}-threshold-grid", style=container_style)])

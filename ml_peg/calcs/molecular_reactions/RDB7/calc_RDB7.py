@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atom, Atoms, units
 from ase.io import write
@@ -118,12 +119,25 @@ def test_rdb87(mlip: tuple[str, Any]) -> None:
             bh_forward_ref -= get_cc_energy(qm_path)
             atoms = get_atoms_from_molpro(qm_path)
             atoms.calc = calc
-            bh_forward_model -= atoms.get_potential_energy()
+            try:
+                energy = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {qm_path}: {exc}",
+                    stacklevel=2,
+                )
+                energy = np.nan
+            bh_forward_model -= energy
         for qm_path in (data_path / "qm_logs" / f"rxn{label}").glob("ts*"):
             bh_forward_ref += get_cc_energy(qm_path)
             atoms = get_atoms_from_molpro(qm_path)
             atoms.calc = calc
-            bh_forward_model += atoms.get_potential_energy()
+            try:
+                energy = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {qm_path}: {exc}", stacklevel=2)
+                energy = np.nan
+            bh_forward_model += energy
 
         atoms.info["model_forward_barrier"] = bh_forward_model
         atoms.info["ref_forward_barrier"] = bh_forward_ref

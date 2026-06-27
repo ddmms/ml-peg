@@ -1,0 +1,7 @@
+metrics:
+  MAE:
+    good: 0.10
+    bad: 0.60
+    unit: eV
+    tooltip: Mean Absolute Error
+    level_of_theory: PBE

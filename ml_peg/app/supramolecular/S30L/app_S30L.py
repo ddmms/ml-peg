@@ -23,6 +23,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#s30l"
 )
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class S30LApp(BaseApp):
@@ -80,6 +81,7 @@ def get_app() -> S30LApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

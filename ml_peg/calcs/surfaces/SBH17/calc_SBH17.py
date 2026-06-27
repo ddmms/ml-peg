@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 import numpy as np
@@ -61,14 +62,22 @@ def test_surface_barrier(mlip: tuple[str, Any]) -> None:
         gp.info.setdefault("spin", 1)
         gp.info["spin"] = int(round(gp.info["spin"]))
         gp.calc = calc
-        gp.get_potential_energy()
+        try:
+            gp.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
+            gp.info["energy"] = np.nan
 
         ts = read(ts_path, index=0)
         ts.info.setdefault("charge", 0)
         ts.info.setdefault("spin", 1)
         ts.info["spin"] = int(round(ts.info["spin"]))
         ts.calc = copy(calc)
-        ts.get_potential_energy()
+        try:
+            ts.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
+            ts.info["energy"] = np.nan
 
         ref = np.loadtxt(ref_path)
 

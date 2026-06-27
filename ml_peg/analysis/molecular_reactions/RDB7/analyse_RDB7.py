@@ -20,6 +20,7 @@ from tqdm import tqdm
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
@@ -41,23 +42,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    model_name=next(iter(MODELS)),
+    glob_pattern="*_ts.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels_list = [
-            path.stem.replace("_ts", "")
-            for path in sorted((CALC_PATH / model_name).glob("*_ts.xyz"))
-        ]
-        break
-    return labels_list
+LABELS = [filename.removesuffix("_ts") for filename in INFO["filenames"]]
 
 
 @pytest.fixture
@@ -74,7 +69,7 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in tqdm(labels()):
+        for label in tqdm(LABELS):
             atoms = read(CALC_PATH / model_name / f"{label}_ts.xyz")
             results[model_name].append(atoms.info["model_forward_barrier"] * EV_TO_KCAL)
             if not ref_stored:
@@ -111,7 +106,7 @@ def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
         Mapping of model name to density-scatter data.
     """
     ref_vals = barrier_heights["ref"]
-    label_list = labels()
+    label_list = LABELS
     density_inputs: dict[str, dict] = {}
     for model_name in MODELS:
         preds = barrier_heights.get(model_name, [])

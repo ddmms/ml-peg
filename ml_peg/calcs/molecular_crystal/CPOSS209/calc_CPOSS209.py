@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 import numpy as np
@@ -74,7 +75,13 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
             solid.info.setdefault("charge", 0)
             solid.info.setdefault("spin", 1)
             solid.calc = copy(calc)
-            solid.get_potential_energy()
+            try:
+                solid.get_potential_energy()
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {crystal_file}: {exc}", stacklevel=2
+                )
+                solid.info["energy"] = np.nan
 
             solid.info["ref"] = ref_crystal
             solid.info["num_molecules"] = num_mol
@@ -132,7 +139,13 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
             molecule.info.setdefault("charge", 0)
             molecule.info.setdefault("spin", 1)
             molecule.calc = copy(calc)
-            molecule.get_potential_energy()
+            try:
+                molecule.get_potential_energy()
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {molecule_file}: {exc}", stacklevel=2
+                )
+                molecule.info["energy"] = np.nan
 
             # One molecule in each gas phase file
             molecule.info["num_molecules"] = 1
