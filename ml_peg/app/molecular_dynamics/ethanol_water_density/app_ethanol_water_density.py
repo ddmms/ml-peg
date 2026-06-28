@@ -20,6 +20,7 @@ BENCHMARK_NAME = "ethanol_water_density"
 DOCS_URL = f"https://ddmms.github.io/ml-peg/user_guide/benchmarks/{CATEGORY}.html#water-ethanol-density-curves"
 
 DATA_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK_NAME
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class EthanolWaterDecompositionCurvesApp(BaseApp):
@@ -61,6 +62,7 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

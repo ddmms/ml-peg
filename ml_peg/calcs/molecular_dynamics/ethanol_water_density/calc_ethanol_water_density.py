@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import time
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import Trajectory, read
@@ -19,6 +20,7 @@ from ase.md.velocitydistribution import (
     Stationary,
     ZeroRotation,
 )
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -128,7 +130,11 @@ def run_one_case(
             temperature_K=TEMPERATURE,
             friction=LANGEVIN_FRICTION,
         )
-        dyn.run(NUM_NVT_STEPS)
+        try:
+            dyn.run(NUM_NVT_STEPS)
+        except Exception as exc:
+            warn(f"Error running NVT MD: {exc}", stacklevel=2)
+            dyn.atoms.info["energy"] = np.nan
 
     # NPT
     run_npt(atoms, calc, output_fname)
@@ -221,7 +227,11 @@ def run_npt(atoms, calc, output_fname):
     )
     dyn.nsteps = nsteps
     dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
-    dyn.run(steps=NUM_NPT_STEPS)
+    try:
+        dyn.run(steps=NUM_NPT_STEPS)
+    except Exception as exc:
+        warn(f"Error running NPT MD: {exc}", stacklevel=2)
+        dyn.atoms.info["energy"] = np.nan
 
 
 @pytest.mark.very_slow

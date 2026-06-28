@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -34,6 +35,17 @@ LOG_INTERVAL_PS = 0.1
 EQUILIB_TIME_PS = 500
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+# Save per-composition elemental info (and composition dir labels) for app filtering.
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*/*.traj",
+    index=0,
+    write_info=True,
+    write_structs=False,  # all files are "mock.traj", flat write would collide
+    out_path=OUT_PATH,
+    include_dirs=True,
+)
 
 
 def weight_to_mole_fraction(w):
@@ -162,14 +174,20 @@ def compute_density(fname, density_col=13):
         Average density in g/cm3.
     """
     density_series = []
-    with open(fname) as lines:
-        for line in lines:
-            items = line.strip().split()
-            if len(items) != 15:
-                continue
-            density_series.append(float(items[13]))
+    try:
+        with open(fname) as lines:
+            for line in lines:
+                items = line.strip().split()
+                if len(items) != 15:
+                    continue
+                density_series.append(float(items[13]))
+    except OSError:
+        return np.nan
     skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
-    return np.mean(density_series[skip_frames:])
+    equilibrated = density_series[skip_frames:]
+    if len(equilibrated) == 0:
+        return np.nan
+    return np.mean(equilibrated)
 
 
 @pytest.fixture
@@ -187,9 +205,16 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
         model_dir = CALC_PATH / model_name
         xs = []
         rhos = []
-        for case_dir in model_dir.iterdir():
-            rhos.append(compute_density(case_dir / f"{model_name}.log"))
-            xs.append(float(case_dir.name.split("_")[-1]))
+        if model_dir.is_dir():
+            for case_dir in model_dir.iterdir():
+                rhos.append(compute_density(case_dir / f"{model_name}.log"))
+                xs.append(float(case_dir.name.split("_")[-1]))
+        else:
+            # A model in `current_models` may not have been calculated; leave its curve
+            # empty so downstream metrics resolve to NaN rather than crashing.
+            warn(
+                f"No outputs for model {model_name}; metrics set to NaN.", stacklevel=2
+            )
         x = np.asarray(xs, dtype=float)
         rho = np.asarray(rhos, dtype=float)
 
@@ -253,6 +278,10 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
 
     for m in MODELS:
         x_m, rho_m = model_curves[m]
+        if x_m.size == 0:
+            # Models without outputs have empty curves; emit NaN across the grid.
+            results[m] = [float("nan")] * len(x_grid)
+            continue
         # Interpolate model to x_grid if needed
         if len(x_m) != len(x_grid) or np.any(np.abs(x_m - x_grid) > 1e-12):
             # This assumes model spans the grid range; otherwise raise.
@@ -284,6 +313,9 @@ def rmse_density(ref_curve, model_curves) -> dict[str, float]:
     x_ref, rho_ref = ref_curve
     out: dict[str, float] = {}
     for m, (x_m, rho_m) in model_curves.items():
+        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
+            out[m] = np.nan
+            continue
         rho_ref_m = np.interp(x_m, x_ref, rho_ref)
         out[m] = rmse(rho_m, rho_ref_m)
     return out
@@ -310,6 +342,9 @@ def rmse_excess_volume(ref_curve, model_curves) -> dict[str, float]:
     out: dict[str, float] = {}
 
     for m, (x_m, rho_m) in model_curves.items():
+        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
+            out[m] = np.nan
+            continue
         rho_ref_m = np.interp(x_m, x_ref, rho_ref)
 
         ex_ref = _excess_volume(x_m, rho_ref_m)
@@ -344,6 +379,9 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
 
     out: dict[str, float] = {}
     for m, (x_m, rho_m) in model_curves.items():
+        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
+            out[m] = np.nan
+            continue
         ex_m = _excess_volume(x_m, rho_m)
         x_peak_m = _peak_x_quadratic(x_m, ex_m)
         out[m] = float(abs(x_peak_m - x_peak_ref))
