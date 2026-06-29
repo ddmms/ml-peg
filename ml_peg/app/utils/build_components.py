@@ -617,7 +617,14 @@ def build_plot_download_controls(graph_id: str) -> Div:
 
 @functools.cache
 def _read_faqs_yaml_cached() -> list[dict] | None:
-    """Load and cache the FAQs from YAML to prevent redundant parsing."""
+    """
+    Load and cache the FAQs from YAML to prevent redundant parsing.
+
+    Returns
+    -------
+    list[dict] | None
+        A list of FAQ entries or None if the file is not found.
+    """
     faqs_path = Path(__file__).parent / "faqs.yml"
     try:
         with open(faqs_path, encoding="utf8") as f:
@@ -627,7 +634,14 @@ def _read_faqs_yaml_cached() -> list[dict] | None:
 
 
 def _load_faqs_yaml() -> list[dict] | None:
-    """Get a deepcopy of the cached FAQs to prevent accidental mutation."""
+    """
+    Get a deepcopy of the cached FAQs to prevent accidental mutation.
+
+    Returns
+    -------
+    list[dict] | None
+        A deepcopy of the cached FAQ entries or None.
+    """
     data = _read_faqs_yaml_cached()
     return copy.deepcopy(data) if data is not None else None
 
