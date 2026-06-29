@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -33,9 +34,9 @@ class BaseApp(ABC):
         List of other Dash components to add to app.
     docs_url
         URL for online documentation. Default is None.
-    framework_id
-        Framework identifier used for benchmark attribution tags. Default is
-        `"ml_peg"`.
+    framework_ids
+        One or more framework identifiers used for benchmark attribution tags.
+        Accepts a single string or a list of strings. Default is `"ml_peg"`.
     info_path
         Path to json file containing additional info for filtering. Default is None.
     """
@@ -47,7 +48,7 @@ class BaseApp(ABC):
         table_path: Path,
         extra_components: list[Component],
         docs_url: str | None = None,
-        framework_id: str = "ml_peg",
+        framework_ids: str | Sequence[str] = "ml_peg",
         info_path: Path | None = None,
     ):
         """
@@ -65,9 +66,9 @@ class BaseApp(ABC):
             List of other Dash components to add to app.
         docs_url
             URL to online documentation. Default is None.
-        framework_id
-            Framework identifier used for benchmark attribution tags.
-            Default is `"ml_peg"`.
+        framework_ids
+            One or more framework identifiers used for benchmark attribution tags.
+            Accepts a single string or a list of strings. Default is `"ml_peg"`.
         info_path
             Path to json file containing additional info for filtering. Default is None.
         """
@@ -76,7 +77,12 @@ class BaseApp(ABC):
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
-        self.framework_id = normalize_framework_id(framework_id)
+        self.framework_ids = [
+            normalize_framework_id(framework_id)
+            for framework_id in (
+                [framework_ids] if isinstance(framework_ids, str) else framework_ids
+            )
+        ]
         self.table_id = f"{self.name}-table"
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
@@ -127,7 +133,7 @@ class BaseApp(ABC):
             name=self.name,
             description=self.description,
             docs_url=self.docs_url,
-            framework_id=self.framework_id,
+            framework_ids=self.framework_ids,
             table=self.table,
             column_widths=getattr(self.table, "column_widths", None),
             thresholds=self.table.thresholds,

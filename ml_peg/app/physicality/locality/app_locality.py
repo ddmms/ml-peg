@@ -53,7 +53,7 @@ def get_app() -> LocalityApp:
     """
     return LocalityApp(
         name=BENCHMARK_NAME,
-        framework_id="multihead",
+        framework_ids="multihead",
         description="Force sensitivity for ghost atoms and randomly place hydrogens.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "locality_metrics_table.json",

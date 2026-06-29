@@ -71,7 +71,7 @@ def get_app() -> OC157App:
     """
     return OC157App(
         name=BENCHMARK_NAME,
-        framework_id="multihead",
+        framework_ids="multihead",
         description=(
             "Performance in predicting relative energies between 3 structures for 157 "
             "molecule-surface combinations."

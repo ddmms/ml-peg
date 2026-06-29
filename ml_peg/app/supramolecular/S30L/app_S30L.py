@@ -71,7 +71,7 @@ def get_app() -> S30LApp:
     """
     return S30LApp(
         name=BENCHMARK_NAME,
-        framework_id="multihead",
+        framework_ids=["multihead", "mace-polar-1"],
         description=(
             "Performance in predicting interaction energies for 30 "
             "host-guest supramolecular complexes."

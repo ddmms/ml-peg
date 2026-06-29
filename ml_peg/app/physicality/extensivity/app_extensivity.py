@@ -51,7 +51,7 @@ def get_app() -> ExtensivityApp:
     """
     return ExtensivityApp(
         name=BENCHMARK_NAME,
-        framework_id="multihead",
+        framework_ids="multihead",
         description="Extensivity of slab energies, comparing two isolated slabs to the "
         "two slabs with a large separation.",
         docs_url=DOCS_URL,

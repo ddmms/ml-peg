@@ -408,7 +408,7 @@ def get_all_tests(
 
             layouts[category_name][test_app.name] = test_app.layout
             tables[category_name][test_app.name] = test_app.table
-            frameworks[category_name][test_app.name] = test_app.framework_id
+            frameworks[category_name][test_app.name] = test_app.framework_ids
 
         except FileNotFoundError as err:
             warnings.warn(
@@ -508,12 +508,12 @@ def build_category(
 
         test_entries = []
         for test_name in sorted(all_layouts[category]):
-            framework_id = all_frameworks[category][test_name]
-            framework_ids.add(framework_id)
+            test_framework_ids = all_frameworks[category][test_name]
+            framework_ids.update(test_framework_ids)
             test_entries.append(
                 {
                     "name": test_name,
-                    "framework_id": framework_id,
+                    "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
                 }
             )
@@ -618,7 +618,7 @@ def build_framework_views(
             tests = [
                 test["layout"]
                 for test in category_view["tests"]
-                if test["framework_id"] == framework_id
+                if framework_id in test["framework_ids"]
             ]
             if tests:
                 category_groups.append({"category": category_name, "tests": tests})

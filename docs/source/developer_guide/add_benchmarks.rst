@@ -529,19 +529,28 @@ MLIP Arena), add a framework credit tag as follows:
       url: "https://huggingface.co/spaces/atomind/mlip-arena"
       logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
 
-2. Set ``framework_id`` in the benchmark app constructor.
+2. Set ``framework_ids`` in the benchmark app constructor. This accepts either a
+   single framework identifier or a list of them, so a benchmark can belong to
+   multiple frameworks at once.
 
 .. code-block:: python3
 
     return SomeBenchmarkApp(
         name="SomeBenchmark",
         ...,
-        framework_id="mlip_arena",
+        framework_ids="mlip_arena",
     )
 
-That is all that is required. The benchmark header badge and the additional
-framework pages for non-default frameworks are populated automatically from
-this metadata.
+    # ...or, to credit several frameworks:
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_ids=["mlip_arena", "multihead"],
+    )
+
+That is all that is required. The benchmark header shows one badge per framework,
+and the additional framework pages for non-default frameworks are populated
+automatically from this metadata.
 
 Framework sections group matching benchmarks by category, omit the category
 summary table, and reuse the same benchmark tables and controls. Updating
