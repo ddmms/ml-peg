@@ -119,6 +119,7 @@ def get_app() -> ElasticityApp:
     """
     return ElasticityApp(
         name=BENCHMARK_NAME,
+        framework_id="multihead",
         description=(
             "Performance when predicting VRH bulk and shear moduli for crystalline "
             "materials compared against Materials Project reference data."

@@ -824,6 +824,8 @@ def build_framework_badge(framework_id: str) -> Component:
     color = config["color"]
     text_color = config["text_color"]
     logo = config.get("logo")
+    icon = config.get("icon")
+    tooltip = config.get("tooltip")
     url = config.get("url")
 
     badge_style = {
@@ -854,6 +856,8 @@ def build_framework_badge(framework_id: str) -> Component:
                 },
             )
         )
+    if icon:
+        badge_children.append(html.Span(icon, **{"aria-hidden": "true"}))
     badge_children.append(html.Span(label))
     badge = html.Span(
         badge_children,
@@ -868,8 +872,10 @@ def build_framework_badge(framework_id: str) -> Component:
             href=url,
             target="_blank",
             style={"textDecoration": "none"},
-            title=f"Open {label} website",
+            title=tooltip or f"Open {label} website",
         )
+    if tooltip:
+        badge.title = tooltip
     return badge
 
 

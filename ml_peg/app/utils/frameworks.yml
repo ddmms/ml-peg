@@ -10,3 +10,11 @@ mlip_arena:
   text_color: "#ecfeff"
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
   logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+
+multihead:
+  label: Multihead Cross Learning
+  color: "#7c3aed"
+  text_color: "#f5f3ff"
+  url: "https://arxiv.org/abs/2510.25380"
+  icon: "📄"
+  tooltip: "Benchmark from the Multihead Cross Learning paper (arXiv:2510.25380) - click to read"

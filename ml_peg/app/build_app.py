@@ -210,7 +210,9 @@ def _framework_sidebar_label(framework_id: str, label: str) -> Div:
     Div
         Sidebar label content with optional logo and text.
     """
-    logo = get_framework_config(framework_id).get("logo")
+    config = get_framework_config(framework_id)
+    logo = config.get("logo")
+    icon = config.get("icon")
     children = []
     if logo:
         children.append(
@@ -225,6 +227,8 @@ def _framework_sidebar_label(framework_id: str, label: str) -> Div:
                 },
             )
         )
+    if icon:
+        children.append(Span(icon, **{"aria-hidden": "true"}))
     children.append(Span(label))
     return Div(
         children,

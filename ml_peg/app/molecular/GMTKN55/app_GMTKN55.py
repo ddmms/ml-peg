@@ -72,6 +72,7 @@ def get_app() -> GMTKN55App:
     """
     return GMTKN55App(
         name=BENCHMARK_NAME,
+        framework_id="multihead",
         description=(
             "Performance in predicting relative energies for 55 subsets of molecules, "
             "inclding intramolecular non-covalent interactions (NCIs), intermolecular "

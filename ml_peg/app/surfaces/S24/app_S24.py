@@ -66,6 +66,7 @@ def get_app() -> S24App:
     """
     return S24App(
         name=BENCHMARK_NAME,
+        framework_id="multihead",
         description=(
             "Performance in predicting adsorption energies for 24 "
             "molecule-surface combinations."
