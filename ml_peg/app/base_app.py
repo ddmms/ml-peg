@@ -35,8 +35,12 @@ class BaseApp(ABC):
     docs_url
         URL for online documentation. Default is None.
     framework_ids
-        One or more framework identifiers used for benchmark attribution tags.
-        Accepts a single string or a list of strings. Default is `"ml_peg"`.
+        Extra framework identifiers used for benchmark attribution tags, as a
+        single string or a list of strings. The `"ml_peg"` tag is always added,
+        so this need only list additional frameworks (e.g. `"multihead"`).
+    include_ml_peg
+        Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
+        benchmark out and show only its explicit `framework_ids`. Default is True.
     info_path
         Path to json file containing additional info for filtering. Default is None.
     """
@@ -48,7 +52,8 @@ class BaseApp(ABC):
         table_path: Path,
         extra_components: list[Component],
         docs_url: str | None = None,
-        framework_ids: str | Sequence[str] = "ml_peg",
+        framework_ids: str | Sequence[str] = (),
+        include_ml_peg: bool = True,
         info_path: Path | None = None,
     ):
         """
@@ -67,8 +72,12 @@ class BaseApp(ABC):
         docs_url
             URL to online documentation. Default is None.
         framework_ids
-            One or more framework identifiers used for benchmark attribution tags.
-            Accepts a single string or a list of strings. Default is `"ml_peg"`.
+            Extra framework identifiers used for benchmark attribution tags, as a
+            single string or a list of strings. The `"ml_peg"` tag is always
+            added, so this need only list additional frameworks (e.g. `"multihead"`).
+        include_ml_peg
+            Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
+            benchmark out and show only its explicit `framework_ids`. Default is True.
         info_path
             Path to json file containing additional info for filtering. Default is None.
         """
@@ -77,12 +86,16 @@ class BaseApp(ABC):
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
+        # The "ml_peg" tag is shown on every benchmark by default; any extra
+        # frameworks (e.g. "multihead") are displayed alongside it.
         self.framework_ids = [
             normalize_framework_id(framework_id)
             for framework_id in (
                 [framework_ids] if isinstance(framework_ids, str) else framework_ids
             )
         ]
+        if include_ml_peg and "ml_peg" not in self.framework_ids:
+            self.framework_ids.insert(0, "ml_peg")
         self.table_id = f"{self.name}-table"
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
