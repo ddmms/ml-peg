@@ -18,3 +18,11 @@ multihead:
   url: "https://arxiv.org/abs/2510.25380"
   icon: "📄"
   tooltip: "Benchmark from the Multihead Cross Learning paper (arXiv:2510.25380) - click to read"
+
+mace-polar-1:
+  label: MACE-POLAR-1
+  color: "#1d4ed8"
+  text_color: "#eff6ff"
+  url: "https://arxiv.org/abs/2602.19411"
+  icon: "📄"
+  tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411) - click to read"
