@@ -9,9 +9,10 @@ from dash import Dash, Input, Output, callback, clientside_callback, ctx, no_upd
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, A, Br, Button, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.filters import (
@@ -1034,6 +1035,22 @@ def build_nav(
                         "color": "#212529",
                     },
                 ),
+                # Time-based progress bar: fills continuously over ~10s, easing
+                # toward ~95% (keyframe in loading.css; same single-element bar
+                # as the pre-hydration loader in dash_loading.css). It vanishes
+                # with the mask when ready, so it never reaches a fake 100%.
+                Div(
+                    style={
+                        "width": "200px",
+                        "height": "6px",
+                        "borderRadius": "3px",
+                        "background": (
+                            "linear-gradient(#119DFF, #119DFF) left center "
+                            "/ 5% 100% no-repeat, #d0ebff"
+                        ),
+                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
+                    },
+                ),
             ],
             id="startup-mask",
             style={
@@ -1053,7 +1070,47 @@ def build_nav(
         ),
         Interval(id="startup-mask-poll", interval=250, n_intervals=0),
         build_onboarding_modal(),
-        build_tutorial_button(),
+        # Fixed header controls (top-right): clear-cache button next to the
+        # tutorial button. The hidden Divs are the clear-storage and
+        # version-check clientside-callback targets.
+        Div(
+            [
+                Button(
+                    "Clear cache",
+                    id="clear-storage-button",
+                    n_clicks=0,
+                    title=(
+                        "Clear browser-stored app state (weights, thresholds, "
+                        "tutorial progress) and reload. Use after an update if "
+                        "the app shows stale data."
+                    ),
+                    style={
+                        "padding": "8px 16px",
+                        "borderRadius": "6px",
+                        "border": "1px solid #cbd5e1",
+                        "background": "white",
+                        "color": "#475569",
+                        "cursor": "pointer",
+                        "fontWeight": 600,
+                        "fontSize": "14px",
+                        "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+                        "transition": "all 0.2s ease",
+                    },
+                ),
+                build_tutorial_button(),
+                Div(id="clear-storage-dummy", style={"display": "none"}),
+                Div(id="storage-version-dummy", style={"display": "none"}),
+            ],
+            style={
+                "position": "fixed",
+                "top": "20px",
+                "right": "20px",
+                "display": "flex",
+                "alignItems": "center",
+                "gap": "10px",
+                "zIndex": "1600",  # Above loading overlays (1200/1400).
+            },
+        ),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -1169,6 +1226,7 @@ def build_nav(
 
     # Hide the start-up mask once the page has rendered, or after a timeout as
     # a safety net, then stop polling. Clientside, so it adds no server load.
+    # (The progress bar fills via a CSS animation, not this callback.)
     clientside_callback(
         """
         function(n) {
@@ -1183,6 +1241,52 @@ def build_nav(
         Output("startup-mask", "style"),
         Output("startup-mask-poll", "disabled"),
         Input("startup-mask-poll", "n_intervals"),
+    )
+
+    # Clear all browser-persisted dcc.Store data (session + local) and reload, so
+    # stale cached state after an update can be wiped from the footer button.
+    clientside_callback(
+        """
+        function (n_clicks) {
+            if (n_clicks && window.confirm(
+                "Clear cached app data and reload? Saved weights and thresholds"
+                + " will be reset."
+            )) {
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+                window.location.reload();
+            }
+            return "";
+        }
+        """,
+        Output("clear-storage-dummy", "children"),
+        Input("clear-storage-button", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    # Auto-clear browser-persisted stores when the released version changes, so a
+    # new release drops stale cached state automatically. The
+    # version is recorded in localStorage; a real change (not a first visit) clears
+    # both storages and reloads so the dcc.Stores reinitialise from fresh defaults.
+    clientside_callback(
+        f"""
+        function (pathname) {{
+            const current = "{__version__}";
+            const stored = window.localStorage.getItem("ml-peg-store-version");
+            if (stored !== current) {{
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+                window.localStorage.setItem("ml-peg-store-version", current);
+                if (stored !== null) {{
+                    window.location.reload();
+                }}
+            }}
+            return "";
+        }}
+        """,
+        Output("storage-version-dummy", "children"),
+        Input("app-location", "pathname"),
+        prevent_initial_call=False,
     )
 
     @callback(
