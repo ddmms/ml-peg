@@ -545,7 +545,7 @@ MLIP Arena), add a framework credit tag as follows:
     return SomeBenchmarkApp(
         name="SomeBenchmark",
         ...,
-        framework_ids=["mlip_arena", "multihead"],
+        framework_ids=["mlip_arena", "mace-multihead"],
     )
 
 That is all that is required. The benchmark header shows one badge per framework,

@@ -35,9 +35,10 @@ class BaseApp(ABC):
     docs_url
         URL for online documentation. Default is None.
     framework_ids
-        Extra framework identifiers used for benchmark attribution tags, as a
-        single string or a list of strings. The `"ml_peg"` tag is always added,
-        so this need only list additional frameworks (e.g. `"mace-multihead"`).
+        Extra framework identifiers used for benchmark attribution tags, as a single
+        string or a sequence of strings. If `include_ml_peg` is True, the  `"ml_peg"`
+        tag is also included, so this need only list additional frameworks (e.g.
+        `"mace-multihead"`).
     include_ml_peg
         Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
         benchmark out and show only its explicit `framework_ids`. Default is True.
@@ -73,8 +74,9 @@ class BaseApp(ABC):
             URL to online documentation. Default is None.
         framework_ids
             Extra framework identifiers used for benchmark attribution tags, as a
-            single string or a list of strings. The `"ml_peg"` tag is always added,
-            so this need only list additional frameworks (e.g. `"mace-multihead"`).
+            single string or a sequence of strings. If `include_ml_peg` is True, the
+            `"ml_peg"` tag is also included, so this need only list additional
+            frameworks (e.g. `"mace-multihead"`).
         include_ml_peg
             Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
             benchmark out and show only its explicit `framework_ids`. Default is True.
