@@ -71,7 +71,6 @@ def get_app() -> S30LApp:
     """
     return S30LApp(
         name=BENCHMARK_NAME,
-        framework_ids=["multihead", "mace-polar-1"],
         description=(
             "Performance in predicting interaction energies for 30 "
             "host-guest supramolecular complexes."
@@ -83,6 +82,7 @@ def get_app() -> S30LApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        framework_ids=["multihead", "mace-polar-1"],
     )
 
 

@@ -87,7 +87,6 @@ def get_app() -> PLF547App:
     """
     return PLF547App(
         name=BENCHMARK_NAME,
-        framework_ids="multihead",
         description=(
             "Performance in predicting interaction energies for the "
             "547 protein-ligand complexes that comprise the PLF547 benchmark."
@@ -99,6 +98,7 @@ def get_app() -> PLF547App:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        framework_ids=["multihead", "mace-polar-1"],
     )
 
 

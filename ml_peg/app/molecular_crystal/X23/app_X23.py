@@ -69,7 +69,6 @@ def get_app() -> X23App:
     return X23App(
         name=BENCHMARK_NAME,
         description="Lattice energies for 23 organic molecular crystals.",
-        framework_ids="multihead",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "x23_metrics_table.json",
         extra_components=[
@@ -77,6 +76,7 @@ def get_app() -> X23App:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        framework_ids=["multihead", "mace-polar-1"],
     )
 
 

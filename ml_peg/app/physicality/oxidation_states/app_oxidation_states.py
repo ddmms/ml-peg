@@ -76,6 +76,7 @@ def get_app() -> FeOxidationStatesApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=DATA_PATH / "info.json",
+        framework_ids="mace-polar-1",
     )
 
 
