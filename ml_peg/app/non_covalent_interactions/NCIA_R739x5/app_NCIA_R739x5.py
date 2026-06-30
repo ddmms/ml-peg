@@ -82,6 +82,7 @@ def get_app() -> NCIAR739x5App:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

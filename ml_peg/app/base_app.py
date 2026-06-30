@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -33,9 +34,14 @@ class BaseApp(ABC):
         List of other Dash components to add to app.
     docs_url
         URL for online documentation. Default is None.
-    framework_id
-        Framework identifier used for benchmark attribution tags. Default is
-        `"ml_peg"`.
+    framework_ids
+        Extra framework identifiers used for benchmark attribution tags, as a single
+        string or a sequence of strings. If `include_ml_peg` is True, the  `"ml_peg"`
+        tag is also included, so this need only list additional frameworks (e.g.
+        `"mace-multihead"`).
+    include_ml_peg
+        Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
+        benchmark out and show only its explicit `framework_ids`. Default is True.
     info_path
         Path to json file containing additional info for filtering. Default is None.
     """
@@ -47,7 +53,8 @@ class BaseApp(ABC):
         table_path: Path,
         extra_components: list[Component],
         docs_url: str | None = None,
-        framework_id: str = "ml_peg",
+        framework_ids: str | Sequence[str] = (),
+        include_ml_peg: bool = True,
         info_path: Path | None = None,
     ):
         """
@@ -65,9 +72,14 @@ class BaseApp(ABC):
             List of other Dash components to add to app.
         docs_url
             URL to online documentation. Default is None.
-        framework_id
-            Framework identifier used for benchmark attribution tags.
-            Default is `"ml_peg"`.
+        framework_ids
+            Extra framework identifiers used for benchmark attribution tags, as a
+            single string or a sequence of strings. If `include_ml_peg` is True, the
+            `"ml_peg"` tag is also included, so this need only list additional
+            frameworks (e.g. `"mace-multihead"`).
+        include_ml_peg
+            Whether to add the default `"ml_peg"` tag. Set to `False` to opt a
+            benchmark out and show only its explicit `framework_ids`. Default is True.
         info_path
             Path to json file containing additional info for filtering. Default is None.
         """
@@ -76,7 +88,16 @@ class BaseApp(ABC):
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
-        self.framework_id = normalize_framework_id(framework_id)
+        # The "ml_peg" tag is shown on every benchmark by default; any extra
+        # frameworks (e.g. "mace-multihead") are displayed alongside it.
+        self.framework_ids = [
+            normalize_framework_id(framework_id)
+            for framework_id in (
+                [framework_ids] if isinstance(framework_ids, str) else framework_ids
+            )
+        ]
+        if include_ml_peg and "ml_peg" not in self.framework_ids:
+            self.framework_ids.insert(0, "ml_peg")
         self.table_id = f"{self.name}-table"
         self.table = rebuild_table(
             self.table_path, id=self.table_id, description=description
@@ -127,7 +148,7 @@ class BaseApp(ABC):
             name=self.name,
             description=self.description,
             docs_url=self.docs_url,
-            framework_id=self.framework_id,
+            framework_ids=self.framework_ids,
             table=self.table,
             column_widths=getattr(self.table, "column_widths", None),
             thresholds=self.table.thresholds,
