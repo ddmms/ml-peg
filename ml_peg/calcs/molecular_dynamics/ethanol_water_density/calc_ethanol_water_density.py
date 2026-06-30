@@ -114,6 +114,8 @@ def run_one_case(
         Density time series in g/cm^3.
     """
     atoms = read(struct_path)
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
     atoms.set_pbc(True)
     atoms.wrap()
     atoms.calc = calc
@@ -289,7 +291,7 @@ def water_ethanol_density_curve_one_case(mlip: tuple[str, Any], case, data_dir) 
     model_out = OUT_PATH / model_name
     model_out.mkdir(parents=True, exist_ok=True)
 
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
     struct_path = data_dir / case.filename
