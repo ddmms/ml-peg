@@ -70,7 +70,7 @@ def get_app() -> Wiggle150App:
     """
     return Wiggle150App(
         name=BENCHMARK_NAME,
-        framework_ids="multihead",
+        framework_ids="mace-multihead",
         description=(
             "Performance in predicting relative conformer energies for the "
             "150-structure Wiggle dataset (ado, bpn, efa)."

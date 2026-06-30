@@ -11,7 +11,7 @@ mlip_arena:
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
   logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
 
-multihead:
+mace-multihead:
   label: Multihead Cross Learning
   color: "#7c3aed"
   text_color: "#f5f3ff"
