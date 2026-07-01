@@ -59,6 +59,34 @@ def labels() -> list:
 
 
 @pytest.fixture
+def analyze_results() -> dict:
+    """
+    Run the mlipaudit analysis for each model.
+
+    Returns
+    -------
+    dict
+        Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
+    """
+    data_input_dir = download_s3_data(
+        key="inputs/conformers/Folmsbee/conformer_selection.zip",
+        filename="conformer_selection.zip",
+    )
+
+    results = {}
+    for model_name in MODELS:
+        benchmark = MlPegConformerSelectionBenchmark(
+            force_field=Calculator(),
+            data_input_dir=data_input_dir,
+            run_mode="standard",
+        )
+        raw = (CALC_PATH / model_name / "model_output.json").read_text()
+        benchmark.model_output = ConformerSelectionModelOutput.model_validate_json(raw)
+        results[model_name] = (benchmark, benchmark.analyze())
+    return results
+
+
+@pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_folmsbee.json",
     title="Energies",
@@ -68,9 +96,14 @@ def labels() -> list:
         "Labels": labels(),
     },
 )
-def conformer_energies() -> dict[str, list]:
+def conformer_energies(analyze_results) -> dict[str, list]:
     """
     Get conformer energies for all systems.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
 
     Returns
     -------
@@ -80,20 +113,8 @@ def conformer_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/conformer_selection.zip",
-        filename="conformer_selection.zip",
-    )
-
     for model_name in MODELS:
-        benchmark = MlPegConformerSelectionBenchmark(
-            force_field=Calculator(),
-            data_input_dir=data_input_dir,
-            run_mode="standard",
-        )
-        raw = (CALC_PATH / model_name / "model_output.json").read_text()
-        benchmark.model_output = ConformerSelectionModelOutput.model_validate_json(raw)
-        result = benchmark.analyze()
+        benchmark, result = analyze_results[model_name]
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
         data_by_name = {m.molecule_name: m for m in benchmark._folmsbee_data}
@@ -154,13 +175,34 @@ def get_mae(conformer_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def get_score(analyze_results) -> dict[str, float]:
+    """
+    Get the mlipaudit benchmark score for each model.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
+
+    Returns
+    -------
+    dict[str, float]
+        The mlipaudit per-molecule soft-threshold score (0 to 1) for each model.
+    """
+    return {
+        model_name: result.score for model_name, (_, result) in analyze_results.items()
+    }
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "folmsbee_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, float], get_score: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -168,6 +210,8 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     ----------
     get_mae
         Mean absolute errors for all models.
+    get_score
+        The mlipaudit benchmark scores for all models.
 
     Returns
     -------
@@ -176,6 +220,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAE": get_mae,
+        "Conformer Score": get_score,
     }
 
 
