@@ -100,6 +100,11 @@ counts as failed if it raises an error during integration (for example, a
 numerical instability). Higher is better, with 1.0 meaning every system ran to
 completion.
 
+A scatter plot below the table shows, for each system and model, the fraction of
+the trajectory completed before it became unstable: 1.0 for a fully stable run, a
+smaller value when the run exploded or hydrogens drifted, and 0.0 for systems that
+failed to run at all. Individual models can be toggled via the legend.
+
 Computational cost
 ------------------
 
