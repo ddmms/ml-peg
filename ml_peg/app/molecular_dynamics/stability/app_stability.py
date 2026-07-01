@@ -6,6 +6,7 @@ from dash import Dash
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.load import read_plot
 
 BENCHMARK_NAME = "Stability"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#stability"
@@ -30,7 +31,7 @@ def get_app() -> StabilityApp:
     """
     return StabilityApp(
         name=BENCHMARK_NAME,
-        framework_id="mlip_audit",
+        framework_ids="mlip_audit",
         description=(
             "Fraction of short molecular dynamics simulations that complete "
             "without error, across small molecules, peptides and proteins in "
@@ -38,7 +39,12 @@ def get_app() -> StabilityApp:
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "stability_metrics_table.json",
-        extra_components=[],
+        extra_components=[
+            read_plot(
+                filename=DATA_PATH / "stability_progress.json",
+                id=f"{BENCHMARK_NAME}-progress-figure",
+            )
+        ],
     )
 
 
