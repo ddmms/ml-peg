@@ -38,11 +38,11 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator()
-    calc = model.add_d3_calculator(calc)
+    calc = model.get_calculator(precision="high")
 
     data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/conformer_selection.zip",
-        filename="conformer_selection.zip",
+        key="inputs/conformers/Folmsbee/Folmsbee.zip",
+        filename="Folmsbee.zip",
     )
 
     out_path = OUT_PATH / model_name
