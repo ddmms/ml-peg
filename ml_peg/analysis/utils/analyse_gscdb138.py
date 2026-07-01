@@ -5,10 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
+import numpy as np
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, mae
+from ml_peg.analysis.utils.utils import build_dispersion_name_map, get_struct_info, mae
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -19,36 +20,11 @@ DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 EV_TO_KCAL = units.mol / units.kcal
 
 
-def get_system_names(calc_path: Path, dataset: str) -> list[str]:
-    """
-    Get list of system names from the first available model for a dataset.
-
-    Parameters
-    ----------
-    calc_path
-        Path to calculation outputs.
-    dataset
-        Dataset to get relative energies for.
-
-    Returns
-    -------
-    list[str]
-        List of systems in the dataset.
-    """
-    for model_name in MODELS:
-        model_dir = calc_path / model_name
-        if model_dir.exists():
-            system_names = []
-            for system_path in sorted(model_dir.glob(f"{dataset}_*.xyz")):
-                system_name = system_path.stem[len(dataset) + 1 :]
-                system_names.append(system_name)
-            if system_names:
-                return system_names
-    return []
-
-
 def get_relative_energy(
-    dataset: str, calc_path: Path, out_path: Path
+    dataset: str,
+    system_names: list[str],
+    calc_path: Path,
+    out_path: Path,
 ) -> dict[str, list]:
     """
     Get all relative energies for a specific dataset.
@@ -57,6 +33,8 @@ def get_relative_energy(
     ----------
     dataset
         Dataset to get relative energies for.
+    system_names
+        List of system names to get relative energies for.
     calc_path
         Path to calculation outputs.
     out_path
@@ -67,7 +45,6 @@ def get_relative_energy(
     dict[str, list]
         Dictionary of all reference and predicted relative energies for a dataset.
     """
-    system_names = get_system_names(calc_path=calc_path, dataset=dataset)
 
     @plot_parity(
         filename=out_path / f"figure_gscdb138_{dataset}.json",
@@ -93,6 +70,9 @@ def get_relative_energy(
             for system_name in system_names:
                 xyz_name = f"{dataset}_{system_name}.xyz"
                 xyz_path = model_dir / xyz_name
+                if not xyz_path.is_file():
+                    results[model_name].append(np.nan)
+                    continue
                 atoms_list = read(xyz_path, ":")
 
                 results[model_name].append(
@@ -105,17 +85,15 @@ def get_relative_energy(
                         atoms_list[0].info["ref_rel_energy"] * EV_TO_KCAL
                     )
 
-                # Write structures for app
-                structs_dir = out_path / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / xyz_name, atoms_list)
             ref_stored = True
         return results
 
     return relative_energies()
 
 
-def get_mae(dataset: str, calc_path: Path, out_path: Path) -> dict[str, float]:
+def get_mae(
+    dataset: str, system_names: list[str], calc_path: Path, out_path: Path
+) -> dict[str, float]:
     """
     Get mean absolute error for relative energies for a specific dataset.
 
@@ -123,6 +101,8 @@ def get_mae(dataset: str, calc_path: Path, out_path: Path) -> dict[str, float]:
     ----------
     dataset
         Dataset name to filter by.
+    system_names
+        List of system names to get relative energies for.
     calc_path
         Path to calculation outputs.
     out_path
@@ -135,7 +115,10 @@ def get_mae(dataset: str, calc_path: Path, out_path: Path) -> dict[str, float]:
     """
     results = {}
     relative_energies = get_relative_energy(
-        dataset=dataset, calc_path=calc_path, out_path=out_path
+        dataset=dataset,
+        system_names=system_names,
+        calc_path=calc_path,
+        out_path=out_path,
     )
     for model_name in MODELS:
         results[model_name] = mae(
@@ -170,6 +153,23 @@ def get_gscdb138_metrics(
     weights
         Default weights for metrics.
     """
+    info = get_struct_info(
+        calc_path=calc_path,
+        glob_pattern="*.xyz",
+        include_filenames=True,
+        write_info=True,
+        write_structs=True,
+        out_path=out_path,
+    )
+
+    system_names = {
+        dataset: [
+            name[len(dataset) + 1 :]
+            for name in info["filenames"]
+            if name.startswith(f"{dataset}_")
+        ]
+        for dataset in datasets
+    }
 
     @build_table(
         filename=out_path / "gscdb138_metrics_table.json",
@@ -189,7 +189,10 @@ def get_gscdb138_metrics(
         """
         return {
             f"{dataset} MAE": get_mae(
-                dataset=dataset, calc_path=calc_path, out_path=out_path
+                dataset,
+                system_names[dataset],
+                calc_path,
+                out_path,
             )
             for dataset in datasets
         }

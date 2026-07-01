@@ -113,6 +113,13 @@ def run_dash_app(
             case_sensitive=False,
         ),
     ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to build app for. Default is all tests.",
+            case_sensitive=False,
+        ),
+    ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
     debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
 ) -> None:
@@ -128,6 +135,8 @@ def run_dash_app(
         Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    test
+        Test to build app for. Default is `*`, corresponding to all tests.
     port
         Port to run application on. Default is 8050.
     debug
@@ -141,7 +150,7 @@ def run_dash_app(
 
     from ml_peg.app.run_app import run_app
 
-    run_app(category=category, port=port, debug=debug)
+    run_app(category=category, test=test, port=port, debug=debug)
 
 
 @app.command(
@@ -176,6 +185,12 @@ def run_calcs(
     test: Annotated[
         str, Option(help="Test to run calculations for. Default is all tests.")
     ] = "*",
+    run_mock: Annotated[
+        bool, Option(help="Whether to run with mock calculator in addition to models.")
+    ] = True,
+    mock_only: Annotated[
+        bool, Option(help="Whether to only run mock calculator with no models.")
+    ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
     ] = True,
@@ -204,6 +219,10 @@ def run_calcs(
     test
         Test to run calculation for. Default is `*`, corresponding to all tests in the
         category.
+    run_mock
+        Whether to run mock calculations. Default is `True`.
+    mock_only
+        Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
         Whether to run slow calculations. Default is `True`.
     run_very_slow
@@ -229,6 +248,12 @@ def run_calcs(
 
     if run_very_slow:
         options.extend(["--run-very-slow"])
+
+    if run_mock:
+        options.extend(["--run-mock"])
+
+    if mock_only:
+        options.extend(["--mock-only"])
 
     if models:
         options.extend(["--models", models])

@@ -14,6 +14,7 @@ from ml_peg.analysis.utils.decorators import (
 )
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -66,16 +67,14 @@ SUBSETS = {
 }
 
 
-def labels():
-    """
-    Get complex ids.
+LABELS = list(range(1, 29))
 
-    Returns
-    -------
-    list
-        IDs of the complexes.
-    """
-    return list(range(1, 29))
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -85,7 +84,7 @@ def labels():
     x_label="Predicted ionization energy / kcal/mol",
     y_label="Reference ionization energy / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": LABELS,
     },
 )
 def ionization_energies() -> dict[str, list]:
@@ -101,7 +100,7 @@ def ionization_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for complex_id in labels():
+        for complex_id in LABELS:
             atoms = read(CALC_PATH / model_name / f"{complex_id}.xyz")
             model_ion_energy = atoms.info["model_ionization_energy"]
             ref_ion_energy = atoms.info["ref_ionization_energy"]
@@ -135,12 +134,10 @@ def sr_mae(ionization_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "SR"
+            ionization_energies["ref"][i - 1] for i in LABELS if SUBSETS[i] == "SR"
         ]
         subsampled_model_e = [
-            ionization_energies[model_name][i - 1]
-            for i in labels()
-            if SUBSETS[i] == "SR"
+            ionization_energies[model_name][i - 1] for i in LABELS if SUBSETS[i] == "SR"
         ]
         results[model_name] = mae(subsampled_ref_e, subsampled_model_e)
     return results
@@ -165,12 +162,10 @@ def mr_mae(ionization_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "MR"
+            ionization_energies["ref"][i - 1] for i in LABELS if SUBSETS[i] == "MR"
         ]
         subsampled_model_e = [
-            ionization_energies[model_name][i - 1]
-            for i in labels()
-            if SUBSETS[i] == "MR"
+            ionization_energies[model_name][i - 1] for i in LABELS if SUBSETS[i] == "MR"
         ]
         results[model_name] = mae(subsampled_ref_e, subsampled_model_e)
     return results
@@ -195,11 +190,11 @@ def sr_mr_mae(ionization_energies) -> dict[str, float]:
 
     for model_name in MODELS:
         subsampled_ref_e = [
-            ionization_energies["ref"][i - 1] for i in labels() if SUBSETS[i] == "SR/MR"
+            ionization_energies["ref"][i - 1] for i in LABELS if SUBSETS[i] == "SR/MR"
         ]
         subsampled_model_e = [
             ionization_energies[model_name][i - 1]
-            for i in labels()
+            for i in LABELS
             if SUBSETS[i] == "SR/MR"
         ]
         results[model_name] = mae(subsampled_ref_e, subsampled_model_e)

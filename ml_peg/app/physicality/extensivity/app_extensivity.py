@@ -18,6 +18,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#extensivity"
 )
 DATA_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ExtensivityApp(BaseApp):
@@ -50,6 +51,7 @@ def get_app() -> ExtensivityApp:
     """
     return ExtensivityApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description="Extensivity of slab energies, comparing two isolated slabs to the "
         "two slabs with a large separation.",
         docs_url=DOCS_URL,
@@ -57,6 +59,7 @@ def get_app() -> ExtensivityApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
@@ -63,14 +64,25 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         # Set default charge and spin
         molecule.info.setdefault("charge", 0)
         molecule.info.setdefault("spin", 1)
-        molecule.get_potential_energy()
+        try:
+            molecule.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for {system}: {exc}",
+                stacklevel=2,
+            )
+            molecule.info["energy"] = np.nan
 
         solid = read(solid_path, index=0, format="vasp")
         solid.calc = copy(calc)
         # Set default charge and spin
         solid.info.setdefault("charge", 0)
         solid.info.setdefault("spin", 1)
-        solid.get_potential_energy()
+        try:
+            solid.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
+            solid.info["energy"] = np.nan
 
         ref = np.loadtxt(ref_path)[0]
         num_molecules = np.loadtxt(num_molecules_path)

@@ -5,9 +5,11 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -125,7 +127,11 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
         atoms.info["spin_multiplicity"] = entry["multiplicity"]
         atoms.info["spin"] = entry["multiplicity"]
         atoms.calc = copy(calc)
-        atoms.info["model_energy"] = atoms.get_potential_energy()
+        try:
+            atoms.info["model_energy"] = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {entry['xyz']}: {exc}", stacklevel=2)
+            atoms.info["model_energy"] = np.nan
 
         atoms.info["model"] = model_name
         atoms.info["system"] = entry["system"]

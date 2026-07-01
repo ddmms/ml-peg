@@ -6,8 +6,10 @@ from copy import copy
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -58,7 +60,11 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     # Set default charge and spin
     water.info.setdefault("charge", 0)
     water.info.setdefault("spin", 1)
-    water.get_potential_energy()
+    try:
+        water.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        water.info["energy"] = np.nan
 
     for polymorph in polymorphs:
         polymorph_path = data_dir / polymorph / "POSCAR"
@@ -69,7 +75,11 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         # Set default charge and spin
         struct.info.setdefault("charge", 0)
         struct.info.setdefault("spin", 1)
-        struct.get_potential_energy()
+        try:
+            struct.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {polymorph}: {exc}", stacklevel=2)
+            struct.info["energy"] = np.nan
         struct.info["ref"] = ref
         struct.info["polymorph"] = polymorph
 

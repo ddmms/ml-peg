@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -26,6 +27,19 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index=":",
+    info_keys=["composition"],
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
+
+N_SYSTEMS = len(INFO["filenames"])
 
 
 def get_relative_energies(energies: list) -> list:
@@ -49,38 +63,7 @@ def get_relative_energies(energies: list) -> list:
     ]
 
 
-def compositions() -> list:
-    """
-    Get list of compositions.
-
-    Returns
-    -------
-    list
-        List of all compositions.
-    """
-    all_compositions = []
-    for model_name in MODELS:
-        for system_path in (CALC_PATH / model_name).glob("*.xyz"):
-            structs = read(system_path, index=":")
-            compositions = [atoms.info["composition"] for atoms in structs]
-            all_compositions.extend(compositions)
-        break
-    return all_compositions
-
-
-def labels() -> list:
-    """
-    Get list of labels.
-
-    Returns
-    -------
-    list
-        List of all relative energy labels.
-    """
-    for model_name in MODELS:
-        n_systems = len(list((CALC_PATH / model_name).glob("*.xyz")))
-        break
-    return ["E_2 - E_1", "E_3 - E_2", "E_3 - E_2"] * n_systems
+LABELS = ["E_2 - E_1", "E_3 - E_2", "E_3 - E_2"] * N_SYSTEMS
 
 
 @pytest.fixture
@@ -90,8 +73,8 @@ def labels() -> list:
     x_label="Predicted relative energy / eV",
     y_label="Reference relative energy / eV",
     hoverdata={
-        "Composition": compositions(),
-        "Labels": labels(),
+        "Composition": INFO["composition"],
+        "Labels": LABELS,
     },
 )
 def relative_energies() -> dict[str, list]:

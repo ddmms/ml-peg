@@ -12,6 +12,7 @@ from matcalc._elasticity import ElasticityCalc
 from matcalc.benchmark import Benchmark
 from matcalc.units import eVA3ToGPa
 import numpy as np
+from pymatgen.core.elasticity.elastic import ElasticTensor
 from pymatgen.core.structure import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -141,7 +142,6 @@ class CustomElasticityBenchmark(Benchmark):
         dict
             Dictionary of processed elastic properties.
         """
-        key = get_crystal_system(result["final_structure"])
         return {
             f"bulk_modulus_vrh_{model_name}": (
                 result["bulk_modulus_vrh"] * eVA3ToGPa
@@ -158,8 +158,62 @@ class CustomElasticityBenchmark(Benchmark):
                 if result is not None
                 else float("nan")
             ),
-            f"crystal_system_{model_name}": key,
+            f"crystal_system_{model_name}": (
+                get_crystal_system(result["final_structure"])
+                if result is not None
+                else np.nan
+            ),
         }
+
+
+def elastic_tensor_to_voigt(tensor: Any) -> np.ndarray | float:
+    """
+    Convert elastic tensor-like objects to 6x6 Voigt form.
+
+    For some models, matcalc returns the tensor as a plain
+    numpy.ndarray with shape (3, 3, 3, 3), not as a pymatgen
+    tensor object. NumPy arrays do not have .voigt, so the
+    final dataframe conversion fails, so this conversion must handle both forms.
+
+    Parameters
+    ----------
+    tensor
+        Elastic tensor-like object to convert. This may be None, NaN, an object
+        with a voigt attribute, a dictionary containing tensor data, a 6x6 array,
+        or a 3x3x3x3 array.
+
+    Returns
+    -------
+    numpy.ndarray or float
+        Tensor in 6x6 Voigt form, or NaN if ``tensor`` is missing or
+        cannot be converted.
+    """
+    if tensor is None or (isinstance(tensor, float) and np.isnan(tensor)):
+        return np.nan
+
+    # pymatgen Tensor / ElasticTensor case
+    if hasattr(tensor, "voigt"):
+        return np.asarray(tensor.voigt)
+
+    # Reference data and JSON checkpoints can store tensors as dictionaries.
+    if isinstance(tensor, dict):
+        if "raw" in tensor:
+            tensor = tensor["raw"]
+        elif "data" in tensor:
+            tensor = tensor["data"]
+        else:
+            return np.nan
+
+    try:
+        arr = np.asarray(tensor, dtype=float)
+    except (TypeError, ValueError):
+        return np.nan
+
+    if arr.shape == (6, 6):
+        return arr
+    if arr.shape == (3, 3, 3, 3):
+        return np.asarray(ElasticTensor(arr).voigt)
+    return np.nan
 
 
 def run_elasticity_benchmark(
@@ -233,15 +287,30 @@ def run_elasticity_benchmark(
         include_full_results=True,
     )
 
-    # Save relaxed structures to extxyz for visualisation
+    # Save relaxed structures to extxyz for visualisation.
+    # Mock calc produces zero stress so final_structure is never populated;
+    # fall back to reference structures so info.json can record elements later.
+    mock_ref_map = (
+        {
+            gt_row[benchmark.index_name]: struct
+            for struct, gt_row in zip(
+                benchmark.structures, benchmark.ground_truth, strict=True
+            )
+        }
+        if model_name == "mock"
+        else {}
+    )
     atoms_list = []
     for _, row in results.iterrows():
         struct = row.get("final_structure")
-        if struct is not None:
-            atoms = AseAtomsAdaptor.get_atoms(struct).copy()
-            atoms.calc = None
-            atoms.info = {"mp_id": row[benchmark.index_name]}
-            atoms_list.append(atoms)
+        if not isinstance(struct, Structure):
+            struct = mock_ref_map.get(row[benchmark.index_name])
+        if not isinstance(struct, Structure):
+            continue
+        atoms = AseAtomsAdaptor.get_atoms(struct).copy()
+        atoms.calc = None
+        atoms.info = {"mp_id": row[benchmark.index_name]}
+        atoms_list.append(atoms)
     if atoms_list:
         ase_write(
             out_dir / "relaxed_structures.extxyz",
@@ -253,15 +322,9 @@ def run_elasticity_benchmark(
     # Drop structure column before CSV processing
     results = results.drop(columns=["final_structure"], errors="ignore")
 
-    results["elastic_tensor_DFT"] = results["elastic_tensor_DFT"].apply(
-        lambda x: np.array(x["raw"]) if x is not None else None
-    )
-
     for col in results.columns:
-        if col.startswith("elastic_tensor_") and col != "elastic_tensor_DFT":
-            results[col] = results[col].apply(
-                lambda x: x.voigt if x is not None else None
-            )
+        if col.startswith("elastic_tensor_"):
+            results[col] = results[col].apply(elastic_tensor_to_voigt)
 
     results.to_csv(out_dir / "moduli_results.csv", index=False)
 
