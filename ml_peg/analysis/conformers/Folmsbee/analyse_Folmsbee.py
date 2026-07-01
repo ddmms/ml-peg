@@ -69,8 +69,8 @@ def analyze_results() -> dict:
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
     data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/conformer_selection.zip",
-        filename="conformer_selection.zip",
+        key="inputs/conformers/Folmsbee/Folmsbee.zip",
+        filename="Folmsbee.zip",
     )
 
     results = {}
