@@ -68,7 +68,7 @@ def get_app() -> FolmsbeeApp:
     """
     return FolmsbeeApp(
         name=BENCHMARK_NAME,
-        framework_id="mlip_audit",
+        framework_ids="mlip_audit",
         description=(
             "Performance in predicting relative conformer energies for "
             "drug-like molecules. "
@@ -84,7 +84,11 @@ def get_app() -> FolmsbeeApp:
 
 
 if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
+    full_app = Dash(
+        __name__,
+        assets_folder=DATA_PATH.parent.parent,
+        suppress_callback_exceptions=True,
+    )
     benchmark_app = get_app()
     full_app.layout = benchmark_app.layout
     benchmark_app.register_callbacks()
