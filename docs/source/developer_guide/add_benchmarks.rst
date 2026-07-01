@@ -512,36 +512,64 @@ but less standard plots/interactions will need setting up.
 
 For now, please contact us to help with this process.
 
-Framework credit tags
-+++++++++++++++++++++
+Framework credit and custom group tags
+++++++++++++++++++++++++++++++++++++++
 
-If a benchmark comes from an external benchmarking framework (for example,
-MLIP Arena), add a framework credit tag as follows:
+If a benchmark comes from an external benchmarking framework (for example, MLIP Audit),
+or you want to group benchmarks by a custom category (such as those involved in a
+paper), you can add a framework credit tag as follows:
 
 1. Add/update the framework entry in ``ml_peg/app/utils/frameworks.yml``.
 
 .. code-block:: yaml
 
-    mlip_arena:
-    label: MLIP Arena
-      color: "#0f766e"
-      text_color: "#ecfeff"
-      url: "https://huggingface.co/spaces/atomind/mlip-arena"
-      logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+    mlip_audit:
+    label: MLIP Audit
+    color: "#1d4ed8"
+    text_color: "#ffffff"
+    url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
+    logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
 
-2. Set ``framework_id`` in the benchmark app constructor.
+2. Set ``framework_ids`` in the benchmark app constructor. This accepts either a
+   single framework identifier or a sequence of them, so a benchmark can belong to
+   multiple frameworks at once.
+
+   The app constructor also provides a ``include_ml_peg`` parameter. This is ``True``
+   by default, which automatically adds the built-in ``ml_peg`` tag to benchmarks, so
+   ``framework_ids`` only needs to list *additional* or *alternative* frameworks. If
+   you want to omit this tag, set ``include_ml_peg=False``.
+
+   For example:
 
 .. code-block:: python3
 
+    # MLIP Audit only
     return SomeBenchmarkApp(
         name="SomeBenchmark",
         ...,
-        framework_id="mlip_arena",
+        framework_ids="mlip_audit",
+        include_ml_peg=False,
     )
 
-That is all that is required. The benchmark header badge and the additional
-framework pages for non-default frameworks are populated automatically from
-this metadata.
+
+    # MLIP Audit and the MACE Multihead paper
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_ids=["mlip_audit", "mace-multihead"],
+        include_ml_peg=False,
+    )
+
+    # ML-PEG (added by default) and the MACE Multihead paper
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_ids="mace-multihead",
+    )
+
+That is all that is required. The benchmark header shows one badge per framework,
+and the additional framework pages for non-default frameworks are populated
+automatically from this metadata.
 
 Framework sections group matching benchmarks by category, omit the category
 summary table, and reuse the same benchmark tables and controls. Updating

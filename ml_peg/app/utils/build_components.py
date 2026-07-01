@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from importlib import metadata
 from pathlib import Path
 import time
@@ -824,6 +825,8 @@ def build_framework_badge(framework_id: str) -> Component:
     color = config["color"]
     text_color = config["text_color"]
     logo = config.get("logo")
+    icon = config.get("icon")
+    tooltip = config.get("tooltip")
     url = config.get("url")
 
     badge_style = {
@@ -854,6 +857,8 @@ def build_framework_badge(framework_id: str) -> Component:
                 },
             )
         )
+    if icon:
+        badge_children.append(html.Span(icon, **{"aria-hidden": "true"}))
     badge_children.append(html.Span(label))
     badge = html.Span(
         badge_children,
@@ -868,15 +873,17 @@ def build_framework_badge(framework_id: str) -> Component:
             href=url,
             target="_blank",
             style={"textDecoration": "none"},
-            title=f"Open {label} website",
+            title=tooltip or f"Open {label} website",
         )
+    if tooltip:
+        badge.title = tooltip
     return badge
 
 
 def build_test_layout(
     name: str,
     description: str,
-    framework_id: str,
+    framework_ids: Sequence[str],
     table: DataTable,
     thresholds: Thresholds,
     extra_components: list[Component] | None = None,
@@ -892,8 +899,8 @@ def build_test_layout(
         Name of test.
     description
         Description of test.
-    framework_id
-        Framework identifier used to render attribution badge.
+    framework_ids
+        Framework identifiers used to render attribution badges.
     table
         Dash Table with metric results. Can include a `weights` attribute to be used by
         `build_weight_components`.
@@ -917,7 +924,10 @@ def build_test_layout(
         Div(
             [
                 H2(name, style={"color": "black", "margin": "0"}),
-                build_framework_badge(framework_id),
+                *[
+                    build_framework_badge(framework_id)
+                    for framework_id in framework_ids
+                ],
             ],
             style={
                 "display": "flex",
