@@ -35,7 +35,7 @@ def test_stability(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator()
-    calc = model.add_d3_calculator(calc)
+    calc = model.get_calculator(precision="low")
 
     data_input_dir = download_s3_data(
         key="inputs/molecular_dynamics/stability/stability.zip",

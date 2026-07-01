@@ -448,6 +448,7 @@ def plot_scatter(
     show_line: bool = False,
     show_markers: bool = True,
     hoverdata: dict | None = None,
+    hovertemplate: str | None = None,
     filename: str = "scatter.json",
     highlight_range: dict = None,
 ) -> Callable:
@@ -468,6 +469,9 @@ def plot_scatter(
         Whether to show markers on the plot. Default is True.
     hoverdata
         Hover data dictionary. Default is `{}`.
+    hovertemplate
+        Base hovertemplate string. Overrides the default reference/prediction
+        template. Any ``hoverdata`` keys are appended to it. Default is `None`.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
     highlight_range
@@ -513,11 +517,15 @@ def plot_scatter(
             """
             results = func(*args, **kwargs)
 
-            hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            template = (
+                hovertemplate
+                if hovertemplate is not None
+                else "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            )
             customdata = []
             if hoverdata:
                 for i, key in enumerate(hoverdata):
-                    hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
+                    template += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
             modes = []
@@ -538,7 +546,7 @@ def plot_scatter(
                         name=name,
                         mode=mode,
                         customdata=customdata,
-                        hovertemplate=hovertemplate,
+                        hovertemplate=template,
                     )
                 )
 
