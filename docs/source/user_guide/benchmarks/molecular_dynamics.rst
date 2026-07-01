@@ -76,3 +76,45 @@ Reference data:
 
 * Same as input data
 * Experimental
+
+
+Stability
+=========
+
+Summary
+-------
+
+Performance in running stable molecular dynamics across a diverse set of
+systems: small molecules (containing H/C/N/O, sulfur, and halogens), peptides
+in vacuum (neurotensin, PDB: 2LNF; cyclic oxytocin, PDB: 7OFG), a protein in
+vacuum (PDB: 1A7M), and solvated peptides with and without counter-ions.
+
+Metrics
+-------
+
+1. Success rate
+
+Each system is run with a short NVT molecular dynamics simulation at 300 K. The
+fraction of simulations that complete without error is reported. A simulation
+counts as failed if it raises an error during integration (for example, a
+numerical instability). Higher is better, with 1.0 meaning every system ran to
+completion.
+
+A scatter plot below the table shows, for each system and model, the fraction of
+the trajectory completed before it became unstable: 1.0 for a fully stable run, a
+smaller value when the run exploded or hydrogens drifted, and 0.0 for systems that
+failed to run at all. Individual models can be toggled via the legend.
+
+Computational cost
+------------------
+
+High: tests are likely to take many hours on GPU. Faster simulation times can be
+achieved using the jax accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep.
+  Structures derived from PDB entries 2LNF, 7OFG, and 1A7M.
