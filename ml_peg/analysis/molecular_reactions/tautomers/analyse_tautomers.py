@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
@@ -76,6 +77,39 @@ def analyze_results() -> dict:
         )
         results[model_name] = benchmark.analyze()
     return results
+
+
+@pytest.fixture
+def struct_info() -> dict:
+    """
+    Write the combined element set to ``info.json`` for filtering.
+
+    Returns
+    -------
+    dict
+        Mapping with the sorted list of elements present in the dataset.
+    """
+    data_input_dir = download_s3_data(
+        key="inputs/molecular_reactions/tautomers/tautomers.zip",
+        filename="tautomers.zip",
+    )
+    benchmark = MlPegTautomersBenchmark(
+        force_field=Calculator(),
+        data_input_dir=data_input_dir,
+        run_mode="standard",
+    )
+    elements = sorted(
+        {
+            symbol
+            for pair in benchmark._tautomers_data.values()
+            for symbols in pair.atom_symbols
+            for symbol in symbols
+        }
+    )
+    info = {"elements": elements}
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    (OUT_PATH / "info.json").write_text(json.dumps(info, indent=1))
+    return info
 
 
 @pytest.fixture
@@ -194,7 +228,7 @@ def metrics(
     }
 
 
-def test_tautomers(metrics: dict[str, dict]) -> None:
+def test_tautomers(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run tautomers analysis.
 
@@ -202,4 +236,6 @@ def test_tautomers(metrics: dict[str, dict]) -> None:
     ----------
     metrics : dict[str, dict]
         Tautomers metric results provided by fixtures.
+    struct_info : dict
+        Element info written to ``info.json`` for filtering.
     """

@@ -43,13 +43,14 @@ def get_app() -> TautomersApp:
     """
     return TautomersApp(
         name=BENCHMARK_NAME,
-        framework_id="mlip_audit",
+        framework_ids="mlip_audit",
         description=(
             "Performance in predicting relative energies of tautomer pairs. "
             "Reference data from the Tautobase dataset."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "tautomers_metrics_table.json",
+        info_path=DATA_PATH / "info.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
