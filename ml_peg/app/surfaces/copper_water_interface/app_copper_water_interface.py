@@ -173,7 +173,10 @@ class CopperWaterInterfaceApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder-dipole",
-            column_to_plot={"stdev_dipole_z_deviation": dipole_hist},
+            column_to_plot={
+                "stdev_dipole_z_deviation": dipole_hist,
+                "Fraction Breakdown Candidates": dipole_hist,
+            },
         )
 
 
