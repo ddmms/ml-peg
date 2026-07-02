@@ -146,6 +146,7 @@ def get_app() -> PhononApp:
     """
     return PhononApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions and vibrational "
             "thermodynamics for bulk crystals."
