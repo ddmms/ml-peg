@@ -40,3 +40,48 @@ Reference data:
 * Same as input data
 * :math:`PNO-LCCSD(T)-F12/ AVQZ` level of theory: a local, explicitly
   correlated coupled cluster method.
+
+
+TorsionNet500
+=============
+
+Summary
+-------
+
+Performance in predicting torsion energy barriers for 500 drug-like organic
+molecules, each scanned across a systematically sampled dihedral angle.
+
+Metrics
+-------
+
+1. Barrier height error
+
+For each fragment, a single point energy is computed for every conformer along
+the dihedral scan. The predicted profile is aligned to the reference at its
+minimum, and the barrier height is taken as the difference between the maximum
+and minimum energy of the profile. The reported metric is the mean absolute
+error of the barrier height across all fragments. The overall score is the
+mlipaudit per-fragment soft-threshold score on the barrier height error.
+
+A parity plot of the predicted against reference barrier heights is shown on
+clicking the metric column.
+
+Computational cost
+------------------
+
+Medium: 12,000 single point inference calls on small molecular systems.
+
+Data availability
+-----------------
+
+Input structures:
+
+* TorsionNet: A Deep Neural Network to Rapidly Predict Small-Molecule
+  Torsional Energy Profiles with the Accuracy of Quantum Mechanics.
+  Rai, B. K. et al. J. Chem. Inf. Model. 2022, 62 (4), 785-800.
+  DOI: 10.1021/acs.jcim.1c01346
+
+Reference data:
+
+* Recomputed by InstaDeep at the :math:`\omega B97M-D3(BJ)/def2-TZVPPD`
+  level of theory (MLIP Audit benchmark suite).
