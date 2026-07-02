@@ -1,4 +1,4 @@
-"""Run Ti64 phonon dispersion + DOS + TP app."""
+"""Run Ti64 phonon dispersion + DOS + free-energy app."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from dash import Dash, dcc, html
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.bulk_crystal.ti64_phonons.ti64_interactive_helpers import (
+from ml_peg.app.bulk_crystal.phonons.interactive_helpers import (
     lookup_system_entry,
     render_dispersion_component,
 )
@@ -28,12 +28,14 @@ BENCHMARK_NAME = "ti64_phonons"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
 TABLE_PATH = DATA_PATH / "ti64_phonons_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "ti64_phonons_interactive.json"
-
-CALC_ROOT = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
+INFO_PATH = DATA_PATH / "info.json"
 
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#phonons"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
+    f"#{BENCHMARK_NAME}"
 )
+
+CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
@@ -51,11 +53,12 @@ class Ti64PhononsApp(BaseApp):
             interactive_data = json.load(handle)
 
         models_data = interactive_data.get("models", {})
-
-        metric_labels = interactive_data.get("metrics", {})  # {metric_id: label}
+        metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
-
-        omega_label = metric_labels.get("omega_avg_thz_mae", "ω_avg MAE")
+        # All table columns fall back to the per-case ω_avg scatter, which
+        # links through to the dispersion + DOS preview for each case.
+        for label in self.metrics:
+            label_to_key.setdefault(label, "omega_avg_thz_mae")
 
         metric_handler = partial(
             build_serialized_scatter_content,
@@ -65,35 +68,14 @@ class Ti64PhononsApp(BaseApp):
             instructions="Click any cell to view ω_avg (ref vs pred) scatter.",
         )
 
-        def omega_only_handler(model_display: str, column_id: str):
-            """
-            Render the ω_avg scatter for the selected model.
-
-            Parameters
-            ----------
-            model_display
-                Display name of the selected model row.
-            column_id
-                Column identifier from the table callback.
-
-            Returns
-            -------
-            Any
-                Dash component(s) produced by the scatter renderer.
-            """
-            _ = column_id
-            return metric_handler(model_display, omega_label)
-
-        column_handlers = dict.fromkeys(label_to_key.keys(), omega_only_handler)
-
         scatter_and_assets_from_table(
             table_id=self.table_id,
             table_data=self.table.data,
             plot_container_id=PLOT_CONTAINER_ID,
             scatter_metadata_store_id=SCATTER_METADATA_STORE_ID,
             last_cell_store_id=LAST_CELL_STORE_ID,
-            column_handlers=column_handlers,
-            default_handler=omega_only_handler,
+            column_handlers={},
+            default_handler=metric_handler,
             scatter_id=SCATTER_GRAPH_ID,
         )
 
@@ -102,8 +84,13 @@ class Ti64PhononsApp(BaseApp):
             models_data=models_data,
             system_lookup=lookup_system_entry,
         )
-
-        dispersion_renderer = partial(render_dispersion_component, calc_root=CALC_ROOT)
+        dispersion_renderer = partial(
+            render_dispersion_component,
+            calc_root=CALC_BASE,
+            frequency_scale=1.0,
+            frequency_unit="THz",
+            reference_label="PBE",
+        )
 
         model_asset_from_scatter(
             scatter_id=SCATTER_GRAPH_ID,
@@ -129,7 +116,7 @@ def get_app() -> Ti64PhononsApp:
         name=BENCHMARK_NAME,
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions and vibrational "
-            "thermodynamics for Ti64 alloy."
+            "thermodynamics for Ti64 alloy phases."
         ),
         docs_url=DOCS_URL,
         table_path=TABLE_PATH,
@@ -157,6 +144,7 @@ def get_app() -> Ti64PhononsApp:
                 },
             ),
         ],
+        info_path=INFO_PATH,
     )
 
 

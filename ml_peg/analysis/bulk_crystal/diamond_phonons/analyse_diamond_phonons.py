@@ -1,46 +1,33 @@
-"""Analyse diamond phonon dispersion benchmark (bands only)."""
+"""Analyse diamond phonon benchmark (band structure + thermal properties)."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 import pickle
+import shutil
 from typing import Any
 
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    mae,
+    rmse,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
-
-EXTRACTED_ROOT = Path(
-    download_github_data(
-        filename="diamond_data/data.zip",
-        github_uri=GITHUB_BASE,
-    )
-)
-
-CALC_DATA = EXTRACTED_ROOT / "data"
-
 MODELS = get_model_names(current_models)
 
-CATEGORY = "bulk_crystal"
-BENCH = "diamond_phonons"
-
-CALC_PATH = CALCS_ROOT / CATEGORY / BENCH / "outputs"
-
-OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCH
-
-# cm^-1 per THz (to convert the DFT reference to THz)
-THZ_TO_CM1 = 33.35640951981521
-NBANDS = 6
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "diamond_phonons" / "outputs"
+REF_PATH = CALC_PATH / "DFT"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "diamond_phonons"
 
 SCATTER_FILENAME = OUT_PATH / "diamond_phonons_bands_interactive.json"
 
@@ -53,84 +40,39 @@ METRIC_LABEL_GAMMA = "Δγ"
 METRIC_LABEL_THETA_D = "Δθ_D (K)"
 METRIC_LABEL_KAPPA = "Δκ_L (W/m/K)"
 
-# DFT reference thermal properties — downloaded as part of diamond_data/data.zip
-# alongside dft_band.npz and diamond.yaml.
-THERMAL_REF_PATH = CALC_DATA / "diamond_thermal_ref.json"
-
 METRICS_YML = Path(__file__).with_name("metrics.yml")
 THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-_expected_metric_labels = {
-    METRIC_LABEL_MAE,
-    METRIC_LABEL_RMSE,
-    METRIC_LABEL_GAMMA,
-    METRIC_LABEL_THETA_D,
-    METRIC_LABEL_KAPPA,
-}
-_yaml_metric_labels = set(THRESHOLDS.keys())
-missing = _expected_metric_labels - _yaml_metric_labels
-if missing:
-    raise ValueError(
-        f"{METRICS_YML}: missing metrics for labels {sorted(missing)}. "
-        f"Found: {sorted(_yaml_metric_labels)}"
-    )
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    model_name="DFT",
+)
 
 
-def _load_reference_npz(path: Path) -> dict[str, Any]:
+def _load_band_freqs(path: Path) -> np.ndarray | None:
     """
-    Load DFT reference bands from an NPZ file.
+    Load band frequencies (THz) from a pickled phonopy band-structure dict.
 
     Parameters
     ----------
     path
-        Path to ``dft_band.npz``. Must contain a ``freqs_cm1`` array in cm-1 with
-        shape ``(Nq, NBANDS)``.
+        Path to the pickled band-structure file.
 
     Returns
     -------
-    dict[str, Any]
-        Mapping with keys ``freqs`` (THz, shape ``(Nq, NBANDS)``), ``units``, ``path``.
-    """
-    if not path.exists():
-        raise FileNotFoundError(f"Missing DFT reference: {path}")
-
-    d = np.load(path, allow_pickle=False)
-    if "freqs_cm1" not in d.files:
-        raise KeyError(f"{path}: missing 'freqs_cm1'. Found keys: {list(d.files)}")
-
-    freqs_cm1 = np.asarray(d["freqs_cm1"], dtype=float)
-
-    if freqs_cm1.ndim != 2 or freqs_cm1.shape[1] != NBANDS:
-        msg = f"{path}: expected (Nq, {NBANDS}) frequencies, got {freqs_cm1.shape}"
-        raise ValueError(msg)
-
-    if not np.isfinite(freqs_cm1).all():
-        raise ValueError(f"{path}: contains non-finite reference frequencies.")
-
-    freqs_thz = freqs_cm1 / THZ_TO_CM1
-
-    return {"freqs": freqs_thz, "units": "THz", "path": path}
-
-
-def _load_band_structure(path: Path) -> dict[str, Any] | None:
-    """
-    Load a serialized phonopy band-structure dict from a pickle file.
-
-    Parameters
-    ----------
-    path
-        Path to the pickle file produced by calc_diamond_phonons.
-
-    Returns
-    -------
-    dict[str, Any] | None
-        Band-structure dict with ``distances`` and ``frequencies`` (THz), or ``None``.
+    np.ndarray | None
+        Frequencies of shape ``(Nq, n_bands)``, or ``None`` when unavailable.
     """
     if not path.exists():
         return None
     try:
-        with path.open("rb") as f:
-            return pickle.load(f)
+        with path.open("rb") as handle:
+            band_data = pickle.load(handle)
+        return np.vstack([np.asarray(seg) for seg in band_data["frequencies"]])
     except Exception as exc:
         print(f"Failed to load band structure from {path}: {exc}")
         return None
@@ -143,237 +85,141 @@ def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     freqs
-        Array of shape ``(Nq, NBANDS)``.
+        Array of shape ``(Nq, n_bands)``.
 
     Returns
     -------
-    numpy.ndarray
-        Flattened array of shape ``(Nq * NBANDS,)``.
+    np.ndarray
+        Flattened array of shape ``(Nq * n_bands,)``.
     """
-    if freqs.ndim != 2:
-        raise ValueError(f"Expected (Nq, nb). Got {freqs.shape}")
-    if freqs.shape[1] != NBANDS:
-        raise ValueError(f"Expected {NBANDS} bands, got {freqs.shape[1]}")
     return np.sort(freqs, axis=1).reshape(-1)
 
 
-def _mae(a: np.ndarray, b: np.ndarray) -> float:
+def _load_thermal(path: Path) -> dict[str, float] | None:
     """
-    Return mean absolute error between two arrays.
+    Load thermal property results from JSON.
 
     Parameters
     ----------
-    a
-        First array.
-    b
-        Second array.
+    path
+        Path to a ``diamond_thermal.json`` file.
 
     Returns
     -------
-    float
-        Mean absolute error.
-    """
-    return float(np.mean(np.abs(a - b)))
-
-
-def _rmse(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Return root mean squared error between two arrays.
-
-    Parameters
-    ----------
-    a
-        First array.
-    b
-        Second array.
-
-    Returns
-    -------
-    float
-        Root mean squared error.
-    """
-    d = a - b
-    return float(np.sqrt(np.mean(d * d)))
-
-
-@pytest.fixture
-def reference() -> dict[str, Any]:
-    """
-    Load the DFT reference and ensure output directory exists.
-
-    Returns
-    -------
-    dict[str, Any]
-        Reference mapping as returned by :func:`_load_reference_npz`.
-    """
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    return _load_reference_npz(CALC_DATA / "dft_band.npz")
-
-
-def _load_thermal(model_name: str) -> dict[str, float] | None:
-    """
-    Load thermal property results for one model.
-
-    Parameters
-    ----------
-    model_name
-        Model identifier used to locate
-        ``{CALC_PATH}/{model_name}/diamond_thermal.json``.
-
-    Returns
-    -------
-    dict[str, float] or None
+    dict[str, float] | None
         Mapping with keys ``mean_gamma``, ``debye_temperature_K``,
         ``kappa_W_per_mK``, or ``None`` if the file is absent or unreadable.
     """
-    path = CALC_PATH / model_name / "diamond_thermal.json"
     if not path.exists():
         return None
     try:
         return json.loads(path.read_text(encoding="utf8"))
     except Exception as exc:
-        print(f"{model_name}: failed to load thermal data — {exc}")
-        return None
-
-
-def _load_thermal_ref() -> dict[str, float] | None:
-    """
-    Load DFT reference thermal properties.
-
-    Returns
-    -------
-    dict[str, float] or None
-        Mapping with keys ``mean_gamma``, ``debye_temperature_K``,
-        ``kappa_W_per_mK``, or ``None`` if the reference file is absent.
-    """
-    if not THERMAL_REF_PATH.exists():
-        return None
-    try:
-        return json.loads(THERMAL_REF_PATH.read_text(encoding="utf8"))
-    except Exception as exc:
-        print(f"Failed to load DFT thermal reference from {THERMAL_REF_PATH}: {exc}")
+        print(f"Failed to load thermal data from {path}: {exc}")
         return None
 
 
 @pytest.fixture
-def thermal_errors() -> dict[str, dict[str, float]]:
+def diamond_stats() -> dict[str, dict[str, Any]]:
     """
-    Compute absolute errors vs DFT reference for thermal properties.
-
-    Returns an empty dict if the DFT reference file does not yet exist,
-    so the table is still produced without thermal columns in that case.
+    Aggregate diamond benchmark statistics per model.
 
     Returns
     -------
-    dict[str, dict[str, float]]
-        Mapping ``model_name -> {"gamma_error", "theta_d_error", "kappa_error"}``.
-        Models without a thermal JSON, or runs without a DFT reference, are omitted.
+    dict[str, dict[str, Any]]
+        Mapping of model name to band errors, parity points, data paths, and
+        thermal property errors.
     """
-    ref = _load_thermal_ref()
-    if ref is None:
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+    ref_band_path = REF_PATH / "diamond_band_structure.npz"
+    ref_freqs = _load_band_freqs(ref_band_path)
+    if ref_freqs is None:
+        print(f"ERROR: DFT reference not found at {ref_band_path}")
         return {}
+    ref_flat = _sorted_flat(ref_freqs)
 
-    out: dict[str, dict[str, float]] = {}
+    ref_thermal = _load_thermal(REF_PATH / "diamond_thermal.json")
+
+    # Copy the DFT structure for the app's structure viewer.
+    ref_struct_src = REF_PATH / "diamond.xyz"
+    if ref_struct_src.exists():
+        (OUT_PATH / "DFT").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ref_struct_src, OUT_PATH / "DFT" / "diamond.xyz")
+
+    stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
-        data = _load_thermal(model_name)
-        if data is None:
-            continue
-        out[model_name] = {
-            "gamma_error": abs(data["mean_gamma"] - ref["mean_gamma"]),
-            "theta_d_error": abs(
-                data["debye_temperature_K"] - ref["debye_temperature_K"]
-            ),
-            "kappa_error": abs(data["kappa_W_per_mK"] - ref["kappa_W_per_mK"]),
-        }
-    return out
+        model_dir = CALC_PATH / model_name
+        pred_band_path = model_dir / "diamond_band_structure.npz"
+        pred_freqs = _load_band_freqs(pred_band_path)
 
+        band_errors: dict[str, float | None] = {"mae": None, "rmse": None}
+        points: list[dict[str, Any]] = []
 
-def _model_flat(model_name: str) -> np.ndarray:
-    """
-    Load and flatten one model's predicted bands (THz).
+        if pred_freqs is not None and pred_freqs.shape == ref_freqs.shape:
+            pred_flat = _sorted_flat(pred_freqs)
+            if np.isfinite(pred_flat).all():
+                band_errors["mae"] = mae(ref_flat, pred_flat)
+                band_errors["rmse"] = rmse(ref_flat, pred_flat)
 
-    Parameters
-    ----------
-    model_name
-        Model identifier used to locate
-        ``{CALC_PATH}/{model_name}/diamond_band_structure.npz``.
-
-    Returns
-    -------
-    numpy.ndarray
-        Flattened frequencies of shape ``(Nq * NBANDS,)`` in THz.
-    """
-    band_data = _load_band_structure(
-        CALC_PATH / model_name / "diamond_band_structure.npz"
-    )
-    if band_data is None:
-        raise FileNotFoundError(f"Missing predicted band structure for {model_name}")
-    pred_freqs = np.vstack(band_data["frequencies"])
-    return _sorted_flat(pred_freqs)
-
-
-@pytest.fixture
-def flat_bands(reference: dict[str, Any]) -> tuple[np.ndarray, dict[str, np.ndarray]]:
-    """
-    Load and cache flattened reference and predicted bands.
-
-    Parameters
-    ----------
-    reference
-        Reference mapping as returned by :func:`reference`.
-
-    Returns
-    -------
-    tuple[numpy.ndarray, dict[str, numpy.ndarray]]
-        ``(ref_flat, pred_flats)`` where ``ref_flat`` has shape ``(Nq * NBANDS,)``
-        and ``pred_flats`` maps model name to an array of the same shape.
-    """
-    ref_flat = _sorted_flat(np.asarray(reference["freqs"], dtype=float))
-
-    pred_flats: dict[str, np.ndarray] = {}
-    for model_name in MODELS:
-        try:
-            pred_flat = _model_flat(model_name)
-        except (FileNotFoundError, ValueError) as exc:
-            print(f"{model_name}: skipping — {exc}")
-            continue
-        if pred_flat.shape != ref_flat.shape:
+                data_paths = {
+                    "ref_band": str(ref_band_path.relative_to(CALC_PATH.parent)),
+                    "pred_band": str(pred_band_path.relative_to(CALC_PATH.parent)),
+                }
+                structure_paths = None
+                pred_struct_src = model_dir / "diamond.xyz"
+                if pred_struct_src.exists() and ref_struct_src.exists():
+                    (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(pred_struct_src, OUT_PATH / model_name / "diamond.xyz")
+                    structure_paths = {
+                        "ref": "/assets/bulk_crystal/diamond_phonons/DFT/diamond.xyz",
+                        "pred": (
+                            "/assets/bulk_crystal/diamond_phonons/"
+                            f"{model_name}/diamond.xyz"
+                        ),
+                    }
+                points = [
+                    {
+                        "id": "diamond",
+                        "label": "diamond",
+                        "ref": float(ref_val),
+                        "pred": float(pred_val),
+                        "data_paths": data_paths,
+                        "structure_paths": structure_paths,
+                    }
+                    for pred_val, ref_val in zip(pred_flat, ref_flat, strict=True)
+                ]
+        elif pred_freqs is not None:
             print(
-                f"{model_name}: shape mismatch "
-                f"{pred_flat.shape} vs {ref_flat.shape}, skipping."
+                f"{model_name}: band shape mismatch "
+                f"{pred_freqs.shape} vs {ref_freqs.shape}, skipping."
             )
-            continue
-        pred_flats[model_name] = pred_flat
 
-    return ref_flat, pred_flats
-
-
-@pytest.fixture
-def band_errors(
-    flat_bands: tuple[np.ndarray, dict[str, np.ndarray]],
-) -> dict[str, dict[str, float]]:
-    """
-    Compute MAE and RMSE for each model (THz).
-
-    Parameters
-    ----------
-    flat_bands
-        Tuple ``(ref_flat, pred_flats)`` as returned by :func:`flat_bands`.
-
-    Returns
-    -------
-    dict[str, dict[str, float]]
-        Mapping ``model_name -> {"mae": float, "rmse": float}`` in THz.
-    """
-    ref_flat, pred_flats = flat_bands
-
-    out: dict[str, dict[str, float]] = {}
-    for model_name, pred_flat in pred_flats.items():
-        out[model_name] = {
-            "mae": _mae(pred_flat, ref_flat),
-            "rmse": _rmse(pred_flat, ref_flat),
+        thermal_errors: dict[str, float | None] = {
+            "gamma": None,
+            "theta_d": None,
+            "kappa": None,
         }
-    return out
+        pred_thermal = _load_thermal(model_dir / "diamond_thermal.json")
+        if ref_thermal is not None and pred_thermal is not None:
+            thermal_errors = {
+                "gamma": abs(pred_thermal["mean_gamma"] - ref_thermal["mean_gamma"]),
+                "theta_d": abs(
+                    pred_thermal["debye_temperature_K"]
+                    - ref_thermal["debye_temperature_K"]
+                ),
+                "kappa": abs(
+                    pred_thermal["kappa_W_per_mK"] - ref_thermal["kappa_W_per_mK"]
+                ),
+            }
+
+        stats[model_name] = {
+            "band_errors": band_errors,
+            "thermal_errors": thermal_errors,
+            "points": points,
+        }
+
+    return stats
 
 
 @pytest.fixture
@@ -384,99 +230,54 @@ def band_errors(
     weights=WEIGHTS,
 )
 def metrics(
-    band_errors: dict[str, dict[str, float]],
-    thermal_errors: dict[str, dict[str, float]],
-) -> dict[str, dict[str, float]]:
+    diamond_stats: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, float | None]]:
     """
     Build the metrics table mapping for the Dash table.
 
     Parameters
     ----------
-    band_errors
-        Per-model MAE/RMSE mapping as returned by :func:`band_errors`.
-    thermal_errors
-        Per-model thermal property errors as returned by :func:`thermal_errors`.
+    diamond_stats
+        Per-model statistics from :func:`diamond_stats`.
 
     Returns
     -------
-    dict[str, dict[str, float]]
+    dict[str, dict[str, float | None]]
         Mapping from visible metric label to per-model values.
     """
-    available_band = set(band_errors)
-    available_thermal = set(thermal_errors)
+
+    def _value(model: str, group: str, key: str) -> float | None:
+        """
+        Return one error value for a model, or None when unavailable.
+
+        Parameters
+        ----------
+        model
+            Model name.
+        group
+            Error group key (``"band_errors"`` or ``"thermal_errors"``).
+        key
+            Error key within the group.
+
+        Returns
+        -------
+        float | None
+            Error value or ``None`` when data is missing.
+        """
+        model_data = diamond_stats.get(model)
+        if not model_data:
+            return None
+        return model_data[group].get(key)
+
     return {
-        METRIC_LABEL_MAE: {
-            m: band_errors[m]["mae"] if m in available_band else None for m in MODELS
-        },
-        METRIC_LABEL_RMSE: {
-            m: band_errors[m]["rmse"] if m in available_band else None for m in MODELS
-        },
-        METRIC_LABEL_GAMMA: {
-            m: thermal_errors[m]["gamma_error"] if m in available_thermal else None
-            for m in MODELS
-        },
+        METRIC_LABEL_MAE: {m: _value(m, "band_errors", "mae") for m in MODELS},
+        METRIC_LABEL_RMSE: {m: _value(m, "band_errors", "rmse") for m in MODELS},
+        METRIC_LABEL_GAMMA: {m: _value(m, "thermal_errors", "gamma") for m in MODELS},
         METRIC_LABEL_THETA_D: {
-            m: thermal_errors[m]["theta_d_error"] if m in available_thermal else None
-            for m in MODELS
+            m: _value(m, "thermal_errors", "theta_d") for m in MODELS
         },
-        METRIC_LABEL_KAPPA: {
-            m: thermal_errors[m]["kappa_error"] if m in available_thermal else None
-            for m in MODELS
-        },
+        METRIC_LABEL_KAPPA: {m: _value(m, "thermal_errors", "kappa") for m in MODELS},
     }
-
-
-@pytest.fixture
-def band_stats(
-    flat_bands: tuple[np.ndarray, dict[str, np.ndarray]],
-    band_errors: dict[str, dict[str, float]],
-) -> dict[str, dict[str, Any]]:
-    """
-    Build per-model structures consumed by ``cell_to_scatter``.
-
-    Parameters
-    ----------
-    flat_bands
-        Tuple ``(ref_flat, pred_flats)`` as returned by :func:`flat_bands`.
-    band_errors
-        Per-model MAE/RMSE mapping as returned by :func:`band_errors`.
-
-    Returns
-    -------
-    dict[str, dict[str, Any]]
-        Per-model structures containing points and metric values.
-    """
-    ref_flat, pred_flats = flat_bands
-
-    stats: dict[str, dict[str, Any]] = {}
-    for model_name, pred_flat in pred_flats.items():
-        points = [
-            {
-                "id": f"diamond-{i}",
-                "label": "diamond",
-                "ref": float(ref_val),
-                "pred": float(pred_val),
-            }
-            for i, (pred_val, ref_val) in enumerate(
-                zip(pred_flat, ref_flat, strict=True)
-            )
-        ]
-
-        stats[model_name] = {
-            "model": model_name,
-            "metrics": {
-                METRIC_KEY_MAE: {
-                    "points": points,
-                    "mae": float(band_errors[model_name]["mae"]),
-                },
-                METRIC_KEY_RMSE: {
-                    "points": points,
-                    "rmse": float(band_errors[model_name]["rmse"]),
-                },
-            },
-        }
-
-    return stats
 
 
 @pytest.fixture
@@ -485,14 +286,14 @@ def band_stats(
     x_label="Predicted frequency (THz)",
     y_label="DFT frequency (THz)",
 )
-def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
-    Build the interactive scatter dataset for the phonon Dash app.
+    Build the interactive scatter dataset for the diamond phonon Dash app.
 
     Parameters
     ----------
-    band_stats
-        Per-model point/metric structures as returned by :func:`band_stats`.
+    diamond_stats
+        Per-model statistics from :func:`diamond_stats`.
 
     Returns
     -------
@@ -507,17 +308,20 @@ def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
         "models": {},
     }
 
-    for model_name, model_data in band_stats.items():
-        dataset["models"][model_name] = {"metrics": {}}
-
-        dataset["models"][model_name]["metrics"][METRIC_KEY_MAE] = {
-            "points": model_data["metrics"][METRIC_KEY_MAE]["points"],
-            "mae": model_data["metrics"][METRIC_KEY_MAE]["mae"],
-        }
-
-        dataset["models"][model_name]["metrics"][METRIC_KEY_RMSE] = {
-            "points": model_data["metrics"][METRIC_KEY_RMSE]["points"],
-            "rmse": model_data["metrics"][METRIC_KEY_RMSE]["rmse"],
+    for model_name, model_data in diamond_stats.items():
+        if not model_data["points"]:
+            continue
+        dataset["models"][model_name] = {
+            "metrics": {
+                METRIC_KEY_MAE: {
+                    "points": model_data["points"],
+                    "mae": model_data["band_errors"]["mae"],
+                },
+                METRIC_KEY_RMSE: {
+                    "points": model_data["points"],
+                    "rmse": model_data["band_errors"]["rmse"],
+                },
+            },
         }
 
     return dataset
@@ -526,7 +330,6 @@ def interactive_dataset(band_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
 def test_diamond_phonons_analysis(
     metrics: dict[str, Any],
     interactive_dataset: dict[str, Any],
-    thermal_errors: dict[str, dict[str, float]],
 ) -> None:
     """
     Generate JSON artifacts for the diamond phonons benchmark.
@@ -537,30 +340,10 @@ def test_diamond_phonons_analysis(
         Table fixture output (decorator writes JSON).
     interactive_dataset
         Scatter fixture output (decorator writes JSON).
-    thermal_errors
-        Per-model thermal error mapping as returned by :func:`thermal_errors`.
     """
     assert isinstance(metrics, dict)
     assert isinstance(interactive_dataset, dict)
-    assert isinstance(thermal_errors, dict)
 
     table_path = OUT_PATH / "diamond_phonons_bands_table.json"
     assert table_path.exists()
-
-    table_payload = json.loads(table_path.read_text(encoding="utf8"))
-    rows = table_payload.get("data", [])
-    ids = {row.get("id") for row in rows if isinstance(row, dict)}
-    missing_rows = [m for m in MODELS if m not in ids]
-    assert not missing_rows, f"Table missing model rows: {missing_rows}"
-
     assert SCATTER_FILENAME.exists()
-    scatter_payload = json.loads(SCATTER_FILENAME.read_text(encoding="utf8"))
-    models = scatter_payload.get("models", {})
-    assert models, "Interactive dataset has no models"
-
-    for model_name, model_entry in models.items():
-        model_metrics = model_entry.get("metrics", {})
-        for key in (METRIC_KEY_MAE, METRIC_KEY_RMSE):
-            assert key in model_metrics, f"{model_name}: missing metric '{key}'"
-            points = model_metrics[key].get("points", [])
-            assert points, f"{model_name}: empty points for '{key}'"

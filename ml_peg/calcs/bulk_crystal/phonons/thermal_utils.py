@@ -6,6 +6,7 @@ from typing import Any
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
+from ase.units import _e, _hbar, _k, kB
 import numpy as np
 from phonopy import PhonopyGruneisen
 from phonopy.api_phonopy import Phonopy
@@ -14,10 +15,6 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     _ase_atoms_to_phonopy,
     get_fc2_and_freqs,
 )
-
-# Physical constants (SI)
-_kb = 1.380649e-23
-_hbar = 1.054571817e-34
 
 # Slack (1973) empirical constant: M in amu, θ_D in K, δ in Å → κ in W/(m·K)
 _SLACK_A = 2.43e-6
@@ -143,6 +140,53 @@ def compute_gruneisen(
     }
 
 
+def harmonic_free_energy(
+    frequencies_thz: np.ndarray,
+    weights: np.ndarray,
+    temperatures: np.ndarray,
+) -> np.ndarray:
+    """
+    Harmonic Helmholtz free energy from phonon frequencies and q-point weights.
+
+    ``F(T) = Σ_q Σ_j w_q [ ħω_qj / 2 + k_B T ln(1 − exp(−ħω_qj / k_B T)) ]``
+
+    Non-positive (imaginary) modes are excluded from the sum.
+
+    Parameters
+    ----------
+    frequencies_thz
+        Phonon frequencies in THz, shape ``(nq, n_bands)``.
+    weights
+        Q-point weights, shape ``(nq,)``. For a per-cell free energy the
+        weights should sum to 1.
+    temperatures
+        Temperatures in K, shape ``(nt,)``.
+
+    Returns
+    -------
+    np.ndarray
+        Free energies in eV (per cell), shape ``(nt,)``.
+    """
+    freqs = np.asarray(frequencies_thz, dtype=float)
+    w = np.broadcast_to(np.asarray(weights, dtype=float)[:, None], freqs.shape).ravel()
+    freqs = freqs.ravel()
+
+    mask = freqs > 0
+    freqs, w = freqs[mask], w[mask]
+    # Mode energies ħω in eV, with ω = 2π f
+    e_modes = _hbar * 2.0 * np.pi * freqs * 1e12 / _e
+
+    zpe = 0.5 * np.sum(w * e_modes)
+    free_energy = np.empty(len(np.atleast_1d(temperatures)), dtype=float)
+    for i, temp in enumerate(np.atleast_1d(temperatures)):
+        if temp <= 0:
+            free_energy[i] = zpe
+            continue
+        thermal = kB * temp * np.log(1.0 - np.exp(-e_modes / (kB * temp)))
+        free_energy[i] = zpe + np.sum(w * thermal)
+    return free_energy
+
+
 def debye_temperature_from_max_freq(phonons: Phonopy, q_mesh: np.ndarray) -> float:
     """
     Estimate the Debye temperature from the maximum mesh frequency.
@@ -165,7 +209,7 @@ def debye_temperature_from_max_freq(phonons: Phonopy, q_mesh: np.ndarray) -> flo
     freqs_thz = phonons.get_mesh_dict()["frequencies"]
     f_max = float(np.max(freqs_thz))
     omega_max = 2.0 * np.pi * f_max * 1e12
-    return float(_hbar * omega_max / _kb)
+    return float(_hbar * omega_max / _k)
 
 
 def slack_thermal_conductivity(

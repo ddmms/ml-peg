@@ -153,7 +153,7 @@ class OrbCalc(SumCalc):
             Loaded ASE Orb Calculator.
         """
         from orb_models.forcefield import pretrained
-        from orb_models.forcefield.calculator import ORBCalculator
+        from orb_models.forcefield.inference.calculator import ORBCalculator
         import torch._dynamo
 
         torch._dynamo.config.suppress_errors = True
@@ -171,15 +171,22 @@ class OrbCalc(SumCalc):
             dtype = self.default_dtype
 
         if self.device is None:
-            orbff = method(precision=dtype, **self.kwargs)
-            calc = ORBCalculator(orbff)
+            orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
+            calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
         elif self.device == Device.AUTO:
-            device = Device.resolve_auto()
-            orbff = method(device=device, precision=dtype, **self.kwargs)
-            calc = ORBCalculator(orbff, device=device)
+            orbff = method(
+                device=Device.resolve_auto(),
+                precision=dtype,
+                **self.kwargs,
+            )
+            calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
         else:
-            orbff = method(device=self.device, precision=dtype, **self.kwargs)
-            calc = ORBCalculator(orbff, device=self.device)
+            orbff, atoms_adapter = method(
+                device=self.device, precision=dtype, **self.kwargs
+            )
+            calc = ORBCalculator(
+                orbff, atoms_adapter=atoms_adapter, device=self.device, **self.kwargs
+            )
 
         return calc
 
