@@ -4,322 +4,293 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pickle
+import shutil
 from typing import Any
 
+from ase.units import kJ, mol
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.bulk_crystal.ti64_phonons.calc_ti64_phonons import CASES, TP_ON
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-THIS_DIR = Path(__file__).resolve().parent
+MODELS = get_model_names(current_models)
 
-CALC_OUT_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
-APP_OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "ti64_phonons"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
+REF_PATH = CALC_PATH / "DFT"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "ti64_phonons"
 
-METRICS_YAML_PATH = THIS_DIR / "metrics.yml"
-SCATTER_FILENAME = APP_OUT_PATH / "ti64_phonons_interactive.json"
+SCATTER_FILENAME = OUT_PATH / "ti64_phonons_interactive.json"
 
-TP_ON: set[str] = {
-    "hcp_Ti6AlV",
-    "hex_Ti8AlV",
-    "hcp_Ti6Al2",
-    "hcp_Ti6V2",
-    "hcp_Ti7V",
-    "hex_Ti10Al2",
-    "hex_Ti10V2",
-}
+METRICS_YML = Path(__file__).with_name("metrics.yml")
+THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-CASES: list[str] = [
-    "hcp_Ti6AlV",
-    "bcc_Ti6AlV",
-    "hex_Ti8AlV",
-    "hcp_Ti6Al2",
-    "hcp_Ti6V2",
-    "hcp_Ti7V",
-    "bcc_Ti6Al2",
-    "bcc_Ti6V2",
-    "hex_Ti10Al2",
-    "hex_Ti10V2",
-]
+CASE_NAMES = [spec["case_name"] for spec in CASES]
+EV_TO_KJMOL = mol / kJ
 
-
-THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YAML_PATH)
-
+OMEGA_METRIC_ID = "omega_avg_thz_mae"
 METRIC_ID_TO_LABEL: dict[str, str] = {
     "dispersion_rmse_thz_avg": "Dispersion RMSE (mean)",
     "dispersion_rmse_thz_max": "Dispersion RMSE (max)",
     "deltaF_0K_eV_per_atom_avg": "ΔF (0 K) mean",
     "deltaF_2000K_eV_per_atom_avg": "ΔF (2000 K) mean",
-    "omega_avg_thz_mae": "ω_avg MAE",
+    OMEGA_METRIC_ID: "ω_avg MAE",
 }
 
-TABLE_METRIC_LABELS: list[str] = list(METRIC_ID_TO_LABEL.values())
-METRIC_LABELS: dict[str, str] = dict(METRIC_ID_TO_LABEL)  # id -> label
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    model_name="DFT",
+)
 
 
-MODELS = get_model_names(current_models)
-
-
-def rmse(a: np.ndarray, b: np.ndarray) -> float:
+def _load_band(path: Path) -> tuple[np.ndarray, np.ndarray] | None:
     """
-    Compute root mean squared error.
-
-    Parameters
-    ----------
-    a
-        First array of values.
-    b
-        Second array of values. Must be broadcast-compatible with ``a``.
-
-    Returns
-    -------
-    float
-        Root mean squared error.
-    """
-    a = np.asarray(a, dtype=float)
-    b = np.asarray(b, dtype=float)
-    return float(np.sqrt(np.mean((a - b) ** 2)))
-
-
-def resample_dft_to_ml_grid(
-    dft_x: np.ndarray, dft_freqs: np.ndarray, n_ml: int
-) -> np.ndarray:
-    """
-    Resample DFT frequencies onto an inferred ML grid spanning the same path.
-
-    Parameters
-    ----------
-    dft_x
-        DFT path coordinate array of shape ``(n_dft,)``.
-    dft_freqs
-        DFT frequencies array of shape ``(n_dft, n_branches)``.
-    n_ml
-        Number of ML q-points.
-
-    Returns
-    -------
-    numpy.ndarray
-        DFT frequencies interpolated onto the ML grid, shape
-        ``(n_ml, n_branches)``.
-    """
-    dft_x = np.asarray(dft_x, dtype=float)
-    dft_freqs = np.asarray(dft_freqs, dtype=float)
-
-    ml_x = np.linspace(dft_x[0], dft_x[-1], n_ml, dtype=float)
-
-    out = np.empty((n_ml, dft_freqs.shape[1]), dtype=float)
-    for j in range(dft_freqs.shape[1]):
-        out[:, j] = np.interp(ml_x, dft_x, dft_freqs[:, j])
-    return out
-
-
-def write_json(path: Path, obj: dict[str, Any]) -> None:
-    """
-    Write a JSON object to disk.
+    Load concatenated distances and frequencies from a pickled band dict.
 
     Parameters
     ----------
     path
-        Output file path.
-    obj
-        JSON-serialisable mapping.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=2), encoding="utf8")
-
-
-k_b = 8.617333262e-5  # eV/K
-hbar = 6.582119569e-16  # eV*s
-
-
-def zp_energy(weights_flat: np.ndarray, freqs_flat_thz: np.ndarray) -> float:
-    """
-    Compute zero-point energy from phonon frequencies.
-
-    Parameters
-    ----------
-    weights_flat
-        Flattened q-point weights (tiled over branches), shape ``(n_modes,)``.
-    freqs_flat_thz
-        Flattened frequencies in THz, shape ``(n_modes,)``.
+        Path to a pickled phonopy-style band-structure dict.
 
     Returns
     -------
-    float
-        Zero-point energy contribution (eV).
+    tuple[np.ndarray, np.ndarray] | None
+        ``(distances, frequencies)`` with shapes ``(nq,)`` and
+        ``(nq, n_bands)``, or ``None`` when unavailable.
     """
-    w = np.asarray(weights_flat, dtype=float).reshape(-1)
-    f_thz = np.asarray(freqs_flat_thz, dtype=float).reshape(-1)
+    if not path.exists():
+        return None
+    try:
+        with path.open("rb") as handle:
+            band = pickle.load(handle)
+        distances = np.concatenate([np.asarray(seg) for seg in band["distances"]])
+        freqs = np.vstack([np.asarray(seg) for seg in band["frequencies"]])
+        return distances, freqs
+    except Exception as exc:
+        print(f"Failed to load band structure from {path}: {exc}")
+        return None
 
-    omega = f_thz * 2.0 * np.pi * 1e12  # rad/s
-    zpe = w * (hbar * omega)
-    zpe = zpe[np.isfinite(zpe)]
-    zpe[zpe == float("-inf")] = 0.0
-    zpe[zpe == float("+inf")] = 0.0
-    return float(0.5 * np.sum(zpe))
 
-
-def helmholtz_free_energy_og(
-    weights_flat: np.ndarray, freqs_flat_thz: np.ndarray, t: float
-) -> float:
+def _load_thermal(path: Path) -> dict[str, Any] | None:
     """
-    Compute Helmholtz free energy.
+    Load thermal properties JSON.
 
     Parameters
     ----------
-    weights_flat
-        Flattened q-point weights (tiled over branches), shape ``(n_modes,)``.
-    freqs_flat_thz
-        Flattened frequencies in THz, shape ``(n_modes,)``.
-    t
-        Temperature (K).
+    path
+        Path to a ``*_thermal_properties.json`` file.
 
     Returns
     -------
-    float
-        Helmholtz free-energy thermal contribution (eV).
+    dict[str, Any] | None
+        Parsed JSON mapping, or ``None`` when unavailable.
     """
-    w = np.asarray(weights_flat, dtype=float).reshape(-1)
-    f_thz = np.asarray(freqs_flat_thz, dtype=float).reshape(-1)
-
-    if t <= 1e-12:
-        t = 1e-12
-
-    omega = f_thz * 2.0 * np.pi * 1e12  # rad/s
-    arg = -(hbar * omega) / (k_b * t)
-
-    integrand = w * np.log(1.0 - np.exp(arg))
-    integrand = integrand[np.isfinite(integrand)]
-    integrand[integrand == float("-inf")] = 0.0
-    integrand[integrand == float("+inf")] = 0.0
-    return float(np.sum(integrand) * k_b * t)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf8"))
+    except Exception as exc:
+        print(f"Failed to load thermal properties from {path}: {exc}")
+        return None
 
 
-def analyse_one_model(model_id: str) -> None:
+def _interp_ref_bands(
+    ref_dist: np.ndarray,
+    ref_freqs: np.ndarray,
+    pred_dist: np.ndarray,
+) -> np.ndarray:
     """
-    Analyse a single Ti64 phonon model and write per-model metrics.
+    Interpolate reference bands onto the model's band-path grid.
 
     Parameters
     ----------
-    model_id
-        Identifier of the model under
-        ``ml_peg/calcs/bulk_crystal/ti64_phonons/outputs``.
+    ref_dist
+        Reference path distances, shape ``(n_ref,)``.
+    ref_freqs
+        Reference frequencies, shape ``(n_ref, n_bands)``.
+    pred_dist
+        Model path distances, shape ``(n_pred,)``.
 
-    Notes
-    -----
-    Writes per-model metrics to:
-
-    - ``ml_peg/app/data/bulk_crystal/ti64_phonons/<model_id>/metrics.json``
-
-    The JSON file contains aggregated metrics and per-case values.
+    Returns
+    -------
+    np.ndarray
+        Reference frequencies on the model grid, shape ``(n_pred, n_bands)``.
     """
-    model_calc_dir = CALC_OUT_PATH / model_id
-    assert model_calc_dir.exists(), (
-        f"No calc outputs found for model '{model_id}'. Expected:\n"
-        f"  {model_calc_dir}\n\n"
-        "Calc stage writes to:\n"
-        "  ml_peg/calcs/bulk_crystal/ti64_phonons/outputs/<model>/...\n"
-    )
+    # Bands are computed along the same fractional k-path but the distance
+    # scales can differ slightly; map the reference distances onto the model
+    # span before interpolating.
+    ref_x = ref_dist * (pred_dist[-1] / ref_dist[-1]) if ref_dist[-1] else ref_dist
+    out = np.empty((len(pred_dist), ref_freqs.shape[1]), dtype=float)
+    for branch in range(ref_freqs.shape[1]):
+        out[:, branch] = np.interp(pred_dist, ref_x, ref_freqs[:, branch])
+    return out
 
-    model_app_dir = APP_OUT_PATH / model_id
-    model_app_dir.mkdir(parents=True, exist_ok=True)
 
-    rmse_by_case: dict[str, float] = {}
-    df0_by_case: dict[str, float] = {}
-    df2000_by_case: dict[str, float] = {}
+def _free_energy_errors(
+    ref_thermal: dict[str, Any], pred_thermal: dict[str, Any]
+) -> tuple[float, float] | None:
+    """
+    Absolute free-energy errors at the first and last temperature (eV/atom).
 
-    omega_avg_ref_thz_by_case: dict[str, float] = {}
-    omega_avg_pred_thz_by_case: dict[str, float] = {}
+    Parameters
+    ----------
+    ref_thermal
+        Reference thermal properties (free energy in kJ/mol per cell).
+    pred_thermal
+        Model thermal properties (free energy in kJ/mol per cell).
 
-    for case in CASES:
-        npz_path = model_calc_dir / f"{case}.npz"
-        assert npz_path.exists(), f"Missing {npz_path}"
+    Returns
+    -------
+    tuple[float, float] | None
+        ``(ΔF_first, ΔF_last)`` in eV/atom, or ``None`` when data is invalid.
+    """
+    n_atoms = ref_thermal.get("n_atoms") or pred_thermal.get("n_atoms")
+    if not n_atoms:
+        return None
 
-        data = np.load(npz_path, allow_pickle=True)
+    ref_temps = np.asarray(ref_thermal["temperatures"], dtype=float)
+    ref_f = np.asarray(ref_thermal["free_energy"], dtype=float)
+    pred_temps = np.asarray(pred_thermal["temperatures"], dtype=float)
+    pred_f = np.asarray(pred_thermal["free_energy"], dtype=float)
 
-        dft_x = np.asarray(data["dft_x"], dtype=float)
-        dft_freq = np.asarray(data["dft_frequencies"], dtype=float)
-        ml_freq = np.asarray(data["ml_frequencies"], dtype=float)
+    if not (np.isfinite(ref_f).all() and np.isfinite(pred_f).all()):
+        return None
 
-        dft_on_ml = resample_dft_to_ml_grid(dft_x, dft_freq, n_ml=ml_freq.shape[0])
+    ref_on_pred = np.interp(pred_temps, ref_temps, ref_f)
+    delta_ev_per_atom = np.abs(ref_on_pred - pred_f) / EV_TO_KJMOL / n_atoms
+    return float(delta_ev_per_atom[0]), float(delta_ev_per_atom[-1])
 
-        omega_avg_ref = float(np.mean(dft_on_ml))
-        omega_avg_pred = float(np.mean(ml_freq))
-        omega_avg_ref_thz_by_case[case] = omega_avg_ref
-        omega_avg_pred_thz_by_case[case] = omega_avg_pred
 
-        rmse_by_case[case] = rmse(dft_on_ml, ml_freq)
+@pytest.fixture
+def ti64_stats() -> dict[str, dict[str, Any]]:
+    """
+    Aggregate Ti64 benchmark statistics per model.
 
-        if case in TP_ON:
-            assert "tp_temperatures" in data and "tp_free_energy" in data, (
-                f"TP expected for {case} but tp_* arrays missing in {npz_path}"
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of model name to per-case metrics and scatter points.
+    """
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+    # Pre-load reference data once and copy structures for the app viewer.
+    ref_cache: dict[str, dict[str, Any]] = {}
+    for case in CASE_NAMES:
+        ref_band = _load_band(REF_PATH / f"{case}_band_structure.npz")
+        if ref_band is None:
+            print(f"Missing DFT reference for {case}, skipping case.")
+            continue
+        ref_cache[case] = {
+            "band": ref_band,
+            "thermal": _load_thermal(REF_PATH / f"{case}_thermal_properties.json"),
+        }
+        ref_struct_src = REF_PATH / f"{case}.xyz"
+        if ref_struct_src.exists():
+            (OUT_PATH / "DFT").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ref_struct_src, OUT_PATH / "DFT" / f"{case}.xyz")
+
+    if not ref_cache:
+        print(f"ERROR: no DFT reference data found in {REF_PATH}")
+        return {}
+
+    stats: dict[str, dict[str, Any]] = {}
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            print(f"Model directory not found: {model_dir}")
+            continue
+
+        rmse_by_case: dict[str, float] = {}
+        df0_by_case: dict[str, float] = {}
+        df2000_by_case: dict[str, float] = {}
+        points: list[dict[str, Any]] = []
+
+        for case, ref_data in ref_cache.items():
+            pred_band_path = model_dir / f"{case}_band_structure.npz"
+            pred_band = _load_band(pred_band_path)
+            if pred_band is None:
+                continue
+
+            ref_dist, ref_freqs = ref_data["band"]
+            pred_dist, pred_freqs = pred_band
+            if (
+                ref_freqs.shape[1] != pred_freqs.shape[1]
+                or not np.isfinite(pred_freqs).all()
+            ):
+                print(f"{model_name}/{case}: invalid band data, skipping case.")
+                continue
+
+            ref_on_pred = _interp_ref_bands(ref_dist, ref_freqs, pred_dist)
+            rmse_by_case[case] = float(
+                np.sqrt(np.mean((ref_on_pred - pred_freqs) ** 2))
             )
 
-            required = ["q_weights", "q_frequencies_dft", "n_atoms"]
-            missing = [k for k in required if k not in data.files]
-            assert not missing, (
-                f"{case}: missing required thermo keys in {npz_path}: {missing}"
+            data_paths = {
+                "ref_band": str(
+                    (REF_PATH / f"{case}_band_structure.npz").relative_to(
+                        CALC_PATH.parent
+                    )
+                ),
+                "ref_dos": str(
+                    (REF_PATH / f"{case}_dos.npz").relative_to(CALC_PATH.parent)
+                ),
+                "pred_band": str(pred_band_path.relative_to(CALC_PATH.parent)),
+                "pred_dos": str(
+                    (model_dir / f"{case}_dos.npz").relative_to(CALC_PATH.parent)
+                ),
+            }
+            structure_paths = None
+            pred_struct_src = model_dir / f"{case}.xyz"
+            if pred_struct_src.exists() and (REF_PATH / f"{case}.xyz").exists():
+                (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
+                shutil.copy2(pred_struct_src, OUT_PATH / model_name / f"{case}.xyz")
+                structure_paths = {
+                    "ref": f"/assets/bulk_crystal/ti64_phonons/DFT/{case}.xyz",
+                    "pred": (
+                        f"/assets/bulk_crystal/ti64_phonons/{model_name}/{case}.xyz"
+                    ),
+                }
+            points.append(
+                {
+                    "id": case,
+                    "label": case,
+                    "ref": float(np.mean(ref_on_pred)),
+                    "pred": float(np.mean(pred_freqs)),
+                    "data_paths": data_paths,
+                    "structure_paths": structure_paths,
+                }
             )
 
-            q_w = np.asarray(data["q_weights"], dtype=float)
-            q_f = np.asarray(data["q_frequencies_dft"], dtype=float)
+            if case in TP_ON and ref_data["thermal"] is not None:
+                pred_thermal = _load_thermal(
+                    model_dir / f"{case}_thermal_properties.json"
+                )
+                if pred_thermal is not None:
+                    errors = _free_energy_errors(ref_data["thermal"], pred_thermal)
+                    if errors is not None:
+                        df0_by_case[case], df2000_by_case[case] = errors
 
-            weights_tile = np.tile(q_w[:, None], (1, q_f.shape[1])).reshape(
-                -1, order="F"
-            )
-            freqs_flat = q_f.reshape(-1, order="F")  # THz
-
-            n_atoms = int(np.asarray(data["n_atoms"]).item())
-
-            ml_t = np.asarray(data["tp_temperatures"], dtype=float)
-            ml_f = np.asarray(data["tp_free_energy"], dtype=float)
-
-            # Legacy unit fix (keep existing behavior)
-            if np.nanmax(np.abs(ml_f)) > 100.0:
-                ml_f = ml_f / 96.32
-
-            t_dense = np.linspace(0.0, 2000.0, 2000, dtype=float)
-            zpe_const = zp_energy(weights_tile, freqs_flat)
-            dft_f_dense = np.array(
-                [
-                    helmholtz_free_energy_og(weights_tile, freqs_flat, tt) + zpe_const
-                    for tt in t_dense
-                ],
-                dtype=float,
-            )
-            dft_f_on_mlt = np.interp(ml_t, t_dense, dft_f_dense)
-
-            df0_by_case[case] = float(np.abs(dft_f_on_mlt[0] - ml_f[0]) / n_atoms)
-            df2000_by_case[case] = float(np.abs(dft_f_on_mlt[-1] - ml_f[-1]) / n_atoms)
-
-    rmse_vals = np.asarray(list(rmse_by_case.values()), dtype=float)
-
-    omega_avg_mae = (
-        float(
-            np.mean(
-                [
-                    abs(omega_avg_pred_thz_by_case[c] - omega_avg_ref_thz_by_case[c])
-                    for c in omega_avg_ref_thz_by_case
-                ]
-            )
-        )
-        if omega_avg_ref_thz_by_case
-        else None
-    )
-
-    write_json(
-        model_app_dir / "metrics.json",
-        {
-            "model": model_id,
-            "n_cases": len(CASES),
+        rmse_vals = list(rmse_by_case.values())
+        omega_errors = [abs(p["ref"] - p["pred"]) for p in points]
+        stats[model_name] = {
             "metrics": {
-                "dispersion_rmse_thz_avg": float(np.mean(rmse_vals)),
-                "dispersion_rmse_thz_max": float(np.max(rmse_vals)),
+                "dispersion_rmse_thz_avg": float(np.mean(rmse_vals))
+                if rmse_vals
+                else None,
+                "dispersion_rmse_thz_max": float(np.max(rmse_vals))
+                if rmse_vals
+                else None,
                 "deltaF_0K_eV_per_atom_avg": float(np.mean(list(df0_by_case.values())))
                 if df0_by_case
                 else None,
@@ -328,152 +299,79 @@ def analyse_one_model(model_id: str) -> None:
                 )
                 if df2000_by_case
                 else None,
-                "omega_avg_thz_mae": omega_avg_mae,
+                OMEGA_METRIC_ID: float(np.mean(omega_errors)) if omega_errors else None,
             },
-            "by_case": {
-                "rmse_thz": rmse_by_case,
-                "deltaF_0K_eV_per_atom": df0_by_case,
-                "deltaF_2000K_eV_per_atom": df2000_by_case,
-                "omega_avg_ref_thz": omega_avg_ref_thz_by_case,
-                "omega_avg_pred_thz": omega_avg_pred_thz_by_case,
-            },
-        },
-    )
+            "points": points,
+        }
 
-    assert len(rmse_by_case) == len(CASES)
+    return stats
 
 
-@pytest.fixture(scope="session")
-def run_all_models() -> None:
-    """
-    Generate per-model ``metrics.json`` for all configured models.
-
-    Returns
-    -------
-    None
-        This fixture exists for its side effects (writing per-model metrics).
-    """
-    for model_id in MODELS:
-        try:
-            analyse_one_model(model_id)
-        except (AssertionError, FileNotFoundError) as exc:
-            print(f"Skipping {model_id}: {exc}")
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 @build_table(
-    filename=APP_OUT_PATH / "ti64_phonons_metrics_table.json",
+    filename=OUT_PATH / "ti64_phonons_metrics_table.json",
     thresholds=THRESHOLDS,
     metric_tooltips=METRIC_TOOLTIPS,
     weights=WEIGHTS,
 )
-def metrics_table(run_all_models: None) -> dict[str, dict[str, float | None]]:
+def metrics(
+    ti64_stats: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, float | None]]:
     """
     Build the Ti64 metrics table for the Dash app.
 
     Parameters
     ----------
-    run_all_models
-        Session-scoped fixture ensuring per-model metrics are generated.
+    ti64_stats
+        Per-model statistics from :func:`ti64_stats`.
 
     Returns
     -------
     dict[str, dict[str, float | None]]
         Mapping of metric label to per-model values.
     """
-    _ = run_all_models
-
-    table: dict[str, dict[str, float | None]] = {
-        label: {} for label in TABLE_METRIC_LABELS
+    return {
+        label: {
+            model: ti64_stats.get(model, {}).get("metrics", {}).get(metric_id)
+            for model in MODELS
+        }
+        for metric_id, label in METRIC_ID_TO_LABEL.items()
     }
 
-    for model_id in MODELS:
-        mpath = APP_OUT_PATH / model_id / "metrics.json"
-        if not mpath.exists():
-            continue
 
-        m = json.loads(mpath.read_text(encoding="utf8"))
-        metrics = m.get("metrics", {})
-
-        for metric_id, label in METRIC_ID_TO_LABEL.items():
-            table[label][model_id] = metrics.get(metric_id)
-
-    return table
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 @cell_to_scatter(
     filename=SCATTER_FILENAME,
-    x_label="Predicted",
-    y_label="Reference",
+    x_label="Predicted ω_avg (THz)",
+    y_label="Reference ω_avg (THz)",
 )
-def interactive_dataset(run_all_models: None) -> dict[str, Any]:
+def interactive_dataset(ti64_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
     Build the interactive scatter dataset for the Ti64 phonons Dash app.
 
     Parameters
     ----------
-    run_all_models
-        Session-scoped fixture ensuring per-model metrics are generated.
+    ti64_stats
+        Per-model statistics from :func:`ti64_stats`.
 
     Returns
     -------
     dict[str, Any]
         Interactive dataset written to JSON by the decorator.
     """
-    _ = run_all_models
-
     dataset: dict[str, Any] = {
-        "metrics": METRIC_LABELS,  # id -> label
+        "metrics": {OMEGA_METRIC_ID: METRIC_ID_TO_LABEL[OMEGA_METRIC_ID]},
         "models": {},
     }
 
-    metric_id = "omega_avg_thz_mae"
-
-    for model_id in MODELS:
-        metrics_path = APP_OUT_PATH / model_id / "metrics.json"
-        if not metrics_path.exists():
+    for model_name, model_data in ti64_stats.items():
+        if not model_data["points"]:
             continue
-
-        m = json.loads(metrics_path.read_text(encoding="utf8"))
-        by_case = m.get("by_case") or {}
-        ref_map = by_case.get("omega_avg_ref_thz", {}) or {}
-        pred_map = by_case.get("omega_avg_pred_thz", {}) or {}
-
-        points: list[dict[str, Any]] = []
-        for case in CASES:
-            if case not in ref_map or case not in pred_map:
-                continue
-
-            data_paths = {
-                "npz": str(
-                    (CALC_OUT_PATH / model_id / f"{case}.npz").relative_to(
-                        CALC_OUT_PATH.parent
-                    )
-                ),
-                "meta": str(
-                    (CALC_OUT_PATH / model_id / f"{case}.json").relative_to(
-                        CALC_OUT_PATH.parent
-                    )
-                ),
-            }
-
-            points.append(
-                {
-                    "id": case,
-                    "label": case,
-                    "ref": ref_map[case],
-                    "pred": pred_map[case],
-                    "data_paths": data_paths,
-                }
-            )
-
-        dataset["models"][model_id] = {
-            "model": model_id,
+        dataset["models"][model_name] = {
             "metrics": {
-                metric_id: {
-                    "points": points,
-                    "mae": (m.get("metrics") or {}).get(metric_id),
+                OMEGA_METRIC_ID: {
+                    "points": model_data["points"],
+                    "mae": model_data["metrics"][OMEGA_METRIC_ID],
                 }
             },
         }
@@ -481,52 +379,23 @@ def interactive_dataset(run_all_models: None) -> dict[str, Any]:
     return dataset
 
 
-def test_all_models_metrics_written(run_all_models: None) -> None:
+def test_ti64_phonons_analysis(
+    metrics: dict[str, Any],
+    interactive_dataset: dict[str, Any],
+) -> None:
     """
-    Check per-model ``metrics.json`` exists for every configured model.
+    Generate JSON artifacts for the Ti64 phonons benchmark.
 
     Parameters
     ----------
-    run_all_models
-        Session-scoped fixture ensuring per-model metrics are generated.
-    """
-    _ = run_all_models
-
-    present = [m for m in MODELS if (APP_OUT_PATH / m / "metrics.json").exists()]
-    assert present, "No metrics.json written for any model"
-
-
-def test_write_metrics_table(metrics_table: dict[str, Any]) -> None:
-    """
-    Check the table JSON artifact is produced and includes all models.
-
-    Parameters
-    ----------
-    metrics_table
-        Fixture providing the metrics table mapping (and/or triggering JSON writing).
-    """
-    assert isinstance(metrics_table, dict)
-
-    table_path = APP_OUT_PATH / "ti64_phonons_metrics_table.json"
-    assert table_path.exists()
-
-    payload = json.loads(table_path.read_text(encoding="utf8"))
-    rows = payload.get("data", [])
-    assert rows, "Metrics table has no rows"
-
-
-def test_write_interactive_json(interactive_dataset: dict[str, Any]) -> None:
-    """
-    Check the interactive JSON artifact is produced and includes all models.
-
-    Parameters
-    ----------
+    metrics
+        Table fixture output (decorator writes JSON).
     interactive_dataset
-        Fixture providing the interactive dataset (and/or triggering JSON writing).
+        Scatter fixture output (decorator writes JSON).
     """
+    assert isinstance(metrics, dict)
     assert isinstance(interactive_dataset, dict)
-    assert SCATTER_FILENAME.exists()
 
-    payload = json.loads(SCATTER_FILENAME.read_text(encoding="utf8"))
-    models = payload.get("models", {})
-    assert models, "Interactive dataset has no models"
+    table_path = OUT_PATH / "ti64_phonons_metrics_table.json"
+    assert table_path.exists()
+    assert SCATTER_FILENAME.exists()
