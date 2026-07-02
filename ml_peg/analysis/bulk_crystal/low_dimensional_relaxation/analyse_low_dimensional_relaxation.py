@@ -15,6 +15,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_density_inputs,
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
@@ -40,6 +41,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Energy outlier thresholds (eV/atom)
 ENERGY_OUTLIER_MIN = -40
 ENERGY_OUTLIER_MAX = 40
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*/*.xyz",
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 # Dimensionality-specific configuration
 DIM_CONFIGS = {

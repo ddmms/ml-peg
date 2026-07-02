@@ -29,7 +29,6 @@ from ml_peg.app.utils.plot_helpers import (
     build_serialized_scatter_content,
     resolve_scatter_selection,
 )
-from ml_peg.app.utils.register_callbacks import register_image_download_callbacks
 from ml_peg.calcs import CALCS_ROOT
 
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons"
@@ -40,6 +39,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#phonons"
 )
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / "phonons"
+INFO_PATH = DATA_PATH / "info.json"
 
 PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
 DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
@@ -54,8 +54,6 @@ class PhononApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register scatter/dispersion callbacks via shared helpers."""
-        register_image_download_callbacks()
-
         with SCATTER_PATH.open(encoding="utf8") as handle:
             interactive_data = json.load(handle)
 
@@ -148,6 +146,7 @@ def get_app() -> PhononApp:
     """
     return PhononApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions and vibrational "
             "thermodynamics for bulk crystals."
@@ -186,6 +185,7 @@ def get_app() -> PhononApp:
                 },
             ),
         ],
+        info_path=INFO_PATH,
     )
 
 

@@ -19,6 +19,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Criegee22"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#Criegee22"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "Criegee22"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class Criegee22App(BaseApp):
@@ -79,6 +80,8 @@ def get_app() -> Criegee22App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

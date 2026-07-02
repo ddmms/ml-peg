@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from dash import Dash
 from dash.html import Div
 
@@ -12,14 +14,12 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
 # Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "DMC-ICE13 Lattice Energies"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#dmc-ice13"
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "DMC_ICE13"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class DMCICE13App(BaseApp):
@@ -33,9 +33,11 @@ class DMCICE13App(BaseApp):
         )
 
         # Assets dir will be parent directory - individual files for each polymorph
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
+        if not structs_dir.exists():
+            warnings.warn(f"Structures directory {structs_dir} not found", stacklevel=2)
         structs = [
-            f"/assets/molecular_crystal/DMC_ICE13/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/molecular_crystal/DMC_ICE13/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -64,6 +66,7 @@ def get_app() -> DMCICE13App:
     """
     return DMCICE13App(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description="Lattice energies for 13 ice polymorphs.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "dmc_ice13_metrics_table.json",
@@ -71,6 +74,7 @@ def get_app() -> DMCICE13App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
