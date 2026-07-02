@@ -1,0 +1,19 @@
+metrics:
+  Energy MAE:
+    good: 0
+    bad: 3
+    unit: eV / Atom
+    tooltip: Mean absolute error of energy.
+    level_of_theory: PBE+U
+  Force MAE:
+    good: 0
+    bad: 0.5
+    unit: eV / Å
+    tooltip: Mean absolute error of individual force components.
+    level_of_theory: PBE+U
+  Stress MAE:
+    good: 0
+    bad: 0.01
+    unit: eV / Å³
+    tooltip: Mean absolute error of individual stress components.
+    level_of_theory: PBE+U
