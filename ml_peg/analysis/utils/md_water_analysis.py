@@ -21,6 +21,71 @@ import numpy as np
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
 
+# ASE writes/reads positions and velocities in Å; mdtraj stores them in nm.
+ANG_TO_NM = 0.1
+
+
+def _load_positions(traj_file: Path, topology: str) -> mdt.Trajectory:
+    """
+    Build an mdtraj position trajectory from a janus-core ``-traj.extxyz`` file.
+
+    Reproduces what ``aml_md_analysis.load_with_cell`` produced from the legacy
+    ``md-pos.xyz`` (positions in nm, unit cell injected from the topology PDB),
+    so the shipped reference data remains valid.
+
+    Parameters
+    ----------
+    traj_file
+        Path to the janus-core trajectory (positions + momenta).
+    topology
+        Path to the PDB providing topology and cell information.
+
+    Returns
+    -------
+    mdtraj.Trajectory
+        Position trajectory with cell information injected.
+    """
+    frames = read(traj_file, ":")
+    top_frame = mdt.load_frame(str(topology), 0)
+    xyz = np.array([atoms.get_positions() for atoms in frames]) * ANG_TO_NM
+    trj = mdt.Trajectory(xyz, top_frame.topology)
+    n_frames = len(trj)
+    trj.unitcell_lengths = top_frame.unitcell_lengths.repeat(n_frames, axis=0)
+    trj.unitcell_angles = top_frame.unitcell_angles.repeat(n_frames, axis=0)
+    return trj
+
+
+def _load_velocities(traj_file: Path, topology: str) -> mdt.Trajectory:
+    """
+    Build an mdtraj velocity trajectory from a janus-core ``-traj.extxyz`` file.
+
+    Reproduces what ``mdtraj.load`` produced from the legacy ``md-velc.xyz`` (ASE
+    velocities scaled Å→nm, unit cell injected from the topology PDB), so VDOS/VACF
+    remain comparable to the shipped reference data. Velocities are recovered from
+    the trajectory momenta via ``atoms.get_velocities()`` (masses in the file, so
+    deuterated systems are handled correctly).
+
+    Parameters
+    ----------
+    traj_file
+        Path to the janus-core trajectory (positions + momenta + masses).
+    topology
+        Path to the PDB providing topology and cell information.
+
+    Returns
+    -------
+    mdtraj.Trajectory
+        Velocity "trajectory" with cell information injected.
+    """
+    frames = read(traj_file, ":")
+    top_pdb = mdt.load_pdb(str(topology))
+    vel = np.array([atoms.get_velocities() for atoms in frames]) * ANG_TO_NM
+    trj = mdt.Trajectory(vel, top_pdb.topology)
+    n_frames = len(trj)
+    trj.unitcell_lengths = np.repeat(top_pdb.unitcell_lengths, n_frames, axis=0)
+    trj.unitcell_vectors = np.repeat(top_pdb.unitcell_vectors, n_frames, axis=0)
+    return trj
+
 
 def get_rdf_keys(data_path: Path) -> list:
     """
@@ -117,11 +182,11 @@ def create_rdfs(
         if not (curve_path / model_name).exists():
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
-        position_xyz = model_dir / "md-pos.xyz"
-        if not position_xyz.exists():
+        traj_file = model_dir / "md-traj.extxyz"
+        if not traj_file.exists():
             continue
 
-        test_trj = aml.load_with_cell(position_xyz, top=ref_topology)
+        test_trj = _load_positions(traj_file, ref_topology)
 
         rdfs[model_name] = aml.compute_all_rdfs(test_trj)
 
@@ -187,19 +252,11 @@ def create_vdos(
         if not (curve_path / model_name).exists():
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
-        vel_xyz = model_dir / "md-velc.xyz"
-        if not vel_xyz.exists():
+        traj_file = model_dir / "md-traj.extxyz"
+        if not traj_file.exists():
             continue
 
-        test_vel = mdt.load(vel_xyz, top=ref_topology, stride=1)
-        test_top = mdt.load_pdb(ref_topology)
-
-        test_vel.unitcell_lengths = np.repeat(
-            test_top.unitcell_lengths, len(test_vel), axis=0
-        )
-        test_vel.unitcell_vectors = np.repeat(
-            test_top.unitcell_vectors, len(test_vel), axis=0
-        )
+        test_vel = _load_velocities(traj_file, ref_topology)
 
         ref_dt = 1
 
@@ -264,20 +321,13 @@ def create_vacf(
         if not (curve_path / model_name).exists():
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
-        vel_xyz = model_dir / "md-velc.xyz"
-        if not vel_xyz.exists():
+        traj_file = model_dir / "md-traj.extxyz"
+        if not traj_file.exists():
             continue
 
-        test_vel = mdt.load(vel_xyz, top=ref_topology, stride=1)
-        # Truncate to same length as reference
+        test_vel = _load_velocities(traj_file, ref_topology)
+        # Topology used below to inject cell info into the reference velocities
         test_top = mdt.load_pdb(ref_topology)
-
-        test_vel.unitcell_lengths = np.repeat(
-            test_top.unitcell_lengths, len(test_vel), axis=0
-        )
-        test_vel.unitcell_vectors = np.repeat(
-            test_top.unitcell_vectors, len(test_vel), axis=0
-        )
 
         ref_dt = 1
 
