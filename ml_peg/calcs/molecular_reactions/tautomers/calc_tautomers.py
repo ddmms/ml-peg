@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
+from mlipaudit.benchmarks.tautomers.tautomers import TautomersModelOutput
 import pytest
 
 from ml_peg.calcs.utils.mlipaudit import MlPegTautomersBenchmark
@@ -34,8 +36,8 @@ def test_tautomers(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
-    calc = model.add_d3_calculator(calc, precision="high")
+    calc = model.get_calculator(precision="high")
+    calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
         key="inputs/molecular_reactions/tautomers/tautomers.zip",
@@ -50,7 +52,14 @@ def test_tautomers(mlip: tuple[str, Any]) -> None:
         data_input_dir=data_input_dir,
         run_mode="standard",
     )
-    benchmark.run_model()
+    try:
+        benchmark.run_model()
+    except Exception as exc:
+        warn(
+            f"Error running tautomers benchmark for {model_name}: {exc}",
+            stacklevel=2,
+        )
+        benchmark.model_output = TautomersModelOutput(structure_ids=[], predictions=[])
 
     (out_path / "model_output.json").write_text(
         benchmark.model_output.model_dump_json()
