@@ -27,6 +27,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Bulk Water"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/aqueous_solutions/bulk_water.html"
 DATA_PATH = APP_ROOT / "data" / "aqueous_solutions" / "bulk_water"
+INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score"]
 
 
@@ -195,5 +196,6 @@ def get_app() -> BulkWaterApp:
         description="Bulk Water score.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "bulk_water_metrics_table.json",
+        info_path=INFO_PATH,
         extra_components=extra_components,
     )

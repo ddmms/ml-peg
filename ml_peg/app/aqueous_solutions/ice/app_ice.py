@@ -29,6 +29,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/aqueous_solutions/ice.html"
 )
 DATA_PATH = APP_ROOT / "data" / "aqueous_solutions" / "ice"
+INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score"]
 
 
@@ -197,5 +198,6 @@ def get_app() -> IceApp:
         description="Ice score.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "ice_metrics_table.json",
+        info_path=INFO_PATH,
         extra_components=extra_components,
     )
