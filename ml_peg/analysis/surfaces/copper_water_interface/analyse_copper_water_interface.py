@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase.io import read
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
 from ml_peg.analysis.utils.decorators import build_table, cell_to_bar, plot_hist
+from ml_peg.analysis.utils.dipoles import get_z_dipoles
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -48,6 +50,10 @@ REF_DIPOLE_PATH = DATA_PATH / "ref_dipole_data.npy"
 
 # Dipole histogram binning (matches the reference dipole distribution range).
 DIPOLE_HIST_BINS = {"start": -0.05, "end": 0.05, "size": 0.0025}
+
+# Oxygen point-charge magnitude (e) for the water dipole, shared with the
+# water_slab_dipoles benchmark for a consistent dipole definition.
+DIPOLE_CHARGE = 0.5562
 
 
 # ----------------------+----------------------+---------------------- #
@@ -256,21 +262,25 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
     """
     dipole_results = {"ref": None} | dict.fromkeys(MODELS)
     raw_dipoles = {}
-    discard = 0
 
-    # Load reference dipole data
+    # Load reference dipole data.
+    # NOTE: ref_dipole_data.npy must be regenerated with the same point-charge q
+    # (DIPOLE_CHARGE) used below for the deviation to be on a consistent scale.
     ref_dipoles = np.load(REF_DIPOLE_PATH)
     ref_dipole_stdev = np.std(ref_dipoles)
     dipole_results["ref"] = ref_dipole_stdev
 
     for model_name in MODELS:
-        # Read dipoles from trajectory, which is stored in info dictionary
-        dipoles_z = np.loadtxt(
-            CALC_PATH / model_name / "md.thermo", usecols=4, skiprows=2 + discard
-        )
+        model_traj = CALC_PATH / model_name / "md-traj.extxyz"
+        if not model_traj.exists():
+            continue
 
-        dipole_stdev = np.abs(np.std(dipoles_z) - ref_dipole_stdev)
-        dipole_results[model_name] = dipole_stdev
+        # Compute the per-frame total z-dipole per unit area from the trajectory,
+        # the same way as the water_slab_dipoles benchmark.
+        frames = read(model_traj, ":")
+        dipoles_z = get_z_dipoles(frames, q=DIPOLE_CHARGE)
+
+        dipole_results[model_name] = np.abs(np.std(dipoles_z) - ref_dipole_stdev)
         raw_dipoles[model_name] = dipoles_z.tolist()
 
     # Add reference dipoles for the overlaid reference histogram
