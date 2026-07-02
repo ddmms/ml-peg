@@ -29,6 +29,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Copper Water Interface"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces/copper_water_interface.html"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "copper_water_interface"
+INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score"]
 
 
@@ -213,5 +214,6 @@ def get_app() -> CopperWaterInterfaceApp:
         description="Copper Water Interface score.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "copper_water_interface_metrics_table.json",
+        info_path=INFO_PATH,
         extra_components=extra_components,
     )

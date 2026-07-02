@@ -12,7 +12,7 @@ from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
 from ml_peg.analysis.utils.decorators import build_table, cell_to_bar, plot_hist
 from ml_peg.analysis.utils.dipoles import get_z_dipoles
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -525,4 +525,9 @@ def test_copper_water_interface(
     build_dipole_histogram
         Dipole moment histogram data for all models.
     """
-    return
+    # Save elemental info for element filtering (see developer guide: filter).
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "md-final.extxyz",
+        out_path=OUT_PATH,
+        index=0,
+    )
