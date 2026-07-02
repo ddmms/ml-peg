@@ -8,7 +8,14 @@ from functools import lru_cache
 import json
 from numbers import Number
 from pathlib import Path
-from typing import Any, NotRequired, TypedDict
+import sys
+
+if sys.version_info >= (3, 11):
+    from typing import Any, NotRequired, TypedDict
+else:
+    from typing import Any, TypedDict
+
+    from typing_extensions import NotRequired
 
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps

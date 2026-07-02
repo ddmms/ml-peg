@@ -579,3 +579,278 @@ Reference data:
 
 * DFT (PBE) force constants, thermal properties and relaxed structures from the Alexandria
   phonon benchmark database.
+
+
+Diamond phonons
+===============
+
+Summary
+-------
+
+Performance in predicting the phonon dispersion and thermal properties of bulk
+diamond (carbon).
+
+The benchmark evaluates (1) phonon frequency accuracy along a fixed high-symmetry
+path in the Brillouin zone, and (2) the Grüneisen parameter, Debye temperature, and
+Slack-formula lattice thermal conductivity — all compared against RSCAN DFT references.
+The thermal metrics probe two physically independent aspects of the force constants:
+anharmonicity (Grüneisen parameter) and absolute stiffness (Debye temperature).
+
+
+Metrics
+-------
+
+1. Band MAE
+
+Mean absolute error (MAE) between predicted and reference phonon frequencies.
+
+For bulk diamond, the phonon band structure is computed for each model along the same
+q-point path as the reference calculation. At each q-point, the six phonon frequencies
+are compared to the reference frequencies after sorting the modes to avoid branch
+labelling ambiguities. The MAE is evaluated over all q-points and all phonon branches.
+
+
+2. Band RMSE
+
+Root mean squared error (RMSE) between predicted and reference phonon frequencies.
+
+The RMSE is computed using the same sorted, mode-unlabelled comparison procedure as in
+(1), over all q-points and all phonon branches.
+
+3. Δγ
+
+Absolute error in the mean Grüneisen parameter relative to the DFT reference.
+The mean Grüneisen parameter is computed on a 20×20×20 q-mesh by finite differences
+between force constants at volumes V\ :sub:`0` ± 1% (see the Method section below).
+The DFT reference is produced by the same pipeline using DFT force constants.
+
+4. Δθ\ :sub:`D` (K)
+
+Absolute error in the Debye temperature relative to the DFT reference. The Debye
+temperature is estimated from the maximum phonon frequency on a 20×20×20 mesh:
+θ\ :sub:`D` = ℏω\ :sub:`max` / k\ :sub:`B`.
+
+5. Δκ\ :sub:`L` (W/m·K)
+
+Absolute error in the Slack-formula lattice thermal conductivity at 300 K relative
+to the DFT reference. Both prediction and reference use the identical Slack formula,
+so this metric isolates MLIP error in the force constants rather than Slack
+approximation error.
+
+
+Method
+------
+
+All MLIP calculations (band structure and thermal) use the **512-atom conventional
+supercell** (cubic 8-atom cell × 4×4×4). All DFT references (band structure and
+thermal) use the **128-atom primitive supercell** (CASTEP/RSCAN), which is sufficient
+for DFT due to the rapid decay of diamond's interatomic force constants.
+
+**Phonon band structure**
+
+Force constants are computed using the same displacement dataset as the DFT reference
+(``diamond.yaml``). MLIP forces are evaluated for each displaced supercell and used to
+produce second-order force constants via phonopy, which are then symmetrised. The force
+constants are Fourier-interpolated to the q-point path stored in ``dft_band.npz``, and
+phonon frequencies are compared mode-by-mode after sorting to avoid branch-labelling
+ambiguities.
+
+**Grüneisen parameter**
+
+The mode Grüneisen parameter describes how phonon frequencies shift with volume:
+
+.. math::
+
+   \gamma_i(\mathbf{q}) = -\frac{V}{\omega_i(\mathbf{q})}
+   \frac{\partial \omega_i(\mathbf{q})}{\partial V}
+
+It is computed from three sets of second-order force constants:
+
+1. Equilibrium volume :math:`V_0` — force constants at the relaxed volume.
+2. Expanded volume :math:`V_0(1 + \delta)` — force constants at +1% volumetric strain.
+3. Compressed volume :math:`V_0(1 - \delta)` — force constants at −1% volumetric strain.
+
+The volumetric strain is applied as a uniform scaling of the unit cell
+(:math:`\delta = 0.01` by default). Atomic positions are scaled affinely with the cell;
+no re-relaxation is performed at the strained volumes. Mode Grüneisen parameters are
+evaluated on a 20×20×20 sampling mesh via phonopy's ``PhonopyGruneisen`` interface. The
+reported scalar :math:`\bar{\gamma}` is the q-point- and mode-weighted mean over all
+positive-frequency modes.
+
+**Debye temperature**
+
+The Debye temperature is estimated from the maximum phonon frequency on the sampling
+mesh:
+
+.. math::
+
+   \theta_D = \frac{\hbar \omega_{\max}}{k_B}
+
+where :math:`\omega_{\max} = 2\pi f_{\max}` and :math:`f_{\max}` is the largest
+frequency (THz) found on the 20×20×20 mesh.
+
+**Lattice thermal conductivity**
+
+The lattice thermal conductivity is estimated using the Slack formula (Slack, 1973):
+
+.. math::
+
+   \kappa_L = A \frac{\bar{M} \, \theta_D^3 \, \delta_a}
+                     {\bar{\gamma}^2 \, n^{2/3} \, T}
+
+where :math:`A = 2.43 \times 10^{-6}`, :math:`\bar{M}` is the mean atomic mass (amu),
+:math:`\delta_a = (V_\text{prim}/n)^{1/3}` is the cube root of the volume per atom (Å),
+:math:`\bar{\gamma}` is the mean Grüneisen parameter, :math:`n` is the number of atoms
+in the primitive cell, and :math:`T` is temperature (K). The result is in W/(m·K).
+
+The Slack formula is a semi-empirical approximation that captures the dominant anharmonic
+scattering channel. It does not include phonon–phonon scattering from third-order force
+constants and should be treated as an order-of-magnitude estimate.
+
+
+Computational cost
+------------------
+
+Medium: band-structure and thermal-property calculations together typically take
+several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
+conventional supercell. The thermal step requires three force-constant evaluations
+(V\ :sub:`0`, V\ :sub:`0` + δ, V\ :sub:`0` − δ), so total wall time is roughly four
+times the band-structure-only run. Calculations were run as a single process on CPU on an
+x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
+parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+
+
+
+
+Data availability
+-----------------
+
+Input structures (https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
+
+* ``diamond.yaml``: conventional cubic cell (8 atoms, a = 3.56 Å) × 4×4×4 = 512-atom
+  supercell, used for all MLIP band and thermal calculations.
+
+Reference data:
+
+* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, computed
+  with CASTEP using the RSCAN functional. Provided as ``dft_band.npz``.
+
+* DFT Grüneisen parameter and lattice thermal conductivity computed using the same
+  Grüneisen + Slack pipeline as the MLIP predictions, with CASTEP/RSCAN force constants
+  at V\ :sub:`0`, V\ :sub:`0` + 1%, and V\ :sub:`0` − 1% on a 128-atom primitive
+  supercell. Stored as ``diamond_thermal_ref.json``.
+
+Thermal conductivity method:
+
+* Slack, G.A. (1973). Nonmetallic crystals with high thermal conductivity.
+  *Journal of Physics and Chemistry of Solids*, 34(2), 321–335.
+  https://doi.org/10.1016/0022-3697(73)90092-9
+
+
+Ti64 phonons
+============
+
+Summary
+-------
+
+Performance in predicting phonon dispersions, vibrational densities of states (DOS/PDOS),
+and thermodynamic Helmholtz free energies for a suite of 10 Ti–Al–V alloy phases.
+
+Each case is evaluated by comparing ML-predicted phonon frequencies to CASTEP reference
+phonon frequencies along a fixed high-symmetry q-path. For a subset of cases,
+Helmholtz free-energy errors per atom are additionally reported.
+
+
+Metrics
+-------
+
+1. Dispersion RMSE (mean)
+
+   Mean root mean squared error (RMSE) between predicted and reference phonon frequencies,
+   averaged over 10 Ti64 cases.
+
+   For each case, reference phonon frequencies are parsed from CASTEP ``.castep`` outputs
+   along a fixed high-symmetry q-path. The structure is then relaxed for each model using
+   the LBFGS optimiser (maximum 10000 steps, ``fmax=0.001``). Phonon frequencies are computed
+   using finite displacements in a 2×2×2 supercell with a displacement magnitude of 0.02 Å and
+   ``plusminus=True``. The reference dispersion is linearly interpolated onto an inferred ML
+   path-coordinate grid spanning the same path (a uniform grid with the same number of
+   q-points as the ML dispersion), and the RMSE is evaluated over all q-points and all
+   phonon branches.
+
+2. Dispersion RMSE (max)
+
+   Maximum per-case dispersion RMSE (in THz) over the 10 Ti64 cases.
+
+   Computed as in (1), but taking the maximum RMSE value across cases.
+
+3. ω_avg MAE
+
+   Mean absolute error (MAE) in the average phonon frequency ω_avg over the 10 Ti64 cases.
+
+   For each case, ω_avg is computed as the arithmetic mean of all phonon frequencies after
+   interpolating the reference dispersion onto the inferred ML grid. The per-case absolute error is
+   then averaged across cases. Frequencies are averaged as stored; if imaginary modes are present
+   as negative values, they contribute directly.
+
+4. ΔF (0 K) mean
+
+   Mean absolute error in Helmholtz free energy at 0 K, reported as eV/atom, over the
+   subset of cases where thermodynamic outputs are available.
+
+   For applicable cases, CASTEP q-point phonon frequencies and q-point weights are parsed
+   from CASTEP qpoints ``.castep`` outputs. A reference Helmholtz free energy is computed
+   in the harmonic approximation by combining a weighted zero-point energy contribution
+   with a weighted thermal free-energy contribution evaluated on a dense temperature grid
+   (2000 points spanning 0–2000 K) and interpolated to the ML temperatures. The absolute
+   difference between ML and reference free energy at 0 K is divided by the number of atoms
+   and averaged across thermodynamics-enabled cases. Weights are taken directly from CASTEP;
+   no explicit renormalisation is applied.
+
+5. ΔF (2000 K) mean
+
+   Mean absolute error in Helmholtz free energy at 2000 K, reported as eV/atom, over the
+   subset of cases where thermodynamic outputs are available.
+
+   Computed as in (4), but using the final temperature point (2000 K).
+
+
+Computational cost
+------------------
+
+Medium: dispersion, DOS/PDOS and thermodynamic calculations typically take minutes per model on CPU.
+Thermodynamic calculations are enabled for a 7/10 subset of cases.
+Ti64 calculations were run as a single process on CPU on an
+x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
+parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+
+
+
+Data availability
+-----------------
+
+Full details on the data and benchmark:
+
+* Allen, C. S. & Bartók, A. P. Multi-phase dataset for Ti and Ti-6Al-4V.
+       Preprint at https://arxiv.org/abs/2501.06116 (2025).
+
+* Radova, M., Stark, W. G., Allen, C. S., Maurer, R.J. & Bartók, A. P.
+       Fine-tuning foundation models of materials interatomic potentials
+       with frozen transfer learning.
+       npj Comput Mater 11, 237 (2025).
+       https://doi.org/10.1038/s41524-025-01727-x
+
+Input structures (https://github.com/7radians/ml-peg-data/tree/main/ti64_data):
+
+* CASTEP ``.castep`` outputs providing reference phonon dispersions along fixed
+  high-symmetry q-paths for 10 Ti–Al–V alloy cases.
+* Corresponding CASTEP qpoints ``.castep`` outputs (subset) providing q-point phonon
+  frequencies and weights for thermodynamic reference reconstruction.
+
+Reference data:
+
+* CASTEP phonon dispersions parsed from ``.castep`` outputs (q-path dispersion).
+* CASTEP q-point phonon frequencies and weights parsed from qpoints ``.castep`` outputs
+  (subset), used to compute reference Helmholtz free energies in the harmonic
+  approximation.
+* PBE
