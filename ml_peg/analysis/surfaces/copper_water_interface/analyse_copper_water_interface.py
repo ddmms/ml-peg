@@ -55,6 +55,13 @@ DIPOLE_HIST_BINS = {"start": -0.05, "end": 0.05, "size": 0.0025}
 # water_slab_dipoles benchmark for a consistent dipole definition.
 DIPOLE_CHARGE = 0.5562
 
+# z-dipole window (e/Å) outside which a frame is a "breakdown candidate" (its
+# dipole is large enough to close the interfacial water band gap). Asymmetric,
+# unlike the symmetric water_slab_dipoles threshold, and specific to the
+# q=DIPOLE_CHARGE dipole scale.
+DIPOLE_LOWER_BOUND = -0.019686563354143947
+DIPOLE_UPPER_BOUND = 0.011680694256792076
+
 
 # ----------------------+----------------------+---------------------- #
 # ----------------------+-------- RDF ---------+---------------------- #
@@ -316,6 +323,36 @@ def build_dipole_histogram(
     return stdev_dipole_z_deviation["raw_dipoles"]
 
 
+@pytest.fixture
+def fraction_breakdown_candidates(
+    stdev_dipole_z_deviation: dict[str, dict],
+) -> dict[str, float]:
+    """
+    Get fraction of frames with z-dipole outside the stable band-gap window.
+
+    Parameters
+    ----------
+    stdev_dipole_z_deviation
+        Standard deviation difference of dipole moments of water molecules,
+        carrying the raw per-model dipole arrays.
+
+    Returns
+    -------
+    dict[str, float]
+        Fraction of breakdown-candidate frames for the reference and each model.
+    """
+    raw = stdev_dipole_z_deviation["raw_dipoles"]
+    results = {"ref": None} | dict.fromkeys(MODELS)
+    for key in ("ref", *MODELS):
+        if key not in raw:
+            continue
+        dipoles = np.asarray(raw[key])
+        results[key] = (
+            (dipoles < DIPOLE_LOWER_BOUND) | (dipoles > DIPOLE_UPPER_BOUND)
+        ).sum() / len(dipoles)
+    return results
+
+
 # ----------------------+----------------------+---------------------- #
 # ----------------------+-------- VACF --------+---------------------- #
 # ----------------------+----------------------+---------------------- #
@@ -428,6 +465,7 @@ def metrics(
     mean_vdos_score: dict[str, float],
     mean_vacf_score: dict[str, float],
     stdev_dipole_z_deviation: dict[str, dict],
+    fraction_breakdown_candidates: dict[str, float],
     build_dipole_histogram: dict[str, list],
 ) -> dict[str, dict]:
     """
@@ -443,6 +481,8 @@ def metrics(
         Mean VACF score for all models.
     stdev_dipole_z_deviation
         Standard deviation difference of dipole moments for all models.
+    fraction_breakdown_candidates
+        Fraction of breakdown-candidate frames for all models.
     build_dipole_histogram
         Dipole moment histogram data for all models.
 
@@ -458,6 +498,7 @@ def metrics(
         "stdev_dipole_z_deviation": stdev_dipole_z_deviation[
             "stdev_dipole_z_deviation"
         ],
+        "Fraction Breakdown Candidates": fraction_breakdown_candidates,
     }
 
 
