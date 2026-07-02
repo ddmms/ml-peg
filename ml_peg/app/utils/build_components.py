@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
+import functools
 from importlib import metadata
 from pathlib import Path
 import time
@@ -614,6 +616,24 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+@functools.cache
+def _load_faqs_yaml() -> list[dict[str, str]] | None:
+    """
+    Load and cache FAQs from YAML file to prevent repeated disk I/O.
+
+    Returns
+    -------
+    list[dict[str, str]] | None
+        Parsed FAQs data.
+    """
+    faqs_path = Path(__file__).parent / "faqs.yml"
+    try:
+        with open(faqs_path, encoding="utf8") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return None
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -624,12 +644,8 @@ def build_faqs() -> Div:
         Styled FAQ section with questions as dropdown titles and answers inside.
     """
     # Load FAQs from YAML file
-    faqs_path = Path(__file__).parent / "faqs.yml"
-
-    try:
-        with open(faqs_path, encoding="utf8") as f:
-            faqs_data = yaml.safe_load(f)
-    except FileNotFoundError:
+    cached_faqs = _load_faqs_yaml()
+    if cached_faqs is None:
         return Div(
             "FAQs file not found",
             style={
@@ -638,6 +654,9 @@ def build_faqs() -> Div:
                 "fontStyle": "italic",
             },
         )
+
+    # ⚡ Bolt: deepcopy to prevent caching mutable objects
+    faqs_data = deepcopy(cached_faqs)
 
     if not faqs_data or not isinstance(faqs_data, list):
         return Div("No FAQs available")
