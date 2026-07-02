@@ -143,13 +143,34 @@ def get_mae(analyze_results) -> dict[str, float]:
 
 
 @pytest.fixture
+def get_score(analyze_results) -> dict[str, float]:
+    """
+    Get the mlipaudit benchmark score for each model.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``TautomersResult``.
+
+    Returns
+    -------
+    dict[str, float]
+        The mlipaudit per-molecule soft-threshold score (0 to 1) for each model.
+    """
+    return {model_name: result.score for model_name, result in analyze_results.items()}
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "tautomers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(tautomer_energies, get_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    tautomer_energies, get_mae: dict[str, float], get_score: dict[str, float]
+) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -159,6 +180,8 @@ def metrics(tautomer_energies, get_mae: dict[str, float]) -> dict[str, dict]:
         Reference and predicted reaction energies (triggers the parity plot).
     get_mae
         Mean absolute errors for all models.
+    get_score
+        The mlipaudit benchmark scores for all models.
 
     Returns
     -------
@@ -167,6 +190,7 @@ def metrics(tautomer_energies, get_mae: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAE": get_mae,
+        "Tautomer Score": get_score,
     }
 
 
