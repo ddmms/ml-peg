@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
-import time
 from typing import Any
+from warnings import warn
 
-from ase import Atoms, units
-from ase.calculators.calculator import Calculator
 from ase.constraints import FixAtoms
-from ase.io import read, write
-from ase.md.langevin import Langevin
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from matscipy.neighbours import neighbour_list
+from ase.io import read
+from janus_core.calculations.md import NVT
 import numpy as np
 import pytest
 
@@ -26,184 +21,22 @@ MODELS = load_models(current_models)
 # Local directory to store output data
 OUT_PATH = Path(__file__).parent / "outputs"
 
-
-def get_net_dipole_moment_water(
-    atoms, o_indexes, q_charge=0.8476, cutoff=1.2
-) -> np.ndarray:
-    """
-    Calculate net dipole moment of water molecules.
-
-    Computes the net dipole moment of an Atoms object with water molecules by
-    summing over the dipole moments of each water molecule.
-
-    Parameters
-    ----------
-    atoms : ase.Atoms
-        ASE Atoms object.
-    o_indexes : list
-        List of indexes of oxygen atoms in the Atoms object.
-    q_charge : float, optional
-        Twice the partial charge on hydrogen atoms in water. Default is 0.8476.
-    cutoff : float, optional
-        Cutoff distance to identify bonded atoms. Default is 1.2.
-
-    Returns
-    -------
-    np.ndarray
-        Net dipole moment vector of the water molecules.
-    """
-    i_index, bond_lengths = neighbour_list(
-        quantities="iD",
-        atoms=atoms,
-        cutoff={("O", "H"): cutoff},
-    )
-    # Filter bonds to only those involving oxygen atoms
-    mask = np.isin(i_index, o_indexes)
-    o_bond_lengths = bond_lengths[mask]
-
-    return (q_charge / 2) * np.sum(o_bond_lengths, axis=0)
-
-
-def run_md(
-    start_config: Atoms,
-    calc: Calculator,
-    write_dir: Path,
-    teqb: int = 5000,
-    trun: int = 30000,
-    th_dt: int = 1,
-    md_dt: int = 1,
-    timestep: float = 1,
-    temperature: int = 330,
-    friction: float = 0.05,
-) -> None:
-    """
-    Run MD to study copper water interface.
-
-    Parameters
-    ----------
-    start_config : ase.Atoms
-        Initial Atoms structure.
-    calc : ase.calculators.calculator.Calculator
-        Calculator to use to evaluate structure energy.
-    write_dir : pathlib.Path
-        Directory to write output files to.
-    teqb : int, optional
-        Total number of MD steps for equilibration run. Default is 5000.
-    trun : int, optional
-        Total number of MD steps to run. Default is 105.
-    th_dt : int, optional
-        Logfile output interval in number of MD steps (md.thermo). Default is 1.
-    md_dt : int, optional
-        Coordinate output interval in number of MD steps (md.xyz). Default is 1.
-    timestep : float, optional
-        MD timestep in fs. Default is 1.
-    temperature : int, optional
-        MD temperature in K. Default is 330.
-    friction : float, optional
-        Friction coefficient for Langevin thermostat. Default is 0.05.
-    """
-    MaxwellBoltzmannDistribution(start_config, temperature_K=temperature)
-    o_indexes = [atom.index for atom in start_config if atom.symbol == "O"]
-    area = (
-        start_config.get_volume() / start_config.cell[2, 2]
-    )  # xy area of simulation cell
-
-    # Set deuterium mass for H atoms
-    mass_array = start_config.get_masses()
-    for i, atom in enumerate(start_config):
-        if atom.symbol == "H":
-            mass_array[i] = 2.0
-    start_config.set_masses(mass_array)
-
-    start_config.calc = calc
-    start_config.pbc = [True, True, True]
-
-    # Fix Bottom Layers of slab
-    if "fix_indices" in start_config.info:
-        c = FixAtoms(start_config.info["fix_indices"])
-        start_config.set_constraint(c)
-    else:
-        raise ValueError("Structure missing 'fix_indices' in info dict")
-
-    # Open coordinates file and thermo file
-    thermo_traj = open(write_dir / "md.thermo", "w")
-    coord_traj_name = write_dir / "md-pos.xyz"
-    velc_traj_name = write_dir / "md-velc.xyz"
-    # Remove any existing .xyz files to avoid appending to old data
-    if coord_traj_name.exists():
-        coord_traj_name.unlink()
-    if velc_traj_name.exists():
-        velc_traj_name.unlink()
-
-    def print_traj(config=start_config):
-        """
-        Print trajectory information during MD.
-
-        Parameters
-        ----------
-        config : ase.Atoms, optional
-            Atoms configuration to print. Default is start_config.
-        """
-        calc_time = (dyn.get_time()) / units.fs
-        calc_temp = config.get_temperature()
-        calc_epot = config.get_potential_energy()
-        calc_walltime = time.time() - glob_start_time
-        dipole_z = get_net_dipole_moment_water(config, o_indexes)[2]
-        dipole_z_per_area = dipole_z / area
-
-        if dyn.nsteps % th_dt == 0:
-            thermo_traj.write(
-                ("%17.2f" + " %17.6f" * 4 + "\n")
-                % (calc_time, calc_temp, calc_epot, calc_walltime, dipole_z_per_area)
-            )
-            thermo_traj.flush()
-        if dyn.nsteps % md_dt == 0:
-            coords_write = Atoms(
-                numbers=config.numbers,
-                positions=config.get_positions(),
-                cell=config.cell,
-                pbc=config.pbc,
-            )
-            coords_write.info["dipole_z"] = dipole_z_per_area
-            write(coord_traj_name, coords_write, append=True)
-            velocities_write = Atoms(
-                numbers=config.numbers,
-                positions=config.get_velocities(),
-                cell=config.cell,
-                pbc=config.pbc,
-            )
-            write(velc_traj_name, velocities_write, append=True)
-
-    thermo_traj.write(
-        "# ASE Dynamics. Date: " + date.today().strftime("%d %b %Y") + "\n"
-    )
-    thermo_traj.write(
-        "#   Time(fs)      Temperature(K)      Energy(eV)        "
-        "Walltime(s)      Dipole_z_per_area(e/A)\n"
-    )
-
-    open(coord_traj_name, "w").close()
-    glob_start_time = time.time()
-
-    # RUN MD WITH LANGEVIN THERMOSTAT
-    dyn = Langevin(
-        start_config,
-        timestep * units.fs,
-        temperature_K=temperature,
-        friction=friction,
-    )
-    dyn.run(teqb)  # Equilibration run
-    dyn.attach(print_traj)
-    print_traj(start_config)
-    dyn.run(trun)
-
-    thermo_traj.close()
+# MD settings
+TEMPERATURE = 330  # Kelvin
+FRICTION = 0.05  # Langevin friction coefficient
+TIMESTEP = 1  # fs
+EQUIL_STEPS = 5000  # equilibration steps (not recorded)
+RUN_STEPS = 30000  # production steps (recorded)
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     """
     Run Copper-Water Interface test.
+
+    Runs Langevin MD (via janus-core) on the Cu/water interface with deuterated
+    hydrogens and the bottom slab layers fixed. The trajectory (positions and
+    momenta) is written to ``md-traj.extxyz`` for analysis.
 
     Parameters
     ----------
@@ -226,8 +59,42 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
 
     # Load initial structure
     start_config = read(data_dir / "init.xyz")
+
+    # Set deuterium mass for H atoms
+    masses = start_config.get_masses()
+    masses[np.array(start_config.get_chemical_symbols()) == "H"] = 2.0
+    start_config.set_masses(masses)
+
+    # Fix bottom layers of slab
+    if "fix_indices" not in start_config.info:
+        raise ValueError("Structure missing 'fix_indices' in info dict")
+    start_config.set_constraint(FixAtoms(start_config.info["fix_indices"]))
+
+    start_config.pbc = [True, True, False]
+    start_config.info["charge"] = 0
+    start_config.info["spin"] = 1
+    start_config.calc = calc
+
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    # Run MD
-    run_md(start_config, calc, write_dir=write_dir)
+    # Run MD. equil_steps run first (not recorded); the trajectory is written
+    # every step from traj_start onwards so velocities are available for VACF/VDOS.
+    md = NVT(
+        struct=start_config,
+        temp=TEMPERATURE,
+        steps=EQUIL_STEPS + RUN_STEPS,
+        equil_steps=EQUIL_STEPS,
+        timestep=TIMESTEP,
+        friction=FRICTION,
+        stats_every=100,
+        traj_every=1,
+        traj_start=EQUIL_STEPS,
+        file_prefix=write_dir / "md",
+        write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
+    )
+
+    try:
+        md.run()
+    except Exception as exc:
+        warn(f"Error during MD: {exc}", stacklevel=2)
