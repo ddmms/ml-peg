@@ -23,3 +23,9 @@ metrics:
     unit: e/Å
     tooltip: Difference in Standard Deviation of Dipole Z Deviation
     level_of_theory: PBE-D3
+  Fraction Breakdown Candidates:
+    good: 0
+    bad: 1
+    unit: null
+    tooltip: Fraction of structures with z-dipole outside the band-gap window
+    level_of_theory: PBE-D3
