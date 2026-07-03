@@ -76,3 +76,46 @@ Reference data:
 
 * Same as input data
 * Experimental
+
+
+Bond length distribution
+========================
+
+Summary
+-------
+
+Performance in maintaining physically reasonable covalent bond lengths during molecular
+dynamics of small organic molecules. For each of a set of molecules covering the C-C, C=C,
+C#C, C-N, C-O, C=O and C-F bond types, an NVT molecular dynamics simulation is run at 300 K
+starting from a QM-optimised reference geometry, and the deviation of a tracked bond from
+its reference length is measured along the trajectory.
+
+Metrics
+-------
+
+1. Bond length deviation
+
+The length of the tracked bond is measured at each frame of the trajectory, and its absolute
+deviation from the reference bond length is averaged over the trajectory and across all
+molecules. A well behaved potential keeps bonds close to their reference length, so a lower
+deviation is better.
+
+A histogram shows the distribution of the sampled bond length deviations for each model.
+
+Computational cost
+------------------
+
+High: one MD simulation per molecule, each 1,000,000 steps. Faster inference can be achieved
+using the jax-accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. Reference geometries selected from the QM9 dataset
+  (Ramakrishnan et al., Scientific Data 1, 140022, 2014).
+
+Reference data:
+
+* QM-optimised equilibrium bond lengths of the reference geometries.
