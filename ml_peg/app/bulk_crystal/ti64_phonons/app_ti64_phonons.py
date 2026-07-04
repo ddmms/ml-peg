@@ -30,9 +30,10 @@ TABLE_PATH = DATA_PATH / "ti64_phonons_metrics_table.json"
 SCATTER_PATH = DATA_PATH / "ti64_phonons_interactive.json"
 INFO_PATH = DATA_PATH / "info.json"
 
+# Sphinx generates hyphenated anchors from section titles ("Ti64 phonons").
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
-    f"#{BENCHMARK_NAME}"
+    "#ti64-phonons"
 )
 
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME

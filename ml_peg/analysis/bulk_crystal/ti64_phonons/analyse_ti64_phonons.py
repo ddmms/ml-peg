@@ -8,15 +8,14 @@ import pickle
 import shutil
 from typing import Any
 
-from ase.units import kJ, mol
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.bulk_crystal.ti64_phonons.calc_ti64_phonons import CASES, TP_ON
+from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import EV_TO_KJMOL
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -30,9 +29,6 @@ SCATTER_FILENAME = OUT_PATH / "ti64_phonons_interactive.json"
 
 METRICS_YML = Path(__file__).with_name("metrics.yml")
 THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
-
-CASE_NAMES = [spec["case_name"] for spec in CASES]
-EV_TO_KJMOL = mol / kJ
 
 OMEGA_METRIC_ID = "omega_avg_thz_mae"
 METRIC_ID_TO_LABEL: dict[str, str] = {
@@ -184,9 +180,15 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
-    # Pre-load reference data once and copy structures for the app viewer.
+    # Discover cases from the reference outputs, pre-load them once, and copy
+    # structures for the app viewer. Free-energy references only exist for the
+    # thermodynamics-enabled subset of cases.
+    case_names = sorted(
+        path.name.removesuffix("_band_structure.npz")
+        for path in REF_PATH.glob("*_band_structure.npz")
+    )
     ref_cache: dict[str, dict[str, Any]] = {}
-    for case in CASE_NAMES:
+    for case in case_names:
         ref_band = _load_band(REF_PATH / f"{case}_band_structure.npz")
         if ref_band is None:
             print(f"Missing DFT reference for {case}, skipping case.")
@@ -232,9 +234,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
                 continue
 
             ref_on_pred = _interp_ref_bands(ref_dist, ref_freqs, pred_dist)
-            rmse_by_case[case] = float(
-                np.sqrt(np.mean((ref_on_pred - pred_freqs) ** 2))
-            )
+            rmse_by_case[case] = float(rmse(ref_on_pred.ravel(), pred_freqs.ravel()))
 
             data_paths = {
                 "ref_band": str(
@@ -272,7 +272,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
                 }
             )
 
-            if case in TP_ON and ref_data["thermal"] is not None:
+            if ref_data["thermal"] is not None:
                 pred_thermal = _load_thermal(
                     model_dir / f"{case}_thermal_properties.json"
                 )

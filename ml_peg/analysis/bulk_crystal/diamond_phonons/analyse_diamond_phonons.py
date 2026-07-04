@@ -184,11 +184,14 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                         "label": "diamond",
                         "ref": float(ref_val),
                         "pred": float(pred_val),
-                        "data_paths": data_paths,
-                        "structure_paths": structure_paths,
                     }
                     for pred_val, ref_val in zip(pred_flat, ref_flat, strict=True)
                 ]
+                # All points belong to the same system; the app resolves a
+                # click by id to the first matching point, so the (identical)
+                # asset paths only need to be stored once.
+                points[0]["data_paths"] = data_paths
+                points[0]["structure_paths"] = structure_paths
         elif pred_freqs is not None:
             print(
                 f"{model_name}: band shape mismatch "
