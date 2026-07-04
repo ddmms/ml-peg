@@ -106,7 +106,8 @@ def run_gscdb138(
         df_refs["Reference"] *= units.Hartree
 
         # Calculate relative energy for each entry.
-        for _, row in tqdm(df_refs.iterrows(), dataset, total=df_refs.shape[0]):
+        # ⚡ Bolt: Iterating over to_dict('records') is much faster than iterrows
+        for row in tqdm(df_refs.to_dict("records"), dataset, total=df_refs.shape[0]):
             atoms_list = []
             identifier = row["Reaction"]
             reactions = row["Stoichiometry"].split(",")  # Parse stoichiometry string.
