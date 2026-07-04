@@ -32,7 +32,14 @@ PRED_FORCES_KEY = "pred_forces"
 
 
 def _cluster_data_path() -> Path:
-    # download and locate the cluster extended XYZ file
+    """
+    Locate the downloaded cluster extended XYZ file.
+
+    Returns
+    -------
+    Path
+        Path to the cluster input file.
+    """
     data_dir = download_s3_data(key=S3_KEY, filename=S3_FILENAME)
     candidates = [
         data_dir / INPUT_FILENAME,
@@ -51,7 +58,19 @@ def _cluster_data_path() -> Path:
 
 
 def _count_extxyz_frames(path: Path) -> int:
-    # counts structures quickly within an extended XYZ file
+    """
+    Count structures in an extended XYZ file.
+
+    Parameters
+    ----------
+    path
+        Extended XYZ file.
+
+    Returns
+    -------
+    int
+        Number of structures in the file.
+    """
     count = 0
     with path.open(encoding="utf8") as file:
         while True:
@@ -84,14 +103,32 @@ def _count_extxyz_frames(path: Path) -> int:
 
 
 def _spin_multiplicity(atoms: Atoms) -> int:
-    # return singlet/doublet spin multiplicity for a neutral cluster:
-    # 1 for an even number of electrons, otherwise 2
+    """
+    Return singlet/doublet spin multiplicity for a neutral cluster.
+
+    Parameters
+    ----------
+    atoms
+        Cluster structure.
+
+    Returns
+    -------
+    int
+        Spin multiplicity.
+    """
     n_electrons = int(np.sum(atoms.get_atomic_numbers()))
     return 1 if n_electrons % 2 == 0 else 2
 
 
 def _set_charge_and_spin(atoms: Atoms) -> None:
-    # sets charge and spin information in-place on an Atoms object
+    """
+    Set charge and spin metadata in-place.
+
+    Parameters
+    ----------
+    atoms
+        Cluster structure to update.
+    """
     spin_multiplicity = _spin_multiplicity(atoms)
     atoms.info["charge"] = 0
     atoms.info["spin"] = spin_multiplicity
@@ -99,7 +136,21 @@ def _set_charge_and_spin(atoms: Atoms) -> None:
 
 
 def _reference_forces(atoms: Atoms, reference_key: str) -> np.ndarray:
-    # gets reference forces from an input cluster
+    """
+    Get reference forces from an input cluster.
+
+    Parameters
+    ----------
+    atoms
+        Cluster structure.
+    reference_key
+        Name of the reference-force array.
+
+    Returns
+    -------
+    np.ndarray
+        Reference forces.
+    """
     if reference_key not in atoms.arrays:
         raise KeyError(f"Missing '{reference_key}' in cluster input.")
     return np.asarray(atoms.arrays[reference_key], dtype=float)

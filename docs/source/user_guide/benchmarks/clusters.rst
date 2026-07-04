@@ -49,7 +49,7 @@ to eight atoms. There are 10,000 clusters for each size from three to eight atom
 inclusive. Atoms were placed randomly while enforcing all pairwise interatomic distances
 to lie between 2.0 and 2.5 Å; element identities were sampled randomly from the 18
 elements of the first three rows of the periodic table.
-  
+
 The extended XYZ input contains both ``mad2_forces`` and ``omol25_forces`` reference
 arrays. Non-finite reference or predicted force components are excluded from the
 evaluation of the corresponding metric. These correspond to non-converged DFT
