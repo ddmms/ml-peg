@@ -3,12 +3,13 @@ Ti64 phonons CASTEP phonon dispersion reader.
 
 This module provides a lightweight parser for CASTEP phonon output files to
 extract phonon frequencies (in THz) and q-point coordinates. Optionally, the
-dispersion x-axis can be rescaled to span [0, 1] along a provided k-path.
+q-path can be split into high-symmetry segments matching a provided k-path.
 
 Notes
 -----
 - This parser assumes the CASTEP output uses THz units for phonon frequencies.
-- The rescaling assumes ``kpath_in`` matches the k-path used in the CASTEP run.
+- Segment detection assumes ``kpath_in`` matches the k-path used in the CASTEP
+  run.
 """
 
 from __future__ import annotations
@@ -16,12 +17,9 @@ from __future__ import annotations
 from pathlib import Path
 import re
 from typing import Any
-import warnings
 
 import ase.io
 import numpy as np
-
-warnings.simplefilter("ignore")
 
 
 class PhononFromCastep:
@@ -33,10 +31,9 @@ class PhononFromCastep:
     castep_file
         Path to a CASTEP output file readable by ASE.
     kpath_in
-        Optional k-path (high-symmetry points) used to rescale the dispersion
-        axis onto [0, 1]. Must match the CASTEP k-path convention.
-    verbose
-        If ``True``, print basic debug information.
+        Optional k-path (high-symmetry points) used to split the parsed
+        q-points into per-segment index lists (``kpath_idx``). Must match the
+        CASTEP k-path convention.
 
     Attributes
     ----------
@@ -50,18 +47,13 @@ class PhononFromCastep:
         Frequencies array of shape ``(kpoints, number_of_branches)`` in THz.
     kpath
         q-point coordinates array of shape ``(kpoints, 3)``.
-    xscale
-        Optional rescaled x-axis (only present if ``kpath_in`` was provided).
+    kpath_idx
+        Per-segment q-point index lists (only set if ``kpath_in`` was given).
     """
 
-    RESCALE_TOL = 1e-4
+    SEGMENT_TOL = 1e-4
 
-    def __init__(
-        self,
-        castep_file: str,
-        kpath_in: Any | None = None,
-        verbose: bool = False,
-    ) -> None:
+    def __init__(self, castep_file: str, kpath_in: Any | None = None) -> None:
         """
         Initialise the reader and parse frequencies and q-point coordinates.
 
@@ -70,37 +62,23 @@ class PhononFromCastep:
         castep_file
             Path to a CASTEP output file readable by ASE.
         kpath_in
-            Optional k-path (high-symmetry points) used to rescale the dispersion
-            axis onto [0, 1]. Must match the CASTEP k-path convention.
-        verbose
-            If ``True``, print basic debug information.
+            Optional k-path (high-symmetry points) used to split the parsed
+            q-points into per-segment index lists.
         """
         self.filename = castep_file
 
         if not castep_file:
             raise ValueError("castep_file must be provided.")
 
-        try:
-            atoms = ase.io.read(castep_file)
-        except AttributeError as exc:
-            raise TypeError("Invalid input type for castep_file.") from exc
-
+        atoms = ase.io.read(castep_file)
         self.number_of_branches = len(atoms) * 3
 
         self.read_in_file()
         self.get_frequencies()
         self.get_kpath()
 
-        if verbose:
-            print(f"Atoms object info:\n{atoms}\n")
-            print(self.__dict__.keys(), "\n")
-
         if kpath_in is not None:
-            self.rescale_xaxis(kpath_in)
-            if verbose:
-                print("k-path rescaled")
-        elif verbose:
-            print("no k-path re-scaling done")
+            self.find_index(np.array(kpath_in, dtype=float))
 
         delattr(self, "filelines")
 
@@ -158,7 +136,7 @@ class PhononFromCastep:
 
     def find_index(self, in_path: np.ndarray) -> None:
         """
-        Find indices of high-symmetry points along the parsed k-path.
+        Split the parsed q-path into per-segment index lists (``kpath_idx``).
 
         Parameters
         ----------
@@ -170,44 +148,10 @@ class PhononFromCastep:
         self.kpath_idx: list[list[int]] = []
 
         for i, val in enumerate(self.kpath):
-            if abs(np.linalg.norm(in_path[j] - val)) < self.RESCALE_TOL:
+            if abs(np.linalg.norm(in_path[j] - val)) < self.SEGMENT_TOL:
                 sympoint_idx.append(i)
                 j += 1
 
         for i in range(len(sympoint_idx) - 1):
             idxs = list(range(sympoint_idx[i], sympoint_idx[i + 1] + 1))
             self.kpath_idx.append(idxs)
-
-    def rescale_xaxis(self, rescale_xaxis: Any) -> None:
-        """
-        Rescale the dispersion axis to span [0, 1] over the provided k-path.
-
-        Parameters
-        ----------
-        rescale_xaxis
-            Iterable of high-symmetry points (each a length-3 coordinate) used
-            to determine segment boundaries for rescaling.
-        """
-        in_path = np.array(rescale_xaxis, dtype=float)
-        self.find_index(in_path)
-
-        xsplit = 1.0 / len(self.kpath_idx)
-        xscale = [0.0]
-        pos = 0.0
-
-        kpath_cut: list[list[int]] = [self.kpath_idx[0]]
-        for i in range(len(self.kpath_idx) - 1):
-            kpath_cut.append(self.kpath_idx[i + 1][1:])
-
-        x_inc = xsplit / (len(kpath_cut[0]) - 1)
-        for _ in range(len(kpath_cut[0]) - 1):
-            pos += x_inc
-            xscale.append(pos)
-
-        for i in range(len(kpath_cut) - 1):
-            x_inc = xsplit / len(kpath_cut[i + 1])
-            for _ in range(len(kpath_cut[i + 1])):
-                pos += x_inc
-                xscale.append(pos)
-
-        self.xscale = np.array(xscale, dtype=float)

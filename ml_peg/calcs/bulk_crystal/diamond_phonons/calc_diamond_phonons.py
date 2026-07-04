@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 import json
 from pathlib import Path
 import pickle
@@ -36,7 +37,6 @@ DFT_REF_PATH = OUT_PATH / "DFT"
 FMAX = 0.005
 RELAX_STEPS = 1000
 
-Q_MESH = 6
 THERMAL_MESH = [20, 20, 20]
 # 4×4×4 of the 8-atom conventional cell = 512-atom supercell.
 GRUNEISEN_SUPERCELL = [[4, 0, 0], [0, 4, 0], [0, 0, 4]]
@@ -89,6 +89,7 @@ def _detect_hs_boundaries(qpoints: np.ndarray) -> list[int]:
     return [0] + turns + [len(qpoints) - 1]
 
 
+@lru_cache(maxsize=1)
 def _reference_band_path(
     data_dir: Path,
 ) -> tuple[list[np.ndarray], np.ndarray, list[str], list[bool]]:
@@ -225,7 +226,6 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
             phonons, _, _ = get_fc2_and_freqs(
                 phonons=phonons,
                 calculator=calc,
-                q_mesh=np.array([Q_MESH] * 3),
                 symmetrize_fc2=True,
             )
             phonons.run_band_structure(

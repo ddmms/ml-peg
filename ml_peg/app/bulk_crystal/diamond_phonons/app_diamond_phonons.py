@@ -30,9 +30,10 @@ TABLE_PATH = DATA_PATH / "diamond_phonons_bands_table.json"
 SCATTER_PATH = DATA_PATH / "diamond_phonons_bands_interactive.json"
 INFO_PATH = DATA_PATH / "info.json"
 
+# Sphinx generates hyphenated anchors from section titles ("Diamond phonons").
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
-    f"#{BENCHMARK_NAME}"
+    "#diamond-phonons"
 )
 
 CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
@@ -57,8 +58,8 @@ class DiamondPhononApp(BaseApp):
         label_to_key = {label: key for key, label in metric_labels.items()}
         # Thermal metric columns have no per-point scatter data; fall back to
         # the band frequency parity plot so any cell click produces a response.
-        for thermal_col in ["Δγ", "Δθ_D (K)", "Δκ_L (W/m/K)"]:
-            label_to_key[thermal_col] = "band_mae"
+        for label in self.metrics:
+            label_to_key.setdefault(label, "band_mae")
 
         metric_handler = partial(
             build_serialized_scatter_content,

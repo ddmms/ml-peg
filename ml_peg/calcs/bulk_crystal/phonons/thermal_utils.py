@@ -6,7 +6,7 @@ from typing import Any
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.units import _e, _hbar, _k, kB
+from ase.units import _e, _hbar, _k, kB, kJ, mol
 import numpy as np
 from phonopy import PhonopyGruneisen
 from phonopy.api_phonopy import Phonopy
@@ -18,6 +18,9 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
 
 # Slack (1973) empirical constant: M in amu, θ_D in K, δ in Å → κ in W/(m·K)
 _SLACK_A = 2.43e-6
+
+# Conversion for phonopy's thermal-properties convention (kJ/mol per cell).
+EV_TO_KJMOL = mol / kJ
 
 
 def _build_strained_phonopy(
@@ -187,6 +190,39 @@ def harmonic_free_energy(
     return free_energy
 
 
+def gaussian_dos(
+    frequencies: np.ndarray,
+    weights: np.ndarray,
+    grid: np.ndarray,
+    sigma: float,
+) -> np.ndarray:
+    """
+    Gaussian-broadened phonon DOS on a frequency grid.
+
+    Parameters
+    ----------
+    frequencies
+        Phonon frequencies (THz), shape ``(nq, n_bands)``.
+    weights
+        Q-point weights, shape ``(nq,)``.
+    grid
+        Frequency grid (THz) to evaluate the DOS on.
+    sigma
+        Gaussian broadening (THz).
+
+    Returns
+    -------
+    np.ndarray
+        DOS values on ``grid``.
+    """
+    freqs = np.asarray(frequencies, dtype=float)
+    w = np.broadcast_to(np.asarray(weights, dtype=float)[:, None], freqs.shape).ravel()
+    freqs = freqs.ravel()
+    diff = freqs[:, None] - np.asarray(grid, dtype=float)[None, :]
+    norm = 1.0 / (sigma * np.sqrt(2.0 * np.pi))
+    return norm * np.sum(w[:, None] * np.exp(-0.5 * (diff / sigma) ** 2), axis=0)
+
+
 def debye_temperature_from_max_freq(phonons: Phonopy, q_mesh: np.ndarray) -> float:
     """
     Estimate the Debye temperature from the maximum mesh frequency.
@@ -326,7 +362,10 @@ def compute_thermal_properties(
         symmetrize_fc2=symmetrize_fc2,
     )
 
-    theta_d = debye_temperature_from_max_freq(phonons, q_mesh)
+    # The Grüneisen step already evaluated the equilibrium mesh; reuse its
+    # frequencies rather than re-running the full mesh diagonalisation.
+    f_max = float(np.max(grun_dict["frequencies"]))
+    theta_d = float(_hbar * 2.0 * np.pi * f_max * 1e12 / _k)
 
     if n_atoms_primitive is None:
         n_atoms_primitive = len(phonons.primitive)
