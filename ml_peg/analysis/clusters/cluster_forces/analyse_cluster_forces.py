@@ -12,6 +12,7 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
+    get_struct_info,
     load_metrics_config,
     mae,
     sample_density_grid,
@@ -34,6 +35,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern=BENCHMARK_FILENAME,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 REFERENCES = (
     {
@@ -53,12 +61,38 @@ PRED_FORCES_KEY = "pred_forces"
 
 
 def _metric_name(reference: dict[str, str], cluster_size: int) -> str:
-    # build metric names consistently with metrics.yml and the app
+    """
+    Build a metric name.
+
+    Parameters
+    ----------
+    reference
+        Reference metadata.
+    cluster_size
+        Number of atoms in the cluster.
+
+    Returns
+    -------
+    str
+        Metric name.
+    """
     return f"{reference['label']} Force MAE ({cluster_size} atoms)"
 
 
 def _load_structs(model: str) -> list[Atoms] | None:
-    # load evaluated clusters for a model, if present
+    """
+    Load evaluated clusters for a model.
+
+    Parameters
+    ----------
+    model
+        Model name.
+
+    Returns
+    -------
+    list[Atoms] | None
+        Evaluated clusters, or None when no output exists.
+    """
     path = CALC_PATH / model / BENCHMARK_FILENAME
     if not path.exists():
         return None
@@ -69,7 +103,19 @@ def _load_structs(model: str) -> list[Atoms] | None:
 
 
 def _group_by_cluster_size(structs: list[Atoms]) -> dict[int, list[Atoms]]:
-    # group evaluated clusters by atom count
+    """
+    Group evaluated clusters by atom count.
+
+    Parameters
+    ----------
+    structs
+        Evaluated clusters.
+
+    Returns
+    -------
+    dict[int, list[Atoms]]
+        Structures keyed by cluster size.
+    """
     grouped: dict[int, list[Atoms]] = {size: [] for size in CLUSTER_SIZES}
     for atoms in structs:
         cluster_size = len(atoms)
@@ -82,7 +128,21 @@ def _force_components(
     structs: list[Atoms],
     reference: dict[str, str],
 ) -> tuple[np.ndarray, np.ndarray, list[Atoms], int]:
-    # extract finite force components and remember source structures for plotting
+    """
+    Extract finite force components.
+
+    Parameters
+    ----------
+    structs
+        Evaluated clusters.
+    reference
+        Reference metadata.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, list[Atoms], int]
+        Reference components, predictions, source structures, and excluded count.
+    """
     ref_components: list[np.ndarray] = []
     pred_components: list[np.ndarray] = []
     component_structs: list[Atoms] = []
@@ -120,7 +180,20 @@ def _write_density_trajectories(
     component_structs: list[Atoms],
     traj_dir: Path,
 ) -> None:
-    # write one extxyz trajectory per sampled density point for structure viewing
+    """
+    Write sampled density-point trajectories.
+
+    Parameters
+    ----------
+    ref_vals
+        Reference force components.
+    pred_vals
+        Predicted force components.
+    component_structs
+        Source structures for each force component.
+    traj_dir
+        Output trajectory directory.
+    """
     if len(ref_vals) == 0 or len(pred_vals) == 0:
         return
 
@@ -215,7 +288,23 @@ def _write_force_parity_plot(
     cluster_size: int,
     force_data: dict[str, dict[str, dict[int, dict[str, Any]]]],
 ) -> dict[str, dict]:
-    # write force parity plot data and sampled structure trajectories
+    """
+    Write force parity plot data.
+
+    Parameters
+    ----------
+    reference
+        Reference metadata.
+    cluster_size
+        Number of atoms in the cluster.
+    force_data
+        Force components by model, reference, and cluster size.
+
+    Returns
+    -------
+    dict[str, dict]
+        Plot input data.
+    """
     data_for_plot = {
         model: model_data[reference["key"]][cluster_size]
         for model, model_data in force_data.items()
@@ -236,7 +325,14 @@ def _write_force_parity_plot(
         },
     )
     def plot() -> dict[str, dict]:
-        # build density-scatter input
+        """
+        Build density-scatter input.
+
+        Returns
+        -------
+        dict[str, dict]
+            Plot input data.
+        """
         return {
             model: {
                 "ref": data["ref"],

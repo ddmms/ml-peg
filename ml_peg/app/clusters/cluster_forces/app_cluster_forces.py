@@ -15,8 +15,11 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Cluster Forces"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/clusters.html#cluster-forces"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/clusters.html#cluster-forces"
+)
 DATA_PATH = APP_ROOT / "data" / "clusters" / "cluster_forces"
+INFO_PATH = DATA_PATH / "info.json"
 CLUSTER_SIZES = (3, 4, 5, 6, 7, 8)
 REFERENCES = (
     ("mad2", "MAD2"),
@@ -54,12 +57,8 @@ class ClusterForcesApp(BaseApp):
             for reference_key, reference_label in REFERENCES:
                 for cluster_size in CLUSTER_SIZES:
                     metric_name = _metric_name(reference_label, cluster_size)
-                    figure_path = (
-                        DATA_PATH
-                        / (
-                            f"figure_force_parity_{reference_key}_"
-                            f"{cluster_size}atoms.json"
-                        )
+                    figure_path = DATA_PATH / (
+                        f"figure_force_parity_{reference_key}_{cluster_size}atoms.json"
                     )
                     if not figure_path.exists():
                         continue
@@ -135,6 +134,7 @@ def get_app() -> ClusterForcesApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
