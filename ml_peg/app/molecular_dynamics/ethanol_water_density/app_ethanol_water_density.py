@@ -15,11 +15,11 @@ from ml_peg.app.utils.load import read_plot
 # -----------------------------------------------------------------------------
 
 CATEGORY = "molecular_dynamics"
-BENCHMARK_NAME = "ethanol_water_density"
+BENCHMARK_NAME = "Ethanol-water densities"
 
 DOCS_URL = f"https://ddmms.github.io/ml-peg/user_guide/benchmarks/{CATEGORY}.html#water-ethanol-density-curves"
 
-DATA_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK_NAME
+DATA_PATH = APP_ROOT / "data" / CATEGORY / "ethanol_water_density"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -36,7 +36,7 @@ class EthanolWaterDecompositionCurvesApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "density": parity,
+                "RMSE density": parity,
             },
         )
 
