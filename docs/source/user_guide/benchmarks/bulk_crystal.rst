@@ -756,6 +756,9 @@ Thermal conductivity method:
   *Journal of Physics and Chemistry of Solids*, 34(2), 321–335.
   https://doi.org/10.1016/0022-3697(73)90092-9
 
+The reference data is independent of public DFT databases, though diamond chemistry
+should be in-domain for models trained on bulk-materials datasets such as OMat24.
+
 
 Ti64 phonons
 ============
@@ -865,3 +868,9 @@ Reference data:
   (subset), used to compute reference Helmholtz free energies in the harmonic
   approximation.
 * PBE
+
+Ti, Ti–Al, Ti–V and Ti–Al–V compounds exist in Alexandria, so metallic Ti-alloy
+environments are in-domain for models trained on datasets derived from it, such as
+OMat24. However, the 8-atom hcp/bcc/hex supercells with particular Al/V substitution
+patterns studied here come from the Allen & Bartók dataset and do not appear in these
+training sets verbatim.

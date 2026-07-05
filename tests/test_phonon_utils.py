@@ -55,7 +55,7 @@ def test_gaussian_dos_normalisation():
     dos = gaussian_dos(freqs, weights, grid, sigma=0.1)
 
     # Weights sum to 1 over q-points, so the DOS integrates to n_bands.
-    np.testing.assert_allclose(np.trapz(dos, grid), 2.0, rtol=1e-3)
+    np.testing.assert_allclose(np.trapezoid(dos, grid), 2.0, rtol=1e-3)
 
 
 def test_slack_thermal_conductivity_scaling():
