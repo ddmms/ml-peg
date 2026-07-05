@@ -39,57 +39,69 @@ INFO = get_struct_info(
 )
 
 
-@pytest.fixture
-@plot_scatter(
-    filename=OUT_PATH / "figure_water_cl2.json",
-    title="Relaxation trajectory.",
-    x_label="Optimization step",
-    y_label="Cl-Cl distance, Å",
-    show_line=True,
-)
-def cl_cl_distances() -> dict[str, list]:
+def plot_relaxation(model_name: str):
     """
-    Get Cl-Cl distances for all systems.
-
-    Returns
-    -------
-    dict[str, list]
-        Dictionary of all Cl-Cl distances.
-    """
-    results = {}
-    for model in MODELS:
-        traj = Trajectory(CALC_PATH / model / "relaxation.traj")
-        distances = [atoms.get_distance(219, 220) for atoms in traj]
-        steps = list(range(1, len(distances) + 1))
-        results[model] = [steps, distances]
-
-        structs_dir = OUT_PATH / model
-        structs_dir.mkdir(parents=True, exist_ok=True)
-        for i, atoms in enumerate(traj):
-            write(structs_dir / f"relaxation_step_{i}.xyz", atoms)
-
-    return results
-
-
-@pytest.fixture
-def get_cl2_stability(cl_cl_distances) -> dict[str, float]:
-    """
-    Get Cl2 stability for all models.
+    Plot relaxation paths and save all structure files.
 
     Parameters
     ----------
-    cl_cl_distances
-        Dictionary of Cl-Cl distances for all models.
+    model_name
+        Name of MLIP.
+
+    Returns
+    -------
+    list[list, list]
+        List of optimization steps and Cl-Cl distances.
+    """
+
+    @plot_scatter(
+        filename=OUT_PATH / model_name / "figure_water_cl2.json",
+        title="Relaxation trajectory.",
+        x_label="Optimization step",
+        y_label="Cl-Cl distance, Å",
+        show_line=True,
+    )
+    def cl_cl_distances() -> dict[str, list]:
+        """
+        Get Cl-Cl distances for all systems.
+
+        Returns
+        -------
+        dict[str, list]
+            Dictionary of all Cl-Cl distances.
+        """
+        results = {}
+        traj = Trajectory(CALC_PATH / model_name / "relaxation.traj")
+        distances = [atoms.get_distance(219, 220) for atoms in traj]
+        steps = list(range(1, len(distances) + 1))
+        results[model_name] = [steps, distances]
+
+        structs_dir = OUT_PATH / model_name
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / "relaxation.xyz", traj)
+
+        return results
+
+    return cl_cl_distances()[model_name]
+
+
+@pytest.fixture
+def get_cl2_stability() -> dict[str, float]:
+    """
+    Get Cl2 stability for all models.
 
     Returns
     -------
     dict[str, float]
         Dictionary of Cl2 stability (non-dissociation) for all models.
     """
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        final_distance = cl_cl_distances[model_name][1][-1]
+        cl_cl_distances = plot_relaxation(model_name)
+        final_distance = cl_cl_distances[1][-1]
         results[model_name] = bool(final_distance < 2.2)
+
     return results
 
 
