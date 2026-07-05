@@ -213,3 +213,30 @@ Data availability
 -----------------
 
 https://arxiv.org/html/2603.04228v1
+
+
+Water-Cl2 cluster relaxation
+==========================
+
+Summary
+-------
+
+This test is mainly for long-range models to probe the stability of a Cl2 molecule when two solvated Cl- ions are present far outside the receptive field of the Cl2 molecule, and the total charge of the system being -2.
+
+Geometry relaxation may lead to the Cl2 molecule dissociating (incorrect behaviour) or staying stable (correct behaviour).
+
+Metrics
+-------
+
+1. Dissociation of the Cl-Cl bond based on the interatomic distance.
+
+Computational Cost
+------------------
+
+Low: Requires up to 1000 optimizer steps for a 400-atom system, taking several GPU-minutes to complete.
+
+
+Data availability
+-----------------
+
+The initial structures were generated for MACE-POLAR-1 https://arxiv.org/abs/2602.19411
