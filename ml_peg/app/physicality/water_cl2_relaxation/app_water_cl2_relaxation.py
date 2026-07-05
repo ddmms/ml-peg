@@ -8,7 +8,7 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
+    plot_from_table_cell,
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
@@ -27,36 +27,40 @@ class WaterCl2RelaxationApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_water_cl2.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        scatter_plots = {
+            model: {
+                "Cl2_stability": read_plot(
+                    DATA_PATH / model / "figure_water_cl2.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                )
+            }
+            for model in MODELS
+        }
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            print(f"Model directory exists: {model_dir}")
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
-            structs = [
-                f"/assets/physicality/water_cl2_relaxation/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-            print(len(structs))
-        else:
-            print(f"Model directory does not exist: {model_dir}")
-            structs = []
+        structs = {}
+        for model in MODELS:
+            model_dir = DATA_PATH / model
+            if model_dir.exists():
+                structs[model] = (
+                    f"/assets/physicality/water_cl2_relaxation/{model}/relaxation.xyz"
+                )
+            else:
+                print(f"Model directory does not exist: {model_dir}")
+                structs[model] = ""
 
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Cl2_stability": scatter},
+            cell_to_plot=scatter_plots,
         )
 
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
-        )
+        for model in MODELS:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-figure",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=structs[model],
+                mode="traj",
+            )
 
 
 def get_app() -> WaterCl2RelaxationApp:
@@ -70,6 +74,7 @@ def get_app() -> WaterCl2RelaxationApp:
     """
     return WaterCl2RelaxationApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-polar-1",
         description=("Performance in predicting water-Cl2 relaxation."),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "water_cl2_metrics_table.json",
