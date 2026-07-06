@@ -782,8 +782,8 @@ Metrics
    Mean root mean squared error (RMSE) between predicted and reference phonon frequencies,
    averaged over 10 Ti64 cases.
 
-   For each case, reference phonon frequencies are parsed from CASTEP ``.castep`` outputs
-   along a fixed high-symmetry q-path. Atomic positions are then relaxed for each model
+   For each case, reference phonon frequencies are provided along a fixed high-symmetry
+   q-path, pre-converted from CASTEP outputs. Atomic positions are then relaxed for each model
    using the FIRE optimiser with symmetry fixed (``fmax=0.001``, up to 1000 steps), as in
    the general phonon benchmark; the cell is kept fixed at the reference geometry. Phonon
    frequencies are computed using finite displacements in a 2×2×2 supercell with a
@@ -812,10 +812,9 @@ Metrics
    Mean absolute error in Helmholtz free energy at 0 K, reported as eV/atom, over the
    subset of cases where thermodynamic outputs are available.
 
-   For applicable cases, CASTEP q-point phonon frequencies and q-point weights are parsed
-   from CASTEP qpoints ``.castep`` outputs. A reference Helmholtz free energy is computed
-   in the harmonic approximation (zero-point plus thermal contributions, weighted by the
-   CASTEP q-point weights) on a temperature grid spanning 0–2000 K in 10 K steps, and
+   For applicable cases, a reference Helmholtz free energy is provided, computed in the
+   harmonic approximation from CASTEP q-point phonon frequencies and weights (zero-point
+   plus thermal contributions) on a temperature grid spanning 0–2000 K in 10 K steps, and
    interpolated to the ML temperatures. The ML free energy is computed with phonopy on the
    same temperature grid. The absolute difference between ML and reference free energy at
    0 K is divided by the number of atoms and averaged across thermodynamics-enabled cases.
@@ -854,20 +853,12 @@ Full details on the data and benchmark:
        npj Comput Mater 11, 237 (2025).
        https://doi.org/10.1038/s41524-025-01727-x
 
-Input structures (https://github.com/7radians/ml-peg-data/tree/main/ti64_data):
+Input structures and reference data
+(https://github.com/7radians/ml-peg-data/tree/main/ti64_data):
 
-* CASTEP ``.castep`` outputs providing reference phonon dispersions along fixed
-  high-symmetry q-paths for 10 Ti–Al–V alloy cases.
-* Corresponding CASTEP qpoints ``.castep`` outputs (subset) providing q-point phonon
-  frequencies and weights for thermodynamic reference reconstruction.
-
-Reference data:
-
-* CASTEP phonon dispersions parsed from ``.castep`` outputs (q-path dispersion).
-* CASTEP q-point phonon frequencies and weights parsed from qpoints ``.castep`` outputs
-  (subset), used to compute reference Helmholtz free energies in the harmonic
-  approximation.
-* PBE
+* Per-case structures, phonon dispersions, DOS, and (subset) harmonic Helmholtz free
+  energies for 10 Ti–Al–V alloy cases, pre-converted from CASTEP (PBE) outputs to the
+  shared phonon benchmark formats.
 
 Ti, Ti–Al, Ti–V and Ti–Al–V compounds exist in Alexandria, so metallic Ti-alloy
 environments are in-domain for models trained on datasets derived from it, such as
