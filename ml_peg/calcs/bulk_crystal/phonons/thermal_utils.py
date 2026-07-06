@@ -6,7 +6,7 @@ from typing import Any
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.units import _e, _hbar, _k, kB, kJ, mol
+from ase.units import _hbar, _k, kJ, mol
 import numpy as np
 from phonopy import PhonopyGruneisen
 from phonopy.api_phonopy import Phonopy
@@ -141,86 +141,6 @@ def compute_gruneisen(
         "weights": weights,
         "frequencies": frequencies,
     }
-
-
-def harmonic_free_energy(
-    frequencies_thz: np.ndarray,
-    weights: np.ndarray,
-    temperatures: np.ndarray,
-) -> np.ndarray:
-    """
-    Harmonic Helmholtz free energy from phonon frequencies and q-point weights.
-
-    ``F(T) = Σ_q Σ_j w_q [ ħω_qj / 2 + k_B T ln(1 − exp(−ħω_qj / k_B T)) ]``
-
-    Non-positive (imaginary) modes are excluded from the sum.
-
-    Parameters
-    ----------
-    frequencies_thz
-        Phonon frequencies in THz, shape ``(nq, n_bands)``.
-    weights
-        Q-point weights, shape ``(nq,)``. For a per-cell free energy the
-        weights should sum to 1.
-    temperatures
-        Temperatures in K, shape ``(nt,)``.
-
-    Returns
-    -------
-    np.ndarray
-        Free energies in eV (per cell), shape ``(nt,)``.
-    """
-    freqs = np.asarray(frequencies_thz, dtype=float)
-    w = np.broadcast_to(np.asarray(weights, dtype=float)[:, None], freqs.shape).ravel()
-    freqs = freqs.ravel()
-
-    mask = freqs > 0
-    freqs, w = freqs[mask], w[mask]
-    # Mode energies ħω in eV, with ω = 2π f
-    e_modes = _hbar * 2.0 * np.pi * freqs * 1e12 / _e
-
-    zpe = 0.5 * np.sum(w * e_modes)
-    free_energy = np.empty(len(np.atleast_1d(temperatures)), dtype=float)
-    for i, temp in enumerate(np.atleast_1d(temperatures)):
-        if temp <= 0:
-            free_energy[i] = zpe
-            continue
-        thermal = kB * temp * np.log(1.0 - np.exp(-e_modes / (kB * temp)))
-        free_energy[i] = zpe + np.sum(w * thermal)
-    return free_energy
-
-
-def gaussian_dos(
-    frequencies: np.ndarray,
-    weights: np.ndarray,
-    grid: np.ndarray,
-    sigma: float,
-) -> np.ndarray:
-    """
-    Gaussian-broadened phonon DOS on a frequency grid.
-
-    Parameters
-    ----------
-    frequencies
-        Phonon frequencies (THz), shape ``(nq, n_bands)``.
-    weights
-        Q-point weights, shape ``(nq,)``.
-    grid
-        Frequency grid (THz) to evaluate the DOS on.
-    sigma
-        Gaussian broadening (THz).
-
-    Returns
-    -------
-    np.ndarray
-        DOS values on ``grid``.
-    """
-    freqs = np.asarray(frequencies, dtype=float)
-    w = np.broadcast_to(np.asarray(weights, dtype=float)[:, None], freqs.shape).ravel()
-    freqs = freqs.ravel()
-    diff = freqs[:, None] - np.asarray(grid, dtype=float)[None, :]
-    norm = 1.0 / (sigma * np.sqrt(2.0 * np.pi))
-    return norm * np.sum(w[:, None] * np.exp(-0.5 * (diff / sigma) ** 2), axis=0)
 
 
 def debye_temperature_from_max_freq(phonons: Phonopy, q_mesh: np.ndarray) -> float:

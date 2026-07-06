@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import json
 from pathlib import Path
 import pickle
@@ -13,7 +12,6 @@ from warnings import warn
 from ase.constraints import FixSymmetry
 from ase.io import write
 from ase.optimize import FIRE
-import numpy as np
 from phonopy import load as load_phonopy
 import pytest
 
@@ -21,7 +19,6 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     get_fc2_and_freqs,
     init_phonopy_from_ref,
     phonopy_to_ase_atoms,
-    qpath_distances,
 )
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import compute_thermal_properties
 from ml_peg.calcs.utils.utils import download_github_data
@@ -33,6 +30,15 @@ GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 OUT_PATH = Path(__file__).parent / "outputs"
 DFT_REF_PATH = OUT_PATH / "DFT"
 
+# The CASTEP/RSCAN reference, pre-converted to the shared phonon benchmark
+# formats, plus the q-path metadata used to compute model band structures.
+REF_FILES = (
+    "diamond_band_structure.npz",
+    "diamond_thermal.json",
+    "diamond.xyz",
+    "diamond_qpath_metadata.pkl",
+)
+
 # Relaxation settings, matching the general phonon benchmark.
 FMAX = 0.005
 RELAX_STEPS = 1000
@@ -40,9 +46,6 @@ RELAX_STEPS = 1000
 THERMAL_MESH = [20, 20, 20]
 # 4×4×4 of the 8-atom conventional cell = 512-atom supercell.
 GRUNEISEN_SUPERCELL = [[4, 0, 0], [0, 4, 0], [0, 0, 4]]
-
-# FCC diamond BZ path used by the CASTEP reference: Γ→X→W→K→Γ→L→U→W→L→K→X
-HS_LABELS = [r"$\Gamma$", "X", "W", "K", r"$\Gamma$", "L", "U", "W", "L", "K", "X"]
 
 MODELS = load_models(current_models)
 
@@ -55,8 +58,8 @@ def diamond_data() -> Path:
     Returns
     -------
     Path
-        Directory containing ``diamond.yaml``, ``dft_band.npz``, and
-        ``diamond_thermal_ref.json``.
+        Directory containing ``diamond.yaml`` and the pre-converted
+        CASTEP/RSCAN reference data.
     """
     extracted = Path(
         download_github_data(filename="diamond_data/data.zip", github_uri=GITHUB_BASE)
@@ -64,74 +67,9 @@ def diamond_data() -> Path:
     return extracted / "data"
 
 
-def _detect_hs_boundaries(qpoints: np.ndarray) -> list[int]:
-    """
-    Return indices of high-symmetry points along a continuous q-path.
-
-    Detects direction changes by comparing consecutive step directions.
-    Always includes the first and last index.
-
-    Parameters
-    ----------
-    qpoints
-        Array of fractional q-point coordinates, shape ``(nq, 3)``.
-
-    Returns
-    -------
-    list[int]
-        Indices of high-symmetry points including the first and last.
-    """
-    dq = np.diff(qpoints, axis=0)
-    dq_norm = np.linalg.norm(dq, axis=1)
-    dq_unit = dq / (dq_norm[:, None] + 1e-12)
-    cosang = np.sum(dq_unit[1:] * dq_unit[:-1], axis=1)
-    turns = list(np.where(cosang < 0.95)[0] + 1)
-    return [0] + turns + [len(qpoints) - 1]
-
-
-@lru_cache(maxsize=1)
-def _reference_band_path(
-    data_dir: Path,
-) -> tuple[list[np.ndarray], np.ndarray, list[str], list[bool]]:
-    """
-    Load the DFT reference q-path, split into high-symmetry segments.
-
-    Parameters
-    ----------
-    data_dir
-        Directory containing ``dft_band.npz`` and ``diamond.yaml``.
-
-    Returns
-    -------
-    tuple[list[np.ndarray], np.ndarray, list[str], list[bool]]
-        Q-point segments, reference frequencies (THz, shape ``(nq, n_bands)``),
-        labels, and phonopy-style path connections.
-    """
-    ref = np.load(data_dir / "dft_band.npz", allow_pickle=False)
-    qpoints = np.asarray(ref["qpoints"], dtype=float)
-    freqs_thz = np.asarray(ref["freqs_cm1"], dtype=float) / 33.35640951981521
-
-    boundaries = _detect_hs_boundaries(qpoints)
-    if len(boundaries) != len(HS_LABELS):
-        # Fall back to a single unlabelled segment.
-        boundaries = [0, len(qpoints) - 1]
-
-    segments = [
-        qpoints[start : stop + 1]
-        for start, stop in zip(boundaries[:-1], boundaries[1:], strict=True)
-    ]
-    labels = HS_LABELS if len(boundaries) == len(HS_LABELS) else [HS_LABELS[0], "X"]
-    connections = [True] * (len(segments) - 1) + [False]
-    return segments, freqs_thz, labels, connections
-
-
 def test_diamond_phonons_ref(diamond_data: Path) -> None:
     """
-    Convert the DFT reference data to the shared phonon output formats.
-
-    Writes ``outputs/DFT/diamond_band_structure.npz`` (pickled band dict),
-    ``diamond_thermal.json``, and ``diamond.xyz``, mirroring the layout used
-    by the general phonon benchmark so analysis and app code can be shared.
+    Copy the pre-converted DFT reference data to ``outputs/DFT/``.
 
     Parameters
     ----------
@@ -139,34 +77,8 @@ def test_diamond_phonons_ref(diamond_data: Path) -> None:
         Directory containing the downloaded reference data.
     """
     DFT_REF_PATH.mkdir(parents=True, exist_ok=True)
-
-    phonons_ref = load_phonopy(str(diamond_data / "diamond.yaml"))
-    segments, freqs_thz, labels, connections = _reference_band_path(diamond_data)
-
-    # Distances in the phonopy band-structure convention so that reference and
-    # model bands share the same x-axis in the app.
-    qpoints_all = np.concatenate(
-        [seg if i == 0 else seg[1:] for i, seg in enumerate(segments)]
-    )
-    distances = qpath_distances(qpoints_all, np.array(phonons_ref.primitive.cell))
-
-    band_dict = {"distances": [], "frequencies": [], "labels": labels}
-    band_dict["path_connections"] = connections
-    start = 0
-    for segment in segments:
-        stop = start + len(segment) - 1
-        band_dict["distances"].append(distances[start : stop + 1])
-        band_dict["frequencies"].append(freqs_thz[start : stop + 1])
-        start = stop
-
-    with open(DFT_REF_PATH / "diamond_band_structure.npz", "wb") as handle:
-        pickle.dump(band_dict, handle)
-
-    shutil.copy2(
-        diamond_data / "diamond_thermal_ref.json",
-        DFT_REF_PATH / "diamond_thermal.json",
-    )
-    write(DFT_REF_PATH / "diamond.xyz", phonopy_to_ase_atoms(phonons_ref))
+    for name in REF_FILES:
+        shutil.copy2(diamond_data / name, DFT_REF_PATH / name)
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -197,7 +109,8 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
 
     calc = model.get_calculator(precision="high")
     phonons_ref = load_phonopy(str(diamond_data / "diamond.yaml"))
-    segments, _, labels, connections = _reference_band_path(diamond_data)
+    with open(diamond_data / "diamond_qpath_metadata.pkl", "rb") as handle:
+        qpath = pickle.load(handle)
 
     # Relax with fixed symmetry, as in the general phonon benchmark.
     atoms = phonopy_to_ase_atoms(phonons_ref)
@@ -228,7 +141,9 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
                 symmetrize_fc2=True,
             )
             phonons.run_band_structure(
-                paths=segments, labels=labels, path_connections=connections
+                paths=qpath["qpoints"],
+                labels=qpath["labels"],
+                path_connections=qpath["connections"],
             )
             with open(band_path, "wb") as handle:
                 pickle.dump(phonons.get_band_structure_dict(), handle)
