@@ -7,8 +7,10 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -16,6 +18,9 @@ from ml_peg.app.utils.load import read_plot
 
 CATEGORY = "molecular_dynamics"
 BENCHMARK_NAME = "Ethanol-water densities"
+
+# Get all models
+MODELS = get_model_names(current_models)
 
 DOCS_URL = f"https://ddmms.github.io/ml-peg/user_guide/benchmarks/{CATEGORY}.html#water-ethanol-density-curves"
 
@@ -28,16 +33,28 @@ class EthanolWaterDecompositionCurvesApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        parity = read_plot(
-            DATA_PATH / "density_parity.json", id=f"{BENCHMARK_NAME}-figure"
-        )
+        scatter_plots = {
+            model: {
+                "RMSE density": read_plot(
+                    DATA_PATH / model / "figure_density.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure-density",
+                ),
+                "RMSE excess volume": read_plot(
+                    DATA_PATH / model / "figure_excess_volume.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure-excess-volume",
+                ),
+                "Peak x error": read_plot(
+                    DATA_PATH / model / "figure_excess_volume_minimum.json",
+                    id=f"{BENCHMARK_NAME}-{model}-figure-excess-volume-minimum",
+                ),
+            }
+            for model in MODELS
+        }
 
-        plot_from_table_column(
+        plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "RMSE density": parity,
-            },
+            cell_to_plot=scatter_plots,
         )
 
 
@@ -54,7 +71,7 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
         name=BENCHMARK_NAME,
         description=(
             "Ethanol–water mixture density at 293.15 K. Metrics include density RMSE, "
-            "excess-volume RMSE, and error in the mole-fraction"
+            "excess-volume RMSE, and error in the mole-fraction "
             "location of the maximum excess volume."
         ),
         docs_url=DOCS_URL,

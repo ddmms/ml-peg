@@ -8,7 +8,7 @@ from warnings import warn
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -88,6 +88,45 @@ def _excess_volume(x: np.ndarray, rhos: np.ndarray) -> np.ndarray:
     )
 
 
+def _quadratic_min_fit(
+    x: np.ndarray, y: np.ndarray
+) -> tuple[np.ndarray | None, np.ndarray | None, float]:
+    """
+    Fit a parabola around the minimum and locate its vertex.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Composition grid.
+    y : numpy.ndarray
+        Property values.
+
+    Returns
+    -------
+    tuple[numpy.ndarray | None, numpy.ndarray | None, float]
+        Parabola coefficients, x-bracket of the fit, and estimated composition
+        of the minimum. Coefficients are None when no local fit is possible.
+    """
+    i = int(np.argmin(y))
+    if len(x) < 3 or i == 0 or i == len(x) - 1:
+        return None, None, float(x[i])
+
+    # Fit a parabola to (i-1, i, i+1)
+    xs = x[i - 1 : i + 2]
+    ys = y[i - 1 : i + 2]
+
+    # y = ax^2 + bx + c
+    coeffs = np.polyfit(xs, ys, deg=2)
+    a, b = coeffs[0], coeffs[1]
+    if abs(a) < 1e-16:
+        return None, xs, float(x[i])
+
+    xv = -b / (2.0 * a)
+
+    # Clamp to local bracket so we don't get silly extrapolation
+    return coeffs, xs, float(np.clip(xv, xs.min(), xs.max()))
+
+
 def _peak_x_quadratic(x: np.ndarray, y: np.ndarray) -> float:
     """
     Estimate x position of the minimum by local quadratic fitting.
@@ -104,26 +143,7 @@ def _peak_x_quadratic(x: np.ndarray, y: np.ndarray) -> float:
     float
         Estimated composition of the minimum.
     """
-    if len(x) < 3:
-        return float(x[int(np.argmin(y))])
-
-    i = int(np.argmin(y))
-    if i == 0 or i == len(x) - 1:
-        return float(x[i])
-
-    # Fit a parabola to (i-1, i, i+1)
-    xs = x[i - 1 : i + 2]
-    ys = y[i - 1 : i + 2]
-
-    # y = ax^2 + bx + c
-    a, b, _c = np.polyfit(xs, ys, deg=2)
-    if abs(a) < 1e-16:
-        return float(x[i])
-
-    xv = -b / (2.0 * a)
-
-    # Clamp to local bracket so we don't get silly extrapolation
-    return float(np.clip(xv, xs.min(), xs.max()))
+    return _quadratic_min_fit(x, y)[2]
 
 
 @pytest.fixture(scope="session")
@@ -223,34 +243,115 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     return curves
 
 
-def labels() -> list:
+def plot_model_curves(
+    model_name: str,
+    ref_curve: tuple[np.ndarray, np.ndarray],
+    model_curve: tuple[np.ndarray, np.ndarray],
+) -> None:
     """
-    Get list of calculated concentrations.
+    Plot density, excess volume, and excess-volume minimum figures for one model.
 
-    Returns
-    -------
-    list
-        List of all calculated concentrations.
+    Parameters
+    ----------
+    model_name
+        Name of MLIP.
+    ref_curve
+        Reference composition and density arrays.
+    model_curve
+        Model composition and density arrays.
     """
-    return sorted(
-        float(case_dir.name.split("_")[-1])
-        for case_dir in (CALC_PATH / MODELS[0]).iterdir()
+    x_ref, rho_ref = ref_curve
+    x_m, rho_m = model_curve
+    model_dir = OUT_PATH / model_name
+
+    ex_ref = _excess_volume(x_ref, rho_ref)
+    ex_m = _excess_volume(x_m, rho_m)
+
+    @plot_scatter(
+        filename=model_dir / "figure_density.json",
+        title="Ethanol–water density (293.15 K)",
+        x_label="Ethanol mole fraction",
+        y_label="Density / g cm⁻³",
+        show_line=True,
     )
+    def plot_density() -> dict[str, list]:
+        """
+        Plot density against mole fraction.
+
+        Returns
+        -------
+        dict[str, list]
+            Mole fractions and densities for the reference and model.
+        """
+        return {
+            "ref": [list(x_ref), list(rho_ref)],
+            model_name: [list(x_m), list(rho_m)],
+        }
+
+    @plot_scatter(
+        filename=model_dir / "figure_excess_volume.json",
+        title="Excess molar volume (293.15 K)",
+        x_label="Ethanol mole fraction",
+        y_label="Excess molar volume / cm³ mol⁻¹",
+        show_line=True,
+    )
+    def plot_excess_volume() -> dict[str, list]:
+        """
+        Plot excess molar volume against mole fraction.
+
+        Returns
+        -------
+        dict[str, list]
+            Mole fractions and excess volumes for the reference and model.
+        """
+        return {
+            "ref": [list(x_ref), list(ex_ref)],
+            model_name: [list(x_m), list(ex_m)],
+        }
+
+    @plot_scatter(
+        filename=model_dir / "figure_excess_volume_minimum.json",
+        title="Excess molar volume minimum (293.15 K)",
+        x_label="Ethanol mole fraction",
+        y_label="Excess molar volume / cm³ mol⁻¹",
+        show_line=True,
+    )
+    def plot_excess_volume_minimum() -> dict[str, list]:
+        """
+        Plot excess volume curves with quadratic fits and their minima.
+
+        Returns
+        -------
+        dict[str, list]
+            Mole fractions and excess volumes, plus fit and minimum traces.
+        """
+        results = {
+            "ref": [list(x_ref), list(ex_ref)],
+            model_name: [list(x_m), list(ex_m)],
+        }
+        for name, x, ex in (("Reference", x_ref, ex_ref), (model_name, x_m, ex_m)):
+            coeffs, x_bracket, x_min = _quadratic_min_fit(x, ex)
+            if coeffs is not None:
+                x_fit = np.linspace(x_bracket.min(), x_bracket.max(), 50)
+                results[f"{name} fit"] = [
+                    list(x_fit),
+                    list(np.polyval(coeffs, x_fit)),
+                ]
+                y_min = float(np.polyval(coeffs, x_min))
+            else:
+                y_min = float(ex[int(np.argmin(ex))])
+            results[f"{name} minimum"] = [[x_min], [y_min]]
+        return results
+
+    plot_density()
+    plot_excess_volume()
+    plot_excess_volume_minimum()
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "density_parity.json",
-    title="Ethanol–water density (293.15 K)",
-    x_label="Reference density / g cm⁻³",
-    y_label="Predicted density / g cm⁻³",
-    hoverdata={
-        "Labels": labels(),
-    },
-)
-def densities_parity(ref_curve, model_curves) -> dict[str, list]:
+def curve_plots(ref_curve, model_curves) -> None:
     """
-    Build parity-plot payload for model and reference densities.
+    Write per-model density and excess-volume figures.
 
     Parameters
     ----------
@@ -258,39 +359,11 @@ def densities_parity(ref_curve, model_curves) -> dict[str, list]:
         Reference composition and density arrays.
     model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
         Per-model composition and density arrays.
-
-    Returns
-    -------
-    dict[str, list]
-        Reference and model densities sampled on a common grid.
     """
-    x_ref, rho_ref = ref_curve
-
-    # Use the first model's x grid for hover labels (parity requires same-length lists)
-    # We’ll choose the densest model grid if they differ.
-    model_name_for_grid = max(model_curves, key=lambda m: len(model_curves[m][0]))
-    x_grid = model_curves[model_name_for_grid][0]
-
-    results: dict[str, list] = {"ref": []} | {m: [] for m in MODELS}
-
-    rho_ref_on_grid = np.interp(x_grid, x_ref, rho_ref)
-    results["ref"] = list(rho_ref_on_grid)
-
-    for m in MODELS:
-        x_m, rho_m = model_curves[m]
-        if x_m.size == 0:
-            # Models without outputs have empty curves; emit NaN across the grid.
-            results[m] = [float("nan")] * len(x_grid)
+    for model_name, (x_m, rho_m) in model_curves.items():
+        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
             continue
-        # Interpolate model to x_grid if needed
-        if len(x_m) != len(x_grid) or np.any(np.abs(x_m - x_grid) > 1e-12):
-            # This assumes model spans the grid range; otherwise raise.
-            rho_m_on_grid = np.interp(x_grid, x_m, rho_m)
-        else:
-            rho_m_on_grid = rho_m
-        results[m] = list(rho_m_on_grid)
-
-    return results
+        plot_model_curves(model_name, ref_curve, (x_m, rho_m))
 
 
 @pytest.fixture
@@ -403,10 +476,10 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
         "RMSE density": "RMSE between model and reference density"
         "at model compositions (g cm⁻³).",
         "RMSE excess volume": (
-            "RMSE of the excess volumebetween pure endpoints (cm³ mol^-1)."
+            "RMSE of the excess volume between pure endpoints (cm³ mol⁻¹)."
         ),
         "Peak x error": (
-            "Absolute difference in mole-fraction location of maximum excess density."
+            "Absolute difference in mole-fraction location of minimum excess volume."
         ),
     },
 )
@@ -439,9 +512,7 @@ def metrics(
     }
 
 
-def test_ethanol_water_density(
-    metrics: dict[str, dict], densities_parity: dict[str, list]
-) -> None:
+def test_ethanol_water_density(metrics: dict[str, dict], curve_plots: None) -> None:
     """
     Execute density analysis fixtures and emit debug output.
 
@@ -449,8 +520,8 @@ def test_ethanol_water_density(
     ----------
     metrics : dict[str, dict]
         Metrics table payload.
-    densities_parity : dict[str, list]
-        Parity plot payload.
+    curve_plots : None
+        Per-model density and excess-volume figures.
 
     Returns
     -------
