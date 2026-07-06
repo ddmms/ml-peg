@@ -198,6 +198,8 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
 
         band_errors: dict[str, float | None] = {"mae": None, "rmse": None}
         points: list[dict[str, Any]] = []
+        image = None
+        structure_paths = None
 
         if pred_freqs is not None and pred_freqs.shape == ref_freqs.shape:
             pred_flat = pred_freqs.reshape(-1)
@@ -209,7 +211,6 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                 (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
                 png_path = OUT_PATH / model_name / "diamond_dispersion.png"
                 _plot_dispersion(ref_band, pred_band, model_name, png_path)
-                structure_paths = None
                 pred_struct_src = model_dir / "diamond.xyz"
                 if pred_struct_src.exists() and ref_struct_src.exists():
                     shutil.copy2(pred_struct_src, OUT_PATH / model_name / "diamond.xyz")
@@ -222,21 +223,19 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                     }
                 points = [
                     {
-                        "id": "diamond",
+                        "id": f"diamond-{i}",
                         "label": "diamond",
                         "ref": float(ref_val),
                         "pred": float(pred_val),
                     }
-                    for pred_val, ref_val in zip(pred_flat, ref_flat, strict=True)
+                    for i, (pred_val, ref_val) in enumerate(
+                        zip(pred_flat, ref_flat, strict=True)
+                    )
                 ]
-                # All points belong to the same system; the app resolves a
-                # click by id to the first matching point, so the (identical)
-                # asset paths only need to be stored once.
-                points[0]["image"] = (
+                image = (
                     f"assets/bulk_crystal/diamond_phonons/{model_name}/"
                     "diamond_dispersion.png"
                 )
-                points[0]["structure_paths"] = structure_paths
         elif pred_freqs is not None:
             print(
                 f"{model_name}: band shape mismatch "
@@ -265,6 +264,8 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
             "band_errors": band_errors,
             "thermal_errors": thermal_errors,
             "points": points,
+            "image": image,
+            "structure_paths": structure_paths,
         }
 
     return stats
@@ -370,6 +371,8 @@ def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, A
                     "rmse": model_data["band_errors"]["rmse"],
                 },
             },
+            "image": model_data["image"],
+            "structure_paths": model_data["structure_paths"],
         }
 
     return dataset

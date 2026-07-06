@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from functools import partial
 import json
+from typing import Any
 
 from dash import Dash, dcc, html
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.bulk_crystal.phonons.interactive_helpers import (
-    lookup_system_entry,
     render_dispersion_component,
 )
 from ml_peg.app.utils.build_callbacks import (
     model_asset_from_scatter,
     scatter_and_assets_from_table,
 )
-from ml_peg.app.utils.plot_helpers import (
-    build_serialized_scatter_content,
-    resolve_scatter_selection,
-)
+from ml_peg.app.utils.plot_helpers import build_serialized_scatter_content
 from ml_peg.calcs import CALCS_ROOT
 
 BENCHMARK_NAME = "diamond_phonons"
@@ -82,11 +80,40 @@ class DiamondPhononApp(BaseApp):
             scatter_id=SCATTER_GRAPH_ID,
         )
 
-        selection_lookup = partial(
-            resolve_scatter_selection,
-            models_data=models_data,
-            system_lookup=lookup_system_entry,
-        )
+        def model_only_lookup(
+            click_data: Mapping[str, Any] | None,
+            metadata: Mapping[str, Any],
+        ) -> dict[str, Any]:
+            """
+            Build a selection context for the dispersion preview.
+
+            For this benchmark all scatter points belong to the same system,
+            so any click shows the model's pre-rendered dispersion.
+
+            Parameters
+            ----------
+            click_data
+                Dash click payload from the scatter plot. Unused.
+            metadata
+                Metadata payload from the scatter callback; contains ``model``.
+
+            Returns
+            -------
+            dict[str, Any]
+                Selection context consumed by ``render_dispersion_component``.
+            """
+            _ = click_data
+            entry = models_data.get(str(metadata["model"]), {})
+            return {
+                "model": str(metadata["model"]),
+                "selection": {
+                    "id": "diamond",
+                    "label": "Carbon diamond",
+                    "image": entry.get("image"),
+                    "structure_paths": entry.get("structure_paths"),
+                },
+            }
+
         dispersion_renderer = partial(
             render_dispersion_component,
             calc_root=CALC_BASE,
@@ -99,7 +126,7 @@ class DiamondPhononApp(BaseApp):
             scatter_id=SCATTER_GRAPH_ID,
             metadata_store_id=SCATTER_METADATA_STORE_ID,
             asset_container_id=DISPERSION_CONTAINER_ID,
-            data_lookup=selection_lookup,
+            data_lookup=model_only_lookup,
             asset_renderer=dispersion_renderer,
             empty_message="Click on a scatter point to view the dispersion plot.",
             missing_message="No dispersion plot available for this point.",
