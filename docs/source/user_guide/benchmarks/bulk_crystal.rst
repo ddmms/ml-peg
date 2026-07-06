@@ -720,11 +720,12 @@ Computational cost
 
 Low: band-structure and thermal-property calculations together typically take
 several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
-conventional supercell. The thermal step requires three force-constant evaluations
-(V\ :sub:`0`, V\ :sub:`0` + δ, V\ :sub:`0` − δ), so total wall time is roughly four
-times the band-structure-only run. Calculations were run as a single process on CPU on an
-x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
-parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+conventional supercell and share the equilibrium force constants; the thermal step
+adds force-constant evaluations at V\ :sub:`0` + δ and V\ :sub:`0` − δ, so total wall
+time is roughly three times the band-structure-only run. Calculations were run as a
+single process on CPU on an x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7;
+4 cores / 8 threads). No explicit parallel execution (MPI or multiprocessing) was used
+in the benchmark driver.
 
 
 

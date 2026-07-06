@@ -125,21 +125,27 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
     atoms.calc = None
     ase.io.write(struct_path, atoms)
 
+    # The band structure and the Grüneisen/thermal step use the same
+    # equilibrium force constants, so compute them once.
+    try:
+        phonons = init_phonopy_from_ref(
+            atoms=atoms,
+            fc2_supercell=SUPERCELL,
+            primitive_matrix=PRIMITIVE_MATRIX,
+            displacement_distance=DISPLACEMENT,
+            is_plusminus=True,
+        )
+        phonons, _, _ = get_fc2_and_freqs(
+            phonons=phonons,
+            calculator=calc,
+            symmetrize_fc2=True,
+        )
+    except Exception as exc:
+        warn(f"{model_name}: diamond force constants failed: {exc}", stacklevel=2)
+        return
+
     if not band_path.exists():
         try:
-            phonons = init_phonopy_from_ref(
-                atoms=atoms,
-                fc2_supercell=SUPERCELL,
-                primitive_matrix=PRIMITIVE_MATRIX,
-                displacement_distance=DISPLACEMENT,
-                is_plusminus=True,
-                symprec=1e-5,
-            )
-            phonons, _, _ = get_fc2_and_freqs(
-                phonons=phonons,
-                calculator=calc,
-                symmetrize_fc2=True,
-            )
             phonons.run_band_structure(
                 paths=qpath["qpoints"],
                 labels=qpath["labels"],
@@ -152,19 +158,8 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
 
     if not thermal_path.exists():
         try:
-            phonons_grun = init_phonopy_from_ref(
-                atoms=atoms,
-                fc2_supercell=SUPERCELL,
-                displacement_distance=DISPLACEMENT,
-                is_plusminus=True,
-            )
-            phonons_grun, _, _ = get_fc2_and_freqs(
-                phonons=phonons_grun,
-                calculator=calc,
-                symmetrize_fc2=True,
-            )
             thermal = compute_thermal_properties(
-                phonons=phonons_grun,
+                phonons=phonons,
                 atoms=atoms,
                 calculator=calc,
                 q_mesh=THERMAL_MESH,
