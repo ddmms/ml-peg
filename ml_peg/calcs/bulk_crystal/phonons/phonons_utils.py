@@ -247,33 +247,6 @@ def get_fc2_and_freqs(
     return phonons, fc2_set, freqs
 
 
-def qpath_distances(qpoints: np.ndarray, cell: np.ndarray) -> np.ndarray:
-    """
-    Cumulative reciprocal-space distances along a q-point path.
-
-    Uses the same convention as phonopy band structures (fractional q-point
-    steps mapped through ``inv(cell).T``, no 2π factor), so distances computed
-    here for reference data align with phonopy-generated model band distances.
-
-    Parameters
-    ----------
-    qpoints
-        Fractional q-point coordinates, shape ``(nq, 3)``.
-    cell
-        Real-space cell matrix (rows are lattice vectors) of the primitive cell
-        used for the band structure.
-
-    Returns
-    -------
-    np.ndarray
-        Cumulative distances, shape ``(nq,)``, starting at 0.
-    """
-    qpoints = np.asarray(qpoints, dtype=float)
-    rec = np.linalg.inv(np.asarray(cell, dtype=float)).T
-    steps = np.linalg.norm(np.diff(qpoints, axis=0) @ rec, axis=1)
-    return np.concatenate([[0.0], np.cumsum(steps)])
-
-
 # ---------------------------------------------------------------------------
 # Alexandria phonono dataset download
 # ---------------------------------------------------------------------------
