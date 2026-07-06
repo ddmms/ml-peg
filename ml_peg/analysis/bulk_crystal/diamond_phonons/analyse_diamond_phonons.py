@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-import pickle
 import shutil
 from typing import Any
 
@@ -14,7 +12,9 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
 from ml_peg.analysis.utils.utils import (
     get_struct_info,
+    load_json,
     load_metrics_config,
+    load_pickle,
     mae,
     rmse,
 )
@@ -53,31 +53,6 @@ INFO = get_struct_info(
 )
 
 
-def _load_band_freqs(path: Path) -> np.ndarray | None:
-    """
-    Load band frequencies (THz) from a pickled phonopy band-structure dict.
-
-    Parameters
-    ----------
-    path
-        Path to the pickled band-structure file.
-
-    Returns
-    -------
-    np.ndarray | None
-        Frequencies of shape ``(Nq, n_bands)``, or ``None`` when unavailable.
-    """
-    if not path.exists():
-        return None
-    try:
-        with path.open("rb") as handle:
-            band_data = pickle.load(handle)
-        return np.vstack([np.asarray(seg) for seg in band_data["frequencies"]])
-    except Exception as exc:
-        print(f"Failed to load band structure from {path}: {exc}")
-        return None
-
-
 def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
     """
     Sort each q-point's bands then flatten.
@@ -95,30 +70,6 @@ def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
     return np.sort(freqs, axis=1).reshape(-1)
 
 
-def _load_thermal(path: Path) -> dict[str, float] | None:
-    """
-    Load thermal property results from JSON.
-
-    Parameters
-    ----------
-    path
-        Path to a ``diamond_thermal.json`` file.
-
-    Returns
-    -------
-    dict[str, float] | None
-        Mapping with keys ``mean_gamma``, ``debye_temperature_K``,
-        ``kappa_W_per_mK``, or ``None`` if the file is absent or unreadable.
-    """
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf8"))
-    except Exception as exc:
-        print(f"Failed to load thermal data from {path}: {exc}")
-        return None
-
-
 @pytest.fixture
 def diamond_stats() -> dict[str, dict[str, Any]]:
     """
@@ -133,13 +84,14 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     ref_band_path = REF_PATH / "diamond_band_structure.npz"
-    ref_freqs = _load_band_freqs(ref_band_path)
-    if ref_freqs is None:
+    ref_band = load_pickle(ref_band_path)
+    if ref_band is None:
         print(f"ERROR: DFT reference not found at {ref_band_path}")
         return {}
+    ref_freqs = np.vstack([np.asarray(seg) for seg in ref_band["frequencies"]])
     ref_flat = _sorted_flat(ref_freqs)
 
-    ref_thermal = _load_thermal(REF_PATH / "diamond_thermal.json")
+    ref_thermal = load_json(REF_PATH / "diamond_thermal.json")
 
     # Copy the DFT structure for the app's structure viewer.
     ref_struct_src = REF_PATH / "diamond.xyz"
@@ -151,7 +103,12 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         pred_band_path = model_dir / "diamond_band_structure.npz"
-        pred_freqs = _load_band_freqs(pred_band_path)
+        pred_band = load_pickle(pred_band_path)
+        pred_freqs = (
+            np.vstack([np.asarray(seg) for seg in pred_band["frequencies"]])
+            if pred_band is not None
+            else None
+        )
 
         band_errors: dict[str, float | None] = {"mae": None, "rmse": None}
         points: list[dict[str, Any]] = []
@@ -203,7 +160,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
             "theta_d": None,
             "kappa": None,
         }
-        pred_thermal = _load_thermal(model_dir / "diamond_thermal.json")
+        pred_thermal = load_json(model_dir / "diamond_thermal.json")
         if ref_thermal is not None and pred_thermal is not None:
             thermal_errors = {
                 "gamma": abs(pred_thermal["mean_gamma"] - ref_thermal["mean_gamma"]),

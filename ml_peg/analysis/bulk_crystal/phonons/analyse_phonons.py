@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-import pickle
 import shutil
 from typing import Any
 
@@ -18,7 +16,13 @@ from sklearn.metrics import f1_score
 from tqdm import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_json,
+    load_metrics_config,
+    load_pickle,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -77,12 +81,7 @@ def _load_band_structure(file_path: Path) -> dict[str, Any] | None:
         Parsed dictionary describing distances/frequencies, or ``None`` if the
         file cannot be read.
     """
-    try:
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
-    except OSError as exc:
-        print(f"Failed to load band structure from {file_path}: {exc}")
-        return None
+    return load_pickle(file_path)
 
 
 def _load_dos(file_path: Path) -> tuple[np.ndarray, np.ndarray] | None:
@@ -100,13 +99,10 @@ def _load_dos(file_path: Path) -> tuple[np.ndarray, np.ndarray] | None:
         Pair of ``(frequency_points, total_dos)`` arrays, or ``None`` if the
         file content could not be opened.
     """
-    try:
-        with open(file_path, "rb") as f:
-            dos_dict = pickle.load(f)
-        return dos_dict["frequency_points"], dos_dict["total_dos"]
-    except OSError as exc:
-        print(f"Failed to load DOS from {file_path}: {exc}")
+    dos_dict = load_pickle(file_path)
+    if dos_dict is None:
         return None
+    return dos_dict["frequency_points"], dos_dict["total_dos"]
 
 
 def _load_thermal_properties(file_path: Path) -> dict[str, Any] | None:
@@ -125,12 +121,7 @@ def _load_thermal_properties(file_path: Path) -> dict[str, Any] | None:
         Mapping of thermal quantities keyed by temperature, or ``None`` if the
         JSON file is missing.
     """
-    try:
-        with open(file_path, encoding="utf8") as f:
-            return json.load(f)
-    except OSError as exc:
-        print(f"Failed to load thermal properties from {file_path}: {exc}")
-        return None
+    return load_json(file_path)
 
 
 def _get_mp_ids() -> list[str]:
