@@ -10,15 +10,13 @@ from typing import Any
 from warnings import warn
 
 from ase.constraints import FixSymmetry
-from ase.io import write
+import ase.io
 from ase.optimize import FIRE
-from phonopy import load as load_phonopy
 import pytest
 
 from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     get_fc2_and_freqs,
     init_phonopy_from_ref,
-    phonopy_to_ase_atoms,
 )
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import compute_thermal_properties
 from ml_peg.calcs.utils.utils import download_github_data
@@ -44,8 +42,10 @@ FMAX = 0.005
 RELAX_STEPS = 1000
 
 THERMAL_MESH = [20, 20, 20]
+DISPLACEMENT = 0.01
 # 4×4×4 of the 8-atom conventional cell = 512-atom supercell.
-GRUNEISEN_SUPERCELL = [[4, 0, 0], [0, 4, 0], [0, 0, 4]]
+SUPERCELL = [[4, 0, 0], [0, 4, 0], [0, 0, 4]]
+PRIMITIVE_MATRIX = [[0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]
 
 MODELS = load_models(current_models)
 
@@ -58,8 +58,7 @@ def diamond_data() -> Path:
     Returns
     -------
     Path
-        Directory containing ``diamond.yaml`` and the pre-converted
-        CASTEP/RSCAN reference data.
+        Directory containing the pre-converted CASTEP/RSCAN reference data.
     """
     extracted = Path(
         download_github_data(filename="diamond_data/data.zip", github_uri=GITHUB_BASE)
@@ -108,12 +107,11 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
         return
 
     calc = model.get_calculator(precision="high")
-    phonons_ref = load_phonopy(str(diamond_data / "diamond.yaml"))
     with open(diamond_data / "diamond_qpath_metadata.pkl", "rb") as handle:
         qpath = pickle.load(handle)
 
     # Relax with fixed symmetry, as in the general phonon benchmark.
-    atoms = phonopy_to_ase_atoms(phonons_ref)
+    atoms = ase.io.read(diamond_data / "diamond.xyz")
     atoms.info.setdefault("charge", 0)
     atoms.info.setdefault("spin", 1)
     atoms.calc = calc
@@ -125,14 +123,16 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
         return
     atoms.set_constraint()
     atoms.calc = None
-    write(struct_path, atoms)
+    ase.io.write(struct_path, atoms)
 
     if not band_path.exists():
         try:
             phonons = init_phonopy_from_ref(
                 atoms=atoms,
-                displacement_dataset=phonons_ref.dataset,
-                primitive_matrix=phonons_ref.primitive_matrix,
+                fc2_supercell=SUPERCELL,
+                primitive_matrix=PRIMITIVE_MATRIX,
+                displacement_distance=DISPLACEMENT,
+                is_plusminus=True,
                 symprec=1e-5,
             )
             phonons, _, _ = get_fc2_and_freqs(
@@ -154,8 +154,8 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
         try:
             phonons_grun = init_phonopy_from_ref(
                 atoms=atoms,
-                fc2_supercell=GRUNEISEN_SUPERCELL,
-                displacement_distance=0.01,
+                fc2_supercell=SUPERCELL,
+                displacement_distance=DISPLACEMENT,
                 is_plusminus=True,
             )
             phonons_grun, _, _ = get_fc2_and_freqs(
