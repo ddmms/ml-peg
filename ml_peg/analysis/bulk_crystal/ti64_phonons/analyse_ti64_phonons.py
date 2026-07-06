@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import pickle
 import shutil
 from typing import Any
 
@@ -10,13 +12,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import (
-    get_struct_info,
-    load_json,
-    load_metrics_config,
-    load_pickle,
-    rmse,
-)
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import EV_TO_KJMOL
@@ -52,6 +48,54 @@ INFO = get_struct_info(
     out_path=OUT_PATH,
     model_name="DFT",
 )
+
+
+def _load_pickle(path: Path) -> Any | None:
+    """
+    Load a pickled file, returning None when missing or unreadable.
+
+    Parameters
+    ----------
+    path
+        Path to the pickle file.
+
+    Returns
+    -------
+    Any | None
+        Unpickled object, or ``None`` when the file is missing or unreadable.
+    """
+    if not path.exists():
+        return None
+    try:
+        with open(path, "rb") as handle:
+            return pickle.load(handle)
+    except Exception as exc:
+        print(f"Failed to load {path}: {exc}")
+        return None
+
+
+def _load_json(path: Path) -> Any | None:
+    """
+    Load a JSON file, returning None when missing or unreadable.
+
+    Parameters
+    ----------
+    path
+        Path to the JSON file.
+
+    Returns
+    -------
+    Any | None
+        Parsed JSON data, or ``None`` when the file is missing or unreadable.
+    """
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf8") as handle:
+            return json.load(handle)
+    except Exception as exc:
+        print(f"Failed to load {path}: {exc}")
+        return None
 
 
 def _band_arrays(band: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
@@ -163,13 +207,13 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
     )
     ref_cache: dict[str, dict[str, Any]] = {}
     for case in case_names:
-        ref_band = load_pickle(REF_PATH / f"{case}_band_structure.npz")
+        ref_band = _load_pickle(REF_PATH / f"{case}_band_structure.npz")
         if ref_band is None:
             print(f"Missing DFT reference for {case}, skipping case.")
             continue
         ref_cache[case] = {
             "band": ref_band,
-            "thermal": load_json(REF_PATH / f"{case}_thermal_properties.json"),
+            "thermal": _load_json(REF_PATH / f"{case}_thermal_properties.json"),
         }
         ref_struct_src = REF_PATH / f"{case}.xyz"
         if ref_struct_src.exists():
@@ -194,7 +238,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
 
         for case, ref_data in ref_cache.items():
             pred_band_path = model_dir / f"{case}_band_structure.npz"
-            pred_band = load_pickle(pred_band_path)
+            pred_band = _load_pickle(pred_band_path)
             if pred_band is None:
                 continue
 
@@ -247,7 +291,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
             )
 
             if ref_data["thermal"] is not None:
-                pred_thermal = load_json(model_dir / f"{case}_thermal_properties.json")
+                pred_thermal = _load_json(model_dir / f"{case}_thermal_properties.json")
                 if pred_thermal is not None:
                     errors = _free_energy_errors(ref_data["thermal"], pred_thermal)
                     if errors is not None:

@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import pickle
 import shutil
 from typing import Any
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import (
-    get_struct_info,
-    load_json,
-    load_metrics_config,
-    load_pickle,
-    mae,
-    rmse,
-)
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae, rmse
 from ml_peg.app import APP_ROOT
+from ml_peg.app.bulk_crystal.phonons.interactive_helpers import _build_xticks
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -53,6 +53,107 @@ INFO = get_struct_info(
 )
 
 
+def _load_pickle(path: Path) -> Any | None:
+    """
+    Load a pickled file, returning None when missing or unreadable.
+
+    Parameters
+    ----------
+    path
+        Path to the pickle file.
+
+    Returns
+    -------
+    Any | None
+        Unpickled object, or ``None`` when the file is missing or unreadable.
+    """
+    if not path.exists():
+        return None
+    try:
+        with open(path, "rb") as handle:
+            return pickle.load(handle)
+    except Exception as exc:
+        print(f"Failed to load {path}: {exc}")
+        return None
+
+
+def _load_json(path: Path) -> Any | None:
+    """
+    Load a JSON file, returning None when missing or unreadable.
+
+    Parameters
+    ----------
+    path
+        Path to the JSON file.
+
+    Returns
+    -------
+    Any | None
+        Parsed JSON data, or ``None`` when the file is missing or unreadable.
+    """
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf8") as handle:
+            return json.load(handle)
+    except Exception as exc:
+        print(f"Failed to load {path}: {exc}")
+        return None
+
+
+def _plot_dispersion(
+    ref_band: dict[str, Any], pred_band: dict[str, Any], model_name: str, out_png: Path
+) -> None:
+    """
+    Render the reference vs predicted dispersion comparison to a PNG.
+
+    Parameters
+    ----------
+    ref_band
+        Reference band-structure dict (with labels and path connections).
+    pred_band
+        Model band-structure dict.
+    model_name
+        Model name used for the legend.
+    out_png
+        Output PNG path.
+    """
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for band, colour, style, label in (
+        (pred_band, "red", "--", model_name),
+        (ref_band, "blue", "-", "RSCAN"),
+    ):
+        for i, (dist, freqs) in enumerate(
+            zip(band["distances"], band["frequencies"], strict=True)
+        ):
+            ax.plot(
+                dist,
+                np.asarray(freqs),
+                lw=1,
+                linestyle=style,
+                color=colour,
+                label=label if i == 0 else None,
+            )
+
+    xticks, xticklabels = _build_xticks(
+        ref_band["distances"], ref_band["labels"], ref_band["path_connections"]
+    )
+    for x_val in xticks:
+        ax.axvline(x=x_val, color="k", linewidth=1)
+    ax.set_xticks(xticks, xticklabels)
+    ax.set_xlim(xticks[0], xticks[-1])
+    ax.axhline(0, color="k", linewidth=1)
+    ax.set_ylabel("Frequency (THz)", fontsize=14)
+    ax.set_xlabel("Wave Vector", fontsize=14)
+    ax.grid(True, linestyle=":", linewidth=0.5)
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles, strict=False))
+    ax.legend(by_label.values(), by_label.keys(), loc="upper right")
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
+
+
 @pytest.fixture
 def diamond_stats() -> dict[str, dict[str, Any]]:
     """
@@ -67,7 +168,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
     ref_band_path = REF_PATH / "diamond_band_structure.npz"
-    ref_band = load_pickle(ref_band_path)
+    ref_band = _load_pickle(ref_band_path)
     if ref_band is None:
         print(f"ERROR: DFT reference not found at {ref_band_path}")
         return {}
@@ -76,7 +177,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     ref_freqs = np.vstack([np.asarray(seg) for seg in ref_band["frequencies"]])
     ref_flat = ref_freqs.reshape(-1)
 
-    ref_thermal = load_json(REF_PATH / "diamond_thermal.json")
+    ref_thermal = _load_json(REF_PATH / "diamond_thermal.json")
 
     # Copy the DFT structure for the app's structure viewer.
     ref_struct_src = REF_PATH / "diamond.xyz"
@@ -88,7 +189,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         pred_band_path = model_dir / "diamond_band_structure.npz"
-        pred_band = load_pickle(pred_band_path)
+        pred_band = _load_pickle(pred_band_path)
         pred_freqs = (
             np.vstack([np.asarray(seg) for seg in pred_band["frequencies"]])
             if pred_band is not None
@@ -104,14 +205,13 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                 band_errors["mae"] = mae(ref_flat, pred_flat)
                 band_errors["rmse"] = rmse(ref_flat, pred_flat)
 
-                data_paths = {
-                    "ref_band": str(ref_band_path.relative_to(CALC_PATH.parent)),
-                    "pred_band": str(pred_band_path.relative_to(CALC_PATH.parent)),
-                }
+                # Pre-render the dispersion preview so the app only loads it.
+                (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
+                png_path = OUT_PATH / model_name / "diamond_dispersion.png"
+                _plot_dispersion(ref_band, pred_band, model_name, png_path)
                 structure_paths = None
                 pred_struct_src = model_dir / "diamond.xyz"
                 if pred_struct_src.exists() and ref_struct_src.exists():
-                    (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
                     shutil.copy2(pred_struct_src, OUT_PATH / model_name / "diamond.xyz")
                     structure_paths = {
                         "ref": "/assets/bulk_crystal/diamond_phonons/DFT/diamond.xyz",
@@ -132,7 +232,10 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                 # All points belong to the same system; the app resolves a
                 # click by id to the first matching point, so the (identical)
                 # asset paths only need to be stored once.
-                points[0]["data_paths"] = data_paths
+                points[0]["image"] = (
+                    f"assets/bulk_crystal/diamond_phonons/{model_name}/"
+                    "diamond_dispersion.png"
+                )
                 points[0]["structure_paths"] = structure_paths
         elif pred_freqs is not None:
             print(
@@ -145,7 +248,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
             "theta_d": None,
             "kappa": None,
         }
-        pred_thermal = load_json(model_dir / "diamond_thermal.json")
+        pred_thermal = _load_json(model_dir / "diamond_thermal.json")
         if ref_thermal is not None and pred_thermal is not None:
             thermal_errors = {
                 "gamma": abs(pred_thermal["mean_gamma"] - ref_thermal["mean_gamma"]),

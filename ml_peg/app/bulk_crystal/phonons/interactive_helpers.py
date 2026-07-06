@@ -445,19 +445,13 @@ def render_band_dos_png(
     pred_band = _load_band(calc_root, paths.get("pred_band"))
     ref_dos = _load_dos(calc_root, paths.get("ref_dos"))
     pred_dos = _load_dos(calc_root, paths.get("pred_dos"))
-    if not all([ref_band, pred_band]):
+    if not all([ref_band, pred_band, ref_dos, pred_dos]):
         return None
-    # DOS panels are optional: benchmarks without DOS data still render bands.
-    with_dos = ref_dos is not None or pred_dos is not None
 
     fig = plt.figure(figsize=(9, 5))
-    ax2 = None
-    if with_dos:
-        gridspec.GridSpec(1, 2, width_ratios=[4, 1], wspace=0.05)
-        ax1 = fig.add_axes([0.12, 0.07, 0.67, 0.85])
-        ax2 = fig.add_axes([0.82, 0.07, 0.17, 0.85])
-    else:
-        ax1 = fig.add_axes([0.12, 0.07, 0.85, 0.85])
+    gridspec.GridSpec(1, 2, width_ratios=[4, 1], wspace=0.05)
+    ax1 = fig.add_axes([0.12, 0.07, 0.67, 0.85])
+    ax2 = fig.add_axes([0.82, 0.07, 0.17, 0.85])
 
     distances_ref = ref_band["distances"]
     frequencies_ref = [
@@ -467,12 +461,10 @@ def render_band_dos_png(
     frequencies_pred = [
         np.asarray(segment) * frequency_scale for segment in pred_band["frequencies"]
     ]
-    if ref_dos is not None:
-        dos_freqs_ref, dos_values_ref = ref_dos
-        dos_freqs_ref = np.asarray(dos_freqs_ref) * frequency_scale
-    if pred_dos is not None:
-        dos_freqs_pred, dos_values_pred = pred_dos
-        dos_freqs_pred = np.asarray(dos_freqs_pred) * frequency_scale
+    dos_freqs_ref, dos_values_ref = ref_dos
+    dos_freqs_ref = np.asarray(dos_freqs_ref) * frequency_scale
+    dos_freqs_pred, dos_values_pred = pred_dos
+    dos_freqs_pred = np.asarray(dos_freqs_pred) * frequency_scale
 
     pred_label_added = False
     for dist_segment, freq_segment in zip(
@@ -491,8 +483,7 @@ def render_band_dos_png(
             )
             pred_label_added = True
 
-    if pred_dos is not None:
-        ax2.plot(dos_values_pred, dos_freqs_pred, lw=1.2, color="red", linestyle="--")
+    ax2.plot(dos_values_pred, dos_freqs_pred, lw=1.2, color="red", linestyle="--")
 
     ref_label_added = False
     for dist_segment, freq_segment in zip(distances_ref, frequencies_ref, strict=False):
@@ -507,8 +498,7 @@ def render_band_dos_png(
             )
             ref_label_added = True
 
-    if ref_dos is not None:
-        ax2.plot(dos_values_ref, dos_freqs_ref, lw=1.2, color="blue")
+    ax2.plot(dos_values_ref, dos_freqs_ref, lw=1.2, color="blue")
 
     labels = ref_band.get("labels", [])
     connections = ref_band.get("path_connections", [])
@@ -520,6 +510,7 @@ def render_band_dos_png(
         ax1.set_xlim(xticks[0], xticks[-1])
 
     ax1.axhline(0, color="k", linewidth=1)
+    ax2.axhline(0, color="k", linewidth=1)
     ax1.set_ylabel(f"Frequency ({frequency_unit})", fontsize=16)
     ax1.set_xlabel("Wave Vector", fontsize=16)
     ax1.tick_params(axis="both", which="major", labelsize=14)
@@ -528,12 +519,10 @@ def render_band_dos_png(
     ref_flat = np.concatenate(frequencies_ref).flatten()
     all_freqs = np.concatenate([pred_flat, ref_flat])
     ax1.set_ylim(all_freqs.min() - 0.4, all_freqs.max() + 0.4)
+    ax2.set_ylim(ax1.get_ylim())
 
-    if ax2 is not None:
-        ax2.axhline(0, color="k", linewidth=1)
-        ax2.set_ylim(ax1.get_ylim())
-        plt.setp(ax2.get_yticklabels(), visible=False)
-        ax2.set_xlabel("DOS")
+    plt.setp(ax2.get_yticklabels(), visible=False)
+    ax2.set_xlabel("DOS")
 
     handles, labels = ax1.get_legend_handles_labels()
     by_label = dict(zip(labels, handles, strict=False))
@@ -549,8 +538,7 @@ def render_band_dos_png(
         )
 
     ax1.grid(True, linestyle=":", linewidth=0.5)
-    if ax2 is not None:
-        ax2.grid(True, linestyle=":", linewidth=0.5)
+    ax2.grid(True, linestyle=":", linewidth=0.5)
     fig.suptitle(system_label, x=0.4, fontsize=14)
 
     png_buf = BytesIO()
