@@ -873,4 +873,4 @@ Ti, Ti–Al, Ti–V and Ti–Al–V compounds exist in Alexandria, so metallic T
 environments are in-domain for models trained on datasets derived from it, such as
 OMat24. However, the 8-atom hcp/bcc/hex supercells with particular Al/V substitution
 patterns studied here come from the Allen & Bartók dataset and do not appear in these
-training sets verbatim.
+training sets.
