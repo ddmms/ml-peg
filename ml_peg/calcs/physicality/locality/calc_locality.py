@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
+from typing import Any
 from warnings import warn
 
 from ase import Atoms
@@ -163,8 +164,8 @@ def prepared_solute() -> dict[str, Atoms]:
     return solutes
 
 
-@pytest.mark.parametrize("model_name", MODELS)
-def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None:
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_ghost_atoms(prepared_solute: dict[str, Atoms], mlip: tuple[str, Any]) -> None:
     """
     Run ghost atom tests.
 
@@ -172,9 +173,10 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
     ----------
     prepared_solute
         Solute structure to add ghost atoms to for each model.
-    model_name
+    mlip
         Name of model use and model to get calculator.
     """
+    model_name, _ = mlip
     solute = prepared_solute[model_name]
 
     ghost_num = 20  # number of ghost atoms
@@ -195,8 +197,8 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
     write(write_dir / "system_ghost.xyz", [solute, system_ghost])
 
 
-@pytest.mark.parametrize("model_name", MODELS)
-def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_rand_h(prepared_solute: dict[str, Atoms], mlip: tuple[str, Any]) -> None:
     """
     Run test adding random hydrogens to solute.
 
@@ -204,9 +206,10 @@ def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
     ----------
     prepared_solute
         Solute structure to add hydrogens to for each model.
-    model_name
+    mlip
         Name of model use and model to get calculator.
     """
+    model_name, _ = mlip
     solute = prepared_solute[model_name]
 
     rand_trials = 30

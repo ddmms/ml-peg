@@ -973,8 +973,8 @@ def run_iron_properties(model_name: str, model: Any) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", MODELS)
-def test_iron_properties(model_name: str) -> None:
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_iron_properties(mlip: tuple[str, Any]) -> None:
     """
     Run iron properties benchmark for each registered model.
 
@@ -983,7 +983,8 @@ def test_iron_properties(model_name: str) -> None:
 
     Parameters
     ----------
-    model_name
-        Name of the model to evaluate.
+    mlip
+        Name of the model to evaluate and the model itself.
     """
-    run_iron_properties(model_name, MODELS[model_name])
+    model_name, model = mlip
+    run_iron_properties(model_name, model)

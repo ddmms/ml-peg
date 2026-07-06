@@ -267,8 +267,13 @@ def run_calcs(
     pytest.main(options)
 
 
-@app.command(name="analyse", help="Run analysis")
+@app.command(
+    name="analyse",
+    help="Run analysis",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def run_analysis(
+    ctx: Context,
     models: Annotated[
         str | None,
         Option(
@@ -303,6 +308,8 @@ def run_analysis(
 
     Parameters
     ----------
+    ctx
+        Typer Context. Automatically set.
     models
         Models to run analysis for, in comma-separated list. Default is `None`,
         corresponding to all available models.
@@ -335,6 +342,9 @@ def run_analysis(
 
     if models_file:
         options.extend(["--models-file", models_file])
+
+    # Parse any custom options to pytest
+    options.extend(ctx.args)
 
     pytest.main(options)
 

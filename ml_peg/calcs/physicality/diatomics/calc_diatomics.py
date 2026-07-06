@@ -6,6 +6,7 @@ from collections.abc import Iterable
 import itertools
 import json
 from pathlib import Path
+from typing import Any
 from warnings import warn
 
 from ase import Atoms
@@ -247,14 +248,15 @@ def run_diatomics(model_name: str, model) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", MODELS)
-def test_diatomics(model_name: str) -> None:
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_diatomics(mlip: tuple[str, Any]) -> None:
     """
     Run diatomics benchmark for each registered model.
 
     Parameters
     ----------
-    model_name
-        Name of the model to evaluate.
+    mlip
+        Name of the model to evaluate and the model itself.
     """
-    run_diatomics(model_name, MODELS[model_name])
+    model_name, model = mlip
+    run_diatomics(model_name, model)

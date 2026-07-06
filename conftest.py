@@ -10,6 +10,8 @@ import pytest
 
 from ml_peg import models
 
+pytest_plugins = ["pytester"]
+
 
 def pytest_addoption(parser):
     """Add flag to run tests for extra MLIPs."""

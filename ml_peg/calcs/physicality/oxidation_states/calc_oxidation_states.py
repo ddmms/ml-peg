@@ -74,17 +74,17 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
             warn(f"Error during MD for {salt}: {exc}", stacklevel=2)
 
 
-@pytest.mark.parametrize("model_name", MODELS)
-def test_iron_oxygen_rdfs(model_name: str) -> None:
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_iron_oxygen_rdfs(mlip: tuple[str, Any]) -> None:
     """
     Calculate Fe-O RDFs from NVT MLMD for oxidation states tests.
 
     Parameters
     ----------
-    model_name
-        Name of MLIP.
+    mlip
+        Name of MLIP and the model itself.
     """
-    model_name = model_name
+    model_name, _ = mlip
     out_dir = OUT_PATH / model_name
 
     rmax = 6.0

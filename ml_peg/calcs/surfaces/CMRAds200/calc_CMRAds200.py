@@ -59,7 +59,7 @@ def test_cmrads200(mlip: tuple[str, Any]) -> None:
     data_dir = download_github_data(
         filename="CMR.zip",
         github_uri="https://github.com/benshi97/ml-peg-transition-metal-data/raw/main",
-        force=True,
+        force=False,
     )
 
     cmr_structs_list = read(data_dir / "CMRads_structures.extxyz", index=":")
