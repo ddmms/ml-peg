@@ -6,7 +6,6 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 import json
 from pathlib import Path
-import pickle
 from typing import Any
 
 from ase import Atoms
@@ -141,54 +140,6 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
         weights[metric_name] = float(metric_config.get("weight", 1.0))
 
     return thresholds, tooltips, weights
-
-
-def load_pickle(path: Path) -> Any | None:
-    """
-    Load a pickled file, returning None when missing or unreadable.
-
-    Parameters
-    ----------
-    path
-        Path to the pickle file.
-
-    Returns
-    -------
-    Any | None
-        Unpickled object, or ``None`` when the file is missing or unreadable.
-    """
-    if not Path(path).exists():
-        return None
-    try:
-        with open(path, "rb") as handle:
-            return pickle.load(handle)
-    except Exception as exc:
-        print(f"Failed to load {path}: {exc}")
-        return None
-
-
-def load_json(path: Path) -> Any | None:
-    """
-    Load a JSON file, returning None when missing or unreadable.
-
-    Parameters
-    ----------
-    path
-        Path to the JSON file.
-
-    Returns
-    -------
-    Any | None
-        Parsed JSON data, or ``None`` when the file is missing or unreadable.
-    """
-    if not Path(path).exists():
-        return None
-    try:
-        with open(path, encoding="utf8") as handle:
-            return json.load(handle)
-    except Exception as exc:
-        print(f"Failed to load {path}: {exc}")
-        return None
 
 
 def mae(ref: list, prediction: list) -> float:
