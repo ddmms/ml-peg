@@ -119,7 +119,9 @@ def compute_gruneisen(
         atoms, phonons, -delta_strain, displacement_distance, symmetrize_fc2, calculator
     )
 
-    grun = PhonopyGruneisen(phonons, ph_plus, ph_minus, delta_strain=delta_strain)
+    # phonopy derives the strain span (V+ - V-)/V0 from the cell volumes;
+    # passing delta_strain here would be the half-span and double gamma.
+    grun = PhonopyGruneisen(phonons, ph_plus, ph_minus)
     grun.set_mesh(q_mesh)
     _qpts, weights, frequencies, _evecs, gammas = grun.get_mesh()
 
@@ -141,31 +143,6 @@ def compute_gruneisen(
         "weights": weights,
         "frequencies": frequencies,
     }
-
-
-def debye_temperature_from_max_freq(phonons: Phonopy, q_mesh: np.ndarray) -> float:
-    """
-    Estimate the Debye temperature from the maximum mesh frequency.
-
-    Uses ``θ_D = ħ ω_max / k_B`` where ``ω_max = 2π f_max``.
-
-    Parameters
-    ----------
-    phonons
-        Phonopy object with force constants computed.
-    q_mesh
-        Sampling mesh shape ``(3,)``.
-
-    Returns
-    -------
-    float
-        Debye temperature in Kelvin.
-    """
-    phonons.run_mesh(q_mesh)
-    freqs_thz = phonons.get_mesh_dict()["frequencies"]
-    f_max = float(np.max(freqs_thz))
-    omega_max = 2.0 * np.pi * f_max * 1e12
-    return float(_hbar * omega_max / _k)
 
 
 def slack_thermal_conductivity(
@@ -226,7 +203,6 @@ def compute_thermal_properties(
     calculator: Calculator,
     q_mesh: np.ndarray,
     *,
-    n_atoms_primitive: int | None = None,
     delta_strain: float = 0.01,
     displacement_distance: float = 0.01,
     symmetrize_fc2: bool = True,
@@ -235,9 +211,9 @@ def compute_thermal_properties(
     """
     Compute Grüneisen parameter and lattice thermal conductivity.
 
-    This is a convenience wrapper that calls :func:`compute_gruneisen`,
-    :func:`debye_temperature_from_max_freq`, and
-    :func:`slack_thermal_conductivity` in sequence.
+    This is a convenience wrapper around :func:`compute_gruneisen` and
+    :func:`slack_thermal_conductivity`, with the Debye temperature estimated
+    from the maximum equilibrium mesh frequency (θ_D = ħω_max / k_B).
 
     Parameters
     ----------
@@ -249,9 +225,6 @@ def compute_thermal_properties(
         ASE calculator used to evaluate forces on strained supercells.
     q_mesh
         Sampling mesh shape ``(3,)``, e.g. ``[20, 20, 20]``.
-    n_atoms_primitive
-        Number of atoms in the primitive cell. If ``None``, taken from
-        ``phonons.primitive``.
     delta_strain
         Volumetric strain ``dV/V`` used for Grüneisen calculation.
     displacement_distance
@@ -287,9 +260,7 @@ def compute_thermal_properties(
     f_max = float(np.max(grun_dict["frequencies"]))
     theta_d = float(_hbar * 2.0 * np.pi * f_max * 1e12 / _k)
 
-    if n_atoms_primitive is None:
-        n_atoms_primitive = len(phonons.primitive)
-
+    n_atoms_primitive = len(phonons.primitive)
     masses_amu = np.asarray(atoms.get_masses(), dtype=float)
     # Use the primitive cell volume so that δ = (V_prim/n_prim)^(1/3) is correct
     # regardless of whether atoms is a conventional or primitive cell.
