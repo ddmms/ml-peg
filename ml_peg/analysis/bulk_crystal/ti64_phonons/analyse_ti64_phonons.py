@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-import pickle
 import shutil
 from typing import Any
 
@@ -12,7 +10,13 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_json,
+    load_metrics_config,
+    load_pickle,
+    rmse,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import EV_TO_KJMOL
@@ -50,55 +54,25 @@ INFO = get_struct_info(
 )
 
 
-def _load_band(path: Path) -> tuple[np.ndarray, np.ndarray] | None:
+def _band_arrays(band: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     """
-    Load concatenated distances and frequencies from a pickled band dict.
+    Concatenate a band dict's segments into distance and frequency arrays.
 
     Parameters
     ----------
-    path
-        Path to a pickled phonopy-style band-structure dict.
+    band
+        Phonopy-style band-structure dict with ``distances`` and
+        ``frequencies`` segment lists.
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray] | None
+    tuple[np.ndarray, np.ndarray]
         ``(distances, frequencies)`` with shapes ``(nq,)`` and
-        ``(nq, n_bands)``, or ``None`` when unavailable.
+        ``(nq, n_bands)``.
     """
-    if not path.exists():
-        return None
-    try:
-        with path.open("rb") as handle:
-            band = pickle.load(handle)
-        distances = np.concatenate([np.asarray(seg) for seg in band["distances"]])
-        freqs = np.vstack([np.asarray(seg) for seg in band["frequencies"]])
-        return distances, freqs
-    except Exception as exc:
-        print(f"Failed to load band structure from {path}: {exc}")
-        return None
-
-
-def _load_thermal(path: Path) -> dict[str, Any] | None:
-    """
-    Load thermal properties JSON.
-
-    Parameters
-    ----------
-    path
-        Path to a ``*_thermal_properties.json`` file.
-
-    Returns
-    -------
-    dict[str, Any] | None
-        Parsed JSON mapping, or ``None`` when unavailable.
-    """
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf8"))
-    except Exception as exc:
-        print(f"Failed to load thermal properties from {path}: {exc}")
-        return None
+    distances = np.concatenate([np.asarray(seg) for seg in band["distances"]])
+    freqs = np.vstack([np.asarray(seg) for seg in band["frequencies"]])
+    return distances, freqs
 
 
 def _interp_ref_bands(
@@ -189,13 +163,13 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
     )
     ref_cache: dict[str, dict[str, Any]] = {}
     for case in case_names:
-        ref_band = _load_band(REF_PATH / f"{case}_band_structure.npz")
+        ref_band = load_pickle(REF_PATH / f"{case}_band_structure.npz")
         if ref_band is None:
             print(f"Missing DFT reference for {case}, skipping case.")
             continue
         ref_cache[case] = {
             "band": ref_band,
-            "thermal": _load_thermal(REF_PATH / f"{case}_thermal_properties.json"),
+            "thermal": load_json(REF_PATH / f"{case}_thermal_properties.json"),
         }
         ref_struct_src = REF_PATH / f"{case}.xyz"
         if ref_struct_src.exists():
@@ -220,12 +194,12 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
 
         for case, ref_data in ref_cache.items():
             pred_band_path = model_dir / f"{case}_band_structure.npz"
-            pred_band = _load_band(pred_band_path)
+            pred_band = load_pickle(pred_band_path)
             if pred_band is None:
                 continue
 
-            ref_dist, ref_freqs = ref_data["band"]
-            pred_dist, pred_freqs = pred_band
+            ref_dist, ref_freqs = _band_arrays(ref_data["band"])
+            pred_dist, pred_freqs = _band_arrays(pred_band)
             if (
                 ref_freqs.shape[1] != pred_freqs.shape[1]
                 or not np.isfinite(pred_freqs).all()
@@ -273,9 +247,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
             )
 
             if ref_data["thermal"] is not None:
-                pred_thermal = _load_thermal(
-                    model_dir / f"{case}_thermal_properties.json"
-                )
+                pred_thermal = load_json(model_dir / f"{case}_thermal_properties.json")
                 if pred_thermal is not None:
                     errors = _free_energy_errors(ref_data["thermal"], pred_thermal)
                     if errors is not None:
