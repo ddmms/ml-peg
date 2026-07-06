@@ -655,12 +655,12 @@ that band paths remain directly comparable to the DFT reference.
 
 **Phonon band structure**
 
-Force constants are computed using the same displacement dataset as the DFT reference
-(``diamond.yaml``). MLIP forces are evaluated for each displaced supercell and used to
-produce second-order force constants via phonopy, which are then symmetrised. The force
-constants are Fourier-interpolated to the q-point path stored in ``dft_band.npz``, and
-phonon frequencies are compared mode-by-mode after sorting to avoid branch-labelling
-ambiguities.
+Force constants are computed from phonopy-generated ±0.01 Å displacements, equivalent
+to the displacement dataset used for the DFT reference. MLIP forces are evaluated for
+each displaced supercell and used to produce second-order force constants via phonopy,
+which are then symmetrised. The force constants are Fourier-interpolated to the
+reference q-point path, and phonon frequencies are compared mode-by-mode after sorting
+to avoid branch-labelling ambiguities.
 
 **Grüneisen parameter**
 
@@ -732,23 +732,22 @@ parallel execution (MPI or multiprocessing) was used in the benchmark driver.
 Data availability
 -----------------
 
-Input structures (https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
+Input structures and reference data
+(https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
 
-* ``diamond.yaml``: conventional cubic cell (8 atoms, a = 3.56 Å) × 4×4×4 = 512-atom
-  supercell, used for all MLIP band and thermal calculations. The unit cell is the
+* ``diamond.xyz``: conventional cubic cell (8 atoms, a = 3.56 Å), the
   CASTEP/RSCAN-relaxed geometry used for the DFT reference calculations; each MLIP
-  re-relaxes atomic positions (fixed cell and symmetry) before computing force
-  constants.
+  re-relaxes atomic positions (fixed cell and symmetry) and computes force constants
+  on a 4×4×4 (512-atom) supercell.
 
-Reference data:
-
-* DFT phonon band structure for bulk diamond along a fixed high-symmetry path, computed
-  with CASTEP using the RSCAN functional. Provided as ``dft_band.npz``.
+* DFT phonon band structure for bulk diamond along a fixed high-symmetry path,
+  computed with CASTEP using the RSCAN functional, pre-converted to the shared phonon
+  benchmark format, along with the q-path metadata used for the MLIP band structures.
 
 * DFT Grüneisen parameter and lattice thermal conductivity computed using the same
   Grüneisen + Slack pipeline as the MLIP predictions, with CASTEP/RSCAN force constants
   at V\ :sub:`0`, V\ :sub:`0` + 1%, and V\ :sub:`0` − 1% on a 128-atom primitive
-  supercell. Stored as ``diamond_thermal_ref.json``.
+  supercell.
 
 Thermal conductivity method:
 
