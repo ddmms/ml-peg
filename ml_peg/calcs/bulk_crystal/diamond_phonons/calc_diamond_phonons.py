@@ -199,8 +199,7 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
     phonons_ref = load_phonopy(str(diamond_data / "diamond.yaml"))
     segments, _, labels, connections = _reference_band_path(diamond_data)
 
-    # Relax with fixed symmetry, as in the general phonon benchmark. The cell
-    # is kept fixed so that band distances remain comparable to the reference.
+    # Relax with fixed symmetry, as in the general phonon benchmark.
     atoms = phonopy_to_ase_atoms(phonons_ref)
     atoms.info.setdefault("charge", 0)
     atoms.info.setdefault("spin", 1)
