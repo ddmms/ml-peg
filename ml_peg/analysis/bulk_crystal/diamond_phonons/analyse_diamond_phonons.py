@@ -53,23 +53,6 @@ INFO = get_struct_info(
 )
 
 
-def _sorted_flat(freqs: np.ndarray) -> np.ndarray:
-    """
-    Sort each q-point's bands then flatten.
-
-    Parameters
-    ----------
-    freqs
-        Array of shape ``(Nq, n_bands)``.
-
-    Returns
-    -------
-    np.ndarray
-        Flattened array of shape ``(Nq * n_bands,)``.
-    """
-    return np.sort(freqs, axis=1).reshape(-1)
-
-
 @pytest.fixture
 def diamond_stats() -> dict[str, dict[str, Any]]:
     """
@@ -88,8 +71,10 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     if ref_band is None:
         print(f"ERROR: DFT reference not found at {ref_band_path}")
         return {}
+    # Reference and phonopy bands are both frequency-sorted per q-point, so
+    # modes can be compared by position without branch-labelling ambiguity.
     ref_freqs = np.vstack([np.asarray(seg) for seg in ref_band["frequencies"]])
-    ref_flat = _sorted_flat(ref_freqs)
+    ref_flat = ref_freqs.reshape(-1)
 
     ref_thermal = load_json(REF_PATH / "diamond_thermal.json")
 
@@ -114,7 +99,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
         points: list[dict[str, Any]] = []
 
         if pred_freqs is not None and pred_freqs.shape == ref_freqs.shape:
-            pred_flat = _sorted_flat(pred_freqs)
+            pred_flat = pred_freqs.reshape(-1)
             if np.isfinite(pred_flat).all():
                 band_errors["mae"] = mae(ref_flat, pred_flat)
                 band_errors["rmse"] = rmse(ref_flat, pred_flat)
