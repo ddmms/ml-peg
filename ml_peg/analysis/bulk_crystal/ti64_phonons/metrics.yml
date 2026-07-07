@@ -33,8 +33,8 @@ metrics:
 
   ω_avg MAE:
     good: 0.0
-    bad: 0.5
+    bad: 1.0
     unit: THz
     tooltip: "MAE of ω_avg per case, where ω_avg is the mean of all phonon band frequencies for that case, averaged over the 10 Ti64 cases."
-    weight: 0.5
+    weight: 1.0
     level_of_theory: PBE
