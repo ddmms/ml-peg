@@ -637,6 +637,20 @@ to the DFT reference. Both prediction and reference use the identical Slack form
 so this metric isolates MLIP error in the force constants rather than Slack
 approximation error.
 
+**Score thresholds**
+
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The band MAE (1 THz)
+and RMSE (2 THz) bars correspond to 2.5% and 5% of diamond's 40 THz spectrum — a
+deliberately strict choice, so that only quantitatively accurate force constants
+score. Δγ = 0.2 corresponds to a 20% error in the predicted thermal expansion
+(α ∝ γ) and to the spread among experimental determinations of diamond's Grüneisen
+parameter. Δθ\ :sub:`D` = 90 K corresponds to a ~1.9 THz error in the highest phonon
+frequency (θ\ :sub:`D` = ħω\ :sub:`max`/k\ :sub:`B` ≈ 48 K per THz), consistent with
+the band-structure bars. Δκ\ :sub:`L` = 400 W/m/K (≈50% of the reference κ)
+approximately equals the κ error obtained by propagating the Δγ and Δθ\ :sub:`D`
+bars through the Slack formula (κ ∝ θ\ :sub:`D`\ ³/γ²), keeping the three thermal
+thresholds mutually consistent.
+
 
 Method
 ------
@@ -826,6 +840,23 @@ Metrics
    subset of cases where thermodynamic outputs are available.
 
    Computed as in (4), but using the final temperature point (2000 K).
+
+**Score thresholds**
+
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The dispersion RMSE bar
+(2 THz) is 20% of the ~10 THz Ti64 spectrum and comparable to half the depth of the
+imaginary modes of the bcc phases in the reference (3–4.5 THz): frequency errors of
+this magnitude are sufficient to create or remove a dynamical instability, and bound
+the vibrational free-energy error at up to ~3 k\ :sub:`B`\ T·(δω/ω) ≈ 0.1 eV/atom at
+2000 K, well above the free-energy differences that decide phase competition in Ti
+alloys. Since the RMSE averages over the Brillouin zone, this marks the scale at
+which stability conclusions can no longer be guaranteed, rather than a point of
+certain failure. The same 2 THz bar is applied to the worst case (RMSE max) so that
+no single phase may be far wrong, and the ω_avg MAE bar (1 THz, 10% of the spectrum)
+bounds systematic softening or stiffening of the lattice. The Helmholtz free-energy
+bars (7 meV/atom at 0 K, ≈20% of the ~35 meV/atom zero-point energy; 30 meV/atom at
+2000 K) are set so that errors beyond them are comparable to the phase free-energy
+differences (tens of meV/atom) that such calculations are used to resolve.
 
 
 Computational cost
