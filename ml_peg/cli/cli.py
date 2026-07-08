@@ -74,6 +74,69 @@ def get_tests(root: Path, script_prefix: str, category: str = "*") -> tuple[str,
     )
 
 
+_TEST_ROOTS: dict[str, Path] = {
+    "calc": CALCS_ROOT,
+    "analyse": ANALYSIS_ROOT,
+    "app": APP_ROOT,
+}
+
+
+def complete_test(ctx: Context, incomplete: str) -> list[str]:
+    """
+    Complete test names for the invoked command, scoped to ``--category``.
+
+    The command name (``ctx.info_name``) doubles as the script prefix, e.g.
+    ``calc`` -> ``calc_*.py`` in ``CALCS_ROOT``.
+
+    Parameters
+    ----------
+    ctx
+        Typer context, used to identify the command and the selected category.
+    incomplete
+        Partially typed test name.
+
+    Returns
+    -------
+    list[str]
+        Matching test names.
+    """
+    root = _TEST_ROOTS.get(ctx.info_name)
+    if root is None:
+        return []
+    category = ctx.params.get("category") or "*"
+    return [
+        test
+        for test in get_tests(root, ctx.info_name, category)
+        if test.startswith(incomplete)
+    ]
+
+
+def complete_models(incomplete: str) -> list[str]:
+    """
+    Complete comma-separated model names from ``models.yml``.
+
+    Parameters
+    ----------
+    incomplete
+        Partially typed value; only the segment after the last comma is completed.
+
+    Returns
+    -------
+    list[str]
+        Matching model names, preserving any already-typed comma-separated prefix.
+    """
+    import yaml
+
+    from ml_peg.models import MODELS_ROOT
+
+    with open(MODELS_ROOT / "models.yml", encoding="utf8") as handle:
+        names = sorted(yaml.safe_load(handle) or {})
+
+    prefix, sep, last = incomplete.rpartition(",")
+    head = f"{prefix}{sep}" if sep else ""
+    return [f"{head}{name}" for name in names if name.startswith(last)]
+
+
 AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
 AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
 CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
@@ -94,7 +157,8 @@ def run_dash_app(
             help=(
                 "Comma-separated models to build interactivity for. Default is all "
                 "models."
-            )
+            ),
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -118,6 +182,7 @@ def run_dash_app(
         Option(
             help="Test to build app for. Default is all tests.",
             case_sensitive=False,
+            autocompletion=complete_test,
         ),
     ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
@@ -163,7 +228,10 @@ def run_calcs(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run calculations on. Default is all models."
+            help=(
+                "Comma-separated models to run calculations on. Default is all models."
+            ),
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -183,7 +251,11 @@ def run_calcs(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run calculations for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run calculations for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
     ] = "*",
     run_mock: Annotated[
         bool, Option(help="Whether to run with mock calculator in addition to models.")
@@ -272,7 +344,8 @@ def run_analysis(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run analysis for. Default is all models."
+            help="Comma-separated models to run analysis for. Default is all models.",
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -292,7 +365,11 @@ def run_analysis(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run analysis for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run analysis for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
     ] = "*",
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
