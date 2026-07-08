@@ -1,0 +1,8 @@
+metrics:
+  Planarity Deviation:
+    good: 0.0
+    bad: 0.05
+    unit: Å
+    weight: 1
+    tooltip: Mean RMSD of the ring atoms from their best-fit plane, averaged over the MD trajectory and across all molecules.
+    level_of_theory: DFT
