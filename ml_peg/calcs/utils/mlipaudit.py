@@ -5,6 +5,7 @@ from __future__ import annotations
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
     ConformerSelectionBenchmark,
 )
+from mlipaudit.benchmarks.ring_planarity.ring_planarity import RingPlanarityBenchmark
 from mlipaudit.benchmarks.tautomers.tautomers import TautomersBenchmark
 
 
@@ -14,6 +15,19 @@ class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
 
     ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
     do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegRingPlanarityBenchmark(RingPlanarityBenchmark):
+    """
+    ``RingPlanarityBenchmark`` wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
+    objects do not expose the set of elements the underlying model supports, so
+    the benchmark cannot decide up front whether to skip. Missing element errors
+    are instead handled at runtime.
     """
 
     skip_if_elements_missing = False
