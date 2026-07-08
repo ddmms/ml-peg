@@ -88,7 +88,7 @@ class DiamondPhononApp(BaseApp):
             Build a selection context for the dispersion preview.
 
             For this benchmark all scatter points belong to the same system,
-            so any click shows the model's pre-rendered dispersion.
+            so any click shows the model's band + DOS comparison.
 
             Parameters
             ----------
@@ -109,7 +109,7 @@ class DiamondPhononApp(BaseApp):
                 "selection": {
                     "id": "diamond",
                     "label": "Carbon diamond",
-                    "image": entry.get("image"),
+                    "data_paths": entry.get("data_paths"),
                     "structure_paths": entry.get("structure_paths"),
                 },
             }

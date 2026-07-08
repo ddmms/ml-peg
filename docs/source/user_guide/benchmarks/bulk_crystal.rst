@@ -593,6 +593,9 @@ diamond (carbon).
 The benchmark evaluates (1) phonon frequency accuracy along a fixed high-symmetry
 path in the Brillouin zone, and (2) the Grüneisen parameter, Debye temperature, and
 Slack-formula lattice thermal conductivity — all compared against RSCAN DFT references.
+The total phonon density of states (DOS) is additionally computed and displayed
+alongside the dispersion in the app for qualitative comparison; it does not enter
+the score.
 The thermal metrics probe two physically independent aspects of the force constants:
 anharmonicity (Grüneisen parameter) and absolute stiffness (Debye temperature).
 
@@ -676,6 +679,13 @@ which are then symmetrised. The force constants are Fourier-interpolated to the
 reference q-point path, and phonon frequencies are compared mode-by-mode after sorting
 to avoid branch-labelling ambiguities.
 
+**Phonon density of states**
+
+The total DOS is computed from the same equilibrium force constants on a 20×20×20
+q-mesh via phonopy (``run_mesh`` + ``run_total_dos``), as in the general and Ti64
+phonon benchmarks, and rendered next to the band structure in the interactive
+dispersion plot. No DOS-based metric is scored.
+
 **Grüneisen parameter**
 
 The mode Grüneisen parameter describes how phonon frequencies shift with volume:
@@ -758,6 +768,10 @@ Input structures and reference data
 * DFT phonon band structure for bulk diamond along a fixed high-symmetry path,
   computed with CASTEP using the RSCAN functional, pre-converted to the shared phonon
   benchmark format, along with the q-path metadata used for the MLIP band structures.
+
+* DFT total phonon DOS (``diamond_dos.npz``), computed from the same DFT force
+  constants on a 20×20×20 q-mesh in the shared phonon benchmark format (phonopy
+  ``get_total_dos_dict()``: frequency points in THz and total DOS).
 
 * DFT Grüneisen parameter and lattice thermal conductivity computed using the same
   Grüneisen + Slack pipeline as the MLIP predictions, with CASTEP/RSCAN force constants

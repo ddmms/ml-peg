@@ -32,6 +32,7 @@ DFT_REF_PATH = OUT_PATH / "DFT"
 # formats, plus the q-path metadata used to compute model band structures.
 REF_FILES = (
     "diamond_band_structure.npz",
+    "diamond_dos.npz",
     "diamond_thermal.json",
     "diamond.xyz",
     "diamond_qpath_metadata.pkl",
@@ -100,10 +101,11 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     band_path = out_dir / "diamond_band_structure.npz"
+    dos_path = out_dir / "diamond_dos.npz"
     thermal_path = out_dir / "diamond_thermal.json"
     struct_path = out_dir / "diamond.xyz"
 
-    if band_path.exists() and thermal_path.exists() and struct_path.exists():
+    if all(p.exists() for p in (band_path, dos_path, thermal_path, struct_path)):
         return
 
     calc = model.get_calculator(precision="high")
@@ -155,6 +157,15 @@ def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
                 pickle.dump(phonons.get_band_structure_dict(), handle)
         except Exception as exc:
             warn(f"{model_name}: diamond band structure failed: {exc}", stacklevel=2)
+
+    if not dos_path.exists():
+        try:
+            phonons.run_mesh(THERMAL_MESH)
+            phonons.run_total_dos()
+            with open(dos_path, "wb") as handle:
+                pickle.dump(phonons.get_total_dos_dict(), handle)
+        except Exception as exc:
+            warn(f"{model_name}: diamond DOS failed: {exc}", stacklevel=2)
 
     if not thermal_path.exists():
         try:
