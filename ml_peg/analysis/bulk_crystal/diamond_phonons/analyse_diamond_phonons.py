@@ -8,17 +8,12 @@ import pickle
 import shutil
 from typing import Any
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae, rmse
 from ml_peg.app import APP_ROOT
-from ml_peg.app.bulk_crystal.phonons.interactive_helpers import _build_xticks
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -101,59 +96,6 @@ def _load_json(path: Path) -> Any | None:
         return None
 
 
-def _plot_dispersion(
-    ref_band: dict[str, Any], pred_band: dict[str, Any], model_name: str, out_png: Path
-) -> None:
-    """
-    Render the reference vs predicted dispersion comparison to a PNG.
-
-    Parameters
-    ----------
-    ref_band
-        Reference band-structure dict (with labels and path connections).
-    pred_band
-        Model band-structure dict.
-    model_name
-        Model name used for the legend.
-    out_png
-        Output PNG path.
-    """
-    fig, ax = plt.subplots(figsize=(9, 5))
-    for band, colour, style, label in (
-        (pred_band, "red", "--", model_name),
-        (ref_band, "blue", "-", "RSCAN"),
-    ):
-        for i, (dist, freqs) in enumerate(
-            zip(band["distances"], band["frequencies"], strict=True)
-        ):
-            ax.plot(
-                dist,
-                np.asarray(freqs),
-                lw=1,
-                linestyle=style,
-                color=colour,
-                label=label if i == 0 else None,
-            )
-
-    xticks, xticklabels = _build_xticks(
-        ref_band["distances"], ref_band["labels"], ref_band["path_connections"]
-    )
-    for x_val in xticks:
-        ax.axvline(x=x_val, color="k", linewidth=1)
-    ax.set_xticks(xticks, xticklabels)
-    ax.set_xlim(xticks[0], xticks[-1])
-    ax.axhline(0, color="k", linewidth=1)
-    ax.set_ylabel("Frequency (THz)", fontsize=14)
-    ax.set_xlabel("Wave Vector", fontsize=14)
-    ax.grid(True, linestyle=":", linewidth=0.5)
-    handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles, strict=False))
-    ax.legend(by_label.values(), by_label.keys(), loc="upper right")
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=150)
-    plt.close(fig)
-
-
 @pytest.fixture
 def diamond_stats() -> dict[str, dict[str, Any]]:
     """
@@ -185,10 +127,22 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
         (OUT_PATH / "DFT").mkdir(parents=True, exist_ok=True)
         shutil.copy2(ref_struct_src, OUT_PATH / "DFT" / "diamond.xyz")
 
+    ref_dos_path = REF_PATH / "diamond_dos.npz"
+
     stats: dict[str, dict[str, Any]] = {}
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         pred_band_path = model_dir / "diamond_band_structure.npz"
+        pred_dos_path = model_dir / "diamond_dos.npz"
+
+        # The app renders band + DOS on the fly from these files via the
+        # shared phonon helpers, as in the Ti64 benchmark.
+        data_paths = {
+            "ref_band": str(ref_band_path.relative_to(CALC_PATH.parent)),
+            "ref_dos": str(ref_dos_path.relative_to(CALC_PATH.parent)),
+            "pred_band": str(pred_band_path.relative_to(CALC_PATH.parent)),
+            "pred_dos": str(pred_dos_path.relative_to(CALC_PATH.parent)),
+        }
         pred_band = _load_pickle(pred_band_path)
         pred_freqs = (
             np.vstack([np.asarray(seg) for seg in pred_band["frequencies"]])
@@ -198,7 +152,6 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
 
         band_errors: dict[str, float | None] = {"mae": None, "rmse": None}
         points: list[dict[str, Any]] = []
-        image = None
         structure_paths = None
 
         if pred_freqs is not None and pred_freqs.shape == ref_freqs.shape:
@@ -207,12 +160,9 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                 band_errors["mae"] = mae(ref_flat, pred_flat)
                 band_errors["rmse"] = rmse(ref_flat, pred_flat)
 
-                # Pre-render the dispersion preview so the app only loads it.
-                (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
-                png_path = OUT_PATH / model_name / "diamond_dispersion.png"
-                _plot_dispersion(ref_band, pred_band, model_name, png_path)
                 pred_struct_src = model_dir / "diamond.xyz"
                 if pred_struct_src.exists() and ref_struct_src.exists():
+                    (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
                     shutil.copy2(pred_struct_src, OUT_PATH / model_name / "diamond.xyz")
                     structure_paths = {
                         "ref": "/assets/bulk_crystal/diamond_phonons/DFT/diamond.xyz",
@@ -232,10 +182,6 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
                         zip(pred_flat, ref_flat, strict=True)
                     )
                 ]
-                image = (
-                    f"assets/bulk_crystal/diamond_phonons/{model_name}/"
-                    "diamond_dispersion.png"
-                )
         elif pred_freqs is not None:
             print(
                 f"{model_name}: band shape mismatch "
@@ -264,7 +210,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
             "band_errors": band_errors,
             "thermal_errors": thermal_errors,
             "points": points,
-            "image": image,
+            "data_paths": data_paths,
             "structure_paths": structure_paths,
         }
 
@@ -371,7 +317,7 @@ def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, A
                     "rmse": model_data["band_errors"]["rmse"],
                 },
             },
-            "image": model_data["image"],
+            "data_paths": model_data["data_paths"],
             "structure_paths": model_data["structure_paths"],
         }
 
