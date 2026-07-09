@@ -1,81 +1,81 @@
-"""Analyse CRBH20 Reaction Barriers benchmark."""
+"""
+Analyse CRBH20 Reaction Barriers benchmark.
+
+Reference barriers from Appendix B.5 of arXiv:2401.00096.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
+from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 
-# ml_peg imports
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.models.get_models import get_model_names
 from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
-# --- Configuration ---
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
-# Path to where the calc script outputted the data
-# Update this to match your actual folder structure
 CALC_PATH = CALCS_ROOT / "molecular" / "CRBH20" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular" / "CRBH20"
 
-# Path where this analysis script will save data for the Streamlit App
-OUT_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
-
-# Load metrics configuration (thresholds for green/red coloring in tables)
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# --- Reference Data (Appendix B.5 of arXiv:2401.00096) ---
-# The paper compares MACE against these specific DFT (r2SCAN) values.
-# Original unit was eV. Converted here to kcal/mol (1 eV = 23.0605 kcal/mol)
+EV_TO_KCAL = units.mol / units.kcal
+
+RXN_IDS = tuple(range(1, 21))
+
+# Reference barriers in eV (Appendix B.5 of arXiv:2401.00096), from DFT (r2SCAN)
+REF_BARRIERS_EV = {
+    1: 1.7194,
+    2: 1.9241,
+    3: 1.7499,
+    4: 1.8238,
+    5: 1.7237,
+    6: 1.5653,
+    7: 1.0911,
+    8: 1.8983,
+    9: 1.5477,
+    10: 1.7115,
+    11: 1.7379,
+    12: 2.0361,
+    13: 1.8739,
+    14: 1.9760,
+    15: 1.8865,
+    16: 1.5741,
+    17: 1.2587,
+    18: 1.7497,
+    19: 1.6989,
+    20: 1.7654,
+}
 REF_BARRIERS_KCAL = {
-    1: 1.7194 * 23.0605,
-    2: 1.9241 * 23.0605,
-    3: 1.7499 * 23.0605,
-    4: 1.8238 * 23.0605,
-    5: 1.7237 * 23.0605,
-    6: 1.5653 * 23.0605,
-    7: 1.0911 * 23.0605,
-    8: 1.8983 * 23.0605,
-    9: 1.5477 * 23.0605,
-    10: 1.7115 * 23.0605,
-    11: 1.7379 * 23.0605,
-    12: 2.0361 * 23.0605,
-    13: 1.8739 * 23.0605,
-    14: 1.9760 * 23.0605,
-    15: 1.8865 * 23.0605,
-    16: 1.5741 * 23.0605,
-    17: 1.2587 * 23.0605,
-    18: 1.7497 * 23.0605,
-    19: 1.6989 * 23.0605,
-    20: 1.7654 * 23.0605,
+    rxn_id: barrier * EV_TO_KCAL for rxn_id, barrier in REF_BARRIERS_EV.items()
 }
 
-
-def get_reaction_ids() -> list[str]:
-    """
-    Get list of Reaction IDs for plotting hover data.
-
-    We just use 1..20, sorted.
-    """
-    return [str(i) for i in range(1, 21)]
-
-
-def numeric_sort_key(filepath: Path):
-    """Sort helper to ensure files 1, 2, ... 10 come in numerical order, not alpha."""
-    # Extract the number from 'crbh20_12.xyz'
-    match = re.search(r"crbh20_(\d+).xyz", filepath.name)
-    if match:
-        return int(match.group(1))
-    return 0
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    sort_key=lambda path: int(path.stem.removeprefix("crbh20_")),
+    index=0,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ def numeric_sort_key(filepath: Path):
     x_label="Predicted Barrier (kcal/mol)",
     y_label="Reference Barrier (kcal/mol)",
     hoverdata={
-        "Reaction ID": get_reaction_ids(),
+        "Reaction ID": [str(rxn_id) for rxn_id in RXN_IDS],
     },
 )
 def reaction_barriers() -> dict[str, list]:
@@ -96,87 +96,53 @@ def reaction_barriers() -> dict[str, list]:
     -------
     dict[str, list]
         Dictionary of reference and predicted barriers in kcal/mol.
-        Format: {'ref': [10.53, ...], 'mace-mp-0b3': [10.2, ...]}
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
-
-    # We iterate 1..20 to ensure the lists are perfectly aligned
-    rxn_ids = range(1, 21)
+    results = {"ref": [REF_BARRIERS_KCAL[rxn_id] for rxn_id in RXN_IDS]}
+    results |= {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
-        # --- DEBUGGING START ---
-        print(f"Checking for model: {model_name:<20}", end="")
-        if not model_dir.exists():
-            continue
-
-        # Temporary list to ensure we collect this model's data in 1..20 order
-        model_barriers = []
-
-        for rxn_id in rxn_ids:
-            # Construct expected filename
+        for rxn_id in RXN_IDS:
             xyz_file = model_dir / f"crbh20_{rxn_id}.xyz"
 
             if not xyz_file.exists():
-                model_barriers.append(np.nan)
-                if not ref_stored:
-                    results["ref"].append(REF_BARRIERS_KCAL[rxn_id])
+                results[model_name].append(np.nan)
                 continue
 
-            # Read the combined XYZ (Reactant is index 0, TS is index 1)
-            # We only need index 0 because we stored the barrier in info tag of both
+            # Read the combined XYZ (reactant is index 0, TS is index 1)
+            # The barrier is stored in the info tag of both structures
             structs = read(xyz_file, index=":")
             reactant = structs[0]
+            results[model_name].append(reactant.info.get("barrier_kcal", np.nan))
 
-            # Extract ML Barrier (calculated in the previous script)
-            # stored as "barrier_kcal"
-            barrier_ml = reactant.info.get("barrier_kcal", np.nan)
-            model_barriers.append(barrier_ml)
-
-            # Copy structure files to APP directory for visualization
-            # This allows the web app to show the molecule when you hover/click
+            # Write structures for app
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"crbh20_{rxn_id}.xyz", structs)
-
-            # Store reference energies (only once, during the first model loop)
-            if not ref_stored:
-                ref_val = REF_BARRIERS_KCAL.get(rxn_id, np.nan)
-                results["ref"].append(ref_val)
-
-        # Update the main results dict
-        results[model_name] = model_barriers
-
-        # Mark reference as stored so we don't duplicate it
-        if any(x is not None for x in model_barriers):
-            ref_stored = True
 
     return results
 
 
 @pytest.fixture
 def crbh20_errors(reaction_barriers) -> dict[str, float]:
-    """Compute Mean Absolute Error (MAE) for reaction barriers."""
-    results = {}
-    for model_name in MODELS:
-        if reaction_barriers.get(model_name):
-            # Filter out None values in case of failed calculations
-            y_true = []
-            y_pred = []
-            for r, p in zip(reaction_barriers["ref"], reaction_barriers[model_name], strict=False):
-                if r is not None and p is not None:
-                    y_true.append(r)
-                    y_pred.append(p)
+    """
+    Compute Mean Absolute Error (MAE) for reaction barriers.
 
-            if y_true:
-                results[model_name] = mae(y_true, y_pred)
-            else:
-                results[model_name] = None
-        else:
-            results[model_name] = None
-    return results
+    Parameters
+    ----------
+    reaction_barriers
+        Dictionary of reference and predicted barriers in kcal/mol.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted barrier errors for all models.
+    """
+    return {
+        model_name: mae(reaction_barriers["ref"], reaction_barriers[model_name])
+        for model_name in MODELS
+    }
 
 
 @pytest.fixture
@@ -187,7 +153,19 @@ def crbh20_errors(reaction_barriers) -> dict[str, float]:
     mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(crbh20_errors: dict[str, float]) -> dict[str, dict]:
-    """Compile all metrics for the table."""
+    """
+    Compile all metrics for the table.
+
+    Parameters
+    ----------
+    crbh20_errors
+        Mean absolute errors for all models.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
     return {
         "MAE": crbh20_errors,
     }
@@ -199,7 +177,11 @@ def test_crbh20_analysis(metrics: dict[str, dict]) -> None:
 
     The decorators on the fixtures above (@plot_parity, @build_table)
     do the heavy lifting of saving the JSON files when this test runs.
+
+    Parameters
+    ----------
+    metrics
+        All benchmark metric names and dictionary of values for each model.
     """
-    # Verify we actually calculated something
     assert metrics is not None
     assert "MAE" in metrics

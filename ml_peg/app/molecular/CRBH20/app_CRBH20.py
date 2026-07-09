@@ -15,20 +15,32 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models.get_models import get_model_names
 from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
 # --- Configuration ---
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CRBH20 Reaction Barriers"
-# Placeholder docs link
-DOCS_URL = "https://github.com/ddmms/ml-peg"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#crbh20"
 
-DATA_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
+DATA_PATH = APP_ROOT / "data" / "molecular" / "CRBH20"
+INFO_PATH = DATA_PATH / "info.json"
 
 
-def numeric_sort_key(filepath: Path):
-    """Sort helper to ensure files 1, 2... 10 come in numerical order."""
+def numeric_sort_key(filepath: Path) -> int:
+    """
+    Sort helper to ensure files 1, 2... 10 come in numerical order.
+
+    Parameters
+    ----------
+    filepath
+        Path to a structure file named crbh20_[n].xyz.
+
+    Returns
+    -------
+    int
+        Reaction number extracted from the filename.
+    """
     match = re.search(r"crbh20_(\d+).xyz", filepath.name)
     return int(match.group(1)) if match else 0
 
@@ -62,9 +74,7 @@ class CRBH20App(BaseApp):
 
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data
         # So we construct the URL path starting from there.
-        structs = [
-            f"/assets/reaction_barriers/CRBH20/{valid_model}/{f.name}" for f in files
-        ]
+        structs = [f"/assets/molecular/CRBH20/{valid_model}/{f.name}" for f in files]
 
         # 3. Link Table Rows to the Plot
         plot_from_table_column(
@@ -83,7 +93,14 @@ class CRBH20App(BaseApp):
 
 
 def get_app() -> CRBH20App:
-    """Get CRBH20 benchmark app layout."""
+    """
+    Get CRBH20 benchmark app layout and callback registration.
+
+    Returns
+    -------
+    CRBH20App
+        Benchmark layout and callback registration.
+    """
     return CRBH20App(
         name=BENCHMARK_NAME,
         description="Reaction Barrier Heights for 20 organic reactions (kcal/mol).",
@@ -93,6 +110,7 @@ def get_app() -> CRBH20App:
             html.Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             html.Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
