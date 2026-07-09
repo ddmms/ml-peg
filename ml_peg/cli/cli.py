@@ -111,12 +111,14 @@ def complete_test(ctx: Context, incomplete: str) -> list[str]:
     ]
 
 
-def complete_models(incomplete: str) -> list[str]:
+def complete_models(ctx: Context, incomplete: str) -> list[str]:
     """
     Complete comma-separated model names from ``models.yml``.
 
     Parameters
     ----------
+    ctx
+        Typer context, used to read ``--models-file`` if provided.
     incomplete
         Partially typed value; only the segment after the last comma is completed.
 
@@ -125,12 +127,9 @@ def complete_models(incomplete: str) -> list[str]:
     list[str]
         Matching model names, preserving any already-typed comma-separated prefix.
     """
-    import yaml
+    from ml_peg.models.get_models import get_model_names
 
-    from ml_peg.models import MODELS_ROOT
-
-    with open(MODELS_ROOT / "models.yml", encoding="utf8") as handle:
-        names = sorted(yaml.safe_load(handle) or {})
+    names = sorted(get_model_names(filepath=ctx.params.get("models_file")))
 
     prefix, sep, last = incomplete.rpartition(",")
     head = f"{prefix}{sep}" if sep else ""
