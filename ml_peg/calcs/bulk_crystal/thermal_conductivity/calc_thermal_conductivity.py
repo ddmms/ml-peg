@@ -267,9 +267,9 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
                 )
 
             if ltc_condition:
-                # fc3_set = tc.calculate_fc3_set(
-                #     ph3, calculator=calculator, pbar_kwargs={"leave": False}
-                # )
+                tc.calculate_fc3_set(
+                    ph3, calculator=calculator, pbar_kwargs={"leave": False}
+                )
                 ph3.produce_fc3(symmetrize_fc3r=True)
             else:
                 reason = []

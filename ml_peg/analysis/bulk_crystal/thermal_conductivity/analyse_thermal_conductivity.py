@@ -156,7 +156,7 @@ def calc_kappa_srme_dataframes(
     -------
     list[float]:
         SRME values for each material. Values are between 0 and 2, where:
-        - 0 indicates perfect agreement in both total κ and mode-resolved properties
+        - 0 indicates perfect agreement in both total k and mode-resolved properties
         - 2 indicates complete failure (imaginary frequencies, broken symmetry, etc.)
         - Values in between indicate partial agreement, with lower being better
     """
@@ -187,12 +187,12 @@ def calc_kappa_srme(kappas_pred: pd.Series, kappas_true: pd.Series) -> np.ndarra
     """
     Calculate the Symmetric Relative Mean Error (SRME) for a single material.
 
-        SRME = 2 * (sum|κ_pred,i - κ_true,i| * w_i) / (κ_pred,tot + κ_true,tot)
+        SRME = 2 * (sum|k_pred,i - k_true,i| * w_i) / (k_pred,tot + k_true,tot)
 
     where:
-    - κ_pred,i and κ_true,i are mode-resolved conductivities for mode i
+    - k_pred,i and k_true,i are mode-resolved conductivities for mode i
     - w_i are the mode weights
-    - κ_pred,tot and κ_true,tot are total conductivities
+    - k_pred,tot and k_true,tot are total conductivities
 
     The calculation involves:
     1. Computing mode-resolved average conductivities if not pre-computed
@@ -213,7 +213,7 @@ def calc_kappa_srme(kappas_pred: pd.Series, kappas_true: pd.Series) -> np.ndarra
     -------
     np.ndarray
         SRME values per temperature, each between 0 and 2, where:
-        - 0 indicates perfect agreement in both total κ and mode-resolved properties
+        - 0 indicates perfect agreement in both total k and mode-resolved properties
         - 2 indicates complete disagreement or invalid results
         On error conditions (missing data, NaN values), returns np.array([2.0]).
     """
@@ -288,11 +288,13 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
         tc.hdf5_to_dict(h5py.File(REF_PATH / "PBE" / "kappas.hdf5", "r")),
         orient="index",
     )
+    ref_df.sort_index(inplace=True)
 
     fast_ref_df = pd.DataFrame.from_dict(
         tc.hdf5_to_dict(h5py.File(REF_PATH / "PBE" / "fast_kappas.hdf5", "r")),
         orient="index",
     )
+    fast_ref_df.sort_index(inplace=True)
 
     results["ref"] = ref_df
 
@@ -348,13 +350,17 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
             continue
 
         if pred_df is not None and fast_pred_df is None:
+            pred_df.sort_index(inplace=True)
             pred_df = calc_kappa_metrics_from_dfs(pred_df, ref_df)
         elif pred_df is None:
+            fast_pred_df.sort_index(inplace=True)
             pred_df = calc_kappa_metrics_from_dfs(fast_pred_df, fast_ref_df)
             pred_df["fast_sre"] = pred_df[tc.TCKeys.sre]
             pred_df["fast_srme"] = pred_df[tc.TCKeys.srme]
             pred_df.drop(columns=[tc.TCKeys.sre, tc.TCKeys.srme], inplace=True)
         elif fast_pred_df is not None:
+            pred_df.sort_index(inplace=True)
+            fast_pred_df.sort_index(inplace=True)
             pred_df = calc_kappa_metrics_from_dfs(pred_df, ref_df)
             fast_pred_df = calc_kappa_metrics_from_dfs(fast_pred_df, fast_ref_df)
             pred_df["fast_sre"] = fast_pred_df[tc.TCKeys.sre]
@@ -374,10 +380,10 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_conductivity.json",
+    filename=OUT_PATH / "figure_thermal_conductivity.json",
     title="Thermal Conductivity Parity Plot",
-    x_label="Predicted κ (W/mK)",
-    y_label="Reference κ (W/mK)",
+    x_label="Predicted k (W/mK)",
+    y_label="Reference k (W/mK)",
     hoverdata={
         "System": get_system_names(),
         "System ID": get_system_ids(),
@@ -591,7 +597,7 @@ def mean_fast_srme(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, float]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "kappas.json",
+    filename=OUT_PATH / "thermal_conductivity.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
@@ -627,12 +633,12 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "κSRE": mean_sre,
-        "κSRME": mean_srme,
+        "kSRE": mean_sre,
+        "kSRME": mean_srme,
         "Instability": instability,
         "Failure": failure,
-        "Fast κSRE": mean_fast_sre,
-        "Fast κSRME": mean_fast_srme,
+        "Fast kSRE": mean_fast_sre,
+        "Fast kSRME": mean_fast_srme,
     }
 
 

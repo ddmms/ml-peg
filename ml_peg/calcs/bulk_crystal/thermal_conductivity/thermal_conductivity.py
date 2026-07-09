@@ -654,11 +654,7 @@ class _TqdmIntercept:
 
         This should be called when the progress is complete to ensure the bar finished.
         """
-        if self._buf:
-            self.write("\n")
-        if self.pbar.n < self.pbar.total:
-            self.pbar.n = self.pbar.total
-            self.pbar.refresh()
+        return
 
     # def isatty(self):
     #     return False
