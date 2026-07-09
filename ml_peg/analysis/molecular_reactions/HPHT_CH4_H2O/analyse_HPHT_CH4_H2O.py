@@ -10,11 +10,13 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_dispersion_name_map,load_metrics_config, mae
+from ml_peg.app.utils.utils import get_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
 from ml_peg.models.models import current_models
 import numpy as np
+import warnings
 from ase.neighborlist import NeighborList, get_connectivity_matrix, neighbor_list, NewPrimitiveNeighborList
 from ase.io import iread
 from scipy.sparse import lil_matrix
@@ -53,7 +55,10 @@ def make_fes(data, start, end, n_bins,T):
     """
     hist, bin_edges = np.histogram(data, bins=n_bins, range=(start, end))
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    prob = hist / np.sum(hist)
+    total = np.sum(hist)
+    if total == 0:
+        return bin_centers, np.full(n_bins, np.nan)
+    prob = hist / total
     k=8.314
     mask = prob != 0
     F = np.full_like(prob, np.nan)
@@ -119,7 +124,6 @@ def second_nearest_heavy_outside_molecule(h, atoms, nl, labels):
     min_dist = float("inf")
     heavy2 = None
     for idx, shift in zip(neighbors, offsets):
-        # 🔹 exclure ceux dans la même molécule
         if labels[idx] == mol_h:
             continue
 
@@ -181,11 +185,11 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
 
     for sym in symbols:
         if sym == "H":
-            cutoffs.append(0.0)  # H ne détecte rien
+            cutoffs.append(0.0)
         elif sym == "C":
-            cutoffs.append(pair_cutoffs.get(('C','H'), 0.0))  # heavy détecte H
+            cutoffs.append(pair_cutoffs.get(('C','H'), 0.0))
         elif sym == "O":
-            cutoffs.append(pair_cutoffs.get(('O','H'), 0.0))  # heavy détecte H
+            cutoffs.append(pair_cutoffs.get(('O','H'), 0.0))
 
     nl_H = NeighborList(cutoffs, skin=0, self_interaction=False, bothways=True, primitive=NewPrimitiveNeighborList)
     nl_H.update(atoms)
@@ -395,27 +399,45 @@ def free_energy_profiles():
         "x": None,
         "ref": [],
     } | {model: [] for model in MODELS}
-    structures_processed = set()
+    structures = get_structures_names()
+    for structure_name in structures:
+        ref_bins, ref_F = load_reference_fes(structure_name)
+        save_ref_path = OUT_PATH / f"{structure_name}.data"
+        np.savetxt(save_ref_path, np.column_stack((ref_bins, ref_F)))
+
+        results["ref"].append(ref_F)
+        if results["x"] is None:
+            results["x"] = ref_bins
+            
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
+        
         if not model_dir.exists():
+            warnings.warn(f"Missing model directory {model_name}. Filling all free energy profiles with NaN.", stacklevel=2)
+            for _ in structures:
+                results[model_name].append(np.full_like(results["x"], np.nan, dtype=float))
             continue
-        extxyz_files = sorted(model_dir.glob("*.extxyz"))
-        for xyz_file in extxyz_files:
-            structure_name = xyz_file.stem
-            bins, F_model = compute_fes(xyz_file,3000)
+        SYSTEM_INFO = get_struct_info(
+            calc_path=model_dir,
+            glob_pattern="*.extxyz",
+            index=0,
+            include_filenames=True,
+            out_path=OUT_PATH / model_name,
+        )
+        for structure_name in structures:
+            xyz_file = model_dir / f"{structure_name}.extxyz"
+            if xyz_file.exists():
+                bins, F_model = compute_fes(xyz_file,3000)
+            else:
+                warnings.warn(f"Missing trajectory file {xyz_file}. Filling free energy profile with NaN.", stacklevel=2)
+                bins = results["x"]
+                F_model = np.full_like(bins, np.nan, dtype=float)
+            
             save_path = OUT_PATH / model_name / f"{structure_name}.data"
             save_path.parent.mkdir(parents=True, exist_ok=True)
             np.savetxt(save_path, np.column_stack((bins,F_model)))
             results[model_name].append(F_model)
-            if results["x"] is None:
-                results["x"] = bins
-            if structure_name not in structures_processed:
-                ref_bins, ref_F = load_reference_fes(structure_name)
-                save_ref_path = OUT_PATH / f"{structure_name}.data"
-                np.savetxt(save_ref_path, np.column_stack((ref_bins,ref_F)))
-                results["ref"].append(ref_F)
-                structures_processed.add(structure_name)
+    
     return results
 
 def reaction_free_energy(F, bins):
@@ -438,29 +460,26 @@ def reaction_free_energy(F, bins):
     bins = np.array(bins)
     
     left_mask = (bins < 0) & (~np.isnan(F))
-    if np.any(left_mask):
-        left_idx = np.where(left_mask)[0][np.nanargmin(F[left_mask])]
-        left_min_bin = bins[left_idx]
-        left_min = np.nanmin(F[left_mask])
-    else:
-        left_min_bin = 0
-        left_min = 0
-
+    if not np.any(left_mask):
+        return np.nan, np.nan
+    left_idx = np.where(left_mask)[0][np.nanargmin(F[left_mask])]
+    left_min_bin = bins[left_idx]
+    left_min = np.nanmin(F[left_mask])
+    
     right_mask = (bins > 0) & (~np.isnan(F))
-    if np.any(right_mask):
-        right_idx = np.where(right_mask)[0][np.nanargmin(F[right_mask])]
-        right_min_bin = bins[right_idx]
-        right_min = np.nanmin(F[right_mask])
-    else:
-        right_min_bin = 0
-        right_min = 0
+    if not np.any(right_mask):
+        return np.nan, np.nan
+    right_idx = np.where(right_mask)[0][np.nanargmin(F[right_mask])]
+    right_min_bin = bins[right_idx]
+    right_min = np.nanmin(F[right_mask])
+    
     reaction = right_min - left_min
 
     TS_mask = (bins > left_min_bin) & (bins < right_min_bin) & (~np.isnan(F))
     if np.any(TS_mask):
         barrier = np.max(F[TS_mask]) - left_min
     else:
-        barrier = 0
+        barrier = np.nan
     return reaction, barrier
 
 @pytest.fixture
@@ -497,12 +516,11 @@ def profile_errors(free_energy_profiles) -> dict[str, float]:
         for F_ref, F_model in zip(F_ref_all, F_model_all):
             mask = (~np.isnan(F_ref)) & (~np.isnan(F_model))
             if np.any(mask):
-                err = mae(F_ref[mask], F_model[mask])
-            else:
-                error = np.nan
-            errors.append(err)
-
-        results[model] = float(np.mean(errors))
+                errors.append(mae(F_ref[mask], F_model[mask]))
+        if errors:
+            results[model] = float(np.mean(errors))
+        else:
+            results[model] = None
     
     return results
 
@@ -511,9 +529,13 @@ def get_structures_names():
     Get the list of structures names from the calculation folder of the first model.
     All models should have results for all the same structures.
     """
-    model_name = MODELS[0]
-    path = CALC_PATH / model_name
-    ref_files = sorted(path.glob("*.extxyz"))
+    ref_dir= (
+        download_s3_data(
+            key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
+            filename="HPHT_CH4_H2O_data.zip"
+        ) / "HPHT_CH4_H2O_data"
+    )
+    ref_files = sorted(ref_dir.glob("*.data"))
     structures = [f.stem for f in ref_files]
     return structures
 
@@ -556,14 +578,20 @@ def reaction_free_energy_errors(reaction_free_energies) -> dict[str, float]:
     -------
         mae_values (dict[str, float])
     """
-    ref = reaction_free_energies["ref"]
+    ref = np.array(reaction_free_energies["ref"])
     mae_values: dict[str, float] = {}
     for model_name in MODELS:
-        predictions = reaction_free_energies[model_name]
-        if ref and predictions:
-            mae_values[model_name] = mae(ref, predictions)
+        predictions = np.array(reaction_free_energies[model_name])
+        
+        if ref.size == 0 or predictions.size == 0:
+            mae_values[model_name] = None
+            continue
+        mask = (~np.isnan(ref)) & (~np.isnan(predictions))
+        if np.any(mask):
+            mae_values[model_name] = mae(ref[mask], predictions[mask])
         else:
             mae_values[model_name] = None
+
     return mae_values
 
 
@@ -606,14 +634,20 @@ def reaction_barriers_errors(reaction_barriers) -> dict[str, float]:
     -------
         mae_values (dict[str, float])
     """
-    ref = reaction_barriers["ref"]
+    ref = np.array(reaction_barriers["ref"])
     mae_values: dict[str, float] = {}
     for model_name in MODELS:
-        predictions = reaction_barriers[model_name]
-        if ref and predictions:
-            mae_values[model_name] = mae(ref, predictions)
+        predictions = np.array(reaction_barriers[model_name])
+        if ref.size == 0 or predictions.size == 0:
+            mae_values[model_name] = None
+            continue
+        mask = (~np.isnan(ref)) & (~np.isnan(predictions))
+        
+        if np.any(mask):
+            mae_values[model_name] = mae(ref[mask], predictions[mask])
         else:
             mae_values[model_name] = None
+    
     return mae_values
 
 @pytest.fixture
@@ -629,9 +663,9 @@ def metrics(
     reaction_barriers_errors: dict[str, float],
 ) -> dict[str, dict]:
     return {
-        "FEP_MAE": profile_errors,
-        "DF_MAE": reaction_free_energy_errors,
-        "DF#_MAE": reaction_barriers_errors,
+        "Free Energy Profile MAE": profile_errors,
+        "Free Energy of reaction MAE": reaction_free_energy_errors,
+        "Free Energy barrier MAE": reaction_barriers_errors,
     }
 
 def test_HPHT_CH4_H2O(metrics: dict[str, dict]) -> None:
