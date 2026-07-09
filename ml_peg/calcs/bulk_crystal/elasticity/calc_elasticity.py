@@ -302,7 +302,7 @@ def run_elasticity_benchmark(
     )
     atoms_list = []
     # ⚡ Bolt: Use to_dict('records') over iterrows for faster iteration.
-    for row in results.to_dict('records'):
+    for row in results.to_dict("records"):
         struct = row.get("final_structure")
         if not isinstance(struct, Structure):
             struct = mock_ref_map.get(row[benchmark.index_name])
