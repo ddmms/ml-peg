@@ -16,6 +16,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "NCIA D442x10"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#ncia-d442x10"
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_D442x10"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class NCIAD442x10App(BaseApp):
@@ -77,6 +78,8 @@ def get_app() -> NCIAD442x10App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

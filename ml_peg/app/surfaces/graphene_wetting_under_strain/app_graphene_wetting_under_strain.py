@@ -28,6 +28,7 @@ with open(CALC_PATH / "database_info.yml") as fp:
     DATABASE_INFO = yaml.safe_load(fp)
 ORIENTATIONS = DATABASE_INFO["orientations"]
 STRAINS = DATABASE_INFO["strains"]
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class GrapheneWettingUnderStrainApp(BaseApp):
@@ -114,6 +115,7 @@ def get_app() -> GrapheneWettingUnderStrainApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

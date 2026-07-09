@@ -6,6 +6,7 @@ from copy import copy
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.build import bulk
@@ -136,9 +137,12 @@ def test_lattice_consts(mlip: tuple[str, Any]) -> None:
 
     for name, crystal in crystals.items():
         crystal.calc = copy(calc)
-        GeomOpt(
-            struct=crystal,
-            fmax=0.03,
-            write_traj=True,
-            file_prefix=OUT_PATH / model_name / name,
-        ).run()
+        try:
+            GeomOpt(
+                struct=crystal,
+                fmax=0.03,
+                write_traj=True,
+                file_prefix=OUT_PATH / model_name / name,
+            ).run()
+        except Exception as exc:
+            warn(f"Error during optimisation for {name}: {exc}", stacklevel=2)

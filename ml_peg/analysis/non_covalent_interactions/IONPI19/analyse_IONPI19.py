@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -77,23 +78,14 @@ STOICH = {
 }
 
 
-def labels() -> list:
-    """
-    Get list of system identifiers.
+LABELS = [f"{i}_AB" for i in range(1, 18)] + ["18", "19"]
 
-    Returns
-    -------
-    list
-        List of system identifiers (one per system, 19 total).
-    """
-    # Systems 1-17 have complexes (AB), show those labels
-    # Systems 18-19 only have fragments, show system numbers
-    labels_list = []
-    for i in range(1, 18):
-        labels_list.append(f"{i}_AB")
-    labels_list.append("18")
-    labels_list.append("19")
-    return labels_list
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -103,7 +95,7 @@ def labels() -> list:
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": LABELS,
     },
 )
 def conformer_energies() -> dict[str, list]:

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -61,14 +63,28 @@ def test_criegee22(mlip: tuple[str, Any]) -> None:
             atoms_reac.calc = calc
             atoms_reac.info["charge"] = 0
             atoms_reac.info["spin"] = 1
-            atoms_reac.info["model_energy"] = atoms_reac.get_potential_energy()
+            try:
+                atoms_reac.info["model_energy"] = atoms_reac.get_potential_energy()
+            except Exception as exc:
+                warn(
+                    f"Error calculating model energy for {label}: {exc}",
+                    stacklevel=2,
+                )
+                atoms_reac.info["model_energy"] = np.nan
             atoms_reac.info["ref_energy"] = 0
 
             atoms_ts = read(data_path / "structures" / f"{label}-TS.xyz")
             atoms_ts.calc = calc
             atoms_ts.info["charge"] = 0
             atoms_ts.info["spin"] = 1
-            atoms_ts.info["model_energy"] = atoms_ts.get_potential_energy()
+            try:
+                atoms_ts.info["model_energy"] = atoms_ts.get_potential_energy()
+            except Exception as exc:
+                warn(
+                    f"Error calculating model energy for {label}: {exc}",
+                    stacklevel=2,
+                )
+                atoms_ts.info["model_energy"] = np.nan
             atoms_ts.info["ref_energy"] = bh_ref
 
             write_dir = OUT_PATH / model_name

@@ -22,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#cmrads200"
 )
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "CMRAds200"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class CMRAds200App(BaseApp):
@@ -83,6 +84,7 @@ def get_app() -> CMRAds200App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
