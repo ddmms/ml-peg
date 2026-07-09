@@ -16,7 +16,7 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
+from ml_peg.models import current_models
 
 # --- Configuration ---
 MODELS = get_model_names(current_models)
@@ -24,7 +24,6 @@ BENCHMARK_NAME = "CRBH20 Reaction Barriers"
 # Placeholder docs link
 DOCS_URL = "https://github.com/ddmms/ml-peg"
 
-# Point to where we saved the JSONs (ml_peg/app/data/reaction_barriers/CRBH20)
 DATA_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
 
 
@@ -64,7 +63,7 @@ class CRBH20App(BaseApp):
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data
         # So we construct the URL path starting from there.
         structs = [
-            f"assets/reaction_barriers/CRBH20/{valid_model}/{f.name}" for f in files
+            f"/assets/reaction_barriers/CRBH20/{valid_model}/{f.name}" for f in files
         ]
 
         # 3. Link Table Rows to the Plot
@@ -98,8 +97,6 @@ def get_app() -> CRBH20App:
 
 
 if __name__ == "__main__":
-    # Initialize Dash
-    # IMPORTANT: We set assets_folder to 'ml_peg/app/data' so it finds your JSONs/XYZs
     full_app = Dash(
         __name__,
         assets_folder=str(APP_ROOT / "data"),

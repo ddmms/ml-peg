@@ -10,15 +10,15 @@ import pytest
 
 # ml_peg imports
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
+from ml_peg.models import current_models
 
 # --- Configuration ---
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
 # Path to where the calc script outputted the data
 # Update this to match your actual folder structure
@@ -29,16 +29,9 @@ OUT_PATH = APP_ROOT / "data" / "reaction_barriers" / "CRBH20"
 
 # Load metrics configuration (thresholds for green/red coloring in tables)
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-# If the file doesn't exist, we provide defaults, but usually it should exist.
-try:
-    DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
-        METRICS_CONFIG_PATH
-    )
-except FileNotFoundError:
-    # Fallback defaults if metrics.yml is missing
-    DEFAULT_THRESHOLDS = {"MAE": [1.0, 5.0]}  # Green < 1.0, Red > 5.0
-    DEFAULT_TOOLTIPS = {"MAE": "Mean Absolute Error"}
-    DEFAULT_WEIGHTS = {}
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 # --- Reference Data (Appendix B.5 of arXiv:2401.00096) ---
 # The paper compares MACE against these specific DFT (r2SCAN) values.
@@ -105,10 +98,6 @@ def reaction_barriers() -> dict[str, list]:
         Dictionary of reference and predicted barriers in kcal/mol.
         Format: {'ref': [10.53, ...], 'mace-mp-0b3': [10.2, ...]}
     """
-    # --- DEBUGGING START ---
-    print(f"\nDEBUG: CALC_PATH is set to: {CALC_PATH.resolve()}")
-    print(f"DEBUG: OUT_PATH is set to:  {OUT_PATH.resolve()}")
-    # --- DEBUGGING END ---
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
@@ -121,11 +110,6 @@ def reaction_barriers() -> dict[str, list]:
         # --- DEBUGGING START ---
         print(f"Checking for model: {model_name:<20}", end="")
         if not model_dir.exists():
-            print(f"[MISSING] -> Skipped {model_dir}")
-            continue
-        print("[FOUND]")
-        # --- DEBUGGING END ---
-        if not model_dir.exists():
             continue
 
         # Temporary list to ensure we collect this model's data in 1..20 order
@@ -136,11 +120,7 @@ def reaction_barriers() -> dict[str, list]:
             xyz_file = model_dir / f"crbh20_{rxn_id}.xyz"
 
             if not xyz_file.exists():
-                # Handle missing data (e.g., if calc failed)
-                # For parity plots, lists must be equal length.
-                # We append None or NaN, though ml-peg might prefer dropping the point.
-                # Here we assume completeness or append 0.0 with a warning.
-                model_barriers.append(None)
+                model_barriers.append(np.nan)
                 if not ref_stored:
                     results["ref"].append(REF_BARRIERS_KCAL[rxn_id])
                 continue
@@ -152,7 +132,7 @@ def reaction_barriers() -> dict[str, list]:
 
             # Extract ML Barrier (calculated in the previous script)
             # stored as "barrier_kcal"
-            barrier_ml = reactant.info.get("barrier_kcal", 0.0)
+            barrier_ml = reactant.info.get("barrier_kcal", np.nan)
             model_barriers.append(barrier_ml)
 
             # Copy structure files to APP directory for visualization
@@ -163,7 +143,7 @@ def reaction_barriers() -> dict[str, list]:
 
             # Store reference energies (only once, during the first model loop)
             if not ref_stored:
-                ref_val = REF_BARRIERS_KCAL.get(rxn_id, 0.0)
+                ref_val = REF_BARRIERS_KCAL.get(rxn_id, np.nan)
                 results["ref"].append(ref_val)
 
         # Update the main results dict

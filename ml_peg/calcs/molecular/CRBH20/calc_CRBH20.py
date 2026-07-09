@@ -4,12 +4,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ase import units
 from ase.io import read, write
 import pytest
 
-# ml_peg imports for model management
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
+from ml_peg.models import current_models
 
 # Load all models defined in 'models.yml'
 MODELS = load_models(current_models)
@@ -20,7 +21,7 @@ DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 # Unit conversion: 1 eV = 23.0605 kcal/mol
-EV_TO_KCAL = 23.0605
+EV_TO_KCAL = units.mol / units.kcal
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -39,12 +40,17 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
 
     # 1. Initialize the Calculator
     # The ml-peg wrapper handles device selection (cuda/cpu) and loading
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Apply D3 dispersion if the model supports/requires it (standard ml-peg pattern)
-    if hasattr(model, "add_d3_calculator"):
-        calc = model.add_d3_calculator(calc)
-
+    calc = model.add_d3_calculator(calc)
+    data_dir = (
+        download_s3_data(
+            key="inputs/molecular/CRBH20/CRBH20.zip",
+            filename="CRBH20.zip",
+        )
+        / "CRBH20"
+    )
     # Create output directory for this specific model
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
@@ -55,7 +61,7 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
     # 2. Loop through Reaction Folders (1 to 20)
     for i in range(1, 21):
         rxn_id = str(i)
-        rxn_path = DATA_PATH / rxn_id
+        rxn_path = data_dir / rxn_id
 
         # Skip if data is missing (prevents crash on partial datasets)
         if not rxn_path.exists():
