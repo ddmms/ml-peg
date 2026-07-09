@@ -28,8 +28,8 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
-CALC_PATH = CALCS_ROOT / "molecular" / "CRBH20" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "molecular" / "CRBH20"
+CALC_PATH = CALCS_ROOT / "molecular_reactions" / "CRBH20" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "CRBH20"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(

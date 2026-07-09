@@ -21,9 +21,12 @@ from ml_peg.models.get_models import get_model_names
 # --- Configuration ---
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CRBH20 Reaction Barriers"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#crbh20"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
+    "molecular_reactions.html#crbh20"
+)
 
-DATA_PATH = APP_ROOT / "data" / "molecular" / "CRBH20"
+DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "CRBH20"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -74,7 +77,9 @@ class CRBH20App(BaseApp):
 
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data
         # So we construct the URL path starting from there.
-        structs = [f"/assets/molecular/CRBH20/{valid_model}/{f.name}" for f in files]
+        structs = [
+            f"/assets/molecular_reactions/CRBH20/{valid_model}/{f.name}" for f in files
+        ]
 
         # 3. Link Table Rows to the Plot
         plot_from_table_column(
