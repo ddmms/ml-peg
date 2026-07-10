@@ -618,7 +618,14 @@ def build_plot_download_controls(graph_id: str) -> Div:
 
 @functools.cache
 def _load_faqs_yaml() -> list | dict | None:
-    """Load and cache faqs.yml."""
+    """
+    Load and cache faqs.yml.
+
+    Returns
+    -------
+    list | dict | None
+        Parsed FAQs data.
+    """
     faqs_path = Path(__file__).parent / "faqs.yml"
     try:
         with open(faqs_path, encoding="utf8") as f:
