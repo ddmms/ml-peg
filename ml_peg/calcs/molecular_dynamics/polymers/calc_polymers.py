@@ -18,7 +18,6 @@ from ml_peg.models import get_models, models
 MODELS = get_models.load_models(models.current_models)
 
 OUT_PATH = pathlib.Path(__file__).parent / "outputs"
-DATA_CSV = pathlib.Path(__file__).parent / "resources" / "data.csv"
 
 REFERENCE_TEMP_K: ty.Final[float] = 300.0
 REFERENCE_PRESSURE_ATM: ty.Final[float] = 1.0
@@ -34,7 +33,12 @@ def _load_polymer_table() -> pd.DataFrame:
     pd.DataFrame
         The polymer table indexed by ``id``, sorted alphabetically.
     """
-    df = pd.read_csv(DATA_CSV, na_values=["NaN"], encoding="utf-8", comment="%")
+    df = pd.read_csv(
+        pathlib.Path(__file__).parent / "resources" / "data.csv",
+        na_values=["NaN"],
+        encoding="utf-8",
+        comment="%",
+    )
     return df.set_index("id").sort_index()
 
 
@@ -63,18 +67,14 @@ def test_polymer_densities(
     """
     if poly_id not in POLYMER_TABLE.index:
         raise pytest.UsageError(
-            f"Unknown poly_id '{poly_id}'; see ml_peg/calcs/molecular_dynamics/"
-            "polymers/resources/data.csv for valid ids"
+            f"Unknown poly_id '{poly_id}'; see resources/data.csv for valid ids"
         )
 
-    data_path = (
-        calc_utils.download_s3_data(
-            filename="polymers.zip",
-            key="inputs/molecular_dynamics/polymers/polymers.zip",
-        )
-        / "polymers"
+    s3_dir = calc_utils.download_s3_data(
+        filename="polymers.zip",
+        key="inputs/molecular_dynamics/polymers/polymers.zip",
     )
-    input_xyz_path = data_path / f"{poly_id}.xyz"
+    input_xyz_path = s3_dir / "polymers" / f"{poly_id}.xyz"
 
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
