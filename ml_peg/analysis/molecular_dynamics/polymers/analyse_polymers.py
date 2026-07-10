@@ -15,8 +15,8 @@ import pytest
 from ml_peg import app, calcs
 from ml_peg.analysis.utils import decorators
 from ml_peg.analysis.utils import utils as analysis_utils
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 LOG = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ PRECOMPUTED_DENSITY_MODELS: tuple[str, ...] = (
     "MACE-OFF23-S",
     "PCFF",
     "uma-s-1p1-omol",
-    "vivance",
+    "Vivace",
 )
 
 AU_TO_G_CM3 = 1e24 / ase_units.mol
@@ -85,6 +85,16 @@ def _load_polymer_table() -> pd.DataFrame:
 
 
 POLYMER_TABLE = _load_polymer_table()
+
+STRUCT_INFO = analysis_utils.get_struct_info(
+    calc_path=LOCAL_STRUCTURES_DIR.parent,
+    model_name=LOCAL_STRUCTURES_DIR.name,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 def labels() -> list[str]:
