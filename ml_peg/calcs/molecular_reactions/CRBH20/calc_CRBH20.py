@@ -46,7 +46,7 @@ def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
 
     data_dir = (
         download_s3_data(
-            key="inputs/molecular/CRBH20/CRBH20.zip",
+            key="inputs/molecular_reactions/CRBH20/CRBH20.zip",
             filename="CRBH20.zip",
         )
         / "CRBH20"
