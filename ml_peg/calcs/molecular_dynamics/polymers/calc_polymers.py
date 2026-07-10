@@ -13,9 +13,10 @@ import pytest
 
 from ml_peg.calcs.molecular_dynamics.polymers import protocol
 from ml_peg.calcs.utils import utils as calc_utils
-from ml_peg.models import get_models, models
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
 
-MODELS = get_models.load_models(models.current_models)
+MODELS = load_models(current_models)
 
 OUT_PATH = pathlib.Path(__file__).parent / "outputs"
 
