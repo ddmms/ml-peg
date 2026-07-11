@@ -321,7 +321,7 @@ def _write_force_parity_plot(
             "level_of_theory": "Level",
             "n_clusters": "Clusters",
             "n_components": "Components",
-            "excluded_components": "Excluded components",
+            "excluded_components": "NaN force components",
         },
     )
     def plot() -> dict[str, dict]:
