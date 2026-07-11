@@ -34,8 +34,9 @@ For all calculations, clusters are evaluated with ``charge=0`` and either
 Computational cost
 ------------------
 
-Medium: tests evaluate 60,000 small clusters per model and are expected to take less
-than an hour locally.
+Medium: these tests evaluate 60,000 small clusters per model. They are expected to take
+on the order of minutes on a GPU.
+
 
 Data availability
 -----------------
