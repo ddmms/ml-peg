@@ -1,0 +1,40 @@
+metrics:
+  Force flips:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Mean count of force-direction changes per structure
+  Energy minima:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy minima per structure
+  Energy inflections:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Average number of energy inflection points per structure
+  ρ(E, repulsion):
+    good: -1.0
+    bad: 1.0
+    unit: null
+    tooltip: Spearman correlation for energy in the repulsive regime
+  ρ(E, attraction):
+    good: 1.0
+    bad: -1.0
+    unit: null
+    tooltip: Spearman correlation for energy in the attractive regime
+  Min distance error:
+    good: 0.0
+    bad: 0.5
+    unit: Å
+    tooltip: "Mean absolute error in the nearest-neighbour distance of the energy
+      minimum, vs the PBE+D2 reference"
+    level_of_theory: PBE
+  Min energy error:
+    good: 0.0
+    bad: 1.0
+    unit: eV/atom
+    tooltip: "Mean absolute error in the depth of the energy minimum, vs the PBE+D2
+      reference"
+    level_of_theory: PBE
