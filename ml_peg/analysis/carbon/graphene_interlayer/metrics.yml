@@ -1,0 +1,40 @@
+metrics:
+  Force flips:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Count of force-direction changes along the interlayer curve
+  Energy minima:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Number of energy minima along the interlayer curve
+  Energy inflections:
+    good: 1.0
+    bad: 5.0
+    unit: null
+    tooltip: Number of energy inflection points along the interlayer curve
+  ρ(E, repulsion):
+    good: -1.0
+    bad: 1.0
+    unit: null
+    tooltip: Spearman correlation for energy in the repulsive regime
+  ρ(E, attraction):
+    good: 1.0
+    bad: -1.0
+    unit: null
+    tooltip: Spearman correlation for energy in the attractive regime
+  Min distance error:
+    good: 0.0
+    bad: 0.5
+    unit: Å
+    tooltip: "Absolute error in the interlayer separation of the energy minimum,
+      vs the PBE+D2 reference"
+    level_of_theory: PBE
+  Min energy error:
+    good: 0.0
+    bad: 50.0
+    unit: meV/atom
+    tooltip: "Absolute error in the depth of the interlayer binding well, vs the
+      PBE+D2 reference"
+    level_of_theory: PBE
