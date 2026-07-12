@@ -32,6 +32,10 @@ class ThermalConductivityApp(BaseApp):
             DATA_PATH / "figure_thermal_conductivity.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
+        fast_scatter = read_plot(
+            DATA_PATH / "figure_fast_thermal_conductivity.json",
+            id=f"{BENCHMARK_NAME}-fast-figure",
+        )
 
         # Assets dir will be parent directory - individual files for each system
         # structs_dir = DATA_PATH / MODELS[0]
@@ -44,7 +48,12 @@ class ThermalConductivityApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot={
+                "kSRE": scatter,
+                "kSRME": scatter,
+                "Fast kSRE": fast_scatter,
+                "Fast kSRME": fast_scatter,
+            },
         )
 
         # struct_from_scatter(

@@ -1,0 +1,44 @@
+metrics:
+    kSRE:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "mean of Symmetric Relative Error in thermal conductivity"
+        level_of_theory: PBE
+
+    kSRME:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "mean of Symmetric Relative Mean Error in mode contributions to thermal conductivity"
+        level_of_theory: PBE
+
+    Instability:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "Fraction of unstable materials (has imaginary frequencies)"
+        level_of_theory: PBE
+
+    Failure:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "Fraction of materials for which the calculation failed (NaN frequencies)"
+        level_of_theory: PBE
+
+    Fast kSRE:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        weight: 0.0
+        tooltip: "mean of Symmetric Relative Error in thermal conductivity, with reduced q point mesh"
+        level_of_theory: PBE
+
+    Fast kSRME:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        weight: 0.0
+        tooltip: "mean of Symmetric Relative Mean Error in mode contributions to thermal conductivity, with reduced q point mesh"
+        level_of_theory: PBE
