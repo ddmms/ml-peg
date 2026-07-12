@@ -815,5 +815,5 @@ def load_hdf5_subdir_dicts(
             with h5py.File(d / filename, "r") as f:
                 dicts[d.name] = hdf5_to_dict(f)
         except FileNotFoundError:
-            raise FileNotFoundError(f"File not found: {d / filename}") from None
+            continue
     return dicts
