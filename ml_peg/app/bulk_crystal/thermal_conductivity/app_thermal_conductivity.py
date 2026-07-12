@@ -10,17 +10,18 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Thermal Conductivity"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/"
-    "benchmarks/bulk_crystal.html#thermal_conductivity"
+    "benchmarks/bulk_crystal.html#thermal-conductivity"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "thermal_conductivity"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ThermalConductivityApp(BaseApp):
@@ -82,4 +83,5 @@ def get_app() -> ThermalConductivityApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             # Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
