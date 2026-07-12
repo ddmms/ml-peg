@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import traceback
+import warnings
 
 from ase.io import read
 import h5py
@@ -25,7 +25,7 @@ CALC_PATH = CALCS_ROOT / "bulk_crystal" / "thermal_conductivity" / "outputs"
 REF_PATH = CALCS_ROOT / "bulk_crystal" / "thermal_conductivity" / "data"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "thermal_conductivity"
 
-METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yaml")
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
@@ -166,7 +166,8 @@ def calc_kappa_srme_dataframes(
 
         # NOTE code below just until before return used to be wrapped in try/except in
         # which case SRME=2 was set for the failing material
-        if row_pred.get(tc.TCKeys.has_imag_ph_modes) is True:
+        has_imag_ph_modes = row_pred.get(tc.TCKeys.has_imag_ph_modes, False)
+        if pd.notna(has_imag_ph_modes) and bool(has_imag_ph_modes):
             srme_list.append(2)
             continue
         if relaxed_space_group_number := row_pred.get(tc.TCKeys.final_spg_num):
@@ -270,6 +271,42 @@ def calc_kappa_srme(kappas_pred: pd.Series, kappas_true: pd.Series) -> np.ndarra
     return 2 * microscopic_error / denominator
 
 
+def _add_missing_error_rows(
+    df: pd.DataFrame,
+    ref_df: pd.DataFrame,
+    model_name: str,
+    result_type: str = "",
+) -> pd.DataFrame:
+    """
+    Warn and add default-error rows for missing result files.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prediction results.
+    ref_df : pd.DataFrame
+        Reference results defining the required index.
+    model_name : str
+        Model name used in the warning.
+    result_type : str
+        Optional result-type prefix used in the warning.
+
+    Returns
+    -------
+    pd.DataFrame
+        Prediction results reindexed to the reference when rows are missing.
+    """
+    missing = ref_df.index.difference(df.index)
+    if len(missing):
+        warnings.warn(
+            f"Missing {len(missing)} {result_type}thermal-conductivity result files "
+            f"for {model_name}; using default error rows.",
+            stacklevel=2,
+        )
+        return df.reindex(ref_df.index)
+    return df
+
+
 @pytest.fixture
 def kappa_stats() -> dict[str, pd.DataFrame]:
     """
@@ -312,18 +349,17 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
             )
             pred_df = pd.DataFrame.from_dict(current_pred_dict, orient="index")
         elif (model_dir / "kappas.json.gz").exists():
-            pred_df = pd.read_json(model_dir / "kappas.json.gz", orient="index")
+            pred_df = pd.read_json(model_dir / "kappas.json.gz").set_index(
+                tc.TCKeys.mat_id
+            )
         else:
-            subdirs = sorted(os.listdir(model_dir))
-
-            if not any(not (Path(d) / "kappa.hdf5").exists() for d in subdirs):
-                try:
-                    current_pred_dict = tc.load_hdf5_subdir_dicts(
-                        model_dir, "kappa.hdf5"
-                    )
-                except Exception:
-                    print(f"Error loading kappas for {model_name}...")
-                    traceback.print_exc()
+            try:
+                current_pred_dict = tc.load_hdf5_subdir_dicts(model_dir, "kappa.hdf5")
+                if current_pred_dict:
+                    pred_df = pd.DataFrame.from_dict(current_pred_dict, orient="index")
+            except Exception:
+                print(f"Error loading kappas for {model_name}...")
+                traceback.print_exc()
 
         if (model_dir / "fast_kappas.hdf5").exists():
             current_pred_dict = tc.hdf5_to_dict(
@@ -331,20 +367,28 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
             )
             fast_pred_df = pd.DataFrame.from_dict(current_pred_dict, orient="index")
         elif (model_dir / "fast_kappas.json.gz").exists():
-            fast_pred_df = pd.read_json(
-                model_dir / "fast_kappas.json.gz", orient="index"
+            fast_pred_df = pd.read_json(model_dir / "fast_kappas.json.gz").set_index(
+                tc.TCKeys.mat_id
             )
         else:
-            subdirs = sorted(os.listdir(model_dir))
-
-            if not any(not (Path(d) / "fast_kappa.hdf5").exists() for d in subdirs):
-                try:
-                    current_pred_dict = tc.load_hdf5_subdir_dicts(
-                        model_dir, "fast_kappa.hdf5"
+            try:
+                current_pred_dict = tc.load_hdf5_subdir_dicts(
+                    model_dir, "fast_kappa.hdf5"
+                )
+                if current_pred_dict:
+                    fast_pred_df = pd.DataFrame.from_dict(
+                        current_pred_dict, orient="index"
                     )
-                except Exception:
-                    print(f"Error loading fast_kappas for {model_name}...")
-                    traceback.print_exc()
+            except Exception:
+                print(f"Error loading fast_kappas for {model_name}...")
+                traceback.print_exc()
+
+        if pred_df is not None:
+            pred_df = _add_missing_error_rows(pred_df, ref_df, model_name)
+        if fast_pred_df is not None:
+            fast_pred_df = _add_missing_error_rows(
+                fast_pred_df, fast_ref_df, model_name, "fast "
+            )
 
         if pred_df is None and fast_pred_df is None:
             continue
@@ -411,6 +455,7 @@ def conductivity(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, list]:
         df = kappa_stats[model_name]
         if tc.TCKeys.kappa_tot_avg not in df:
             continue
+        df = df.reindex(kappa_stats["ref"].index)
         conductivity_data[model_name] = df[tc.TCKeys.kappa_tot_avg].tolist()
     conductivity_data["ref"] = kappa_stats["ref"][tc.TCKeys.kappa_tot_avg].tolist()
     return conductivity_data
@@ -496,9 +541,7 @@ def instability(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, float]:
         if tc.TCKeys.has_imag_ph_modes not in df:
             continue
         has_imag_ph_modes = df[tc.TCKeys.has_imag_ph_modes].values
-        has_imag_ph_modes_filtered = has_imag_ph_modes[
-            np.logical_not(np.isnan(has_imag_ph_modes))
-        ]
+        has_imag_ph_modes_filtered = has_imag_ph_modes[pd.notna(has_imag_ph_modes)]
         instability_values[model_name] = has_imag_ph_modes_filtered.sum() / ref_length
 
     return instability_values
@@ -600,6 +643,7 @@ def mean_fast_srme(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, float]:
     filename=OUT_PATH / "thermal_conductivity.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     mean_srme: dict[str, float],
