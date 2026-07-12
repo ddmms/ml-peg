@@ -13,12 +13,12 @@ import pandas as pd
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.bulk_crystal.thermal_conductivity import thermal_conductivity as tc
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "thermal_conductivity" / "outputs"
@@ -686,7 +686,7 @@ def metrics(
     }
 
 
-def test_thermal_conducticity(metrics: dict[str, dict]):
+def test_thermal_conductivity(metrics: dict[str, dict]) -> None:
     """
     Run thermal conductivity benchmark tests.
 
@@ -695,4 +695,4 @@ def test_thermal_conducticity(metrics: dict[str, dict]):
     metrics : dict[str, dict]
         Metric names and values for all models.
     """
-    return
+    write_struct_info(data_path=STRUCTURE_FILE, out_path=OUT_PATH)
