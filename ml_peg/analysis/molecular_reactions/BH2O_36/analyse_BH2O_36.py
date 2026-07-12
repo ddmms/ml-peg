@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ase import units
 from ase.io import read, write
 import pytest
 
@@ -52,8 +53,8 @@ SYSTEM_NAMES = [name.replace("_ts", "") for name in INFO["filenames"]]
 @plot_parity(
     filename=OUT_PATH / "figure_bh2o_36_barriers.json",
     title="Reaction barriers",
-    x_label="Predicted barrier / eV",
-    y_label="Reference barrier / eV",
+    x_label="Predicted barrier / kcal/mol",
+    y_label="Reference barrier / kcal/mol",
     hoverdata={
         "System": [n for n in SYSTEM_NAMES for _ in range(2)],
         "Barrier Type": [
@@ -84,19 +85,27 @@ def barrier_heights() -> dict[str, list]:
 
             # TS - Reactants barrier
             results[model_name].append(
-                atoms_ts.info["pred_energy"] - atoms_rct.info["pred_energy"]
+                (atoms_ts.info["pred_energy"] - atoms_rct.info["pred_energy"])
+                * units.mol
+                / units.kcal
             )
             # TS - Products barrier
             results[model_name].append(
-                atoms_ts.info["pred_energy"] - atoms_pro.info["pred_energy"]
+                (atoms_ts.info["pred_energy"] - atoms_pro.info["pred_energy"])
+                * units.mol
+                / units.kcal
             )
 
             if not ref_stored:
                 results["ref"].append(
-                    atoms_ts.info["ref_energy"] - atoms_rct.info["ref_energy"]
+                    (atoms_ts.info["ref_energy"] - atoms_rct.info["ref_energy"])
+                    * units.mol
+                    / units.kcal
                 )
                 results["ref"].append(
-                    atoms_ts.info["ref_energy"] - atoms_pro.info["ref_energy"]
+                    (atoms_ts.info["ref_energy"] - atoms_pro.info["ref_energy"])
+                    * units.mol
+                    / units.kcal
                 )
 
             # Write structures for app
