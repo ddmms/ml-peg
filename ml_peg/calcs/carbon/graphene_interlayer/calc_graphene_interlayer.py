@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -29,7 +30,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 GRAPHENE_A = 2.46
 MIN_SEPARATION = 2.0
 MAX_SEPARATION = 8.0
-STEP_SEPARATION = 0.1
+STEP_SEPARATION = 0.05
 VACUUM = 20.0
 
 
@@ -63,7 +64,7 @@ def bilayer_graphene(separation: float):
     atoms = Graphite(
         symbol="C",
         latticeconstant={"a": GRAPHENE_A, "c": 2.0 * separation},
-        size=(1, 1, 1),
+        size=(4, 4, 1),
     )
     atoms.pbc = (True, True, False)
     atoms.cell[2, 2] = 2.0 * VACUUM + separation
@@ -82,16 +83,20 @@ def run_graphene_interlayer(model_name: str, model: Any) -> None:
     model
         Model wrapper providing ``get_calculator`` and ``add_d3_calculator``.
     """
+    data_dir = download_s3_data(
+        key="inputs/carbon/graphene_interlayer/graphene_interlayer.zip",
+        filename="graphene_interlayer.zip",
+    )
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    ref_src = data_dir / "graphene_interlayer" / "reference.json"
+    (OUT_PATH / "reference.json").write_bytes(ref_src.read_bytes())
+
     calc = model.get_calculator(precision="high")
-    # Add dispersion corrections (skipped automatically for models already
-    # trained with dispersion).
     calc = model.add_d3_calculator(calc)
 
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    # Trajectory ordered by increasing interlayer separation; read back by the
-    # analysis stage.
     frames = []
     for separation in tqdm(separations(), desc=f"{model_name} interlayer"):
         atoms = bilayer_graphene(separation)
@@ -114,7 +119,7 @@ def run_graphene_interlayer(model_name: str, model: Any) -> None:
         )
         frames.append(snapshot)
 
-    write(write_dir / "interlayer.extxyz", frames, format="extxyz")
+    write(write_dir / "interlayer.xyz", frames, format="extxyz")
 
 
 @pytest.mark.slow

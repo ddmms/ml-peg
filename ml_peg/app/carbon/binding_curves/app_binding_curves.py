@@ -8,7 +8,10 @@ from dash.html import Div
 from ml_peg.analysis.carbon.curve_metrics import SHAPE_METRICS
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_cell,
+    struct_from_multi_scatters,
+)
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -19,6 +22,8 @@ BENCHMARK_NAME = "Carbon binding curves"
 MODELS = get_model_names(current_models)
 
 METRIC_COLUMNS = list(SHAPE_METRICS) + ["Min distance error", "Min energy error"]
+
+STRUCTURE_NAMES = ("dimer", "graphene", "diamond", "sc", "bcc", "fcc")
 
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/carbon.html#binding-curves"
@@ -32,9 +37,7 @@ class BindingCurvesApp(BaseApp):
     """Carbon binding-curves benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
-        """Register callback to show a model's binding curves on cell click."""
-        # Every metric column for a model shows that model's overlaid
-        # binding-curve figure (model curves plus the PBE+D2 reference).
+        """Register callbacks for binding-curve figures and WEAS structure viewer."""
         cell_to_plot = {
             model: {
                 column: read_plot(
@@ -52,6 +55,21 @@ class BindingCurvesApp(BaseApp):
             cell_to_plot=cell_to_plot,
         )
 
+        assets_base = "/assets/carbon/binding_curves"
+        for model in MODELS:
+            # Traces 0-5: model curves; traces 6-11: reference curves (no structs).
+            structs = [f"{assets_base}/{model}/{s}.extxyz" for s in STRUCTURE_NAMES] + [
+                None
+            ] * len(STRUCTURE_NAMES)
+
+            for column in METRIC_COLUMNS:
+                struct_from_multi_scatters(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{column}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=structs,
+                    mode="traj",
+                )
+
 
 def get_app() -> BindingCurvesApp:
     """
@@ -65,16 +83,17 @@ def get_app() -> BindingCurvesApp:
     return BindingCurvesApp(
         name=BENCHMARK_NAME,
         description=(
-            "Energy vs C–C nearest-neighbour distance for six carbon structures "
-            "(dimer, graphene, diamond, simple cubic, BCC, FCC). Metrics cover "
-            "curve-shape physicality (force flips, energy minima and inflections, "
-            "repulsive/attractive monotonicity) and the error in the location and "
-            "depth of the energy minimum vs a PBE+D2 reference."
+            "Energy vs nearest-neighbour distance for six carbon structures "
+            "(dimer, graphene, diamond, simple cubic, BCC, FCC), compared against "
+            "PBE+D2 reference curves. Tests whether a model predicts the correct "
+            "equilibrium bond length and binding energy across a range of bonding "
+            "environments."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "binding_curves_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
     )
