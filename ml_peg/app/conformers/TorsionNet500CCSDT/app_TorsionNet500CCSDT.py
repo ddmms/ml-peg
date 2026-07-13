@@ -24,6 +24,7 @@ DOCS_URL = (
     "#torsionnet500ccsdt"
 )
 DATA_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500CCSDT"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 # TODO: if another benchmark needs this same lazy-load-on-click pattern, move
@@ -163,6 +164,7 @@ def get_app() -> TorsionNet500CCSDTApp:
             Div(id=f"{BENCHMARK_NAME}-scatter-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-curve-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

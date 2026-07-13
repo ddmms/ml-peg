@@ -36,7 +36,7 @@ def test_torsionnet500ccsdt(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     try:
-        calc = model.get_calculator()
+        calc = model.get_calculator(precision="high")
     except ModuleNotFoundError as exc:
         pytest.skip(f"Skipping {model_name}: {exc}")
 
