@@ -1305,9 +1305,26 @@ def build_nav(
         )
 
         if pathname in (None, "", "/", "/summary"):
+            summary_counts = (
+                f"{len(category_views)} categories · {len(all_apps)} benchmarks"
+            )
             return Div(
                 [
                     H1("Categories Summary"),
+                    Div(
+                        summary_counts,
+                        style={
+                            "fontSize": "14px",
+                            "fontWeight": "600",
+                            "color": "#212529",
+                            "backgroundColor": "#f1f3f5",
+                            "border": "1px solid #dee2e6",
+                            "borderRadius": "6px",
+                            "padding": "8px 14px",
+                            "marginBottom": "12px",
+                            "width": "fit-content",
+                        },
+                    ),
                     Div(
                         "Scores range from 0 (worst) to 1 (best).",
                         style={
