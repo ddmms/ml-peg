@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, mae, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -24,6 +24,18 @@ OUT_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500CCSDT"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+# Elemental info for the app's filtering, saved per-fragment (rather than just the
+# combined set) in preparation for future partial filtering.
+get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
 )
 
 
