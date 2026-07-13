@@ -120,7 +120,8 @@ def extract_zip(filename: Path) -> Path:
                 zip_ref.extractall(extract_dir)
         except (ValueError, RuntimeError, zipfile.BadZipFile) as err:
             raise ValueError(f"Unable to unzip file: {filename}") from err
-    return extract_dir
+        return extract_dir
+    return filename
 
 
 @contextlib.contextmanager

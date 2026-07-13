@@ -139,3 +139,85 @@ def reference_minimum(ref_x: list[float], ref_y: list[float]) -> tuple[float, fl
     y = np.asarray(ref_y, dtype=float)
     i = int(np.argmin(y))
     return float(x[i]), float(y[i])
+
+
+def clip_curve(
+    distances: np.ndarray,
+    energies: np.ndarray,
+    x_min: float = -np.inf,
+    x_max: float = np.inf,
+    e_min: float = -np.inf,
+    e_max: float = np.inf,
+) -> tuple[list[float], list[float], np.ndarray]:
+    """
+    Restrict a curve to a plotting window.
+
+    Parameters
+    ----------
+    distances
+        Scan coordinate.
+    energies
+        Energies per atom.
+    x_min, x_max
+        Distance window bounds (inclusive).
+    e_min, e_max
+        Energy window bounds (inclusive).
+
+    Returns
+    -------
+    tuple[list[float], list[float], numpy.ndarray]
+        Clipped distances, clipped energies, and the boolean mask used.
+    """
+    d = np.asarray(distances, dtype=float)
+    e = np.asarray(energies, dtype=float)
+    mask = (
+        np.isfinite(d)
+        & np.isfinite(e)
+        & (d >= x_min)
+        & (d <= x_max)
+        & (e >= e_min)
+        & (e <= e_max)
+    )
+    return list(d[mask]), list(e[mask]), mask
+
+
+def single_curve_metrics_with_ref(
+    distances: np.ndarray,
+    energies: np.ndarray,
+    ref_x: list[float] | None,
+    ref_y: list[float] | None,
+    metric_columns: tuple[str, ...],
+) -> dict[str, float] | None:
+    """
+    Compute shape metrics and minimum-error vs reference for one curve.
+
+    Parameters
+    ----------
+    distances
+        Scan coordinate (Angstrom).
+    energies
+        Energies per atom, referenced so large-separation limit is ~0.
+    ref_x
+        Reference scan coordinate, or ``None`` if unavailable.
+    ref_y
+        Reference energies, or ``None`` if unavailable.
+    metric_columns
+        Ordered metric keys to include in the output dict.
+
+    Returns
+    -------
+    dict[str, float] | None
+        Metric values keyed by column name, or ``None`` if there are too few
+        finite points.
+    """
+    shape = curve_shape_metrics(distances, energies)
+    if shape is None:
+        return None
+    if ref_x is not None and ref_y is not None:
+        r_min_ref, e_min_ref = reference_minimum(ref_x, ref_y)
+        shape["Min distance error"] = abs(shape["r_min"] - r_min_ref)
+        shape["Min energy error"] = abs(shape["e_min"] - e_min_ref)
+    else:
+        shape["Min distance error"] = np.nan
+        shape["Min energy error"] = np.nan
+    return {col: shape.get(col, np.nan) for col in metric_columns}

@@ -8,7 +8,7 @@ from dash.html import Div
 from ml_peg.analysis.carbon.curve_metrics import SHAPE_METRICS
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -33,7 +33,7 @@ class GrapheneInterlayerApp(BaseApp):
     """Bilayer-graphene interlayer benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
-        """Register callback to show a model's interlayer curve on cell click."""
+        """Register callbacks for interlayer curve and WEAS structure viewer."""
         cell_to_plot = {
             model: {
                 column: read_plot(
@@ -51,6 +51,16 @@ class GrapheneInterlayerApp(BaseApp):
             cell_to_plot=cell_to_plot,
         )
 
+        for model in MODELS:
+            traj_path = f"/assets/carbon/graphene_interlayer/{model}/interlayer.extxyz"
+            for column in METRIC_COLUMNS:
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{column}-figure",
+                    struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                    structs=traj_path,
+                    mode="traj",
+                )
+
 
 def get_app() -> GrapheneInterlayerApp:
     """
@@ -64,14 +74,15 @@ def get_app() -> GrapheneInterlayerApp:
     return GrapheneInterlayerApp(
         name=BENCHMARK_NAME,
         description=(
-            "Bilayer graphene energy vs interlayer separation — a dispersion-dominated "
-            "binding curve. Metrics cover curve-shape physicality and the error in the "
-            "location and depth of the interlayer binding well vs a PBE+D2 reference."
+            "Energy of bilayer graphene as a function of interlayer separation, "
+            "compared against a PBE+D2 reference curve. Tests how well a model "
+            "captures long-range dispersion interactions."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "graphene_interlayer_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
     )

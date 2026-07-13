@@ -7,15 +7,16 @@ from pathlib import Path
 from warnings import warn
 
 from ase.io import read
+from ase.io import write as ase_write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.carbon.curve_metrics import (
     SHAPE_METRICS,
-    curve_shape_metrics,
-    reference_minimum,
+    clip_curve,
+    single_curve_metrics_with_ref,
 )
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -35,16 +36,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Digitised reference curves (relative energy in meV/atom).
-REFERENCE = json.loads((Path(__file__).with_name("reference.json")).read_text())
-# Models are evaluated with dispersion, so the PBE+D2 curve is the scoring target.
+REFERENCE = json.loads((CALC_PATH / "reference.json").read_text())
 REF_D2 = REFERENCE["PBE+D2"]
 
 EV_TO_MEV = 1000.0
 
 METRIC_COLUMNS = list(SHAPE_METRICS) + ["Min distance error", "Min energy error"]
 
-# Plotting window (matches the physically relevant interlayer range).
 PLOT_X_MIN = 2.0
 PLOT_X_MAX = 5.5
 PLOT_E_MIN = -100.0
@@ -67,7 +65,7 @@ def load_model_curve(model_name: str) -> tuple[np.ndarray, np.ndarray]:
     tuple[numpy.ndarray, numpy.ndarray]
         Interlayer separations (Angstrom) and relative energies (meV/atom).
     """
-    xyz_path = CALC_PATH / model_name / "interlayer.extxyz"
+    xyz_path = CALC_PATH / model_name / "interlayer.xyz"
     if not xyz_path.exists():
         return np.array([]), np.array([])
 
@@ -82,7 +80,6 @@ def load_model_curve(model_name: str) -> tuple[np.ndarray, np.ndarray]:
     finite = energies[np.isfinite(energies)]
     if finite.size == 0:
         return separations, energies
-    # Reference to the largest separation, then convert eV -> meV per atom.
     energies = (energies - finite[-1]) * EV_TO_MEV
     return separations, energies
 
@@ -127,45 +124,10 @@ def compute_model_metrics(
     dict[str, float]
         Metric values (NaN where unavailable).
     """
-    shape = curve_shape_metrics(separations, energies)
-    if shape is None:
-        return dict.fromkeys(METRIC_COLUMNS, np.nan)
-
-    r_min_ref, e_min_ref = reference_minimum(REF_D2["x"], REF_D2["y"])
-    shape["Min distance error"] = abs(shape["r_min"] - r_min_ref)
-    shape["Min energy error"] = abs(shape["e_min"] - e_min_ref)
-    return {column: shape.get(column, np.nan) for column in METRIC_COLUMNS}
-
-
-def _clip_curve(
-    separations: np.ndarray, energies: np.ndarray
-) -> tuple[list[float], list[float]]:
-    """
-    Restrict a curve to the plotting window.
-
-    Parameters
-    ----------
-    separations
-        Interlayer separations (Angstrom).
-    energies
-        Relative energies (meV/atom).
-
-    Returns
-    -------
-    tuple[list[float], list[float]]
-        Separations and energies within the display window.
-    """
-    d = np.asarray(separations, dtype=float)
-    e = np.asarray(energies, dtype=float)
-    mask = (
-        np.isfinite(d)
-        & np.isfinite(e)
-        & (d >= PLOT_X_MIN)
-        & (d <= PLOT_X_MAX)
-        & (e >= PLOT_E_MIN)
-        & (e <= PLOT_E_MAX)
+    result = single_curve_metrics_with_ref(
+        separations, energies, REF_D2["x"], REF_D2["y"], METRIC_COLUMNS
     )
-    return list(d[mask]), list(e[mask])
+    return result if result is not None else dict.fromkeys(METRIC_COLUMNS, np.nan)
 
 
 def write_model_figure(
@@ -183,9 +145,17 @@ def write_model_figure(
     energies
         Relative energies (meV/atom).
     """
-    from ml_peg.analysis.utils.decorators import plot_scatter
-
     model_dir = OUT_PATH / model_name
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    x_model, y_model, _ = clip_curve(
+        separations,
+        energies,
+        x_min=PLOT_X_MIN,
+        x_max=PLOT_X_MAX,
+        e_min=PLOT_E_MIN,
+        e_max=PLOT_E_MAX,
+    )
 
     @plot_scatter(
         filename=model_dir / "figure_interlayer.json",
@@ -193,30 +163,74 @@ def write_model_figure(
         x_label="Interlayer separation / Å",
         y_label="Energy / meV atom⁻¹",
         show_line=True,
-        show_markers=False,
+        show_markers=True,
+        reference_mode="lines",
+        reference_line_dash="dash",
     )
-    def plot_curve() -> dict[str, list]:
+    def _plot():
         """
-        Build the model and reference traces.
+        Return the model and reference curves for the scatter decorator.
 
         Returns
         -------
-        dict[str, list]
-            Mapping of trace label to ``[xs, ys]``.
+        dict[str, tuple[list, list]]
+            Model and ``"ref"`` traces as (x, y) tuples.
         """
         return {
-            model_name: list(_clip_curve(separations, energies)),
-            "PBE+D2": [list(REF_D2["x"]), list(REF_D2["y"])],
-            "PBE": [list(REFERENCE["PBE"]["x"]), list(REFERENCE["PBE"]["y"])],
+            model_name: (x_model, y_model),
+            "ref": (list(REF_D2["x"]), list(REF_D2["y"])),
         }
 
-    plot_curve()
+    _plot()
+
+
+def write_model_structs(
+    model_name: str, separations: np.ndarray, energies: np.ndarray
+) -> None:
+    """
+    Write a trajectory file for WEAS, aligned to the scatter plot.
+
+    Frames are ordered and clipped to match the figure so ``pointNumber`` maps
+    directly to the frame index.
+
+    Parameters
+    ----------
+    model_name
+        Model identifier.
+    separations
+        Sorted interlayer separations (Angstrom).
+    energies
+        Relative energies (meV/atom).
+    """
+    xyz_path = CALC_PATH / model_name / "interlayer.xyz"
+    if not xyz_path.exists():
+        return
+
+    frames = read(xyz_path, index=":")
+    raw_seps = np.array([float(f.info["interlayer_separation"]) for f in frames])
+    sorted_frames = [frames[i] for i in np.argsort(raw_seps)]
+
+    _, _, mask = clip_curve(
+        separations,
+        energies,
+        x_min=PLOT_X_MIN,
+        x_max=PLOT_X_MAX,
+        e_min=PLOT_E_MIN,
+        e_max=PLOT_E_MAX,
+    )
+    traj = [sorted_frames[i].copy() for i in np.where(mask)[0]]
+    for f in traj:
+        f.calc = None
+
+    out_dir = OUT_PATH / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ase_write(out_dir / "interlayer.extxyz", traj, format="extxyz")
 
 
 @pytest.fixture
 def curve_plots(model_curves) -> None:
     """
-    Write per-model interlayer figures.
+    Write per-model interlayer figures and trajectory files for WEAS.
 
     Parameters
     ----------
@@ -226,6 +240,7 @@ def curve_plots(model_curves) -> None:
     for model_name, (separations, energies) in model_curves.items():
         if separations.size and np.isfinite(energies).any():
             write_model_figure(model_name, separations, energies)
+            write_model_structs(model_name, separations, energies)
 
 
 @pytest.fixture

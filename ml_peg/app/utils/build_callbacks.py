@@ -419,6 +419,10 @@ def struct_from_multi_scatters(
         curve_number = click_data["points"][0]["curveNumber"]
         idx = click_data["points"][0]["pointNumber"]
 
+        # Ignore clicks on traces with no structures (e.g. reference curves).
+        if curve_number >= len(structs) or structs[curve_number] is None:
+            return Div()
+
         if isinstance(structs[curve_number], str):
             struct = structs[curve_number]
             index = idx

@@ -450,6 +450,8 @@ def plot_scatter(
     hoverdata: dict | None = None,
     filename: str = "scatter.json",
     highlight_range: dict = None,
+    reference_mode: str | None = None,
+    reference_line_dash: str | None = None,
 ) -> Callable:
     """
     Plot scatter plot of MLIP results.
@@ -472,6 +474,12 @@ def plot_scatter(
         Filename to save plot as JSON. Default is "scatter.json".
     highlight_range
         Dictionary of rectangle title and x-axis endpoints.
+    reference_mode
+        Plotly mode for the ``"ref"`` trace, e.g. ``"lines"``. Default is
+        `None`, using the same mode as all other traces.
+    reference_line_dash
+        Line dash style for the ``"ref"`` trace (e.g. ``"dash"``). If ``None``,
+        no dash override is applied.
 
     Returns
     -------
@@ -530,13 +538,21 @@ def plot_scatter(
 
             fig = go.Figure()
             for mlip, value in results.items():
-                name = "Reference" if mlip == "ref" else mlip
+                is_ref = mlip == "ref"
+                name = "Reference" if is_ref else mlip
+                trace_mode = reference_mode if (is_ref and reference_mode) else mode
+                line_kwargs = (
+                    {"dash": reference_line_dash}
+                    if (is_ref and reference_line_dash)
+                    else {}
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=value[0],
                         y=value[1],
                         name=name,
-                        mode=mode,
+                        mode=trace_mode,
+                        line=line_kwargs,
                         customdata=customdata,
                         hovertemplate=hovertemplate,
                     )
@@ -573,6 +589,150 @@ def plot_scatter(
         return plot_scatter_wrapper
 
     return plot_scatter_decorator
+
+
+def plot_scatter_grouped(
+    *,
+    groups: dict[str, str],
+    filename: str | Path,
+    title: str | None = None,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    reference_suffix: str = "_ref",
+    margin_t: int = 100,
+    dropdown_y: float = 1.15,
+) -> Callable:
+    """
+    Plot a set of model/reference curve pairs with a per-group dropdown selector.
+
+    The decorated function must return a dict whose keys are either a group key
+    (model trace) or a group key + ``reference_suffix`` (reference trace).
+
+    Parameters
+    ----------
+    groups
+        Ordered mapping of trace key to display label (e.g.
+        ``{"graphene": "Graphene", "diamond": "Diamond"}``).
+    filename
+        Path to write the Plotly figure JSON.
+    title
+        Figure title.
+    x_label
+        X-axis label.
+    y_label
+        Y-axis label.
+    reference_suffix
+        Suffix appended to a group key to identify its reference trace.
+        Defaults to ``"_ref"``.
+    margin_t
+        Top margin in pixels; increase to avoid overlap with the dropdown.
+    dropdown_y
+        Y position of the dropdown menu in figure coordinates.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot grouped scatter.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """
+            Wrap function to plot grouped scatter.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            n = len(groups)
+            fig = go.Figure()
+
+            for key, label in groups.items():
+                x, y = results.get(key, ([], []))
+                fig.add_trace(go.Scatter(x=x, y=y, name=label, mode="lines+markers"))
+            for key, label in groups.items():
+                x, y = results.get(key + reference_suffix, ([], []))
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        name=f"{label} (ref)",
+                        mode="lines+markers",
+                        marker={"size": 4},
+                        line={"dash": "dash"},
+                    )
+                )
+
+            buttons = [
+                {
+                    "label": "All",
+                    "method": "restyle",
+                    "args": [{"visible": [True] * (2 * n)}],
+                }
+            ]
+            for i, label in enumerate(groups.values()):
+                visible = [False] * (2 * n)
+                visible[i] = True
+                visible[n + i] = True
+                buttons.append(
+                    {
+                        "label": label,
+                        "method": "restyle",
+                        "args": [{"visible": visible}],
+                    }
+                )
+
+            fig.update_layout(
+                title={"text": title},
+                xaxis={"title": {"text": x_label}},
+                yaxis={"title": {"text": y_label}},
+                margin={"t": margin_t},
+                updatemenus=[
+                    {
+                        "type": "dropdown",
+                        "x": 0.0,
+                        "y": dropdown_y,
+                        "xanchor": "left",
+                        "yanchor": "top",
+                        "buttons": buttons,
+                        "active": 0,
+                    }
+                ],
+            )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return wrapper
+
+    return decorator
 
 
 def plot_density_scatter(
