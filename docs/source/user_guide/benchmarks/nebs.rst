@@ -103,3 +103,39 @@ Input/reference data:
   - 64 atoms: Γ-only (``K_POINTS automatic 1 1 1 0 0 0``)
   - 216 atoms: Γ-only (``K_POINTS gamma``)
   - 216 atoms di-to-single: Γ-only (``K_POINTS gamma``)
+
+
+OC20NEB
+=======
+
+Summary
+-------
+
+Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset.
+
+Metrics
+-------
+
+1. Reaction energy difference compared to DFT reference
+
+2. Activation barrier difference compared to DFT reference
+
+3. NEB convergence
+
+Computational cost
+------------------
+
+Medium: tests are likely to take several minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
