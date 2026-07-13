@@ -40,7 +40,15 @@ def test_torsionnet500ccsdt(mlip: tuple[str, Any]) -> None:
     except ModuleNotFoundError as exc:
         pytest.skip(f"Skipping {model_name}: {exc}")
 
-    xyz_files = sorted(DATA_PATH.glob("*.xyz"))
+    data_path = (
+        download_s3_data(
+            filename="TorsionNet500CCSDT.zip",
+            key="inputs/conformers/TorsionNet500CCSDT/TorsionNet500CCSDT.zip",
+        )
+        / "TorsionNet500CCSDT"
+    )
+
+    xyz_files = sorted(data_path.glob("*.xyz"))
 
     for o in tqdm(xyz_files):
         atoms = read(o, ":")
