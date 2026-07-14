@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import plotly.graph_objects as go
 import pytest
@@ -292,6 +292,30 @@ def torsion_curve_figures(fragment_rmse: dict[str, dict[str, list]]) -> None:
 
 
 @pytest.fixture
+def torsion_trajectories() -> None:
+    """
+    Save per-fragment torsion scan trajectories for the app's structure viewer.
+
+    Geometries are identical across all models, since only single-point energies
+    are calculated on the same reference conformers, so this only needs writing
+    once, from the mock calculator's output, matching the ``info.json`` elemental
+    info above.
+    """
+    mock_dir = CALC_PATH / "mock"
+    if not mock_dir.exists():
+        return
+
+    out_dir = OUT_PATH / "torsion_trajectories"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for xyz_file in sorted(mock_dir.glob("*.xyz")):
+        atoms = read(xyz_file, ":")
+        angle = [a.info["torsion_angle"] for a in atoms]
+        order = np.argsort(angle)
+        write(out_dir / f"{xyz_file.stem}.xyz", [atoms[i] for i in order])
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "torsionnet500ccsdt_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -325,6 +349,7 @@ def test_torsionnet500ccsdt(
     metrics: dict[str, dict],
     fragment_scatter_figures: None,
     torsion_curve_figures: None,
+    torsion_trajectories: None,
 ) -> None:
     """
     Run TorsionNet500CCSDT analysis.
@@ -337,5 +362,7 @@ def test_torsionnet500ccsdt(
         Per-model fragment-RMSE/MAE scatter figures (side-effect only).
     torsion_curve_figures
         Per-fragment torsion curve figures (side-effect only).
+    torsion_trajectories
+        Per-fragment torsion scan trajectories (side-effect only).
     """
     return
