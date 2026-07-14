@@ -1,29 +1,29 @@
-mace-mp-0a:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium"
-
-mace-mp-0b3:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-0b3"
-
-mace-mpa-0:
-  module: mace.calculators
-  class_name: mace_mp
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-mpa-0"
+#mace-mp-0a:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium"
+#
+#mace-mp-0b3:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium-0b3"
+#
+#mace-mpa-0:
+#  module: mace.calculators
+#  class_name: mace_mp
+#  device: "auto"
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    model: "medium-mpa-0"
 
 mace-omat-0:
   module: mace.calculators
@@ -57,23 +57,23 @@ mace-matpes-r2scan:
 #     model: "mh-1"
 #     head: omat_pbe
 
-orb-v3-consv-inf-omat:
-  module: orb_models.inference.calculator
-  class_name: OrbCalc
-  device: "cpu"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    name: "orb_v3_conservative_inf_omat"
-
-orb-v3-consv-omol:
-  module: orb_models.forcefield.inference.calculator
-  class_name: OrbCalc
-  device: "cpu"
-  trained_on_dispersion: true
-  level_of_theory: PBE
-  kwargs:
-    name: "orb_v3_conservative_omol"
+#orb-v3-consv-inf-omat:
+#  module: orb_models.inference.calculator
+#  class_name: OrbCalc
+#  device: "cpu"
+#  trained_on_dispersion: false
+#  level_of_theory: PBE
+#  kwargs:
+#    name: "orb_v3_conservative_inf_omat"
+#
+#orb-v3-consv-omol:
+#  module: orb_models.forcefield.inference.calculator
+#  class_name: OrbCalc
+#  device: "cpu"
+#  trained_on_dispersion: true
+#  level_of_theory: PBE
+#  kwargs:
+#    name: "orb_v3_conservative_omol"
 
 # mattersim-5M:
 #   module: mattersim.forcefield
@@ -168,16 +168,16 @@ orb-v3-consv-omol:
 #     model_name: "uma-m-1p1"
 #     task_name: "omol"
 
-pet-mad:
-  module: pet_mad.calculator
-  class_name: PETMADCalculator
-  device: "cpu"
-  trained_on_dispersion: false
-  level_of_theory: PBEsol
-  kwargs:
-    version: "v1.0.2"
-  dispersion_kwargs:
-    xc: pbesol
+#pet-mad:
+#  module: pet_mad.calculator
+#  class_name: PETMADCalculator
+#  device: "cpu"
+#  trained_on_dispersion: false
+#  level_of_theory: PBEsol
+#  kwargs:
+#    version: "v1.0.2"
+#  dispersion_kwargs:
+#    xc: pbesol
 
 # mace-polar-1-s:
 #   module: mace.calculators
