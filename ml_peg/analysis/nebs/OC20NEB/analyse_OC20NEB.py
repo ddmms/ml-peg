@@ -30,8 +30,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-METRICS = ["delta_E", "barrier", "fmax"]
-METRIC_LABELS = {"delta_E": "delta_E", "barrier": "barrier", "fmax": "unconverged"}
+METRIC_LABELS = {
+    "delta_E": "Reaction Energy MAE",
+    "barrier": "Barrier MAE",
+    "fmax": "Convergence",
+}
 FMAX = 0.05
 
 
@@ -136,7 +139,8 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
 
     for model_name in MODELS:
         metrics_data: dict[str, dict[str, Any]] = {
-            key: {"points": [], "ref": [], "pred": [], "mae": None} for key in METRICS
+            key: {"points": [], "ref": [], "pred": [], "mae": None}
+            for key in METRIC_LABELS.keys()
         }
         model_assets_dir = OUT_PATH / model_name
         model_assets_dir.mkdir(parents=True, exist_ok=True)
@@ -199,7 +203,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     )
 
         # Calculate MAEs
-        for metric_key in METRICS:
+        for metric_key in METRIC_LABELS.keys():
             if metric_key != "fmax":
                 ref_vals = metrics_data[metric_key]["ref"]
                 pred_vals = metrics_data[metric_key]["pred"]
@@ -243,15 +247,15 @@ def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
     table_data: dict[str, dict[str, float | None]] = {}
 
     # Get MAE for delta_E and barrier metrics
-    for metric_key in METRICS:
+    for metric_key, label in METRIC_LABELS.items():
         if metric_key != "fmax":
-            table_data[metric_key] = {
+            table_data[label] = {
                 model: oc20neb_stats[model]["metrics"][metric_key]["mae"]
                 for model in MODELS
             }
 
     # Get unconverged percentage
-    table_data["fmax"] = {
+    table_data["Convergence"] = {
         model: oc20neb_stats[model]["unconverged"] for model in MODELS
     }
     return table_data
@@ -287,7 +291,7 @@ def interactive_dataset(oc20neb_stats: dict[str, dict[str, Any]]) -> dict[str, A
 
     for model_name, model_data in oc20neb_stats.items():
         dataset["models"][model_name] = {"metrics": {}}
-        for metric_key in METRICS:
+        for metric_key in METRIC_LABELS.keys():
             if metric_key != "fmax":
                 dataset["models"][model_name]["metrics"][metric_key] = {
                     "points": model_data["metrics"][metric_key]["points"],
