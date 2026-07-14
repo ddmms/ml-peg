@@ -36,10 +36,10 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
     # Download dataset
     elemental_tm_vacancies_dir = (
         download_s3_data(
-            key="inputs/bulk_crystal/elemental_tm_vacancies/Elemental_TM_Vacancy.zip",
-            filename="Elemental_TM_Vacancy.zip",
+            key="inputs/bulk_crystal/elemental_tm_vacancies/elemental_tm_vacancies.zip",
+            filename="elemental_tm_vacancies.zip",
         )
-        / "Elemental_TM_Vacancy"
+        / "elemental_tm_vacancies"
     )
 
     with open(elemental_tm_vacancies_dir / "list") as f:
