@@ -184,8 +184,9 @@ class OC20NEBApp(BaseApp):
             Returns
             -------
             dict
-                Mapping of ``ref_profile``, ``pred_profile``, and
-                ``system_label`` written to ``NEB_PROFILE_STORE_ID``.
+                Mapping of ``ref_profile``, ``pred_profile`` (asset URLs
+                fetched client-side by the WEAS viewer), and ``system_label``
+                written to ``NEB_PROFILE_STORE_ID``.
             """
             if not click_data or not scatter_metadata:
                 raise PreventUpdate
@@ -203,8 +204,8 @@ class OC20NEBApp(BaseApp):
             label = selected.get("label") or selected.get("reaction", "")
 
             return {
-                "ref_profile": data_paths.get("ref_profile"),
-                "pred_profile": data_paths.get("pred_profile"),
+                "ref_profile": data_paths.get("ref_profile_url"),
+                "pred_profile": data_paths.get("pred_profile_url"),
                 "system_label": label,
             }
 
