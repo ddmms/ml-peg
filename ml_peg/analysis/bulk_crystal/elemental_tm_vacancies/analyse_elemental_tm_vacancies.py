@@ -24,28 +24,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def get_system_names() -> list[str]:
-    """
-    Get list of all system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
-
-
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
@@ -64,7 +42,7 @@ INFO = get_struct_info(
     x_label="Predicted Vacancy Formation Energy / eV",
     y_label="Reference Vacancy Formation Energy / eV",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
     },
 )
 def vacancy_formation_energies() -> dict[str, list]:
