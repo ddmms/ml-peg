@@ -31,7 +31,7 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Download dataset
     elemental_tm_vacancies_dir = (
