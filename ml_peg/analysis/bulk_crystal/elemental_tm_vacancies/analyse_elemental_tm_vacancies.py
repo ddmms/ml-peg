@@ -8,7 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -44,6 +44,17 @@ def get_system_names() -> list[str]:
                     system_names.append(atoms.info["system"])
                 break
     return system_names
+
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    info_keys=["system"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture

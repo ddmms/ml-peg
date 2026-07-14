@@ -20,6 +20,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elemental Transition Metal Vacancy Formation Energies"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#elemental-tm-vacancy-formation-energies"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "elemental_tm_vacancies"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ElementalTMVacanciesApp(BaseApp):
