@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 import numpy as np
@@ -54,14 +55,22 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
         bulk.info.setdefault("charge", 0)
         bulk.info.setdefault("spin", 1)
         bulk.calc = calc
-        bulk.get_potential_energy()
+        try:
+            bulk.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy: {exc}", stacklevel=2)
+            bulk.info["energy"] = np.nan
 
         vacancy = read(vacancy_path, index=0, format="vasp")
         # Set default charge and spin
         vacancy.info.setdefault("charge", 0)
         vacancy.info.setdefault("spin", 1)
         vacancy.calc = copy(calc)
-        vacancy.get_potential_energy()
+        try:
+            vacancy.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy: {exc}", stacklevel=2)
+            vacancy.info["energy"] = np.nan
 
         ref = np.loadtxt(ref_path)
 
