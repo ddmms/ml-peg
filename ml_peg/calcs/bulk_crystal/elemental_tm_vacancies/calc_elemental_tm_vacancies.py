@@ -16,7 +16,6 @@ from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
