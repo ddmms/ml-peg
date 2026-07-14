@@ -119,7 +119,6 @@ class OC20NEBApp(BaseApp):
 
         profile_renderer = partial(
             render_neb_profile,
-            reference_label="RPBE",
             scatter_id=NEB_PROFILE_GRAPH_ID,
         )
 

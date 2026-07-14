@@ -5,15 +5,13 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from ase.io import read
 import matplotlib
 
 matplotlib.use("Agg")
 from dash import dcc, html
 from dash.html import Iframe
-import numpy as np
-import plotly.graph_objects as go
 
+from ml_peg.app.utils.plot_helpers import figure_from_dict
 from ml_peg.app.utils.weas import generate_weas_html
 
 
@@ -65,12 +63,14 @@ def lookup_system_entry(model_entry: Mapping[str, Any], point_id: str | int):
 
 def render_neb_profile(
     selection_context: Mapping[str, Any],
-    reference_label: str,
     scatter_id: str,
 ) -> html.Div | None:
     """
-    Render an interactive Plotly NEB profile for a selection.
+    Render the pre-built NEB profile figure for a selection.
 
+    The figure itself is generated during analysis (see
+    ``analyse_OC20NEB.py::_build_neb_profile_figure``) and stored under the
+    point's ``profile_figure`` key, so this just deserializes and displays it.
     The returned ``dcc.Graph`` uses ``scatter_id`` so that downstream callbacks
     wired to that ID can detect clicks on individual NEB images.
 
@@ -78,8 +78,6 @@ def render_neb_profile(
     ----------
     selection_context
         Dictionary containing ``model`` and resolved ``selection`` data.
-    reference_label
-        Legend label for the reference trace.
     scatter_id
         Dash component ID assigned to the rendered ``dcc.Graph``.
 
@@ -87,24 +85,16 @@ def render_neb_profile(
     -------
     dash.html.Div | None
         Component containing the interactive profile graph, or ``None`` if
-        no data is available.
+        no pre-built figure is available.
     """
-    model_display = selection_context.get("model")
     selected = selection_context.get("selection") or {}
-    data_paths = selected.get("data_paths")
     label = selected.get("label") or selected.get("reaction", "")
+    figure_dict = selected.get("profile_figure")
 
-    if not data_paths:
+    if not figure_dict:
         return None
 
-    fig = _build_neb_profile_figure(
-        paths=data_paths,
-        model_label=model_display,
-        system_label=label,
-        reference_label=reference_label,
-    )
-    if fig is None:
-        return None
+    fig = figure_from_dict(figure_dict)
 
     return html.Div(
         [
@@ -121,121 +111,6 @@ def render_neb_profile(
             ),
         ]
     )
-
-
-def _build_neb_profile_figure(
-    *,
-    paths: Mapping[str, str | None],
-    model_label: str,
-    system_label: str,
-    reference_label: str = "Reference",
-) -> go.Figure | None:
-    """
-    Build an interactive Plotly figure showing DFT and MLIP NEB energy profiles.
-
-    Each data point is individually clickable; ``pointNumber`` maps directly to
-    the NEB image index in the trajectory files.
-
-    Parameters
-    ----------
-    paths
-        Mapping with ``"ref_profile"`` and ``"pred_profile"`` trajectory paths.
-    model_label
-        Display name for the predicted model trace.
-    system_label
-        Title displayed above the plot.
-    reference_label
-        Legend label for the reference (DFT) trace.
-
-    Returns
-    -------
-    go.Figure | None
-        Interactive Plotly figure or ``None`` when trajectory files are missing
-        or unreadable.
-    """
-    ref_path = paths.get("ref_profile")
-    pred_path = paths.get("pred_profile")
-    if not ref_path or not pred_path:
-        return None
-
-    try:
-        ref_profile = read(ref_path, ":")
-        pred_profile = read(pred_path, ":")
-    except Exception:
-        return None
-
-    try:
-        ref_energies = np.array([at.info["DFT_energy"] for at in ref_profile])
-        pred_energies = np.array([at.get_potential_energy() for at in pred_profile])
-    except Exception:
-        return None
-
-    ref_shifted = ref_energies - ref_energies[0]
-    pred_shifted = pred_energies - pred_energies[0]
-    image_indices = list(range(len(ref_shifted)))
-
-    hover_ref = [
-        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
-        for i, e in enumerate(ref_shifted)
-    ]
-    hover_pred = [
-        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
-        for i, e in enumerate(pred_shifted)
-    ]
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=image_indices,
-            y=ref_shifted.tolist(),
-            mode="lines+markers",
-            name=reference_label,
-            line={"color": "#1f77b4", "width": 2},
-            marker={"size": 10, "symbol": "circle", "color": "#1f77b4"},
-            hovertemplate="%{customdata}<extra></extra>",
-            customdata=hover_ref,
-        )
-    )
-
-    pred_color = "#d62728"
-    fig.add_trace(
-        go.Scatter(
-            x=list(range(len(pred_shifted))),
-            y=pred_shifted.tolist(),
-            mode="lines+markers",
-            name=model_label or "MLIP",
-            line={"color": pred_color, "width": 2, "dash": "dash"},
-            marker={"size": 10, "symbol": "circle", "color": pred_color},
-            hovertemplate="%{customdata}<extra></extra>",
-            customdata=hover_pred,
-        )
-    )
-
-    fig.update_layout(
-        title={"text": system_label, "font": {"size": 15}},
-        xaxis={
-            "title": "NEB Image Index",
-            "tickmode": "linear",
-            "dtick": 1,
-            "gridcolor": "#eee",
-        },
-        yaxis={"title": "ΔEnergy (eV)", "gridcolor": "#eee"},
-        legend={
-            "orientation": "h",
-            "yanchor": "bottom",
-            "y": 1.02,
-            "xanchor": "right",
-            "x": 1,
-        },
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        hovermode="closest",
-        margin={"l": 60, "r": 20, "t": 60, "b": 50},
-        clickmode="event",
-    )
-
-    return fig
 
 
 def render_geometry_comparison(
