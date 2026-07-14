@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter, plot_scatter
@@ -24,6 +26,7 @@ SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
 # copied under the Dash assets directory and referenced by URL rather than by
 # their original (local, unservable) filesystem path.
 ASSETS_URL_PREFIX = "/assets/nebs/OC20NEB"
+REFERENCE_LABEL = "RPBE"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -36,6 +39,109 @@ METRIC_LABELS = {
     "fmax": "Convergence",
 }
 FMAX = 0.05
+
+
+def _build_neb_profile_figure(
+    *,
+    ref_traj: list,
+    pred_traj: list,
+    model_label: str,
+    system_label: str,
+    reference_label: str = REFERENCE_LABEL,
+) -> go.Figure:
+    """
+    Build an interactive Plotly figure showing DFT and MLIP NEB energy profiles.
+
+    Each data point is individually clickable; ``pointNumber`` maps directly to
+    the NEB image index in the trajectory files.
+
+    Parameters
+    ----------
+    ref_traj
+        DFT reference trajectory images.
+    pred_traj
+        Predicted (MLIP) trajectory images.
+    model_label
+        Display name for the predicted model trace.
+    system_label
+        Title displayed above the plot.
+    reference_label
+        Legend label for the reference (DFT) trace.
+
+    Returns
+    -------
+    go.Figure
+        Interactive Plotly figure showing both energy profiles.
+    """
+    ref_energies = np.array([at.info["DFT_energy"] for at in ref_traj])
+    pred_energies = np.array([at.get_potential_energy() for at in pred_traj])
+
+    ref_shifted = ref_energies - ref_energies[0]
+    pred_shifted = pred_energies - pred_energies[0]
+    image_indices = list(range(len(ref_shifted)))
+
+    hover_ref = [
+        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
+        for i, e in enumerate(ref_shifted)
+    ]
+    hover_pred = [
+        f"<b>Image {i}</b><br>ΔE = {e:.3f} eV<br><i>Click to view geometry</i>"
+        for i, e in enumerate(pred_shifted)
+    ]
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=image_indices,
+            y=ref_shifted.tolist(),
+            mode="lines+markers",
+            name=reference_label,
+            line={"color": "#1f77b4", "width": 2},
+            marker={"size": 10, "symbol": "circle", "color": "#1f77b4"},
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=hover_ref,
+        )
+    )
+
+    pred_color = "#d62728"
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(pred_shifted))),
+            y=pred_shifted.tolist(),
+            mode="lines+markers",
+            name=model_label or "MLIP",
+            line={"color": pred_color, "width": 2, "dash": "dash"},
+            marker={"size": 10, "symbol": "circle", "color": pred_color},
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=hover_pred,
+        )
+    )
+
+    fig.update_layout(
+        title={"text": system_label, "font": {"size": 15}},
+        xaxis={
+            "title": "NEB Image Index",
+            "tickmode": "linear",
+            "dtick": 1,
+            "gridcolor": "#eee",
+        },
+        yaxis={"title": "ΔEnergy (eV)", "gridcolor": "#eee"},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        hovermode="closest",
+        margin={"l": 60, "r": 20, "t": 60, "b": 50},
+        clickmode="event",
+    )
+
+    return fig
 
 
 def plot_nebs(model: str, reaction: str) -> None:
@@ -159,10 +265,6 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             write(model_assets_dir / pred_traj_path.name, pred_traj)
 
             data_paths = {
-                # Server-side filesystem paths, read via ase.io.read() to build
-                # the NEB energy profile plot.
-                "ref_profile": str(ref_cache[reaction]["traj_path"]),
-                "pred_profile": str(pred_traj_path),
                 # Client-side asset URLs, fetched by the browser for the WEAS
                 # structure viewer.
                 "ref_profile_url": ref_cache[reaction]["traj_url"],
@@ -170,6 +272,14 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     f"{ASSETS_URL_PREFIX}/{model_name}/{pred_traj_path.name}"
                 ),
             }
+
+            profile_fig = _build_neb_profile_figure(
+                ref_traj=ref_data[reaction]["traj"],
+                pred_traj=pred_traj,
+                model_label=model_name,
+                system_label=reaction,
+            )
+            profile_figure = json.loads(profile_fig.to_json())
 
             # Store metric points
             metric_values = {
@@ -189,6 +299,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                             "ref": ref_val,
                             "pred": pred_val,
                             "data_paths": data_paths,
+                            "profile_figure": profile_figure,
                         }
                     )
                 else:
