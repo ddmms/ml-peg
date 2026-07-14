@@ -20,6 +20,10 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "OC20NEB"
 SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
+# WEAS structure viewers fetch trajectory files client-side, so they must be
+# copied under the Dash assets directory and referenced by URL rather than by
+# their original (local, unservable) filesystem path.
+ASSETS_URL_PREFIX = "/assets/nebs/OC20NEB"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -93,6 +97,7 @@ def _get_ref_data():
         energy = np.array([at.info["DFT_energy"] for at in traj])
 
         ref_data[reaction] = {
+            "traj": traj,
             "energy": energy,
             "barrier": energy.max() - energy[0],
             "delta_E": energy[-1] - energy[0],
@@ -113,11 +118,19 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
     ref_data = _get_ref_data()
     ref_cache: dict[str, dict[str, Any]] = {}
 
+    dft_assets_dir = OUT_PATH / "DFT"
+    dft_assets_dir.mkdir(parents=True, exist_ok=True)
+
     for reaction in ref_data.keys():
         ref_traj_path = CALC_PATH / f"{reaction}-dft.xyz"
         ref_profile = ref_data[reaction]["energy"]
 
-        ref_cache[reaction] = {"profile": ref_profile, "traj_path": ref_traj_path}
+        write(dft_assets_dir / ref_traj_path.name, ref_data[reaction]["traj"])
+        ref_cache[reaction] = {
+            "profile": ref_profile,
+            "traj_path": ref_traj_path,
+            "traj_url": f"{ASSETS_URL_PREFIX}/DFT/{ref_traj_path.name}",
+        }
 
     stats: dict[str, dict[str, Any]] = {}
 
@@ -125,6 +138,9 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
         metrics_data: dict[str, dict[str, Any]] = {
             key: {"points": [], "ref": [], "pred": [], "mae": None} for key in METRICS
         }
+        model_assets_dir = OUT_PATH / model_name
+        model_assets_dir.mkdir(parents=True, exist_ok=True)
+
         for reaction in ref_data.keys():
             with open(
                 CALC_PATH / model_name / f"{reaction}-neb-results.dat", encoding="utf8"
@@ -134,10 +150,20 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                     float(x) for x in data[1].split()
                 )
 
+            pred_traj_path = CALC_PATH / model_name / f"{reaction}-neb-band.extxyz"
+            pred_traj = read(pred_traj_path, ":")
+            write(model_assets_dir / pred_traj_path.name, pred_traj)
+
             data_paths = {
+                # Server-side filesystem paths, read via ase.io.read() to build
+                # the NEB energy profile plot.
                 "ref_profile": str(ref_cache[reaction]["traj_path"]),
-                "pred_profile": str(
-                    CALC_PATH / model_name / f"{reaction}-neb-band.extxyz"
+                "pred_profile": str(pred_traj_path),
+                # Client-side asset URLs, fetched by the browser for the WEAS
+                # structure viewer.
+                "ref_profile_url": ref_cache[reaction]["traj_url"],
+                "pred_profile_url": (
+                    f"{ASSETS_URL_PREFIX}/{model_name}/{pred_traj_path.name}"
                 ),
             }
 
