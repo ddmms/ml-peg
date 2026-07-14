@@ -43,7 +43,7 @@ class MetalSurfaceApp(BaseApp):
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"assets/surfaces/metal_surfaces/{MODELS[0]}/{system}.xyz"
+            f"/assets/surfaces/metal_surfaces/{MODELS[0]}/{system}.xyz"
             for system in systems
         ]
 
