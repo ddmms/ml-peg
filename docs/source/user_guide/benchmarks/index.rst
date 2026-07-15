@@ -19,3 +19,4 @@ Benchmarks
     conformers
     molecular_dynamics
     defect
+    battery_electrolyte
