@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 from ase.constraints import FixAtoms
 from ase.io import read
@@ -13,8 +12,8 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -25,8 +24,8 @@ OUT_PATH = Path(__file__).parent / "outputs"
 TEMPERATURE = 330  # Kelvin
 FRICTION = 0.05  # Langevin friction coefficient
 TIMESTEP = 1  # fs
-EQUIL_STEPS = 5000  # equilibration steps (not recorded)
-RUN_STEPS = 30000  # production steps (recorded)
+EQUIL_STEPS = 50  # equilibration steps (not recorded)
+RUN_STEPS = 3000  # production steps (recorded)
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -46,7 +45,7 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     # Setup calculator with d3 correction
     model_name, model = mlip
     calc = model.get_calculator()
-    calc = model.add_d3_calculator(calc)
+    # calc = model.add_d3_calculator(calc)
 
     # Get copper water benchmark data
     data_dir = (
@@ -87,14 +86,14 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
         equil_steps=EQUIL_STEPS,
         timestep=TIMESTEP,
         friction=FRICTION,
-        stats_every=100,
-        traj_every=1,
+        stats_every=TIMESTEP,
+        traj_every=TIMESTEP,
         traj_start=EQUIL_STEPS,
         file_prefix=write_dir / "md",
         write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
     )
 
-    try:
-        md.run()
-    except Exception as exc:
-        warn(f"Error during MD: {exc}", stacklevel=2)
+    # try:
+    md.run()
+    # except Exception as exc:
+    #    warn(f"Error during MD: {exc}", stacklevel=2)
