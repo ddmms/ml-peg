@@ -29,7 +29,7 @@ BENCHMARK_NAME = "Copper Water Interface"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces/copper_water_interface.html"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "copper_water_interface"
 INFO_PATH = DATA_PATH / "info.json"
-METRICS = ["rdf_score", "vdos_score", "vacf_score"]
+METRICS = ["rdf_score", "vdos_score", "vacf_score", "density_score"]
 
 
 def render_subplot_component(click_data: dict) -> html.Div | None:
@@ -148,9 +148,15 @@ class CopperWaterInterfaceApp(BaseApp):
             DATA_PATH / "figure_hist_dipoles.json",
             id=f"{BENCHMARK_NAME}-figure-hist-dipoles",
         )
+        # Integrated dipole profile line plot shown when its column is clicked.
+        dipole_profile_plot = read_plot(
+            DATA_PATH / "figure_dipole_profile.json",
+            id=f"{BENCHMARK_NAME}-figure-dipole-profile",
+        )
         column_to_dipole_plot = {
             "stdev_dipole_z_deviation": dipole_hist,
             "Fraction Breakdown Candidates": dipole_hist,
+            "dipole_profile_score": dipole_profile_plot,
         }
 
         # A single callback owns the table's `active_cell` (it inputs and resets it)
