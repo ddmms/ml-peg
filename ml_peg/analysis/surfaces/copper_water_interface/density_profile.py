@@ -35,7 +35,7 @@ def get_surface_z(
     Get the mean z position of the top slab layer from a fixed atom-index slice.
 
     The surface is defined as the mean z of atoms ``[surface_idx_1:surface_idx_2]``
-    (the top Cu layer: atoms 90-119 of the 4-layer, 5x6 = 30-per-layer slab).
+    (E.g. for a 4-layer, 5x6 Cu (111) surface: 30 atoms per layer) --> atoms 90-119.
     This defines the z = 0 origin of the density profile for a single frame.
 
     Parameters
