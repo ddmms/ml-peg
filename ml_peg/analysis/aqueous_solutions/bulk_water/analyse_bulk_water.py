@@ -13,8 +13,8 @@ from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "aqueous_solutions" / "bulk_water" / "outputs"
@@ -41,7 +41,6 @@ DATA_PATH = (
     )
     / "bulk_water"
 )
-REF_VEL_PATH = DATA_PATH / "pbe-d3-md-vel.xyz"
 
 
 # ----------------------+----------------------+---------------------- #
@@ -247,7 +246,7 @@ def created_vacf() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VACF for all models.
     """
-    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, REF_VEL_PATH)
+    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH)
 
 
 @pytest.fixture

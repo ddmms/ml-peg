@@ -274,7 +274,6 @@ def create_vacf(
     data_path: Path,
     calc_path: Path,
     curve_path: Path,
-    ref_vel_path: Path,
 ) -> dict[str, dict]:
     """
     Create VACF for all models.
@@ -289,8 +288,6 @@ def create_vacf(
         Path to the calculation outputs (one subdir per model).
     curve_path
         Path to write per-model VACF curve pickles for app use.
-    ref_vel_path
-        Path to the reference velocity trajectory.
 
     Returns
     -------
@@ -299,7 +296,7 @@ def create_vacf(
     """
     vacf = {"ref": None} | dict.fromkeys(models)
 
-    # Load reference RDF
+    # Load reference VACF
     with open(f"{data_path}/vacf_reference.pkl", "rb") as f_in:
         vacf["ref"] = pickle.load(f_in)
 
@@ -310,7 +307,7 @@ def create_vacf(
     if not curve_path.exists():
         curve_path.mkdir(parents=True, exist_ok=True)
 
-    # Load model RDFs
+    # Load model VACFs
     for model_name in models:
         model_dir = calc_path / model_name
 
@@ -326,40 +323,15 @@ def create_vacf(
             continue
 
         test_vel = _load_velocities(traj_file, ref_topology)
-        # Topology used below to inject cell info into the reference velocities
-        test_top = mdt.load_pdb(ref_topology)
-
         ref_dt = 1
 
-        # Check if length of trajectory matches reference
-        ref_length = len(list(vacf["ref"].values())[0][0])
-        test_length = len(test_vel)
-        min_length = min(test_length, ref_length)
-
-        if vacf["ref"] is not None:
-            if test_length != ref_length:
-                # Truncate both to shortest length - and recalculate reference if needed
-
-                test_vel = test_vel[test_length - min_length :]
-                if len(test_vel) != ref_length:
-                    ref_vel = mdt.load(ref_vel_path, top=ref_topology, stride=1)
-                    ref_vel.unitcell_lengths = np.repeat(
-                        test_top.unitcell_lengths, len(ref_vel), axis=0
-                    )
-                    ref_vel.unitcell_vectors = np.repeat(
-                        test_top.unitcell_vectors, len(ref_vel), axis=0
-                    )
-                    ref_vel_trunc = ref_vel[ref_length - min_length :]
-                    vacf_ref_trunc = aml.compute_all_vacfs(ref_vel_trunc, ref_dt)
-                    # Write updated reference vacf curves to file for app use
-
-        else:
-            vacf_ref_trunc = vacf["ref"]
-
-        vacf[f"ref_{model_name}"] = vacf_ref_trunc
+        # Reference and model VACFs are compared by interpolation onto a common
+        # time axis (see aml.compute_all_errors_vacf), so trajectory lengths need
+        # not match: the precomputed reference is used directly for every model.
+        vacf[f"ref_{model_name}"] = vacf["ref"]
         vacf[model_name] = aml.compute_all_vacfs(test_vel, ref_dt)
 
-        # Write rdf curves to file for app use
+        # Write vacf curves to file for app use
         with open(curve_path / model_name / "vacf_curves.pkl", "wb") as f_out:
             pickle.dump(vacf[model_name], f_out)
 
