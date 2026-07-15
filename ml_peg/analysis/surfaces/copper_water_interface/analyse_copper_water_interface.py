@@ -6,18 +6,19 @@ from pathlib import Path
 
 from ase.io import read
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
-from ml_peg.analysis.utils.decorators import build_table, cell_to_bar, plot_hist
+from ml_peg.analysis.utils.decorators import build_table, cell_to_bar
 from ml_peg.analysis.utils.dipoles import get_z_dipoles
 from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "surfaces" / "copper_water_interface" / "outputs"
@@ -45,11 +46,11 @@ DATA_PATH = (
     )
     / "copper_water_interface"
 )
-REF_VEL_PATH = DATA_PATH / "pbe-d3-md-vel.xyz"
 REF_DIPOLE_PATH = DATA_PATH / "ref_dipole_data.npy"
 
-# Dipole histogram binning (matches the reference dipole distribution range).
-DIPOLE_HIST_BINS = {"start": -0.05, "end": 0.05, "size": 0.0025}
+# Dipole histogram binning (e/Å). Tune the range and bar width here: "start"/"end"
+# set the x-axis span and "size" the bar width.
+DIPOLE_HIST_BINS = {"start": -0.1, "end": 0.1, "size": 0.001}
 
 # Oxygen point-charge magnitude (e) for the water dipole, shared with the
 # water_slab_dipoles benchmark for a consistent dipole definition.
@@ -296,14 +297,79 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
     return {"stdev_dipole_z_deviation": dipole_results, "raw_dipoles": raw_dipoles}
 
 
+def _write_dipole_histogram(raw_dipoles: dict[str, list]) -> None:
+    """
+    Write the dipole distribution histogram, coloured by the band-gap window.
+
+    Each model bar is coloured green when its bin lies inside the stable window
+    ``[DIPOLE_LOWER_BOUND, DIPOLE_UPPER_BOUND]`` and red when outside, so the plot
+    matches the ``Fraction Breakdown Candidates`` metric. The reference is drawn as a
+    neutral step outline for comparison rather than coloured bars.
+
+    Parameters
+    ----------
+    raw_dipoles
+        Raw per-model (and ``"ref"``) dipole arrays for the distribution histogram.
+    """
+    start = DIPOLE_HIST_BINS["start"]
+    end = DIPOLE_HIST_BINS["end"]
+    size = DIPOLE_HIST_BINS["size"]
+    n_bins = int(round((end - start) / size))
+    edges = start + size * np.arange(n_bins + 1)
+    centers = edges[:-1] + size / 2
+
+    good_color = "#2ca02c"  # green: dipole inside the stable band-gap window
+    bad_color = "#d62728"  # red: dipole outside the window (breakdown candidate)
+    bar_colors = [
+        good_color if DIPOLE_LOWER_BOUND <= center <= DIPOLE_UPPER_BOUND else bad_color
+        for center in centers
+    ]
+
+    fig = go.Figure()
+    for model_name, dipoles in raw_dipoles.items():
+        density, _ = np.histogram(np.asarray(dipoles), bins=edges, density=True)
+        if model_name == "ref":
+            # Reference: step outline so the coloured model bars stay readable.
+            fig.add_trace(
+                go.Scatter(
+                    x=centers,
+                    y=density,
+                    mode="lines",
+                    line_shape="hvh",
+                    line={"color": "#333", "width": 1.5},
+                    name="ref",
+                )
+            )
+        else:
+            fig.add_trace(
+                go.Bar(
+                    x=centers,
+                    y=density,
+                    width=size,
+                    marker_color=bar_colors,
+                    marker_line_width=0,
+                    name=model_name,
+                    opacity=0.75,
+                )
+            )
+
+    # Mark the window boundaries where the colour transitions.
+    for bound in (DIPOLE_LOWER_BOUND, DIPOLE_UPPER_BOUND):
+        fig.add_vline(x=bound, line={"color": "#888", "width": 1, "dash": "dash"})
+
+    fig.update_layout(
+        title={"text": "Dipole Moment Distribution"},
+        xaxis={"title": {"text": "Pz/A [e/Å]"}},
+        yaxis={"title": {"text": "Density"}},
+        barmode="overlay",
+        bargap=0,
+    )
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    fig.write_json(OUT_PATH / "figure_hist_dipoles.json")
+
+
 @pytest.fixture
-@plot_hist(
-    bins=DIPOLE_HIST_BINS,
-    title="Dipole Moment Distribution",
-    x_label="Pz/A [e/Å]",
-    y_label="Density",
-    filename=OUT_PATH / "figure_hist_dipoles.json",
-)
 def build_dipole_histogram(
     stdev_dipole_z_deviation: dict[str, dict],
 ) -> dict[str, list]:
@@ -320,7 +386,9 @@ def build_dipole_histogram(
     dict[str, list]
         Raw per-model dipole arrays for the distribution histogram.
     """
-    return stdev_dipole_z_deviation["raw_dipoles"]
+    raw_dipoles = stdev_dipole_z_deviation["raw_dipoles"]
+    _write_dipole_histogram(raw_dipoles)
+    return raw_dipoles
 
 
 @pytest.fixture
@@ -368,7 +436,7 @@ def created_vacf() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VACF for all models.
     """
-    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, REF_VEL_PATH)
+    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH)
 
 
 @pytest.fixture
