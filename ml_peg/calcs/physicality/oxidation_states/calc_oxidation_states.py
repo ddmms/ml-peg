@@ -35,7 +35,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
         Name of model used and model.
     """
     model_name, model = mlip
-    calc = model.get_calculator(precision="low")
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
