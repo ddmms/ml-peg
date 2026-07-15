@@ -22,10 +22,6 @@ MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "nebs" / "OC20NEB" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "nebs" / "OC20NEB"
 SCATTER_FILENAME = OUT_PATH / "oc20neb_interactive.json"
-# WEAS structure viewers fetch trajectory files client-side, so they must be
-# copied under the Dash assets directory and referenced by URL rather than by
-# their original (local, unservable) filesystem path.
-ASSETS_URL_PREFIX = "/assets/nebs/OC20NEB"
 REFERENCE_LABEL = "RPBE"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -238,7 +234,6 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
         ref_cache[reaction] = {
             "profile": ref_profile,
             "traj_path": ref_traj_path,
-            "traj_url": f"{ASSETS_URL_PREFIX}/DFT/{ref_traj_path.name}",
         }
 
     stats: dict[str, dict[str, Any]] = {}
@@ -265,12 +260,8 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             write(model_assets_dir / pred_traj_path.name, pred_traj)
 
             data_paths = {
-                # Client-side asset URLs, fetched by the browser for the WEAS
-                # structure viewer.
-                "ref_profile_url": ref_cache[reaction]["traj_url"],
-                "pred_profile_url": (
-                    f"{ASSETS_URL_PREFIX}/{model_name}/{pred_traj_path.name}"
-                ),
+                "ref": f"/assets/nebs/OC20NEB/DFT/{reaction}-dft.xyz",
+                "pred": f"/assets/nebs/OC20NEB/{model_name}/{pred_traj_path.name}",
             }
 
             profile_fig = _build_neb_profile_figure(
