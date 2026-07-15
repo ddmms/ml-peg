@@ -8,7 +8,9 @@ from typing import Any
 
 from ase.io import read, write
 from aseMolec import anaAtoms
+import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -47,16 +49,25 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
 
     structure_paths = data_path.glob("*.xyz")
 
-    for struct_path in structure_paths:
+    for struct_path in tqdm(structure_paths, total=6):
         file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
             struct.calc = copy(calc)
-            struct.info["energy"] = struct.get_potential_energy()
-            struct.arrays["forces"] = struct.get_forces()
-            struct.info["virial"] = (
-                -struct.get_stress(voigt=False) * struct.get_volume()
-            )
+            struct.info["spin"] = 0
+            struct.info["charge"] = 1
+            try:
+                struct.info["energy"] = struct.get_potential_energy()
+                struct.arrays["forces"] = struct.get_forces()
+                struct.info["virial"] = (
+                    -struct.get_stress(voigt=False) * struct.get_volume()
+                )
+            except Exception as e:
+                print(f"Error calculating energy for {struct_path.name}: {e}")
+                struct.info["energy"] = float("nan")
+                struct.arrays["forces"] = np.full((len(struct), 3), np.nan)
+                struct.info["virial"] = np.full((3, 3), np.nan)
+
             struct.calc = None
         write(file_prefix, configs)
 
