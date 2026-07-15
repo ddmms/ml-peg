@@ -203,8 +203,8 @@ class OC20NEBApp(BaseApp):
             label = selected.get("label") or selected.get("reaction", "")
 
             return {
-                "ref_profile": data_paths.get("ref_profile_url"),
-                "pred_profile": data_paths.get("pred_profile_url"),
+                "ref_profile": data_paths.get("ref"),
+                "pred_profile": data_paths.get("pred"),
                 "system_label": label,
             }
 
