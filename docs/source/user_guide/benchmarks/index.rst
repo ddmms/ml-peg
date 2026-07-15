@@ -5,6 +5,7 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    battery_electrolyte
     bulk_crystal
     conformers
     defect
