@@ -1,9 +1,9 @@
-=============
-Battery Electrolyte
-=============
+====================
+Battery Electrolytes
+====================
 
 Inter-Intra Properties
-=================
+======================
 
 Summary
 -------
@@ -17,7 +17,6 @@ Inter-forces
 Inter-energy
 Intra-virial
 Inter-virial
-
 
 
 Metrics
@@ -51,7 +50,7 @@ Reference data:
 
 
 Volume Scans
-==========
+============
 
 Summary
 -------
