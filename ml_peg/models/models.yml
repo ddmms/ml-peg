@@ -10,8 +10,8 @@ mace-mp-0a:
 mace-mp-0b3:
   module: mace.calculators
   class_name: mace_mp
-  device: "auto"
   trained_on_dispersion: false
+  device: "cuda"
   level_of_theory: PBE
   kwargs:
     model: "medium-0b3"
@@ -19,11 +19,14 @@ mace-mp-0b3:
 mace-mpa-0:
   module: mace.calculators
   class_name: mace_mp
-  device: "auto"
+  device: "cuda"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
     model: "medium-mpa-0"
+  dispersion_kwargs:
+    cutoff: 16
+
 
 mace-omat-0:
   module: mace.calculators

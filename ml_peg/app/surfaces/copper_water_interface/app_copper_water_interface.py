@@ -10,19 +10,18 @@ import matplotlib
 matplotlib.use("Agg")
 import json
 
-from dash import Input, Output, callback, dcc, html
+from dash import Input, Output, State, callback, dcc, html, no_update
 from dash.html import Div
 import matplotlib.pyplot as plt
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_cell,
-    plot_from_table_column,
-)
+from ml_peg.app.utils.build_callbacks import plot_with_download_controls
 from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, TABLE_HINT
+from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -144,13 +143,78 @@ class CopperWaterInterfaceApp(BaseApp):
                         figure=figure_data,
                     )
 
-        print("Cell plots prepared:", cell_plots.keys())
-        plot_from_table_cell(
-            table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            cell_to_plot=cell_plots,
+        # Dipole histogram shown when a dipole column is clicked.
+        dipole_hist = read_plot(
+            DATA_PATH / "figure_hist_dipoles.json",
+            id=f"{BENCHMARK_NAME}-figure-hist-dipoles",
         )
-        print(cell_plots.keys())
+        column_to_dipole_plot = {
+            "stdev_dipole_z_deviation": dipole_hist,
+            "Fraction Breakdown Candidates": dipole_hist,
+        }
+
+        # A single callback owns the table's `active_cell` (it inputs and resets it)
+        # and drives BOTH the main bar-plot placeholder and the dipole-histogram
+        # placeholder. It must not be split into two callbacks: Dash chains a
+        # callback whose input is another callback's output, so a separate
+        # `active_cell`-input callback would only ever run *after* this one reset
+        # `active_cell` to None and would never see the clicked cell. Outputs left
+        # unchanged use `no_update` so clicking one column never clears the other
+        # placeholder.
+        register_plot_download_callbacks()
+
+        @callback(
+            Output(f"{BENCHMARK_NAME}-figure-placeholder", "children"),
+            Output(f"{BENCHMARK_NAME}-figure-placeholder-dipole", "children"),
+            Output(self.table_id, "active_cell"),
+            Input(self.table_id, "active_cell"),
+            State(self.table_id, "data"),
+        )
+        def show_cell_plot(active_cell, current_table_data):
+            """
+            Render bar-plot / dipole-histogram content for the clicked table cell.
+
+            Parameters
+            ----------
+            active_cell
+                Clicked cell in Dash table.
+            current_table_data
+                Current table data (includes live updates from callbacks).
+
+            Returns
+            -------
+            tuple
+                Main placeholder children, dipole placeholder children, and the reset
+                ``active_cell`` value. Unchanged placeholders use ``no_update``.
+            """
+            hint = Div(TABLE_HINT, style=INSTRUCTION_STYLE)
+            if not active_cell:
+                return hint, no_update, None
+
+            column_id = active_cell.get("column_id", None)
+            row_id = active_cell.get("row_id", None)
+            row_index = active_cell.get("row", None)
+
+            # Dipole columns drive the dipole placeholder only.
+            if column_id in column_to_dipole_plot:
+                dipole_plot = plot_with_download_controls(
+                    column_to_dipole_plot[column_id]
+                )
+                return no_update, dipole_plot, None
+
+            # Bar-metric columns drive the main placeholder only.
+            if current_table_data and row_index is not None:
+                try:
+                    cell_value = current_table_data[row_index].get(column_id)
+                    if cell_value is None:
+                        return Div("No data available for this model."), no_update, None
+                except (IndexError, KeyError, TypeError):
+                    pass
+
+            if row_id in cell_plots and column_id in cell_plots[row_id]:
+                bar_plot = plot_with_download_controls(cell_plots[row_id][column_id])
+                return bar_plot, no_update, None
+            return hint, no_update, None
 
         # Add click callbacks for each model's bar charts
         for model_name in cell_plots.keys():
@@ -165,21 +229,6 @@ class CopperWaterInterfaceApp(BaseApp):
             def show_comparison_plot(click_data):
                 return render_subplot_component(click_data)
 
-        # DIPOLE HISTOGRAM CALLBACK
-        dipole_hist = read_plot(
-            DATA_PATH / "figure_hist_dipoles.json",
-            id=f"{BENCHMARK_NAME}-figure-hist-dipoles",
-        )
-
-        plot_from_table_column(
-            table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-figure-placeholder-dipole",
-            column_to_plot={
-                "stdev_dipole_z_deviation": dipole_hist,
-                "Fraction Breakdown Candidates": dipole_hist,
-            },
-        )
-
 
 def get_app() -> CopperWaterInterfaceApp:
     """
@@ -192,7 +241,10 @@ def get_app() -> CopperWaterInterfaceApp:
     """
     extra_components = [
         Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-        Div(id=f"{BENCHMARK_NAME}-figure-placeholder-dipole"),
+        Div(
+            id=f"{BENCHMARK_NAME}-figure-placeholder-dipole",
+            children=Div(TABLE_HINT, style=INSTRUCTION_STYLE),
+        ),
         Div(
             id=f"{BENCHMARK_NAME}-figure-bar",
             children="Click on a metric to see bar plot.",
