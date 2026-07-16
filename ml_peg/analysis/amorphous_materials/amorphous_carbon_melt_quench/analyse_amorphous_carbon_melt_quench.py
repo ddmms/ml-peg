@@ -31,9 +31,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-REF_DFT_PATH = Path(__file__).with_name("reference_dft.csv")
-REF_EXPT_PATH = Path(__file__).with_name("reference_expt.csv")
-
 DENSITY_GRID = [1.5, 2.0, 2.5, 3.0, 3.5]
 SP3_CUTOFF = 1.85
 STRUCTURES_DIR = OUT_PATH / "structures"
@@ -48,33 +45,27 @@ get_struct_info(
 )
 
 
-def _load_reference(path: Path) -> tuple[np.ndarray, np.ndarray]:
+def _load_reference() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Load reference data from a CSV file.
-
-    Parameters
-    ----------
-    path
-        Path to CSV file with columns: density, sp3_percent.
+    Load DFT/Expt reference curves embedded in the calc outputs.
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray]
-        Densities and sp3 percentages.
+    tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        DFT densities, DFT sp3, Expt densities, Expt sp3.
     """
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Reference data not found: {path}. Provide a CSV with 'density' and "
-            "'sp3_percent' columns."
-        )
-
-    data = np.loadtxt(path, delimiter=",", skiprows=1)
-    if data.ndim == 1:
-        data = data[None, :]
-    densities = data[:, 0]
-    sp3 = data[:, 1]
-    order = np.argsort(densities)
-    return densities[order], sp3[order]
+    for path in sorted((CALC_PATH / "outputs").glob("*/density_*/final_density_*.xyz")):
+        info = read(path).info
+        if "ref_dft_density" in info:
+            return (
+                np.asarray(info["ref_dft_density"], dtype=float),
+                np.asarray(info["ref_dft_sp3"], dtype=float),
+                np.asarray(info["ref_expt_density"], dtype=float),
+                np.asarray(info["ref_expt_sp3"], dtype=float),
+            )
+    raise FileNotFoundError(
+        "No embedded reference data found in calc outputs; run the calc first."
+    )
 
 
 def _sp3_fraction_from_atoms(atoms, cutoff: float = SP3_CUTOFF) -> float:
@@ -304,8 +295,7 @@ def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
     dict[str, tuple[list[float], list[float]]]
         Mapping of series name to densities and sp3 percentages.
     """
-    dft_density, dft_sp3 = _load_reference(REF_DFT_PATH)
-    expt_density, expt_sp3 = _load_reference(REF_EXPT_PATH)
+    dft_density, dft_sp3, expt_density, expt_sp3 = _load_reference()
 
     results: dict[str, tuple[list[float], list[float]]] = {
         "DFT": (dft_density.tolist(), dft_sp3.tolist()),
@@ -403,7 +393,7 @@ def mae_vs_dft() -> dict[str, float | None]:
     dict[str, float | None]
         Mapping of model name to MAE (or ``None`` if unavailable).
     """
-    dft_density, dft_sp3 = _load_reference(REF_DFT_PATH)
+    dft_density, dft_sp3, _, _ = _load_reference()
     model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
     for model_name, mapping in model_data.items():
@@ -421,7 +411,7 @@ def mae_vs_expt() -> dict[str, float | None]:
     dict[str, float | None]
         Mapping of model name to MAE (or ``None`` if unavailable).
     """
-    expt_density, expt_sp3 = _load_reference(REF_EXPT_PATH)
+    _, _, expt_density, expt_sp3 = _load_reference()
     model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
     for model_name, mapping in model_data.items():
