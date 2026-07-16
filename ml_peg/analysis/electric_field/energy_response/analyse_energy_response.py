@@ -1,15 +1,16 @@
 """Analyse energy response benchmark."""
+
 from __future__ import annotations
 
 from pathlib import Path
 from warnings import warn
 
-import numpy as np
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import mae, load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -113,7 +114,9 @@ def energy_response() -> dict[str, dict]:
 
             # Write one xyz file per field structure for the structure viewer
             dataset_stem = Path(dataset).stem
-            valid_field_structs = [s for s, v in zip(field_structs, valid) if v]
+            valid_field_structs = [
+                s for s, v in zip(field_structs, valid, strict=True) if v
+            ]
             for i, s in enumerate(valid_field_structs):
                 out_file = structs_dir / f"{dataset_stem}_{i:04d}.xyz"
                 if not out_file.exists():
@@ -121,7 +124,9 @@ def energy_response() -> dict[str, dict]:
 
             # Reference values from ORCA — computed once, aligned to same valid mask
             if not ref_stored:
-                ref_no_field = np.array([s.info["REF_energy"] for s in no_field_structs])
+                ref_no_field = np.array(
+                    [s.info["REF_energy"] for s in no_field_structs]
+                )
                 ref_field = np.array([s.info["REF_energy"] for s in field_structs])
                 results["ref"][dataset] = np.abs(ref_field[valid] - ref_no_field[valid])
 
@@ -239,7 +244,9 @@ def total_mae(energy_responses: dict[str, list]) -> dict[str, float]:
     ref = energy_responses.get("ref")
     for model_name in MODELS:
         pred = energy_responses.get(model_name)
-        results[model_name] = mae(ref, pred) if ref is not None and pred is not None else None
+        results[model_name] = (
+            mae(ref, pred) if ref is not None and pred is not None else None
+        )
     return results
 
 
@@ -262,7 +269,9 @@ def alkane_mae(energy_response: dict[str, dict]) -> dict[str, float]:
     for model_name in MODELS:
         ref = energy_response["ref"].get("ALKANES.xyz")
         pred = energy_response[model_name].get("ALKANES.xyz")
-        results[model_name] = mae(ref, pred) if ref is not None and pred is not None else None
+        results[model_name] = (
+            mae(ref, pred) if ref is not None and pred is not None else None
+        )
     return results
 
 
@@ -286,7 +295,9 @@ def cumulene_mae(energy_response: dict[str, dict]) -> dict[str, float]:
     for model_name in MODELS:
         ref = energy_response["ref"].get("CUMULENES.xyz")
         pred = energy_response[model_name].get("CUMULENES.xyz")
-        results[model_name] = mae(ref, pred) if ref is not None and pred is not None else None
+        results[model_name] = (
+            mae(ref, pred) if ref is not None and pred is not None else None
+        )
     return results
 
 

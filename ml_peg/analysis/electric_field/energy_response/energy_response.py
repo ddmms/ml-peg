@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-import numpy as np
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
-    #build_dispersion_name_map,
+    # build_dispersion_name_map,
     load_metrics_config,
     mae,
 )
@@ -21,7 +21,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-#DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+# DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "electric_field" / "energy_response" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
@@ -49,10 +49,10 @@ def get_system_names(dataset: str) -> list[str]:
         if model_dir.exists():
             xyz_file = model_dir / f"{dataset}.xyz"
             if xyz_file:
-                mols = read(xyz_file, index=':')
+                mols = read(xyz_file, index=":")
                 for mol in mols:
-                    if np.linalg.norm(mol.info['external_field']) > 0:
-                        system_names.append(mol.get_chemical_formula()+'_ef')
+                    if np.linalg.norm(mol.info["external_field"]) > 0:
+                        system_names.append(mol.get_chemical_formula() + "_ef")
                     else:
                         system_names.append(mol.get_chemical_formula())
                 break
@@ -83,8 +83,6 @@ def get_energy_response(
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-
-
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
@@ -97,12 +95,9 @@ def get_energy_response(
 
         # Read data
         mols = read(xyz_file, index=":")
-    
+
         # Temporary dict storing total energies under electric field
-        electric_field_energy_response = {
-            "ref":{},
-            model_name:{}
-        }
+        electric_field_energy_response = {"ref": {}, model_name: {}}
 
         # Get total energies under electric field
         for mol in mols:
@@ -115,11 +110,10 @@ def get_energy_response(
             structs_dir.mkdir(parents=True, exist_ok=True)
 
             # Store energies and reference energies in a dict, and xyz files
-            if any(mol.info['external_field']):
+            if any(mol.info["external_field"]):
                 electric_field_energy_response[model_name][name] = molecule_energy
                 electric_field_energy_response["ref"][name] = mol.info["REF_energy"]
                 write(structs_dir / f"{name}_field.xyz", mol)
-
 
         # Calculate electric field response
         for mol in mols:
@@ -127,10 +121,14 @@ def get_energy_response(
             molecule_energy = mol.get_potential_energy()
             name = str(mol.get_chemical_formula())
 
-            # Calculate field response, and store xyz files 
-            if not any(mol.info['external_field']):
-                diff = molecule_energy - electric_field_energy_response[model_name][name]
-                ref_diff = mol.info["REF_energy"] - electric_field_energy_response["ref"][name]
+            # Calculate field response, and store xyz files
+            if not any(mol.info["external_field"]):
+                diff = (
+                    molecule_energy - electric_field_energy_response[model_name][name]
+                )
+                ref_diff = (
+                    mol.info["REF_energy"] - electric_field_energy_response["ref"][name]
+                )
                 write(structs_dir / f"{name}.xyz", mol)
 
                 # Save electric field response. Save reference only first time.
@@ -173,7 +171,7 @@ def energy_response_errors(energy_response) -> dict[str, float]:
     filename=OUT_PATH / "energy_response_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    #mlip_name_map=DISPERSION_NAME_MAP,
+    # mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(energy_response_errors: dict[str, float]) -> dict[str, dict]:
     """
@@ -192,4 +190,3 @@ def metrics(energy_response_errors: dict[str, float]) -> dict[str, dict]:
     return {
         "MAE": energy_response_errors,
     }
-

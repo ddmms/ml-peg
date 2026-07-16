@@ -18,9 +18,7 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Energy response"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy_response"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy_response"
 DATA_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
 
