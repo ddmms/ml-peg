@@ -19,11 +19,11 @@ from scipy.sparse.csgraph import connected_components
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
-from ml_peg.app.utils.utils import get_struct_info
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
