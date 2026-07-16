@@ -27,7 +27,8 @@ Mean absolute error in sp3 fraction relative to the experimental reference curve
 Computational cost
 ------------------
 
-High: melt-quench MD runs for each model and density grid point.
+High: melt-quench MD runs for each model and 5 density grid points. Expect roughly
+one to a few hours per model on a GPU in total.
 
 Data availability
 -----------------
