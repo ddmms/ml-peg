@@ -225,19 +225,15 @@ def _run_density(model_name: str, model, density: float) -> None:
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_amorphous_carbon_melt_quench(mlip: tuple[str, object], density_index) -> None:
+def test_amorphous_carbon_melt_quench(mlip: tuple[str, object]) -> None:
     """
-    Run amorphous carbon melt-quench benchmark for a single model and density.
+    Run amorphous carbon melt-quench benchmark for a single model.
 
     Parameters
     ----------
     mlip
         Tuple of model name and model object.
-    density_index
-        Index into ``DENSITY_GRID`` of the density to run.
     """
-    assert density_index in range(len(DENSITY_GRID)), (
-        f"density_index out of range: use 0 to {len(DENSITY_GRID) - 1}"
-    )
     model_name, model = mlip
-    _run_density(model_name, model, DENSITY_GRID[density_index])
+    for density in DENSITY_GRID:
+        _run_density(model_name, model, density)
