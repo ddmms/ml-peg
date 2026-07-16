@@ -57,6 +57,7 @@ def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
     return result
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     """

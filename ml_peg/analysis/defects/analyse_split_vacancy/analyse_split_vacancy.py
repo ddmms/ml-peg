@@ -444,17 +444,6 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
     return results
 
 
-# @pytest.fixture
-# @plot_violin(
-#     title="RMSD Distribution (Oxides, PBEsol)",
-#     y_label="RMSD / Å",
-#     filename=OUT_PATH / "figure_rmsd_pbesol.json",
-# )
-# def rmsd_pbesol_dist(build_results_pbesol) -> dict[str, list]:
-#     _, _, result_rmsd, _, _ = build_results_pbesol
-#     return result_rmsd
-
-
 @pytest.fixture
 def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     """
@@ -475,17 +464,6 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     for model_name in MODELS:
         results[model_name] = float(np.nanmean(result_rmsd[model_name]))
     return results
-
-
-# @pytest.fixture
-# @plot_violin(
-#     title="RMSD Distribution (Nitrides, PBE(+U))",
-#     y_label="RMSD / Å",
-#     filename=OUT_PATH / "figure_rmsd_pbe.json",
-# )
-# def rmsd_pbe_dist(build_results_pbe) -> dict[str, list]:
-#     _, _, result_rmsd, _, _ = build_results_pbe
-#     return result_rmsd
 
 
 @pytest.fixture

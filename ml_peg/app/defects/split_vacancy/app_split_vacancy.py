@@ -22,7 +22,7 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
 # for dash, assets/ is equivalent to APP_ROOT/data/
-STRUCTS_URL = "assets/defects/split_vacancy"
+STRUCTS_URL = "/assets/defects/split_vacancy"
 
 
 def struct_pair_from_violin(
