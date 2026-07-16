@@ -12,7 +12,7 @@ from scipy.stats import spearmanr
 from tqdm.auto import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_violin
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import load_metrics_config, mae, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -692,4 +692,13 @@ def test_new_benchmark(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
-    return
+    # Save the set of elements used by the benchmark (from the mock calculation)
+    # so the application can filter results by element. See filter.rst.
+    write_struct_info(
+        data_path=(
+            list(CALC_PATH_PBE.glob("mock/**/*.xyz"))
+            + list(CALC_PATH_PBESOL.glob("mock/**/*.xyz"))
+        ),
+        out_path=OUT_PATH,
+        index=0,
+    )
