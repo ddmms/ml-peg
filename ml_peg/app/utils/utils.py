@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from copy import deepcopy
 from functools import lru_cache
 import json
+from numbers import Number
 from pathlib import Path
 from typing import Any, NotRequired, TypedDict
 
 import dash.dash_table.Format as TableFormat
+from matplotlib import colormaps
+import numpy as np
 import yaml
 
 from ml_peg.models import MODELS_ROOT
+from ml_peg.models.get_models import get_model_names
 
 
 class ThresholdEntry(TypedDict):
@@ -25,6 +30,130 @@ class ThresholdEntry(TypedDict):
 Thresholds = dict[str, ThresholdEntry]
 
 
+def store_data_equal(left: Any, right: Any) -> bool:
+    """
+    Check whether two Dash store values represent the same table state.
+
+    Used before returning callback outputs so unchanged stores can be returned
+    as ``dash.no_update``. This treats matching ``NaN`` values as equal because
+    table rows can contain missing numeric values, and Python's normal equality
+    would otherwise treat unchanged rows as different.
+
+    Parameters
+    ----------
+    left
+        First Dash store value to compare.
+    right
+        Second Dash store value to compare.
+
+    Returns
+    -------
+    bool
+        Whether both values can be treated as unchanged.
+    """
+    if left is right:
+        return True
+
+    if isinstance(left, Number) and isinstance(right, Number):
+        try:
+            if np.isnan(left) and np.isnan(right):
+                return True
+        except TypeError:
+            pass
+        return left == right
+
+    if isinstance(left, dict) and isinstance(right, dict):
+        if left.keys() != right.keys():
+            return False
+        return all(store_data_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, list) and isinstance(right, list):
+        if len(left) != len(right):
+            return False
+        return all(
+            store_data_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+
+    return left == right
+
+
+def colour_from_cmap(cmap_name: str | None, position: float) -> str:
+    """
+    Return a CSS RGB colour sampled from a Matplotlib colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap. Falls back to ``viridis_r`` if
+        missing or invalid.
+    position
+        Position in the colormap from 0.0 to 1.0.
+
+    Returns
+    -------
+    str
+        CSS ``rgb(...)`` colour string.
+    """
+    try:
+        cmap = colormaps[cmap_name or "viridis_r"]
+    except KeyError:
+        cmap = colormaps["viridis_r"]
+
+    clamped = min(max(position, 0.0), 1.0)
+    rgb = tuple(int(255 * channel) for channel in cmap(clamped)[:3])
+    return f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+
+
+def get_threshold_colours(cmap_name: str | None = "viridis_r") -> dict[str, str]:
+    """
+    Get good/bad threshold colours for the active table colormap.
+
+    Normalised table cells map a good score of 1.0 to the start of the colormap
+    and a bad score of 0.0 to the end of the colormap.
+
+    Parameters
+    ----------
+    cmap_name
+        Name of the selected Matplotlib colormap.
+
+    Returns
+    -------
+    dict[str, str]
+        CSS colours keyed by ``"good"`` and ``"bad"``.
+    """
+    return {
+        "good": colour_from_cmap(cmap_name, 0.0),
+        "bad": colour_from_cmap(cmap_name, 1.0),
+    }
+
+
+def build_threshold_input_style(border_colour: str) -> dict[str, str]:
+    """
+    Build the inline style for a threshold value input.
+
+    Parameters
+    ----------
+    border_colour
+        CSS colour used for the input border.
+
+    Returns
+    -------
+    dict[str, str]
+        Inline Dash style dictionary.
+    """
+    return {
+        "width": "60px",
+        "fontSize": "12px",
+        "padding": "2px 4px",
+        "border": f"2px solid {border_colour}",
+        "borderRadius": "3px",
+        "boxSizing": "border-box",
+        "margin": "0 auto",
+        "display": "block",
+    }
+
+
 class FrameworkEntry(TypedDict):
     """Style and link metadata for benchmark framework attribution badges."""
 
@@ -33,6 +162,36 @@ class FrameworkEntry(TypedDict):
     text_color: str
     url: NotRequired[str]
     logo: NotRequired[str]
+    icon: NotRequired[str]
+    tooltip: NotRequired[str]
+
+
+def get_mlip_column_width(
+    *,
+    char_width: int = 9,
+    padding: int = 40,
+    min_width: int = 150,
+) -> int:
+    """
+    Return a single shared MLIP-column width for all app tables.
+
+    Parameters
+    ----------
+    char_width
+        Approximate pixel width per character.
+    padding
+        Extra padding to add to the widest model label.
+    min_width
+        Minimum width for the MLIP column in pixels.
+
+    Returns
+    -------
+    int
+        Fixed pixel width large enough for the longest base model name with a
+        little extra room for display suffixes such as ``-D3``.
+    """
+    longest_name = max((len(name) for name in get_model_names()), default=0)
+    return max(min_width, longest_name * char_width + padding + 30)
 
 
 def calculate_column_widths(
@@ -66,7 +225,14 @@ def calculate_column_widths(
     """
     widths = widths if widths else {}
     # Fixed widths for static columns
-    widths.setdefault("MLIP", 150)
+    widths.setdefault(
+        "MLIP",
+        get_mlip_column_width(
+            char_width=char_width,
+            padding=padding,
+            min_width=150,
+        ),
+    )
     widths.setdefault("Score", 100)
 
     for col in columns:
@@ -198,6 +364,40 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
         except (TypeError, ValueError):
             continue
     return weights
+
+
+def clean_table_data(rows: list[dict]):
+    """
+    Ensure data does not exceed int limits.
+
+    Parameters
+    ----------
+    rows
+        List of table rows to clean.
+    """
+    for row in rows:
+        for key, value in row.items():
+            if isinstance(value, int | float) and (
+                value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
+            ):
+                row[key] = "NaN"
+            if value is None:
+                row[key] = "NaN"
+
+
+def none_to_nan(rows: list[dict]) -> None:
+    """
+    Replace None values with NaN.
+
+    Parameters
+    ----------
+    rows
+        List of table rows to replace None values in.
+    """
+    for row in rows:
+        for key, value in row.items():
+            if value is None or (isinstance(value, float) and np.isnan(value)):
+                row[key] = "NaN"
 
 
 def filter_rows_by_models(
@@ -726,7 +926,7 @@ def format_metric_columns(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
     updated_columns: list[dict[str, object]] = []
 
     for column in columns:
@@ -808,7 +1008,7 @@ def format_tooltip_headers(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id"}
+    reserved = {"MLIP", "Score", "id", "link"}
 
     updated: dict[str, Any] = {}
     for key, entry in tooltip_header.items():
@@ -891,6 +1091,7 @@ def normalize_framework_id(framework_id: str) -> str:
     return cleaned
 
 
+@lru_cache(maxsize=1)
 def load_framework_registry() -> dict[str, FrameworkEntry]:
     """
     Load framework badge metadata from ``frameworks.yml``.
@@ -941,6 +1142,12 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         logo = raw_entry.get("logo")
         if isinstance(logo, str) and logo.strip():
             registry_entry["logo"] = logo.strip()
+        icon = raw_entry.get("icon")
+        if isinstance(icon, str) and icon.strip():
+            registry_entry["icon"] = icon.strip()
+        tooltip = raw_entry.get("tooltip")
+        if isinstance(tooltip, str) and tooltip.strip():
+            registry_entry["tooltip"] = tooltip.strip()
 
         registry[normalized_id] = registry_entry
 
@@ -969,7 +1176,7 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
     normalized_id = normalize_framework_id(framework_id)
     registry = load_framework_registry()
     try:
-        return registry[normalized_id]
+        return deepcopy(registry[normalized_id])
     except KeyError as exc:
         known_ids = ", ".join(sorted(registry))
         raise ValueError(

@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 
 from ml_peg.calcs.utils.gscdb138 import run_gscdb138
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 

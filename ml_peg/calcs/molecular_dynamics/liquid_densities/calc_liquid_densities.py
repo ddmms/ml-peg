@@ -11,15 +11,17 @@ import logging
 from pathlib import Path
 import time
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import Trajectory, read
 from ase.md.nose_hoover_chain import IsotropicMTKNPT
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -121,9 +123,14 @@ def run_npt(atoms, calc, output_fname):
     )
     dyn.nsteps = nsteps
     dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
-    dyn.run(steps=NUM_MD_STEPS - nsteps)
+    try:
+        dyn.run(steps=NUM_MD_STEPS - nsteps)
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
+        dyn.atoms.info["energy"] = np.nan
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     """
@@ -155,8 +162,7 @@ def test_liquid_densities(mlip: tuple[str, Any], system_id) -> None:
     ]
 
     model_name, model = mlip
-    model.default_dtype = "float32"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 

@@ -10,14 +10,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
+from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -86,9 +89,7 @@ def test_bh2o_36(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -106,23 +107,44 @@ def test_bh2o_36(mlip: tuple[str, Any]) -> None:
         atoms_rct = read(system["rct"]["xyz_path"])
         atoms_rct.info["charge"] = int(system["rct"]["charge"])
         atoms_rct.info["spin"] = 1
-        atoms_rct.info["ref_energy"] = system["rct"]["energy"]
+        atoms_rct.info["ref_energy"] = system["rct"]["energy"] * units.Hartree
         atoms_rct.calc = calc
-        atoms_rct.info["pred_energy"] = atoms_rct.get_potential_energy()
+        try:
+            atoms_rct.info["pred_energy"] = atoms_rct.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for {identifier}: {exc}",
+                stacklevel=2,
+            )
+            atoms_rct.info["pred_energy"] = np.nan
 
         atoms_pro = read(system["pro"]["xyz_path"])
         atoms_pro.info["charge"] = int(system["pro"]["charge"])
         atoms_pro.info["spin"] = 1
-        atoms_pro.info["ref_energy"] = system["pro"]["energy"]
+        atoms_pro.info["ref_energy"] = system["pro"]["energy"] * units.Hartree
         atoms_pro.calc = calc
-        atoms_pro.info["pred_energy"] = atoms_pro.get_potential_energy()
+        try:
+            atoms_pro.info["pred_energy"] = atoms_pro.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for {identifier}: {exc}",
+                stacklevel=2,
+            )
+            atoms_pro.info["pred_energy"] = np.nan
 
         atoms_ts = read(system["ts"]["xyz_path"])
         atoms_ts.info["charge"] = int(system["ts"]["charge"])
         atoms_ts.info["spin"] = 1
-        atoms_ts.info["ref_energy"] = system["ts"]["energy"]
+        atoms_ts.info["ref_energy"] = system["ts"]["energy"] * units.Hartree
         atoms_ts.calc = calc
-        atoms_ts.info["pred_energy"] = atoms_ts.get_potential_energy()
+        try:
+            atoms_ts.info["pred_energy"] = atoms_ts.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for {identifier}: {exc}",
+                stacklevel=2,
+            )
+            atoms_ts.info["pred_energy"] = np.nan
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)

@@ -8,8 +8,8 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import struct_from_table
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -18,6 +18,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#extensivity"
 )
 DATA_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ExtensivityApp(BaseApp):
@@ -50,6 +51,7 @@ def get_app() -> ExtensivityApp:
     """
     return ExtensivityApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description="Extensivity of slab energies, comparing two isolated slabs to the "
         "two slabs with a large separation.",
         docs_url=DOCS_URL,
@@ -57,6 +59,7 @@ def get_app() -> ExtensivityApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

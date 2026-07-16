@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import numpy as np
 from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -105,12 +107,15 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
             atoms.info.setdefault("charge", 0)
             atoms.info.setdefault("spin", 1)
 
-            atoms.get_potential_energy()
+            try:
+                atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy: {exc}", stacklevel=2)
+                atoms.info["energy"] = np.nan
 
     def run(self):
         """Run oxygen adsorption energy calculations."""
-        self.model.default_dtype = "float64"
-        calc = self.model.get_calculator()
+        calc = self.model.get_calculator(precision="high")
         # Get benchmark data
         data_dir = (
             download_s3_data(

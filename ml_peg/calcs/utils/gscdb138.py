@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -80,9 +81,7 @@ def run_gscdb138(
         Elements to exclude from calculations. Default is all elements.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -124,7 +123,11 @@ def run_gscdb138(
                     print(f"Skipping {specy}")
                     continue
                 atoms.calc = calc
-                energy = atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {specy}: {exc}", stacklevel=2)
+                    energy = np.nan
                 e_rel_model += stoi * energy
                 atoms.info["model_energy"] = energy
                 atoms.calc = None

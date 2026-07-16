@@ -14,14 +14,15 @@ from ml_peg.analysis.utils.decorators import (
 )
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -36,19 +37,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names, sorted alphabetically.
-    """
-    for model in MODELS:
-        labels = sorted([path.stem for path in (CALC_PATH / model).glob("*.xyz")])
-        break
-    return labels
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -66,7 +61,7 @@ def interaction_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
             if not ref_stored:
                 results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
@@ -105,7 +100,7 @@ def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict
         Mapping of model names to density-plot inputs.
     """
     ref_vals = interaction_energies["ref"]
-    label_list = labels()
+    label_list = INFO["filenames"]
     density_inputs: dict[str, dict] = {}
     for model_name in MODELS:
         preds = interaction_energies.get(model_name, [])

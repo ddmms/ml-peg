@@ -11,13 +11,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
@@ -42,18 +43,15 @@ EXPERIMENTAL_DATA = {
 }
 
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        return [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    return []
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.traj",
+    index=0,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+    include_filenames=True,
+)
 
 
 def compute_density(fname, density_col=13):
@@ -90,7 +88,7 @@ def compute_density(fname, density_col=13):
     x_label="Predicted density / kcal/mol",
     y_label="Reference density / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def water_density() -> dict[str, list]:
@@ -106,7 +104,7 @@ def water_density() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
 
             results[model_name].append(

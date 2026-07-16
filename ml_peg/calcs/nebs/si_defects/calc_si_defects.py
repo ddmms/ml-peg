@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import sys
 from typing import Any
+from warnings import warn
 
 from ase.atoms import Atoms
 from ase.io import read, write
@@ -14,8 +15,8 @@ import pytest
 from tqdm.auto import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -114,7 +115,7 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
         Tuple of ``(model_name, model)`` as provided by ``MODELS.items()``.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     local_files_present = all((DATA_PATH / case.ref_file).exists() for case in CASES)
     if local_files_present:
@@ -124,7 +125,7 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
 
     for case in CASES:
         frames = _read_frames(data_dir / case.ref_file)
-        out_dir = OUT_PATH / case.key / model_name
+        out_dir = OUT_PATH / model_name / case.key
         out_dir.mkdir(parents=True, exist_ok=True)
 
         results: list[Atoms] = []
@@ -151,10 +152,18 @@ def test_si_defects(mlip: tuple[str, Any]) -> None:
             out_atoms = atoms.copy()
             out_atoms.info["ref_energy_ev"] = ref_energy_ev
             out_atoms.arrays["ref_forces"] = ref_forces
-            out_atoms.info["pred_energy_ev"] = float(atoms_pred.get_potential_energy())
-            out_atoms.arrays["pred_forces"] = np.asarray(
-                atoms_pred.get_forces(), dtype=float
-            )
+            try:
+                pred_energy = float(atoms_pred.get_potential_energy())
+                pred_forces = np.asarray(atoms_pred.get_forces(), dtype=float)
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {case}: {exc}",
+                    stacklevel=2,
+                )
+                pred_energy = np.nan
+                pred_forces = np.full((len(atoms_pred), 3), np.nan)
+            out_atoms.info["pred_energy_ev"] = pred_energy
+            out_atoms.arrays["pred_forces"] = pred_forces
             results.append(out_atoms)
 
         write(out_dir / "si_defects.extxyz", results)

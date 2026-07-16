@@ -10,15 +10,17 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -144,9 +146,7 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -165,7 +165,11 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
         # Create list for TS and reactant atoms
         structs = [process_atoms(xyz_path / f"{label}TS.xyz")]
         structs[0].calc = calc
-        structs[0].info["model_energy"] = structs[0].get_potential_energy()
+        try:
+            structs[0].info["model_energy"] = structs[0].get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+            structs[0].info["model_energy"] = np.nan
         structs[0].info["label"] = label
 
         # Write both forward and reverse barriers, only forward used in analysis here
@@ -175,7 +179,16 @@ def test_bh9(mlip: tuple[str, Any]) -> None:
         for file in xyz_path.glob(f"{label}R*.xyz"):
             reactant_atoms = process_atoms(file)
             reactant_atoms.calc = copy(calc)
-            reactant_atoms.info["model_energy"] = reactant_atoms.get_potential_energy()
+            try:
+                reactant_atoms.info["model_energy"] = (
+                    reactant_atoms.get_potential_energy()
+                )
+            except Exception as exc:
+                warn(
+                    f"Error calculating energy for {file}: {exc}",
+                    stacklevel=2,
+                )
+                reactant_atoms.info["model_energy"] = np.nan
             reactant_atoms.info["label"] = label
             structs.append(reactant_atoms)
 

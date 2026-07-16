@@ -16,13 +16,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -37,22 +38,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_KCAL = units.mol / units.kcal
 
-
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels_list = [
-            path.stem for path in sorted((CALC_PATH / model_name).glob("*.xyz"))
-        ]
-        break
-    return labels_list
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -62,7 +55,7 @@ def labels() -> list:
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def conformer_energies() -> dict[str, list]:
@@ -78,7 +71,7 @@ def conformer_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)

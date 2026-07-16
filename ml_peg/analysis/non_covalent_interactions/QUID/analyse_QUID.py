@@ -18,13 +18,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -40,30 +41,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EV_TO_KCAL = units.mol / units.kcal
 
 
-def labels() -> dict[str, list[int]]:
-    """
-    Get dictionary of info for QUID structures.
-
-    Returns
-    -------
-    dict[str, list[int]]
-        Dictionary of system indices, complex atom counts, and complex charges.
-    """
-    info = {"all": [], "equilibrium": [], "dissociation": []}
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-
-            info["all"] = [path.stem for path in xyz_files]
-            info["equilibrium"] = [label for label in info["all"] if "_" not in label]
-            info["dissociation"] = [label for label in info["all"] if "_" in label]
-
-    return info
-
-
-LABELS = labels()
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
+EQUILIBRIUM_LABELS = [f for f in INFO["filenames"] if "_" not in f]
+DISSOCIATION_LABELS = [f for f in INFO["filenames"] if "_" in f]
 
 
 @pytest.fixture
@@ -72,7 +58,7 @@ LABELS = labels()
     title="Interaction energies",
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
-    hoverdata={"Labels": LABELS["all"]},
+    hoverdata={"Labels": INFO["filenames"]},
 )
 def interaction_energies() -> dict[str, list]:
     """
@@ -88,7 +74,7 @@ def interaction_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in LABELS["all"]:
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=0)
 
             if not ref_stored:
@@ -144,7 +130,7 @@ def equilibrium_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for charged systems.
     """
     equilibrium_indices = [
-        i for i, label in enumerate(LABELS["all"]) if label in LABELS["equilibrium"]
+        i for i, label in enumerate(INFO["filenames"]) if label in EQUILIBRIUM_LABELS
     ]
 
     results = {}
@@ -178,7 +164,7 @@ def dissociation_mae(interaction_energies) -> dict[str, float]:
         Dictionary of predicted interaction energy errors for dissociation systems.
     """
     dissociation_indices = [
-        i for i, label in enumerate(LABELS["all"]) if label in LABELS["dissociation"]
+        i for i, label in enumerate(INFO["filenames"]) if label in DISSOCIATION_LABELS
     ]
 
     results = {}

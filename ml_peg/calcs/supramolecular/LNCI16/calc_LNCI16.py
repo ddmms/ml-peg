@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import numpy as np
 from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -177,12 +179,16 @@ class LNCI16Benchmark(zntrack.Node):
         guest_copy = frags["guest"].copy()
 
         complex_copy.calc = calc
-        e_complex = complex_copy.get_potential_energy()
         host_copy.calc = calc
-        e_host = host_copy.get_potential_energy()
         guest_copy.calc = calc
-        e_guest = guest_copy.get_potential_energy()
-        return e_complex - e_host - e_guest
+        try:
+            e_complex = complex_copy.get_potential_energy()
+            e_host = host_copy.get_potential_energy()
+            e_guest = guest_copy.get_potential_energy()
+            return e_complex - e_host - e_guest
+        except Exception as exc:
+            warn(f"Error calculating energies: {exc}", stacklevel=2)
+            return np.nan
 
     @staticmethod
     def benchmark_lnci16(
@@ -260,9 +266,7 @@ class LNCI16Benchmark(zntrack.Node):
 
     def run(self):
         """Run LNCI16 benchmark calculations."""
-        # Use double precision
-        self.model.default_dtype = "float64"
-        calc = self.model.get_calculator()
+        calc = self.model.get_calculator(precision="high")
 
         # Get benchmark data
         data_dir = (

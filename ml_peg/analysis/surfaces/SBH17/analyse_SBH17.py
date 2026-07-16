@@ -10,13 +10,14 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
@@ -28,27 +29,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of SBH17 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    info_keys=["system"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -58,7 +46,7 @@ def get_system_names() -> list[str]:
     x_label="Predicted barrier / eV",
     y_label="Reference barrier / eV",
     hoverdata={
-        "System": get_system_names(),
+        "System": SYSTEM_INFO["system"],
     },
 )
 def surface_barriers() -> dict[str, list]:
