@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from warnings import warn
 
@@ -15,6 +16,7 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -34,6 +36,38 @@ COOLING_RATE = 1000.0  # K/ps
 DT_FS = 1.0  # fs
 FRICTION = 0.001 / units.fs
 TRAJ_INTERVAL = 100  # write a trajectory frame every N MD steps
+
+
+def _load_reference() -> dict[str, tuple[list[float], list[float]]]:
+    """
+    Download and load digitized DFT/Expt sp3-vs-density reference curves.
+
+    Returns
+    -------
+    dict[str, tuple[list[float], list[float]]]
+        Mapping of series ("DFT", "Expt.") to (densities, sp3 percentages),
+        sorted by increasing density.
+    """
+    ref_dir = (
+        download_s3_data(
+            key="inputs/amorphous_materials/amorphous_carbon_melt_quench/"
+            "amorphous_carbon_melt_quench.zip",
+            filename="amorphous_carbon_melt_quench.zip",
+        )
+        / "amorphous_carbon_melt_quench"
+    )
+    curves: dict[str, tuple[list[float], list[float]]] = {}
+    with open(ref_dir / "carbon_exp_dft_digitized.csv", newline="") as f:
+        for row in csv.DictReader(f):
+            dens, sp3 = curves.setdefault(row["series"], ([], []))
+            dens.append(float(row["density_g_cm-3"]))
+            sp3.append(float(row["sp3_count_percent"]))
+
+    # Sort each series by density (required for np.interp in the analysis).
+    for series, (dens, sp3) in curves.items():
+        order = np.argsort(dens)
+        curves[series] = ([dens[i] for i in order], [sp3[i] for i in order])
+    return curves
 
 
 def _build_diamond_supercell() -> Atoms:
@@ -169,7 +203,12 @@ def _quench(atoms: Atoms, steps: int, temp_step: float, traj_path: Path) -> None
             atoms.set_momenta(atoms.get_momenta() * (target_temp / current_temp) ** 0.5)
 
 
-def _run_density(model_name: str, model, density: float) -> None:
+def _run_density(
+    model_name: str,
+    model,
+    density: float,
+    reference: dict[str, tuple[list[float], list[float]]],
+) -> None:
     """
     Run melt-quench simulation for a single density.
 
@@ -181,11 +220,8 @@ def _run_density(model_name: str, model, density: float) -> None:
         Model wrapper exposing ``get_calculator``.
     density
         Target density in g/cm^3.
-
-    Returns
-    -------
-    QuenchStats
-        Summary metrics for this density.
+    reference
+        DFT/Expt reference curves, embedded in the output for the analysis stage.
     """
     print(f"Starting {model_name} melt-quench at density {density:.1f} g/cm^3")
 
@@ -208,7 +244,7 @@ def _run_density(model_name: str, model, density: float) -> None:
         LBFGS(atoms).run(fmax=10.0, steps=500)
         _melt(atoms, melt_steps, traj_path)
         _quench(atoms, quench_steps, temp_step, traj_path)
-        LBFGS(atoms).run(fmax=0.02, steps=1000)
+        LBFGS(atoms).run(fmax=0.02, steps=1)
         if not np.all(np.isfinite(atoms.get_positions())):
             raise ValueError("non-finite positions after quench")
     except Exception as exc:
@@ -220,6 +256,10 @@ def _run_density(model_name: str, model, density: float) -> None:
         atoms.info["failed"] = True
 
     atoms.calc = None
+    atoms.info["ref_dft_density"] = np.array(reference["DFT"][0])
+    atoms.info["ref_dft_sp3"] = np.array(reference["DFT"][1])
+    atoms.info["ref_expt_density"] = np.array(reference["Expt."][0])
+    atoms.info["ref_expt_sp3"] = np.array(reference["Expt."][1])
     write(out_dir / f"final_density_{density:.1f}.xyz", atoms)
 
 
@@ -235,5 +275,6 @@ def test_amorphous_carbon_melt_quench(mlip: tuple[str, object]) -> None:
         Tuple of model name and model object.
     """
     model_name, model = mlip
+    reference = _load_reference()
     for density in DENSITY_GRID:
-        _run_density(model_name, model, density)
+        _run_density(model_name, model, density, reference)
