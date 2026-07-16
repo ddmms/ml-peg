@@ -28,10 +28,6 @@ class LitfsiH2O21mApp(BaseApp):
             DATA_PATH / "figure_density_bar.json",
             id=f"{BENCHMARK_NAME}-density-bar",
         )
-        density_timeseries = read_plot(
-            DATA_PATH / "figure_density_timeseries.json",
-            id=f"{BENCHMARK_NAME}-density-timeseries",
-        )
         cn_bar = read_plot(
             DATA_PATH / "figure_cn_bar.json",
             id=f"{BENCHMARK_NAME}-cn-bar",
