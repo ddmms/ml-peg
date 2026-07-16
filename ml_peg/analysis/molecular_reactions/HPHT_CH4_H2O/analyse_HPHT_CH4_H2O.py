@@ -393,9 +393,9 @@ def load_reference_fes(structure_name):
     ref_dir = (
         download_s3_data(
             key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
-            filename="HPHT_CH4_H2O_data.zip",
+            filename="HPHT_CH4_H2O.zip",
         )
-        / "HPHT_CH4_H2O_data"
+        / "HPHT_CH4_H2O"
     )
     ref_file = ref_dir / f"{structure_name}.data"
 
@@ -568,9 +568,9 @@ def get_structures_names():
     ref_dir = (
         download_s3_data(
             key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
-            filename="HPHT_CH4_H2O_data.zip",
+            filename="HPHT_CH4_H2O.zip",
         )
-        / "HPHT_CH4_H2O_data"
+        / "HPHT_CH4_H2O"
     )
     ref_files = sorted(ref_dir.glob("*.data"))
     return [f.stem for f in ref_files]

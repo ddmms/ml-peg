@@ -54,9 +54,9 @@ def test_md(mlip: tuple[str, Any]) -> None:
     starting_frames_dir = (
         download_s3_data(
             key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
-            filename="HPHT_CH4_H2O_data.zip",
+            filename="HPHT_CH4_H2O.zip",
         )
-        / "HPHT_CH4_H2O_data"
+        / "HPHT_CH4_H2O"
     )
     starting_frames_files = sorted(starting_frames_dir.glob("*.extxyz"))
     print(f"starting_frames_dir:{starting_frames_dir}")
