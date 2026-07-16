@@ -1617,7 +1617,9 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
     structures = {oqmd_id: load_oqmd_structure(oqmd_id) for oqmd_id in STRUCTURE_IDS}
     energies: dict[str, float] = {}
 
-    for oqmd_id, atoms in tqdm(structures.items(), desc=f"{model_name} bulk relaxations"):
+    for oqmd_id, atoms in tqdm(
+        structures.items(), desc=f"{model_name} bulk relaxations"
+    ):
         atoms.calc = copy(calc)
         try:
             atoms = relax_cell_and_atoms(
