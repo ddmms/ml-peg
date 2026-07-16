@@ -21,6 +21,8 @@ import pytest
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
+pytestmark = pytest.mark.framework("mace-multihead")
+
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 

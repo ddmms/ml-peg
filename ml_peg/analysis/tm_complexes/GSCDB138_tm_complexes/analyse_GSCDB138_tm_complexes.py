@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from ml_peg.analysis.utils.analyse_gscdb138 import get_gscdb138_metrics
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+
+pytestmark = pytest.mark.framework("mace-polar-1")
 
 CALC_PATH = CALCS_ROOT / "tm_complexes" / "GSCDB138_tm_complexes" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "tm_complexes" / "GSCDB138_tm_complexes"

@@ -9,15 +9,18 @@ from warnings import warn
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
-import mlipx
 from mlipx.abc import NodeWithCalculator
 import numpy as np
+import pytest
 from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
+import mlipx
+
+pytestmark = pytest.mark.framework("mace-multihead")
 
 MODELS = load_models(current_models)
 

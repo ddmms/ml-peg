@@ -15,6 +15,8 @@ from ml_peg.calcs.utils.gscdb138 import run_gscdb138
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
+pytestmark = pytest.mark.framework("mace-polar-1")
+
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"

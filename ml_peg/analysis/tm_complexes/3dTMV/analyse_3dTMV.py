@@ -23,6 +23,8 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
+pytestmark = pytest.mark.framework("mace-polar-1")
+
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
