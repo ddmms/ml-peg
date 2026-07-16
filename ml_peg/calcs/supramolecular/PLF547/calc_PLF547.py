@@ -14,8 +14,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 import mlipx
 
-pytestmark = pytest.mark.framework("mace-multihead", "mace-polar-1")
-
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -59,6 +57,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_plf547():
     """Run PLF547 conformation energies benchmark via pytest."""
     build_project(repro=True)

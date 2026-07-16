@@ -14,8 +14,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "extensivity" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "extensivity"
@@ -80,6 +78,7 @@ def metrics(energy_difference: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_extensivity(metrics: dict[str, dict]) -> None:
     """
     Run extensivity analysis.

@@ -33,8 +33,6 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names, load_models
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 # Keep pytest collection and worker imports lightweight. Reference generation
 # does not need model objects, so load model wrappers only inside ``test_phonons``.
 MODEL_NAMES = get_model_names(current_models)
@@ -193,6 +191,7 @@ def _ref_complete(mp_id: str, out_dir: Path) -> bool:
     )
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.slow
 def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     """
@@ -423,6 +422,7 @@ def _calc_model_mp_id(
     return mp_id, success, log.getvalue()
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 def test_phonons(

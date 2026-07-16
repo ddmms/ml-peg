@@ -19,8 +19,6 @@ from tqdm import tqdm
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = load_models(current_models)
 
 # Local directory for calculator outputs
@@ -248,6 +246,7 @@ def run_diatomics(model_name: str, model) -> None:
     (write_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODELS)
 def test_diatomics(model_name: str) -> None:

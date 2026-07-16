@@ -17,8 +17,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "physicality" / "diatomics" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
@@ -385,6 +383,7 @@ def metrics(
     return metrics_dict
 
 
+@pytest.mark.framework("mace-multihead")
 def test_diatomics(metrics: dict[str, dict]) -> None:
     """
     Run diatomics analysis.

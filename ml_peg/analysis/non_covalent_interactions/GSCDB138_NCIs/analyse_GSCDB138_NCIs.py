@@ -11,8 +11,6 @@ from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "GSCDB138_NCIs" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "GSCDB138_NCIs"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -70,6 +68,7 @@ DATASETS = [
 ]
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_gscdb138() -> None:
     """Run non covalent interactions GSCDB138 test."""
     get_gscdb138_metrics(

@@ -16,8 +16,6 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -25,6 +23,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 IRON_SALTS = ["Fe2Cl", "Fe3Cl"]
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
@@ -76,6 +75,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
             warn(f"Error during MD for {salt}: {exc}", stacklevel=2)
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("model_name", MODELS)
 def test_iron_oxygen_rdfs(model_name: str) -> None:
     """

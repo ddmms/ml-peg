@@ -19,8 +19,6 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
@@ -128,6 +126,7 @@ def run_npt(atoms, calc, output_fname, temperature):
         dyn.atoms.info["energy"] = np.nan
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_liquid_densities(mlip: tuple[str, Any], temperature_idx: int) -> None:

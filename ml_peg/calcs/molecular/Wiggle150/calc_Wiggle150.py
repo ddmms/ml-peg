@@ -18,8 +18,6 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = load_models(current_models)
 
 # Local directory to store output data
@@ -181,6 +179,7 @@ def benchmark_wiggle150(
     return conformer_atoms
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """

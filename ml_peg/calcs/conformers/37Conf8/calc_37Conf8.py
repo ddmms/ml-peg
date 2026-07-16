@@ -21,8 +21,6 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
@@ -30,6 +28,7 @@ KCAL_TO_EV = units.kcal / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_37conf8_conformer_energies(mlip: tuple[str, Any]) -> None:
     """

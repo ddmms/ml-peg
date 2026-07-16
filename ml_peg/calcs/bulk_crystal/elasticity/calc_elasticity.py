@@ -21,8 +21,6 @@ import pytest
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
@@ -331,6 +329,7 @@ def run_elasticity_benchmark(
     results.to_csv(out_dir / "moduli_results.csv", index=False)
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_elasticity(mlip: tuple[str, Any]) -> None:

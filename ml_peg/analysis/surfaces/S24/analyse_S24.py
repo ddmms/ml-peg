@@ -19,8 +19,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "surfaces" / "S24" / "outputs"
@@ -160,6 +158,7 @@ def metrics(s24_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_s24(metrics: dict[str, dict]) -> None:
     """
     Run S24 test.

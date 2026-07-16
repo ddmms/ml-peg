@@ -30,8 +30,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "elasticity" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity"
@@ -658,6 +656,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_elasticity(
     metrics: dict[str, dict],
     bulk_density: dict[str, dict],

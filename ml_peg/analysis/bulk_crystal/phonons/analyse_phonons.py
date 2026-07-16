@@ -24,8 +24,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "phonons" / "outputs"
 REF_PATH = CALC_PATH / "DFT"
@@ -667,6 +665,7 @@ def interactive_dataset(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, An
     return dataset
 
 
+@pytest.mark.framework("mace-multihead")
 def test_phonons(metrics, interactive_dataset) -> None:
     """
     Exercise the phonon fixtures to ensure they build without errors.

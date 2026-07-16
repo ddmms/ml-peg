@@ -20,8 +20,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 import mlipx
 
-pytestmark = pytest.mark.framework("mace-multihead")
-
 MODELS = load_models(current_models)
 
 # Local directory to store output data
@@ -209,6 +207,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.framework("mace-multihead")
 def test_oc157():
     """Run OC157 benchmark via pytest."""
     build_project(repro=True)

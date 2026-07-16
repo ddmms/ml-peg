@@ -22,8 +22,6 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
@@ -80,6 +78,7 @@ def get_systems(info_path, xyz_dir):
     return systems
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_bh2o_36(mlip: tuple[str, Any]) -> None:
     """

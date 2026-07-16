@@ -20,8 +20,6 @@ from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
-pytestmark = pytest.mark.framework("mace-polar-1")
-
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
@@ -271,6 +269,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_pla15(metrics: dict[str, dict]) -> None:
     """
     Run PLA15 test.
