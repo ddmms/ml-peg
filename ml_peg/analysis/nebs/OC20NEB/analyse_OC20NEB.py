@@ -32,7 +32,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 METRIC_LABELS = {
     "delta_E": "Reaction Energy MAE",
     "barrier": "Barrier MAE",
-    "fmax": "Convergence",
+    "fmax": "Unconverged Percentage",
 }
 FMAX = 0.05
 
@@ -357,7 +357,7 @@ def metrics(oc20neb_stats: dict[str, dict[str, float]]) -> dict[str, dict]:
             }
 
     # Get unconverged percentage
-    table_data["Convergence"] = {
+    table_data["Unconverged Percentage"] = {
         model: oc20neb_stats[model]["unconverged"] for model in MODELS
     }
     return table_data
