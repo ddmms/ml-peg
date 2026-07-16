@@ -110,6 +110,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
                     for initial_atoms in atoms_list:
                         atoms = deepcopy(initial_atoms)
+                        atoms.info["charge"] = initial_atoms.info["ref_total_charge"]
+                        atoms.info["spin"] = 1
+
                         atoms.calc = deepcopy(calc)
                         atoms.info["initial_energy"] = atoms.get_potential_energy()
 
