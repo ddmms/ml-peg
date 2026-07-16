@@ -130,7 +130,7 @@ def second_nearest_heavy_outside_molecule(h, atoms, nl, labels):
 
     min_dist = float("inf")
     heavy2 = None
-    for idx, shift in zip(neighbors, offsets, strict=False):
+    for idx, shift in zip(neighbors, offsets, strict=True):
         if labels[idx] == mol_h:
             continue
 
@@ -223,7 +223,7 @@ def build_connectivity_matrix_COH_HH_force(
         if len(neighbors) == 0:
             H_orphan.append(h)
         else:
-            for idx, shift in zip(neighbors, offsets, strict=False):
+            for idx, shift in zip(neighbors, offsets, strict=True):
                 dr = atoms.positions[h] - (atoms.positions[idx] + shift @ atoms.cell)
                 dist = np.linalg.norm(dr)
 
@@ -548,7 +548,7 @@ def profile_errors(free_energy_profiles) -> dict[str, float]:
 
         errors = []
 
-        for F_ref, F_model in zip(F_ref_all, F_model_all, strict=False):
+        for F_ref, F_model in zip(F_ref_all, F_model_all, strict=True):
             mask = (~np.isnan(F_ref)) & (~np.isnan(F_model))
             if np.any(mask):
                 errors.append(mae(F_ref[mask], F_model[mask]))
