@@ -15,7 +15,7 @@ def generate_weas_html(
     color_by: str | None = None,
     color_ramp: list[str] | None = None,
     legend_items: list[tuple[str, str]] | None = None,
-    show_controls: bool = False,
+    show_controls: bool = True,
     show_bounds: bool = False,
 ) -> str:
     """
