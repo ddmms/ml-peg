@@ -161,13 +161,13 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             f"Warning: {nan_counter} structures had no match with reference "
             "and were assigned NaN for RMSD and max distance for model"
             f"{model_name}. Consider increasing StructureMatcher stol in "
-            "calc_split_vacancies.py."
+            "calc_split_vacancy.py."
         )
     if unconverged_counter > 0:
         print(
             f"Warning: {unconverged_counter} structures did not converge within "
             f"{steps} steps for model {model_name}. Consider increasing the "
-            "number of steps or fmax in calc_split_vacancies.py."
+            "number of steps or fmax in calc_split_vacancy.py."
         )
     if error_counter > 0:
         print(
