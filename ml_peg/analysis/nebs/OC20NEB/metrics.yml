@@ -11,7 +11,7 @@ metrics:
     unit: eV
     tooltip: "delta_E mae"
     level_of_theory: RPBE
-  Convergence:
+  Unconverged Percentage:
     good: 10
     bad: 30
     unit: percent
