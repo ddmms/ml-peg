@@ -120,8 +120,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                             atoms.calc = deepcopy(calc)
                             atoms.info["initial_energy"] = atoms.get_potential_energy()
 
-                            converged = opt = LBFGS(atoms, logfile=None)
+                            opt = LBFGS(atoms, logfile=None)
                             opt.run(fmax=fmax, steps=steps)
+                            converged = opt.converged()
 
                             atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
