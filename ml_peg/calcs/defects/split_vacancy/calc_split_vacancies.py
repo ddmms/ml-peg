@@ -69,7 +69,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
     """
     model_name, model = mlip
     model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     fmax = 0.03
     steps = 200
