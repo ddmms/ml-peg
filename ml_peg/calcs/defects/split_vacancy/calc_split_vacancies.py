@@ -86,6 +86,8 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                 nv_xyz_path = cation_dir / "normal_vacancy.xyz"
                 sv_xyz_path = cation_dir / "split_vacancy.xyz"
 
+                # many materials only have one of the two
+                # we could relax the one that exists and get max_dist
                 if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
                     continue
 
