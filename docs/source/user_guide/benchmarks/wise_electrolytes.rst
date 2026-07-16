@@ -49,7 +49,8 @@ Metrics
    ``sum(|S_exp - S_calc|) / sum(|S_exp|)``. S(q) is computed via dynasor
    in the Faber-Ziman convention with Cromer-Mann 4-Gaussian form factors
    (including hydrogen) and Savitzky-Golay smoothing
-   (window = 27, order = 3, dq = 0.02 A^-1). Reference: SAXS data of
+   (window = 5, order = 3, dq = 0.02 A^-1, i.e. a physical width of
+   0.10 A^-1). Reference: SAXS data of
    Zhang et al., *J. Phys. Chem. B* 125, 4501 (2021).
 
 Computational cost
@@ -68,11 +69,20 @@ Input structures:
 * p64_w170 cubic cell (1534 atoms, 27.4938 A) for NVT trajectories.
 * p16_w42 cell (382 atoms) for NPT density.
 
-Production trajectories were generated with LAMMPS + symmetrix on Adastra
-(MI250X) using a MACE foundation model. The reference Janus recast of the
-same protocol (Min -> NVT 50 ps -> NPT 200 ps, dt = 0.5 fs, T = 298.15 K,
-P = 1.01325 bar, NH thermostat tau = 50 fs, NH barostat tau = 500 fs) lives
-in ``ml_peg/calcs/wise_electrolytes/md_reference/``.
+The reference data were generated with LAMMPS + symmetrix on Adastra (MI250X)
+using the protocol below, at dt = 0.5 fs, T = 298.15 K, P = 1.01325 bar,
+Nose-Hoover thermostat tau = 50 fs and barostat tau = 500 fs:
+
+* p64_w170: Min -> NVT 50 ps equilibration -> NVT 50 ps production, held at the
+  experimental volume throughout (no NPT), giving the trajectory used for S(q)
+  and the RDF.
+* p16_w42: Min -> NVT 50 ps -> NPT 200 ps, with the density averaged over the
+  last 150 ps.
+
+The janus-core recast of the same protocol is ``test_reference_md`` in
+``ml_peg/calcs/wise_electrolytes/litfsi_h2o_21m/``, marked ``very_slow``. It
+regenerates both data products for any registered model, so the benchmark does
+not depend on the pre-computed trajectories.
 
 Reference data:
 
