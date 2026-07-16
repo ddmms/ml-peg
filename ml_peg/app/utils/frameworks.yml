@@ -26,3 +26,11 @@ mace-polar-1:
   url: "https://arxiv.org/abs/2602.19411"
   icon: "📄"
   tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411) - click to read"
+
+mace-mp:
+  label: MACE-MP
+  color: "#0e7490"
+  text_color: "#ecfeff"
+  url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
+  icon: "📄"
+  tooltip: "Benchmark from the MACE-MP foundation model paper (JCP 163, 184110) - click to read"
