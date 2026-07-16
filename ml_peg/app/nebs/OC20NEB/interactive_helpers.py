@@ -139,7 +139,7 @@ def render_geometry_comparison(
         return None
 
     iframe_style = {
-        "height": "450px",
+        "height": "550px",
         "width": "100%",
         "border": "1px solid #ddd",
         "borderRadius": "5px",
