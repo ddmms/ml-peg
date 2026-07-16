@@ -17,6 +17,7 @@ DOCS_URL = (
     "amorphous_materials.html#amorphous-carbon-melt-quench"
 )
 DATA_PATH = APP_ROOT / "data" / "amorphous_materials" / "amorphous_carbon_melt_quench"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class AmorphousCarbonMeltQuenchApp(BaseApp):
@@ -108,6 +109,7 @@ def get_app() -> AmorphousCarbonMeltQuenchApp:
             Div(id="amorphous-carbon-melt-quench-struct-placeholder"),
         ],
         framework_ids="mace-mp",
+        info_path=INFO_PATH,
     )
 
 

@@ -12,7 +12,11 @@ import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -33,6 +37,15 @@ REF_EXPT_PATH = Path(__file__).with_name("reference_expt.csv")
 DENSITY_GRID = [1.5, 2.0, 2.5, 3.0, 3.5]
 SP3_CUTOFF = 1.85
 STRUCTURES_DIR = OUT_PATH / "structures"
+
+# Write element info (info.json) for the app's element filter.
+get_struct_info(
+    calc_path=CALC_PATH / "outputs",
+    glob_pattern="density_*/final_density_*.xyz",
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 def _load_reference(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -207,10 +220,10 @@ def _structure_asset_path(model_name: str, density: float) -> str:
     )
     traj_name = f"trajectory_density_{density:.1f}.extxyz"
     colored_name = f"colored_density_{density:.1f}.extxyz"
-    traj_path = STRUCTURES_DIR / rel_dir / traj_name
+    traj_path = STRUCTURES_DIR / model_name / f"density_{density:.1f}" / traj_name
     if traj_path.exists():
-        return f"assets/{rel_dir.as_posix()}/{traj_name}"
-    return f"assets/{rel_dir.as_posix()}/{colored_name}"
+        return f"/assets/{rel_dir.as_posix()}/{traj_name}"
+    return f"/assets/{rel_dir.as_posix()}/{colored_name}"
 
 
 def _load_all_model_data(models: Iterable[str]) -> dict[str, dict[float, float]]:
@@ -459,4 +472,3 @@ def test_amorphous_carbon_melt_quench(metrics: dict[str, dict]) -> None:
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     build_sp3_vs_density_plot(OUT_PATH / "figure_sp3_vs_density.json")
-    return
