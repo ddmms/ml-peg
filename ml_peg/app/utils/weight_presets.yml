@@ -1,0 +1,33 @@
+# Summary-table weight presets. Each preset lists the category titles that stay
+# weighted (1.0); every other category is set to 0.0. Titles must match the
+# category `title:` values exactly. The "Random" preset is generated in code.
+Materials:
+  - Bulk Crystals
+  - Surfaces
+  - NEBs
+  - Physicality
+Molecules:
+  - Molecular Systems
+  - Molecular Reactions
+  - Molecular Crystals
+  - Conformers
+  - Non-covalent interactions
+  - Supramolecular Complexes
+  - Isomers
+  - Thermochemistry
+  - Electric Field
+  - Physicality
+Reactivity:
+  - Molecular Reactions
+  - Thermochemistry
+  - NEBs
+  - Isomers
+  - Molecular Dynamics
+Non-covalent:
+  - Non-covalent interactions
+  - Supramolecular Complexes
+  - Molecular Crystals
+  - Conformers
+Transition metals & lanthanides:
+  - Transition metal complexes
+  - Lanthanides
