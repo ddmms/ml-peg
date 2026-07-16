@@ -36,9 +36,7 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-
-    model.default_dtype = "float64"
-    clean_calc = model.get_calculator()
+    clean_calc = model.get_calculator(precision="high")
 
     data_path = download_github_data(
         filename="LINEAR_CARBON_wB97M-V.zip",
