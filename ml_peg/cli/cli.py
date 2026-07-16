@@ -256,6 +256,15 @@ def run_calcs(
             autocompletion=complete_test,
         ),
     ] = "*",
+    framework: Annotated[
+        str | None,
+        Option(
+            help=(
+                "Comma-separated MLIP framework(s) to run calculations for. Default is "
+                "all frameworks."
+            )
+        ),
+    ] = None,
     run_mock: Annotated[
         bool, Option(help="Whether to run with mock calculator in addition to models.")
     ] = True,
@@ -290,6 +299,9 @@ def run_calcs(
     test
         Test to run calculation for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework(s) to run calculations for, in comma-separated list. Default is
+        `None`, corresponding to all frameworks.
     run_mock
         Whether to run mock calculations. Default is `True`.
     mock_only
@@ -332,6 +344,9 @@ def run_calcs(
     if models_file:
         options.extend(["--models-file", models_file])
 
+    if framework:
+        options.extend(["--framework", framework])
+
     # Parse any custom options to pytest
     options.extend(ctx.args)
 
@@ -370,6 +385,15 @@ def run_analysis(
             autocompletion=complete_test,
         ),
     ] = "*",
+    framework: Annotated[
+        str | None,
+        Option(
+            help=(
+                "Comma-separated MLIP framework(s) to run analysis for. Default is all "
+                "frameworks."
+            )
+        ),
+    ] = None,
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
     ] = True,
@@ -389,6 +413,9 @@ def run_analysis(
     test
         Test to run analysis for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework(s) to run analysis for, in comma-separated list. Default is
+        `None`, corresponding to all frameworks.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -411,6 +438,9 @@ def run_analysis(
 
     if models_file:
         options.extend(["--models-file", models_file])
+
+    if framework:
+        options.extend(["--framework", framework])
 
     pytest.main(options)
 
