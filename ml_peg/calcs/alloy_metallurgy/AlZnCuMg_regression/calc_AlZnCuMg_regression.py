@@ -6,6 +6,7 @@ from collections import Counter
 from copy import copy
 import json
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -34,20 +35,23 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
-_S3_KEY = "inputs/alloy_metallurgy/alzncumg_regression/alzncumg_regression.zip"
-_S3_FILENAME = "alzncumg_regression.zip"
+_S3_KEY = "inputs/alloy_metallurgy/AlZnCuMg_regression/AlZnCuMg_regression.zip"
+_S3_FILENAME = "AlZnCuMg_regression.zip"
 
 
-def _data_root() -> Path:
+@pytest.fixture
+def data_path() -> Path:
     """
     Download and cache the benchmark input data from S3.
 
     Returns
     -------
     Path
-        Path to the extracted ``alzncumg_regression`` directory.
+        Path to the extracted ``AlZnCuMg_regression`` directory.
     """
-    return download_s3_data(key=_S3_KEY, filename=_S3_FILENAME) / "alzncumg_regression"
+    path = download_s3_data(key=_S3_KEY, filename=_S3_FILENAME) / "AlZnCuMg_regression"
+    shutil.copytree(path / "references", OUT_PATH / "references", dirs_exist_ok=True)
+    return path
 
 
 STRUCTURE_IDS = (
@@ -224,6 +228,7 @@ def conventional_fcc_supercell(
     matrix_oqmd_id: str,
     repeats: tuple[int, int, int],
     calculator: Calculator,
+    data_path: Path,
 ) -> Atoms:
     """
     Build a conventional FCC matrix supercell from a staged pure structure.
@@ -236,13 +241,15 @@ def conventional_fcc_supercell(
         Repetition factors along each lattice direction.
     calculator
         ASE calculator used to relax the primitive cell.
+    data_path
+        Path to the root of the data directory.
 
     Returns
     -------
     Atoms
         Relaxed supercell with matrix element info attached.
     """
-    relaxed = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
+    relaxed = relaxed_oqmd_structure(matrix_oqmd_id, calculator, data_path)
     counts = element_counts(relaxed)
     if len(counts) != 1:
         raise ValueError(f"OQMD_{matrix_oqmd_id} is not a pure-element matrix")
@@ -349,7 +356,9 @@ def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
     return float(atoms.get_potential_energy()) / len(atoms)
 
 
-def relaxed_oqmd_structure(oqmd_id: str, calculator: Calculator) -> Atoms:
+def relaxed_oqmd_structure(
+    oqmd_id: str, calculator: Calculator, data_path: Path
+) -> Atoms:
     """
     Load and relax one OQMD structure using the legacy bulk protocol.
 
@@ -359,13 +368,15 @@ def relaxed_oqmd_structure(oqmd_id: str, calculator: Calculator) -> Atoms:
         OQMD identifier (numeric or ``NOTINOQMD_*``) of the structure to load.
     calculator
         ASE calculator used for the cell-and-atoms relaxation.
+    data_path
+        Path to the root of the data directory.
 
     Returns
     -------
     Atoms
         Relaxed structure with OQMD metadata attached.
     """
-    atoms = load_oqmd_structure(oqmd_id)
+    atoms = load_oqmd_structure(oqmd_id, data_path)
     attach_calculator(atoms, calculator)
     return relax_cell_and_atoms(
         atoms,
@@ -806,6 +817,7 @@ def solute_stacking_fault_interaction(
     inplane_repeats: int,
     zplane_repeats: int,
     solute_layers: tuple[int, ...],
+    data_path: Path,
 ) -> list[float]:
     """
     Calculate relaxed solute-stacking-fault interaction energies in eV.
@@ -824,13 +836,15 @@ def solute_stacking_fault_interaction(
         Number of stacking-fault period repetitions along z.
     solute_layers
         Zero-based layer indices at which to place the solute.
+    data_path
+        Path to the root of the data directory.
 
     Returns
     -------
     list[float]
         Interaction energy in eV for each requested solute layer.
     """
-    reference = relaxed_oqmd_structure(matrix_oqmd_id, calculator)
+    reference = relaxed_oqmd_structure(matrix_oqmd_id, calculator, data_path)
     fault_structure = fcc_stacking_fault_structure(
         reference,
         inplane_repeats,
@@ -1391,7 +1405,7 @@ def structure_file_stem(oqmd_id: str) -> str:
     return f"OQMD_{oqmd_id}"
 
 
-def load_oqmd_structure(oqmd_id: str) -> Atoms:
+def load_oqmd_structure(oqmd_id: str, data_path: Path) -> Atoms:
     """
     Load one staged OQMD structure.
 
@@ -1400,6 +1414,8 @@ def load_oqmd_structure(oqmd_id: str) -> Atoms:
     oqmd_id
         OQMD identifier without the ``OQMD_`` prefix, or a ``NOTINOQMD_*``
         legacy identifier.
+    data_path
+        Path to the root of data.
 
     Returns
     -------
@@ -1407,7 +1423,7 @@ def load_oqmd_structure(oqmd_id: str) -> Atoms:
         ASE structure with OQMD metadata attached to ``atoms.info``.
     """
     structure_path = (
-        _data_root() / "structures" / "OQMD-Dumps" / structure_file_stem(oqmd_id)
+        data_path / "structures" / "OQMD-Dumps" / structure_file_stem(oqmd_id)
     )
     metadata_path = structure_path.with_suffix(".json")
 
@@ -1600,7 +1616,7 @@ def structure_properties(
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
+def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
     """
     Run the first bulk-structure metallurgy regression slice.
 
@@ -1608,13 +1624,17 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Model name and model instance used to get an ASE calculator.
+    data_path
+        Path to the root of the data directory.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
     output_dir = OUT_PATH / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    structures = {oqmd_id: load_oqmd_structure(oqmd_id) for oqmd_id in STRUCTURE_IDS}
+    structures = {
+        oqmd_id: load_oqmd_structure(oqmd_id, data_path) for oqmd_id in STRUCTURE_IDS
+    }
     energies: dict[str, float] = {}
 
     for oqmd_id, atoms in tqdm(
@@ -1657,7 +1677,7 @@ def test_alzncumg_regression(mlip: tuple[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
+def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None:
     """
     Run fast surface, stacking-fault, and GSF metallurgy calculations.
 
@@ -1665,6 +1685,8 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Model name and model instance used to get an ASE calculator.
+    data_path
+        Path to the root of the data directory.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
@@ -1673,7 +1695,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
 
     reference_ids = (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
     pure_reference_structures = {
-        oqmd_id: relaxed_oqmd_structure(oqmd_id, calc)
+        oqmd_id: relaxed_oqmd_structure(oqmd_id, calc, data_path)
         for oqmd_id in tqdm(reference_ids, desc=f"{model_name} reference relaxations")
     }
     pure_reference_energies = {
@@ -1765,10 +1787,10 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
         reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
         try:
             # Special structures expected at:
-            # alzncumg_regression/structures/special/<structure_file>
+            # AlZnCuMg_regression/structures/special/<structure_file>
             # within the S3 zip (to be added to zip by data maintainer)
             base_structure = read(
-                _data_root() / "structures" / "special" / spec["structure_file"],
+                data_path / "structures" / "special" / spec["structure_file"],
                 format="vasp",
             )
             raw_energies, norm_energies = generalized_stacking_fault_energies(
@@ -1810,6 +1832,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
                     inplane_repeats=inplane_repeats,
                     zplane_repeats=zplane_repeats,
                     solute_layers=layers,
+                    data_path=data_path,
                 )
             except Exception as exc:
                 warn(
@@ -1842,7 +1865,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any]) -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
+def test_alzncumg_elasticity(mlip: tuple[str, Any], data_path: Path) -> None:
     """
     Run the opt-in elastic-moduli metallurgy regression slice.
 
@@ -1850,6 +1873,8 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Model name and model instance used to get an ASE calculator.
+    data_path
+        Path to the root of the data directory.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
@@ -1859,7 +1884,7 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
     records = []
     for oqmd_id in tqdm(STRUCTURE_IDS, desc=f"{model_name} elasticity"):
         try:
-            atoms = relaxed_oqmd_structure(oqmd_id, calc)
+            atoms = relaxed_oqmd_structure(oqmd_id, calc, data_path)
             tensor = legacy_elastic_tensor(atoms, calc)
         except Exception as exc:
             warn(
@@ -1879,7 +1904,7 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any]) -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
+def test_alzncumg_solute_solute(mlip: tuple[str, Any], data_path: Path) -> None:
     """
     Run the opt-in solute-solute binding metallurgy regression slice.
 
@@ -1887,6 +1912,8 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Model name and model instance used to get an ASE calculator.
+    data_path
+        Path to the root of the data directory.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
@@ -1897,7 +1924,9 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any]) -> None:
     for matrix_oqmd_id, solute_pairs, repeats, max_index in tqdm(
         SOLUTE_SOLUTE_SPECS, desc=f"{model_name} solute-solute matrices"
     ):
-        pure_structure = conventional_fcc_supercell(matrix_oqmd_id, repeats, calc)
+        pure_structure = conventional_fcc_supercell(
+            matrix_oqmd_id, repeats, calc, data_path
+        )
         for solute_1, solute_2 in solute_pairs:
             reference_key = solute_pair_reference_key(
                 matrix_oqmd_id, solute_1, solute_2

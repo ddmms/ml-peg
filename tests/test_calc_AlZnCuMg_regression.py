@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.alloy_metallurgy.alzncumg_regression import (
-    calc_alzncumg_regression as calc,
+    calc_AlZnCuMg_regression as calc,
 )
 
 
@@ -449,7 +449,7 @@ def test_calculation_writes_successful_records_after_partial_failure(
     monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
 
     with pytest.warns(UserWarning, match="Error calculating OQMD_broken"):
-        calc.test_alzncumg_regression(("stub-model", model))
+        calc.test_AlZnCuMg_regression(("stub-model", model))
 
     output_path = tmp_path / "stub-model" / "bulk_properties.json"
     output_data = json.loads(output_path.read_text())

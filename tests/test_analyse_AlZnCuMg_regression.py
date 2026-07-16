@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from ml_peg.analysis.alloy_metallurgy.alzncumg_regression import (
-    analyse_alzncumg_regression as analyse,
+from ml_peg.analysis.alloy_metallurgy.AlZnCuMg_regression import (
+    analyse_AlZnCuMg_regression as analyse,
 )
 
 

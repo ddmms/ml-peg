@@ -157,7 +157,7 @@ Input structures:
 Reference data:
 
 * DFT (PBE) values from the evalpot legacy dataset, stored in
-  ``alzncumg_regression/references/DFT.json``.
+  ``AlZnCuMg_regression/references/DFT.json``.
 
 * OQMD:
 

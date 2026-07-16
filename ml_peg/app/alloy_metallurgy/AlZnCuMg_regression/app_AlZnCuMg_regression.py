@@ -15,7 +15,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Al-Zn-Cu-Mg regression"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/alloy_metallurgy.html#al-zn-cu-mg-regression"
-DATA_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "alzncumg_regression"
+DATA_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "AlZnCuMg_regression"
 
 
 class AlZnCuMgRegressionApp(BaseApp):
@@ -96,7 +96,7 @@ class AlZnCuMgRegressionApp(BaseApp):
             DATA_PATH / MODELS[0],
         )
         structs = [
-            f"/assets/alloy_metallurgy/alzncumg_regression/{structs_dir.name}/{struct_file.name}"
+            f"/assets/alloy_metallurgy/AlZnCuMg_regression/{structs_dir.name}/{struct_file.name}"
             for struct_file in sorted(structs_dir.glob("OQMD_*.xyz"))
         ]
 
@@ -131,7 +131,7 @@ def get_app() -> AlZnCuMgRegressionApp:
             "the staged Al-Cu-Mg-Zn structure slice."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "alzncumg_regression_metrics_table.json",
+        table_path=DATA_PATH / "AlZnCuMg_regression_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
@@ -141,7 +141,7 @@ def get_app() -> AlZnCuMgRegressionApp:
 
 if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    alzncumg_app = get_app()
-    full_app.layout = alzncumg_app.layout
-    alzncumg_app.register_callbacks()
+    AlZnCuMg_app = get_app()
+    full_app.layout = AlZnCuMg_app.layout
+    AlZnCuMg_app.register_callbacks()
     full_app.run(port=8054, debug=True)

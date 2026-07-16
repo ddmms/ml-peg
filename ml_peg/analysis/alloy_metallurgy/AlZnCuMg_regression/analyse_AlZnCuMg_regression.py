@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import json
 import math
 from pathlib import Path
@@ -17,31 +16,13 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "alloy_metallurgy" / "alzncumg_regression" / "outputs"
-DATA_PATH = CALCS_ROOT / "alloy_metallurgy" / "alzncumg_regression" / "data"
-OUT_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "alzncumg_regression"
-
-_S3_KEY = "inputs/alloy_metallurgy/alzncumg_regression/alzncumg_regression.zip"
-_S3_FILENAME = "alzncumg_regression.zip"
-
-
-@lru_cache(maxsize=1)
-def _data_root() -> Path:
-    """
-    Download and cache the benchmark input data from S3.
-
-    Returns
-    -------
-    Path
-        Path to the extracted ``alzncumg_regression`` directory.
-    """
-    return download_s3_data(key=_S3_KEY, filename=_S3_FILENAME) / "alzncumg_regression"
-
+CALC_PATH = CALCS_ROOT / "alloy_metallurgy" / "AlZnCuMg_regression" / "outputs"
+DATA_PATH = CALCS_ROOT / "alloy_metallurgy" / "AlZnCuMg_regression" / "data"
+OUT_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "AlZnCuMg_regression"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -63,7 +44,7 @@ def load_references() -> dict[str, Any]:
     dict[str, Any]
         Reference data keyed by evalpot material parameter name.
     """
-    with open(_data_root() / "references" / "DFT.json") as file:
+    with open(CALC_PATH / "references" / "DFT.json") as file:
         return json.load(file)
 
 
@@ -1418,7 +1399,7 @@ def beta_angle_errors(beta_angles: dict[str, list[float]]) -> dict[str, float]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "alzncumg_regression_metrics_table.json",
+    filename=OUT_PATH / "AlZnCuMg_regression_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
