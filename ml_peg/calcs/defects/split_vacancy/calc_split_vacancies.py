@@ -77,6 +77,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
     nan_counter = 0
     unconverged_counter = 0
+    error_counter = 0
     for functional in ["pbe", "pbesol"]:
         for material_dir in tqdm(list((DATA_PATH / functional).iterdir())):
             cation_dirs = [
@@ -91,58 +92,68 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
                 atoms_paths = [nv_xyz_path, sv_xyz_path]
 
-                for atoms_path in atoms_paths:
-                    relaxed_atoms = []
-                    atoms_list = read(atoms_path, ":")
+                try:
+                    for atoms_path in atoms_paths:
+                        relaxed_atoms = []
+                        atoms_list = read(atoms_path, ":")
 
-                    ref_atoms_out_path = (
-                        OUT_PATH
-                        / functional
-                        / "ref"
-                        / material_dir.stem
-                        / cation_dir.stem
-                        / f"{atoms_path.stem}.xyz"
+                        ref_atoms_out_path = (
+                            OUT_PATH
+                            / functional
+                            / "ref"
+                            / material_dir.stem
+                            / cation_dir.stem
+                            / f"{atoms_path.stem}.xyz"
+                        )
+                        # Copy ref structures once; later runs skip if present.
+                        if not ref_atoms_out_path.exists():
+                            ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
+                            write(ref_atoms_out_path, atoms_list)
+
+                        for initial_atoms in atoms_list:
+                            atoms = deepcopy(initial_atoms)
+                            atoms.info["charge"] = initial_atoms.info[
+                                "ref_total_charge"
+                            ]
+                            atoms.info["spin"] = 1
+
+                            atoms.calc = deepcopy(calc)
+                            atoms.info["initial_energy"] = atoms.get_potential_energy()
+
+                            converged = opt = LBFGS(atoms, logfile=None)
+                            opt.run(fmax=fmax, steps=steps)
+
+                            atoms.info["relaxed_energy"] = atoms.get_potential_energy()
+
+                            rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
+                            atoms.info["ref_rmsd"] = rmsd
+                            atoms.info["ref_max_distance"] = max_dist
+                            atoms.info["relaxation_converged"] = converged
+
+                            relaxed_atoms.append(atoms)
+
+                            if rmsd is np.nan:
+                                nan_counter += 1
+                            if not converged:
+                                unconverged_counter += 1
+
+                        atoms_out_path = (
+                            OUT_PATH
+                            / functional
+                            / model_name
+                            / material_dir.stem
+                            / cation_dir.stem
+                            / f"{atoms_path.stem}.xyz"
+                        )
+                        atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
+                        write(atoms_out_path, relaxed_atoms)
+                except Exception as exc:
+                    error_counter += 1
+                    print(
+                        f"Warning: skipping {material_dir.stem}/{cation_dir.stem} "
+                        f"({functional}) for model {model_name}: {exc}"
                     )
-                    # Copy ref structures once; subsequent runs skip if already present.
-                    if not ref_atoms_out_path.exists():
-                        ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
-                        write(ref_atoms_out_path, atoms_list)
-
-                    for initial_atoms in atoms_list:
-                        atoms = deepcopy(initial_atoms)
-                        atoms.info["charge"] = initial_atoms.info["ref_total_charge"]
-                        atoms.info["spin"] = 1
-
-                        atoms.calc = deepcopy(calc)
-                        atoms.info["initial_energy"] = atoms.get_potential_energy()
-
-                        converged = opt = LBFGS(atoms, logfile=None)
-                        opt.run(fmax=fmax, steps=steps)
-
-                        atoms.info["relaxed_energy"] = atoms.get_potential_energy()
-
-                        rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
-                        atoms.info["ref_rmsd"] = rmsd
-                        atoms.info["ref_max_distance"] = max_dist
-                        atoms.info["relaxation_converged"] = converged
-
-                        relaxed_atoms.append(atoms)
-
-                        if rmsd is np.nan:
-                            nan_counter += 1
-                        if not converged:
-                            unconverged_counter += 1
-                    atoms_out_path = (
-                        OUT_PATH
-                        / functional
-                        / model_name
-                        / material_dir.stem
-                        / cation_dir.stem
-                        / f"{atoms_path.stem}.xyz"
-                    )
-                    atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
-
-                    write(atoms_out_path, relaxed_atoms)
+                    continue
     if nan_counter > 0:
         print(
             f"Warning: {nan_counter} structures had no match with reference "
@@ -155,4 +166,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             f"Warning: {unconverged_counter} structures did not converge within "
             f"{steps} steps for model {model_name}. Consider increasing the "
             "number of steps or fmax in calc_split_vacancies.py."
+        )
+    if error_counter > 0:
+        print(
+            f"Warning: {error_counter} material-cation pairs were skipped due to "
+            f"errors during calculation for model {model_name} (see warnings above)."
         )
