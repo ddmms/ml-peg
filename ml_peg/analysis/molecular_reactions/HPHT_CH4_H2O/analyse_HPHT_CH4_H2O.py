@@ -3,26 +3,31 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from ase import units
-from ase.io import read, write
-import pytest
-
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map,load_metrics_config, mae
-from ml_peg.app.utils.utils import get_struct_info
-from ml_peg.app import APP_ROOT
-from ml_peg.calcs import CALCS_ROOT
-from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
-import numpy as np
 import warnings
-from ase.neighborlist import NeighborList, get_connectivity_matrix, neighbor_list, NewPrimitiveNeighborList
+
 from ase.io import iread
+from ase.neighborlist import (
+    NeighborList,
+    NewPrimitiveNeighborList,
+    neighbor_list,
+)
+import numpy as np
+import pytest
 from scipy.sparse import lil_matrix
 from scipy.sparse.csgraph import connected_components
-from ml_peg.calcs.utils.utils import download_s3_data
 
+from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    mae,
+)
+from ml_peg.app import APP_ROOT
+from ml_peg.app.utils.utils import get_struct_info
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -34,7 +39,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
-def make_fes(data, start, end, n_bins,T):
+
+def make_fes(data, start, end, n_bins, T):
     """
     Creates a numpy histogram from raw reaction coordinate values,
     then computes free energy profile where the minimum is set to zero together with centered bin values.
@@ -59,22 +65,23 @@ def make_fes(data, start, end, n_bins,T):
     if total == 0:
         return bin_centers, np.full(n_bins, np.nan)
     prob = hist / total
-    k=8.314
+    k = 8.314
     mask = prob != 0
     F = np.full_like(prob, np.nan)
     F[mask] = -k * T * np.log(prob[mask])
     F -= np.nanmin(F)
     return bin_centers, F
 
+
 def build_H_heavy_neighborlist_simple(atoms, cutoff_H_to_heavy):
     """
-    Compute a neighborlist to search for H atoms in a sphere of radius cutoff_H_to_heavy 
+    Compute a neighborlist to search for H atoms in a sphere of radius cutoff_H_to_heavy
     centered on heavy atoms (C,O)
-    It ensures: 
+    It ensures:
       - H-heavy connection via bothways
       - H-H connection impossible
-      - heavy-heavy connection possible but will be ignored in the use of the function
-    
+      - heavy-heavy connection possible but will be ignored in the use of the function.
+
     Parameters
     ----------
         atoms : atom object
@@ -84,14 +91,13 @@ def build_H_heavy_neighborlist_simple(atoms, cutoff_H_to_heavy):
     -------
         nl :  neighborlist
     """
-    
     symbols = atoms.get_chemical_symbols()
     cutoffs = []
 
     for sym in symbols:
         if sym == "H":
             cutoffs.append(0.0)
-        elif sym in ("C","O"):
+        elif sym in ("C", "O"):
             cutoffs.append(cutoff_H_to_heavy)
         else:
             cutoffs.append(0.0)
@@ -100,11 +106,12 @@ def build_H_heavy_neighborlist_simple(atoms, cutoff_H_to_heavy):
     nl.update(atoms)
     return nl
 
+
 def second_nearest_heavy_outside_molecule(h, atoms, nl, labels):
     """
     Find the nearest heavy atoms for an hydrogen atom, outside of its molecule.
     It corresponds to the second nearest neighbor.
-    
+
     Parameters
     ----------
         h (int) : hydrogen atom index to search for
@@ -123,7 +130,7 @@ def second_nearest_heavy_outside_molecule(h, atoms, nl, labels):
 
     min_dist = float("inf")
     heavy2 = None
-    for idx, shift in zip(neighbors, offsets):
+    for idx, shift in zip(neighbors, offsets, strict=False):
         if labels[idx] == mol_h:
             continue
 
@@ -136,18 +143,20 @@ def second_nearest_heavy_outside_molecule(h, atoms, nl, labels):
 
     return heavy2, min_dist
 
-def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
-                                           dCH=1.4, dOH=1.3, dHH=1.2):
+
+def build_connectivity_matrix_COH_HH_force(
+    atoms, dCC=1.8, dOO=1.6, dCO=1.7, dCH=1.4, dOH=1.3, dHH=1.2
+):
     """
     Build the C/O/H connectivity matrix as followed:
         1. H atoms connected to the nearest heavy atoms with respect to pair cutoff values (dCH,dOH).
         2. Connection between heavy atoms with respect to pair cutoff values (dCC,dCO,dOO).
-        3. Connection between H atoms from the H_orphan list which is composed of 
-        all the H atoms left without nearest heavy atoms after the step 1. 
+        3. Connection between H atoms from the H_orphan list which is composed of
+        all the H atoms left without nearest heavy atoms after the step 1.
         This stands as a search of H2 molecules.
         4. After step 3, the remaining H atoms not connected to anyone go into the H_lonely list.
         From this, they are attached as in step 1 to the nearest heavy atoms without using dCH/dOH cutoff.
-    
+
     Parameters
     ----------
         atoms: atom object
@@ -161,18 +170,18 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
         H_lonely (list): list of H atoms from H_orphan forced to be connected to a heavy atom
     """
     n_atoms = len(atoms)
-    idx_H = [i for i, a in enumerate(atoms) if a.symbol == 'H']
-    idx_heavy = [i for i, a in enumerate(atoms) if a.symbol in ('C','O')]
+    idx_H = [i for i, a in enumerate(atoms) if a.symbol == "H"]
+    idx_heavy = [i for i, a in enumerate(atoms) if a.symbol in ("C", "O")]
     pair_cutoffs = {
-        ('C','C'): dCC,
-        ('O','O'): dOO,
-        ('C','O'): dCO,
-        ('O','C'): dCO,
-        ('C','H'): dCH,
-        ('H','C'): dCH,
-        ('O','H'): dOH,
-        ('H','O'): dOH,
-        ('H','H'): dHH,
+        ("C", "C"): dCC,
+        ("O", "O"): dOO,
+        ("C", "O"): dCO,
+        ("O", "C"): dCO,
+        ("C", "H"): dCH,
+        ("H", "C"): dCH,
+        ("O", "H"): dOH,
+        ("H", "O"): dOH,
+        ("H", "H"): dHH,
     }
     matrix = lil_matrix((n_atoms, n_atoms), dtype=int)
     """
@@ -187,11 +196,17 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
         if sym == "H":
             cutoffs.append(0.0)
         elif sym == "C":
-            cutoffs.append(pair_cutoffs.get(('C','H'), 0.0))
+            cutoffs.append(pair_cutoffs.get(("C", "H"), 0.0))
         elif sym == "O":
-            cutoffs.append(pair_cutoffs.get(('O','H'), 0.0))
+            cutoffs.append(pair_cutoffs.get(("O", "H"), 0.0))
 
-    nl_H = NeighborList(cutoffs, skin=0, self_interaction=False, bothways=True, primitive=NewPrimitiveNeighborList)
+    nl_H = NeighborList(
+        cutoffs,
+        skin=0,
+        self_interaction=False,
+        bothways=True,
+        primitive=NewPrimitiveNeighborList,
+    )
     nl_H.update(atoms)
     """
     -----------------------------------------------------------------------------------------
@@ -203,20 +218,19 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
     H_orphan = []
     for h in idx_H:
         neighbors, offsets = nl_H.get_neighbors(h)
-        heavy_neighbors = []
         min_dist = float("inf")
         nearest = None
-        if len(neighbors)==0:
+        if len(neighbors) == 0:
             H_orphan.append(h)
         else:
-            for idx, shift in zip(neighbors, offsets):
+            for idx, shift in zip(neighbors, offsets, strict=False):
                 dr = atoms.positions[h] - (atoms.positions[idx] + shift @ atoms.cell)
                 dist = np.linalg.norm(dr)
 
                 if dist < min_dist:
                     min_dist = dist
                     nearest = idx
-            H_to_heavy[h]=nearest
+            H_to_heavy[h] = nearest
 
     for h, heavy in H_to_heavy.items():
         matrix[h, heavy] = 1
@@ -224,11 +238,11 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
 
     """
     ---------------------------------------------------------------------------------------------------
-    Manual connection between heavy atoms with repsect to heavy pair cutoffs from a global neighbor list. 
+    Manual connection between heavy atoms with repsect to heavy pair cutoffs from a global neighbor list.
     ---------------------------------------------------------------------------------------------------
     """
     max_cutoff = max(pair_cutoffs.values())
-    i_list, j_list, d_list = neighbor_list('ijd', atoms, cutoff=max_cutoff)
+    i_list, j_list, d_list = neighbor_list("ijd", atoms, cutoff=max_cutoff)
     symbols = atoms.get_chemical_symbols()
 
     for idx in range(len(i_list)):
@@ -238,7 +252,7 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
         sym_i = symbols[i]
         sym_j = symbols[j]
 
-        if sym_i not in ('C','O') or sym_j not in ('C','O'):
+        if sym_i not in ("C", "O") or sym_j not in ("C", "O"):
             continue
 
         pair = tuple(sorted((sym_i, sym_j)))
@@ -281,7 +295,7 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
     -----------------------------------------------------------------------------
     """
     for h in H_lonely:
-        min_dist = float('inf')
+        min_dist = float("inf")
         nearest_heavy = None
         for n in idx_heavy:
             dist = atoms.get_distance(h, n, mic=True)
@@ -296,28 +310,31 @@ def build_connectivity_matrix_COH_HH_force(atoms, dCC=1.8, dOO=1.6, dCO=1.7,
 
     return matrix, H_to_heavy, H_orphan, H_lonely
 
-def compute_fes(extxyz_file,T):
+
+def compute_fes(extxyz_file, T):
     """
     Perform a molecular recognition from the build_connectivity_matrix function
     and get the free energy profile of proton hopping between H3O+ ions and CH4 molecules.
-    
+
     Parameters
     ----------
         extxyz_file: input trajectory file obtained from the calculation part
         T: temperature of the simulation (in K)
-    
+
     Return
     ------
         bins: array of reaction coordinate values
         F: array (size of bins) containing associated free energy values
     """
     cutoff_H_to_heavy = 3.0
-    frame_max=100000
-    coord=[]
+    frame_max = 100000
+    coord = []
     for frame_idx, atoms in enumerate(iread(extxyz_file, format="extxyz")):
-        if frame_idx==frame_max:
+        if frame_idx == frame_max:
             break
-        matrix, H_to_heavy, H_orphan, H_lonely = build_connectivity_matrix_COH_HH_force(atoms)
+        matrix, H_to_heavy, H_orphan, H_lonely = build_connectivity_matrix_COH_HH_force(
+            atoms
+        )
         n_mol, labels = connected_components(matrix)
         molecules = []
         for mol_idx in range(n_mol):
@@ -327,31 +344,38 @@ def compute_fes(extxyz_file,T):
                 sym = atoms[i].symbol
                 if sym in counts:
                     counts[sym] += 1
-            molecules.append({
-                "atoms": atom_indices,
-                "nC": counts["C"],
-                "nH": counts["H"],
-                "nO": counts["O"],
-                "label": f"C{counts['C']}H{counts['H']}O{counts['O']}"
-            })
-        
+            molecules.append(
+                {
+                    "atoms": atom_indices,
+                    "nC": counts["C"],
+                    "nH": counts["H"],
+                    "nO": counts["O"],
+                    "label": f"C{counts['C']}H{counts['H']}O{counts['O']}",
+                }
+            )
+
         nl = build_H_heavy_neighborlist_simple(atoms, cutoff_H_to_heavy)
 
         for h in H_to_heavy:
-            h_mol_idx=labels[h]
-            if molecules[h_mol_idx]['label'] == "C0H3O1":
-                heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(h, atoms, nl, labels)
-                if molecules[labels[heavy2]]['label'] == "C1H4O0":
+            h_mol_idx = labels[h]
+            if molecules[h_mol_idx]["label"] == "C0H3O1":
+                heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
+                    h, atoms, nl, labels
+                )
+                if molecules[labels[heavy2]]["label"] == "C1H4O0":
                     dist_heavy = atoms.get_distance(h, H_to_heavy[h], mic=True)
-                    coord.append(dist_heavy-dist_heavy2)
-            if molecules[h_mol_idx]['label'] == "C1H5O0":
-                heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(h, atoms, nl, labels)
-                if molecules[labels[heavy2]]['label'] == "C0H2O1":
+                    coord.append(dist_heavy - dist_heavy2)
+            if molecules[h_mol_idx]["label"] == "C1H5O0":
+                heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
+                    h, atoms, nl, labels
+                )
+                if molecules[labels[heavy2]]["label"] == "C0H2O1":
                     dist_heavy = atoms.get_distance(h, H_to_heavy[h], mic=True)
-                    coord.append(dist_heavy2-dist_heavy)
+                    coord.append(dist_heavy2 - dist_heavy)
 
     bins, F = make_fes(coord, start=-1.5, end=1.5, n_bins=200, T=T)
     return bins, F
+
 
 def load_reference_fes(structure_name):
     """
@@ -366,11 +390,12 @@ def load_reference_fes(structure_name):
         bins: array of reaction coordinate values
         F: array (size of bins) containing associated free energy values
     """
-    ref_dir= (
+    ref_dir = (
         download_s3_data(
             key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
-            filename="HPHT_CH4_H2O_data.zip"
-        ) / "HPHT_CH4_H2O_data"
+            filename="HPHT_CH4_H2O_data.zip",
+        )
+        / "HPHT_CH4_H2O_data"
     )
     ref_file = ref_dir / f"{structure_name}.data"
 
@@ -379,16 +404,17 @@ def load_reference_fes(structure_name):
 
     data = np.loadtxt(ref_file)
 
-    bins = data[:,0]
-    F = data[:,1]
+    bins = data[:, 0]
+    F = data[:, 1]
 
     return bins, F
+
 
 @pytest.fixture
 def free_energy_profiles():
     """
     Get free energy profile for all CH4/H2O systems for all MODELS.
-    Write free energy profile in the data path of the application to be plot by the app.py script
+    Write free energy profile in the data path of the application to be plot by the app.py script.
 
     Returns
     -------
@@ -408,16 +434,21 @@ def free_energy_profiles():
         results["ref"].append(ref_F)
         if results["x"] is None:
             results["x"] = ref_bins
-            
+
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
-        
+
         if not model_dir.exists():
-            warnings.warn(f"Missing model directory {model_name}. Filling all free energy profiles with NaN.", stacklevel=2)
+            warnings.warn(
+                f"Missing model directory {model_name}. Filling all free energy profiles with NaN.",
+                stacklevel=2,
+            )
             for _ in structures:
-                results[model_name].append(np.full_like(results["x"], np.nan, dtype=float))
+                results[model_name].append(
+                    np.full_like(results["x"], np.nan, dtype=float)
+                )
             continue
-        SYSTEM_INFO = get_struct_info(
+        get_struct_info(
             calc_path=model_dir,
             glob_pattern="*.extxyz",
             index=0,
@@ -427,25 +458,29 @@ def free_energy_profiles():
         for structure_name in structures:
             xyz_file = model_dir / f"{structure_name}.extxyz"
             if xyz_file.exists():
-                bins, F_model = compute_fes(xyz_file,3000)
+                bins, F_model = compute_fes(xyz_file, 3000)
             else:
-                warnings.warn(f"Missing trajectory file {xyz_file}. Filling free energy profile with NaN.", stacklevel=2)
+                warnings.warn(
+                    f"Missing trajectory file {xyz_file}. Filling free energy profile with NaN.",
+                    stacklevel=2,
+                )
                 bins = results["x"]
                 F_model = np.full_like(bins, np.nan, dtype=float)
-            
+
             save_path = OUT_PATH / model_name / f"{structure_name}.data"
             save_path.parent.mkdir(parents=True, exist_ok=True)
-            np.savetxt(save_path, np.column_stack((bins,F_model)))
+            np.savetxt(save_path, np.column_stack((bins, F_model)))
             results[model_name].append(F_model)
-    
+
     return results
+
 
 def reaction_free_energy(F, bins):
     """
     Compute free energy of reaction (F(product) - F(reactant)) and free energy barrier (F(transition state) - F(reactant)) while avoiding NaN values.
     Search for reactant and product minima (reaction coordinate < 0 and > 0)
-    Search for a maximum between reactant and product minima
-    
+    Search for a maximum between reactant and product minima.
+
     Parameters
     ----------
         F: array of free energy values
@@ -458,21 +493,21 @@ def reaction_free_energy(F, bins):
     """
     F = np.array(F)
     bins = np.array(bins)
-    
+
     left_mask = (bins < 0) & (~np.isnan(F))
     if not np.any(left_mask):
         return np.nan, np.nan
     left_idx = np.where(left_mask)[0][np.nanargmin(F[left_mask])]
     left_min_bin = bins[left_idx]
     left_min = np.nanmin(F[left_mask])
-    
+
     right_mask = (bins > 0) & (~np.isnan(F))
     if not np.any(right_mask):
         return np.nan, np.nan
     right_idx = np.where(right_mask)[0][np.nanargmin(F[right_mask])]
     right_min_bin = bins[right_idx]
     right_min = np.nanmin(F[right_mask])
-    
+
     reaction = right_min - left_min
 
     TS_mask = (bins > left_min_bin) & (bins < right_min_bin) & (~np.isnan(F))
@@ -482,21 +517,22 @@ def reaction_free_energy(F, bins):
         barrier = np.nan
     return reaction, barrier
 
+
 @pytest.fixture
 def profile_errors(free_energy_profiles) -> dict[str, float]:
     """
-    METRIC 1: Compute the average value of the mean absolute error on the whole free energy profile 
-    with respect to reference ones for each model. 
-    (mae running on the bins and then average running on structures)
+    METRIC 1: Compute the average value of the mean absolute error on the whole free energy profile
+    with respect to reference ones for each model.
+    (mae running on the bins and then average running on structures).
 
     Parameters
     ----------
-        free_energy_profiles (dict[str, list[array]]): dictionnary containing 
+        free_energy_profiles (dict[str, list[array]]): dictionnary containing
         the list of reference free energy profiles and a list of predicted profiles per model.
 
     Return
     ------
-        results (dict[str, float]): dictionnary containing the average mae 
+        results (dict[str, float]): dictionnary containing the average mae
         done on the reference profile per model
     """
     results = {}
@@ -504,7 +540,6 @@ def profile_errors(free_energy_profiles) -> dict[str, float]:
     F_ref_all = free_energy_profiles["ref"]
 
     for model in MODELS:
-
         F_model_all = free_energy_profiles[model]
 
         if not F_model_all:
@@ -513,7 +548,7 @@ def profile_errors(free_energy_profiles) -> dict[str, float]:
 
         errors = []
 
-        for F_ref, F_model in zip(F_ref_all, F_model_all):
+        for F_ref, F_model in zip(F_ref_all, F_model_all, strict=False):
             mask = (~np.isnan(F_ref)) & (~np.isnan(F_model))
             if np.any(mask):
                 errors.append(mae(F_ref[mask], F_model[mask]))
@@ -521,23 +556,25 @@ def profile_errors(free_energy_profiles) -> dict[str, float]:
             results[model] = float(np.mean(errors))
         else:
             results[model] = None
-    
+
     return results
+
 
 def get_structures_names():
     """
     Get the list of structures names from the calculation folder of the first model.
     All models should have results for all the same structures.
     """
-    ref_dir= (
+    ref_dir = (
         download_s3_data(
             key="inputs/molecular_reactions/HPHT_CH4_H2O/HPHT_CH4_H2O.zip",
-            filename="HPHT_CH4_H2O_data.zip"
-        ) / "HPHT_CH4_H2O_data"
+            filename="HPHT_CH4_H2O_data.zip",
+        )
+        / "HPHT_CH4_H2O_data"
     )
     ref_files = sorted(ref_dir.glob("*.data"))
-    structures = [f.stem for f in ref_files]
-    return structures
+    return [f.stem for f in ref_files]
+
 
 @pytest.fixture
 @plot_parity(
@@ -559,15 +596,16 @@ def reaction_free_energies(free_energy_profiles) -> dict[str, list[float]]:
 
     results: dict[str, list[float]] = {"ref": []} | {mlip: [] for mlip in MODELS}
 
-    for i, F_ref in enumerate(free_energy_profiles["ref"]):
+    for _i, F_ref in enumerate(free_energy_profiles["ref"]):
         results["ref"].append(reaction_free_energy(F_ref, bins)[0])
 
     for model in MODELS:
-        for i, F_model in enumerate(free_energy_profiles[model]):
+        for _i, F_model in enumerate(free_energy_profiles[model]):
             dF = reaction_free_energy(F_model, bins)[0]
             results[model].append(dF)
 
     return results
+
 
 @pytest.fixture
 def reaction_free_energy_errors(reaction_free_energies) -> dict[str, float]:
@@ -582,7 +620,7 @@ def reaction_free_energy_errors(reaction_free_energies) -> dict[str, float]:
     mae_values: dict[str, float] = {}
     for model_name in MODELS:
         predictions = np.array(reaction_free_energies[model_name])
-        
+
         if ref.size == 0 or predictions.size == 0:
             mae_values[model_name] = None
             continue
@@ -615,15 +653,16 @@ def reaction_barriers(free_energy_profiles) -> dict[str, list[float]]:
 
     results: dict[str, list[float]] = {"ref": []} | {mlip: [] for mlip in MODELS}
 
-    for i, F_ref in enumerate(free_energy_profiles["ref"]):
+    for _i, F_ref in enumerate(free_energy_profiles["ref"]):
         results["ref"].append(reaction_free_energy(F_ref, bins)[1])
 
     for model in MODELS:
-        for i, F_model in enumerate(free_energy_profiles[model]):
+        for _i, F_model in enumerate(free_energy_profiles[model]):
             barrier = reaction_free_energy(F_model, bins)[1]
             results[model].append(barrier)
 
     return results
+
 
 @pytest.fixture
 def reaction_barriers_errors(reaction_barriers) -> dict[str, float]:
@@ -642,13 +681,14 @@ def reaction_barriers_errors(reaction_barriers) -> dict[str, float]:
             mae_values[model_name] = None
             continue
         mask = (~np.isnan(ref)) & (~np.isnan(predictions))
-        
+
         if np.any(mask):
             mae_values[model_name] = mae(ref[mask], predictions[mask])
         else:
             mae_values[model_name] = None
-    
+
     return mae_values
+
 
 @pytest.fixture
 @build_table(
@@ -667,6 +707,7 @@ def metrics(
         "Free Energy of reaction MAE": reaction_free_energy_errors,
         "Free Energy barrier MAE": reaction_barriers_errors,
     }
+
 
 def test_HPHT_CH4_H2O(metrics: dict[str, dict]) -> None:
     return

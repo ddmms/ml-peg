@@ -13,7 +13,7 @@ metrics:
       unit: kJ/mol
       tooltip: "Mean absolute error on reaction free energies"
       level_of_theory: PBE+D3
-  
+
   Free Energy barrier MAE:
       good: 2.49
       bad: 12.45
