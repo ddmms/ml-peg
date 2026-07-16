@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from pathlib import Path
 import shutil
 
@@ -34,6 +35,44 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
+def iter_mock_pairs(
+    functional_path: Path,
+) -> Iterator[tuple[str, str, str, Path, Path]]:
+    """
+    Yield the canonical material-cation pairs from the mock calculation.
+
+    The mock calculation always runs over the full dataset, so it defines the
+    canonical, ordered set of structures that every model and all hoverdata are
+    aligned against.
+
+    Parameters
+    ----------
+    functional_path
+        Path to calculation outputs for a functional.
+
+    Yields
+    ------
+    tuple[str, str, str, Path, Path]
+        Materials Project ID, bulk formula, vacant cation, and paths to the
+        normal- and split-vacancy xyz files.
+    """
+    mock_dir = functional_path / "mock"
+    for material_dir in sorted(mock_dir.iterdir()):
+        if not material_dir.is_dir():
+            continue
+        split_dir_name = material_dir.name.split("-")
+        bulk_formula = split_dir_name[0]
+        mp_id = f"mp-{split_dir_name[-1]}"
+
+        for cation_dir in sorted(p for p in material_dir.iterdir() if p.is_dir()):
+            nv_xyz_path = cation_dir / "normal_vacancy.xyz"
+            sv_xyz_path = cation_dir / "split_vacancy.xyz"
+            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                continue
+
+            yield mp_id, bulk_formula, cation_dir.name, nv_xyz_path, sv_xyz_path
+
+
 def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
     """
     Get hover data.
@@ -52,22 +91,10 @@ def get_hoverdata(functional_path: Path) -> tuple[list, list, list]:
     formulae = []
     vacant_cations = []
 
-    model_dir = functional_path / MODELS[0]
-    for material_dir in model_dir.iterdir():
-        split_dir_name = material_dir.stem.split("-")
-        bulk_formula = split_dir_name[0]
-        mp_id = f"mp-{split_dir_name[-1]}"
-
-        cation_dirs = [
-            p for p in material_dir.iterdir() if p.is_dir()
-        ]  # skip pristine supercell.xyz files if present (not used)
-
-        for cation_dir in cation_dirs:
-            vacant_cation = cation_dir.stem
-
-            mp_ids.append(mp_id)
-            formulae.append(bulk_formula)
-            vacant_cations.append(vacant_cation)
+    for mp_id, bulk_formula, cation, _, _ in iter_mock_pairs(functional_path):
+        mp_ids.append(mp_id)
+        formulae.append(bulk_formula)
+        vacant_cations.append(cation)
 
     return {
         "Materials Project ID": mp_ids,
@@ -103,30 +130,17 @@ def get_max_dist_hoverdata(functional_path: Path) -> dict[str, list]:
     vacancy_types: list[str] = []
     frames_ids: list[int] = []
 
-    model_dir = functional_path / MODELS[0]
-    for material_dir in model_dir.iterdir():
-        split_dir_name = material_dir.stem.split("-")
-        bulk_formula = split_dir_name[0]
-        mp_id = f"mp-{split_dir_name[-1]}"
+    for mp_id, bulk_formula, cation, nv_xyz_path, sv_xyz_path in iter_mock_pairs(
+        functional_path
+    ):
+        nv_n = len(read(nv_xyz_path, ":"))
+        sv_n = len(read(sv_xyz_path, ":"))
 
-        cation_dirs = [p for p in material_dir.iterdir() if p.is_dir()]
-
-        for cation_dir in cation_dirs:
-            cation = cation_dir.stem
-            nv_xyz_path = cation_dir / "normal_vacancy.xyz"
-            sv_xyz_path = cation_dir / "split_vacancy.xyz"
-
-            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
-                continue
-
-            nv_n = len(read(nv_xyz_path, ":"))
-            sv_n = len(read(sv_xyz_path, ":"))
-
-            mp_ids.extend([mp_id] * (nv_n + sv_n))
-            formulae.extend([bulk_formula] * (nv_n + sv_n))
-            vacant_cations.extend([cation] * (nv_n + sv_n))
-            vacancy_types.extend(["NV"] * nv_n + ["SV"] * sv_n)
-            frames_ids.extend(list(range(nv_n)) + list(range(sv_n)))
+        mp_ids.extend([mp_id] * (nv_n + sv_n))
+        formulae.extend([bulk_formula] * (nv_n + sv_n))
+        vacant_cations.extend([cation] * (nv_n + sv_n))
+        vacancy_types.extend(["NV"] * nv_n + ["SV"] * sv_n)
+        frames_ids.extend(list(range(nv_n)) + list(range(sv_n)))
 
     return {
         "Materials Project ID": mp_ids,
@@ -139,6 +153,25 @@ def get_max_dist_hoverdata(functional_path: Path) -> dict[str, list]:
 
 MAX_DIST_HOVERDATA_PBE = get_max_dist_hoverdata(CALC_PATH_PBE)
 MAX_DIST_HOVERDATA_PBESOL = get_max_dist_hoverdata(CALC_PATH_PBESOL)
+
+
+def _reduce_or_nan(values: list, reducer: Callable = np.nanmean) -> float:
+    """
+    Reduce a list of values to a single float, returning NaN when empty.
+
+    Parameters
+    ----------
+    values
+        Values to reduce (may contain NaNs).
+    reducer
+        Callable reducing the values to a scalar. Default is ``np.nanmean``.
+
+    Returns
+    -------
+    float
+        Reduced value, or NaN if ``values`` is empty.
+    """
+    return float(reducer(values)) if len(values) else np.nan
 
 
 def build_results(
@@ -173,87 +206,85 @@ def build_results(
     }  # normalized max_dist for every material-cation pair
     result_match = {mlip: [] for mlip in MODELS}  # if structures relaxing to same state
 
-    ref_stored = False
+    # Use the mock calculation as the canonical set of structures. It always runs
+    # over the full dataset, so every model (and the hoverdata) aligns with it,
+    # and models that weren't run (or are missing a pair) report NaN.
+    mock_dir = functional_path / "mock"
+    for _, _, _, mock_nv_path, mock_sv_path in tqdm(
+        list(iter_mock_pairs(functional_path))
+    ):
+        # Reference (DFT) energies and per-structure frame counts come from
+        # the mock outputs, which carry ref_energy for every structure.
+        mock_nv = read(mock_nv_path, ":")
+        mock_sv = read(mock_sv_path, ":")
+        ref_nv_energies = [float(at.info["ref_energy"]) for at in mock_nv]
+        ref_sv_energies = [float(at.info["ref_energy"]) for at in mock_sv]
+        n_structs = len(mock_nv) + len(mock_sv)
+        result_formation_energy["ref"].append(
+            min(ref_sv_energies) - min(ref_nv_energies)
+        )
 
-    for model_name in tqdm(MODELS):
-        model_dir = functional_path / model_name
+        rel_path = mock_nv_path.parent.relative_to(mock_dir)
+        for model_name in MODELS:
+            model_cation_dir = functional_path / model_name / rel_path
+            nv_xyz_path = model_cation_dir / "normal_vacancy.xyz"
+            sv_xyz_path = model_cation_dir / "split_vacancy.xyz"
 
-        if not model_dir.exists():
-            continue
+            if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                # Model wasn't run for this pair: report NaN, aligned to the
+                # mock structure counts so plots and metrics stay consistent.
+                result_formation_energy[model_name].append(np.nan)
+                result_spearmans_coefficient[model_name].append(np.nan)
+                result_rmsd[model_name].extend([np.nan] * n_structs)
+                result_max_dist[model_name].extend([np.nan] * n_structs)
+                result_match[model_name].extend([np.nan] * n_structs)
+                continue
 
-        for material_dir in tqdm(list(model_dir.iterdir()), leave=False):
-            cation_dirs = [
-                p for p in material_dir.iterdir() if p.is_dir()
-            ]  # skip pristine supercell.xyz files if present (not used)
+            nv_atoms_list = read(nv_xyz_path, ":")
+            sv_atoms_list = read(sv_xyz_path, ":")
 
-            for cation_dir in cation_dirs:
-                nv_xyz_path = cation_dir / "normal_vacancy.xyz"
-                sv_xyz_path = cation_dir / "split_vacancy.xyz"
+            match_list = []
+            rmsd_list = []
+            max_dist_list = []
 
-                if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
-                    raise ValueError(
-                        f"Missing xyz file(s) in {cation_dir}. Expected both "
-                        f"normal_vacancy.xyz and split_vacancy.xyz to exist."
-                    )
+            nv_initial_energies = []
+            nv_relaxed_energies = []
+            for nv_atoms in nv_atoms_list:
+                match = nv_atoms.info["ref_max_distance"] < STOL
+                match_list.append(match)
+                if match:
+                    nv_relaxed_energies.append(nv_atoms.info["relaxed_energy"])
 
-                nv_atoms_list = read(nv_xyz_path, ":")
-                sv_atoms_list = read(sv_xyz_path, ":")
+                rmsd_list.append(nv_atoms.info["ref_rmsd"])
+                max_dist_list.append(nv_atoms.info["ref_max_distance"])
+                nv_initial_energies.append(nv_atoms.info["initial_energy"])
 
-                # Load reference data
+            sv_initial_energies = []
+            sv_relaxed_energies = []
+            for sv_atoms in sv_atoms_list:
+                match = sv_atoms.info["ref_max_distance"] < STOL
+                match_list.append(match)
+                if match:
+                    sv_relaxed_energies.append(sv_atoms.info["relaxed_energy"])
 
-                ref_nv_energies = [float(at.info["ref_energy"]) for at in nv_atoms_list]
-                ref_sv_energies = [float(at.info["ref_energy"]) for at in sv_atoms_list]
+                rmsd_list.append(sv_atoms.info["ref_rmsd"])
+                max_dist_list.append(sv_atoms.info["ref_max_distance"])
+                sv_initial_energies.append(sv_atoms.info["initial_energy"])
 
-                if not ref_stored:
-                    ref_sv_formation_energy = min(ref_sv_energies) - min(
-                        ref_nv_energies
-                    )
-                    result_formation_energy["ref"].append(ref_sv_formation_energy)
+            sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
+                nv_relaxed_energies, default=np.nan
+            )
+            spearmans_coefficient = spearmanr(
+                nv_initial_energies + sv_initial_energies,
+                ref_nv_energies + ref_sv_energies,
+            ).statistic
 
-                match_list = []
-                rmsd_list = []
-                max_dist_list = []
-
-                nv_initial_energies = []
-                nv_relaxed_energies = []
-                for nv_atoms in nv_atoms_list:
-                    match = nv_atoms.info["ref_max_distance"] < STOL
-                    match_list.append(match)
-                    if match:
-                        nv_relaxed_energies.append(nv_atoms.info["relaxed_energy"])
-
-                    rmsd_list.append(nv_atoms.info["ref_rmsd"])
-                    max_dist_list.append(nv_atoms.info["ref_max_distance"])
-                    nv_initial_energies.append(nv_atoms.info["initial_energy"])
-
-                sv_initial_energies = []
-                sv_relaxed_energies = []
-                for sv_atoms in sv_atoms_list:
-                    match = sv_atoms.info["ref_max_distance"] < STOL
-                    match_list.append(match)
-                    if match:
-                        sv_relaxed_energies.append(sv_atoms.info["relaxed_energy"])
-
-                    rmsd_list.append(sv_atoms.info["ref_rmsd"])
-                    max_dist_list.append(sv_atoms.info["ref_max_distance"])
-                    sv_initial_energies.append(sv_atoms.info["initial_energy"])
-
-                sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
-                    nv_relaxed_energies, default=np.nan
-                )
-                spearmans_coefficient = spearmanr(
-                    nv_initial_energies + sv_initial_energies,
-                    ref_nv_energies + ref_sv_energies,
-                ).statistic
-
-                # add metrics to dicts
-                result_formation_energy[model_name].append(sv_formation_energy)
-                result_spearmans_coefficient[model_name].append(spearmans_coefficient)
-                result_rmsd[model_name].extend(rmsd_list)
-                result_max_dist[model_name].extend(max_dist_list)
-                result_match[model_name].extend(match_list)
-
-        ref_stored = True
+            # add metrics to dicts
+            result_formation_energy[model_name].append(sv_formation_energy)
+            result_spearmans_coefficient[model_name].append(spearmans_coefficient)
+            result_rmsd[model_name].extend(rmsd_list)
+            result_max_dist[model_name].extend(max_dist_list)
+            result_match[model_name].extend(match_list)
 
     return (
         result_formation_energy,
@@ -359,14 +390,20 @@ def formation_energy_pbesol_mae(formation_energies_pbesol) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        formation_energies_ref = formation_energies_pbesol["ref"].copy()
-        formation_energies_model = formation_energies_pbesol[model_name].copy()
+        formation_energies_ref = np.array(formation_energies_pbesol["ref"], dtype=float)
+        formation_energies_model = np.array(
+            formation_energies_pbesol[model_name], dtype=float
+        )
 
+        # Models that weren't run have all-NaN data: report NaN.
         nan_mask = ~np.isnan(formation_energies_model)
-        formation_energies_ref = np.array(formation_energies_ref)[nan_mask]
-        formation_energies_model = np.array(formation_energies_model)[nan_mask]
+        if not nan_mask.any():
+            results[model_name] = np.nan
+            continue
 
-        results[model_name] = mae(formation_energies_ref, formation_energies_model)
+        results[model_name] = mae(
+            formation_energies_ref[nan_mask], formation_energies_model[nan_mask]
+        )
     return results
 
 
@@ -387,14 +424,20 @@ def formation_energy_pbe_mae(formation_energies_pbe) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        formation_energies_ref = formation_energies_pbe["ref"].copy()
-        formation_energies_model = formation_energies_pbe[model_name].copy()
+        formation_energies_ref = np.array(formation_energies_pbe["ref"], dtype=float)
+        formation_energies_model = np.array(
+            formation_energies_pbe[model_name], dtype=float
+        )
 
+        # Models that weren't run have all-NaN data: report NaN.
         nan_mask = ~np.isnan(formation_energies_model)
-        formation_energies_ref = np.array(formation_energies_ref)[nan_mask]
-        formation_energies_model = np.array(formation_energies_model)[nan_mask]
+        if not nan_mask.any():
+            results[model_name] = np.nan
+            continue
 
-        results[model_name] = mae(formation_energies_ref, formation_energies_model)
+        results[model_name] = mae(
+            formation_energies_ref[nan_mask], formation_energies_model[nan_mask]
+        )
     return results
 
 
@@ -417,7 +460,7 @@ def spearmans_coefficient_pbesol_mean(build_results_pbesol) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_spearmans_coefficient[model_name]))
+        results[model_name] = _reduce_or_nan(result_spearmans_coefficient[model_name])
     return results
 
 
@@ -440,7 +483,7 @@ def spearmans_coefficient_pbe_mean(build_results_pbe) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.mean(result_spearmans_coefficient[model_name]))
+        results[model_name] = _reduce_or_nan(result_spearmans_coefficient[model_name])
     return results
 
 
@@ -462,7 +505,7 @@ def rmsd_pbesol_mean(build_results_pbesol) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbesol
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
+        results[model_name] = _reduce_or_nan(result_rmsd[model_name])
     return results
 
 
@@ -484,7 +527,7 @@ def rmsd_pbe_mean(build_results_pbe) -> dict[str, float]:
     _, _, result_rmsd, _, _ = build_results_pbe
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(result_rmsd[model_name]))
+        results[model_name] = _reduce_or_nan(result_rmsd[model_name])
     return results
 
 
@@ -507,7 +550,7 @@ def match_pbesol_rate(build_results_pbesol) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = np.mean(result_match[model_name])
+        results[model_name] = _reduce_or_nan(result_match[model_name], np.mean)
     return results
 
 
@@ -530,7 +573,7 @@ def match_pbe_rate(build_results_pbe) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        results[model_name] = np.mean(result_match[model_name])
+        results[model_name] = _reduce_or_nan(result_match[model_name], np.mean)
     return results
 
 
@@ -576,7 +619,7 @@ def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(max_dist_pbesol_dist[model_name]))
+        results[model_name] = _reduce_or_nan(max_dist_pbesol_dist[model_name])
     return results
 
 
@@ -622,7 +665,7 @@ def max_dist_pbe_mean(max_dist_pbe_dist) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = float(np.nanmean(max_dist_pbe_dist[model_name]))
+        results[model_name] = _reduce_or_nan(max_dist_pbe_dist[model_name])
     return results
 
 
