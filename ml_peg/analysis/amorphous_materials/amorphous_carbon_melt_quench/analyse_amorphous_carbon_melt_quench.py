@@ -15,8 +15,8 @@ from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "amorphous_materials" / "amorphous_carbon_melt_quench"
@@ -173,6 +173,9 @@ def _load_model_summary(model_name: str) -> dict[float, float]:
         if not final_path.exists():
             continue
         atoms = read(final_path)
+        if atoms.info.get("failed"):
+            results[density] = float("nan")
+            continue
         results[density] = _sp3_fraction_from_atoms(atoms)
         _write_colored_structure(atoms, model_name, density)
 

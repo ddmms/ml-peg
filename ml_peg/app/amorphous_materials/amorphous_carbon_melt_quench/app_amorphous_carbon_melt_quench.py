@@ -107,6 +107,7 @@ def get_app() -> AmorphousCarbonMeltQuenchApp:
             Div(id="amorphous-carbon-melt-quench-figure-placeholder"),
             Div(id="amorphous-carbon-melt-quench-struct-placeholder"),
         ],
+        framework_ids="mace-mp",
     )
 
 
