@@ -22,8 +22,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -48,20 +46,8 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     )
     datasets = sorted(f.name for f in (data_path / "data").glob("*.xyz"))
 
-    all_done = True
     for dataset in datasets:
-        if not (OUT_PATH / model_name / dataset).exists():
-            all_done = False
-            break
-    if all_done:
-        pytest.skip("Outputs already exist; delete outputs/ to recompute.")
-
-    for dataset in datasets:
-        if (DATA_PATH / dataset).exists():
-            mols = read(DATA_PATH / dataset, ":")
-        else:
-            mols = read(data_path / "data" / dataset, ":")
-            write(DATA_PATH / dataset, mols)
+        mols = read(data_path / "data" / dataset, ":")
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
@@ -74,6 +60,8 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
             mol.info["REF_energy"] = mol.get_potential_energy()
             mol_calc = copy(clean_calc)
             mol.calc = mol_calc
+            mol.info["charge"] = 0
+            mol.info["spin"] = 1
             try:
                 mol.get_potential_energy()
             except Exception as exc:
