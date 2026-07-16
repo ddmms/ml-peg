@@ -16,9 +16,7 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "HPHT_CH4_H2O"
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#hpht_ch4_h2o"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#hpht-ch4-h2o"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / BENCHMARK_NAME
 CALCS_ROOT = APP_ROOT.parent / "calcs"
 
