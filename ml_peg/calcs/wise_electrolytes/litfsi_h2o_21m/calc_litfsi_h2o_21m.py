@@ -1,10 +1,25 @@
 """
 Consolidated WiSE 21 m LiTFSI/H2O electrolyte benchmark.
 
-Extracts three observables for each registered MLIP model:
+The benchmark has two halves, which can be run together or independently.
 
-* Density from pre-computed NPT thermo logs (p16_w42 cell, 382 atoms).
-* Li-O coordination numbers from NVT trajectories via radial distribution
+**Reference MD** (``test_reference_md``, marked ``very_slow``) reproduces the
+protocol that generated the reference data, and writes its products into
+``DATA_ROOT/<model>/``:
+
+* ``p64_w170`` (1534 atoms, 27.4938 A cubic): Min -> NVT 50 ps equilibration
+  -> NVT 50 ps production, held at the experimental volume throughout. No NPT:
+  S(q) and the coordination numbers are compared at the reference density
+  rather than at each model's own. Produces ``nvt_trajectory.extxyz``.
+* ``p16_w42`` (382 atoms): Min -> NVT 50 ps -> NPT 200 ps. NPT is used only on
+  this smaller cell, where the density converges far more cheaply. Produces
+  ``density.json``, averaged over the last 150 ps.
+
+**Extraction** (the remaining tests, fast) reads those files back and computes
+three observables for each registered MLIP model:
+
+* Density from the NPT run (p16_w42).
+* Li-O coordination numbers from the NVT trajectory via radial distribution
   functions g(r) for Li-O_water (O bonded to H, d_OH < 1.25 A) and
   Li-O_TFSI (O bonded to S, d_OS < 1.75 A); CN integrated to first minimum
   R_CUT = 2.83 A from the r2SCAN AIMD reference.
@@ -12,10 +27,13 @@ Extracts three observables for each registered MLIP model:
   convention with Cromer-Mann 4-Gaussian form factors (including H) and
   Savitzky-Golay smoothing (window=5, order=3, dq=0.02 A^-1; physical width 0.10 A^-1).
 
-System: 21 m LiTFSI / H2O, p64_w170 cell (1534 atoms, 27.4938 A cubic) for
-RDF and S(q); p16_w42 (382 atoms) for NPT density. Trajectories produced
-with LAMMPS + symmetrix on Adastra (MI250X); the Janus recast lives in
-``../md_reference/calc_md_reference.py``.
+The published reference data were produced with LAMMPS + symmetrix on Adastra
+(MI250X) following the same protocol; ``test_reference_md`` is the janus-core
+recast of it, and lets the data be regenerated for any registered model.
+Integrators are matched where janus-core exposes a choice: NVT uses the
+Nose-Hoover chain (``NVT_NH``, equivalent to LAMMPS ``fix nvt``) and NPT the
+Martyna-Tobias-Klein chain (``NPT_MTK``, the formulation used by LAMMPS
+``fix npt``; plain ``NPT`` in janus-core is Melchionna and would not match).
 
 Experimental references:
 
@@ -24,27 +42,32 @@ Experimental references:
   ~18.5 m, neutron diffraction with isotopic substitution).
 * S(q): SAXS (Zhang et al., J. Phys. Chem. B 125, 4501, 2021).
 
-Source trajectories must live under ``DATA_ROOT/<registry_model_name>/``,
-where ``DATA_ROOT`` defaults to ``./data`` next to this script and is
-overridable via the ``ML_PEG_WISE_LITFSI_H2O_21M_DATA_ROOT`` environment
-variable.
+Data live under ``DATA_ROOT/<registry_model_name>/``, where ``DATA_ROOT``
+defaults to ``./data`` next to this script and is overridable via the
+``ML_PEG_WISE_LITFSI_H2O_21M_DATA_ROOT`` environment variable. The starting
+structures are expected in ``DATA_ROOT/structures/``.
 """
 
 from __future__ import annotations
 
+from copy import copy
 import json
 import os
 from pathlib import Path
+from typing import Any
 import warnings
 
+from ase import Atoms
 from ase.geometry import get_distances
-from ase.io import iread, read as ase_read
+from ase.io import iread
+from ase.io import read as ase_read
+from ase.io import write as ase_write
 import numpy as np
 import pytest
 from scipy.signal import savgol_filter
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 warnings.filterwarnings("ignore")
 
@@ -106,6 +129,284 @@ TRAVIS_FF = {
     "H": {"a": [0.493, 0.323, 0.140, 0.041],
           "b": [10.511, 26.126, 3.142, 57.800], "c": 0.003},
 }
+
+# --- Reference MD protocol ---------------------------------------------------
+
+TEMPERATURE_K = 298.15
+PRESSURE_BAR = 1.01325  # 1 atm
+PRESSURE_GPA = PRESSURE_BAR * 1e-4  # janus-core takes pressure in GPa
+TIMESTEP_FS = 0.5
+
+# Nose-Hoover damping times (LAMMPS TDAMP/PDAMP: 100*dt and 1000*dt)
+THERMOSTAT_TIME_FS = 50.0
+BAROSTAT_TIME_FS = 500.0
+NH_CHAIN = 3  # LAMMPS default for both thermostat and barostat sub-chains
+
+# Step counts at 0.5 fs/step
+NVT_EQUIL_STEPS = 100_000  # 50 ps, both cells
+NVT_PROD_STEPS = 100_000  # 50 ps, p64_w170 only (S(q), RDF)
+NPT_PROD_STEPS = 400_000  # 200 ps, p16_w42 only (density)
+
+# IO cadence (LAMMPS THERMO_EVERY / DUMP_EVERY)
+STATS_EVERY = 100  # 0.05 ps
+TRAJ_EVERY = 200  # 0.1 ps -> 501 frames over the 50 ps production run
+
+# Minimization (LAMMPS: min_style cg; minimize 1.0e-6 0.2 2000 20000)
+MIN_FMAX = 0.2  # eV/A
+MIN_STEPS = 2000
+
+SEED = 42
+
+# Density is averaged over the last 150 ps of the 200 ps NPT run.
+DENSITY_WINDOW_PS = (50.0, 200.0)
+
+STRUCTURE_DIR = DATA_ROOT / "structures"
+CELL_P64 = "p64_w170"
+CELL_P16 = "p16_w42"
+
+
+# =============================================================================
+# Reference MD (slow: regenerates the data consumed by the extraction below)
+# =============================================================================
+
+
+def load_initial_structure(cell: str) -> Atoms:
+    """
+    Load a packed starting configuration at the experimental density.
+
+    Parameters
+    ----------
+    cell : str
+        Cell name, ``"p64_w170"`` (1534 atoms) or ``"p16_w42"`` (382 atoms).
+
+    Returns
+    -------
+    Atoms
+        ASE Atoms at rho = 1.7126 g/cm3.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the structure is not available locally.
+    """
+    path = STRUCTURE_DIR / f"{cell}_initial.xyz"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Starting structure for {cell} not found at {path}. "
+            "Both cells (p64_w170, p16_w42) are needed to run the reference MD."
+        )
+    return ase_read(path)
+
+
+def _run_stage(
+    ensemble_cls, struct: Atoms, *, steps: int, file_prefix: Path, **kwargs
+) -> Atoms:
+    """
+    Run one MD stage, skipping it if it already completed.
+
+    janus-core writes ``{file_prefix}-final.extxyz`` once a stage reaches its
+    last step, so re-running the test picks up from the first stage that did
+    not finish rather than repeating the whole protocol.
+
+    Parameters
+    ----------
+    ensemble_cls
+        janus-core ensemble class, e.g. ``NVT_NH`` or ``NPT_MTK``.
+    struct : Atoms
+        Structure to propagate.
+    steps : int
+        Number of steps for this stage.
+    file_prefix : Path
+        Prefix for this stage's output files.
+    **kwargs
+        Further arguments forwarded to the ensemble class.
+
+    Returns
+    -------
+    Atoms
+        The propagated structure, to hand on to the next stage.
+    """
+    final_file = Path(f"{file_prefix}-final.extxyz")
+    if final_file.exists():
+        done = ase_read(final_file)
+        done.calc = struct.calc
+        return done
+
+    md = ensemble_cls(
+        struct=struct,
+        steps=steps,
+        temp=TEMPERATURE_K,
+        timestep=TIMESTEP_FS,
+        thermostat_time=THERMOSTAT_TIME_FS,
+        stats_every=STATS_EVERY,
+        seed=SEED,
+        file_prefix=file_prefix,
+        **kwargs,
+    )
+    md.run()
+
+    # Return the structure janus-core actually propagated rather than the one
+    # passed in, which it is free to rebind.
+    return md.struct
+
+
+def _write_density_json(model_name: str, stats_file: Path, out_file: Path) -> dict:
+    """
+    Average the NPT density over ``DENSITY_WINDOW_PS`` and save it.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the MLIP model in the registry.
+    stats_file : Path
+        janus-core stats file of the NPT stage.
+    out_file : Path
+        Where to write ``density.json``.
+
+    Returns
+    -------
+    dict
+        The density summary that was written.
+    """
+    from janus_core.helpers.stats import Stats
+
+    stats = Stats(stats_file)
+    time_ps = np.asarray(stats["Time"], dtype=float) / 1000.0  # fs -> ps
+    rho = np.asarray(stats["Density"], dtype=float)
+
+    lo, hi = DENSITY_WINDOW_PS
+    window = rho[(time_ps >= lo) & (time_ps <= hi)]
+    if window.size == 0:
+        raise RuntimeError(
+            f"No NPT samples in {lo}-{hi} ps for {model_name}; the run is too short."
+        )
+
+    summary = {
+        "model": model_name,
+        "cell": CELL_P16,
+        "rho_exp": RHO_EXP,
+        "rho_mean": float(window.mean()),
+        "rho_std": float(window.std()),
+        "rho_error_pct": float(100 * (window.mean() - RHO_EXP) / RHO_EXP),
+        "rho_abs_error": float(abs(window.mean() - RHO_EXP)),
+        "n_samples": int(window.size),
+        "time_range_ps": [lo, hi],
+        "time_full": time_ps.tolist(),
+        "density_full": rho.tolist(),
+    }
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(summary, indent=2))
+    return summary
+
+
+def run_reference_md(model_name: str, model: Any) -> None:
+    """
+    Run the reference protocol for one model and write its data products.
+
+    Produces ``nvt_trajectory.extxyz`` (p64_w170) and ``density.json``
+    (p16_w42) under ``DATA_ROOT/<model_name>/``, which the extraction tests
+    then read back.
+
+    Parameters
+    ----------
+    model_name : str
+        Registry name of the MLIP model.
+    model : Any
+        Model object from :func:`load_models`.
+    """
+    # Imported lazily: janus-core pulls in torch, which is not needed by the
+    # extraction tests.
+    from janus_core.calculations.geom_opt import GeomOpt
+    from janus_core.calculations.md import NPT_MTK, NVT_NH
+
+    calc = model.get_calculator(precision="high")
+
+    data_dir = DATA_ROOT / model_name
+    work_dir = OUT_PATH / model_name / "reference_md"
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    for cell in (CELL_P64, CELL_P16):
+        struct = load_initial_structure(cell)
+        struct.calc = copy(calc)
+
+        # filter_class=None relaxes the atoms only: LAMMPS `minimize` leaves the
+        # cell alone, and both cells must start from the experimental volume.
+        GeomOpt(
+            struct=struct,
+            fmax=MIN_FMAX,
+            optimizer="FIRE",
+            steps=MIN_STEPS,
+            filter_class=None,
+            write_traj=False,
+            file_prefix=work_dir / f"{cell}-minimize",
+        ).run()
+
+        # The equilibration trajectory is written but not analysed, as in the
+        # LAMMPS pipeline. (traj_every=0 is not a way to disable it: ASE reads a
+        # non-positive interval as "call once at step 0", which would divide by
+        # zero in janus-core's trajectory writer.)
+        struct = _run_stage(
+            NVT_NH,
+            struct,
+            steps=NVT_EQUIL_STEPS,
+            file_prefix=work_dir / f"{cell}-nvt_equil",
+            traj_every=TRAJ_EVERY,
+        )
+
+        if cell == CELL_P64:
+            # Production at the experimental volume: this is what S(q) and the
+            # RDF are computed from.
+            prefix = work_dir / f"{cell}-nvt_prod"
+            _run_stage(
+                NVT_NH,
+                struct,
+                steps=NVT_PROD_STEPS,
+                file_prefix=prefix,
+                traj_every=TRAJ_EVERY,
+            )
+            traj = ase_read(f"{prefix}-traj.extxyz", index=":")
+            data_dir.mkdir(parents=True, exist_ok=True)
+            ase_write(data_dir / "nvt_trajectory.extxyz", traj, format="extxyz")
+        else:
+            # NPT only on the small cell, for the density.
+            prefix = work_dir / f"{cell}-npt_prod"
+            _run_stage(
+                NPT_MTK,
+                struct,
+                steps=NPT_PROD_STEPS,
+                file_prefix=prefix,
+                pressure=PRESSURE_GPA,
+                barostat_time=BAROSTAT_TIME_FS,
+                thermostat_chain=NH_CHAIN,
+                barostat_chain=NH_CHAIN,
+                traj_every=TRAJ_EVERY,
+            )
+            _write_density_json(
+                model_name,
+                Path(f"{prefix}-stats.dat"),
+                data_dir / "density.json",
+            )
+
+
+@pytest.mark.very_slow
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_reference_md(mlip: tuple[str, Any]) -> None:
+    """
+    Regenerate the benchmark data for one model with the reference protocol.
+
+    Around 300 ps of cumulative MD on 1534 and 382 atoms: expect on the order
+    of a day of GPU time per model.
+
+    Parameters
+    ----------
+    mlip : tuple[str, Any]
+        ``(model_name, model)`` pair from the ml-peg registry.
+    """
+    model_name, model = mlip
+    run_reference_md(model_name, model)
+
+    assert (DATA_ROOT / model_name / "nvt_trajectory.extxyz").exists()
+    assert (DATA_ROOT / model_name / "density.json").exists()
 
 
 # =============================================================================
@@ -527,7 +828,10 @@ def test_extract_density(model_name: str) -> None:
     """
     src = _density_source_path(model_name)
     if not src.exists():
-        pytest.skip(f"No density data for {model_name} at {src}")
+        pytest.skip(
+            f"No density data for {model_name} at {src}. Fetch the reference "
+            "data or generate it with test_reference_md (-m very_slow)."
+        )
 
     with open(src) as f:
         result = json.load(f)
@@ -555,7 +859,10 @@ def test_compute_rdf(model_name: str) -> None:
     """
     traj_path = find_trajectory(model_name)
     if traj_path is None:
-        pytest.skip(f"No NVT trajectory for {model_name}")
+        pytest.skip(
+            f"No NVT trajectory for {model_name}. Fetch the reference data or "
+            "generate it with test_reference_md (-m very_slow)."
+        )
 
     first_frame = ase_read(str(traj_path), index=0, format="extxyz")
     o_water_idx, o_tfsi_idx = identify_o_types(first_frame)
@@ -597,7 +904,10 @@ def test_compute_xray_sq(model_name: str) -> None:
     """
     traj_path = find_trajectory(model_name)
     if traj_path is None:
-        pytest.skip(f"No NVT trajectory for {model_name}")
+        pytest.skip(
+            f"No NVT trajectory for {model_name}. Fetch the reference data or "
+            "generate it with test_reference_md (-m very_slow)."
+        )
 
     result = compute_sq_travis_style(traj_path)
     result["model"] = model_name
