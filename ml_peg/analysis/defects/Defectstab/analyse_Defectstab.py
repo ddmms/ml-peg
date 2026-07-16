@@ -17,8 +17,8 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "defect" / "Defectstab" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "defect" / "Defectstab"
+CALC_PATH = CALCS_ROOT / "defects" / "Defectstab" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "defects" / "Defectstab"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
