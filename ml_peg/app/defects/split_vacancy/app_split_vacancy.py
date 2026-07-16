@@ -20,6 +20,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defects.html#split-vacancy"
 )
 DATA_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
+INFO_PATH = DATA_PATH / "info.json"
 
 # for dash, assets/ is equivalent to APP_ROOT/data/
 STRUCTS_URL = "/assets/defects/split_vacancy"
@@ -191,6 +192,7 @@ def get_app() -> SplitVacancyApp:
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "split_vacancy_metrics_table.json",
+        info_path=INFO_PATH,
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
