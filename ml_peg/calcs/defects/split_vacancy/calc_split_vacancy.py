@@ -6,12 +6,11 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-# from pymatgen.analysis import StructureMatcher
 from ase.io import read, write
 from ase.optimize import LBFGS
 import numpy as np
-from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core import Structure
+from pymatgen.core.structure_matcher import StructureMatcher
 import pytest
 from tqdm.auto import tqdm
 
