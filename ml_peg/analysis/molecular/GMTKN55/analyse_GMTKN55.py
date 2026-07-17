@@ -97,6 +97,14 @@ def structure_info() -> dict[str, dict[str, float] | list | NDArray]:
 
 INFO = structure_info()
 
+_CATEGORY_LABELS = {
+    "Basic properties and reaction energies for small systems": "Small systems",
+    "Intermolecular noncovalent interactions": "Intermolecular NCIs",
+    "Intramolecular noncovalent interactions": "Intramolecular NCIs",
+    "Reaction barrier heights": "Barrier heights",
+    "Reaction energies for large systems and isomerisation reactions": "Large systems",
+}
+
 
 @pytest.fixture
 @plot_parity(
@@ -110,6 +118,8 @@ INFO = structure_info()
         "System": INFO["systems"],
         "Excluded": INFO["excluded"],
     },
+    symbol_by=INFO["categories"].tolist(),
+    symbol_labels=_CATEGORY_LABELS,
 )
 def rel_energies() -> dict[str, list[float]]:
     """
