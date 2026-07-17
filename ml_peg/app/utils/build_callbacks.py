@@ -238,11 +238,14 @@ def _register_point_highlight(scatter_id: str) -> None:
             const gd = document.getElementById("__SCATTER_ID__");
             const plot = gd && gd.querySelector('.js-plotly-plot');
             if (plot && plot._fullLayout) {
+                out.layout = Object.assign({}, figure.layout);
+                // Preserve current legend visibility: adding the ring trace must
+                // not flip Plotly's auto-legend on for plots that have none.
+                out.layout.showlegend = plot._fullLayout.showlegend;
                 const xa = (src.xaxis || 'x').replace('x', 'xaxis');
                 const ya = (src.yaxis || 'y').replace('y', 'yaxis');
                 const flx = plot._fullLayout[xa], fly = plot._fullLayout[ya];
                 if (flx && fly) {
-                    out.layout = Object.assign({}, figure.layout);
                     out.layout[xa] = Object.assign(
                         {}, out.layout[xa], {range: flx.range.slice(), autorange: false}
                     );
