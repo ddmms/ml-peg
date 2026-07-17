@@ -1,10 +1,3 @@
-// Keep a scatter's clicked-point ring in sync with a playing WEAS trajectory.
-//
-// The WEAS viewer (in a srcDoc iframe, see weas.py) posts its current frame to
-// the parent on every change. The clicked curve is recorded on
-// window.__mlPegActiveTraj by the highlight callback (build_callbacks.py). Here
-// we move that scatter's __clicked_point__ ring to the frame's point, where
-// point i corresponds to frame i (e.g. an NEB band).
 (function () {
     window.addEventListener("message", function (e) {
         var msg = e.data;
@@ -27,6 +20,27 @@
         if (hi < 0 || f == null || f < 0 || f >= active.x.length) {
             return;
         }
-        window.Plotly.restyle(gd, {x: [[active.x[f]]], y: [[active.y[f]]]}, [hi]);
+        // Pin the ring's axes to their current range once, so moving the ring
+        // can no longer trigger autorange (and resize the plot).
+        var layoutUpdate = {};
+        if (!active.pinned) {
+            var ring = gd.data[hi];
+            var xa = (ring.xaxis || "x").replace("x", "xaxis");
+            var ya = (ring.yaxis || "y").replace("y", "yaxis");
+            var fl = gd._fullLayout;
+            if (fl && fl[xa] && fl[ya]) {
+                layoutUpdate[xa + ".range"] = fl[xa].range.slice();
+                layoutUpdate[ya + ".range"] = fl[ya].range.slice();
+                active.pinned = true;
+            }
+        }
+        // cliponaxis:false keeps the ring fully drawn at the edge without the
+        // range needing to grow to fit it.
+        window.Plotly.update(
+            gd,
+            {x: [[active.x[f]]], y: [[active.y[f]]], cliponaxis: [false]},
+            layoutUpdate,
+            [hi]
+        );
     });
 })();
