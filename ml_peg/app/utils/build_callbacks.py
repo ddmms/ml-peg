@@ -217,6 +217,7 @@ def _register_point_highlight(scatter_id: str) -> None:
                 yaxis: src.yaxis,
                 hoverinfo: 'skip',
                 showlegend: false,
+                cliponaxis: false,
                 marker: {
                     size: 16,
                     color: 'rgba(0,0,0,0)',
@@ -230,7 +231,27 @@ def _register_point_highlight(scatter_id: str) -> None:
                 x: src.x || [],
                 y: src.y || [],
             };
-            return Object.assign({}, figure, {data: data});
+            const out = Object.assign({}, figure, {data: data});
+            // Pin the axes to the live rendered range so adding the ring (a large
+            // marker) can't autorange and resize the plot. Reading _fullLayout
+            // (not the stale State figure) also preserves any current user zoom.
+            const gd = document.getElementById("__SCATTER_ID__");
+            const plot = gd && gd.querySelector('.js-plotly-plot');
+            if (plot && plot._fullLayout) {
+                const xa = (src.xaxis || 'x').replace('x', 'xaxis');
+                const ya = (src.yaxis || 'y').replace('y', 'yaxis');
+                const flx = plot._fullLayout[xa], fly = plot._fullLayout[ya];
+                if (flx && fly) {
+                    out.layout = Object.assign({}, figure.layout);
+                    out.layout[xa] = Object.assign(
+                        {}, out.layout[xa], {range: flx.range.slice(), autorange: false}
+                    );
+                    out.layout[ya] = Object.assign(
+                        {}, out.layout[ya], {range: fly.range.slice(), autorange: false}
+                    );
+                }
+            }
+            return out;
         }
         """.replace("__SCATTER_ID__", scatter_id),
         Output(scatter_id, "figure", allow_duplicate=True),
