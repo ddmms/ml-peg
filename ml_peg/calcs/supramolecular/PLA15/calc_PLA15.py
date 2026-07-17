@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import mlipx
 from mlipx.abc import NodeWithCalculator
 import pytest
 import zntrack
@@ -12,7 +13,6 @@ from ml_peg.calcs.supramolecular.utils.plf547_pla15_utils import run_benchmark
 from ml_peg.calcs.utils.utils import chdir
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-import mlipx
 
 MODELS = load_models(current_models)
 
