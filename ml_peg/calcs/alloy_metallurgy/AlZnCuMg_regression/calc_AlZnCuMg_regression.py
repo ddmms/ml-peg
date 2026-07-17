@@ -299,9 +299,9 @@ def neighbor_shell_indices(atoms: Atoms) -> list[int]:
     return shell_indices
 
 
-def attach_calculator(atoms: Atoms, calculator: Calculator) -> Atoms:
+def prepare_atoms(atoms: Atoms, calculator: Calculator) -> Atoms:
     """
-    Attach a copied calculator to an atoms object and return the atoms.
+    Attach a copied calculator to an atoms object and set default spin/charge.
 
     Parameters
     ----------
@@ -313,9 +313,12 @@ def attach_calculator(atoms: Atoms, calculator: Calculator) -> Atoms:
     Returns
     -------
     Atoms
-        The same ``atoms`` object with a fresh copy of ``calculator`` set.
+        The same ``atoms`` object with a fresh copy of ``calculator`` set, and
+        default spin and charge set to info.
     """
     atoms.calc = copy(calculator)
+    atoms.info.setdefault("charge", 0)
+    atoms.info.setdefault("spin", 1)
     return atoms
 
 
@@ -352,7 +355,7 @@ def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
     float
         Total potential energy divided by number of atoms, in eV/atom.
     """
-    attach_calculator(atoms, calculator)
+    prepare_atoms(atoms, calculator)
     return float(atoms.get_potential_energy()) / len(atoms)
 
 
@@ -377,7 +380,7 @@ def relaxed_oqmd_structure(
         Relaxed structure with OQMD metadata attached.
     """
     atoms = load_oqmd_structure(oqmd_id, data_path)
-    attach_calculator(atoms, calculator)
+    prepare_atoms(atoms, calculator)
     return relax_cell_and_atoms(
         atoms,
         strain_mask=BULK_RELAX_STRAIN_MASK,
@@ -613,7 +616,7 @@ def fcc_surface_energy(
     """
     lattice, element = fcc_lattice_and_element(reference)
     slab = build_fcc_surface(element, lattice, surface_label)
-    attach_calculator(slab, calculator)
+    prepare_atoms(slab, calculator)
     slab = relax_with_fixed_cell(slab)
     excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
     return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
@@ -662,7 +665,7 @@ def hcp_surface_energy(
     )
     slab.center(vacuum=20.0, axis=2)
     slab.set_pbc([True, True, True])
-    attach_calculator(slab, calculator)
+    prepare_atoms(slab, calculator)
     excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
     return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
 
@@ -695,7 +698,7 @@ def fcc_stacking_fault_energy(
     lattice, element = fcc_lattice_and_element(reference)
     fault = fcc111(element, (1, 2, 6), orthogonal=True, a=lattice, periodic=True)
     fault.cell[2] += fault.cell[1] * displacement_fraction
-    attach_calculator(fault, calculator)
+    prepare_atoms(fault, calculator)
     fault = relax_cell_and_atoms_direction(
         fault,
         strain_mask=(0, 0, 1, 0, 0, 0),
@@ -767,7 +770,7 @@ def relaxed_stacking_fault_energy(
         Relaxed slab structure and its total potential energy in eV.
     """
     structure = atoms.copy()
-    attach_calculator(structure, calculator)
+    prepare_atoms(structure, calculator)
     structure = relax_cell_and_atoms_direction(
         structure,
         strain_mask=(0, 0, 1, 0, 0, 0),
@@ -954,7 +957,7 @@ def generalized_stacking_fault_energies(
     if (0.0, 0.0) not in displacements:
         raise ValueError("GSF displacements must include the undisplaced structure")
 
-    attach_calculator(base_structure, calculator)
+    prepare_atoms(base_structure, calculator)
     base_structure = relax_cell_and_atoms(
         base_structure,
         strain_mask=(1, 1, 1, 0, 0, 0),
@@ -967,7 +970,7 @@ def generalized_stacking_fault_energies(
     reference_energy = None
     for displacement in displacements:
         tilted = tilted_structure(repeated, displacement)
-        attach_calculator(tilted, calculator)
+        prepare_atoms(tilted, calculator)
         if relax_method == "atoms_z":
             tilted = relax_atoms_direction(
                 tilted,
@@ -1089,7 +1092,7 @@ def relaxed_energy(
     float
         Total potential energy in eV after optional relaxation.
     """
-    attach_calculator(atoms, calculator)
+    prepare_atoms(atoms, calculator)
     relax_atoms(atoms, steps=relax_steps, fmax=relax_fmax)
     return float(atoms.get_potential_energy())
 
@@ -1249,7 +1252,7 @@ def stress_voigt(atoms: Atoms, calculator: Calculator) -> np.ndarray:
     np.ndarray
         Stress vector in eV/Angstrom^3.
     """
-    atoms.calc = copy(calculator)
+    prepare_atoms(atoms, calculator)
     return np.asarray(atoms.get_stress(voigt=True), dtype=float)
 
 
@@ -1309,7 +1312,7 @@ def legacy_elastic_tensor(
         6x6 elastic tensor in GPa.
     """
     reference = atoms.copy()
-    attach_calculator(reference, calculator)
+    prepare_atoms(reference, calculator)
     eq_stress = Stress.from_voigt(reference.get_stress())
     structure = AseAtomsAdaptor.get_structure(reference)
     deformed_set = DeformedStructureSet(
@@ -1324,7 +1327,7 @@ def legacy_elastic_tensor(
         applied_strains.append(deformation.green_lagrange_strain)
         deformed_structure = deformation.apply_to_structure(structure.copy())
         deformed_atoms = AseAtomsAdaptor.get_atoms(deformed_structure)
-        attach_calculator(deformed_atoms, calculator)
+        prepare_atoms(deformed_atoms, calculator)
         relax_with_fixed_cell(deformed_atoms, steps=100, fmax=0.001)
         resultant_stresses.append(Stress.from_voigt(deformed_atoms.get_stress()))
 
