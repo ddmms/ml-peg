@@ -13,9 +13,9 @@ Benchmarks
     molecular
     molecular_reactions
     bulk_crystal
+    defects
     lanthanides
     non_covalent_interactions
     tm_complexes
     conformers
     molecular_dynamics
-    defect
