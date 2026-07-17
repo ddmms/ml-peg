@@ -114,20 +114,41 @@ CONC = {k: v / N_ATOMS for k, v in COMPOSITION.items()}
 
 # Cromer-Mann 4-Gaussian X-ray form factor parameters (International Tables)
 TRAVIS_FF = {
-    "S": {"a": [6.905, 5.203, 1.438, 1.586],
-          "b": [1.468, 22.215, 0.254, 56.172], "c": 0.867},
-    "F": {"a": [3.539, 2.641, 1.517, 1.024],
-          "b": [10.283, 4.294, 0.262, 26.148], "c": 0.278},
-    "O": {"a": [3.049, 2.287, 1.546, 0.867],
-          "b": [13.277, 5.701, 0.324, 32.909], "c": 0.251},
-    "N": {"a": [12.213, 3.132, 2.013, 1.166],
-          "b": [0.006, 9.893, 28.997, 0.583], "c": -11.529},
-    "C": {"a": [2.310, 1.020, 1.589, 0.865],
-          "b": [20.844, 10.208, 0.569, 51.651], "c": 0.216},
-    "Li": {"a": [1.128, 0.751, 0.618, 0.465],
-           "b": [3.955, 1.052, 85.391, 168.261], "c": 0.038},
-    "H": {"a": [0.493, 0.323, 0.140, 0.041],
-          "b": [10.511, 26.126, 3.142, 57.800], "c": 0.003},
+    "S": {
+        "a": [6.905, 5.203, 1.438, 1.586],
+        "b": [1.468, 22.215, 0.254, 56.172],
+        "c": 0.867,
+    },
+    "F": {
+        "a": [3.539, 2.641, 1.517, 1.024],
+        "b": [10.283, 4.294, 0.262, 26.148],
+        "c": 0.278,
+    },
+    "O": {
+        "a": [3.049, 2.287, 1.546, 0.867],
+        "b": [13.277, 5.701, 0.324, 32.909],
+        "c": 0.251,
+    },
+    "N": {
+        "a": [12.213, 3.132, 2.013, 1.166],
+        "b": [0.006, 9.893, 28.997, 0.583],
+        "c": -11.529,
+    },
+    "C": {
+        "a": [2.310, 1.020, 1.589, 0.865],
+        "b": [20.844, 10.208, 0.569, 51.651],
+        "c": 0.216,
+    },
+    "Li": {
+        "a": [1.128, 0.751, 0.618, 0.465],
+        "b": [3.955, 1.052, 85.391, 168.261],
+        "c": 0.038,
+    },
+    "H": {
+        "a": [0.493, 0.323, 0.140, 0.041],
+        "b": [10.511, 26.126, 3.142, 57.800],
+        "c": 0.003,
+    },
 }
 
 # --- Reference MD protocol ---------------------------------------------------
@@ -211,7 +232,7 @@ def _run_stage(
     Parameters
     ----------
     ensemble_cls
-        janus-core ensemble class, e.g. ``NVT_NH`` or ``NPT_MTK``.
+        The janus-core ensemble class, e.g. ``NVT_NH`` or ``NPT_MTK``.
     struct : Atoms
         Structure to propagate.
     steps : int
@@ -259,7 +280,7 @@ def _write_density_json(model_name: str, stats_file: Path, out_file: Path) -> di
     model_name : str
         Name of the MLIP model in the registry.
     stats_file : Path
-        janus-core stats file of the NPT stage.
+        The janus-core stats file of the NPT stage.
     out_file : Path
         Where to write ``density.json``.
 
@@ -842,9 +863,7 @@ def test_extract_density(model_name: str) -> None:
         json.dump(result, f, indent=2)
 
     assert result["rho_mean"] > 0, f"Negative density for {model_name}"
-    assert abs(result["rho_error_pct"]) < 50, (
-        f"Density error > 50% for {model_name}"
-    )
+    assert abs(result["rho_error_pct"]) < 50, f"Density error > 50% for {model_name}"
 
 
 @pytest.mark.parametrize("model_name", MODELS)
@@ -887,8 +906,7 @@ def test_compute_rdf(model_name: str) -> None:
     )
 
     assert 2.0 < result["coord_LiO_total"] < 8.0, (
-        f"Unexpected Li-O_total CN={result['coord_LiO_total']:.2f} "
-        f"for {model_name}"
+        f"Unexpected Li-O_total CN={result['coord_LiO_total']:.2f} for {model_name}"
     )
 
 

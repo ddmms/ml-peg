@@ -21,9 +21,7 @@ from ml_peg.models.get_models import load_models
 
 CALC_PATH = CALCS_ROOT / "wise_electrolytes" / "litfsi_h2o_21m" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "wise_electrolytes" / "litfsi_h2o_21m"
-EXP_SAXS_PATH = (
-    Path(__file__).resolve().parents[1] / "data" / "saxs_maginn.txt"
-)
+EXP_SAXS_PATH = Path(__file__).resolve().parents[1] / "data" / "saxs_maginn.txt"
 
 MODELS = load_models(current_models)
 
@@ -43,8 +41,8 @@ R_CUT = 2.83  # Å
 DR = 0.02  # Å (bin width used in calc_rdf.py)
 
 # Experimental references
-RHO_EXP = 1.7126     # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
-CN_EXP_WATER = 2.0   # Watanabe et al., JPCB 125, 7477 (2021)
+RHO_EXP = 1.7126  # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
+CN_EXP_WATER = 2.0  # Watanabe et al., JPCB 125, 7477 (2021)
 CN_EXP_TFSI = 2.0
 
 
@@ -700,9 +698,7 @@ def metrics(
         "CN Li-O_TFSI Error": {
             model: d["err_tfsi"] for model, d in rdf_results.items()
         },
-        "S(q) R-factor": {
-            model: r["r_factor"] for model, r in xray_sf_results.items()
-        },
+        "S(q) R-factor": {model: r["r_factor"] for model, r in xray_sf_results.items()},
         "First Peak Position Error": {
             model: r["peak_position_error"] for model, r in xray_sf_results.items()
         },
