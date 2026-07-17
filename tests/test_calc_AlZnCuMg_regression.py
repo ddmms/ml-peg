@@ -221,7 +221,8 @@ def test_load_oqmd_structure_reads_numeric_and_legacy_metadata(
 ) -> None:
     """OQMD and legacy structure IDs load matching VASP and metadata files."""
     atoms = Atoms("Al", cell=[4.0, 4.0, 4.0], pbc=True)
-    structure_path = tmp_path / filename
+    structure_path = tmp_path / "structures" / "OQMD-Dumps" / filename
+    structure_path.parent.mkdir(parents=True, exist_ok=True)
     write(structure_path, atoms, format="vasp")
     structure_path.with_suffix(".json").write_text(
         json.dumps(
@@ -232,9 +233,7 @@ def test_load_oqmd_structure_reads_numeric_and_legacy_metadata(
             }
         )
     )
-    monkeypatch.setattr(calc, "OQMD_PATH", tmp_path)
-
-    loaded_atoms = calc.load_oqmd_structure(oqmd_id)
+    loaded_atoms = calc.load_oqmd_structure(oqmd_id, tmp_path)
 
     assert loaded_atoms.info["oqmd_id"] == oqmd_id
     assert loaded_atoms.info["name"] == expected_name
@@ -371,6 +370,7 @@ def test_generalized_stacking_fault_energies_are_zero_referenced(monkeypatch) ->
 
 
 def test_solute_stacking_fault_interaction_uses_relaxed_energy_cycle(
+    tmp_path,
     monkeypatch,
 ) -> None:
     """Solute-SF interaction follows the legacy fault-minus-bulk cycle."""
@@ -408,7 +408,7 @@ def test_solute_stacking_fault_interaction_uses_relaxed_energy_cycle(
     monkeypatch.setattr(
         calc,
         "relaxed_oqmd_structure",
-        lambda oqmd_id, calculator: bulk_structure,
+        lambda oqmd_id, calculator, data_path: bulk_structure,
     )
     monkeypatch.setattr(calc, "fcc_stacking_fault_structure", fake_fault_structure)
     monkeypatch.setattr(calc, "solute_stacking_fault_structure", fake_solute_structure)
@@ -421,6 +421,7 @@ def test_solute_stacking_fault_interaction_uses_relaxed_energy_cycle(
         inplane_repeats=1,
         zplane_repeats=1,
         solute_layers=(0, 1),
+        data_path=tmp_path,
     )
 
     assert interaction_energies == pytest.approx([-0.25, 0.25])
@@ -445,11 +446,15 @@ def test_calculation_writes_successful_records_after_partial_failure(
     model = FixedEnergyModel(calculator)
     monkeypatch.setattr(calc, "STRUCTURE_IDS", tuple(structures))
     monkeypatch.setattr(calc, "OUT_PATH", tmp_path)
-    monkeypatch.setattr(calc, "load_oqmd_structure", structures.__getitem__)
+
+    def fake_load_oqmd_structure(oqmd_id, data_path):
+        return structures[oqmd_id].copy()
+
+    monkeypatch.setattr(calc, "load_oqmd_structure", fake_load_oqmd_structure)
     monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
 
     with pytest.warns(UserWarning, match="Error calculating OQMD_broken"):
-        calc.test_AlZnCuMg_regression(("stub-model", model))
+        calc.test_alzncumg_regression(("stub-model", model), tmp_path)
 
     output_path = tmp_path / "stub-model" / "bulk_properties.json"
     output_data = json.loads(output_path.read_text())
