@@ -12,7 +12,7 @@ from ase.units import GPa
 import numpy as np
 import pytest
 
-from ml_peg.calcs.alloy_metallurgy.alzncumg_regression import (
+from ml_peg.calcs.alloy_metallurgy.AlZnCuMg_regression import (
     calc_AlZnCuMg_regression as calc,
 )
 
