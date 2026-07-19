@@ -90,7 +90,7 @@ def test_cleavage_energy(mlip: tuple[str, Any]) -> None:
         Name of model and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     data_dir = (
         download_s3_data(
