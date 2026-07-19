@@ -15,6 +15,11 @@ import pandas as pd
 import plotly.colors as pc
 import plotly.graph_objects as go
 
+from ml_peg.analysis.utils.periodic_table import (
+    PERIODIC_TABLE_COLS,
+    PERIODIC_TABLE_POSITIONS,
+    PERIODIC_TABLE_ROWS,
+)
 from ml_peg.analysis.utils.utils import (
     DENSITY_GRID_SIZE,
     DENSITY_MAX_POINTS_PER_CELL,
@@ -25,138 +30,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
-PERIODIC_TABLE_POSITIONS: dict[str, tuple[int, int]] = {
-    # First row
-    "H": (0, 0),
-    "He": (0, 17),
-    # Second row
-    "Li": (1, 0),
-    "Be": (1, 1),
-    "B": (1, 12),
-    "C": (1, 13),
-    "N": (1, 14),
-    "O": (1, 15),
-    "F": (1, 16),
-    "Ne": (1, 17),
-    # Third row
-    "Na": (2, 0),
-    "Mg": (2, 1),
-    "Al": (2, 12),
-    "Si": (2, 13),
-    "P": (2, 14),
-    "S": (2, 15),
-    "Cl": (2, 16),
-    "Ar": (2, 17),
-    # Fourth row
-    "K": (3, 0),
-    "Ca": (3, 1),
-    "Sc": (3, 2),
-    "Ti": (3, 3),
-    "V": (3, 4),
-    "Cr": (3, 5),
-    "Mn": (3, 6),
-    "Fe": (3, 7),
-    "Co": (3, 8),
-    "Ni": (3, 9),
-    "Cu": (3, 10),
-    "Zn": (3, 11),
-    "Ga": (3, 12),
-    "Ge": (3, 13),
-    "As": (3, 14),
-    "Se": (3, 15),
-    "Br": (3, 16),
-    "Kr": (3, 17),
-    # Fifth row
-    "Rb": (4, 0),
-    "Sr": (4, 1),
-    "Y": (4, 2),
-    "Zr": (4, 3),
-    "Nb": (4, 4),
-    "Mo": (4, 5),
-    "Tc": (4, 6),
-    "Ru": (4, 7),
-    "Rh": (4, 8),
-    "Pd": (4, 9),
-    "Ag": (4, 10),
-    "Cd": (4, 11),
-    "In": (4, 12),
-    "Sn": (4, 13),
-    "Sb": (4, 14),
-    "Te": (4, 15),
-    "I": (4, 16),
-    "Xe": (4, 17),
-    # Sixth row
-    "Cs": (5, 0),
-    "Ba": (5, 1),
-    "La": (8, 3),
-    "Hf": (5, 3),
-    "Ta": (5, 4),
-    "W": (5, 5),
-    "Re": (5, 6),
-    "Os": (5, 7),
-    "Ir": (5, 8),
-    "Pt": (5, 9),
-    "Au": (5, 10),
-    "Hg": (5, 11),
-    "Tl": (5, 12),
-    "Pb": (5, 13),
-    "Bi": (5, 14),
-    "Po": (5, 15),
-    "At": (5, 16),
-    "Rn": (5, 17),
-    # Seventh row
-    "Fr": (6, 0),
-    "Ra": (6, 1),
-    "Ac": (9, 3),
-    "Rf": (6, 3),
-    "Db": (6, 4),
-    "Sg": (6, 5),
-    "Bh": (6, 6),
-    "Hs": (6, 7),
-    "Mt": (6, 8),
-    "Ds": (6, 9),
-    "Rg": (6, 10),
-    "Cn": (6, 11),
-    "Nh": (6, 12),
-    "Fl": (6, 13),
-    "Mc": (6, 14),
-    "Lv": (6, 15),
-    "Ts": (6, 16),
-    "Og": (6, 17),
-    # Lanthanides (row 8)
-    "Ce": (8, 4),
-    "Pr": (8, 5),
-    "Nd": (8, 6),
-    "Pm": (8, 7),
-    "Sm": (8, 8),
-    "Eu": (8, 9),
-    "Gd": (8, 10),
-    "Tb": (8, 11),
-    "Dy": (8, 12),
-    "Ho": (8, 13),
-    "Er": (8, 14),
-    "Tm": (8, 15),
-    "Yb": (8, 16),
-    "Lu": (8, 17),
-    # Actinides (row 9)
-    "Th": (9, 4),
-    "Pa": (9, 5),
-    "U": (9, 6),
-    "Np": (9, 7),
-    "Pu": (9, 8),
-    "Am": (9, 9),
-    "Cm": (9, 10),
-    "Bk": (9, 11),
-    "Cf": (9, 12),
-    "Es": (9, 13),
-    "Fm": (9, 14),
-    "Md": (9, 15),
-    "No": (9, 16),
-    "Lr": (9, 17),
-}
-PERIODIC_TABLE_ROWS = 10
-PERIODIC_TABLE_COLS = 18
-
 
 def plot_parity(
     title: str | None = None,
@@ -164,6 +37,8 @@ def plot_parity(
     y_label: str | None = None,
     hoverdata: dict | None = None,
     filename: str = "parity.json",
+    symbol_by: list | None = None,
+    symbol_labels: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -180,6 +55,13 @@ def plot_parity(
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "parity.json".
+    symbol_by
+        Per-point list of group values. When provided, each point receives a
+        marker symbol based on its group, while trace colours still represent
+        models. Legend-only traces above the plot show one marker symbol per group.
+    symbol_labels
+        Optional mapping from ``symbol_by`` values to shorter display names
+        used in the legend. Values absent from this dict are shown as-is.
 
     Returns
     -------
@@ -231,6 +113,17 @@ def plot_parity(
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
             fig = go.Figure()
+            marker_kwargs = {}
+            if symbol_by:
+                symbols = ["circle", "square", "diamond", "cross", "x"]
+                groups = list(dict.fromkeys(symbol_by))
+                group_symbol = {
+                    g: symbols[i % len(symbols)] for i, g in enumerate(groups)
+                }
+                marker_kwargs = {
+                    "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
+                }
+
             for mlip, value in results.items():
                 if mlip == "ref":
                     continue
@@ -242,8 +135,25 @@ def plot_parity(
                         mode="markers",
                         customdata=customdata,
                         hovertemplate=hovertemplate,
+                        **marker_kwargs,
                     )
                 )
+
+            if symbol_by:
+                for group in groups:
+                    label = (symbol_labels or {}).get(group, group)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            name=label,
+                            mode="markers",
+                            marker={"symbol": group_symbol[group], "color": "black"},
+                            hoverinfo="skip",
+                            legend="legend2",
+                            showlegend=True,
+                        )
+                    )
 
             full_fig = fig.full_figure_for_development()
             x_range = full_fig.layout.xaxis.range
@@ -268,6 +178,16 @@ def plot_parity(
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+            if symbol_by:
+                fig.update_layout(
+                    legend2={
+                        "orientation": "h",
+                        "yanchor": "bottom",
+                        "y": 1.02,
+                        "xanchor": "left",
+                        "x": 0,
+                    }
+                )
 
             fig.update_traces()
 
@@ -957,6 +877,8 @@ def plot_periodic_table(
     hoverdata: dict[str, dict[str, Any]] | None = None,
     filename: str = "periodic_table.json",
     colorscale: str = "Viridis",
+    zmin: float | None = None,
+    zmax: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -973,6 +895,8 @@ def plot_periodic_table(
         Output filename for the JSON figure.
     colorscale
         Plotly colourscale name. Default is ``"Viridis"``.
+    zmin, zmax
+        Optional colour scale limits. If not provided, they are inferred from the data.
 
     Returns
     -------
@@ -1049,6 +973,8 @@ def plot_periodic_table(
                     colorscale=colorscale,
                     colorbar={"title": colorbar_title},
                     showscale=True,
+                    zmin=zmin,
+                    zmax=zmax,
                 )
             )
 
@@ -1593,7 +1519,6 @@ def build_table(
     thresholds: Thresholds,
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
-    normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
     mlip_name_map: dict[str, str] | None = None,
@@ -1601,7 +1526,7 @@ def build_table(
     """
     Build DataTable, including optional metric normalisation.
 
-    If `normalize` is `True`, by default each metric is normalised to 0-1 scale where:
+    By default each metric is normalised to 0-1 scale where:
     - Values <= Y get score 0
     - Values >= X get score 1
     - Values between Y and X scale linearly, by default.
@@ -1616,8 +1541,6 @@ def build_table(
         Filename to save table. Default is "table.json".
     metric_tooltips
         Tooltips for table metric headers. Defaults are set for "MLIP" and "Score".
-    normalize
-        Whether to apply normalisation when calculating the score. Default is True.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -1726,15 +1649,9 @@ def build_table(
             summary_tooltips = {
                 "MLIP": "Model identifier, hover for configuration details.",
             }
-            if normalize:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, "
-                    "Higher is better (normalised 0 to 1)."
-                )
-            else:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, higher is better."
-                )
+            summary_tooltips["Score"] = (
+                "Weighted score across metrics, Higher is better (normalised 0 to 1)."
+            )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
@@ -1746,15 +1663,12 @@ def build_table(
                 metric_weights.setdefault(column, 1.0)
 
             # Calculate scores, including any normalisation
-            if normalize:
-                metrics_data = calc_table_scores(
-                    metrics_data=metrics_data,
-                    thresholds=thresholds,
-                    normalizer=normalizer,
-                    weights=metric_weights,
-                )
-            else:
-                metrics_data = calc_table_scores(metrics_data, weights=metric_weights)
+            metrics_data = calc_table_scores(
+                metrics_data=metrics_data,
+                thresholds=thresholds,
+                normalizer=normalizer,
+                weights=metric_weights,
+            )
 
             table = dash_table.DataTable(
                 metrics_data,

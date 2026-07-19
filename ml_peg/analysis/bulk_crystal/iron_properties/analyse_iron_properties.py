@@ -23,7 +23,7 @@ import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -269,7 +269,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     # ==========================================================================
     bain = results.get("bain_path", {})
     if "delta_E_meV" in bain:
-        E_bcc_fcc_mlip = bain["delta_E_meV"]  # noqa: N806
+        E_bcc_fcc_mlip = float(bain["delta_E_meV"])  # noqa: N806
         E_bcc_fcc_error = abs(E_bcc_fcc_mlip - DFT_REFERENCE["E_bcc_fcc"])  # noqa: N806
         metrics["BCC-FCC ΔE error"] = E_bcc_fcc_error
 
@@ -298,7 +298,7 @@ def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
     # ==========================================================================
     vacancy = results.get("vacancy", {})
     if "E_vac" in vacancy:
-        E_vac_mlip = vacancy["E_vac"]  # noqa: N806
+        E_vac_mlip = float(vacancy["E_vac"])  # noqa: N806
         E_vac_error = (  # noqa: N806
             abs(E_vac_mlip - DFT_REFERENCE["E_vac"]) / DFT_REFERENCE["E_vac"] * 100
         )
@@ -683,4 +683,8 @@ def test_iron_properties(metrics: dict[str, dict]) -> None:
     metrics
         Dictionary of iron properties metrics from the metrics fixture.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "structures" / "equilibrium_bcc.extxyz",
+        out_path=OUT_PATH,
+        index=0,
+    )

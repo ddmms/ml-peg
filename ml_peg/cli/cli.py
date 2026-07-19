@@ -74,6 +74,68 @@ def get_tests(root: Path, script_prefix: str, category: str = "*") -> tuple[str,
     )
 
 
+_TEST_ROOTS: dict[str, Path] = {
+    "calc": CALCS_ROOT,
+    "analyse": ANALYSIS_ROOT,
+    "app": APP_ROOT,
+}
+
+
+def complete_test(ctx: Context, incomplete: str) -> list[str]:
+    """
+    Complete test names for the invoked command, scoped to ``--category``.
+
+    The command name (``ctx.info_name``) doubles as the script prefix, e.g.
+    ``calc`` -> ``calc_*.py`` in ``CALCS_ROOT``.
+
+    Parameters
+    ----------
+    ctx
+        Typer context, used to identify the command and the selected category.
+    incomplete
+        Partially typed test name.
+
+    Returns
+    -------
+    list[str]
+        Matching test names.
+    """
+    root = _TEST_ROOTS.get(ctx.info_name)
+    if root is None:
+        return []
+    category = ctx.params.get("category") or "*"
+    return [
+        test
+        for test in get_tests(root, ctx.info_name, category)
+        if test.startswith(incomplete)
+    ]
+
+
+def complete_models(ctx: Context, incomplete: str) -> list[str]:
+    """
+    Complete comma-separated model names from ``models.yml``.
+
+    Parameters
+    ----------
+    ctx
+        Typer context, used to read ``--models-file`` if provided.
+    incomplete
+        Partially typed value; only the segment after the last comma is completed.
+
+    Returns
+    -------
+    list[str]
+        Matching model names, preserving any already-typed comma-separated prefix.
+    """
+    from ml_peg.models.get_models import get_model_names
+
+    names = sorted(get_model_names(filepath=ctx.params.get("models_file")))
+
+    prefix, sep, last = incomplete.rpartition(",")
+    head = f"{prefix}{sep}" if sep else ""
+    return [f"{head}{name}" for name in names if name.startswith(last)]
+
+
 AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
 AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
 CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
@@ -94,7 +156,8 @@ def run_dash_app(
             help=(
                 "Comma-separated models to build interactivity for. Default is all "
                 "models."
-            )
+            ),
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -113,6 +176,14 @@ def run_dash_app(
             case_sensitive=False,
         ),
     ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to build app for. Default is all tests.",
+            case_sensitive=False,
+            autocompletion=complete_test,
+        ),
+    ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
     debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
 ) -> None:
@@ -128,6 +199,8 @@ def run_dash_app(
         Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    test
+        Test to build app for. Default is `*`, corresponding to all tests.
     port
         Port to run application on. Default is 8050.
     debug
@@ -141,7 +214,7 @@ def run_dash_app(
 
     from ml_peg.app.run_app import run_app
 
-    run_app(category=category, port=port, debug=debug)
+    run_app(category=category, test=test, port=port, debug=debug)
 
 
 @app.command(
@@ -154,7 +227,10 @@ def run_calcs(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run calculations on. Default is all models."
+            help=(
+                "Comma-separated models to run calculations on. Default is all models."
+            ),
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -174,8 +250,18 @@ def run_calcs(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run calculations for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run calculations for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
     ] = "*",
+    run_mock: Annotated[
+        bool, Option(help="Whether to run with mock calculator in addition to models.")
+    ] = True,
+    mock_only: Annotated[
+        bool, Option(help="Whether to only run mock calculator with no models.")
+    ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
     ] = True,
@@ -204,6 +290,10 @@ def run_calcs(
     test
         Test to run calculation for. Default is `*`, corresponding to all tests in the
         category.
+    run_mock
+        Whether to run mock calculations. Default is `True`.
+    mock_only
+        Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
         Whether to run slow calculations. Default is `True`.
     run_very_slow
@@ -230,6 +320,12 @@ def run_calcs(
     if run_very_slow:
         options.extend(["--run-very-slow"])
 
+    if run_mock:
+        options.extend(["--run-mock"])
+
+    if mock_only:
+        options.extend(["--mock-only"])
+
     if models:
         options.extend(["--models", models])
 
@@ -247,7 +343,8 @@ def run_analysis(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run analysis for. Default is all models."
+            help="Comma-separated models to run analysis for. Default is all models.",
+            autocompletion=complete_models,
         ),
     ] = None,
     models_file: Annotated[
@@ -267,7 +364,11 @@ def run_analysis(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run analysis for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run analysis for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
     ] = "*",
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")

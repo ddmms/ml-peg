@@ -19,6 +19,7 @@ DOCS_URL = (
     "non_covalent_interactions.html#ncia-hb375x10"
 )
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_HB375x10"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class NCIANHB375x10App(BaseApp):
@@ -80,6 +81,8 @@ def get_app() -> NCIANHB375x10App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

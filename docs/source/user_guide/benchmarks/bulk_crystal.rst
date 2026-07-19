@@ -123,6 +123,71 @@ Reference data:
 * PBE
 
 
+Energy-volume curves for metals
+===============================
+
+Summary
+-------
+
+Energy-volume (equation of state) curves and phase stability for metals (W, Nb, Mo, Ta, Ti, Zr, Cr, Fe), benchmarked against PBE reference data.
+
+Metrics
+-------
+
+1. Δ metric is adapted from `Lejaeghere, K., et. al. Reproducibility in density functional theory
+   calculations of solids. (2016). Science, 351(6280), aad3000.
+   <https://doi.org/10.1126/science.aad3000>`_. It measures difference between predicted and reference energy-volume curves and is calculated as the square root of the integrated squared energy difference between the predicted and reference curves. It is normalized by the volume range and provides a single number in meV/atom. Here we use it to extimate how good the model reproduce the reference PBE energy-volume curve for the ground state structure of each metal. Note that the volume range is larger than in the original paper, so the Δ metric values are not directly comparable to those reported in the original paper.
+
+   .. math::
+
+      \Delta = \sqrt{\frac{\int_{V_i}^{V_f} \left[ E_\text{model}(V) - E_\text{ref}(V) \right]^2 \mathrm{d}V}{V_f - V_i}}
+
+   where :math:`E(V)` is the Birch-Murnaghan energy-volume curve and the integral runs over
+   a fixed volume range :math:`[V_i, V_f]` around the reference equilibrium volume.
+   The result is in meV/atom.
+
+2. Phase energy MAE
+
+   Mean absolute error of the phase energy differences (relative to the ground-state
+   phase) evaluated on a uniform volume grid from BM-fitted curves:
+
+   .. math::
+
+      \text{Phase energy MAE} = \frac{1}{N_\phi N_V}
+      \sum_{\phi,\, j}
+      \left| \Delta E_\text{model}^{\phi}(V_j) - \Delta E_\text{ref}^{\phi}(V_j) \right|
+
+   where :math:`\Delta E^\phi(V) = E^\phi(V) - E^{\phi_0}(V)` is the energy of phase
+   :math:`\phi` relative to the ground-state phase :math:`\phi_0`.
+
+   Result in meV/atom. It measures how well the model reproduces the relative energies of different phases across the volume range.
+
+3. Phase stability
+
+   Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
+   volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
+
+Computational cost
+------------------
+
+Low. Every eos curve requires 50 calls on unit cells.
+
+Data availability
+-----------------
+
+Input structures:
+
+The perfect bulk crystal cells are created automatically from parsed names from the reference data.
+
+Reference data (PBE):
+
+* W, Nb, Mo, Ta `Čák, M., Hammerschmidt, T., Rogal, J., Vitek, V., & Drautz, R. (2014). Analytic bond-order potentials for the bcc refractory metals Nb, Ta, Mo and W. Journal of Physics Condensed Matter, 26(19), 195501. <https://doi.org/10.1088/0953-8984/26/19/195501>`_
+* Ti and Zr: `Nitol, M. S., Dickel, D. E., & Barrett, C. D. (2022). Machine learning models for predictive materials science from fundamental physics: An application to titanium and zirconium. Acta Materialia, 224, 117347. <https://doi.org/10.1016/j.actamat.2021.117347>`_
+* non-magnetic Cr: `Soulairol, R., Fu, C. C., & Barreteau, C. (2010). Structure and magnetism of bulk Fe and Cr: From plane waves to LCAO methods. Journal of Physics Condensed Matter, 22(29), 295502. <https://doi.org/10.1088/0953-8984/22/29/295502>`_
+* ferromagnetic Ni: `He, X., Kong, L. T., & Liu, B. X. (2005). Calculation of ferromagnetic states in metastable bcc and hcp Ni by projector-augmented wave method. Journal of Applied Physics, 97(10). <https://doi.org/10.1063/1.1903104>`_
+* ferromagnetic Fe: `Dézerald, L., Marinica, M. C., Ventelon, L., Rodney, D., & Willaime, F. (2014). Stability of self-interstitial clusters with C15 Laves phase structure in iron. Journal of Nuclear Materials, 449(1–3), 219–224. <https://doi.org/10.1016/j.jnucmat.2014.02.012>`_ and `Wang, K., Shang, S. L., Wang, Y., Liu, Z. K., & Liu, F. (2018). Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study. Acta Materialia, 147, 261–276. <https://doi.org/10.1016/j.actamat.2018.01.013>`_
+
+
 High-Pressure Relaxation
 ========================
 
@@ -415,3 +480,142 @@ Reference data:
     "Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
     Application to Dislocations and Cracks in Iron."
     `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
+
+
+Phonons
+=======
+
+Summary
+-------
+
+Phonon dispersion and vibrational thermodynamics for 9958 bulk crystals from
+the Alexandria phonon benchmark database (a PBE recomputation of the PBEsol
+PhononDB/MDR phonon benchmark). The database provides PBE reference
+structures, displacements, and force constants. For each MLIP, the structure
+is relaxed using the FIRE optimiser with the ``FixSymmetry`` constraint
+(fmax = 0.005 eV/Å, up to 1000 steps).
+Forces for all displaced supercells are evaluated with the MLIP, and second-
+order force constants are calculated and symmetrised on a 6x6x6 q-mesh. Band
+structures are computed along the same high-symmetry path as the DFT reference
+(101 q-points per segment). Thermal properties are computed on a 20x20x20
+q-mesh.
+
+Here, fixing symmetry is important: without it, a structure that
+relaxes to a different crystal symmetry would have an incompatible Brillouin
+zone path, making metrics such as Avg BZ MAE ill-defined. It also provides a
+more stringent test of each MLIP's ability to match the DFT reference.
+
+
+Metrics
+-------
+
+Frequencies are reported in Kelvin-equivalent units (THz x h/k\ :sub:`B`; 1 THz ≈ 48 K).
+Thermal properties are evaluated at 300 K.
+
+1. ω\ :sub:`max` MAE (K)
+
+Mean absolute error of the MLIP and DFT maximum phonon frequency across all materials.
+
+2. ω\ :sub:`avg` MAE (K)
+
+Mean absolute error of the MLIP and DFT mean phonon frequency across all materials.
+
+3. ω\ :sub:`min` MAE (K)
+
+Mean absolute error of the MLIP and DFT minimum phonon frequency across all materials.
+Because imaginary modes appear as negative values, this metric is sensitive to
+whether a model incorrectly predicts dynamical instabilities.
+
+4. S MAE (J/mol·K)
+
+Mean absolute error of MLIP and DFT vibrational entropy at 300 K.
+
+5. F MAE (kJ/mol)
+
+Mean absolute error of the MLIP and DFT vibrational Helmholtz free energy at 300 K.
+
+6. C\ :sub:`V` MAE (J/mol·K)
+
+Mean absolute error of the MLIP and DFT constant-volume heat capacity at 300 K.
+
+7. Avg BZ MAE (K)
+
+Mean MAE of the phonon dispersion across the full Brillouin zone.
+The MAE of each MLIP and DFT phonon dispersion branch is computed for a single
+material and then the average error over all materials is computed.
+
+8. Stability F1
+
+F1 score for classifying dynamical stability. A material is classified as
+stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
+classified as true positive, false positive, true negative, or false negative.
+
+
+Computational cost
+------------------
+
+The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
+constants from the Alexandria database to generate band structures for later
+comparison. This part of the test is marked ``slow``.
+
+The MLIP evaluation (``test_phonons``) requires computing forces for all
+displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
+models will be slower. This part of the test is marked ``very_slow``.
+
+
+Data availability
+-----------------
+
+Input structures and reference force constants:
+
+* Alexandria phonon benchmark database (PBE)
+* URL: https://alexandria.icams.rub.de/data/phonon_benchmark/pbe/
+* Pre-computed phonopy YAML files containing PBE phonon reference data,
+  displacement datasets, force constants, and thermal-property reference values
+  for Materials Project structures
+
+Reference data:
+
+* DFT (PBE) force constants, thermal properties and relaxed structures from the Alexandria
+  phonon benchmark database.
+
+
+Elemental TM Vacancy Formation Energies
+=======================================
+
+Summary
+-------
+
+Performance in predicting vacancy formation energies for 42 fcc or hcp elemental transition metal structures.
+
+Metrics
+-------
+
+1. MAE
+
+Mean absolute error (MAE) between predicted and reference (PBE) vacancy formation energies values.
+
+For each elemental transition metal structure, the vacancy formation enthalpy is determined by evaluating the total energy of the cell containing the monovacancy and evaluating the total energy of the undefected cell and comparing these. Note: the undefected cell energy is scaled by a fraction in order to conserve the appropriate number of atoms.
+
+From the reference paper providing the structures, the elemental transition metals are a subset. Note:
+    * For magnetic structures, the reference spin-polarized calculations only is used.
+    * Unstable element-structure combinations are not included.
+
+Computational cost
+------------------
+
+Low: tests are likely to take a couple of minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+
+Reference data:
+
+* Same as input data
+* PBE

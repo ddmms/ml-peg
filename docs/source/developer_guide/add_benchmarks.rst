@@ -14,6 +14,10 @@ contributing a new benchmark. Full examples can be found by filtering by the
 `example benchmark addition <https://github.com/ddmms/ml-peg/issues?q=label%3A%22example%20benchmark%20addition%22>`_
 label.
 
+A Jupyter Notebook tutorial introducing this process interactively can also be found in
+the `Python tutorials <https://github.com/ddmms/ml-peg/tree/main/docs/source/tutorials/python>`_
+documentation directory.
+
 .. _metrics:
 
 Identifying metrics
@@ -338,6 +342,10 @@ model names that analysis will be run for. By default, this means all model name
 defined in ``ml_peg/models/models.yml`` will be used, but when using ``pytest`` or our
 CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
 
+In order to facilitate element filtering, it is also essential that the elemental
+compositions of the systems involved in the benchmark are saved during analysis. Please
+refer to :doc:`element filtering </developer_guide/filter>` for more details.
+
 .. note::
 
     Some imports are not included in the following example for simplicity.
@@ -358,18 +366,16 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
 
     REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
 
-    def labels() -> list:
-        """
-        Get list of labels.
-
-        Returns
-        -------
-        list
-            List of all energy labels.
-        """
-        structs = read(CALC_PATH / "structs.xyz", index=":")
-        return [struct.info["label"] for struct in structs]
-
+    INFO = get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="structs.xyz",
+        index=":",
+        write_info=True,
+        info_keys=["label"],
+        write_structs=True,
+        out_path=OUT_PATH,
+        include_filenames=True,
+    )
 
     @pytest.fixture
     @plot_parity(
@@ -378,7 +384,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
         x_label="Predicted energy / eV",
         y_label="Reference energy / eV",
         hoverdata={
-            "Labels": labels(),
+            "Labels": INFO["label"],
         },
     )
     def energies() -> dict[str, list]:
@@ -398,7 +404,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
             results[model_name] = [struct.get_potential_energy() for struct in structs]
 
             if not ref_stored:
-                results["ref"] [struct.info["ref_energy"] for struct in structs]
+                results["ref"] = [struct.info["ref_energy"] for struct in structs]
 
                 # Write structures for app
                 structs_dir = OUT_PATH / model_name
@@ -512,36 +518,64 @@ but less standard plots/interactions will need setting up.
 
 For now, please contact us to help with this process.
 
-Framework credit tags
-+++++++++++++++++++++
+Framework credit and custom group tags
+++++++++++++++++++++++++++++++++++++++
 
-If a benchmark comes from an external benchmarking framework (for example,
-MLIP Arena), add a framework credit tag as follows:
+If a benchmark comes from an external benchmarking framework (for example, MLIP Audit),
+or you want to group benchmarks by a custom category (such as those involved in a
+paper), you can add a framework credit tag as follows:
 
 1. Add/update the framework entry in ``ml_peg/app/utils/frameworks.yml``.
 
 .. code-block:: yaml
 
-    mlip_arena:
-    label: MLIP Arena
-      color: "#0f766e"
-      text_color: "#ecfeff"
-      url: "https://huggingface.co/spaces/atomind/mlip-arena"
-      logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+    mlip_audit:
+    label: MLIP Audit
+    color: "#1d4ed8"
+    text_color: "#ffffff"
+    url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
+    logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
 
-2. Set ``framework_id`` in the benchmark app constructor.
+2. Set ``framework_ids`` in the benchmark app constructor. This accepts either a
+   single framework identifier or a sequence of them, so a benchmark can belong to
+   multiple frameworks at once.
+
+   The app constructor also provides a ``include_ml_peg`` parameter. This is ``True``
+   by default, which automatically adds the built-in ``ml_peg`` tag to benchmarks, so
+   ``framework_ids`` only needs to list *additional* or *alternative* frameworks. If
+   you want to omit this tag, set ``include_ml_peg=False``.
+
+   For example:
 
 .. code-block:: python3
 
+    # MLIP Audit only
     return SomeBenchmarkApp(
         name="SomeBenchmark",
         ...,
-        framework_id="mlip_arena",
+        framework_ids="mlip_audit",
+        include_ml_peg=False,
     )
 
-That is all that is required. The benchmark header badge and the additional
-framework pages for non-default frameworks are populated automatically from
-this metadata.
+
+    # MLIP Audit and the MACE Multihead paper
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_ids=["mlip_audit", "mace-multihead"],
+        include_ml_peg=False,
+    )
+
+    # ML-PEG (added by default) and the MACE Multihead paper
+    return SomeBenchmarkApp(
+        name="SomeBenchmark",
+        ...,
+        framework_ids="mace-multihead",
+    )
+
+That is all that is required. The benchmark header shows one badge per framework,
+and the additional framework pages for non-default frameworks are populated
+automatically from this metadata.
 
 Framework sections group matching benchmarks by category, omit the category
 summary table, and reuse the same benchmark tables and controls. Updating

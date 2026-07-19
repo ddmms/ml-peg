@@ -17,6 +17,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Lattice constants"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#lattice-constants"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "lattice_constants"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class LatticeConstantsApp(BaseApp):
@@ -84,6 +85,7 @@ def get_app() -> LatticeConstantsApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
