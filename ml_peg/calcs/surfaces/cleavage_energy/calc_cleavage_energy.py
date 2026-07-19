@@ -6,9 +6,11 @@ from copy import copy
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -113,10 +115,24 @@ def test_cleavage_energy(mlip: tuple[str, Any]) -> None:
             _set_neutral_singlet_info(bulk)
 
             slab.calc = copy(calc)
-            slab_energy = float(slab.get_potential_energy())
+            try:
+                slab_energy = float(slab.get_potential_energy())
+            except Exception as exc:
+                warn(
+                    f"Error calculating slab energy for {xyz_file}: {exc}",
+                    stacklevel=2,
+                )
+                slab_energy = np.nan
 
             bulk.calc = copy(calc)
-            bulk_energy = float(bulk.get_potential_energy())
+            try:
+                bulk_energy = float(bulk.get_potential_energy())
+            except Exception as exc:
+                warn(
+                    f"Error calculating bulk energy for {xyz_file}: {exc}",
+                    stacklevel=2,
+                )
+                bulk_energy = np.nan
 
             slab.info.update(
                 {

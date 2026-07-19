@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 
 from ase.io import read
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
@@ -26,6 +28,18 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "cleavage_energy"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+# Extract per-structure elemental information from the mock calculation. Keeping one
+# element list per surface allows the benchmark to support partial filtering later.
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    sort_key=lambda path: int(path.stem),
+    index=0,
+    include_filenames=True,
+    write_structs=False,
+    out_path=OUT_PATH,
 )
 
 EV_TO_MEV = 1000.0
@@ -168,16 +182,24 @@ def cleavage_density(
         preds = cleavage_energies[model_name]["pred"]
         refs = cleavage_energies[model_name]["ref"]
         labels = cleavage_energies[model_name]["labels"]
+        valid_points = [
+            (ref, pred, label)
+            for ref, pred, label in zip(refs, preds, labels, strict=True)
+            if np.isfinite(ref) and np.isfinite(pred)
+        ]
+        valid_refs = [point[0] for point in valid_points]
+        valid_preds = [point[1] for point in valid_points]
+        valid_labels = [point[2] for point in valid_points]
         density_inputs[model_name] = {
-            "ref": refs,
-            "pred": preds,
-            "meta": {"system_count": len([v for v in preds if v is not None])},
+            "ref": valid_refs,
+            "pred": valid_preds,
+            "meta": {"system_count": len(valid_preds)},
         }
-        if preds:
+        if valid_preds:
             write_density_trajectories(
-                labels_list=labels,
-                ref_vals=refs,
-                pred_vals=preds,
+                labels_list=valid_labels,
+                ref_vals=valid_refs,
+                pred_vals=valid_preds,
                 struct_dir=CALC_PATH / model_name,
                 traj_dir=OUT_PATH / model_name / "density_traj",
                 struct_filename_builder=lambda label: f"{label}.xyz",
@@ -207,7 +229,7 @@ def cleavage_mae(cleavage_energies: dict[str, dict[str, list]]) -> dict[str, flo
         if pred_vals:
             results[model_name] = mae(ref_vals, pred_vals)
         else:
-            results[model_name] = None
+            results[model_name] = np.nan
     return results
 
 
