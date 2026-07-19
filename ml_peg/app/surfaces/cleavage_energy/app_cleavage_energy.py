@@ -43,7 +43,7 @@ class CleavageEnergyApp(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="assets/surfaces/cleavage_energy",
+            assets_prefix="/assets/surfaces/cleavage_energy",
             models=MODELS,
             traj_dirname="density_traj",
             suffix=".extxyz",
