@@ -556,7 +556,7 @@ def build_loading_summary_table(table: DataTable) -> Loading:
     # Longer delay_hide than the default: a summary table gets several quick
     # updates in a row as category scores propagate, so bridge the gaps into one
     # spinner instead of several flashes.
-    return build_filter_overlay(table.id, Div(table), delay_hide=600)
+    return build_filter_overlay(table.id, Div(table), delay_hide=400)
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
