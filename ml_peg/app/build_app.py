@@ -38,13 +38,16 @@ from ml_peg.app.utils.build_components import (
 )
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
-    build_tutorial_button,
     register_onboarding_callbacks,
 )
 from ml_peg.app.utils.register_callbacks import (
     register_benchmark_to_category_callback,
     register_filter_loading_callback,
     register_filter_tables_callback,
+)
+from ml_peg.app.utils.storage import (
+    build_header_controls,
+    register_storage_callbacks,
 )
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
@@ -1048,6 +1051,22 @@ def build_nav(
                         "color": "#212529",
                     },
                 ),
+                # Time-based progress bar: fills continuously over ~10s, easing
+                # toward ~95% (keyframe in loading.css; same single-element bar
+                # as the pre-hydration loader in dash_loading.css). It vanishes
+                # with the mask when ready, so it never reaches a fake 100%.
+                Div(
+                    style={
+                        "width": "200px",
+                        "height": "6px",
+                        "borderRadius": "3px",
+                        "background": (
+                            "linear-gradient(#119DFF, #119DFF) left center "
+                            "/ 5% 100% no-repeat, #d0ebff"
+                        ),
+                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
+                    },
+                ),
             ],
             id="startup-mask",
             style={
@@ -1067,7 +1086,7 @@ def build_nav(
         ),
         Interval(id="startup-mask-poll", interval=250, n_intervals=0),
         build_onboarding_modal(),
-        build_tutorial_button(),
+        build_header_controls(),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -1184,6 +1203,7 @@ def build_nav(
 
     # Hide the start-up mask once the page has rendered, or after a timeout as
     # a safety net, then stop polling. Clientside, so it adds no server load.
+    # (The progress bar fills via a CSS animation, not this callback.)
     clientside_callback(
         """
         function(n) {
@@ -1199,6 +1219,8 @@ def build_nav(
         Output("startup-mask-poll", "disabled"),
         Input("startup-mask-poll", "n_intervals"),
     )
+
+    register_storage_callbacks()
 
     @callback(
         Output("model-filter-checklist", "value"),
