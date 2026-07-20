@@ -6,6 +6,7 @@
 [![Docs status][docs-badge]][docs-link]
 [![License][license-badge]][license-link]
 [![DOI][doi-badge]][doi-link]
+[![Ask DeepWiki][deepwiki-badge]][deepwiki-link]
 
 🔗 See our live guide: https://ml-peg.stfc.ac.uk
 
@@ -186,3 +187,5 @@ The app should now be accessible at http://localhost:8050.
 [license-link]: https://opensource.org/license/gpl-3-0
 [doi-link]: https://doi.org/10.5281/zenodo.16904444
 [doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.16904444.svg
+[deepwiki-link]: https://deepwiki.com/ddmms/ml-peg
+[deepwiki-badge]: https://deepwiki.com/badge.svg
