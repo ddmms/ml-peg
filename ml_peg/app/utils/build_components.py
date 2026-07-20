@@ -28,6 +28,7 @@ from ml_peg.app.utils.utils import (
     calculate_column_widths,
     get_framework_config,
     get_threshold_colours,
+    weight_input_style,
 )
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
@@ -124,14 +125,7 @@ def build_weight_input(
             value=default_value,
             step=0.01,
             debounce=True,
-            style={
-                "width": "60px",
-                "fontSize": "12px",
-                "padding": "2px 4px",
-                "border": "1px solid #6c757d",
-                "borderRadius": "3px",
-                "textAlign": "center",
-            },
+            style=weight_input_style(default_value),
         )
     )
 
