@@ -78,6 +78,7 @@ def metrics(energy_difference: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_extensivity(metrics: dict[str, dict]) -> None:
     """
     Run extensivity analysis.

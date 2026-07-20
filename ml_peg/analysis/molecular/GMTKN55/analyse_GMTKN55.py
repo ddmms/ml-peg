@@ -352,6 +352,7 @@ def metrics(
     return metrics | {"WTMAD": weighted_error}
 
 
+@pytest.mark.framework("mace-multihead")
 def test_gmtkn55(metrics):
     """
     Run GMTKN55 test.

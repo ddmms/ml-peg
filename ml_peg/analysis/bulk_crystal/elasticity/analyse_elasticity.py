@@ -656,6 +656,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_elasticity(
     metrics: dict[str, dict],
     bulk_density: dict[str, dict],

@@ -219,6 +219,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_quid(metrics: dict[str, dict]) -> None:
     """
     Run QUID test.

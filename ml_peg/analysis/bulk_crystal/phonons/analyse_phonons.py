@@ -665,6 +665,7 @@ def interactive_dataset(phonon_stats: dict[str, dict[str, Any]]) -> dict[str, An
     return dataset
 
 
+@pytest.mark.framework("mace-multihead")
 def test_phonons(metrics, interactive_dataset) -> None:
     """
     Exercise the phonon fixtures to ensure they build without errors.

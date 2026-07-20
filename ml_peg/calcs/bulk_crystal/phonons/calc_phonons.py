@@ -191,6 +191,7 @@ def _ref_complete(mp_id: str, out_dir: Path) -> bool:
     )
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.slow
 def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     """
@@ -421,6 +422,7 @@ def _calc_model_mp_id(
     return mp_id, success, log.getvalue()
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 def test_phonons(

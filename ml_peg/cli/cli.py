@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal, get_args
 
 from typer import Context, Exit, Option, Typer
+from yaml import safe_load
 
 from ml_peg import __version__
 from ml_peg.analysis import ANALYSIS_ROOT
@@ -136,9 +137,23 @@ def complete_models(ctx: Context, incomplete: str) -> list[str]:
     return [f"{head}{name}" for name in names if name.startswith(last)]
 
 
+def get_frameworks() -> tuple[str, ...]:
+    """
+    Get available MLIP framework ids.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Tuple of "*" followed by sorted framework ids from the framework registry.
+    """
+    frameworks = safe_load((APP_ROOT / "utils" / "frameworks.yml").read_text())
+    return ("*",) + tuple(sorted(frameworks))
+
+
 AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
 AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
 CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
+Frameworks = Literal[(get_frameworks())]
 
 
 app = Typer(
@@ -256,6 +271,13 @@ def run_calcs(
             autocompletion=complete_test,
         ),
     ] = "*",
+    framework: Annotated[
+        Frameworks,
+        Option(
+            help="MLIP framework to run calculations for. Default is all frameworks.",
+            case_sensitive=False,
+        ),
+    ] = "*",
     run_mock: Annotated[
         bool, Option(help="Whether to run with mock calculator in addition to models.")
     ] = True,
@@ -290,6 +312,9 @@ def run_calcs(
     test
         Test to run calculation for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework to run calculations for. Default is `*`, corresponding to all
+        frameworks.
     run_mock
         Whether to run mock calculations. Default is `True`.
     mock_only
@@ -332,6 +357,9 @@ def run_calcs(
     if models_file:
         options.extend(["--models-file", models_file])
 
+    if framework != "*":
+        options.extend(["--framework", framework])
+
     # Parse any custom options to pytest
     options.extend(ctx.args)
 
@@ -370,6 +398,13 @@ def run_analysis(
             autocompletion=complete_test,
         ),
     ] = "*",
+    framework: Annotated[
+        Frameworks,
+        Option(
+            help="MLIP framework to run analysis for. Default is all frameworks.",
+            case_sensitive=False,
+        ),
+    ] = "*",
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
     ] = True,
@@ -389,6 +424,9 @@ def run_analysis(
     test
         Test to run analysis for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework to run analysis for. Default is `*`, corresponding to all
+        frameworks.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -411,6 +449,9 @@ def run_analysis(
 
     if models_file:
         options.extend(["--models-file", models_file])
+
+    if framework != "*":
+        options.extend(["--framework", framework])
 
     pytest.main(options)
 
