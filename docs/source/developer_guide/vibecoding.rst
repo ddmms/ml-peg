@@ -35,10 +35,10 @@ AI may write the lines, but **you** are the author.
 If an AI assistant generated a significant architectural component, a
 complex algorithm, or an entire module, disclose it.
 
-- **In Pull Requests:***(PR) Include a brief note in your PR description.
-  *Example: “The boilerplate for the ``MLIPCalculator`` class and Pytest
+- **In Pull Requests (PRs):** Include a brief note in your PR description.
+  For example: “The boilerplate for the ``MLIPCalculator`` class and Pytest
   fixtures were generated using Claude 3.5, with manual refinements for
-  CPU/GPU binding.”*
+  CPU/GPU binding.”
 - **In Documentation:** If an AI tool was heavily relied upon for
   drafting documentation, mention it in a “Tool and computational
   resource disclosure” section.
