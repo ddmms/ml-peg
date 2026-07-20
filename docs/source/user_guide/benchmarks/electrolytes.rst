@@ -1,6 +1,6 @@
-==================
-WiSE electrolytes
-==================
+============
+Electrolytes
+============
 
 LiTFSI/H2O 21 m
 ===============
@@ -80,7 +80,7 @@ Nose-Hoover thermostat tau = 50 fs and barostat tau = 500 fs:
   last 150 ps.
 
 The janus-core recast of the same protocol is ``test_reference_md`` in
-``ml_peg/calcs/wise_electrolytes/litfsi_h2o_21m/``, marked ``very_slow``. It
+``ml_peg/calcs/electrolytes/litfsi_h2o_21m/``, marked ``very_slow``. It
 regenerates both data products for any registered model, so the benchmark does
 not depend on the pre-computed trajectories.
 

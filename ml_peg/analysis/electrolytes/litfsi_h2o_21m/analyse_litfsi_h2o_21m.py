@@ -19,8 +19,8 @@ from ml_peg.models.get_models import load_models
 
 # --- Paths -------------------------------------------------------------------
 
-CALC_PATH = CALCS_ROOT / "wise_electrolytes" / "litfsi_h2o_21m" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "wise_electrolytes" / "litfsi_h2o_21m"
+CALC_PATH = CALCS_ROOT / "electrolytes" / "litfsi_h2o_21m" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "electrolytes" / "litfsi_h2o_21m"
 EXP_SAXS_PATH = Path(__file__).resolve().parents[1] / "data" / "saxs_maginn.txt"
 
 MODELS = load_models(current_models)

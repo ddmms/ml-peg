@@ -14,8 +14,8 @@ Benchmarks
     bulk_crystal
     lanthanides
     non_covalent_interactions
+    electrolytes
     tm_complexes
     conformers
     molecular_dynamics
     defect
-    wise_electrolytes

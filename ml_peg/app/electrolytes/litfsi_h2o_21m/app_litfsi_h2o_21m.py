@@ -10,12 +10,12 @@ from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column
 from ml_peg.app.utils.load import read_plot
 
-BENCHMARK_NAME = "wise_electrolytes_litfsi_h2o_21m"
+BENCHMARK_NAME = "electrolytes_litfsi_h2o_21m"
 APP_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = APP_ROOT / "data" / "wise_electrolytes" / "litfsi_h2o_21m"
+DATA_PATH = APP_ROOT / "data" / "electrolytes" / "litfsi_h2o_21m"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
-    "wise_electrolytes.html#litfsi-h2o-21-m"
+    "electrolytes.html#litfsi-h2o-21-m"
 )
 
 
