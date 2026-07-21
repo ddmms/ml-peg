@@ -64,6 +64,27 @@ The common fields are:
    differ. See :doc:`Levels of theory </developer_guide/levels_of_theory>` for
    naming conventions.
 
+``datasets``
+   Optional list of training-dataset names, e.g. ``[MPtrj]`` or
+   ``[MPtrj, sAlex]``. Each name maps, via
+   ``ml_peg/app/data/element_coverage.json``, to the elements that dataset
+   covers. A model's coverage is the **union** across all listed datasets, so the
+   app's element filter can keep or exclude elements by a model's coverage. Names
+   are **case-sensitive** and every one must be a key in ``element_coverage.json``
+   (each entry has a ``supported`` element list and a ``number`` count); add a
+   new dataset entry there if the model's training set is not yet listed. Set
+   ``datasets: null`` when the model was trained on e.g. a non-public dataset (then
+   express its coverage entirely through ``additional_supported_elements``).
+
+``additional_supported_elements``
+   Optional list of element symbols the model supports *beyond* its ``datasets``
+   coverage. A model's total coverage is the union of its datasets' elements and
+   this list. To determine coverage empirically, run
+   ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
+   since model backends conflict), then
+   ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
+   and which elements to record here as extras.
+
 ``kwargs``
    Keyword arguments forwarded to the calculator constructor or factory. Here you can
    input kwargs you would usually use for the calculator.
