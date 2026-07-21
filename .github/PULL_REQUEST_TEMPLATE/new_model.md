@@ -31,6 +31,7 @@ Resolves #
 
 <!-- Which aspects of adding the new model are complete? Any issues encountered can also be discussed here. -->
 - [ ] Model configuration
+- [ ] Element coverage declared (`datasets:` and/or `additional_supported_elements:` in `models.yml`.)
 - [ ] Documentation
 
 ## Testing
