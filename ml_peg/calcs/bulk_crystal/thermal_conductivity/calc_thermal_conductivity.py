@@ -143,14 +143,15 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
     if PARALLEL_TASK_NUM == 1:
         if not FAST_ONLY:
             df = pd.DataFrame(kappa_dicts).T
-            df.index.name = tc.TCKeys.mat_id
-            df.reset_index().to_json(OUT_PATH / model_name / "kappas.json.gz")
+            # material_id is already a column, so drop the redundant index.
+            df.reset_index(drop=True).to_json(OUT_PATH / model_name / "kappas.json.gz")
             with h5py.File(OUT_PATH / model_name / "kappas.hdf5", "w") as f:
                 tc.dict_to_hdf5(kappa_dicts, f)
 
         fast_df = pd.DataFrame(fast_kappa_dicts).T
-        fast_df.index.name = tc.TCKeys.mat_id
-        fast_df.reset_index().to_json(OUT_PATH / model_name / "fast_kappas.json.gz")
+        fast_df.reset_index(drop=True).to_json(
+            OUT_PATH / model_name / "fast_kappas.json.gz"
+        )
         with h5py.File(OUT_PATH / model_name / "fast_kappas.hdf5", "w") as f:
             tc.dict_to_hdf5(fast_kappa_dicts, f)
 
