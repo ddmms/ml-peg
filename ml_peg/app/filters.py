@@ -193,7 +193,7 @@ def _dataset_presets() -> tuple[ElementPreset, ...]:
 
     Datasets that share an identical supported-element set are merged into a
     single preset (label = their names joined with "/"), so families with the
-    same coverage (e.g. MPtrj/Alexandria/OMAT) render as one button and future
+    same coverage (e.g. MPtrj/sAlex/OMAT) render as one button and future
     identical-coverage datasets fold in automatically.
 
     Returns
@@ -231,12 +231,13 @@ def _dataset_presets() -> tuple[ElementPreset, ...]:
 @lru_cache(maxsize=1)
 def _model_supported_elements() -> dict[str, frozenset[str]]:
     """
-    Map each model to the elements covered by its training datasets.
+    Map each model to the elements it covers.
 
     A model's elements are the union of the ``supported`` sets of every dataset
-    listed under its ``datasets`` key in ``models.yml``. Models with no
-    ``datasets`` tag, or whose datasets are absent from the coverage file, are
-    omitted (treated as untagged).
+    listed under its ``datasets`` key in ``models.yml``, plus any elements listed
+    under its ``additional_supported_elements`` key (for models that support more
+    than their datasets imply). Models with neither, or whose datasets are absent
+    from the coverage file, are omitted (treated as untagged).
 
     Returns
     -------
@@ -249,11 +250,13 @@ def _model_supported_elements() -> dict[str, frozenset[str]]:
 
     result: dict[str, frozenset[str]] = {}
     for model in models:
+        config = configs.get(model, {})
         elements: set[str] = set()
-        for dataset in configs.get(model, {}).get("datasets") or []:
+        for dataset in config.get("datasets") or []:
             supported = coverage.get(dataset, {}).get("supported")
             if supported:
                 elements.update(supported)
+        elements.update(config.get("additional_supported_elements") or [])
         if elements:
             result[model] = frozenset(elements)
     return result
