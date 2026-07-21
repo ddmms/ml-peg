@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import importlib
 from io import BytesIO
 import os
 from pathlib import Path
 import re
 import sys
+import time
 
 from ase import Atoms
 import h5py
@@ -211,16 +213,40 @@ def scrape_phono3py_data(
     except ImportError:
         raise ImportError("lzma module is required to decompress .xz files.") from None
 
-    yaml_list = []
+    def _download_one(link: str) -> str:
+        """
+        Download and decompress one phono3py params YAML, retrying on failure.
 
-    for link in tqdm(params_links, desc="Download"):
-        xz_bytes = requests.get(link, timeout=30).content
+        Parameters
+        ----------
+        link : str
+            URL of the ``.yaml.xz`` file.
 
-        yaml_bytes = lzma.decompress(xz_bytes)
+        Returns
+        -------
+        str
+            Decompressed YAML content.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                xz_bytes = requests.get(link, timeout=30).content
+                return lzma.decompress(xz_bytes).decode("utf-8")
+            except Exception as exc:
+                last_exc = exc
+                time.sleep(2**attempt)
+        raise RuntimeError(f"Failed to download {link} after 3 attempts") from last_exc
 
-        yaml_str = yaml_bytes.decode("utf-8")
-
-        yaml_list.append(yaml_str)
+    # Downloads are I/O-bound, so thread them. map preserves order so yaml_list
+    # stays aligned with params_links.
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        yaml_list = list(
+            tqdm(
+                executor.map(_download_one, params_links),
+                total=len(params_links),
+                desc="Download",
+            )
+        )
 
     return yaml_list, name_list
 
