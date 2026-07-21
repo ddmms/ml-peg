@@ -615,6 +615,82 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+def build_data_download_controls(
+    control_id: str,
+    *,
+    formats: Sequence[tuple[str, str]] | None = None,
+    button_label: str = "Download data",
+) -> Div:
+    """
+    Build compact dropdown-driven data download controls.
+
+    Parameters
+    ----------
+    control_id
+        Prefix used for the dropdown, button, and ``dcc.Download`` IDs.
+    formats
+        ``(label, value)`` pairs for the format dropdown. Defaults to CSV/JSON.
+    button_label
+        Text shown on the download button.
+
+    Returns
+    -------
+    Div
+        Download controls with IDs ``{control_id}-format``,
+        ``{control_id}-button``, and ``{control_id}-download``.
+    """
+    formats = formats or (("CSV", "csv"), ("JSON", "json"))
+    return Div(
+        [
+            Dropdown(
+                id=f"{control_id}-format",
+                className="download-format data-download-format",
+                options=[{"label": label, "value": value} for label, value in formats],
+                value=formats[0][1],
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "84px",
+                    "height": "30px",
+                    "fontSize": "12px",
+                },
+            ),
+            Button(
+                button_label,
+                id=f"{control_id}-button",
+                className="download-button data-download-button",
+                n_clicks=0,
+                style={
+                    "width": "120px",
+                },
+            ),
+            Download(id=f"{control_id}-download"),
+            Loading(
+                Div(
+                    id=f"{control_id}-status",
+                    style={"width": "32px", "height": "32px"},
+                ),
+                type="circle",
+                style={
+                    "display": "inline-flex",
+                    "justifyContent": "center",
+                    "minWidth": "32px",
+                    "width": "32px",
+                },
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "flex-end",
+            "gap": "8px",
+            "flexShrink": "0",
+            "marginTop": "4px",
+            "marginBottom": "0px",
+        },
+    )
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
