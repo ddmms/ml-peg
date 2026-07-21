@@ -15,6 +15,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#bmimcl-rdf"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular" / "BMIMCl_RDF"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class BMIMClRDFApp(BaseApp):
@@ -54,6 +55,7 @@ def get_app() -> BMIMClRDFApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

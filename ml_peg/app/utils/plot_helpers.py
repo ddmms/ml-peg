@@ -9,6 +9,22 @@ from dash import dcc, html
 import numpy as np
 import plotly.graph_objects as go
 
+INSTRUCTION_STYLE = {
+    "backgroundColor": "#f5f8fc",
+    "border": "1px solid #d7e3f0",
+    "borderLeft": "4px solid #4f7fb8",
+    "borderRadius": "6px",
+    "boxSizing": "border-box",
+    "color": "#24415f",
+    "display": "inline-block",
+    "fontSize": "13px",
+    "margin": "8px 0 12px 0",
+    "maxWidth": "100%",
+    "padding": "8px 10px",
+}
+TABLE_HINT = "Click a table cell to view its data."
+POINT_HINT = "Click the points to see more information."
+
 
 def figure_from_dict(
     figure_dict: Mapping | None, fallback_title: str | None = None
@@ -300,7 +316,7 @@ def build_serialized_scatter_content(
     )
     graph = dcc.Graph(id=scatter_id, figure=figure)
     meta = {"model": model_display, "type": "metric", "metric": metric_key}
-    content = html.Div([html.P(instructions), graph])
+    content = html.Div([html.P(instructions, style=INSTRUCTION_STYLE), graph])
     return content, meta
 
 
@@ -374,7 +390,9 @@ def build_classification_panel(
     scatter_graph = dcc.Graph(id=scatter_id, figure=scatter)
     confusion_graph = dcc.Graph(id=confusion_id, figure=confusion)
     meta = {"model": model_display, "type": classification_key}
-    content = html.Div([html.P(instructions), scatter_graph, confusion_graph])
+    content = html.Div(
+        [html.P(instructions, style=INSTRUCTION_STYLE), scatter_graph, confusion_graph]
+    )
     return content, meta
 
 

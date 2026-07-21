@@ -19,6 +19,7 @@ DOCS_URL = (
     "#isomer-complexes"
 )
 DATA_PATH = APP_ROOT / "data" / "lanthanides" / "isomer_complexes"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class IsomerComplexesApp(BaseApp):
@@ -73,6 +74,8 @@ def get_app() -> IsomerComplexesApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

@@ -103,6 +103,44 @@ Reference data:
 * PBE-D3(BJ), MPRelaxSet settings
 
 
+CMRAds200
+=========
+
+Summary
+-------
+
+Performance in predicting adsorption energies for 200 adsorbate-surface reactions involving eight adsorbates on 25 transition metal surfaces at full coverage.
+
+Metrics
+-------
+
+MAE of adsorption energies
+
+For each adsorbate-surface reaction, the adsorption energy is calculated as the difference between the energy of the surface + molecule and the sum of individual surface and molecule energies. This is compared to the PBE reference
+adsorption energy from the CMR database.
+
+Computational cost
+------------------
+
+Low: tests are likely to take a couple of minutes to run on CPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* Structures and adsorption reactions were taken from the Computational Materials Repository (CMR) database of adsorption and surface energies.
+
+  * P. S. Schmidt and K. S. Thygesen, “Benchmark Database of Transition Metal Surface and Adsorption Energies from Many-Body Perturbation Theory,” J. Phys. Chem. C, vol. 122, pp. 4381–4390, 2018. https://doi.org/10.1021/acs.jpcc.7b12258
+
+* The benchmark includes OH, CH, NO, CO, N2, N, O, and H adsorption reactions on 3d, 4d, and 5d transition metal surfaces.
+
+Reference data:
+
+* Same as input data
+* PBE adsorption energies from the CMR database
+
+
 Elemental Slab Oxygen Adsorption
 ================================
 

@@ -7,3 +7,5 @@ from pathlib import Path
 MODELS_ROOT = Path(__file__).parent
 current_models = None
 models_file = MODELS_ROOT / "models.yml"
+run_mock = False
+mock_only = False

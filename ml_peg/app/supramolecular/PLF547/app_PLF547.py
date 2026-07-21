@@ -22,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#plf547"
 )
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLF547"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 def _structure_paths(model_name: str) -> list[str]:
@@ -96,6 +97,8 @@ def get_app() -> PLF547App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids=["mace-multihead", "mace-polar-1"],
     )
 
 

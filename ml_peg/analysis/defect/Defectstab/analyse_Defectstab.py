@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -25,49 +25,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of Defectstab system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for xyz_file in sorted(model_dir.glob("*.xyz")):
-                atoms = read(xyz_file)
-                if atoms.info.get("ref") is not None:
-                    system_names.append(atoms.info.get("system", xyz_file.stem))
-            if system_names:
-                break
-    return system_names
-
-
-def get_subset_labels() -> list[str]:
-    """
-    Get subset label for each system, matching the order from get_system_names.
-
-    Returns
-    -------
-    list[str]
-        List of subset labels, one per system.
-    """
-    subset_labels = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            for xyz_file in sorted(model_dir.glob("*.xyz")):
-                atoms = read(xyz_file)
-                if atoms.info.get("ref") is not None:
-                    subset_labels.append(atoms.info.get("subset", "unknown"))
-            if subset_labels:
-                break
-    return subset_labels
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    info_keys=["system", "subset", "ref"],
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 def _compute_pred_fe(atoms) -> float | None:
@@ -195,8 +160,8 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
     x_label="Predicted Formation Energy / eV",
     y_label="Reference Formation Energy / eV",
     hoverdata={
-        "System": get_system_names(),
-        "Subset": get_subset_labels(),
+        "System": INFO["system"],
+        "Subset": INFO["subset"],
     },
 )
 def formation_energies(grouped_data) -> dict[str, list]:

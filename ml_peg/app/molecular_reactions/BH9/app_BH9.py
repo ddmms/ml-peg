@@ -22,6 +22,7 @@ DOCS_URL = (
     "molecular.html#bh9-reaction-barriers"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH9"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class BH9App(BaseApp):
@@ -81,6 +82,8 @@ def get_app() -> BH9App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

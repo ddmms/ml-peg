@@ -9,9 +9,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -105,6 +107,7 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
     return ref_energies
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ionpi19(mlip: tuple[str, Any]) -> None:
     """
@@ -135,7 +138,11 @@ def test_ionpi19(mlip: tuple[str, Any]) -> None:
             atoms = get_atoms(data_path / label)
             atoms.info["ref_int_energy"] = ref_energies[system_id]
             atoms.calc = calc
-            atoms.info["model_energy"] = atoms.get_potential_energy()
+            try:
+                atoms.info["model_energy"] = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+                atoms.info["model_energy"] = np.nan
 
             write_dir = OUT_PATH / model_name
             write_dir.mkdir(parents=True, exist_ok=True)

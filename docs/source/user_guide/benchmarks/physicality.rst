@@ -180,3 +180,36 @@ Data availability
 Starting configurations for the MD are available on S3 bucket. Experimental reference ranges for the RDF peaks were taken from [1].
 
 [1] Kocer, Emir, et al. "Machine learning potentials for redox chemistry in solution." arXiv preprint arXiv:2410.03299 (2024).
+
+
+Water Slab Dipoles
+==================
+
+Summary
+-------
+
+Distribution of dipole of water slab, checking for width of distribution and structures with dielectric breakdown.
+
+
+Metrics
+-------
+
+1. Standard Deviation of Dipole Distribution
+
+For a number of samples from an MD simulation, the total dipole is calculated. Compare to a reference of a LR model trained on revPBE-D3.
+
+2. Number of structures with dielectric breakdown
+
+Estimate band gap based on dipole, count structures where band gap disappears.
+
+
+Computational Cost
+------------------
+
+High: Requires around 500 ps of MD of 40 A slab to get converged distribution, around 1 day on one GPU.
+
+
+Data availability
+-----------------
+
+https://arxiv.org/html/2603.04228v1

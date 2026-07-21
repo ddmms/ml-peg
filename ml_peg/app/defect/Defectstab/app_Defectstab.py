@@ -21,6 +21,7 @@ BENCHMARK_NAME = "Defectstab Formation Energies"
 # Update this URL when documentation is added
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defect.html#defectstab"
 DATA_PATH = APP_ROOT / "data" / "defect" / "Defectstab"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class DefectstabApp(BaseApp):
@@ -80,6 +81,7 @@ def get_app() -> DefectstabApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

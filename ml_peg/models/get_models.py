@@ -111,6 +111,8 @@ def get_subset(
 def load_models(
     models: None | str | Iterable = None,
     filepath: Path | str | None = None,
+    run_mock: bool | None = None,
+    mock_only: bool | None = None,
 ) -> dict[str, Any]:
     """
     Load models for use in calculations.
@@ -123,15 +125,35 @@ def load_models(
         this will be treated as a comma-separated list.
     filepath
         Path to YAML file with models. Default is `models_file`.
+    run_mock
+            Whether to include mock model in the loaded models. Default is False.
+    mock_only
+            Whether to load only mock model, ignoring `models`. Default is False.
 
     Returns
     -------
     dict[str, Any]
-        Loaded models from models.yml.
+        Loaded models from models.yml and/or loaded mock model.
     """
-    from ml_peg.models.models import FairChemCalc, GenericASECalc, OrbCalc, PetMadCalc
+    from ml_peg.models.models import (
+        FairChemCalc,
+        GenericASECalc,
+        MockCalc,
+        OrbCalc,
+        PetMadCalc,
+    )
 
-    loaded_models = {}
+    if run_mock is None:
+        from ml_peg.models import run_mock
+    if mock_only is None:
+        from ml_peg.models import mock_only
+
+    if mock_only and not run_mock:
+        raise ValueError("Cannot set `mock_only` without `run_mock`")
+
+    loaded_models = {"mock": MockCalc()} if run_mock else {}
+    if mock_only:
+        return loaded_models
 
     filepath = filepath if filepath else models_file
     all_models = _load_models_yaml(filepath)

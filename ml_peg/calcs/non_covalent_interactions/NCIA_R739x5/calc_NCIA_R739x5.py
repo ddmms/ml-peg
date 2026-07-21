@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -93,6 +94,7 @@ def get_monomers(atoms: Atoms) -> tuple[Atoms, Atoms]:
     return (atoms_a, atoms_b)
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
     """
@@ -133,11 +135,15 @@ def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
         atoms_a.calc = calc
         atoms_b.calc = calc
 
-        atoms.info["model_int_energy"] = (
-            atoms.get_potential_energy()
-            - atoms_a.get_potential_energy()
-            - atoms_b.get_potential_energy()
-        )
+        try:
+            atoms.info["model_int_energy"] = (
+                atoms.get_potential_energy()
+                - atoms_a.get_potential_energy()
+                - atoms_b.get_potential_energy()
+            )
+        except Exception as exc:
+            warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_int_energy"] = np.nan
         atoms.info["ref_int_energy"] = ref_energy
         atoms.calc = None
 
