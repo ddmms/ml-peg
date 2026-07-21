@@ -40,8 +40,8 @@ def collect_kappas(parent_dir: Path, filename_no_ext: str, output_name_no_ext: s
     print("Loading finished.")
 
     df = pd.DataFrame(dicts).T
-    df.index.name = tc.TCKeys.mat_id
-    df.reset_index().to_json(OUT_PATH / f"{output_name_no_ext}.json.gz")
+    # material_id is already a column, so drop the redundant index.
+    df.reset_index(drop=True).to_json(OUT_PATH / f"{output_name_no_ext}.json.gz")
     with h5py.File(parent_dir / f"{output_name_no_ext}.hdf5", "w") as f:
         tc.dict_to_hdf5(dicts, f)
 

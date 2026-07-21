@@ -10,12 +10,14 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import sys
 import h5py
 import pandas as pd
 
 DATA_PATH = Path(__file__).parent
 
-tc = importlib.import_module(DATA_PATH.parent / "thermal_conductivity.py")
+sys.path.append(str(DATA_PATH.parent))
+tc = importlib.import_module("thermal_conductivity")
 
 PBE_DATA_PATH = DATA_PATH / "PBE"
 
