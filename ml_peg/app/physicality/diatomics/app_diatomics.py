@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import csv
-import io
-import json
-
-from dash import Dash, Input, Output, State, callback, dcc, no_update
+from dash import Dash, dcc
 from dash.dcc import Loading
-from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    load_model_curves,
-    register_image_gallery_callbacks,
-    render_periodic_curve_gallery_png,
+from ml_peg.app.physicality.diatomics.download_utils import (
+    register_data_download_callbacks,
 )
+from ml_peg.app.utils.build_callbacks import register_image_gallery_callbacks
 from ml_peg.app.utils.build_components import build_data_download_controls
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -48,202 +42,13 @@ class DiatomicsApp(BaseApp):
             overview_label=OVERVIEW_LABEL,
             curve_dir=CURVE_PATH,
         )
-        register_data_download_callbacks()
-
-
-def _safe_filename_stem(model_name: str, element_value: str | None) -> str:
-    """
-    Build a safe download filename stem for the current model and view.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model being exported.
-    element_value
-        Current dropdown choice: the overview label, or an element symbol.
-
-    Returns
-    -------
-    str
-        Filename stem with anything other than letters, digits, ``-``, ``_``
-        or ``.`` replaced by underscores.
-    """
-    view = "homonuclear" if element_value == OVERVIEW_LABEL else str(element_value)
-    stem = f"{model_name}_diatomics_{view}"
-    return "".join(char if char.isalnum() or char in "-_." else "_" for char in stem)
-
-
-def _serialise_selected_curves(
-    model_name: str,
-    element_value: str | None,
-) -> tuple[dict, list[dict]]:
-    """
-    Build the JSON and CSV representations of the current selected view.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model whose curves to export.
-    element_value
-        Current dropdown choice: the overview label, or an element symbol.
-
-    Returns
-    -------
-    tuple[dict, list[dict]]
-        A nested structure for the JSON file (model, view, selected element,
-        and one entry per element pair) and a flat list of rows, one per
-        distance point, for the CSV file.
-    """
-    selected_element, curves = load_model_curves(
-        CURVE_PATH, model_name, element_value, OVERVIEW_LABEL
-    )
-    view = "homonuclear" if selected_element is None else "heteronuclear"
-    pairs_payload: list[dict] = []
-    rows: list[dict] = []
-
-    for pair in sorted(curves):
-        payload = curves[pair]
-        distances = payload.get("distance") or []
-        energies = payload.get("energy") or []
-        forces = payload.get("force_parallel") or []
-        shift = energies[-1] if energies else None
-        shifted_energies = [
-            energy - shift if shift is not None else None for energy in energies
-        ]
-        element_1 = payload.get("element_1")
-        element_2 = payload.get("element_2")
-
-        pair_payload = {
-            "pair": pair,
-            "element_1": element_1,
-            "element_2": element_2,
-            "distance": distances,
-            "energy": energies,
-            "shifted_energy": shifted_energies,
-        }
-        if forces:
-            pair_payload["force_parallel"] = forces
-        pairs_payload.append(pair_payload)
-
-        for idx, distance in enumerate(distances):
-            energy = energies[idx] if idx < len(energies) else None
-            shifted_energy = (
-                shifted_energies[idx] if idx < len(shifted_energies) else None
-            )
-            force_parallel = forces[idx] if idx < len(forces) else None
-            rows.append(
-                {
-                    "model": model_name,
-                    "view": view,
-                    "selected_element": selected_element or "",
-                    "pair": pair,
-                    "element_1": element_1,
-                    "element_2": element_2,
-                    "distance": distance,
-                    "energy": energy,
-                    "shifted_energy": shifted_energy,
-                    "force_parallel": force_parallel,
-                }
-            )
-
-    return (
-        {
-            "model": model_name,
-            "view": view,
-            "selected_element": selected_element,
-            "pairs": pairs_payload,
-        },
-        rows,
-    )
-
-
-def register_data_download_callbacks() -> None:
-    """Register the current-view diatomics data download callback."""
-
-    @callback(
-        Output(f"{DATA_DOWNLOAD_ID}-download", "data"),
-        Output(f"{DATA_DOWNLOAD_ID}-status", "children"),
-        Input(f"{DATA_DOWNLOAD_ID}-button", "n_clicks"),
-        State(f"{DATA_DOWNLOAD_ID}-format", "value"),
-        State(f"{BENCHMARK_NAME}-model-dropdown", "value"),
-        State(f"{BENCHMARK_NAME}-element-dropdown", "value"),
-        prevent_initial_call=True,
-        running=[(Output(f"{DATA_DOWNLOAD_ID}-button", "disabled"), True, False)],
-    )
-    def _download_data(
-        n_clicks: int,
-        download_format: str,
-        model_name: str,
-        element_value: str | None,
-    ) -> tuple:
-        """
-        Turn the current diatomics view into a downloadable file.
-
-        Parameters
-        ----------
-        n_clicks
-            Number of times the download button has been clicked.
-        download_format
-            Chosen export format (``csv``, ``json`` or ``png``).
-        model_name
-            Name of the currently selected model.
-        element_value
-            Current dropdown choice: the overview label, or an element symbol.
-
-        Returns
-        -------
-        tuple
-            The file to download, and a status message (empty on success, or a
-            short explanation when there is no data to export).
-        """
-        if not n_clicks or not model_name:
-            raise PreventUpdate
-
-        no_data_message = "No curve data for this selection."
-        stem = _safe_filename_stem(model_name, element_value)
-        fmt = (download_format or "csv").lower()
-        if fmt == "png":
-            try:
-                png_bytes, _width, _height = render_periodic_curve_gallery_png(
-                    curve_dir=CURVE_PATH,
-                    model_name=model_name,
-                    element_value=element_value,
-                    overview_label=OVERVIEW_LABEL,
-                )
-            except PreventUpdate:
-                return no_update, no_data_message
-            return dcc.send_bytes(png_bytes, f"{stem}.png", type="image/png"), ""
-
-        json_payload, rows = _serialise_selected_curves(model_name, element_value)
-        if not rows:
-            return no_update, no_data_message
-        if fmt == "json":
-            return (
-                dcc.send_string(
-                    json.dumps(json_payload, indent=2),
-                    f"{stem}.json",
-                    type="application/json",
-                ),
-                "",
-            )
-
-        buffer = io.StringIO()
-        fieldnames = [
-            "model",
-            "view",
-            "selected_element",
-            "pair",
-            "element_1",
-            "element_2",
-            "distance",
-            "energy",
-            "shifted_energy",
-            "force_parallel",
-        ]
-        writer = csv.DictWriter(buffer, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-        return dcc.send_string(buffer.getvalue(), f"{stem}.csv", type="text/csv"), ""
+        register_data_download_callbacks(
+            download_id=DATA_DOWNLOAD_ID,
+            model_dropdown_id=f"{BENCHMARK_NAME}-model-dropdown",
+            element_dropdown_id=f"{BENCHMARK_NAME}-element-dropdown",
+            curve_path=CURVE_PATH,
+            overview_label=OVERVIEW_LABEL,
+        )
 
 
 def get_app() -> DiatomicsApp:

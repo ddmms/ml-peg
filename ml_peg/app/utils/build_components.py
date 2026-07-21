@@ -622,7 +622,7 @@ def build_data_download_controls(
     button_label: str = "Download data",
 ) -> Div:
     """
-    Build compact dropdown-driven data download controls.
+    Build compact data download dropdown controls.
 
     Parameters
     ----------
