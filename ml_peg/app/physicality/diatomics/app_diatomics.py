@@ -53,19 +53,20 @@ class DiatomicsApp(BaseApp):
 
 def _safe_filename_stem(model_name: str, element_value: str | None) -> str:
     """
-    Return a conservative filename stem for a diatomics data export.
+    Build a safe download filename stem for the current model and view.
 
     Parameters
     ----------
     model_name
-        Selected model identifier.
+        Name of the model being exported.
     element_value
-        Selected dropdown value, either the overview label or an element symbol.
+        Current dropdown choice: the overview label, or an element symbol.
 
     Returns
     -------
     str
-        Filename stem with non-alphanumeric characters replaced by underscores.
+        Filename stem with anything other than letters, digits, ``-``, ``_``
+        or ``.`` replaced by underscores.
     """
     view = "homonuclear" if element_value == OVERVIEW_LABEL else str(element_value)
     stem = f"{model_name}_diatomics_{view}"
@@ -77,20 +78,21 @@ def _serialise_selected_curves(
     element_value: str | None,
 ) -> tuple[dict, list[dict]]:
     """
-    Return JSON and row-oriented payloads for the current selected view.
+    Build the JSON and CSV representations of the current selected view.
 
     Parameters
     ----------
     model_name
-        Selected model identifier.
+        Name of the model whose curves to export.
     element_value
-        Selected dropdown value, either the overview label or an element symbol.
+        Current dropdown choice: the overview label, or an element symbol.
 
     Returns
     -------
     tuple[dict, list[dict]]
-        JSON payload (model, view, selected element, per-pair curves) and the
-        flat per-distance rows used for CSV export.
+        A nested structure for the JSON file (model, view, selected element,
+        and one entry per element pair) and a flat list of rows, one per
+        distance point, for the CSV file.
     """
     selected_element, curves = load_model_curves(
         CURVE_PATH, model_name, element_value, OVERVIEW_LABEL
@@ -175,23 +177,24 @@ def register_data_download_callbacks() -> None:
         element_value: str | None,
     ) -> tuple:
         """
-        Serialise the current diatomics view to the chosen download format.
+        Turn the current diatomics view into a downloadable file.
 
         Parameters
         ----------
         n_clicks
-            Download button click count.
+            Number of times the download button has been clicked.
         download_format
-            Selected export format (``csv``, ``json`` or ``png``).
+            Chosen export format (``csv``, ``json`` or ``png``).
         model_name
-            Selected model identifier.
+            Name of the currently selected model.
         element_value
-            Selected dropdown value (overview label or element symbol).
+            Current dropdown choice: the overview label, or an element symbol.
 
         Returns
         -------
         tuple
-            ``dcc.Download`` payload and a status message (empty on success).
+            The file to download, and a status message (empty on success, or a
+            short explanation when there is no data to export).
         """
         if not n_clicks or not model_name:
             raise PreventUpdate

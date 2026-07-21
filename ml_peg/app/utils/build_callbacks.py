@@ -540,24 +540,25 @@ def load_model_curves(
     overview_label: str,
 ) -> tuple[str | None, dict[str, dict]]:
     """
-    Load and filter a model's diatomic curve payloads for the selected view.
+    Load a model's diatomic energy curves for the currently selected view.
 
     Parameters
     ----------
     curve_dir
-        Directory containing per-model curve JSON payloads.
+        Directory holding one subfolder of curve files per model.
     model_name
-        Selected model identifier.
+        Name of the model whose curves to load.
     element_value
-        Selected dropdown value, either the overview label or an element symbol.
+        Current dropdown choice: the overview label, or an element symbol.
     overview_label
-        Dropdown value representing the homonuclear overview.
+        The dropdown value that means "show the homonuclear overview".
 
     Returns
     -------
     tuple[str | None, dict[str, dict]]
-        Selected element (``None`` for the homonuclear overview) and the
-        ``{pair: payload}`` curves for that view (empty if none are available).
+        The selected element (``None`` for the homonuclear overview) and a
+        mapping from element-pair name (e.g. ``"H-O"``) to that curve's data.
+        The mapping is empty when the model has no curves for this view.
     """
     selected_element = None if element_value == overview_label else element_value
     model_curve_dir = Path(curve_dir) / model_name
@@ -593,25 +594,25 @@ def render_periodic_curve_gallery_png(
     dpi: int = 600,
 ) -> tuple[bytes, float, float]:
     """
-    Render the periodic-table curve gallery for a selected model/view.
+    Draw the periodic-table grid of diatomic curves for one model and view.
 
     Parameters
     ----------
     curve_dir
-        Directory containing per-model curve JSON payloads.
+        Directory holding one subfolder of curve files per model.
     model_name
-        Selected model identifier.
+        Name of the model to plot.
     element_value
-        Selected dropdown value, either the overview label or an element symbol.
+        Current dropdown choice: the overview label, or an element symbol.
     overview_label
-        Dropdown value representing the homonuclear overview.
+        The dropdown value that means "show the homonuclear overview".
     dpi
-        Matplotlib PNG output DPI.
+        Resolution of the rendered image, in dots per inch.
 
     Returns
     -------
     tuple[bytes, float, float]
-        PNG bytes plus rendered image width and height in pixels.
+        The PNG image bytes, and the image's width and height in pixels.
     """
     selected_element, filtered = load_model_curves(
         curve_dir, model_name, element_value, overview_label
@@ -709,8 +710,9 @@ def register_image_gallery_callbacks(
     manifest_dir
         Directory containing per-model ``manifest.json`` files.
     curve_dir
-        Directory of per-model curve JSON payloads. Element selections are rendered on
-        the fly from these payloads instead of relying on pre-generated element images.
+        Directory holding one subfolder of curve files per model. Element
+        selections are drawn on the fly from these curves instead of relying on
+        pre-generated element images.
     overview_label
         Dropdown label representing the overview image. Default is ``"All"``.
     """
