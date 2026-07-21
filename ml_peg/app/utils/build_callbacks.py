@@ -32,6 +32,7 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_ROWS,
 )
 from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.plot_export import bytes_to_data_uri, figure_to_bytes
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
@@ -532,6 +533,161 @@ def struct_from_table(
         raise ValueError("Invalid column_id")
 
 
+def load_model_curves(
+    curve_dir: str | Path,
+    model_name: str,
+    element_value: str | None,
+    overview_label: str,
+) -> tuple[str | None, dict[str, dict]]:
+    """
+    Load a model's diatomic energy curves for the currently selected view.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory holding one subfolder of curve files per model.
+    model_name
+        Name of the model whose curves to load.
+    element_value
+        Current dropdown choice: the overview label, or an element symbol.
+    overview_label
+        The dropdown value that means "show the homonuclear overview".
+
+    Returns
+    -------
+    tuple[str | None, dict[str, dict]]
+        The selected element (``None`` for the homonuclear overview) and a
+        mapping from element-pair name (e.g. ``"H-O"``) to that curve's data.
+        The mapping is empty when the model has no curves for this view.
+    """
+    selected_element = None if element_value == overview_label else element_value
+    model_curve_dir = Path(curve_dir) / model_name
+    if not model_curve_dir.exists():
+        return selected_element, {}
+
+    filtered: dict[str, dict] = {}
+    for curve_file in model_curve_dir.glob("*.json"):
+        try:
+            payload = json.loads(curve_file.read_text())
+        except Exception:
+            continue
+        pair = payload.get("pair") or curve_file.stem
+        try:
+            first, second = pair.split("-")
+        except ValueError:
+            first = second = pair
+        if selected_element is None:
+            if first == second:
+                filtered[pair] = payload
+        elif selected_element in (first, second):
+            filtered[pair] = payload
+
+    return selected_element, filtered
+
+
+def render_periodic_curve_gallery_png(
+    *,
+    curve_dir: str | Path,
+    model_name: str,
+    element_value: str | None,
+    overview_label: str,
+    dpi: int = 600,
+) -> tuple[bytes, float, float]:
+    """
+    Draw the periodic-table grid of diatomic curves for one model and view.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory holding one subfolder of curve files per model.
+    model_name
+        Name of the model to plot.
+    element_value
+        Current dropdown choice: the overview label, or an element symbol.
+    overview_label
+        The dropdown value that means "show the homonuclear overview".
+    dpi
+        Resolution of the rendered image, in dots per inch.
+
+    Returns
+    -------
+    tuple[bytes, float, float]
+        The PNG image bytes, and the image's width and height in pixels.
+    """
+    selected_element, filtered = load_model_curves(
+        curve_dir, model_name, element_value, overview_label
+    )
+    if not filtered:
+        raise PreventUpdate
+
+    import matplotlib as mpl
+
+    try:
+        mpl.use("Agg")
+    except Exception:
+        pass
+
+    fig, axes = plt.subplots(
+        PERIODIC_TABLE_ROWS,
+        PERIODIC_TABLE_COLS,
+        figsize=(30, 15),
+        constrained_layout=True,
+    )
+    axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
+    for ax in axes.ravel():
+        ax.axis("off")
+
+    has_data = False
+    for pair, payload in filtered.items():
+        first, second = pair.split("-") if "-" in pair else (pair, pair)
+        other = second if selected_element == first else first
+        pos = PERIODIC_TABLE_POSITIONS.get(other)
+        if pos is None:
+            continue
+        x_vals = payload.get("distance") or []
+        y_vals = payload.get("energy") or []
+        if not x_vals or not y_vals:
+            continue
+        try:
+            x = [float(v) for v in x_vals]
+            y = [float(v) for v in y_vals]
+        except Exception:
+            continue
+
+        shift = y[-1]
+        y_shifted = [yy - shift for yy in y]
+        row, col = pos
+        ax = axes[row, col]
+        ax.axis("on")
+        ax.plot(x, y_shifted, linewidth=1, zorder=1)
+        ax.axhline(0, color="grey", linewidth=0.5, zorder=0)
+        ax.set_title(f"{first}-{second}, shift: {shift:.4f}", fontsize=8)
+        ax.set_xticks([0, 2, 4, 6])
+        ax.set_yticks([-20, -10, 0, 10, 20])
+        ax.set_xlim(0, 6)
+        ax.set_ylim(-20, 20)
+        if selected_element and (first == second == selected_element):
+            for spine in ax.spines.values():
+                spine.set_edgecolor("crimson")
+                spine.set_linewidth(2)
+        has_data = True
+
+    if not has_data:
+        plt.close(fig)
+        raise PreventUpdate
+
+    title = (
+        f"Heteronuclear diatomics for {selected_element}: {model_name}"
+        if selected_element
+        else f"Homonuclear diatomics: {model_name}"
+    )
+    fig.suptitle(title, fontsize=32, fontweight="bold")
+    png_bytes = figure_to_bytes(fig, "png", dpi=dpi)
+    width, height = fig.get_size_inches() * dpi
+    plt.close(fig)
+    return png_bytes, float(width), float(height)
+
+
 def register_image_gallery_callbacks(
     model_dropdown_id: str,
     element_dropdown_id: str,
@@ -554,8 +710,9 @@ def register_image_gallery_callbacks(
     manifest_dir
         Directory containing per-model ``manifest.json`` files.
     curve_dir
-        Directory of per-model curve JSON payloads. Element selections are rendered on
-        the fly from these payloads instead of relying on pre-generated element images.
+        Directory holding one subfolder of curve files per model. Element
+        selections are drawn on the fly from these curves instead of relying on
+        pre-generated element images.
     overview_label
         Dropdown label representing the overview image. Default is ``"All"``.
     """
@@ -614,7 +771,10 @@ def register_image_gallery_callbacks(
         return f"data:{mime};base64,{encoded}", width, height
 
     def _data_url_from_bytes(
-        data: bytes, mime: str = "image/png"
+        data: bytes,
+        mime: str = "image/png",
+        width: float | None = None,
+        height: float | None = None,
     ) -> tuple[str, float, float]:
         """
         Build a data URL from raw bytes and infer image dimensions.
@@ -625,22 +785,25 @@ def register_image_gallery_callbacks(
             Raw image bytes.
         mime
             MIME type string for the encoded image.
+        width, height
+            Optional known image dimensions. When supplied, the bytes are not reopened
+            with PIL to infer dimensions.
 
         Returns
         -------
         tuple[str, float, float]
             Data URL string and inferred image width/height (falls back to 1.0).
         """
-        width, height = 1.0, 1.0
-        try:
-            from PIL import Image
+        if width is None or height is None:
+            width, height = 1.0, 1.0
+            try:
+                from PIL import Image
 
-            with Image.open(io.BytesIO(data)) as im:
-                width, height = float(im.width), float(im.height)
-        except Exception:
-            pass
-        encoded = base64.b64encode(data).decode()
-        return f"data:{mime};base64,{encoded}", width, height
+                with Image.open(io.BytesIO(data)) as im:
+                    width, height = float(im.width), float(im.height)
+            except Exception:
+                pass
+        return bytes_to_data_uri(data, mime), width, height
 
     def _image_figure(src: str, width: float, height: float) -> go.Figure:
         """
@@ -773,108 +936,19 @@ def register_image_gallery_callbacks(
         if not model_name:
             raise PreventUpdate
 
-        model_curve_dir = curve_base / model_name
-        if not model_curve_dir.exists():
-            raise PreventUpdate
-
-        curves: dict[str, dict] = {}
-        for curve_file in model_curve_dir.glob("*.json"):
-            try:
-                payload = json.loads(curve_file.read_text())
-            except Exception:
-                continue
-            pair = payload.get("pair") or curve_file.stem
-            curves[pair] = payload
-
-        if not curves:
-            raise PreventUpdate
-
-        # Decide which pairs to render: overview -> homonuclear only, otherwise
-        # all pairs involving the selected element.
-        selected_element = None if element_value == overview_label else element_value
-        filtered: dict[str, dict] = {}
-        for pair, payload in curves.items():
-            try:
-                first, second = pair.split("-")
-            except ValueError:
-                first = second = pair
-            if selected_element is None:
-                if first == second:
-                    filtered[pair] = payload
-            else:
-                if selected_element in (first, second):
-                    filtered[pair] = payload
-
-        if not filtered:
-            raise PreventUpdate
-
-        import matplotlib as mpl
-
-        # Ensure a non-interactive backend for server-side rendering
-        try:
-            mpl.use("Agg")
-        except Exception:
-            pass
-
-        fig, axes = plt.subplots(
-            PERIODIC_TABLE_ROWS,
-            PERIODIC_TABLE_COLS,
-            figsize=(30, 15),
-            constrained_layout=True,
+        png_bytes, width, height = render_periodic_curve_gallery_png(
+            curve_dir=curve_base,
+            model_name=model_name,
+            element_value=element_value,
+            overview_label=overview_label,
+            dpi=200,
         )
-        axes = axes.reshape(PERIODIC_TABLE_ROWS, PERIODIC_TABLE_COLS)
-        for ax in axes.ravel():
-            ax.axis("off")
-
-        has_data = False
-        for pair, payload in filtered.items():
-            first, second = pair.split("-") if "-" in pair else (pair, pair)
-            other = second if selected_element == first else first
-            pos = PERIODIC_TABLE_POSITIONS.get(other)
-            if pos is None:
-                continue
-            x_vals = payload.get("distance") or []
-            y_vals = payload.get("energy") or []
-            if not x_vals or not y_vals:
-                continue
-            try:
-                x = [float(v) for v in x_vals]
-                y = [float(v) for v in y_vals]
-            except Exception:
-                continue
-
-            shift = y[-1]
-            y_shifted = [yy - shift for yy in y]
-            row, col = pos
-            ax = axes[row, col]
-            ax.axis("on")
-            ax.plot(x, y_shifted, linewidth=1, zorder=1)
-            ax.axhline(0, color="grey", linewidth=0.5, zorder=0)
-            ax.set_title(f"{first}-{second}, shift: {shift:.4f}", fontsize=8)
-            ax.set_xticks([0, 2, 4, 6])
-            ax.set_yticks([-20, -10, 0, 10, 20])
-            ax.set_xlim(0, 6)
-            ax.set_ylim(-20, 20)
-            if selected_element and (first == second == selected_element):
-                for spine in ax.spines.values():
-                    spine.set_edgecolor("crimson")
-                    spine.set_linewidth(2)
-            has_data = True
-
-        if not has_data:
-            plt.close(fig)
-            raise PreventUpdate
-
-        title = (
-            f"Heteronuclear diatomics for {selected_element}: {model_name}"
-            if selected_element
-            else f"Homonuclear diatomics: {model_name}"
+        src, width, height = _data_url_from_bytes(
+            png_bytes,
+            mime="image/png",
+            width=width,
+            height=height,
         )
-        fig.suptitle(title, fontsize=32, fontweight="bold")
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=200)
-        plt.close(fig)
-        src, width, height = _data_url_from_bytes(buf.getvalue(), mime="image/png")
         return _image_figure(src, width, height)
 
 

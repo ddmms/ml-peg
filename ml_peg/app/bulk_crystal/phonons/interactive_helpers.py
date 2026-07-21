@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import base64
 from collections.abc import Iterable, Mapping
-from io import BytesIO
 import json
 from pathlib import Path
 import pickle
@@ -18,6 +16,7 @@ from matplotlib import gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ml_peg.app.utils.plot_export import bytes_to_data_uri, figure_to_bytes
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, build_violin_distribution
 from ml_peg.app.utils.weas import generate_weas_html
 
@@ -541,10 +540,8 @@ def render_band_dos_png(
     ax2.grid(True, linestyle=":", linewidth=0.5)
     fig.suptitle(system_label, x=0.4, fontsize=14)
 
-    png_buf = BytesIO()
-    fig.savefig(png_buf, format="png", dpi=150, bbox_inches="tight")
-    svg_buf = BytesIO()
-    fig.savefig(svg_buf, format="svg", bbox_inches="tight")
+    png_bytes = figure_to_bytes(fig, "png", dpi=150, bbox_inches="tight")
+    svg_bytes = figure_to_bytes(fig, "svg", bbox_inches="tight")
     plt.close(fig)
 
     json_dict = {
@@ -564,24 +561,8 @@ def render_band_dos_png(
     }
     json_bytes = json.dumps(json_dict, indent=2).encode("utf-8")
 
-    def _enc(data: bytes) -> str:
-        """
-        Base64-encode bytes to an ASCII string.
-
-        Parameters
-        ----------
-        data
-            Raw bytes to encode.
-
-        Returns
-        -------
-        str
-            Base64-encoded ASCII string.
-        """
-        return base64.b64encode(data).decode("ascii")
-
     return {
-        "png": f"data:image/png;base64,{_enc(png_buf.getvalue())}",
-        "svg": f"data:image/svg+xml;base64,{_enc(svg_buf.getvalue())}",
-        "json": f"data:application/json;base64,{_enc(json_bytes)}",
+        "png": bytes_to_data_uri(png_bytes, "image/png"),
+        "svg": bytes_to_data_uri(svg_bytes, "image/svg+xml"),
+        "json": bytes_to_data_uri(json_bytes, "application/json"),
     }

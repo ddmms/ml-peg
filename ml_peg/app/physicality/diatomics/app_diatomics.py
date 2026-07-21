@@ -8,7 +8,11 @@ from dash.html import Div, Label
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.physicality.diatomics.download_utils import (
+    register_data_download_callbacks,
+)
 from ml_peg.app.utils.build_callbacks import register_image_gallery_callbacks
+from ml_peg.app.utils.build_components import build_data_download_controls
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -17,6 +21,8 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Diatomics"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = DATA_PATH / "curves"
+OVERVIEW_LABEL = "Homonuclear diatomics"
+DATA_DOWNLOAD_ID = f"{BENCHMARK_NAME}-curve-data-download"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#diatomics"
 )
@@ -33,8 +39,15 @@ class DiatomicsApp(BaseApp):
             element_dropdown_id=f"{BENCHMARK_NAME}-element-dropdown",
             figure_id=f"{BENCHMARK_NAME}-figure",
             manifest_dir=CURVE_PATH,
-            overview_label="Homonuclear diatomics",
+            overview_label=OVERVIEW_LABEL,
             curve_dir=CURVE_PATH,
+        )
+        register_data_download_callbacks(
+            download_id=DATA_DOWNLOAD_ID,
+            model_dropdown_id=f"{BENCHMARK_NAME}-model-dropdown",
+            element_dropdown_id=f"{BENCHMARK_NAME}-element-dropdown",
+            curve_path=CURVE_PATH,
+            overview_label=OVERVIEW_LABEL,
         )
 
 
@@ -49,7 +62,6 @@ def get_app() -> DiatomicsApp:
     """
     model_options = [{"label": model, "value": model} for model in MODELS]
     default_model = model_options[0]["value"]
-    overview_label = "Homonuclear diatomics"
 
     extra_components = [
         Div(
@@ -65,18 +77,31 @@ def get_app() -> DiatomicsApp:
                 Label("Select heteronuclear element:"),
                 dcc.Dropdown(
                     id=f"{BENCHMARK_NAME}-element-dropdown",
-                    options=[{"label": overview_label, "value": overview_label}],
-                    value=overview_label,
+                    options=[{"label": OVERVIEW_LABEL, "value": OVERVIEW_LABEL}],
+                    value=OVERVIEW_LABEL,
                     clearable=False,
                     style={"width": "300px"},
                 ),
             ],
             style={"marginBottom": "20px"},
         ),
+        build_data_download_controls(
+            DATA_DOWNLOAD_ID,
+            formats=(("CSV", "csv"), ("JSON", "json"), ("PNG", "png")),
+        ),
         Loading(
             dcc.Graph(
                 id=f"{BENCHMARK_NAME}-figure",
                 style={"height": "700px", "width": "100%", "marginTop": "20px"},
+                config={
+                    "toImageButtonOptions": {
+                        "format": "png",
+                        "filename": "diatomics",
+                        "width": 12000,
+                        "height": 6000,
+                        "scale": 1,
+                    },
+                },
             ),
             type="circle",
         ),
