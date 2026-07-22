@@ -82,7 +82,7 @@ ignore_imaginary_freqs = True
 
 default_dtype = "float64"
 
-FAST_ONLY = True
+FAST_ONLY = False
 
 
 @pytest.mark.very_slow
