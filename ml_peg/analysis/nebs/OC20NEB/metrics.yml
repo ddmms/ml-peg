@@ -1,0 +1,19 @@
+metrics:
+  Barrier MAE:
+    good: 0.1
+    bad: 0.5
+    unit: eV
+    tooltip: "barrier mae"
+    level_of_theory: RPBE
+  Reaction Energy MAE:
+    good: 0.1
+    bad: 0.5
+    unit: eV
+    tooltip: "delta_E mae"
+    level_of_theory: RPBE
+  Unconverged Percentage:
+    good: 10
+    bad: 30
+    unit: percent
+    tooltip: "convergence"
+    level_of_theory: RPBE
