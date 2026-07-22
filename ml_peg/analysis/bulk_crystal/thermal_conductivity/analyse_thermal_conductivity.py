@@ -878,6 +878,7 @@ def status_parity(kappa_stats: dict[str, pd.DataFrame]) -> None:
                     name=label,
                     marker={"color": colour},
                     text=[str(i) for i in pred[sel].index],
+                    customdata=[[str(i)] for i in pred[sel].index],
                     hovertemplate=(
                         "Material: %{text}<br>Predicted κ: %{x:.3g}<br>"
                         "Reference κ: %{y:.3g}<extra></extra>"
