@@ -835,6 +835,7 @@ def get_struct_info(
     info_keys: list[str] | None = None,
     write_info: bool = True,
     write_structs: bool = True,
+    struct_name_key: str | None = None,
     out_path: Path | None = None,
     include_filenames: bool = False,
     include_dirs: bool = False,
@@ -867,6 +868,10 @@ def get_struct_info(
     write_structs
         Whether to write out structure files for each system. Default is `True` if
         `out_path` is specified.
+    struct_name_key
+        If set (and `write_structs` is `True`), write one file per frame named by this
+        info key (e.g. a material ID) instead of one combined file per input file.
+        Default is None.
     out_path
         Path to write out info for each system. Required if `write_info` is `True`.
     include_filenames
@@ -932,7 +937,14 @@ def get_struct_info(
             info["elements"].append(sorted(set(struct.get_chemical_symbols())))
         if write_structs:
             (out_path / model_name).mkdir(parents=True, exist_ok=True)
-            write(out_path / model_name / file.name, structs)
+            if struct_name_key is None:
+                write(out_path / model_name / file.name, structs)
+            else:
+                for struct in structs:
+                    write(
+                        out_path / model_name / f"{struct.info[struct_name_key]}.xyz",
+                        struct,
+                    )
 
     if write_info:
         out_path.mkdir(parents=True, exist_ok=True)
