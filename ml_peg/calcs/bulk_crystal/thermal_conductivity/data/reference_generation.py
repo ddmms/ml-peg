@@ -122,13 +122,17 @@ def get_mat_id(mat_id_txt: str, name: str, spg_no: int) -> str:
     Returns
     -------
     str
-        The material ID corresponding to the given name and space group number, or "N/A"
-        if not found.
+        The material ID corresponding to the given name and space group number.
+
+    Raises
+    ------
+    ValueError
+        If no material ID matches the given name and space group number.
     """
     for line in mat_id_txt:
         if " ".join([name, str(spg_no)]) in line:
             return line.split()[-1]  # Assuming the MP ID is the first element
-    return "N/A"
+    raise ValueError(f"No material ID found for {name} (space group {spg_no})")
 
 
 def create_yaml(mat_id: str, yaml_str: str) -> Path:
@@ -299,6 +303,18 @@ for i in pbar:
     }
 
     yaml_file = create_yaml(mat_id, yaml_str)
+
+    # Structures are cheap and must be written every run, only the expensive
+    # conductivity calculation below is skipped when results already exist.
+    atoms = Atoms(
+        positions=ph3.unitcell.positions,
+        cell=ph3.unitcell.cell,
+        symbols=ph3.unitcell.symbols,
+        pbc=True,
+    )
+    atoms.info.update(info_dict)
+    atoms.write(STRUCTURE_FILE, format="extxyz", append=True)
+
     if SKIP_EXISTING:
         if FAST_ONLY and os.path.exists(yaml_file.parent / "fast_kappa.hdf5"):
             print(
@@ -315,16 +331,6 @@ for i in pbar:
             )
             continue
     pbar.set_postfix_str(f"{name}-{mat_id}")
-
-    atoms = Atoms(
-        positions=ph3.unitcell.positions,
-        cell=ph3.unitcell.cell,
-        symbols=ph3.unitcell.symbols,
-        pbc=True,
-    )
-    atoms.info.update(info_dict)
-
-    atoms.write(STRUCTURE_FILE, format="extxyz", append=True)
 
     ph3.mesh_numbers = fast_qmesh
 
