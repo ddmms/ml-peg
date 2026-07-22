@@ -2,27 +2,36 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import traceback
 import warnings
 
-from ase.io import read
 import h5py
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
+from ml_peg.app.utils.plot_helpers import build_violin_distribution
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.bulk_crystal.thermal_conductivity import thermal_conductivity as tc
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "thermal_conductivity" / "outputs"
-REF_PATH = CALCS_ROOT / "bulk_crystal" / "thermal_conductivity" / "data"
+REF_PATH = (
+    download_s3_data(
+        key="inputs/bulk_crystal/thermal_conductivity/thermal_conductivity.zip",
+        filename="thermal_conductivity.zip",
+    )
+    / "thermal_conductivity"
+)
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "thermal_conductivity"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -30,43 +39,24 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-STRUCTURE_FILE = REF_PATH / "phononDB-PBE-structures.extxyz"
+INFO = get_struct_info(
+    calc_path=REF_PATH,
+    model_name="",
+    glob_pattern="phononDB-PBE-structures.extxyz",
+    info_keys=["name", tc.TCKeys.mat_id],
+    write_info=True,
+    write_structs=True,
+    struct_name_key=tc.TCKeys.mat_id,
+    out_path=OUT_PATH,
+)
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of thermal conductivity system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    system_ids = []
-
-    atoms_list = read(STRUCTURE_FILE, index=":")
-
-    for atoms in atoms_list:
-        system_names.append(f"{atoms.info['name']}")
-        system_ids.append(f"{atoms.info[tc.TCKeys.mat_id]}")
-    return [x for _, x in sorted(zip(system_ids, system_names, strict=False))]
-
-
-def get_system_ids() -> list[str]:
-    """
-    Get list of thermal conductivity system IDs.
-
-    Returns
-    -------
-    list[str]
-        List of system IDs from structure files.
-    """
-    system_ids = []
-    atoms_list = read(STRUCTURE_FILE, index=":")
-    for atoms in atoms_list:
-        system_ids.append(f"{atoms.info[tc.TCKeys.mat_id]}")
-    return sorted(system_ids)
+# Order by material ID to match the parity data (ordered by the sorted reference index).
+_order = sorted(
+    range(len(INFO[tc.TCKeys.mat_id])),
+    key=lambda i: str(INFO[tc.TCKeys.mat_id][i]),
+)
+SYSTEM_NAMES = [str(INFO["name"][i]) for i in _order]
+SYSTEM_IDS = [str(INFO[tc.TCKeys.mat_id][i]) for i in _order]
 
 
 def calc_kappa_metrics_from_dfs(
@@ -334,6 +324,7 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
     fast_ref_df.sort_index(inplace=True)
 
     results["ref"] = ref_df
+    results["fast_ref"] = fast_ref_df
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -401,6 +392,7 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
             pred_df = calc_kappa_metrics_from_dfs(fast_pred_df, fast_ref_df)
             pred_df["fast_sre"] = pred_df[tc.TCKeys.sre]
             pred_df["fast_srme"] = pred_df[tc.TCKeys.srme]
+            pred_df["fast_kappa_tot_avg"] = pred_df[tc.TCKeys.kappa_tot_avg]
             pred_df.drop(columns=[tc.TCKeys.sre, tc.TCKeys.srme], inplace=True)
         elif fast_pred_df is not None:
             pred_df.sort_index(inplace=True)
@@ -409,6 +401,7 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
             fast_pred_df = calc_kappa_metrics_from_dfs(fast_pred_df, fast_ref_df)
             pred_df["fast_sre"] = fast_pred_df[tc.TCKeys.sre]
             pred_df["fast_srme"] = fast_pred_df[tc.TCKeys.srme]
+            pred_df["fast_kappa_tot_avg"] = fast_pred_df[tc.TCKeys.kappa_tot_avg]
         else:
             print(
                 f"Unexpected case for model {model_name} with pred_df is not None: "
@@ -426,12 +419,13 @@ def kappa_stats() -> dict[str, pd.DataFrame]:
 @plot_parity(
     filename=OUT_PATH / "figure_thermal_conductivity.json",
     title="Thermal Conductivity Parity Plot",
-    x_label="Predicted k (W/mK)",
-    y_label="Reference k (W/mK)",
+    x_label="log Predicted κ (W/mK)",
+    y_label="log Reference κ (W/mK)",
     hoverdata={
-        "System": get_system_names(),
-        "System ID": get_system_ids(),
+        "System": SYSTEM_NAMES,
+        "System ID": SYSTEM_IDS,
     },
+    log=True,
 )
 def conductivity(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, list]:
     """
@@ -456,8 +450,57 @@ def conductivity(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, list]:
         if tc.TCKeys.kappa_tot_avg not in df:
             continue
         df = df.reindex(kappa_stats["ref"].index)
-        conductivity_data[model_name] = df[tc.TCKeys.kappa_tot_avg].tolist()
-    conductivity_data["ref"] = kappa_stats["ref"][tc.TCKeys.kappa_tot_avg].tolist()
+        conductivity_data[model_name] = [
+            _first_value(v) for v in df[tc.TCKeys.kappa_tot_avg]
+        ]
+    conductivity_data["ref"] = [
+        _first_value(v) for v in kappa_stats["ref"][tc.TCKeys.kappa_tot_avg]
+    ]
+    return conductivity_data
+
+
+@pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "figure_fast_thermal_conductivity.json",
+    title="Fast Thermal Conductivity Parity Plot",
+    x_label="log Predicted κ (W/mK)",
+    y_label="log Reference κ (W/mK)",
+    hoverdata={
+        "System": SYSTEM_NAMES,
+        "System ID": SYSTEM_IDS,
+    },
+    log=True,
+)
+def conductivity_fast(kappa_stats: dict[str, pd.DataFrame]) -> dict[str, list]:
+    """
+    Get fast (reduced q-mesh) thermal conductivity parity plot data.
+
+    Parameters
+    ----------
+    kappa_stats : dict[str, pd.DataFrame]
+        Dictionary of DataFrames containing thermal conductivity statistics for
+        each model.
+
+    Returns
+    -------
+    dict[str, list]
+        Dictionary mapping model names to lists of fast thermal conductivity values.
+    """
+    conductivity_data = {}
+    for model_name in MODELS:
+        if model_name not in kappa_stats:
+            continue
+        df = kappa_stats[model_name]
+        if "fast_kappa_tot_avg" not in df:
+            continue
+        df = df.reindex(kappa_stats["ref"].index)
+        conductivity_data[model_name] = [
+            _first_value(v) for v in df["fast_kappa_tot_avg"]
+        ]
+    fast_ref = kappa_stats["fast_ref"].reindex(kappa_stats["ref"].index)
+    conductivity_data["ref"] = [
+        _first_value(v) for v in fast_ref[tc.TCKeys.kappa_tot_avg]
+    ]
     return conductivity_data
 
 
@@ -686,7 +729,195 @@ def metrics(
     }
 
 
-def test_thermal_conductivity(metrics: dict[str, dict]) -> None:
+def _write_srme_violin(
+    kappa_stats: dict[str, pd.DataFrame],
+    column: str,
+    filename: str,
+    label: str,
+) -> None:
+    """
+    Write per-model violin figures of a per-material SRME column.
+
+    Parameters
+    ----------
+    kappa_stats
+        Dictionary of DataFrames containing thermal conductivity statistics for
+        each model.
+    column
+        DataFrame column holding the per-material SRME values.
+    filename
+        Output JSON filename, written under the app data directory.
+    label
+        Axis and hover label for the plotted quantity.
+    """
+    violin_data: dict[str, dict] = {}
+    for model_name in MODELS:
+        if model_name not in kappa_stats:
+            continue
+        df = kappa_stats[model_name]
+        if column not in df:
+            continue
+
+        values = []
+        labels = []
+        for mat_id, srme in df[column].items():
+            if srme is None or np.isnan(srme):
+                continue
+            values.append(float(srme))
+            labels.append(str(mat_id))
+
+        if not values:
+            continue
+
+        fig = build_violin_distribution(
+            values=values,
+            labels=labels,
+            title=f"{label} distribution",
+            yaxis_title=label,
+            hovertemplate=f"Material: %{{text}}<br>{label}: %{{y:.3f}}<extra></extra>",
+        )
+        violin_data[model_name] = fig.to_dict()
+
+    with (OUT_PATH / filename).open("w") as f:
+        json.dump(violin_data, f)
+
+
+@pytest.fixture
+def ksrme_violin(kappa_stats: dict[str, pd.DataFrame]) -> None:
+    """
+    Write per-model violin figures of per-material kSRME.
+
+    Parameters
+    ----------
+    kappa_stats
+        Dictionary of DataFrames containing thermal conductivity statistics for
+        each model.
+    """
+    _write_srme_violin(kappa_stats, tc.TCKeys.srme, "figure_ksrme_violin.json", "kSRME")
+
+
+@pytest.fixture
+def fast_ksrme_violin(kappa_stats: dict[str, pd.DataFrame]) -> None:
+    """
+    Write per-model violin figures of per-material fast kSRME.
+
+    Parameters
+    ----------
+    kappa_stats
+        Dictionary of DataFrames containing thermal conductivity statistics for
+        each model.
+    """
+    _write_srme_violin(
+        kappa_stats, "fast_srme", "figure_fast_ksrme_violin.json", "Fast kSRME"
+    )
+
+
+def _first_value(value: object) -> float:
+    """
+    Return a per-material conductivity as a float.
+
+    Conductivities are stored per temperature (a one-element array here), so the
+    first (300 K) entry is used.
+
+    Parameters
+    ----------
+    value
+        Scalar or array-like conductivity value.
+
+    Returns
+    -------
+    float
+        First value as a float, or NaN when unavailable.
+    """
+    if value is None:
+        return float("nan")
+    arr = np.ravel(value)
+    return float(arr[0]) if arr.size else float("nan")
+
+
+@pytest.fixture
+def status_parity(kappa_stats: dict[str, pd.DataFrame]) -> None:
+    """
+    Build per-model parity figures coloured by stability/failure status.
+
+    Points are the log-log predicted vs reference conductivity, coloured stable
+    or unstable (imaginary modes). Materials that failed (no conductivity) are
+    reported as an annotated count.
+
+    Parameters
+    ----------
+    kappa_stats
+        Dictionary of DataFrames containing thermal conductivity statistics for
+        each model.
+    """
+    ref = kappa_stats["ref"][tc.TCKeys.kappa_tot_avg].apply(_first_value)
+    status_data: dict[str, dict] = {}
+    for model_name in MODELS:
+        if model_name not in kappa_stats:
+            continue
+        df = kappa_stats[model_name].reindex(kappa_stats["ref"].index)
+        if tc.TCKeys.kappa_tot_avg not in df or tc.TCKeys.has_imag_ph_modes not in df:
+            continue
+
+        pred = df[tc.TCKeys.kappa_tot_avg].apply(_first_value)
+        imag = df[tc.TCKeys.has_imag_ph_modes]
+        unstable = imag.fillna(False).astype(bool)
+        groups = [
+            ("Stable", "#636EFA", imag.notna() & ~unstable),
+            ("Unstable", "#EF553B", unstable),
+        ]
+
+        fig = go.Figure()
+        for label, colour, mask in groups:
+            sel = mask & pred.gt(0) & ref.gt(0)
+            fig.add_trace(
+                go.Scatter(
+                    x=[float(v) for v in pred[sel]],
+                    y=[float(v) for v in ref[sel]],
+                    mode="markers",
+                    name=label,
+                    marker={"color": colour},
+                    text=[str(i) for i in pred[sel].index],
+                    hovertemplate=(
+                        "Material: %{text}<br>Predicted κ: %{x:.3g}<br>"
+                        "Reference κ: %{y:.3g}<extra></extra>"
+                    ),
+                )
+            )
+
+        positive = [v for v in list(ref) + list(pred) if v > 0]
+        lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
+        fig.add_trace(go.Scatter(x=lims, y=lims, mode="lines", showlegend=False))
+
+        fig.update_layout(
+            title={"text": f"{model_name}: stability status"},
+            xaxis={"title": {"text": "log Predicted κ (W/mK)"}, "type": "log"},
+            yaxis={"title": {"text": "log Reference κ (W/mK)"}, "type": "log"},
+        )
+        n_failed = int(imag.isna().sum())
+        if n_failed:
+            fig.add_annotation(
+                text=f"{n_failed} failed (no κ)",
+                showarrow=False,
+                xref="paper",
+                yref="paper",
+                x=0.02,
+                y=0.98,
+            )
+        status_data[model_name] = fig.to_dict()
+
+    with (OUT_PATH / "figure_status_parity.json").open("w") as f:
+        json.dump(status_data, f)
+
+
+def test_thermal_conductivity(
+    metrics: dict[str, dict],
+    conductivity: dict[str, list],
+    conductivity_fast: dict[str, list],
+    ksrme_violin: None,
+    fast_ksrme_violin: None,
+    status_parity: None,
+) -> None:
     """
     Run thermal conductivity benchmark tests.
 
@@ -694,5 +925,15 @@ def test_thermal_conductivity(metrics: dict[str, dict]) -> None:
     ----------
     metrics : dict[str, dict]
         Metric names and values for all models.
+    conductivity : dict[str, list]
+        Fixture that writes the kSRE log-log parity figure.
+    conductivity_fast : dict[str, list]
+        Fixture that writes the fast kSRE log-log parity figure.
+    ksrme_violin : None
+        Fixture that writes the per-model kSRME violin figures.
+    fast_ksrme_violin : None
+        Fixture that writes the per-model fast kSRME violin figures.
+    status_parity : None
+        Fixture that writes the per-model stability-status parity figures.
     """
-    write_struct_info(data_path=STRUCTURE_FILE, out_path=OUT_PATH)
+    return
