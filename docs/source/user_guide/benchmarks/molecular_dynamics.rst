@@ -87,7 +87,6 @@ Summary
 Benchmark of the density of water-ethanol mixtures for different concentrations of ethanol, compare to experiment.
 1 ns of NPT MD on about 120 water/ethanol molecules for 6 concentrations.
 
-
 Metrics
 -------
 
@@ -116,3 +115,45 @@ Packmol generated
 Reference data:
 * M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook, 9th Edition. McGraw-Hill Education, 2018.
 * Experimental
+
+
+Ring planarity
+==============
+
+Summary
+-------
+
+Performance in maintaining planar aromatic rings during molecular dynamics of small
+organic molecules. For each molecule, an NVT molecular dynamics simulation is run at 300 K
+starting from a QM-optimised reference geometry (selected from QM9), and the deviation of
+the ring atoms from their best-fit plane is measured along the trajectory.
+
+Metrics
+-------
+
+1. Planarity deviation
+
+At each frame of the trajectory, the ring atoms are fitted to a plane and the root mean
+square deviation of the atoms from that plane is calculated. This is averaged over the
+trajectory and across all molecules. Aromatic rings are planar, so a well behaved potential
+keeps this deviation small; a lower deviation is better.
+
+A histogram shows the distribution of the sampled planarity deviations for each model.
+
+Computational cost
+------------------
+
+High: one MD simulation per molecule, each 1,000,000 steps. Faster inference can be achieved
+using the jax-accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. Reference geometries selected from the QM9 dataset
+  (Ramakrishnan et al., Scientific Data 1, 140022, 2014).
+
+Reference data:
+
+* QM-optimised reference geometries of the aromatic molecules.
