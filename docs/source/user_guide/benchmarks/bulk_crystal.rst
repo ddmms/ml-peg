@@ -25,6 +25,26 @@ See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
 prediction artifacts are not included.
 
 
+Geometry-optimization evaluation
+================================
+
+The geo-opt evaluator reads Matbench Discovery-compatible JSONL records with
+``material_id``, final ``structure``, ``energy``, ``converged``, and ``n_steps``
+fields. It compares relaxed structures with DFT references at symmetry tolerances
+of :math:`10^{-2}` and :math:`10^{-5}` by default.
+
+Reported metrics are volume-normalized structure RMSD, symmetry-operation-count
+MAE, fractions of symmetry decrease, match, and increase, and the number of valid
+symmetry analyses. Structures that cannot be matched receive an RMSD penalty of
+1.0. Readers accept plain or gzip-compressed JSONL and CSV files. Per-structure
+records are omitted by default to limit memory use on WBM; set
+``include_analysis=True`` to return them.
+
+Scalar aggregation is available in the core installation. Structure analysis
+requires ``ml-peg[geo-opt]``. No WBM structures, reference analyses, or model
+predictions are bundled.
+
+
 Lattice constants
 =================
 

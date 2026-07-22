@@ -5682,6 +5682,11 @@ d3 = [
 dpa3 = [
     { name = "deepmd-kit" },
 ]
+geo-opt = [
+    { name = "moyopy", extra = ["interface"] },
+    { name = "pymatgen", version = "2025.6.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pymatgen", version = "2026.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+]
 grace = [
     { name = "tensorpotential", marker = "python_full_version < '3.13'" },
 ]
@@ -5749,9 +5754,11 @@ requires-dist = [
     { name = "mdanalysis", specifier = ">=2.9.0,<3" },
     { name = "mlipx", specifier = ">=0.1.5,<0.2" },
     { name = "molify", specifier = ">=0.2.2,<0.3" },
+    { name = "moyopy", extras = ["interface"], marker = "extra == 'geo-opt'", specifier = ">=0.12" },
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "orb-models", marker = "python_full_version >= '3.12' and sys_platform != 'win32' and extra == 'orb'", specifier = "==0.6.2" },
     { name = "pet-mad", marker = "sys_platform != 'win32' and extra == 'pet-mad'", specifier = "==1.4.4" },
+    { name = "pymatgen", marker = "extra == 'geo-opt'" },
     { name = "scikit-learn", specifier = ">=1.7.2,<2" },
     { name = "scipy", specifier = ">=1,<1.17" },
     { name = "tensorpotential", marker = "python_full_version < '3.13' and extra == 'grace'", specifier = "==0.5.1" },
@@ -5759,7 +5766,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.3,<5" },
     { name = "typer", specifier = ">=0.19.1,<1.0.0" },
 ]
-provides-extras = ["asemolec", "chgnet", "d3", "dpa3", "grace", "mace", "mattersim", "orb", "pet-mad", "uma"]
+provides-extras = ["asemolec", "chgnet", "d3", "dpa3", "grace", "mace", "mattersim", "orb", "pet-mad", "uma", "geo-opt"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -5921,6 +5928,32 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/de/1d/f4da6f02cdffe04d6362210b807146a26044c88d839208aec273bb0d9184/more_itertools-11.1.0.tar.gz", hash = "sha256:48e8f4d9e7e5878571ecf6f2b4e57634f93cd474cc8cfbd2376f2d11b396e30d", size = 145772, upload-time = "2026-05-22T14:14:29.909Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl", hash = "sha256:4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192", size = 72226, upload-time = "2026-05-22T14:14:28.824Z" },
+]
+
+[[package]]
+name = "moyopy"
+version = "0.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/1a/72772cf890d6a54cfe9b37de1afc30d317698b89bccc6d2bf16890c4ef24/moyopy-0.15.0.tar.gz", hash = "sha256:8c1eb9decdc366f8b85a5ba5b04187bf81b0c6092b7b2bc01c19ab79134feeea", size = 521977, upload-time = "2026-07-13T11:57:46.615Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/c6/fd734cc60aa25c3fcfb9463eb89a36ccd17afed45aaeec86ade1a00b1829/moyopy-0.15.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:7576bebccf3eee47272118dcde5670d59422be1244dcfdcf4664dcf719ba575c", size = 992796, upload-time = "2026-07-13T11:57:40.759Z" },
+    { url = "https://files.pythonhosted.org/packages/27/b4/fcb55b30a0cf8ffa2f5613ad73cddc9c596ca3e2ae2c76a73207678f7187/moyopy-0.15.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:4601a7e3a4cfb4866e8d61bb521dabbff5c38d4516ce825860f9ac40bd5648bb", size = 976498, upload-time = "2026-07-13T11:57:42.034Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/97/06fa2dc13debfec8ab2843b99f66e0ae2a414b3915b3bfcd3499fcb60c07/moyopy-0.15.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1f877fee1a8e75c37a9135993772db10b0082cae57957780227864c3278ff0c2", size = 1166943, upload-time = "2026-07-13T11:57:43.17Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/cf/1820680f95d2957263d153c2ac21e763259efdca854314e40f05fd5958ff/moyopy-0.15.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:da7b0ba0356a9121838179b15153f8d20fe33d0603cb4a7e70082155d0b47458", size = 1087357, upload-time = "2026-07-13T11:57:44.265Z" },
+    { url = "https://files.pythonhosted.org/packages/06/d8/c656e66da7326010bafabea8de0a8dc753b977e4baee030c6649e24c9dae/moyopy-0.15.0-cp310-abi3-win_amd64.whl", hash = "sha256:a76a11e1ea487ade438f0c080063b9da7e679b611af271dcb179209145be22c4", size = 841071, upload-time = "2026-07-13T11:57:45.551Z" },
+]
+
+[package.optional-dependencies]
+interface = [
+    { name = "ase" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13' or (python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pymatgen", version = "2025.6.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pymatgen", version = "2026.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
 ]
 
 [[package]]
