@@ -28,12 +28,12 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.bulk_crystal.thermal_conductivity import thermal_conductivity as tc
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 if len(sys.argv) >= 3:
@@ -82,11 +82,10 @@ ignore_imaginary_freqs = True
 
 default_dtype = "float64"
 
-STRUCTURE_PATH = DATA_PATH / "phononDB-PBE-structures.extxyz"
-
 FAST_ONLY = True
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
     """
@@ -102,15 +101,19 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
     calculator = model.get_calculator()
 
     # Download dataset
-    # thermal_conductivity_dir = (
-    #     download_s3_data(
-    #         key="inputs/bulk_crystal/thermal_conductivity/thermal_conductivity.zip",
-    #         filename="thermal_conductivity.zip",
-    #     )
-    #     / "thermal_conductivity"
-    # )
+    thermal_conductivity_dir = (
+        download_s3_data(
+            key="inputs/bulk_crystal/thermal_conductivity/thermal_conductivity.zip",
+            filename="thermal_conductivity.zip",
+        )
+        / "thermal_conductivity"
+    )
 
-    atoms_list = read(STRUCTURE_PATH, format="extxyz", index=":")
+    atoms_list = read(
+        thermal_conductivity_dir / "phononDB-PBE-structures.extxyz",
+        format="extxyz",
+        index=":",
+    )
     atoms_list = atoms_list[PARALLEL_TASK_ID - 0 :: PARALLEL_TASK_NUM]
 
     kappa_dicts = {}
@@ -122,6 +125,24 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
         out_dir = OUT_PATH / model_name / structure_id
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        results_path = out_dir / "kappa.hdf5"
+        fast_results_path = out_dir / "fast_kappa.hdf5"
+        relaxed_path = out_dir / "relaxed.extxyz"
+
+        # Skip materials already completed on a previous run (relaxed structure
+        # plus kappa file present), reloading their stored results so the
+        # aggregate written below stays complete.
+        required = [relaxed_path, fast_results_path]
+        if not FAST_ONLY:
+            required.append(results_path)
+        if all(path.exists() for path in required):
+            with h5py.File(fast_results_path, "r") as f:
+                fast_kappa_dicts[structure_id] = tc.hdf5_to_dict(f)
+            if not FAST_ONLY:
+                with h5py.File(results_path, "r") as f:
+                    kappa_dicts[structure_id] = tc.hdf5_to_dict(f)
+            continue
+
         results_dict, fast_results_dict = calc_thermal_conductivity_per_structure(
             atoms_input, calculator, out_dir
         )
@@ -130,12 +151,10 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
         fast_results_dict[tc.TCKeys.mat_id] = structure_id
 
         if not FAST_ONLY:
-            results_path = out_dir / "kappa.hdf5"
             with h5py.File(results_path, "w") as f:
                 tc.dict_to_hdf5(results_dict, f)
             kappa_dicts[structure_id] = results_dict
 
-        fast_results_path = out_dir / "fast_kappa.hdf5"
         with h5py.File(fast_results_path, "w") as f:
             tc.dict_to_hdf5(fast_results_dict, f)
         fast_kappa_dicts[structure_id] = fast_results_dict
