@@ -1,0 +1,7 @@
+metrics:
+    MAPE:
+        good: 0.0
+        bad: 10.0
+        unit: "%"
+        tooltip: "Mean Absolute Percentage Error in liquid density vs experiment"
+        level_of_theory: Experimental
