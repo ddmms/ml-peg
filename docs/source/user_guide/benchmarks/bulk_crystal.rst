@@ -2,6 +2,29 @@
 Bulk Crystals
 =============
 
+Materials discovery evaluation
+==============================
+
+The materials-discovery evaluator computes Matbench Discovery classification and
+regression metrics from local tables. The reference table is indexed by
+``material_id`` and contains DFT hull distance, DFT formation energy, and a
+unique-prototype flag. The prediction table contains ``e_form_per_atom``.
+
+Results are reported for the full test set, unique prototypes, and the 10,000
+unique prototypes with the lowest predicted hull distances. They include F1,
+discovery acceleration factor (DAF), precision, recall, accuracy, class rates and
+counts, MAE, RMSE, R², and missing-prediction counts. Predictions with
+formation-energy errors above 5 eV/atom are masked before rounding to three decimal
+places. Leaderboard evaluation uses the fraction of unique prototypes with an
+unrounded hull distance at or below 0 eV/atom as prevalence, preventing rounding
+from changing DAF. Pass this value with ``canonical=True`` and
+``uniq_proto_prevalence=...``. Synthetic mode derives prevalence from the rounded
+reference values.
+
+See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
+prediction artifacts are not included.
+
+
 Lattice constants
 =================
 
