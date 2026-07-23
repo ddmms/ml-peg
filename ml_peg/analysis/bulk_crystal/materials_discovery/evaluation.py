@@ -11,8 +11,11 @@ import pandas as pd
 
 from ml_peg.analysis.bulk_crystal.materials_discovery.metrics import (
     MetricValue,
+    SubsetIndices,
     _align_predictions_prepared,
     _calc_discovery_metrics_prepared,
+    _discovery_subset_indices_prepared,
+    _hull_distances,
 )
 from ml_peg.analysis.bulk_crystal.materials_discovery.schema import (
     E_ABOVE_HULL,
@@ -92,6 +95,49 @@ def prepare_discovery_inputs(
         aligned_predictions = aligned_predictions.mask(outlier_mask)
 
     return prepared_reference, aligned_predictions.round(decimals)
+
+
+def discovery_subset_indices(
+    reference: pd.DataFrame,
+    predictions: pd.DataFrame | pd.Series,
+    *,
+    max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
+) -> dict[DiscoverySubset, pd.Index]:
+    """Return benchmark subsets after applying artifact preprocessing."""
+    prepared_reference, prepared_predictions = prepare_discovery_inputs(
+        reference,
+        predictions,
+        max_error_threshold=max_error_threshold,
+        decimals=EVALUATION_DECIMALS,
+    )
+    _, each_pred = _hull_distances(prepared_reference, prepared_predictions)
+    return _discovery_subset_indices_prepared(prepared_reference, each_pred)
+
+
+def calc_discovery_metrics(
+    reference: pd.DataFrame,
+    predictions: pd.DataFrame | pd.Series,
+    *,
+    subset_indices: SubsetIndices | None = None,
+    uniq_proto_prevalence: float | None = None,
+    canonical: bool = False,
+    max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
+) -> dict[DiscoverySubset, dict[str, MetricValue]]:
+    """Calculate metrics after applying artifact masking and rounding."""
+    prepared_reference, prepared_predictions = prepare_discovery_inputs(
+        reference,
+        predictions,
+        max_error_threshold=max_error_threshold,
+        decimals=EVALUATION_DECIMALS,
+    )
+    metrics_by_subset, _ = _calc_discovery_metrics_prepared(
+        prepared_reference,
+        prepared_predictions,
+        subset_indices=subset_indices,
+        uniq_proto_prevalence=uniq_proto_prevalence,
+        canonical=canonical,
+    )
+    return metrics_by_subset
 
 
 def _json_safe_metric(value: MetricValue) -> JsonMetricValue:

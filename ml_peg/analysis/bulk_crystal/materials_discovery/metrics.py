@@ -263,22 +263,6 @@ def _discovery_subset_indices_prepared(
     }
 
 
-def discovery_subset_indices(
-    reference: pd.DataFrame, model_predictions: pd.Series
-) -> dict[DiscoverySubset, pd.Index]:
-    """Return full, unique-prototype, and predicted-most-stable subset indices.
-
-    Stable sorting preserves reference order for ties and sorts missing values last.
-    This raw helper does not apply the artifact rounding convention.
-    """
-    indexed_reference = _validated_reference_frame(reference)
-    aligned_predictions = _align_predictions_prepared(
-        indexed_reference, model_predictions
-    )
-    _, each_pred = _hull_distances(indexed_reference, aligned_predictions)
-    return _discovery_subset_indices_prepared(indexed_reference, each_pred)
-
-
 def _normalized_subset_indices(
     subset_indices: SubsetIndices,
     reference_index: pd.Index,
@@ -364,31 +348,3 @@ def _calc_discovery_metrics_prepared(
             metrics_by_subset[subset]["Precision"] / daf_denominator
         )
     return metrics_by_subset, canonical_indices
-
-
-def calc_discovery_metrics(
-    reference: pd.DataFrame,
-    model_predictions: pd.Series,
-    *,
-    subset_indices: SubsetIndices | None = None,
-    uniq_proto_prevalence: float | None = None,
-    canonical: bool = False,
-) -> dict[DiscoverySubset, dict[str, MetricValue]]:
-    """Calculate raw metrics for all three discovery subsets.
-
-    Leaderboard evaluation requires unrounded unique-prototype prevalence; synthetic
-    evaluation derives it from the supplied reference. This function does not apply
-    the 5 eV/atom outlier mask or three-decimal artifact rounding.
-    """
-    indexed_reference = _validated_reference_frame(reference)
-    aligned_predictions = _align_predictions_prepared(
-        indexed_reference, model_predictions
-    )
-    metrics_by_subset, _ = _calc_discovery_metrics_prepared(
-        indexed_reference,
-        aligned_predictions,
-        subset_indices=subset_indices,
-        uniq_proto_prevalence=uniq_proto_prevalence,
-        canonical=canonical,
-    )
-    return metrics_by_subset

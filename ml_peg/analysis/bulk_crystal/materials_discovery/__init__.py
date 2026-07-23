@@ -10,6 +10,8 @@ from ml_peg.analysis.bulk_crystal.materials_discovery.evaluation import (
     DiscoveryResults,
     DiscoverySubsetResults,
     SourceMetadata,
+    calc_discovery_metrics,
+    discovery_subset_indices,
     evaluate_discovery,
     evaluate_discovery_paths,
     prepare_discovery_inputs,
@@ -20,9 +22,7 @@ from ml_peg.analysis.bulk_crystal.materials_discovery.metrics import (
     STABILITY_THRESHOLD,
     MetricValue,
     align_predictions,
-    calc_discovery_metrics,
     classify_stable,
-    discovery_subset_indices,
     stable_metrics,
 )
 from ml_peg.analysis.bulk_crystal.materials_discovery.schema import (
