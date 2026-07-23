@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import Atoms
 from ase.calculators.calculator import Calculator
+from ase.io import write
 from mlipaudit.benchmarks.tautomers.tautomers import TautomersModelOutput
 import pytest
 
@@ -43,7 +45,7 @@ def labels() -> list:
         path = CALC_PATH / model_name / "model_output.json"
         if path.exists():
             output = TautomersModelOutput.model_validate_json(path.read_text())
-            return output.structure_ids
+            return sorted(output.structure_ids)
     return []
 
 
@@ -82,7 +84,10 @@ def analyze_results() -> dict:
 @pytest.fixture
 def struct_info() -> dict:
     """
-    Write the combined element set to ``info.json`` for filtering.
+    Write ``info.json`` for filtering and one 2-frame ``.xyz`` per tautomer pair.
+
+    Each pair is written as a two-frame trajectory (frame 0 is the first
+    tautomer, frame 1 the second) so the app can display both tautomers.
 
     Returns
     -------
@@ -109,6 +114,16 @@ def struct_info() -> dict:
     info = {"elements": elements}
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     (OUT_PATH / "info.json").write_text(json.dumps(info, indent=1))
+
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for structure_id, pair in benchmark._tautomers_data.items():
+        images = [
+            Atoms(symbols=pair.atom_symbols[j], positions=pair.coordinates[j])
+            for j in range(2)
+        ]
+        write(structs_dir / f"{structure_id}.xyz", images)
+
     return info
 
 
