@@ -35,6 +35,10 @@ from ml_peg.app.utils.utils import (
 # kept so the weights row can be translated to align with cols
 LINK_COLUMN_WIDTH = 36
 
+# Max width of the interactive zone below a table (plots, structure viewers, ...).
+# Bounds it so it does not stretch to the largest table width by default.
+INTERACTIVE_ZONE_MAX_WIDTH = "1500px"
+
 
 def grid_template_from_widths(
     widths: dict[str, int],
@@ -1024,7 +1028,9 @@ def build_test_layout(
     layout_contents.append(Div(table_section, style={"width": "fit-content"}))
 
     if extra_components:
-        layout_contents.extend(extra_components)
+        layout_contents.append(
+            Div(extra_components, style={"maxWidth": INTERACTIVE_ZONE_MAX_WIDTH})
+        )
 
     return Div(layout_contents)
 
