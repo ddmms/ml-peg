@@ -16,6 +16,8 @@ from typing import Any
 
 import pytest
 
+# Optional extra (ml-peg[mlipaudit]); skip if not installed.
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models

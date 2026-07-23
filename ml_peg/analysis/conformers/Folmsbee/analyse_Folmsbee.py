@@ -7,10 +7,14 @@ from pathlib import Path
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import write
+
+# Optional extra (ml-peg[mlipaudit]); skip if not installed.
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
     ConformerSelectionModelOutput,
 )
-import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
