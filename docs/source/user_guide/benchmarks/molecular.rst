@@ -174,3 +174,46 @@ Input structures:
   Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
   N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654
+
+
+Reference geometry stability
+============================
+
+Summary
+-------
+
+Ability to preserve the ground-state geometry of small organic molecules during
+energy minimization. Structures are 200 neutral and 20 charged molecules
+selected from the OpenFF industry dataset to maximize chemical diversity.
+
+Metrics
+-------
+
+1. Average RMSD
+
+Each molecule is relaxed with a short energy minimization starting from its
+reference geometry. The heavy-atom RMSD between the minimized and reference
+structure is computed for every molecule, and the reported metric is the average
+RMSD across all molecules. The overall score is the mlipaudit per-molecule
+soft-threshold score on the RMSD, so a model that keeps geometries close to the
+reference scores highly.
+
+A histogram of the per-molecule heavy-atom RMSD values is shown on clicking the
+metric column.
+
+Computational cost
+------------------
+
+Medium: 220 short geometry optimizations of small organic molecules.
+
+Data availability
+-----------------
+
+Input structures:
+
+* OpenFF industry benchmark set. Selected for chemical diversity from the
+  dataset described in the MLIP Audit benchmark suite.
+
+Reference data:
+
+* Reference geometries from the OpenFF industry dataset.
