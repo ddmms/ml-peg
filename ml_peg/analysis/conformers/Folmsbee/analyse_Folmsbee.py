@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase import Atoms
@@ -50,15 +51,38 @@ def labels() -> list:
     list
         List of all system names.
     """
-    for model_name in MODELS:
-        raw = (CALC_PATH / model_name / "model_output.json").read_text()
-        output = ConformerSelectionModelOutput.model_validate_json(raw)
-        labels_list = sorted(
-            f"{m.molecule_name}_conf{i}"
-            for m in output.molecules
-            for i in range(len(m.predicted_energy_profile))
+    mock_path = CALC_PATH / "mock" / "model_output.json"
+    if not mock_path.exists():
+        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+    raw = mock_path.read_text()
+    output = ConformerSelectionModelOutput.model_validate_json(raw)
+    data_input_dir = download_s3_data(
+        key="inputs/conformers/Folmsbee/Folmsbee.zip",
+        filename="Folmsbee.zip",
+    )
+    benchmark = MlPegConformerSelectionBenchmark(
+        force_field=Calculator(),
+        data_input_dir=data_input_dir,
+        run_mode="standard",
+    )
+
+    # Get labels and elements, sorted consistently
+    label_element_pairs = sorted(
+        (
+            f"{output_molecule.molecule_name}_conf{i}",
+            benchmark_molecule.atom_symbols,
         )
-        break
+        for output_molecule, benchmark_molecule in zip(
+            output.molecules, benchmark._folmsbee_data, strict=True
+        )
+        for i in range(len(output_molecule.predicted_energy_profile))
+    )
+    labels_list, elements = map(list, zip(*label_element_pairs, strict=True))
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
+        json.dump({"elements": elements}, f, indent=1)
+
     return labels_list
 
 
