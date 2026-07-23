@@ -53,6 +53,8 @@ from ml_peg.analysis.bulk_crystal.geo_opt.schema import (
     validate_geo_opt_dataframe,
 )
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 
 def _geo_opt_record(
     material_id: str = "wbm-1",

@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 pytest.importorskip("ase")
 pytest.importorskip("moyopy")
 pytest.importorskip("pymatgen")
