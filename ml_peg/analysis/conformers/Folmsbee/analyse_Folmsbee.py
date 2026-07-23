@@ -26,7 +26,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data  # noqa: F401
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -56,13 +55,9 @@ def labels() -> list[str]:
         raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
     raw = mock_path.read_text()
     output = ConformerSelectionModelOutput.model_validate_json(raw)
-    data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/Folmsbee.zip",
-        filename="Folmsbee.zip",
-    )
     benchmark = MlPegConformerSelectionBenchmark(
         force_field=Calculator(),
-        data_input_dir=data_input_dir,
+        data_input_dir=CALC_PATH,
         run_mode="standard",
     )
 
@@ -96,11 +91,6 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/Folmsbee.zip",
-        filename="Folmsbee.zip",
-    )
-
     results = {}
     for model_name in MODELS:
         model_path = CALC_PATH / model_name / "model_output.json"
@@ -109,7 +99,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegConformerSelectionBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         raw = model_path.read_text()

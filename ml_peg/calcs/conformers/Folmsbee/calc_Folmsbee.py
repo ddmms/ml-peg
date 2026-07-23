@@ -12,6 +12,7 @@ DOI: 10.1002/qua.26381
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 
 import pytest
@@ -49,6 +50,8 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
 
     out_path = OUT_PATH / model_name
     out_path.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy(data_input_dir / "Folmsbee" / "folmsbee_dataset.json", OUT_PATH)
 
     benchmark = MlPegConformerSelectionBenchmark(
         force_field=calc,
