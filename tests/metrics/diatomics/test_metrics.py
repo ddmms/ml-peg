@@ -24,6 +24,8 @@ from ml_peg.analysis.physicality.diatomics.metrics import (
     load_dft_reference_curves,
 )
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 
 def _forces_from_energy(
     distances: np.ndarray,

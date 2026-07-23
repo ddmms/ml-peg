@@ -18,6 +18,8 @@ from ml_peg.analysis.physicality.diatomics.metrics import (
     load_ml_peg_curves,
 )
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 
 def _curve_payload() -> dict[str, object]:
     """Return a minimal two-point MBD curve payload."""

@@ -19,6 +19,8 @@ from ml_peg.analysis.physicality.diatomics.analyse_diatomics import (
 )
 from ml_peg.analysis.physicality.diatomics.metrics import DIATOMIC_METRIC_KEYS
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 
 def _integration_dataframe() -> pd.DataFrame:
     """Build smooth homo- and heteronuclear current-format curves."""

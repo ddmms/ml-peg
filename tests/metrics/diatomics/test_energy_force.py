@@ -25,6 +25,8 @@ from ml_peg.analysis.physicality.diatomics.metrics.force import (
     calc_force_total_variation,
 )
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 _LENGTH_ERROR = re.escape("len(separation_array)=2 != len(value_array)=3")
 _ENERGY_SHAPE_ERROR = re.escape("energy values must have shape (n,)")
 _FORCE_SHAPE_ERROR = re.escape("force values must have shape (n, 2, 3)")
