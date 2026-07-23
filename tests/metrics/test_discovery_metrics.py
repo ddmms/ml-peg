@@ -396,7 +396,7 @@ def test_dataframe_evaluation_normalizes_material_ids_to_strings() -> None:
 
     results = evaluate_discovery(reference, predictions)
 
-    assert results[str(DiscoverySubset.full_test_set)]["missing_preds"] == 0
+    assert results["subsets"][str(DiscoverySubset.full_test_set)]["missing_preds"] == 0
 
 
 @pytest.mark.parametrize("ranking_case", ["ties", "missing"])
@@ -511,7 +511,7 @@ def test_evaluation_masks_outliers_then_rounds_to_three_decimals() -> None:
     )
 
     results = evaluate_discovery(reference, predictions)
-    full_metrics = results[str(DiscoverySubset.full_test_set)]
+    full_metrics = results["subsets"][str(DiscoverySubset.full_test_set)]
     assert set(full_metrics) == REPORTED_METRICS
     assert {
         metric_name: full_metrics[metric_name]
@@ -536,7 +536,7 @@ def test_synthetic_daf_uses_prepared_rounded_hull_labels() -> None:
 
     results = evaluate_discovery(reference, predictions)
 
-    assert results[str(DiscoverySubset.unique_prototypes)]["DAF"] == 2.0
+    assert results["subsets"][str(DiscoverySubset.unique_prototypes)]["DAF"] == 2.0
 
 
 def test_canonical_evaluation_requires_explicit_unrounded_prevalence() -> None:
@@ -555,7 +555,7 @@ def test_canonical_evaluation_requires_explicit_unrounded_prevalence() -> None:
         uniq_proto_prevalence=0.25,
     )
     for subset in DAF_SUBSETS:
-        assert results[str(subset)]["DAF"] == 4.0
+        assert results["subsets"][str(subset)]["DAF"] == 4.0
 
 
 def test_path_evaluation_is_json_safe_and_writes_strict_json(
@@ -576,8 +576,14 @@ def test_path_evaluation_is_json_safe_and_writes_strict_json(
     predictions.to_csv(prediction_path, index=False)
 
     results = evaluate_discovery_paths(reference_path, prediction_path)
-    assert results[str(DiscoverySubset.full_test_set)]["Precision"] is None
-    assert results[str(DiscoverySubset.full_test_set)]["missing_preds"] == 1
+    assert results["schema_version"] == 1
+    assert results["source"] == {
+        "framework": "matbench-discovery",
+        "version": "1.3.1",
+    }
+    full_metrics = results["subsets"][str(DiscoverySubset.full_test_set)]
+    assert full_metrics["Precision"] is None
+    assert full_metrics["missing_preds"] == 1
     json.dumps(results, allow_nan=False)
 
     write_discovery_metrics_json(results, output_path)
@@ -591,7 +597,7 @@ def test_evaluators_treat_infinite_predictions_as_missing() -> None:
     predictions = pd.Series([np.inf, -np.inf, 0.5, 1.0], index=reference[MATERIAL_ID])
 
     results = evaluate_discovery(reference, predictions, max_error_threshold=None)
-    full_metrics = results[str(DiscoverySubset.full_test_set)]
+    full_metrics = results["subsets"][str(DiscoverySubset.full_test_set)]
     assert full_metrics["missing_preds"] == 2
     json.dumps(results, allow_nan=False)
 

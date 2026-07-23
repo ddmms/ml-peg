@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 import json
 import math
 import os
-from typing import Final, TypeAlias
+from typing import Final, TypeAlias, TypedDict
 
 import pandas as pd
 
@@ -23,14 +22,35 @@ from ml_peg.analysis.bulk_crystal.materials_discovery.schema import (
     _validated_reference_frame,
     prediction_series,
 )
-from ml_peg.data.artifacts import PathLike, read_csv_artifact
+from ml_peg.data.artifacts import (
+    MATBENCH_DISCOVERY_ID,
+    MATBENCH_DISCOVERY_VERSION,
+    PathLike,
+    read_csv_artifact,
+)
 
+RESULT_SCHEMA_VERSION: Final = 1
 MAX_E_FORM_ERROR_THRESHOLD: Final = 5.0
 EVALUATION_DECIMALS: Final = 3
 MISSING_PREDICTIONS_KEY: Final = "missing_preds"
 
 JsonMetricValue: TypeAlias = float | int | None
-DiscoveryResults: TypeAlias = dict[str, dict[str, JsonMetricValue]]
+DiscoverySubsetResults: TypeAlias = dict[str, dict[str, JsonMetricValue]]
+
+
+class SourceMetadata(TypedDict):
+    """Identify the upstream framework used by an evaluation result."""
+
+    framework: str
+    version: str
+
+
+class DiscoveryResults(TypedDict):
+    """Serialized discovery evaluation result."""
+
+    schema_version: int
+    source: SourceMetadata
+    subsets: DiscoverySubsetResults
 
 
 def prepare_discovery_inputs(
@@ -113,7 +133,7 @@ def evaluate_discovery(
         canonical=canonical,
     )
 
-    results: DiscoveryResults = {}
+    subsets: DiscoverySubsetResults = {}
     for subset in DiscoverySubset:
         subset_index = subset_indices[subset]
         subset_metrics = {
@@ -123,8 +143,15 @@ def evaluate_discovery(
         subset_metrics[MISSING_PREDICTIONS_KEY] = int(
             prepared_predictions.loc[subset_index].isna().sum()
         )
-        results[str(subset)] = subset_metrics
-    return results
+        subsets[str(subset)] = subset_metrics
+    return {
+        "schema_version": RESULT_SCHEMA_VERSION,
+        "source": {
+            "framework": MATBENCH_DISCOVERY_ID,
+            "version": MATBENCH_DISCOVERY_VERSION,
+        },
+        "subsets": subsets,
+    }
 
 
 def evaluate_discovery_paths(
@@ -146,7 +173,7 @@ def evaluate_discovery_paths(
 
 
 def write_discovery_metrics_json(
-    results: Mapping[str, Mapping[str, JsonMetricValue]],
+    results: DiscoveryResults,
     output_path: str | os.PathLike[str],
 ) -> None:
     """Write discovery metrics as JSON."""
