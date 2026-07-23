@@ -29,7 +29,11 @@ from ml_peg.analysis.bulk_crystal.geo_opt.symmetry import (
     get_sym_info_from_structs,
     pred_vs_ref_struct_symmetry,
 )
-from ml_peg.data.artifacts import canonical_scientific_notation
+from ml_peg.data.artifacts import (
+    MATBENCH_DISCOVERY_ID,
+    MATBENCH_DISCOVERY_VERSION,
+    canonical_scientific_notation,
+)
 
 CANONICAL_SYMPRECS = (1e-2, 1e-5)
 RESULT_SCHEMA_VERSION = 1
@@ -187,6 +191,10 @@ def analyze_geo_opt_dataframes(
 
     return {
         "schema_version": RESULT_SCHEMA_VERSION,
+        "source": {
+            "framework": MATBENCH_DISCOVERY_ID,
+            "version": MATBENCH_DISCOVERY_VERSION,
+        },
         "versions": get_version_metadata(),
         "n_predictions": len(validated_predictions),
         "n_references": len(aligned_references),

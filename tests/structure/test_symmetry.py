@@ -287,6 +287,11 @@ def test_analyze_geo_opt_dataframes_returns_json_safe_results(
         assert symprec_result["analysis"][0][MATERIAL_ID] == "sample"
         assert isinstance(symprec_result["angle_tolerance"], float)
     assert result["versions"]["moyopy"]
+    assert result["schema_version"] == 1
+    assert result["source"] == {
+        "framework": "matbench-discovery",
+        "version": "1.3.1",
+    }
     assert result["n_references"] == 1
     json.dumps(result, allow_nan=False)
 
