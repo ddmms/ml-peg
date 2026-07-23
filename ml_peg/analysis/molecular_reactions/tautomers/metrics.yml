@@ -4,7 +4,7 @@ metrics:
     bad: 2.0
     unit: kcal/mol
     weight: 0
-    tooltip: Mean absolute error of tautomer relative (reaction) energies.
+    tooltip: Mean absolute error of tautomer relative (reaction) energies at ωB97M-D3(BJ)/def2-TZVPPD level of theory.
   Tautomer Score:
     good: 1.0
     bad: 0.0

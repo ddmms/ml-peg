@@ -29,7 +29,7 @@ Computational cost
 ------------------
 
 Low: only single-point energies are evaluated, so tests run quickly even for the
-full dataset.
+full dataset. Minutes on CPU and GPU.
 
 Data availability
 -----------------
