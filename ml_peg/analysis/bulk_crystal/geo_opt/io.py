@@ -53,24 +53,6 @@ def _normalize_mbd_analysis_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
-def _decode_list_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Return a copy with serialized CSV list columns decoded."""
-    decoded = dataframe.copy()
-    for field in _LIST_ANALYSIS_FIELDS:
-        if field not in decoded:
-            continue
-        decoded[field] = decoded[field].map(_decode_list_value)
-    return decoded
-
-
-def _encode_list_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Return a copy with list columns encoded as JSON strings."""
-    encoded = dataframe.copy()
-    for field in _LIST_ANALYSIS_FIELDS:
-        encoded[field] = encoded[field].map(json.dumps)
-    return encoded
-
-
 def read_geo_opt_jsonl(file_path: PathLike) -> pd.DataFrame:
     """Read and validate a geo-opt JSONL file."""
     dataframe = read_jsonl_artifact(
@@ -90,7 +72,7 @@ def write_geo_opt_jsonl(
 ) -> None:
     """Validate and write geo-opt records as JSONL."""
     dataframe = (
-        records.copy()
+        records
         if isinstance(records, pd.DataFrame)
         else pd.DataFrame.from_records(records, columns=GEO_OPT_FIELDS)
     )
@@ -114,17 +96,20 @@ def read_reference_jsonl(file_path: PathLike) -> pd.DataFrame:
 
 def read_analysis_csv(file_path: PathLike) -> pd.DataFrame:
     """Read validated per-structure analysis from plain or compressed CSV."""
-    dataframe = _decode_list_columns(
-        _normalize_mbd_analysis_columns(
-            read_csv_artifact(file_path, dtype={MATERIAL_ID: str})
-        )
+    dataframe = _normalize_mbd_analysis_columns(
+        read_csv_artifact(file_path, dtype={MATERIAL_ID: str})
     )
+    for field in _LIST_ANALYSIS_FIELDS:
+        if field in dataframe:
+            dataframe[field] = dataframe[field].map(_decode_list_value)
     return validate_analysis_dataframe(dataframe)
 
 
 def write_analysis_csv(dataframe: pd.DataFrame, file_path: PathLike) -> None:
     """Validate and write an analysis CSV."""
-    serialized = _encode_list_columns(validate_analysis_dataframe(dataframe))
+    serialized = validate_analysis_dataframe(dataframe)
+    for field in _LIST_ANALYSIS_FIELDS:
+        serialized[field] = serialized[field].map(json.dumps)
     serialized.loc[:, ANALYSIS_FIELDS[1:]].to_csv(
         os.fspath(file_path),
         index=True,

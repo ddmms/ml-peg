@@ -1,5 +1,7 @@
 """Tests for optional crystal-symmetry and structure-comparison helpers."""
 
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import json

@@ -202,7 +202,11 @@ def validate_geo_opt_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
     normalized = dataframe.copy()
     for field in GEO_OPT_FIELDS:
         normalized[field] = [record[field] for record in normalized_records]
-    _validate_material_id_values(normalized[MATERIAL_ID])
+    duplicate_ids = normalized.loc[
+        normalized[MATERIAL_ID].duplicated(), MATERIAL_ID
+    ].unique()
+    if duplicate_ids.size:
+        raise ValueError(f"Duplicate material_id values: {duplicate_ids.tolist()!r}")
     return normalized
 
 
@@ -237,9 +241,7 @@ def validate_analysis_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
             continue
         original = normalized[field]
         numeric = pd.to_numeric(original, errors="coerce")
-        invalid_mask = original.notna() & numeric.map(
-            lambda value: pd.isna(value) or not np.isfinite(value)
-        )
+        invalid_mask = original.notna() & ~np.isfinite(numeric)
         if invalid_mask.any():
             invalid_values = original[invalid_mask].tolist()
             raise ValueError(

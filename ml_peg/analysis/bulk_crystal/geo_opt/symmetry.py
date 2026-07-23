@@ -138,9 +138,7 @@ def get_sym_info_from_structs(
             ANGLE_TOLERANCE: angle_tolerance,
         }
 
-    dataframe = pd.DataFrame.from_dict(results, orient="index")
-    if dataframe.empty:
-        dataframe = pd.DataFrame(columns=SYMMETRY_FIELDS)
+    dataframe = pd.DataFrame.from_dict(results, orient="index", columns=SYMMETRY_FIELDS)
     dataframe.index.name = MATERIAL_ID
     return dataframe
 
@@ -186,27 +184,6 @@ def _matching_structure_ids(
     return structure_ids
 
 
-def _as_pymatgen_structure(
-    structure: object, *, material_id: str, source_name: str
-) -> object:
-    """Convert a pymatgen Structure or ASE Atoms for ``StructureMatcher``."""
-    try:
-        from ase import Atoms
-        from pymatgen.core import Structure
-        from pymatgen.io.ase import AseAtomsAdaptor
-    except ImportError as exc:
-        raise ImportError("Structure comparison requires ASE and pymatgen") from exc
-
-    if isinstance(structure, Structure):
-        return structure
-    if isinstance(structure, Atoms):
-        return AseAtomsAdaptor.get_structure(structure)
-    raise TypeError(
-        f"{source_name}[{material_id!r}] must be pymatgen Structure or ASE Atoms, "
-        f"got {type(structure).__name__}"
-    )
-
-
 def pred_vs_ref_struct_symmetry(
     df_sym_pred: pd.DataFrame,
     df_sym_ref: pd.DataFrame,
@@ -228,9 +205,25 @@ def pred_vs_ref_struct_symmetry(
         raise TypeError("pred_structs and ref_structs must both be mappings")
 
     try:
+        from ase import Atoms
         from pymatgen.analysis.structure_matcher import StructureMatcher
+        from pymatgen.core import Structure
+        from pymatgen.io.ase import AseAtomsAdaptor
     except ImportError as exc:
-        raise ImportError("Structure comparison requires pymatgen") from exc
+        raise ImportError("Structure comparison requires ASE and pymatgen") from exc
+
+    def as_pymatgen(
+        structure: object, *, material_id: str, source_name: str
+    ) -> Structure:
+        """Convert an ASE structure for ``StructureMatcher`` when needed."""
+        if isinstance(structure, Structure):
+            return structure
+        if isinstance(structure, Atoms):
+            return AseAtomsAdaptor.get_structure(structure)
+        raise TypeError(
+            f"{source_name}[{material_id!r}] must be pymatgen Structure or ASE Atoms, "
+            f"got {type(structure).__name__}"
+        )
 
     predicted_ids = _matching_structure_ids(
         df_sym_pred, pred_structs, source_name="Predicted"
@@ -253,22 +246,21 @@ def pred_vs_ref_struct_symmetry(
     dataframe_result[[STRUCTURE_RMSD_VS_DFT, MAX_PAIR_DIST]] = float("nan")
 
     structure_matcher = StructureMatcher(stol=1.0, scale=False)
-    material_ids = list(shared_index)
     material_ids = _progress_iterator(
-        material_ids,
-        total=len(material_ids),
+        shared_index,
+        total=len(shared_index),
         pbar=pbar,
         default_description="Calculating RMSD",
         leave=False,
     )
     distances_by_id: dict[str, tuple[float, float]] = {}
     for material_id in material_ids:
-        predicted_structure = _as_pymatgen_structure(
+        predicted_structure = as_pymatgen(
             pred_structs[material_id],
             material_id=material_id,
             source_name="pred_structs",
         )
-        reference_structure = _as_pymatgen_structure(
+        reference_structure = as_pymatgen(
             ref_structs[material_id],
             material_id=material_id,
             source_name="ref_structs",
