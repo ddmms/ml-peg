@@ -66,6 +66,10 @@ mattersim = [
 ]
 mlipaudit = [
     "mlipaudit; python_version >= '3.11'",
+    # dm-haiku 0.0.16 (pulled via mlip -> e3nn-jax -> haiku) still uses
+    # jax.core.DropVar, removed in JAX 0.11. Cap jax below 0.11.
+    "jax<0.11; python_version >= '3.11'",
+    "jaxlib<0.11; python_version >= '3.11'",
 ]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
