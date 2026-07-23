@@ -39,6 +39,8 @@ from ml_peg.data.artifacts import (
     read_jsonl_artifact,
 )
 
+pytestmark = pytest.mark.framework("matbench-discovery")
+
 REPORTED_METRICS = set(
     "F1 DAF Precision Recall Accuracy TPR FPR TNR FNR TP FP TN FN MAE RMSE R2 "
     "missing_preds".split()
