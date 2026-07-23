@@ -103,3 +103,47 @@ Input/reference data:
   - 64 atoms: Γ-only (``K_POINTS automatic 1 1 1 0 0 0``)
   - 216 atoms: Γ-only (``K_POINTS gamma``)
   - 216 atoms di-to-single: Γ-only (``K_POINTS gamma``)
+
+
+Grambow organics
+================
+
+Summary
+-------
+
+Performance in converging nudged elastic band (NEB) simulations for 100
+elementary organic reactions sampled from the Grambow dataset, involving small
+neutral molecules containing H, C, N and O. The benchmark assesses whether a
+model can produce a stable, converged reaction path, rather than the accuracy of
+the transition state.
+
+Metrics
+-------
+
+1. Convergence rate
+
+Each reaction is run as a NEB simulation with 10 images for up to 500 steps,
+starting from the provided reactant, product and transition state structures. A
+reaction counts as converged when the maximum final NEB force falls below the
+convergence threshold. The reported metric is the fraction of the 100 reactions
+that converged; failed simulations count as not converged.
+
+Computational cost
+------------------
+
+High: 100 NEB simulations with up to 500 steps each and 10 images per
+simulation.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Grambow, C.A., Pattanaik, L. & Green, W.H. Reactants, products, and
+  transition states of elementary chemical reactions based on quantum
+  chemistry. Sci Data 7, 137 (2020). DOI: 10.1038/s41597-020-0460-4
+
+Reference data:
+
+* Same as input data
+* :math:`\omega B97X-D3/def2-TZVP` level of theory.
