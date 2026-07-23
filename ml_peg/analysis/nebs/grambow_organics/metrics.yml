@@ -1,0 +1,8 @@
+metrics:
+  Convergence Rate:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: Fraction of NEB reaction simulations that converged below the final force threshold.
+    level_of_theory: wB97X-D3/def2-TZVP
