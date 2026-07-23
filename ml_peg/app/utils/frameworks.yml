@@ -3,6 +3,8 @@ ml_peg:
   color: "#334155"
   text_color: "#ffffff"
   url: "https://github.com/ddmms/ml-peg"
+  description: "ML-PEG: Machine Learning Performance and Extrapolation Guide."
+  project_url: "https://github.com/ddmms/ml-peg"
 
 mlip_arena:
   label: MLIP Arena
@@ -10,6 +12,10 @@ mlip_arena:
   text_color: "#ecfeff"
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
   logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+  description: "A benchmark platform evaluating foundation MLIPs on physical soundness and real-world utility (physics awareness, chemical reactivity, stability under extreme conditions, and thermodynamic prediction) rather than error metrics tied to a specific DFT reference, and agnostic to model architecture and training data."
+  project_url: "https://huggingface.co/spaces/atomind/mlip-arena"
+  paper_url: "https://proceedings.neurips.cc/paper_files/paper/2025/hash/bfa45223cc236855dbaa5c468c809896-Abstract-Datasets_and_Benchmarks_Track.html"
+  github: "https://github.com/atomind-ai/mlip-arena"
 
 mlip_audit:
   label: MLIP Audit
@@ -24,7 +30,9 @@ mace-multihead:
   text_color: "#f5f3ff"
   url: "https://arxiv.org/abs/2510.25380"
   icon: "📄"
-  tooltip: "Benchmark from the Multihead Cross Learning paper (arXiv:2510.25380) - click to read"
+  tooltip: "Benchmark from the Multihead Cross Learning paper (arXiv:2510.25380), click to read"
+  description: "Benchmarks from 'Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields'."
+  paper_url: "https://arxiv.org/abs/2510.25380"
 
 mace-polar-1:
   label: MACE-POLAR-1
@@ -32,4 +40,6 @@ mace-polar-1:
   text_color: "#eff6ff"
   url: "https://arxiv.org/abs/2602.19411"
   icon: "📄"
-  tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411) - click to read"
+  tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411), click to read"
+  description: "Benchmarks from 'MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry'."
+  paper_url: "https://arxiv.org/abs/2602.19411"

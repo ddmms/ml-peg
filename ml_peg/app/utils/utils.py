@@ -195,6 +195,10 @@ class FrameworkEntry(TypedDict):
     logo: NotRequired[str]
     icon: NotRequired[str]
     tooltip: NotRequired[str]
+    description: NotRequired[str]
+    project_url: NotRequired[str]
+    paper_url: NotRequired[str]
+    github: NotRequired[str]
 
 
 def get_mlip_column_width(
@@ -1179,6 +1183,10 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         tooltip = raw_entry.get("tooltip")
         if isinstance(tooltip, str) and tooltip.strip():
             registry_entry["tooltip"] = tooltip.strip()
+        for key in ("description", "project_url", "paper_url", "github"):
+            value = raw_entry.get(key)
+            if isinstance(value, str) and value.strip():
+                registry_entry[key] = value.strip()
 
         registry[normalized_id] = registry_entry
 

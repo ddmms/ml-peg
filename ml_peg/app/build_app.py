@@ -36,6 +36,10 @@ from ml_peg.app.utils.build_components import (
     build_page_loading_spinner,
     build_weight_components,
 )
+from ml_peg.app.utils.frameworks import (
+    build_framework_page_layout,
+    build_framework_views,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     register_onboarding_callbacks,
@@ -600,95 +604,6 @@ def build_category_page_layout(
                 style={"margin": "32px 0 24px"},
             ),
             benchmark_section,
-        ]
-    )
-
-
-def build_framework_views(
-    category_views: dict[str, dict[str, object]],
-    framework_ids: set[str],
-) -> dict[str, dict[str, object]]:
-    """
-    Build extra framework-focused page metadata for non-default frameworks.
-
-    Parameters
-    ----------
-    category_views
-        Category metadata including benchmark layout components.
-    framework_ids
-        All framework IDs discovered from benchmark apps.
-
-    Returns
-    -------
-    dict[str, dict[str, object]]
-        Mapping of framework ID to grouped benchmark layouts by category.
-    """
-    framework_views: dict[str, dict[str, object]] = {}
-    for framework_id in sorted(framework_ids):
-        if framework_id == "ml_peg":
-            continue
-
-        category_groups = []
-        for category_name, category_view in category_views.items():
-            tests = [
-                test["layout"]
-                for test in category_view["tests"]
-                if framework_id in test["framework_ids"]
-            ]
-            if tests:
-                category_groups.append({"category": category_name, "tests": tests})
-
-        if category_groups:
-            framework_views[framework_id] = {
-                "framework_id": framework_id,
-                "label": get_framework_config(framework_id)["label"],
-                "category_groups": category_groups,
-            }
-
-    return framework_views
-
-
-def build_framework_page_layout(framework_view: dict[str, object]) -> Div:
-    """
-    Build a framework-focused page containing benchmark sections only.
-
-    Parameters
-    ----------
-    framework_view
-        Framework page metadata with grouped benchmark layouts by category.
-
-    Returns
-    -------
-    Div
-        Framework page layout.
-    """
-    framework_label = framework_view["label"]
-    category_groups = framework_view["category_groups"]
-
-    sections = []
-    for group in category_groups:
-        sections.append(H3(group["category"], style={"marginTop": "26px"}))
-        sections.append(Div(group["tests"], style={"display": "grid", "gap": "24px"}))
-
-    return Div(
-        [
-            H1(f"{framework_label} Benchmarks"),
-            Div(
-                (
-                    "These benchmarks also remain in their category pages. "
-                    "Framework pages omit the category summary table and reuse the "
-                    "same benchmark controls, so weight and threshold edits stay in "
-                    "sync across both views."
-                ),
-                style={
-                    "fontSize": "13px",
-                    "fontStyle": "italic",
-                    "color": "#64748b",
-                    "marginTop": "8px",
-                    "marginBottom": "8px",
-                },
-            ),
-            *sections,
         ]
     )
 
