@@ -176,37 +176,23 @@ def test_stable_metrics_zero_classes(
     )
 
 
-def test_stable_metrics_handles_empty_regression_pairs_without_warnings() -> None:
-    """All-missing regression pairs return NaNs without runtime warnings."""
+def test_stable_metrics_regression_edge_cases() -> None:
+    """Regression metrics ignore missing pairs and handle fewer than two values."""
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        metrics = stable_metrics([None, np.nan], [None, np.nan])
+        missing_metrics = stable_metrics([None, np.nan], [None, np.nan])
+    assert all(
+        math.isnan(float(missing_metrics[name])) for name in ("MAE", "RMSE", "R2")
+    )
+    assert math.isnan(float(stable_metrics([0.1], [0.2])["R2"]))
 
-    assert all(math.isnan(float(metrics[name])) for name in ("MAE", "RMSE", "R2"))
-
-
-def test_fillna_changes_classification_but_not_regression_metrics() -> None:
-    """Missing-value classification does not alter valid regression pairs."""
     filled = stable_metrics([-0.1, 0.1], [None, 0.2], fillna=True)
     unfilled = stable_metrics([-0.1, 0.1], [None, 0.2], fillna=False)
-
     assert filled["FN"] == 1
     assert unfilled["FN"] == 0
-    assert {
-        metric_name: filled[metric_name] for metric_name in ("MAE", "RMSE", "R2")
-    } == pytest.approx(
-        {
-            "MAE": unfilled["MAE"],
-            "RMSE": unfilled["RMSE"],
-            "R2": unfilled["R2"],
-        },
-        nan_ok=True,
+    assert tuple(filled[name] for name in ("MAE", "RMSE", "R2")) == pytest.approx(
+        tuple(unfilled[name] for name in ("MAE", "RMSE", "R2")), nan_ok=True
     )
-
-
-def test_single_regression_pair_has_nan_r2() -> None:
-    """R2 is undefined for one valid prediction pair."""
-    assert math.isnan(float(stable_metrics([0.1], [0.2])["R2"]))
 
 
 @pytest.mark.parametrize(

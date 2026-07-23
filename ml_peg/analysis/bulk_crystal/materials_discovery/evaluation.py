@@ -61,25 +61,17 @@ def prepare_discovery_inputs(
     aligned_predictions = _align_predictions_prepared(
         indexed_reference, model_predictions
     )
-    reference_formation_energy = pd.to_numeric(
-        indexed_reference[REFERENCE_FORMATION_ENERGY], errors="coerce"
-    )
-    reference_hull_distance = pd.to_numeric(
-        indexed_reference[E_ABOVE_HULL], errors="coerce"
-    )
+    energy_columns = [E_ABOVE_HULL, REFERENCE_FORMATION_ENERGY]
+    numeric_energies = indexed_reference[energy_columns].apply(pd.to_numeric)
+    prepared_reference = indexed_reference.copy()
+    prepared_reference[energy_columns] = numeric_energies.round(decimals)
     if max_error_threshold is not None:
         outlier_mask = (
-            aligned_predictions - reference_formation_energy
+            aligned_predictions - numeric_energies[REFERENCE_FORMATION_ENERGY]
         ).abs() > max_error_threshold
         aligned_predictions = aligned_predictions.mask(outlier_mask)
 
-    prepared_reference = indexed_reference.copy()
-    prepared_reference[E_ABOVE_HULL] = reference_hull_distance.round(decimals)
-    prepared_reference[REFERENCE_FORMATION_ENERGY] = reference_formation_energy.round(
-        decimals
-    )
-    prepared_predictions = aligned_predictions.round(decimals)
-    return prepared_reference, prepared_predictions
+    return prepared_reference, aligned_predictions.round(decimals)
 
 
 def _json_safe_metric(value: MetricValue) -> JsonMetricValue:
@@ -88,9 +80,9 @@ def _json_safe_metric(value: MetricValue) -> JsonMetricValue:
         return value
     numeric_value = float(value)
     return (
-        None
-        if not math.isfinite(numeric_value)
-        else round(numeric_value, EVALUATION_DECIMALS)
+        round(numeric_value, EVALUATION_DECIMALS)
+        if math.isfinite(numeric_value)
+        else None
     )
 
 
