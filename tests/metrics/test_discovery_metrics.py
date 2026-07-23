@@ -446,6 +446,36 @@ def test_most_stable_ranking_uses_predicted_hull_distance() -> None:
     assert not ranked_index.equals(predictions.sort_values().index)
 
 
+@pytest.mark.parametrize(
+    ("formation_energies", "prediction_values", "expected_order"),
+    [
+        ([10.0, 10.0, 10.0], [4.9, 5.0, 6.0], ["wbm-1", "wbm-2", "wbm-0"]),
+        ([0.0, 0.0, 0.0], [0.00049, 0.00041, 0.1], ["wbm-0", "wbm-1", "wbm-2"]),
+    ],
+    ids=["outlier-masked", "rounded-tie"],
+)
+def test_subset_ranking_applies_artifact_preprocessing(
+    formation_energies: list[float],
+    prediction_values: list[float],
+    expected_order: list[str],
+) -> None:
+    """Mask outliers and round predictions before ranking subsets."""
+    material_ids = ["wbm-0", "wbm-1", "wbm-2"]
+    reference = _reference_frame(
+        material_ids=material_ids,
+        each_true=[0.0] * 3,
+        formation_energies=formation_energies,
+        unique_prototypes=[True] * 3,
+    )
+    predictions = pd.Series(prediction_values, index=material_ids)
+
+    ranked_index = discovery_subset_indices(
+        reference=reference, predictions=predictions
+    )[DiscoverySubset.most_stable_10k]
+
+    assert ranked_index.tolist() == expected_order
+
+
 def test_subset_metrics_and_daf_override() -> None:
     """Subset selection uses the given DAF prevalence."""
     reference = _reference_frame(
@@ -521,6 +551,16 @@ def test_evaluation_masks_outliers_then_rounds_to_three_decimals() -> None:
         "MAE": 2.5,
         "RMSE": 3.536,
         "R2": -1249.0,
+    }
+    calculated = calc_discovery_metrics(reference=reference, predictions=predictions)[
+        DiscoverySubset.full_test_set
+    ]
+    assert {name: calculated[name] for name in ("TP", "FN", "FP", "TN", "MAE")} == {
+        "TP": 1,
+        "FN": 1,
+        "FP": 0,
+        "TN": 1,
+        "MAE": 2.5,
     }
 
 

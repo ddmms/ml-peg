@@ -19,7 +19,8 @@ places. Leaderboard evaluation uses the fraction of unique prototypes with an
 unrounded hull distance at or below 0 eV/atom as prevalence, preventing rounding
 from changing DAF. Pass this value with ``canonical=True`` and
 ``uniq_proto_prevalence=...``. Synthetic mode derives prevalence from the rounded
-reference values.
+reference values. ``calc_discovery_metrics`` and ``discovery_subset_indices`` apply
+the same masking and rounding as ``evaluate_discovery``.
 
 See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
 prediction artifacts are not included. JSON results include schema and source
