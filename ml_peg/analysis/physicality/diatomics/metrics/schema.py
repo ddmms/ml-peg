@@ -50,19 +50,18 @@ class DiatomicCurve:
                 raise ValueError(f"{name} must have shape (n,), got {values.shape}")
 
         n_distances = len(self.distances)
-        if len(self.energies) != n_distances:
+        if (n_energies := len(self.energies)) != n_distances:
             raise ValueError(
-                f"distance and energy counts differ: {n_distances} != "
-                f"{len(self.energies)}"
+                f"distance and energy counts differ: {n_distances} != {n_energies}"
             )
 
         # Handle forces stored as (1, n_distances*n_atoms, 3)
         # instead of (n_distances, n_atoms, 3)
         if self.forces.shape == (1, 2 * n_distances, 3):
             self.forces = self.forces.reshape(n_distances, 2, 3)
-        if len(self.forces) != n_distances:
+        if (n_forces := len(self.forces)) != n_distances:
             raise ValueError(
-                f"distance and force counts differ: {n_distances} != {len(self.forces)}"
+                f"distance and force counts differ: {n_distances} != {n_forces}"
             )
         expected_force_shape = (n_distances, 2, 3)
         if self.forces.shape != expected_force_shape:

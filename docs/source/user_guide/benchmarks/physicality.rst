@@ -129,26 +129,17 @@ Metrics
 Matbench Discovery metrics
 --------------------------
 
-A separate result reports the 12 Matbench Discovery diatomic metrics for
-homonuclear curves. These do not affect the existing five-metric ml-peg score for
-homo- and heteronuclear pairs.
+A separate, opt-in result reports 12 homonuclear metrics without changing the
+five-metric homo- and heteronuclear score. The reference-free metrics are tortuosity,
+force flips, energy-difference flips, energy jump, force total variation, and force
+jump. PBE-relative metrics cover energy and force MAE, repulsive-wall distance MAE,
+bond-length error, well-depth error, and vibrational-frequency error.
 
-The six reference-free metrics are tortuosity, force flips, energy-difference flips,
-energy jump, force total variation, and force jump. The six PBE-relative metrics are
-energy and force MAE, repulsive-wall distance MAE, bond-length error, well-depth
-error, and vibrational-frequency error. Element-specific distance windows prevent
-the repulsive wall from dominating general metrics, while the dedicated wall metric
-uses the wider PBE-supported range.
-
-The ml-peg CSV adapter maps projected forces to an x-aligned pair:
-``-force_parallel`` on atom 0 and ``+force_parallel`` on atom 1. Scoring covers
-homonuclear elements H-U except Po, At, Rn, Fr, and Ra. Eight lanthanide PBE curves
-with known discontinuities retain reference-free metrics but are excluded from
-PBE-relative metrics. Curves with non-finite values in the wider wall window are
-skipped.
-
-These metrics are opt-in and excluded from the weighted table. To evaluate model
-CSVs and write JSON:
+Element-specific windows keep the repulsive wall from dominating general metrics.
+Scoring covers H-U except Po, At, Rn, Fr, and Ra; known-discontinuous PBE curves keep
+reference-free metrics but not PBE-relative ones, and non-finite wall-window curves
+are skipped. Projected forces map to ``-force_parallel`` on atom 0 and
+``+force_parallel`` on atom 1. To write strict JSON:
 
 .. code-block:: python
 

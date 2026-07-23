@@ -162,6 +162,14 @@ def test_ml_peg_dataframe_and_csv_force_adapter(tmp_path: Path) -> None:
     [
         (pd.DataFrame({"pair": ["H-H"]}), "Missing ml-peg diatomics columns"),
         (_ml_peg_dataframe(("H2", 1, 0, 0)), "pair labels must have form"),
+        (
+            _ml_peg_dataframe((None, 1, 0, 0), ("H-H", 2, 0, 0)),
+            "pair labels must have form",
+        ),
+        (
+            _ml_peg_dataframe((None, 1, 0, 0), (None, 2, 0, 0)),
+            "pair labels must have form",
+        ),
     ],
 )
 def test_ml_peg_adapter_rejects_schema_errors(
@@ -170,28 +178,6 @@ def test_ml_peg_adapter_rejects_schema_errors(
 ) -> None:
     """ml-peg adapter reports missing columns and malformed pair labels."""
     with pytest.raises(ValueError, match=error_match):
-        load_ml_peg_curves(dataframe)
-
-
-@pytest.mark.parametrize(
-    "pair_values",
-    [[None, "H-H"], [None, None]],
-    ids=["partly-null", "entirely-null"],
-)
-def test_ml_peg_adapter_rejects_null_pair_labels(
-    pair_values: list[str | None],
-) -> None:
-    """Pass null pair labels through grouping so schema validation rejects them."""
-    dataframe = pd.DataFrame(
-        {
-            "pair": pair_values,
-            "distance": range(1, len(pair_values) + 1),
-            "energy": 0.0,
-            "force_parallel": 0.0,
-        }
-    )
-
-    with pytest.raises(ValueError, match="pair labels must have form"):
         load_ml_peg_curves(dataframe)
 
 

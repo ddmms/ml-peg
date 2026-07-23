@@ -215,17 +215,6 @@ def calc_diatomic_metrics(
             )
             continue
 
-        # Skip model instabilities in the scored window.
-        if not (
-            np.isfinite(predicted_energies).all()
-            and np.isfinite(predicted_forces).all()
-        ):
-            logger.info(
-                "Skipping %s diatomic metrics: non-finite curve values",
-                element_symbol,
-            )
-            continue
-
         energy_args = (predicted_separations, predicted_energies)
         force_args = (predicted_separations, predicted_forces)
         # Calls for metrics that need only the predicted curve.
