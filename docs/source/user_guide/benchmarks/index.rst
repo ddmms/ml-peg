@@ -18,4 +18,5 @@ Benchmarks
     tm_complexes
     conformers
     molecular_dynamics
+    biomolecules
     defect
