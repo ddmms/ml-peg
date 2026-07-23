@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import Atoms
 from ase.calculators.calculator import Calculator
+from ase.io import write
 from mlipaudit.benchmarks.dihedral_scan.dihedral_scan import DihedralScanModelOutput
 import pytest
 
@@ -43,7 +45,7 @@ def labels() -> list:
         path = CALC_PATH / model_name / "model_output.json"
         if path.exists():
             output = DihedralScanModelOutput.model_validate_json(path.read_text())
-            return [fragment.fragment_name for fragment in output.fragments]
+            return sorted(fragment.fragment_name for fragment in output.fragments)
     return []
 
 
@@ -99,7 +101,10 @@ def analyze_results() -> dict:
 @pytest.fixture
 def struct_info() -> dict:
     """
-    Write the combined element set to ``info.json`` for filtering.
+    Write ``info.json`` for filtering and one ``.xyz`` scan per fragment.
+
+    Each fragment is written as a multi-frame trajectory (one frame per
+    dihedral scan conformer) so the app can step through the torsion scan.
 
     Returns
     -------
@@ -125,6 +130,16 @@ def struct_info() -> dict:
     info = {"elements": elements}
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     (OUT_PATH / "info.json").write_text(json.dumps(info, indent=1))
+
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for fragment_name, fragment in benchmark._torsion_net_500.items():
+        images = [
+            Atoms(symbols=fragment.atom_symbols, positions=coords)
+            for coords in fragment.conformer_coordinates
+        ]
+        write(structs_dir / f"{fragment_name}.xyz", images)
+
     return info
 
 

@@ -13,8 +13,12 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from mlipaudit.benchmarks.dihedral_scan.dihedral_scan import DihedralScanModelOutput
 import pytest
+
+# Optional extra (ml-peg[mlipaudit]); skip if not installed.
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+
+from mlipaudit.benchmarks.dihedral_scan.dihedral_scan import DihedralScanModelOutput
 
 from ml_peg.calcs.utils.mlipaudit import MlPegDihedralScanBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
