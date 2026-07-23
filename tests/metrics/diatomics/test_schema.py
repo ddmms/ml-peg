@@ -39,13 +39,13 @@ def _ml_peg_dataframe(
     return pd.DataFrame(rows, columns=("pair", "distance", "energy", "force_parallel"))
 
 
-def test_diatomic_classes_parse_and_reshape() -> None:
-    """Typed classes convert arrays and reshape legacy flattened forces."""
+def test_diatomic_classes_parse_arrays() -> None:
+    """Typed classes convert valid curve arrays."""
     distances = [1.0, 2.0]
     energies = [0.1, 0.2]
-    flattened_forces = np.arange(12).reshape(1, 4, 3)
+    forces = np.arange(12).reshape(2, 2, 3)
 
-    curve = DiatomicCurve(distances, energies, flattened_forces)
+    curve = DiatomicCurve(distances, energies, forces)
     assert curve.forces.shape == (2, 2, 3)
     assert {
         type(curve.distances),
@@ -56,7 +56,7 @@ def test_diatomic_classes_parse_and_reshape() -> None:
     payload = {
         "distances": distances,
         "homo-nuclear": {"H-H": _curve_payload()},
-        "hetero_nuclear": {"H-He": _curve_payload()},
+        "hetero-nuclear": {"H-He": _curve_payload()},
     }
     curves = DiatomicCurves.from_dict(payload)
     assert list(curves.homo_nuclear) == ["H"]

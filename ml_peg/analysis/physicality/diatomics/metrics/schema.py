@@ -55,10 +55,6 @@ class DiatomicCurve:
                 f"distance and energy counts differ: {n_distances} != {n_energies}"
             )
 
-        # Handle forces stored as (1, n_distances*n_atoms, 3)
-        # instead of (n_distances, n_atoms, 3)
-        if self.forces.shape == (1, 2 * n_distances, 3):
-            self.forces = self.forces.reshape(n_distances, 2, 3)
         if (n_forces := len(self.forces)) != n_distances:
             raise ValueError(
                 f"distance and force counts differ: {n_distances} != {n_forces}"
@@ -89,7 +85,7 @@ class DiatomicCurves:
 
         def make_curves(section: str) -> dict[str, DiatomicCurve]:
             """Convert one MBD JSON section to typed curves."""
-            raw_curves = data.get(section, data.get(section.replace("-", "_"), {}))
+            raw_curves = data.get(section, {})
             key_function = homo_key if section.startswith("homo") else str
 
             def curve_distances(
