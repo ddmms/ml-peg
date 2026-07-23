@@ -146,6 +146,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_solv_mpconf196(metrics: dict[str, dict]) -> None:
     """
     Run solvMPCONF196 test.

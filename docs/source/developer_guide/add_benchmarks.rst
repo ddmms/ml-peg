@@ -14,6 +14,10 @@ contributing a new benchmark. Full examples can be found by filtering by the
 `example benchmark addition <https://github.com/ddmms/ml-peg/issues?q=label%3A%22example%20benchmark%20addition%22>`_
 label.
 
+A Jupyter Notebook tutorial introducing this process interactively can also be found in
+the `Python tutorials <https://github.com/ddmms/ml-peg/tree/main/docs/source/tutorials/python>`_
+documentation directory.
+
 .. _metrics:
 
 Identifying metrics
@@ -338,6 +342,10 @@ model names that analysis will be run for. By default, this means all model name
 defined in ``ml_peg/models/models.yml`` will be used, but when using ``pytest`` or our
 CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
 
+In order to facilitate element filtering, it is also essential that the elemental
+compositions of the systems involved in the benchmark are saved during analysis. Please
+refer to :doc:`element filtering </developer_guide/filter>` for more details.
+
 .. note::
 
     Some imports are not included in the following example for simplicity.
@@ -358,18 +366,16 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
 
     REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
 
-    def labels() -> list:
-        """
-        Get list of labels.
-
-        Returns
-        -------
-        list
-            List of all energy labels.
-        """
-        structs = read(CALC_PATH / "structs.xyz", index=":")
-        return [struct.info["label"] for struct in structs]
-
+    INFO = get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="structs.xyz",
+        index=":",
+        write_info=True,
+        info_keys=["label"],
+        write_structs=True,
+        out_path=OUT_PATH,
+        include_filenames=True,
+    )
 
     @pytest.fixture
     @plot_parity(
@@ -378,7 +384,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
         x_label="Predicted energy / eV",
         y_label="Reference energy / eV",
         hoverdata={
-            "Labels": labels(),
+            "Labels": INFO["label"],
         },
     )
     def energies() -> dict[str, list]:
@@ -398,7 +404,7 @@ CLI (``ml_peg analyse``), a subset can be used using the ``--models`` option.
             results[model_name] = [struct.get_potential_energy() for struct in structs]
 
             if not ref_stored:
-                results["ref"] [struct.info["ref_energy"] for struct in structs]
+                results["ref"] = [struct.info["ref_energy"] for struct in structs]
 
                 # Write structures for app
                 structs_dir = OUT_PATH / model_name

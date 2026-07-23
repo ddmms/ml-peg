@@ -5,7 +5,15 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback, clientside_callback, ctx, no_update
+from dash import (
+    Dash,
+    Input,
+    Output,
+    callback,
+    clientside_callback,
+    ctx,
+    no_update,
+)
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
@@ -44,6 +52,10 @@ from ml_peg.app.utils.utils import (
     get_mlip_column_width,
     load_model_registry_configs,
     sig_fig_format,
+)
+from ml_peg.app.utils.weight_presets import (
+    build_weight_preset_selector,
+    register_weight_preset_callbacks,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -959,6 +971,8 @@ def build_nav(
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
+    weight_preset_selector = build_weight_preset_selector(_summary_label_style)
+
     sidebar = Div(
         id="sidebar-nav",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
@@ -1114,6 +1128,7 @@ def build_nav(
                             [
                                 get_model_filter(MODELS),
                                 cmap_selector,
+                                weight_preset_selector,
                                 get_element_filter(),
                                 Store(
                                     id="selected-models-store",
@@ -1258,6 +1273,10 @@ def build_nav(
             return selected, selected
         raise PreventUpdate
 
+    register_weight_preset_callbacks(
+        summary_table, _default_weight_store_data(summary_table)
+    )
+
     @callback(
         Output("model-filter-details", "open"),
         Input("app-location", "pathname"),
@@ -1305,9 +1324,26 @@ def build_nav(
         )
 
         if pathname in (None, "", "/", "/summary"):
+            summary_counts = (
+                f"{len(category_views)} categories · {len(all_apps)} benchmarks"
+            )
             return Div(
                 [
                     H1("Categories Summary"),
+                    Div(
+                        summary_counts,
+                        style={
+                            "fontSize": "14px",
+                            "fontWeight": "600",
+                            "color": "#212529",
+                            "backgroundColor": "#f1f3f5",
+                            "border": "1px solid #dee2e6",
+                            "borderRadius": "6px",
+                            "padding": "8px 14px",
+                            "marginBottom": "12px",
+                            "width": "fit-content",
+                        },
+                    ),
                     Div(
                         "Scores range from 0 (worst) to 1 (best).",
                         style={

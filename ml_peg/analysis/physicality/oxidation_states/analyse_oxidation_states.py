@@ -178,6 +178,7 @@ def oxidation_states_passfail_metrics(
     return get_oxidation_states_passfail
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_oxidation_states_passfail_metrics(
     oxidation_states_passfail_metrics: dict[str, dict],
 ) -> None:

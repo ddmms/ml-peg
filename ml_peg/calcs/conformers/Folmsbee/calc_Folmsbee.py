@@ -12,10 +12,13 @@ DOI: 10.1002/qua.26381
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 
 import pytest
 
+# Optional extra (ml-peg[mlipaudit]); skip if not installed.
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -47,6 +50,8 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
 
     out_path = OUT_PATH / model_name
     out_path.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy(data_input_dir / "Folmsbee" / "folmsbee_dataset.json", OUT_PATH)
 
     benchmark = MlPegConformerSelectionBenchmark(
         force_field=calc,

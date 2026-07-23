@@ -86,13 +86,17 @@ def path_b_error() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        plot_nebs(model_name, "b")
-        with open(
-            CALC_PATH / model_name / "li_diffusion_b-neb-results.dat", encoding="utf8"
-        ) as f:
-            data = f.readlines()
-            pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
-        results[model_name] = abs(REF_VALUES["path_b"] - pred_barrier)
+        try:
+            plot_nebs(model_name, "b")
+            with open(
+                CALC_PATH / model_name / "li_diffusion_b-neb-results.dat",
+                encoding="utf8",
+            ) as f:
+                data = f.readlines()
+                pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
+            results[model_name] = abs(REF_VALUES["path_b"] - pred_barrier)
+        except (FileNotFoundError, KeyError):
+            results[model_name] = float("nan")
     return results
 
 
@@ -109,13 +113,17 @@ def path_c_error() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        plot_nebs(model_name, "c")
-        with open(
-            CALC_PATH / model_name / "li_diffusion_c-neb-results.dat", encoding="utf8"
-        ) as f:
-            data = f.readlines()
-            pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
-        results[model_name] = abs(REF_VALUES["path_c"] - pred_barrier)
+        try:
+            plot_nebs(model_name, "c")
+            with open(
+                CALC_PATH / model_name / "li_diffusion_c-neb-results.dat",
+                encoding="utf8",
+            ) as f:
+                data = f.readlines()
+                pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
+            results[model_name] = abs(REF_VALUES["path_c"] - pred_barrier)
+        except (FileNotFoundError, KeyError):
+            results[model_name] = float("nan")
     return results
 
 

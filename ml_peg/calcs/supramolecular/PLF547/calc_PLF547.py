@@ -6,6 +6,7 @@ from pathlib import Path
 
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import pytest
 import zntrack
 
 from ml_peg.calcs.supramolecular.utils.plf547_pla15_utils import run_benchmark
@@ -56,6 +57,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_plf547():
     """Run PLF547 conformation energies benchmark via pytest."""
     build_project(repro=True)

@@ -37,6 +37,8 @@ def plot_parity(
     y_label: str | None = None,
     hoverdata: dict | None = None,
     filename: str = "parity.json",
+    symbol_by: list | None = None,
+    symbol_labels: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -53,6 +55,13 @@ def plot_parity(
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "parity.json".
+    symbol_by
+        Per-point list of group values. When provided, each point receives a
+        marker symbol based on its group, while trace colours still represent
+        models. Legend-only traces above the plot show one marker symbol per group.
+    symbol_labels
+        Optional mapping from ``symbol_by`` values to shorter display names
+        used in the legend. Values absent from this dict are shown as-is.
 
     Returns
     -------
@@ -104,6 +113,17 @@ def plot_parity(
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
             fig = go.Figure()
+            marker_kwargs = {}
+            if symbol_by:
+                symbols = ["circle", "square", "diamond", "cross", "x"]
+                groups = list(dict.fromkeys(symbol_by))
+                group_symbol = {
+                    g: symbols[i % len(symbols)] for i, g in enumerate(groups)
+                }
+                marker_kwargs = {
+                    "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
+                }
+
             for mlip, value in results.items():
                 if mlip == "ref":
                     continue
@@ -115,8 +135,25 @@ def plot_parity(
                         mode="markers",
                         customdata=customdata,
                         hovertemplate=hovertemplate,
+                        **marker_kwargs,
                     )
                 )
+
+            if symbol_by:
+                for group in groups:
+                    label = (symbol_labels or {}).get(group, group)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            name=label,
+                            mode="markers",
+                            marker={"symbol": group_symbol[group], "color": "black"},
+                            hoverinfo="skip",
+                            legend="legend2",
+                            showlegend=True,
+                        )
+                    )
 
             full_fig = fig.full_figure_for_development()
             x_range = full_fig.layout.xaxis.range
@@ -141,6 +178,16 @@ def plot_parity(
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+            if symbol_by:
+                fig.update_layout(
+                    legend2={
+                        "orientation": "h",
+                        "yanchor": "bottom",
+                        "y": 1.02,
+                        "xanchor": "left",
+                        "x": 0,
+                    }
+                )
 
             fig.update_traces()
 

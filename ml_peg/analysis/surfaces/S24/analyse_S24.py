@@ -158,6 +158,7 @@ def metrics(s24_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_s24(metrics: dict[str, dict]) -> None:
     """
     Run S24 test.

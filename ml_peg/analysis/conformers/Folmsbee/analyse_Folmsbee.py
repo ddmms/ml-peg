@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import write
+import numpy as np
+
+# Optional extra (ml-peg[mlipaudit]); skip if not installed.
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
     ConformerSelectionModelOutput,
 )
-import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
@@ -21,7 +27,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegConformerSelectionBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data  # noqa: F401
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -37,24 +42,43 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
+def labels() -> list[str]:
     """
     Get list of system names.
 
     Returns
     -------
-    list
+    list[str]
         List of all system names.
     """
-    for model_name in MODELS:
-        raw = (CALC_PATH / model_name / "model_output.json").read_text()
-        output = ConformerSelectionModelOutput.model_validate_json(raw)
-        labels_list = sorted(
-            f"{m.molecule_name}_conf{i}"
-            for m in output.molecules
-            for i in range(len(m.predicted_energy_profile))
+    mock_path = CALC_PATH / "mock" / "model_output.json"
+    if not mock_path.exists():
+        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+    raw = mock_path.read_text()
+    output = ConformerSelectionModelOutput.model_validate_json(raw)
+    benchmark = MlPegConformerSelectionBenchmark(
+        force_field=Calculator(),
+        data_input_dir=CALC_PATH,
+        run_mode="standard",
+    )
+
+    # Get labels and elements, sorted consistently
+    label_element_pairs = sorted(
+        (
+            f"{output_molecule.molecule_name}_conf{i}",
+            benchmark_molecule.atom_symbols,
         )
-        break
+        for output_molecule, benchmark_molecule in zip(
+            output.molecules, benchmark._folmsbee_data, strict=True
+        )
+        for i in range(len(output_molecule.predicted_energy_profile))
+    )
+    labels_list, elements = map(list, zip(*label_element_pairs, strict=True))
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
+        json.dump({"elements": elements}, f, indent=1)
+
     return labels_list
 
 
@@ -68,19 +92,18 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/conformers/Folmsbee/Folmsbee.zip",
-        filename="Folmsbee.zip",
-    )
-
     results = {}
     for model_name in MODELS:
+        model_path = CALC_PATH / model_name / "model_output.json"
+        if not model_path.exists():
+            results[model_name] = (None, None)
+            continue
         benchmark = MlPegConformerSelectionBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
-        raw = (CALC_PATH / model_name / "model_output.json").read_text()
+        raw = model_path.read_text()
         benchmark.model_output = ConformerSelectionModelOutput.model_validate_json(raw)
         results[model_name] = (benchmark, benchmark.analyze())
     return results
@@ -115,6 +138,8 @@ def conformer_energies(analyze_results) -> dict[str, list]:
 
     for model_name in MODELS:
         benchmark, result = analyze_results[model_name]
+        if benchmark is None or result is None:
+            continue
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
         data_by_name = {m.molecule_name: m for m in benchmark._folmsbee_data}
@@ -124,7 +149,11 @@ def conformer_energies(analyze_results) -> dict[str, list]:
             i = int(conf_str)
             molecule = result_by_name[mol_name]
 
-            results[model_name].append(float(molecule.predicted_energy_profile[i]))
+            try:
+                results[model_name].append(float(molecule.predicted_energy_profile[i]))
+            except (IndexError, TypeError):
+                results[model_name].append(np.nan)
+
             if not ref_stored:
                 results["ref"].append(float(molecule.reference_energy_profile[i]))
 
@@ -160,6 +189,11 @@ def get_mae(conformer_energies) -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         groups: dict[str, tuple[list, list]] = {}
+
+        if not conformer_energies[model_name]:
+            results[model_name] = None
+            continue
+
         for mol, ref, pred in zip(
             label_mols,
             conformer_energies["ref"],
@@ -175,7 +209,7 @@ def get_mae(conformer_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_score(analyze_results) -> dict[str, float]:
+def get_score(analyze_results) -> dict[str, float | None]:
     """
     Get the mlipaudit benchmark score for each model.
 
@@ -186,11 +220,12 @@ def get_score(analyze_results) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
+    dict[str, float | None]
         The mlipaudit per-molecule soft-threshold score (0 to 1) for each model.
     """
     return {
-        model_name: result.score for model_name, (_, result) in analyze_results.items()
+        model_name: result.score if result is not None else None
+        for model_name, (_, result) in analyze_results.items()
     }
 
 

@@ -21,6 +21,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#folmsbee"
 )
 DATA_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class FolmsbeeApp(BaseApp):
@@ -80,6 +81,7 @@ def get_app() -> FolmsbeeApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from ml_peg.analysis.utils.analyse_gscdb138 import get_gscdb138_metrics
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
@@ -20,6 +22,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 DATASETS = ["Dip146", "HR46", "OEEF", "Pol130", "T144", "V30"]
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_gscdb138() -> None:
     """Run electric field property GSCDB138 test."""
     get_gscdb138_metrics(

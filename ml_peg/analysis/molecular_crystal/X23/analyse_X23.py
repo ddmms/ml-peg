@@ -170,6 +170,7 @@ def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     return get_metrics(lattice_energies)
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_x23(metrics: dict[str, dict]) -> None:
     """
     Run X23 test.
