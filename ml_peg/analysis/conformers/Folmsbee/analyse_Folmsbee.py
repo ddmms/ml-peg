@@ -8,6 +8,7 @@ from pathlib import Path
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import write
+import numpy as np
 
 # Optional extra (ml-peg[mlipaudit]); skip if not installed.
 import pytest
@@ -148,7 +149,11 @@ def conformer_energies(analyze_results) -> dict[str, list]:
             i = int(conf_str)
             molecule = result_by_name[mol_name]
 
-            results[model_name].append(float(molecule.predicted_energy_profile[i]))
+            try:
+                results[model_name].append(float(molecule.predicted_energy_profile[i]))
+            except (IndexError, TypeError):
+                results[model_name].append(np.nan)
+
             if not ref_stored:
                 results["ref"].append(float(molecule.reference_energy_profile[i]))
 
