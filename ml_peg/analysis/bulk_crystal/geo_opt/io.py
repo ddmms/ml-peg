@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Sequence
 import json
 import os
@@ -12,8 +11,6 @@ import pandas as pd
 from ml_peg.analysis.bulk_crystal.geo_opt.schema import (
     ANALYSIS_FIELDS,
     GEO_OPT_FIELDS,
-    HALL_SYMBOL,
-    INTERNATIONAL_SPG_NAME,
     MATERIAL_ID,
     SITE_SYMMETRY_SYMBOLS,
     WYCKOFF_SYMBOLS,
@@ -28,29 +25,13 @@ _LIST_ANALYSIS_FIELDS = (SITE_SYMMETRY_SYMBOLS, WYCKOFF_SYMBOLS)
 
 
 def _decode_list_value(value: object) -> object:
-    """Decode JSON or pandas-repr list values from analysis CSV files."""
+    """Decode a JSON list from an analysis CSV cell."""
     if not isinstance(value, str):
         return value
     try:
         return json.loads(value)
-    except json.JSONDecodeError:
-        try:
-            return ast.literal_eval(value)
-        except (SyntaxError, ValueError) as exc:
-            raise ValueError(f"Invalid list encoding: {value!r}") from exc
-
-
-def _normalize_mbd_analysis_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Map the original Matbench symmetry column to the corrected schema."""
-    if SITE_SYMMETRY_SYMBOLS in dataframe or INTERNATIONAL_SPG_NAME not in dataframe:
-        return dataframe
-    normalized = dataframe.copy()
-    normalized[SITE_SYMMETRY_SYMBOLS] = normalized[INTERNATIONAL_SPG_NAME].map(
-        _decode_list_value
-    )
-    if HALL_SYMBOL in normalized:
-        normalized[INTERNATIONAL_SPG_NAME] = normalized[HALL_SYMBOL]
-    return normalized
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid list encoding: {value!r}") from exc
 
 
 def read_geo_opt_jsonl(file_path: PathLike) -> pd.DataFrame:
@@ -96,9 +77,7 @@ def read_reference_jsonl(file_path: PathLike) -> pd.DataFrame:
 
 def read_analysis_csv(file_path: PathLike) -> pd.DataFrame:
     """Read validated per-structure analysis from plain or compressed CSV."""
-    dataframe = _normalize_mbd_analysis_columns(
-        read_csv_artifact(file_path, dtype={MATERIAL_ID: str})
-    )
+    dataframe = read_csv_artifact(file_path, dtype={MATERIAL_ID: str})
     for field in _LIST_ANALYSIS_FIELDS:
         if field in dataframe:
             dataframe[field] = dataframe[field].map(_decode_list_value)

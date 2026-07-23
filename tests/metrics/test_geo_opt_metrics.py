@@ -304,25 +304,14 @@ def test_geo_opt_jsonl_writer_omits_noncanonical_columns(tmp_path: Path) -> None
     ]
 
 
-@pytest.mark.parametrize(
-    ("suffix", "use_pandas_list_repr"),
-    [(".csv", False), (".csv.gz", False), (".csv", True)],
-    ids=["plain", "compressed", "pandas-list-repr"],
-)
-def test_analysis_csv_round_trip(
-    tmp_path: Path, suffix: str, use_pandas_list_repr: bool
-) -> None:
-    """Read JSON and pandas-style list encodings from analysis CSVs."""
+@pytest.mark.parametrize("suffix", [".csv", ".csv.gz"])
+def test_analysis_csv_round_trip(tmp_path: Path, suffix: str) -> None:
+    """Round-trip JSON-encoded list columns in analysis CSVs."""
     output_path = tmp_path / f"geo-opt-analysis{suffix}"
     dataframe = _analysis_dataframe()
     dataframe[MATERIAL_ID] = "001"
 
-    if use_pandas_list_repr:
-        for field in (SITE_SYMMETRY_SYMBOLS, WYCKOFF_SYMBOLS):
-            dataframe[field] = dataframe[field].map(str)
-        dataframe.to_csv(output_path, index=False)
-    else:
-        write_analysis_csv(dataframe, output_path)
+    write_analysis_csv(dataframe, output_path)
     loaded = read_analysis_csv(output_path)
 
     assert loaded.index.tolist() == ["001"]
@@ -335,21 +324,6 @@ def test_analysis_csv_round_trip(
     assert loaded.loc["001", WYCKOFF_SYMBOLS] == ["a"]
     assert loaded.loc["001", ANGLE_TOLERANCE] is None
     assert set(loaded.columns) == set(_analysis_dataframe().columns) - {MATERIAL_ID}
-
-
-def test_read_analysis_csv_accepts_original_matbench_columns(tmp_path: Path) -> None:
-    """Map the original mislabeled symmetry column when reading Matbench CSVs."""
-    output_path = tmp_path / "matbench-analysis.csv"
-    dataframe = _analysis_dataframe()
-    dataframe[INTERNATIONAL_SPG_NAME] = dataframe[SITE_SYMMETRY_SYMBOLS].map(str)
-    dataframe[HALL_SYMBOL] = "P m -3 m"
-    dataframe = dataframe.drop(columns=SITE_SYMMETRY_SYMBOLS)
-    dataframe.to_csv(output_path, index=False)
-
-    loaded = read_analysis_csv(output_path)
-
-    assert loaded.loc["wbm-1", SITE_SYMMETRY_SYMBOLS] == ["m-3m"]
-    assert loaded.loc["wbm-1", INTERNATIONAL_SPG_NAME] == "P m -3 m"
 
 
 def test_read_analysis_csv_rejects_malformed_list_cells(tmp_path: Path) -> None:
