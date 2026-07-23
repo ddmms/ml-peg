@@ -11,6 +11,7 @@ from mlipaudit.benchmarks import (
     InferenceSpeedBenchmark,
     ReactivityBenchmark,
     RingPlanarityBenchmark,
+    SamplingBenchmark,
     StabilityBenchmark,
     TautomersBenchmark,
 )
@@ -75,6 +76,10 @@ class MlPegInferenceSpeedBenchmark(MlPegAuditBenchmark, InferenceSpeedBenchmark)
 
 class MlPegRingPlanarityBenchmark(MlPegAuditBenchmark, RingPlanarityBenchmark):
     """``RingPlanarityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegSamplingBenchmark(MlPegAuditBenchmark, SamplingBenchmark):
+    """``SamplingBenchmark`` wired up for ml-peg."""
 
 
 class MlPegTautomersBenchmark(MlPegAuditBenchmark, TautomersBenchmark):
