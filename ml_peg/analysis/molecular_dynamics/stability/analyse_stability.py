@@ -5,11 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
+from mlipaudit.benchmarks.stability.stability import STRUCTURE_NAMES, STRUCTURES
 from mlipaudit.io import load_model_output_from_disk
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegStabilityBenchmark
@@ -167,8 +172,24 @@ def metrics(success_rate: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.fixture
+def element_info() -> None:
+    """Write element info for all benchmark systems, used by the app element filter."""
+    data_input_dir = download_s3_data(
+        key="inputs/molecular_dynamics/stability/stability.zip",
+        filename="stability.zip",
+    )
+    xyz_paths = [
+        data_input_dir / MlPegStabilityBenchmark.name / STRUCTURES[name]["xyz"]
+        for name in STRUCTURE_NAMES
+    ]
+    write_struct_info(data_path=xyz_paths, out_path=OUT_PATH)
+
+
 def test_stability(
-    metrics: dict[str, dict], progress: dict[str, tuple[list, list]]
+    metrics: dict[str, dict],
+    progress: dict[str, tuple[list, list]],
+    element_info: None,
 ) -> None:
     """
     Run stability analysis.
@@ -179,4 +200,6 @@ def test_stability(
         Stability metric results provided by fixtures.
     progress : dict[str, tuple[list, list]]
         Per-structure trajectory progress provided by fixtures.
+    element_info : None
+        Element info written for the app element filter.
     """
