@@ -11,6 +11,7 @@ from ml_peg.app.utils.load import read_plot
 BENCHMARK_NAME = "Stability"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#stability"
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "stability"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class StabilityApp(BaseApp):
@@ -45,6 +46,7 @@ def get_app() -> StabilityApp:
                 id=f"{BENCHMARK_NAME}-progress-figure",
             )
         ],
+        info_path=INFO_PATH,
     )
 
 
