@@ -1,0 +1,13 @@
+metrics:
+  mean lambda:
+    good: 0.0
+    bad: 0.05
+    unit: null
+    tooltip: "Mean fraction of the force Jacobian's Frobenius norm that is antisymmetric, across 10 diverse structures; 0 for perfectly conservative forces"
+    level_of_theory: null
+  max lambda:
+    good: 0.0
+    bad: 0.05
+    unit: null
+    tooltip: "Worst-case (max) fraction of the force Jacobian's Frobenius norm that is antisymmetric, across 10 diverse structures; 0 for perfectly conservative forces"
+    level_of_theory: null
