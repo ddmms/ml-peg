@@ -16,7 +16,7 @@ matbench-discovery:
   color: "#061e25"
   text_color: "#ffffff"
   url: "https://matbench-discovery.materialsproject.org"
-  logo: "https://raw.githubusercontent.com/janosh/matbench-discovery/main/site/static/favicon.svg"
+  logo: "https://matbench-discovery.materialsproject.org/favicon.svg"
   tooltip: "Benchmarks adapted from the Matbench Discovery framework"
 
 mace-multihead:
