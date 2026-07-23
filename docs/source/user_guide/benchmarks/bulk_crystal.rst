@@ -22,7 +22,8 @@ from changing DAF. Pass this value with ``canonical=True`` and
 reference values.
 
 See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
-prediction artifacts are not included.
+prediction artifacts are not included. JSON results include schema and source
+framework versions.
 
 
 Lattice constants
