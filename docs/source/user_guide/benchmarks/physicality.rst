@@ -139,7 +139,8 @@ Element-specific windows keep the repulsive wall from dominating general metrics
 Scoring covers H-U except Po, At, Rn, Fr, and Ra; known-discontinuous PBE curves keep
 reference-free metrics but not PBE-relative ones, and non-finite wall-window curves
 are skipped. Projected forces map to ``-force_parallel`` on atom 0 and
-``+force_parallel`` on atom 1. To write strict JSON:
+``+force_parallel`` on atom 1. JSON results include schema and source-framework
+versions. To write strict JSON:
 
 .. code-block:: python
 

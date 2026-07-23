@@ -30,6 +30,10 @@ CALC_PATH = CALCS_ROOT / "physicality" / "diatomics" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "diatomics"
 CURVE_PATH = OUT_PATH / "curves"
 
+RESULT_SCHEMA_VERSION = 1
+SOURCE_FRAMEWORK_ID = "matbench-discovery"
+SOURCE_FRAMEWORK_VERSION = "1.3.1"
+
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
@@ -285,7 +289,11 @@ def evaluate_mbd_diatomic_metrics(
         }
 
     return {
-        "schema_version": 1,
+        "schema_version": RESULT_SCHEMA_VERSION,
+        "source": {
+            "framework": SOURCE_FRAMEWORK_ID,
+            "version": SOURCE_FRAMEWORK_VERSION,
+        },
         "curve_scope": "homonuclear",
         "weighted_in_legacy_score": False,
         "reference": {

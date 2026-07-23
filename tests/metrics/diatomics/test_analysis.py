@@ -72,6 +72,11 @@ def test_separate_mbd_evaluation_is_json_safe_and_homonuclear(
         interpolate=200,
     )
 
+    assert result["schema_version"] == 1
+    assert result["source"] == {
+        "framework": "matbench-discovery",
+        "version": "1.3.1",
+    }
     assert result["weighted_in_legacy_score"] is False
     assert set(result["metric_names"]) == DIATOMIC_METRIC_KEYS
     model_results = result["models"]
