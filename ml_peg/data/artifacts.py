@@ -14,6 +14,9 @@ import pandas as pd
 
 PathLike = str | os.PathLike[str]
 
+MATBENCH_DISCOVERY_ID: Final = "matbench-discovery"
+MATBENCH_DISCOVERY_VERSION: Final = "1.3.1"
+
 ISO_DATE_PATTERN: Final = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MOYO_VERSION_PATTERN: Final = re.compile(
     r"^[0-9]+(?:\.[0-9]+)*(?:[-+][0-9A-Za-z.-]+)?$"
