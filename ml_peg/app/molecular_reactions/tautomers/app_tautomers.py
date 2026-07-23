@@ -7,7 +7,10 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_column,
+    struct_from_scatter,
+)
 from ml_peg.app.utils.load import read_plot
 
 BENCHMARK_NAME = "Tautomers"
@@ -25,10 +28,27 @@ class TautomersApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
+        struct_dir = DATA_PATH / "mock"
+        if struct_dir.exists():
+            labels = sorted([f.stem for f in struct_dir.glob("*.xyz")])
+            structs = [
+                f"/assets/molecular_reactions/tautomers/mock/{label}.xyz"
+                for label in labels
+            ]
+        else:
+            structs = []
+
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={"MAE": scatter},
+        )
+
+        struct_from_scatter(
+            scatter_id=f"{BENCHMARK_NAME}-figure",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=structs,
+            mode="struct",
         )
 
 
@@ -53,6 +73,7 @@ def get_app() -> TautomersApp:
         info_path=DATA_PATH / "info.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
 
