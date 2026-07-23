@@ -43,7 +43,8 @@ records are omitted by default to limit memory use on WBM; set
 
 Scalar aggregation is available in the core installation. Structure analysis
 requires ``ml-peg[geo-opt]``. No WBM structures, reference analyses, or model
-predictions are bundled.
+predictions are bundled. Results record schema, source-framework, and runtime
+dependency versions.
 
 
 Lattice constants
