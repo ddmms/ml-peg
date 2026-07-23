@@ -56,20 +56,27 @@ data from DLPNO-CCSD(T) calculations.
 Metrics
 -------
 
-1. Conformer energy error
-
-For each molecule, the relative energy of every conformer is taken with
-respect
+For each molecule, the relative energy of every conformer is taken with respect
 to the lowest-energy reference conformer (set to zero). The predicted energies
-are aligned to the same reference conformer and converted to kcal/mol. The
-mean
-absolute error (MAE) between predicted and reference relative energies is
-reported, averaged across all systems.
+are aligned to the same reference conformer and converted to kcal/mol before
+being compared against the :math:`DLPNO-CCSD(T)` reference.
+
+1. MAE
+
+The mean absolute error between predicted and reference relative energies,
+averaged over all molecules.
+
+2. Conformer Score
+
+For each molecule, the per-molecule MAE and RMSE are passed
+through a soft threshold (MAE at 0.5 kcal/mol, RMSE at 1.5 kcal/mol) to give a
+value between 0 and 1, and these are averaged across all molecules. Molecules
+for which the model fails to produce an energy profile score 0.
 
 Computational cost
 ------------------
 
-Medium: tests may take hours on CPU.
+Medium: Minutes on GPU. Minutes to tens of minutes on CPU.
 
 Data availability
 -----------------
