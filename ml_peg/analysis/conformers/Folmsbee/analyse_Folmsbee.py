@@ -42,13 +42,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def labels() -> list:
+def labels() -> list[str]:
     """
     Get list of system names.
 
     Returns
     -------
-    list
+    list[str]
         List of all system names.
     """
     mock_path = CALC_PATH / "mock" / "model_output.json"
@@ -103,12 +103,16 @@ def analyze_results() -> dict:
 
     results = {}
     for model_name in MODELS:
+        model_path = CALC_PATH / model_name / "model_output.json"
+        if not model_path.exists():
+            results[model_name] = (None, None)
+            continue
         benchmark = MlPegConformerSelectionBenchmark(
             force_field=Calculator(),
             data_input_dir=data_input_dir,
             run_mode="standard",
         )
-        raw = (CALC_PATH / model_name / "model_output.json").read_text()
+        raw = model_path.read_text()
         benchmark.model_output = ConformerSelectionModelOutput.model_validate_json(raw)
         results[model_name] = (benchmark, benchmark.analyze())
     return results
@@ -143,6 +147,8 @@ def conformer_energies(analyze_results) -> dict[str, list]:
 
     for model_name in MODELS:
         benchmark, result = analyze_results[model_name]
+        if benchmark is None or result is None:
+            continue
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
         data_by_name = {m.molecule_name: m for m in benchmark._folmsbee_data}
@@ -188,6 +194,11 @@ def get_mae(conformer_energies) -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         groups: dict[str, tuple[list, list]] = {}
+
+        if not conformer_energies[model_name]:
+            results[model_name] = None
+            continue
+
         for mol, ref, pred in zip(
             label_mols,
             conformer_energies["ref"],
@@ -203,7 +214,7 @@ def get_mae(conformer_energies) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_score(analyze_results) -> dict[str, float]:
+def get_score(analyze_results) -> dict[str, float | None]:
     """
     Get the mlipaudit benchmark score for each model.
 
@@ -214,11 +225,12 @@ def get_score(analyze_results) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
+    dict[str, float | None]
         The mlipaudit per-molecule soft-threshold score (0 to 1) for each model.
     """
     return {
-        model_name: result.score for model_name, (_, result) in analyze_results.items()
+        model_name: result.score if result is not None else None
+        for model_name, (_, result) in analyze_results.items()
     }
 
 
