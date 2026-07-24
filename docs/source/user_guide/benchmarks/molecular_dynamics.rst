@@ -116,3 +116,47 @@ Packmol generated
 Reference data:
 * M. Southard and D. Green, Perry’s Chemical Engineers’ Handbook, 9th Edition. McGraw-Hill Education, 2018.
 * Experimental
+
+
+Inference speed
+===============
+
+Summary
+-------
+
+Measure of model inference speed and how it scales with system size. A
+size-stratified protein dataset is used, and for each structure the model forward
+pass (energy + forces) is timed and a short molecular dynamics run is executed per
+backend.
+
+Metrics
+-------
+
+1. Forward time / atom
+
+For each structure, the mean wall-clock time of a single model forward pass
+(energy + forces) is measured, excluding warm-up passes, and divided by the number of
+atoms. The reported metric is the mean of this per-atom forward time across
+structures, in microseconds per atom. Lower is faster. The accompanying scaling plot
+shows the forward-pass time against the number of atoms, one line per model.
+
+This is a wall-clock, hardware-dependent measurement rather than a level of theory:
+results are only comparable across models run on the same hardware. The reference
+hardware is an NVIDIA H100 GPU.
+
+Computational cost
+------------------
+
+High: timing runs on GPU, scaling with the number and size of the systems.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Size-stratified protein dataset (elements N, H, O, S, C).
+
+Reference data:
+
+* Not applicable: this is a wall-clock hardware measurement, not a comparison to a
+  reference level of theory.
