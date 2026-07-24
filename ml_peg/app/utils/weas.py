@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -10,6 +11,12 @@ def generate_weas_html(
     filename: str | Path,
     mode: Literal["struct", "traj"] = "struct",
     index: int = 0,
+    *,
+    color_by: str | None = None,
+    color_ramp: list[str] | None = None,
+    legend_items: list[tuple[str, str]] | None = None,
+    show_controls: bool = True,
+    show_bounds: bool = False,
 ) -> str:
     """
     Generate HTML for WEAS.
@@ -25,6 +32,16 @@ def generate_weas_html(
         Frame of structure file to load, or of trajectory to view. In "struct" mode,
         all structures will be loaded by default. In "traj" mode, the first frame will
         be loaded by default.
+    color_by
+        Optional atom attribute name to color by.
+    color_ramp
+        Optional color ramp for attribute coloring.
+    legend_items
+        Optional legend entries as ``(label, color)`` pairs.
+    show_controls
+        Whether to display viewer controls.
+    show_bounds
+        Whether to show the periodic cell bounds.
 
     Returns
     -------
@@ -38,25 +55,36 @@ def generate_weas_html(
         frame = index
         atoms_txt = "atoms"
 
-    # In traj mode, report the current frame to the parent page on every change
-    # (play, step, slider) so a linked plot can highlight the matching point.
-    # WEAS has no frame-change event, so poll editor.avr.currentFrame via rAF.
-    frame_reporter = (
-        """
-        let __mlPegLastFrame = editor.avr.currentFrame;
-        function __mlPegReportFrame() {
-            const f = editor.avr.currentFrame;
-            if (f !== __mlPegLastFrame) {
-                __mlPegLastFrame = f;
-                window.parent.postMessage(
-                    {type: "ml-peg-weas-frame", frame: f}, "*"
-                );
-            }
-            requestAnimationFrame(__mlPegReportFrame);
-        }
-        requestAnimationFrame(__mlPegReportFrame);
-        """
-        if mode == "traj"
+    color_by_js = f'editor.avr.color_by = "{color_by}";' if color_by is not None else ""
+    color_ramp_js = (
+        f"editor.avr.color_ramp = {json.dumps(color_ramp)};"
+        if color_ramp is not None
+        else ""
+    )
+
+    legend_html = ""
+    if legend_items:
+        legend_rows = "\n".join(
+            (
+                "<div style='display:flex; align-items:center; gap:8px;'>"
+                f"<span style='display:inline-block; width:12px; height:12px; "
+                f"background:{color}; border-radius:2px;'></span>"
+                f"<span>{label}</span></div>"
+            )
+            for label, color in legend_items
+        )
+        legend_html = (
+            "<div id='legend' style='position:absolute; top:36px; right:24px; "
+            "font-size:15px; background:rgba(255,255,255,0.85); padding:6px 8px; "
+            "border-radius:6px; z-index:10;'>\n"
+            f"{legend_rows}\n"
+            "</div>"
+        )
+    bounds_js = (
+        "editor.avr.showCell = true;"
+        "editor.avr.showAxis = false;"
+        "editor.avr.boundary = [[0, 1], [0, 1], [0, 1]];"
+        if show_bounds
         else ""
     )
 
@@ -64,15 +92,10 @@ def generate_weas_html(
     <!doctype html>
     <html lang="en">
     <body>
-        <div id="weas-title"
-             style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-                    font-size: 12px;
-                    color: #444;
-                    margin: 0 0 8px 0;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;"></div>
-        <div id="viewer" style="position: relative; width: 100%; height: 500px"></div>
+        <div id="viewer-wrapper" style="position: relative; width: 100%; height: 500px">
+            <div id="viewer" style="width: 100%; height: 100%"></div>
+            {legend_html}
+        </div>
 
         <script type="module">
 
@@ -87,32 +110,16 @@ def generate_weas_html(
         import {{ WEAS, parseXYZ, parseCIF, parseCube, parseXSF }} from 'https://unpkg.com/weas/dist/index.mjs';
         const domElement = document.getElementById("viewer");
 
-        // WEAS calls download/upload "export"/"import" in the browser bundle.
+        // hide the buttons
         const guiConfig = {{
             buttons: {{
-                enabled: true,
-                fullscreen: true,
-                undo: false,
-                redo: false,
-                export: true,
-                import: false,
-                measurement: false,
+                enabled: {str(show_controls).lower()},
             }},
         }};
         const editor = new WEAS({{ domElement, viewerConfig: {{ _modelStyle: 1 }}, guiConfig}});
-        const originalExportImage = editor.tjs.exportImage.bind(editor.tjs);
-        editor.tjs.exportImage = function(resolution = 3) {{
-            return originalExportImage(resolution);
-        }};
 
         let structureData;
         const filename = "{str(filename)}";
-        const title = document.getElementById("weas-title");
-        if (title) {{
-            const basename = filename.split(/[/\\\\]/).pop() || filename;
-            title.textContent = `Viewing: ${{basename}}`;
-            title.title = basename;
-        }}
         console.log("filename: ", filename);
         structureData = await fetchFile(filename);
         console.log("structureData: ", structureData);
@@ -122,6 +129,9 @@ def generate_weas_html(
             const atoms = parseXYZ(structureData);
             editor.avr.atoms = {atoms_txt};
             editor.avr.modelStyle = 1;
+            {color_by_js}
+            {color_ramp_js}
+            {bounds_js}
 
         }} else if (filename.endsWith(".cif")) {{
 
@@ -137,8 +147,9 @@ def generate_weas_html(
         }}
 
         editor.avr.currentFrame = {frame};
+        editor.avr.drawModels();
         editor.render();
-        {frame_reporter}
+
         </script>
     </body>
     </html>
