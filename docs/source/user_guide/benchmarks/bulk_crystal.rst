@@ -2,6 +2,52 @@
 Bulk Crystals
 =============
 
+Materials discovery evaluation
+==============================
+
+The materials-discovery evaluator computes Matbench Discovery classification and
+regression metrics from local tables. The reference table is indexed by
+``material_id`` and contains DFT hull distance, DFT formation energy, and a
+unique-prototype flag. The prediction table contains ``e_form_per_atom``.
+
+Results are reported for the full test set, unique prototypes, and the 10,000
+unique prototypes with the lowest predicted hull distances. They include F1,
+discovery acceleration factor (DAF), precision, recall, accuracy, class rates and
+counts, MAE, RMSE, R², and missing-prediction counts. Predictions with
+formation-energy errors above 5 eV/atom are masked before rounding to three decimal
+places. Leaderboard evaluation uses the fraction of unique prototypes with an
+unrounded hull distance at or below 0 eV/atom as prevalence, preventing rounding
+from changing DAF. Pass this value with ``canonical=True`` and
+``uniq_proto_prevalence=...``. Synthetic mode derives prevalence from the rounded
+reference values. ``calc_discovery_metrics`` and ``discovery_subset_indices`` apply
+the same masking and rounding as ``evaluate_discovery``.
+
+See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
+prediction artifacts are not included. JSON results include schema and source
+framework versions.
+
+
+Geometry-optimization evaluation
+================================
+
+The geo-opt evaluator reads Matbench Discovery-compatible JSONL records with
+``material_id``, final ``structure``, ``energy``, ``converged``, and ``n_steps``
+fields. It compares relaxed structures with DFT references at symmetry tolerances
+of :math:`10^{-2}` and :math:`10^{-5}` by default.
+
+Reported metrics are volume-normalized structure RMSD, symmetry-operation-count
+MAE, fractions of symmetry decrease, match, and increase, and the number of valid
+symmetry analyses. Structures that cannot be matched receive an RMSD penalty of
+1.0. Readers accept plain or gzip-compressed JSONL and CSV files. Per-structure
+records are omitted by default to limit memory use on WBM; set
+``include_analysis=True`` to return them.
+
+Scalar aggregation is available in the core installation. Structure analysis
+requires ``ml-peg[geo-opt]``. No WBM structures, reference analyses, or model
+predictions are bundled. Results record schema, source-framework, and runtime
+dependency versions.
+
+
 Lattice constants
 =================
 
