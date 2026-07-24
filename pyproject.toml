@@ -221,6 +221,7 @@ conflicts = [
 
 constraint-dependencies = [
     "tensorflow>=2.16.1",
+    "pymatgen-core<2026.7.24",
 ]
 
 [tool.uv.build-backend]
