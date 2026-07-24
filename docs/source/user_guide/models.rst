@@ -340,9 +340,25 @@ mattersim-5M
      module: mattersim.forcefield
      class_name: MatterSimCalculator
      device: "cpu"
-     load_path: "mattersim-v1.0.0-5m"
      trained_on_dispersion: false
      level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-5m"
+
+mattersim-1M
+------------
+
+
+.. code-block:: yaml
+
+   mattersim-1M:
+     module: mattersim.forcefield
+     class_name: MatterSimCalculator
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-1m"
 
 GRACE
 =====
