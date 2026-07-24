@@ -250,7 +250,19 @@ def _load_pair_data() -> dict[str, pd.DataFrame]:
 def _json_safe_mbd_metrics(
     metrics_by_element: dict[str, dict[str, float]],
 ) -> dict[str, dict[str, float | None]]:
-    """Convert non-finite MBD metrics to strict-JSON null values."""
+    """
+    Convert non-finite MBD metrics to strict-JSON null values.
+
+    Parameters
+    ----------
+    metrics_by_element
+        Metric values grouped by element.
+
+    Returns
+    -------
+    dict[str, dict[str, float | None]]
+        JSON-safe metric values grouped by element.
+    """
     return {
         element_symbol: {
             metric_name: (float(metric_value) if np.isfinite(metric_value) else None)
@@ -266,7 +278,23 @@ def evaluate_mbd_diatomic_metrics(
     reference_path: str | Path | None = None,
     interpolate: bool | int = 200,
 ) -> dict[str, object]:
-    """Evaluate 12 homonuclear MBD metrics outside the legacy weighted score."""
+    """
+    Evaluate 12 homonuclear MBD metrics outside the legacy weighted score.
+
+    Parameters
+    ----------
+    pair_data
+        Optional model-to-dataframe mapping; calculator outputs are loaded by default.
+    reference_path
+        Optional DFT reference-curve path.
+    interpolate
+        Whether or how many points to use when interpolating curves.
+
+    Returns
+    -------
+    dict[str, object]
+        Versioned benchmark results and per-model metrics.
+    """
     resolved_reference_path = Path(reference_path or DEFAULT_DFT_REFERENCE_PATH)
     reference_curves = load_dft_reference_curves(
         functional="PBE",
@@ -313,7 +341,25 @@ def write_mbd_diatomic_metrics(
     reference_path: str | Path | None = None,
     interpolate: bool | int = 200,
 ) -> dict[str, object]:
-    """Evaluate MBD metrics and write JSON."""
+    """
+    Evaluate MBD metrics and write JSON.
+
+    Parameters
+    ----------
+    output_path
+        Destination JSON path.
+    pair_data
+        Optional model-to-dataframe mapping; calculator outputs are loaded by default.
+    reference_path
+        Optional DFT reference-curve path.
+    interpolate
+        Whether or how many points to use when interpolating curves.
+
+    Returns
+    -------
+    dict[str, object]
+        Written benchmark results.
+    """
     result = evaluate_mbd_diatomic_metrics(
         pair_data,
         reference_path=reference_path,
@@ -340,20 +386,46 @@ def write_mbd_diatomic_metrics(
     y_range=(-20.0, 20.0),
 )
 def persist_diatomics_pair_data() -> dict[str, pd.DataFrame]:
-    """Persist curve payloads and return per-model dataframes."""
+    """
+    Persist curve payloads and return per-model dataframes.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Curve dataframes keyed by model name.
+    """
     return _load_pair_data()
 
 
 @pytest.fixture
 def diatomics_pair_data_fixture() -> dict[str, pd.DataFrame]:
-    """Load curve data and persist gallery assets for pytest."""
+    """
+    Load curve data and persist gallery assets for pytest.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Curve dataframes keyed by model name.
+    """
     return persist_diatomics_pair_data()
 
 
 def collect_metrics(
     pair_data: dict[str, pd.DataFrame] | None = None,
 ) -> pd.DataFrame:
-    """Aggregate metrics across all homo- and heteronuclear pairs by model."""
+    """
+    Aggregate metrics across all homo- and heteronuclear pairs by model.
+
+    Parameters
+    ----------
+    pair_data
+        Optional curve dataframes keyed by model name.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row of aggregated metrics per model.
+    """
     metrics_rows: list[dict[str, float | str]] = []
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -374,7 +446,19 @@ def collect_metrics(
 def diatomics_collection(
     diatomics_pair_data_fixture: dict[str, pd.DataFrame],
 ) -> pd.DataFrame:
-    """Collect per-model diatomic metrics."""
+    """
+    Collect per-model diatomic metrics.
+
+    Parameters
+    ----------
+    diatomics_pair_data_fixture
+        Curve dataframes keyed by model name.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row of aggregated metrics per model.
+    """
     return collect_metrics(diatomics_pair_data_fixture)
 
 
@@ -388,7 +472,19 @@ def diatomics_collection(
 def metrics(
     diatomics_collection: pd.DataFrame,
 ) -> dict[str, dict]:
-    """Return metric-name mappings by model."""
+    """
+    Return metric-name mappings by model.
+
+    Parameters
+    ----------
+    diatomics_collection
+        Aggregated metrics with one row per model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Model values keyed by metric name.
+    """
     return {
         column: dict(
             zip(
@@ -407,7 +503,14 @@ def metrics(
 
 @pytest.mark.framework("mace-multihead")
 def test_diatomics(metrics: dict[str, dict]) -> None:
-    """Write diatomic benchmark metadata after fixture evaluation."""
+    """
+    Write diatomic benchmark metadata after fixture evaluation.
+
+    Parameters
+    ----------
+    metrics
+        Evaluated metric mappings supplied by pytest.
+    """
     mock_data = load_model_data("mock")
     # Write out info.json
     with open(OUT_PATH / "info.json", "w") as f:

@@ -19,13 +19,36 @@ DEFAULT_DFT_REFERENCE_PATH = (
 
 
 def homo_key(formula: str) -> str:
-    """Collapse a homonuclear pair label such as ``H-H`` to its element key."""
+    """
+    Collapse a homonuclear pair label such as ``H-H`` to its element key.
+
+    Parameters
+    ----------
+    formula
+        Element or pair label.
+
+    Returns
+    -------
+    str
+        Element key for homonuclear pairs, otherwise the original label.
+    """
     element_1, separator, element_2 = formula.partition("-")
     return element_1 if separator and element_1 == element_2 else formula
 
 
 class DiatomicCurve:
-    """Store one validated diatomic energy and Cartesian-force curve."""
+    """
+    Store one validated diatomic energy and Cartesian-force curve.
+
+    Parameters
+    ----------
+    distances
+        Sample separations.
+    energies
+        Sample energies.
+    forces
+        Cartesian forces for both atoms.
+    """
 
     distances: np.ndarray
     energies: np.ndarray
@@ -37,7 +60,18 @@ class DiatomicCurve:
         energies: ArrayLike,
         forces: ArrayLike,
     ) -> None:
-        """Convert curve data to arrays and validate shapes and sample counts."""
+        """
+        Convert curve data to arrays and validate shapes and sample counts.
+
+        Parameters
+        ----------
+        distances
+            Sample separations.
+        energies
+            Sample energies.
+        forces
+            Cartesian forces for both atoms.
+        """
         self.distances = np.asarray(distances)
         self.energies = np.asarray(energies)
         self.forces = np.asarray(forces)
@@ -77,14 +111,38 @@ class DiatomicCurves:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DiatomicCurves:
-        """Parse MBD JSON curves, requiring per-curve grids to be ordered subsets."""
+        """
+        Parse MBD JSON curves, requiring per-curve grids to be ordered subsets.
+
+        Parameters
+        ----------
+        data
+            Decoded MBD curve payload.
+
+        Returns
+        -------
+        DiatomicCurves
+            Validated homo- and heteronuclear curves.
+        """
         distances = np.asarray(data["distances"])
         grid_position_by_distance = {
             float(distance): index for index, distance in enumerate(distances)
         }
 
         def make_curves(section: str) -> dict[str, DiatomicCurve]:
-            """Convert one MBD JSON section to typed curves."""
+            """
+            Convert one MBD JSON section to typed curves.
+
+            Parameters
+            ----------
+            section
+                MBD JSON section name.
+
+            Returns
+            -------
+            dict[str, DiatomicCurve]
+                Typed curves keyed by normalized formula.
+            """
             raw_curves = data.get(section, {})
             key_function = homo_key if section.startswith("homo") else str
 
@@ -92,7 +150,21 @@ class DiatomicCurves:
                 formula: str,
                 curve: dict[str, Any],
             ) -> np.ndarray:
-                """Return an ordered per-curve subset of the top-level grid."""
+                """
+                Return an ordered per-curve subset of the top-level grid.
+
+                Parameters
+                ----------
+                formula
+                    Curve formula used in validation errors.
+                curve
+                    Raw curve payload.
+
+                Returns
+                -------
+                np.ndarray
+                    Ordered curve-specific distance grid.
+                """
                 curve_distance_array = np.asarray(curve.get("distances", distances))
                 # off-grid points map to -1; valid subsets have strictly
                 # increasing grid positions
@@ -127,7 +199,19 @@ class DiatomicCurves:
 
 
 def _load_json(path: StrPath) -> dict[str, Any]:
-    """Load a JSON or gzipped JSON object."""
+    """
+    Load a JSON or gzipped JSON object.
+
+    Parameters
+    ----------
+    path
+        JSON or gzipped JSON path.
+
+    Returns
+    -------
+    dict[str, Any]
+        Decoded JSON object.
+    """
     string_path = os.fspath(path)
     open_function = gzip.open if string_path.endswith(".gz") else open
     with open_function(string_path, mode="rt", encoding="utf-8") as file:
@@ -135,7 +219,19 @@ def _load_json(path: StrPath) -> dict[str, Any]:
 
 
 def load_mbd_json(path: StrPath) -> DiatomicCurves:
-    """Load MBD-format predicted curves from JSON or gzipped JSON."""
+    """
+    Load MBD-format predicted curves from JSON or gzipped JSON.
+
+    Parameters
+    ----------
+    path
+        JSON or gzipped JSON path.
+
+    Returns
+    -------
+    DiatomicCurves
+        Validated predicted curves.
+    """
     return DiatomicCurves.from_dict(_load_json(path))
 
 
@@ -143,7 +239,21 @@ def load_dft_reference_curves(
     functional: str = "PBE",
     ref_path: StrPath | None = None,
 ) -> DiatomicCurves:
-    """Load bundled or custom DFT reference curves for one functional."""
+    """
+    Load bundled or custom DFT reference curves for one functional.
+
+    Parameters
+    ----------
+    functional
+        Density functional key in the reference payload.
+    ref_path
+        Optional custom reference path.
+
+    Returns
+    -------
+    DiatomicCurves
+        DFT reference curves.
+    """
     reference_path = ref_path or DEFAULT_DFT_REFERENCE_PATH
     references = _load_json(reference_path)[functional]
     return DiatomicCurves(
@@ -160,7 +270,19 @@ def load_dft_reference_curves(
 
 
 def _parse_pair_label(pair_label: str) -> tuple[str, str]:
-    """Parse an ``Element-Element`` pair label."""
+    """
+    Parse an ``Element-Element`` pair label.
+
+    Parameters
+    ----------
+    pair_label
+        Pair label to parse.
+
+    Returns
+    -------
+    tuple[str, str]
+        First and second element symbols.
+    """
     elements = pair_label.split("-")
     if len(elements) != 2 or not all(elements):
         raise ValueError(
@@ -174,7 +296,21 @@ def curves_from_ml_peg_dataframe(
     *,
     include_heteronuclear: bool = True,
 ) -> DiatomicCurves:
-    """Convert an ml-peg dataframe to x-aligned two-atom force curves."""
+    """
+    Convert an ml-peg dataframe to x-aligned two-atom force curves.
+
+    Parameters
+    ----------
+    dataframe
+        Diatomic samples with pair, distance, energy, and projected force columns.
+    include_heteronuclear
+        Whether to include heteronuclear pairs.
+
+    Returns
+    -------
+    DiatomicCurves
+        Converted homo- and heteronuclear curves.
+    """
     required_columns = {"pair", "distance", "energy", "force_parallel"}
     missing_columns = required_columns - set(dataframe.columns)
     if missing_columns:
@@ -238,7 +374,21 @@ def load_ml_peg_curves(
     *,
     include_heteronuclear: bool = True,
 ) -> DiatomicCurves:
-    """Load current ml-peg diatomic curves from a dataframe or CSV."""
+    """
+    Load current ml-peg diatomic curves from a dataframe or CSV.
+
+    Parameters
+    ----------
+    source
+        Diatomic dataframe or CSV path.
+    include_heteronuclear
+        Whether to include heteronuclear pairs.
+
+    Returns
+    -------
+    DiatomicCurves
+        Converted homo- and heteronuclear curves.
+    """
     dataframe = (
         source if isinstance(source, pd.DataFrame) else pd.read_csv(os.fspath(source))
     )

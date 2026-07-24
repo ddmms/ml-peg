@@ -1,4 +1,5 @@
-"""Diatomic potential-energy metrics adapted from Matbench Discovery.
+"""
+Diatomic potential-energy metrics adapted from Matbench Discovery.
 
 The smoothness approach follows Stenczel et al., https://arxiv.org/abs/2401.00096.
 """
@@ -82,7 +83,23 @@ def find_low_quality_dft_refs(
     min_energy_jump: float = 1.5,
     min_energy_flips: int = 3,
 ) -> set[str]:
-    """Find non-finite or discontinuous DFT references unsuitable for scoring."""
+    """
+    Find non-finite or discontinuous DFT references unsuitable for scoring.
+
+    Parameters
+    ----------
+    ref_curves
+        DFT reference curves.
+    min_energy_jump
+        Minimum discontinuity magnitude used by the quality gate.
+    min_energy_flips
+        Minimum number of energy-difference flips used by the quality gate.
+
+    Returns
+    -------
+    set[str]
+        Element symbols with unsuitable reference curves.
+    """
     low_quality: set[str] = set()
     for element_symbol, curve in ref_curves.homo_nuclear.items():
         separations = curve.distances
@@ -113,7 +130,23 @@ def eval_window(
     *,
     r_min_factor: float = 0.9,
 ) -> tuple[float, float]:
-    """Return the covalent-to-van-der-Waals evaluation window in Å."""
+    """
+    Return the covalent-to-van-der-Waals evaluation window in Å.
+
+    Parameters
+    ----------
+    elem_symbol
+        Element or pair label.
+    seps_max
+        Largest available separation.
+    r_min_factor
+        Covalent-radius multiplier for the lower bound.
+
+    Returns
+    -------
+    tuple[float, float]
+        Lower and upper evaluation bounds.
+    """
     atomic_number = atomic_numbers[elem_symbol.split("-", maxsplit=1)[0]]
     covalent_radius = (
         covalent_radii[atomic_number] if atomic_number < len(covalent_radii) else np.nan
@@ -134,9 +167,26 @@ def calc_diatomic_metrics(
     *,
     interpolate: bool | int = False,
 ) -> dict[str, dict[str, float]]:
-    """Calculate requested metrics for supported homonuclear curves by element.
+    """
+    Calculate requested metrics for supported homonuclear curves by element.
 
     Low-quality references receive self-consistency metrics but no ``pbe_*`` metrics.
+
+    Parameters
+    ----------
+    ref_curves
+        Optional DFT reference curves.
+    pred_curves
+        Predicted diatomic curves.
+    metrics
+        Optional mapping of requested metric names to keyword arguments.
+    interpolate
+        Whether or how many points to use when interpolating paired curves.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Metric values grouped by element.
     """
     requested_metric_keys = (
         set(metrics) if metrics is not None else set(DIATOMIC_METRIC_KEYS)
@@ -316,7 +366,19 @@ def calc_diatomic_metrics(
 def aggregate_finite_means(
     metrics_by_element: dict[str, dict[str, float]],
 ) -> dict[str, float]:
-    """Average finite values for every metric present, to four significant digits."""
+    """
+    Average finite values for every metric present, to four significant digits.
+
+    Parameters
+    ----------
+    metrics_by_element
+        Metric values grouped by element.
+
+    Returns
+    -------
+    dict[str, float]
+        Finite metric means keyed by metric name.
+    """
     metric_means: dict[str, float] = {}
     metric_names = dict.fromkeys(
         metric_name
