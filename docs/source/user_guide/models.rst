@@ -211,6 +211,20 @@ orb-v3-consv-inf-omat
      kwargs:
        name: "orb_v3_conservative_inf_omat"
 
+orb-v3-direct-inf-omat
+----------------------
+
+.. code-block:: yaml
+
+   orb-v3-direct-inf-omat:
+     module: orb_models.inference.calculator
+     class_name: OrbCalc
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       name: "orb_v3_direct_inf_omat"
+
 orb-v3-consv-omol
 -----------------
 
