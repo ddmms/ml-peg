@@ -5667,6 +5667,7 @@ dependencies = [
     { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "tqdm" },
     { name = "typer" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -5758,6 +5759,7 @@ requires-dist = [
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "tqdm", specifier = ">=4.67.3,<5" },
     { name = "typer", specifier = ">=0.19.1,<1.0.0" },
+    { name = "typing-extensions", specifier = ">=4.0" },
 ]
 provides-extras = ["asemolec", "chgnet", "d3", "dpa3", "grace", "mace", "mattersim", "orb", "pet-mad", "uma"]
 
