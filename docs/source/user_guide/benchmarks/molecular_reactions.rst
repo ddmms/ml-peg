@@ -36,7 +36,7 @@ on clicking the barrier height column.
 Computational cost
 ------------------
 
-Medium: around 36,000 single point inference calls (three states per reaction).
+Medium: around 36,000 single point inference calls (three states per reaction). Minutes on CPU, tens of minutes to hours on GPU.
 
 Data availability
 -----------------
