@@ -10,8 +10,8 @@ mace-mp-0a:
 mace-mp-0b3:
   module: mace.calculators
   class_name: mace_mp
-  device: "auto"
   trained_on_dispersion: false
+  device: "auto"
   level_of_theory: PBE
   kwargs:
     model: "medium-0b3"
