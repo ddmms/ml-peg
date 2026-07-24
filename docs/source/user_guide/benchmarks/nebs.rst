@@ -231,7 +231,7 @@ Computational cost
 ------------------
 
 High: 100 NEB simulations with up to 500 steps each and 10 images per
-simulation.
+simulation. Days on CPU, hours on GPU
 
 Data availability
 -----------------
