@@ -34,7 +34,16 @@ ProgressConfig = bool | dict[str, Any]
 def _validate_symmetry_parameters(
     symprec: float, angle_tolerance: float | None
 ) -> None:
-    """Validate numerical symmetry tolerances passed to moyopy."""
+    """
+    Validate numerical symmetry tolerances passed to moyopy.
+
+    Parameters
+    ----------
+    symprec
+        Cartesian symmetry tolerance.
+    angle_tolerance
+        Optional angular tolerance in radians.
+    """
     if not math.isfinite(symprec) or symprec <= 0:
         raise ValueError(f"symprec must be positive and finite, got {symprec!r}")
     if angle_tolerance is not None and (
@@ -54,7 +63,27 @@ def _progress_iterator(
     default_description: str,
     leave: bool | None = None,
 ) -> Any:
-    """Optionally wrap an iterable in a configured tqdm progress bar."""
+    """
+    Optionally wrap an iterable in a configured tqdm progress bar.
+
+    Parameters
+    ----------
+    iterable
+        Values to iterate over.
+    total
+        Number of expected values.
+    pbar
+        Whether and how to display progress.
+    default_description
+        Default progress-bar description.
+    leave
+        Whether to retain the finished progress bar.
+
+    Returns
+    -------
+    Any
+        Original iterable or configured progress iterator.
+    """
     if not pbar:
         return iterable
 
@@ -74,9 +103,26 @@ def get_sym_info_from_structs(
     symprec: float = 1e-2,
     angle_tolerance: float | None = None,
 ) -> pd.DataFrame:
-    """Compile symmetry information for pymatgen or ASE crystal structures.
+    """
+    Compile symmetry information for pymatgen or ASE crystal structures.
 
     Moyopy's ``angle_tolerance`` is in radians, unlike spglib's degree convention.
+
+    Parameters
+    ----------
+    structures
+        Structures keyed by material ID.
+    pbar
+        Whether and how to display progress.
+    symprec
+        Cartesian symmetry tolerance.
+    angle_tolerance
+        Optional angular tolerance in radians.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Symmetry information indexed by material ID.
     """
     _validate_symmetry_parameters(symprec, angle_tolerance)
     if not isinstance(structures, Mapping):
@@ -146,7 +192,16 @@ def get_sym_info_from_structs(
 def _validate_symmetry_dataframe(
     dataframe: pd.DataFrame, *, dataframe_name: str
 ) -> None:
-    """Validate a symmetry table needed for structure comparison."""
+    """
+    Validate a symmetry table needed for structure comparison.
+
+    Parameters
+    ----------
+    dataframe
+        Symmetry table to validate.
+    dataframe_name
+        Table name used in error messages.
+    """
     if dataframe.index.name != MATERIAL_ID:
         raise ValueError(
             f"{dataframe_name}.index.name={dataframe.index.name!r} "
@@ -172,7 +227,23 @@ def _matching_structure_ids(
     *,
     source_name: str,
 ) -> set[str]:
-    """Require a structure mapping and symmetry table to contain identical IDs."""
+    """
+    Require a structure mapping and symmetry table to contain identical IDs.
+
+    Parameters
+    ----------
+    dataframe
+        Symmetry table indexed by material ID.
+    structures
+        Structures keyed by material ID.
+    source_name
+        Source label used in error messages.
+
+    Returns
+    -------
+    set[str]
+        Shared material identifiers.
+    """
     structure_ids = set(structures)
     symmetry_ids = set(dataframe.index)
     if symmetry_ids != structure_ids:
@@ -192,12 +263,31 @@ def pred_vs_ref_struct_symmetry(
     *,
     pbar: ProgressConfig = True,
 ) -> pd.DataFrame:
-    """Compare predicted structures and symmetries with references.
+    """
+    Compare predicted structures and symmetries with references.
 
     With ``StructureMatcher(stol=1.0, scale=False)``, RMSD and maximum pair
     distance are normalized by the free length per atom.
     Predicted-only IDs remain in the result with missing comparison values, which
     gives them the 1.0 RMSD penalty during aggregation.
+
+    Parameters
+    ----------
+    df_sym_pred
+        Predicted-structure symmetry information.
+    df_sym_ref
+        Reference-structure symmetry information.
+    pred_structs
+        Predicted structures keyed by material ID.
+    ref_structs
+        Reference structures keyed by material ID.
+    pbar
+        Whether and how to display progress.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Predicted symmetry with reference differences and structure distances.
     """
     _validate_symmetry_dataframe(df_sym_pred, dataframe_name="df_sym_pred")
     _validate_symmetry_dataframe(df_sym_ref, dataframe_name="df_sym_ref")
@@ -215,7 +305,23 @@ def pred_vs_ref_struct_symmetry(
     def as_pymatgen(
         structure: object, *, material_id: str, source_name: str
     ) -> Structure:
-        """Convert an ASE structure for ``StructureMatcher`` when needed."""
+        """
+        Convert an ASE structure for ``StructureMatcher`` when needed.
+
+        Parameters
+        ----------
+        structure
+            Pymatgen or ASE structure.
+        material_id
+            Material identifier used in error messages.
+        source_name
+            Source label used in error messages.
+
+        Returns
+        -------
+        Structure
+            Pymatgen structure suitable for comparison.
+        """
         if isinstance(structure, Structure):
             return structure
         if isinstance(structure, Atoms):

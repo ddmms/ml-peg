@@ -99,12 +99,33 @@ class GeoOptRecord(TypedDict):
 def _missing_columns(
     dataframe: pd.DataFrame, required_columns: Sequence[str]
 ) -> list[str]:
-    """Return absent required columns in their requested order."""
+    """
+    Return absent required columns in their requested order.
+
+    Parameters
+    ----------
+    dataframe
+        Table whose columns are inspected.
+    required_columns
+        Column names that must be present.
+
+    Returns
+    -------
+    list[str]
+        Missing column names in requested order.
+    """
     return [column for column in required_columns if column not in dataframe.columns]
 
 
 def _validate_material_id_values(material_ids: pd.Series) -> None:
-    """Require non-null, nonempty, unique string material identifiers."""
+    """
+    Require non-null, nonempty, unique string material identifiers.
+
+    Parameters
+    ----------
+    material_ids
+        Material identifiers to validate.
+    """
     if material_ids.isna().any():
         raise ValueError("material_id values must not be null")
 
@@ -123,7 +144,19 @@ def _validate_material_id_values(material_ids: pd.Series) -> None:
 
 
 def _with_material_id_index(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Return a validated copy indexed by material ID."""
+    """
+    Return a validated copy indexed by material ID.
+
+    Parameters
+    ----------
+    dataframe
+        Table containing material identifiers.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated copy indexed by material ID.
+    """
     normalized = dataframe.copy()
     if MATERIAL_ID in normalized.columns:
         _validate_material_id_values(normalized[MATERIAL_ID])
@@ -142,7 +175,21 @@ def _with_material_id_index(dataframe: pd.DataFrame) -> pd.DataFrame:
 def validate_geo_opt_record(
     record: Mapping[str, object], *, record_number: int | None = None
 ) -> GeoOptRecord:
-    """Validate one geo-opt record and normalize its scalar values."""
+    """
+    Validate one geo-opt record and normalize its scalar values.
+
+    Parameters
+    ----------
+    record
+        Geometry-optimization record to validate.
+    record_number
+        Optional record position used in error messages.
+
+    Returns
+    -------
+    GeoOptRecord
+        Validated record with normalized scalar values.
+    """
     location = "" if record_number is None else f" at record {record_number}"
     missing_fields = [field for field in GEO_OPT_FIELDS if field not in record]
     if missing_fields:
@@ -191,7 +238,19 @@ def validate_geo_opt_record(
 
 
 def validate_geo_opt_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Validate and normalize geo-opt records while retaining extra columns."""
+    """
+    Validate and normalize geo-opt records while retaining extra columns.
+
+    Parameters
+    ----------
+    dataframe
+        Geometry-optimization records to validate.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated records with normalized values.
+    """
     if missing_columns := _missing_columns(dataframe, GEO_OPT_FIELDS):
         raise ValueError(f"Missing geo-opt columns: {missing_columns!r}")
 
@@ -211,7 +270,19 @@ def validate_geo_opt_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_reference_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Validate references and return a material-ID-indexed copy."""
+    """
+    Validate references and return a material-ID-indexed copy.
+
+    Parameters
+    ----------
+    dataframe
+        Reference structures to validate.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated references indexed by material ID.
+    """
     normalized = _with_material_id_index(dataframe)
     if STRUCTURE not in normalized.columns:
         raise ValueError("Missing reference structure column: 'structure'")
@@ -230,7 +301,19 @@ def validate_reference_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_analysis_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Validate a complete symmetry-comparison analysis table."""
+    """
+    Validate a complete symmetry-comparison analysis table.
+
+    Parameters
+    ----------
+    dataframe
+        Symmetry-comparison analysis to validate.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated analysis indexed by material ID.
+    """
     normalized = _with_material_id_index(dataframe)
     required_fields = (*SYMMETRY_FIELDS, *COMPARISON_FIELDS)
     if missing_columns := _missing_columns(normalized, required_fields):

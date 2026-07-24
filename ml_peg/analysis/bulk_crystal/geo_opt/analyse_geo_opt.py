@@ -40,7 +40,19 @@ RESULT_SCHEMA_VERSION = 1
 
 
 def _package_version(package_name: str) -> str | None:
-    """Return an installed package version, or ``None`` when unavailable."""
+    """
+    Return an installed package version, or ``None`` when unavailable.
+
+    Parameters
+    ----------
+    package_name
+        Installed distribution name.
+
+    Returns
+    -------
+    str | None
+        Installed version, if available.
+    """
     try:
         return version(package_name)
     except PackageNotFoundError:
@@ -48,7 +60,14 @@ def _package_version(package_name: str) -> str | None:
 
 
 def get_version_metadata() -> dict[str, str | None]:
-    """Return runtime and dependency versions affecting geo-opt analysis."""
+    """
+    Return runtime and dependency versions affecting geo-opt analysis.
+
+    Returns
+    -------
+    dict[str, str | None]
+        Versions keyed by runtime or dependency name.
+    """
     return {
         "python": platform.python_version(),
         "ml_peg": _package_version("ml-peg"),
@@ -60,7 +79,19 @@ def get_version_metadata() -> dict[str, str | None]:
 
 
 def _validate_symprecs(symprecs: Sequence[float]) -> tuple[float, ...]:
-    """Validate that symmetry tolerances are nonempty, positive, finite, and unique."""
+    """
+    Validate that symmetry tolerances are nonempty, positive, finite, and unique.
+
+    Parameters
+    ----------
+    symprecs
+        Symmetry tolerances to validate.
+
+    Returns
+    -------
+    tuple[float, ...]
+        Normalized symmetry tolerances.
+    """
     normalized = tuple(float(symprec) for symprec in symprecs)
     if not normalized:
         raise ValueError("At least one symprec value is required")
@@ -79,7 +110,21 @@ def _validate_symprecs(symprecs: Sequence[float]) -> tuple[float, ...]:
 def _structures_from_dataframe(
     dataframe: pd.DataFrame, *, source_name: str
 ) -> dict[str, object]:
-    """Build pymatgen structures from serialized dictionaries."""
+    """
+    Build pymatgen structures from serialized dictionaries.
+
+    Parameters
+    ----------
+    dataframe
+        Table containing serialized structures.
+    source_name
+        Source label used in error messages.
+
+    Returns
+    -------
+    dict[str, object]
+        Pymatgen structures keyed by material ID.
+    """
     try:
         from pymatgen.core import Structure
     except ImportError as exc:
@@ -98,13 +143,37 @@ def _structures_from_dataframe(
 
 
 def _json_safe_records(dataframe: pd.DataFrame) -> list[dict[str, Any]]:
-    """Convert a DataFrame to JSON-compatible records."""
+    """
+    Convert a DataFrame to JSON-compatible records.
+
+    Parameters
+    ----------
+    dataframe
+        Table to serialize.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        JSON-compatible records.
+    """
     serialized = dataframe.reset_index().to_json(orient="records", double_precision=15)
     return cast(list[dict[str, Any]], json.loads(serialized))
 
 
 def _json_safe_mapping(value: Mapping[str, object]) -> dict[str, Any]:
-    """Convert NumPy scalars and non-finite floats to JSON-compatible values."""
+    """
+    Convert NumPy scalars and non-finite floats to JSON-compatible values.
+
+    Parameters
+    ----------
+    value
+        Mapping to normalize.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON-compatible mapping.
+    """
     json_safe: dict[str, Any] = {}
     for key, nested_value in value.items():
         item_method = getattr(nested_value, "item", None)
@@ -125,10 +194,31 @@ def analyze_geo_opt_dataframes(
     include_analysis: bool = False,
     pbar: ProgressConfig = False,
 ) -> dict[str, Any]:
-    """Analyze predicted structures against references.
+    """
+    Analyze predicted structures against references.
 
     ``angle_tolerance`` is in radians. Per-structure records are omitted unless
     requested to avoid duplicating WBM-scale analysis tables in memory.
+
+    Parameters
+    ----------
+    predictions
+        Predicted geometry-optimization structures.
+    references
+        Reference structures.
+    symprecs
+        Symmetry tolerances to analyze.
+    angle_tolerance
+        Optional angular tolerance in radians.
+    include_analysis
+        Whether to include per-structure analysis records.
+    pbar
+        Whether and how to display progress.
+
+    Returns
+    -------
+    dict[str, Any]
+        Versioned metrics and optional per-structure analysis.
     """
     normalized_symprecs = _validate_symprecs(symprecs)
     normalized_angle_tolerance = (
@@ -211,7 +301,29 @@ def analyze_geo_opt_paths(
     include_analysis: bool = False,
     pbar: ProgressConfig = False,
 ) -> dict[str, Any]:
-    """Analyze prediction and reference JSONL artifacts from local paths."""
+    """
+    Analyze prediction and reference JSONL artifacts from local paths.
+
+    Parameters
+    ----------
+    predictions_path
+        Path to predicted geometry-optimization structures.
+    references_path
+        Path to reference structures.
+    symprecs
+        Symmetry tolerances to analyze.
+    angle_tolerance
+        Optional angular tolerance in radians.
+    include_analysis
+        Whether to include per-structure analysis records.
+    pbar
+        Whether and how to display progress.
+
+    Returns
+    -------
+    dict[str, Any]
+        Versioned metrics and optional per-structure analysis.
+    """
     predictions = read_geo_opt_jsonl(predictions_path)
     references = read_reference_jsonl(references_path)
     return analyze_geo_opt_dataframes(
@@ -233,7 +345,29 @@ def analyze_geo_opt(
     include_analysis: bool = False,
     pbar: ProgressConfig = False,
 ) -> dict[str, Any]:
-    """Analyze geo-opt structures supplied as two DataFrames or two local paths."""
+    """
+    Analyze geo-opt structures supplied as two DataFrames or two local paths.
+
+    Parameters
+    ----------
+    predictions
+        Prediction table or local JSONL path.
+    references
+        Reference table or local JSONL path.
+    symprecs
+        Symmetry tolerances to analyze.
+    angle_tolerance
+        Optional angular tolerance in radians.
+    include_analysis
+        Whether to include per-structure analysis records.
+    pbar
+        Whether and how to display progress.
+
+    Returns
+    -------
+    dict[str, Any]
+        Versioned metrics and optional per-structure analysis.
+    """
     if isinstance(predictions, pd.DataFrame) and isinstance(references, pd.DataFrame):
         return analyze_geo_opt_dataframes(
             predictions,

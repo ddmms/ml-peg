@@ -25,7 +25,19 @@ _LIST_ANALYSIS_FIELDS = (SITE_SYMMETRY_SYMBOLS, WYCKOFF_SYMBOLS)
 
 
 def _decode_list_value(value: object) -> object:
-    """Decode a JSON list from an analysis CSV cell."""
+    """
+    Decode a JSON list from an analysis CSV cell.
+
+    Parameters
+    ----------
+    value
+        CSV cell value to decode.
+
+    Returns
+    -------
+    object
+        Decoded JSON value, or the unchanged non-string value.
+    """
     if not isinstance(value, str):
         return value
     try:
@@ -35,7 +47,19 @@ def _decode_list_value(value: object) -> object:
 
 
 def read_geo_opt_jsonl(file_path: PathLike) -> pd.DataFrame:
-    """Read and validate a geo-opt JSONL file."""
+    """
+    Read and validate a geo-opt JSONL file.
+
+    Parameters
+    ----------
+    file_path
+        Path to the JSONL artifact.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated geometry-optimization records.
+    """
     dataframe = read_jsonl_artifact(
         file_path, dtype={MATERIAL_ID: "string"}, precise_float=True
     )
@@ -43,7 +67,19 @@ def read_geo_opt_jsonl(file_path: PathLike) -> pd.DataFrame:
 
 
 def read_geo_opt_records(file_path: PathLike) -> list[GeoOptRecord]:
-    """Read validated geo-opt JSONL records as dictionaries in file order."""
+    """
+    Read validated geo-opt JSONL records as dictionaries in file order.
+
+    Parameters
+    ----------
+    file_path
+        Path to the JSONL artifact.
+
+    Returns
+    -------
+    list[GeoOptRecord]
+        Validated records in file order.
+    """
     dataframe = read_geo_opt_jsonl(file_path)
     return dataframe.loc[:, GEO_OPT_FIELDS].to_dict(orient="records")
 
@@ -51,7 +87,16 @@ def read_geo_opt_records(file_path: PathLike) -> list[GeoOptRecord]:
 def write_geo_opt_jsonl(
     records: pd.DataFrame | Sequence[GeoOptRecord], file_path: PathLike
 ) -> None:
-    """Validate and write geo-opt records as JSONL."""
+    """
+    Validate and write geo-opt records as JSONL.
+
+    Parameters
+    ----------
+    records
+        Geometry-optimization records to write.
+    file_path
+        Destination JSONL path.
+    """
     dataframe = (
         records
         if isinstance(records, pd.DataFrame)
@@ -68,7 +113,19 @@ def write_geo_opt_jsonl(
 
 
 def read_reference_jsonl(file_path: PathLike) -> pd.DataFrame:
-    """Read and validate reference structures from JSONL."""
+    """
+    Read and validate reference structures from JSONL.
+
+    Parameters
+    ----------
+    file_path
+        Path to the reference JSONL artifact.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated reference structures indexed by material ID.
+    """
     dataframe = read_jsonl_artifact(
         file_path, dtype={MATERIAL_ID: "string"}, precise_float=True
     )
@@ -76,7 +133,19 @@ def read_reference_jsonl(file_path: PathLike) -> pd.DataFrame:
 
 
 def read_analysis_csv(file_path: PathLike) -> pd.DataFrame:
-    """Read validated per-structure analysis from plain or compressed CSV."""
+    """
+    Read validated per-structure analysis from plain or compressed CSV.
+
+    Parameters
+    ----------
+    file_path
+        Path to the analysis CSV artifact.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated per-structure analysis.
+    """
     dataframe = read_csv_artifact(file_path, dtype={MATERIAL_ID: str})
     for field in _LIST_ANALYSIS_FIELDS:
         if field in dataframe:
@@ -85,7 +154,16 @@ def read_analysis_csv(file_path: PathLike) -> pd.DataFrame:
 
 
 def write_analysis_csv(dataframe: pd.DataFrame, file_path: PathLike) -> None:
-    """Validate and write an analysis CSV."""
+    """
+    Validate and write an analysis CSV.
+
+    Parameters
+    ----------
+    dataframe
+        Per-structure analysis to write.
+    file_path
+        Destination CSV path.
+    """
     serialized = validate_analysis_dataframe(dataframe)
     for field in _LIST_ANALYSIS_FIELDS:
         serialized[field] = serialized[field].map(json.dumps)

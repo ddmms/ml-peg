@@ -27,10 +27,21 @@ REQUIRED_METRIC_COLUMNS = (
 def calc_geo_opt_metrics(
     dataframe: pd.DataFrame,
 ) -> dict[str, float | int]:
-    """Calculate aggregate geometry-optimization metrics.
+    """
+    Calculate aggregate geometry-optimization metrics.
 
     Invalid RMSDs receive the ``stol=1.0`` penalty. Symmetry fractions use only
     valid space-group rows, and a match requires an unchanged space-group number.
+
+    Parameters
+    ----------
+    dataframe
+        Per-structure geometry-optimization analysis.
+
+    Returns
+    -------
+    dict[str, float | int]
+        Aggregate RMSD and symmetry metrics.
     """
     missing_columns = [
         column for column in REQUIRED_METRIC_COLUMNS if column not in dataframe
