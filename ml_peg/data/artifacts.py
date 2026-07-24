@@ -34,7 +34,14 @@ class ArtifactRole(str, Enum):
     geo_opt_analysis = "geo_opt_analysis"
 
     def __str__(self) -> str:
-        """Return the role value."""
+        """
+        Return the role value.
+
+        Returns
+        -------
+        str
+            Serialized role value.
+        """
         return self.value
 
 
@@ -45,7 +52,19 @@ ARTIFACT_SUFFIXES: Final[dict[str, str]] = {
 
 
 def _checked_file_path(file_path: PathLike) -> str:
-    """Return a local artifact path after confirming it names a file."""
+    """
+    Return a local artifact path after confirming it names a file.
+
+    Parameters
+    ----------
+    file_path
+        Local artifact path.
+
+    Returns
+    -------
+    str
+        Validated filesystem path.
+    """
     normalized_path = os.fspath(file_path)
     if not os.path.isfile(normalized_path):
         raise FileNotFoundError(f"Artifact file not found: {normalized_path!r}")
@@ -53,14 +72,42 @@ def _checked_file_path(file_path: PathLike) -> str:
 
 
 def read_csv_artifact(file_path: PathLike, **read_options: Any) -> pd.DataFrame:
-    """Read a CSV artifact with compression inferred from its filename."""
+    """
+    Read a CSV artifact with compression inferred from its filename.
+
+    Parameters
+    ----------
+    file_path
+        Local CSV artifact path.
+    **read_options
+        Additional options passed to :func:`pandas.read_csv`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Loaded artifact data.
+    """
     return pd.read_csv(
         _checked_file_path(file_path), compression="infer", **read_options
     )
 
 
 def read_jsonl_artifact(file_path: PathLike, **read_options: Any) -> pd.DataFrame:
-    """Read a line-delimited JSON artifact with transparent compression."""
+    """
+    Read a line-delimited JSON artifact with transparent compression.
+
+    Parameters
+    ----------
+    file_path
+        Local JSON Lines artifact path.
+    **read_options
+        Additional options passed to :func:`pandas.read_json`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Loaded artifact data.
+    """
     return pd.read_json(
         _checked_file_path(file_path),
         lines=True,
@@ -75,7 +122,18 @@ def validate_required_columns(
     *,
     artifact_name: str = "dataframe",
 ) -> None:
-    """Raise if a dataframe lacks any required columns."""
+    """
+    Raise if a dataframe lacks any required columns.
+
+    Parameters
+    ----------
+    dataframe
+        Dataframe to validate.
+    required_columns
+        Column names that must be present.
+    artifact_name
+        Artifact label used in error messages.
+    """
     missing_columns = set(required_columns) - set(dataframe.columns)
     if missing_columns:
         raise ValueError(
@@ -89,7 +147,23 @@ def material_id_index(
     id_column: str = "material_id",
     artifact_name: str = "dataframe",
 ) -> pd.Index:
-    """Return IDs from a column or named index after validating uniqueness."""
+    """
+    Return IDs from a column or named index after validating uniqueness.
+
+    Parameters
+    ----------
+    dataframe
+        Dataframe containing material identifiers.
+    id_column
+        Material identifier column or index name.
+    artifact_name
+        Artifact label used in error messages.
+
+    Returns
+    -------
+    pandas.Index
+        Validated material identifiers.
+    """
     has_id_column = id_column in dataframe.columns
     has_id_index = dataframe.index.name == id_column
     if not has_id_column and not has_id_index:
@@ -118,7 +192,19 @@ def material_id_index(
 
 
 def canonical_scientific_notation(value: float | str | Decimal) -> str:
-    """Format a positive finite number as canonical notation like ``1e-5``."""
+    """
+    Format a positive finite number as canonical notation like ``1e-5``.
+
+    Parameters
+    ----------
+    value
+        Positive finite numeric value.
+
+    Returns
+    -------
+    str
+        Canonical scientific notation.
+    """
     try:
         decimal_value = Decimal(str(value))
     except InvalidOperation as exc:
@@ -131,7 +217,19 @@ def canonical_scientific_notation(value: float | str | Decimal) -> str:
 
 
 def _iso_date(value: date | str) -> str:
-    """Return a validated ``YYYY-MM-DD`` calendar date."""
+    """
+    Return a validated ``YYYY-MM-DD`` calendar date.
+
+    Parameters
+    ----------
+    value
+        Date object or ISO date string.
+
+    Returns
+    -------
+    str
+        Validated ISO date.
+    """
     iso_date = value.isoformat() if isinstance(value, date) else value
     if not ISO_DATE_PATTERN.fullmatch(iso_date):
         raise ValueError(f"Expected an ISO date, got {value!r}")
@@ -149,7 +247,25 @@ def artifact_filename(
     symprec: float | str | Decimal | None = None,
     moyo_version: str | None = None,
 ) -> str:
-    """Return a canonical dated basename for the requested artifact role."""
+    """
+    Return a canonical dated basename for the requested artifact role.
+
+    Parameters
+    ----------
+    artifact_date
+        Artifact date.
+    role
+        Artifact role.
+    symprec
+        Symmetry tolerance for geometry-optimization analysis.
+    moyo_version
+        Moyo version for geometry-optimization analysis.
+
+    Returns
+    -------
+    str
+        Canonical artifact basename.
+    """
     iso_date = _iso_date(artifact_date)
     role_value = str(role)
     if role_value == ArtifactRole.geo_opt_analysis:
@@ -172,7 +288,19 @@ def artifact_filename(
 
 
 def parse_artifact_filename(filename: str) -> ArtifactRole:
-    """Validate a canonical artifact filename or path and return its role."""
+    """
+    Validate a canonical artifact filename or path and return its role.
+
+    Parameters
+    ----------
+    filename
+        Artifact filename or path.
+
+    Returns
+    -------
+    ArtifactRole
+        Parsed artifact role.
+    """
     basename = os.path.basename(filename)
     if not ISO_DATE_PATTERN.match(basename[:10]) or basename[10:11] != "-":
         raise ValueError(f"Not a canonical model artifact filename: {filename!r}")

@@ -35,7 +35,25 @@ def _classify_stable(
     stability_threshold: float,
     fillna: bool,
 ) -> tuple[_ClassificationMasks, pd.Series, pd.Series]:
-    """Classify stability while retaining numeric inputs for regression."""
+    """
+    Classify stability while retaining numeric inputs for regression.
+
+    Parameters
+    ----------
+    each_true
+        True hull distances.
+    each_pred
+        Predicted hull distances.
+    stability_threshold
+        Maximum hull distance considered stable.
+    fillna
+        Whether missing predictions count as unstable.
+
+    Returns
+    -------
+    tuple
+        Classification masks and numeric true and predicted values.
+    """
     if len(each_true) != len(each_pred):
         raise ValueError(f"len(each_true)={len(each_true)} != {len(each_pred)=}")
 
@@ -74,7 +92,25 @@ def classify_stable(
     stability_threshold: float = STABILITY_THRESHOLD,
     fillna: bool = True,
 ) -> _ClassificationMasks:
-    """Return true-positive, false-negative, false-positive, and true-negative masks."""
+    """
+    Return classification masks for stable and unstable materials.
+
+    Parameters
+    ----------
+    each_true
+        True hull distances.
+    each_pred
+        Predicted hull distances.
+    stability_threshold
+        Maximum hull distance considered stable.
+    fillna
+        Whether missing predictions count as unstable.
+
+    Returns
+    -------
+    tuple[pandas.Series, pandas.Series, pandas.Series, pandas.Series]
+        True-positive, false-negative, false-positive, and true-negative masks.
+    """
     masks, _, _ = _classify_stable(
         each_true,
         each_pred,
@@ -85,7 +121,21 @@ def classify_stable(
 
 
 def _safe_ratio(numerator: float | int, denominator: float | int) -> float:
-    """Divide positive-denominator values, otherwise returning NaN."""
+    """
+    Divide positive-denominator values, otherwise returning NaN.
+
+    Parameters
+    ----------
+    numerator
+        Ratio numerator.
+    denominator
+        Ratio denominator.
+
+    Returns
+    -------
+    float
+        Ratio or NaN for a non-positive denominator.
+    """
     return numerator / denominator if denominator > 0 else float("nan")
 
 
@@ -96,10 +146,27 @@ def stable_metrics(
     stability_threshold: float = STABILITY_THRESHOLD,
     fillna: bool = True,
 ) -> dict[str, MetricValue]:
-    """Calculate stability classification and hull-distance regression metrics.
+    """
+    Calculate classification and hull-distance regression metrics.
 
     Inputs should contain finite values or missing values. Artifact evaluation should
     use ``evaluate_discovery``, which also masks outliers and infinities.
+
+    Parameters
+    ----------
+    each_true
+        True hull distances.
+    each_pred
+        Predicted hull distances.
+    stability_threshold
+        Maximum hull distance considered stable.
+    fillna
+        Whether missing predictions count as unstable.
+
+    Returns
+    -------
+    dict[str, MetricValue]
+        Classification and regression metrics.
     """
     masks, each_true_array, each_pred_array = _classify_stable(
         each_true,
@@ -190,7 +257,21 @@ def stable_metrics(
 def _align_predictions_prepared(
     indexed_reference: pd.DataFrame, model_predictions: pd.Series
 ) -> pd.Series:
-    """Align predictions to an already-validated reference index."""
+    """
+    Align predictions to an already-validated reference index.
+
+    Parameters
+    ----------
+    indexed_reference
+        Validated reference data indexed by material ID.
+    model_predictions
+        Predictions indexed by material ID.
+
+    Returns
+    -------
+    pandas.Series
+        Numeric predictions aligned to the reference.
+    """
     if model_predictions.index.hasnans:
         raise ValueError("discovery predictions contain missing material_id values")
     model_predictions = model_predictions.copy()
@@ -219,9 +300,22 @@ def _align_predictions_prepared(
 def align_predictions(
     reference: pd.DataFrame, model_predictions: pd.Series
 ) -> pd.Series:
-    """Align predictions to reference order, rejecting invalid or unknown IDs.
+    """
+    Align predictions to reference order, rejecting invalid or unknown IDs.
 
     Missing reference IDs remain as NaN predictions.
+
+    Parameters
+    ----------
+    reference
+        Discovery reference data.
+    model_predictions
+        Predictions indexed by material ID.
+
+    Returns
+    -------
+    pandas.Series
+        Numeric predictions aligned to the reference.
     """
     return _align_predictions_prepared(
         _validated_reference_frame(reference), model_predictions
@@ -231,7 +325,21 @@ def align_predictions(
 def _hull_distances(
     indexed_reference: pd.DataFrame, aligned_predictions: pd.Series
 ) -> tuple[pd.Series, pd.Series]:
-    """Return true and predicted hull distances from prepared inputs."""
+    """
+    Return true and predicted hull distances from prepared inputs.
+
+    Parameters
+    ----------
+    indexed_reference
+        Validated reference data indexed by material ID.
+    aligned_predictions
+        Formation-energy predictions aligned to the reference.
+
+    Returns
+    -------
+    tuple[pandas.Series, pandas.Series]
+        True and predicted hull distances.
+    """
     each_true = pd.to_numeric(indexed_reference[E_ABOVE_HULL], errors="coerce")
     reference_formation_energy = pd.to_numeric(
         indexed_reference[REFERENCE_FORMATION_ENERGY], errors="coerce"
@@ -246,7 +354,21 @@ def _discovery_subset_indices_prepared(
     indexed_reference: pd.DataFrame,
     each_pred: pd.Series,
 ) -> dict[DiscoverySubset, pd.Index]:
-    """Return the three subsets from prepared reference and hull distances."""
+    """
+    Return the three subsets from prepared reference and hull distances.
+
+    Parameters
+    ----------
+    indexed_reference
+        Validated reference data indexed by material ID.
+    each_pred
+        Predicted hull distances aligned to the reference.
+
+    Returns
+    -------
+    dict[DiscoverySubset, pandas.Index]
+        Material identifiers for each discovery subset.
+    """
     unique_prototype_index = indexed_reference.index[
         indexed_reference[UNIQUE_PROTOTYPE].astype(bool)
     ]
@@ -267,7 +389,21 @@ def _normalized_subset_indices(
     subset_indices: SubsetIndices,
     reference_index: pd.Index,
 ) -> dict[DiscoverySubset, pd.Index]:
-    """Normalize and validate given subset indices."""
+    """
+    Normalize and validate given subset indices.
+
+    Parameters
+    ----------
+    subset_indices
+        Material identifiers keyed by discovery subset.
+    reference_index
+        Valid reference material identifiers.
+
+    Returns
+    -------
+    dict[DiscoverySubset, pandas.Index]
+        Validated material identifiers for every subset.
+    """
     normalized: dict[DiscoverySubset, pd.Index] = {}
     for subset_key, identifiers in subset_indices.items():
         try:
@@ -304,7 +440,27 @@ def _calc_discovery_metrics_prepared(
     dict[DiscoverySubset, dict[str, MetricValue]],
     dict[DiscoverySubset, pd.Index],
 ]:
-    """Calculate metrics from already-validated, aligned discovery inputs."""
+    """
+    Calculate metrics from validated, aligned discovery inputs.
+
+    Parameters
+    ----------
+    indexed_reference
+        Validated reference data indexed by material ID.
+    aligned_predictions
+        Formation-energy predictions aligned to the reference.
+    subset_indices
+        Optional material identifiers for each subset.
+    uniq_proto_prevalence
+        Stable-material prevalence among unique prototypes.
+    canonical
+        Whether to require canonical leaderboard inputs.
+
+    Returns
+    -------
+    tuple
+        Metrics and material identifiers grouped by discovery subset.
+    """
     each_true, each_pred = _hull_distances(indexed_reference, aligned_predictions)
     canonical_indices = (
         _discovery_subset_indices_prepared(indexed_reference, each_pred)

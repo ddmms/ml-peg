@@ -33,7 +33,14 @@ class DiscoverySubset(str, Enum):
     most_stable_10k = "most_stable_10k"
 
     def __str__(self) -> str:
-        """Return the serialized subset key."""
+        """
+        Return the serialized subset key.
+
+        Returns
+        -------
+        str
+            Serialized subset key.
+        """
         return self.value
 
 
@@ -42,7 +49,21 @@ def index_by_material_id(
     *,
     artifact_name: str,
 ) -> pd.DataFrame:
-    """Return a copy indexed by validated material identifiers."""
+    """
+    Return a copy indexed by validated material identifiers.
+
+    Parameters
+    ----------
+    dataframe
+        Artifact data containing material identifiers.
+    artifact_name
+        Artifact label used in error messages.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Copy indexed by material ID.
+    """
     identifiers = material_id_index(
         dataframe, id_column=MATERIAL_ID, artifact_name=artifact_name
     )
@@ -63,13 +84,41 @@ def _validated_frame(
     required_columns: tuple[str, ...],
     artifact_name: str,
 ) -> pd.DataFrame:
-    """Validate required columns and IDs, returning an indexed copy."""
+    """
+    Validate required columns and IDs, returning an indexed copy.
+
+    Parameters
+    ----------
+    dataframe
+        Artifact data to validate.
+    required_columns
+        Column names that must be present.
+    artifact_name
+        Artifact label used in error messages.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated copy indexed by material ID.
+    """
     validate_required_columns(dataframe, required_columns, artifact_name=artifact_name)
     return index_by_material_id(dataframe, artifact_name=artifact_name)
 
 
 def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """Validate a discovery reference and return its indexed copy."""
+    """
+    Validate a discovery reference and return its indexed copy.
+
+    Parameters
+    ----------
+    dataframe
+        Discovery reference data.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Validated copy indexed by material ID.
+    """
     indexed_dataframe = _validated_frame(
         dataframe, REFERENCE_COLUMNS, "discovery reference"
     )
@@ -99,17 +148,43 @@ def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_reference_frame(dataframe: pd.DataFrame) -> None:
-    """Validate discovery reference columns, IDs, energies, and flags."""
+    """
+    Validate discovery reference columns, IDs, energies, and flags.
+
+    Parameters
+    ----------
+    dataframe
+        Discovery reference data.
+    """
     _validated_reference_frame(dataframe)
 
 
 def validate_prediction_frame(dataframe: pd.DataFrame) -> None:
-    """Validate discovery prediction columns and material IDs."""
+    """
+    Validate discovery prediction columns and material IDs.
+
+    Parameters
+    ----------
+    dataframe
+        Discovery prediction data.
+    """
     _validated_frame(dataframe, PREDICTION_COLUMNS, "discovery predictions")
 
 
 def prediction_series(dataframe: pd.DataFrame) -> pd.Series:
-    """Return validated formation-energy predictions indexed by material ID."""
+    """
+    Return validated formation-energy predictions indexed by material ID.
+
+    Parameters
+    ----------
+    dataframe
+        Discovery prediction data.
+
+    Returns
+    -------
+    pandas.Series
+        Formation-energy predictions indexed by material ID.
+    """
     indexed_dataframe = _validated_frame(
         dataframe, PREDICTION_COLUMNS, "discovery predictions"
     )
