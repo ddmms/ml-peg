@@ -14,19 +14,26 @@ metrics:
     level_of_theory: Experimental (Gilbert et al., J. Chem. Eng. Data 62, 2056, 2017)
     weight: 0
   CN Li-O_water Error:
-    good: 0.0
+    good: 0.15
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in Li-O_water coordination number vs experimental reference (CN=2.0, Watanabe et al. J. Phys. Chem. B 2021, ~18.5 m, neutron diffraction with isotopic substitution)"
-    level_of_theory: Experimental (neutron diffraction, Watanabe et al. JPCB 2021)
-    weight: 1
+    tooltip: "Absolute error in Li-O_water coordination number vs theoretical reference at 21 m (CN=2.4: r2SCAN AIMD 2.23 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 2.35-2.39 over >2 ns). The good threshold (0.15) equals the reference uncertainty (AIMD vs converged spread). The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and not used for the partitioning."
+    level_of_theory: Theory (r2SCAN AIMD + r2SCAN-trained MACE, 21 m)
+    weight: 0.25
   CN Li-O_TFSI Error:
-    good: 0.0
+    good: 0.05
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in Li-O_TFSI coordination number vs experimental reference (CN=2.0, Watanabe et al. J. Phys. Chem. B 2021, ~18.5 m, neutron diffraction with isotopic substitution)"
-    level_of_theory: Experimental (neutron diffraction, Watanabe et al. JPCB 2021)
-    weight: 1
+    tooltip: "Absolute error in Li-O_TFSI coordination number vs theoretical reference at 21 m (CN=1.9: r2SCAN AIMD 2.02 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 1.89-1.91 over >2 ns). The good threshold (0.05) equals the reference uncertainty (FT/TfS agreement). The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and not used for the partitioning."
+    level_of_theory: Theory (r2SCAN AIMD + r2SCAN-trained MACE, 21 m)
+    weight: 0.25
+  CN Li-O_total Error:
+    good: 0.10
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in total Li-O coordination number vs reference CN=4.3 (r2SCAN AIMD 4.31; converged r2SCAN-trained MACE 4.27-4.29; consistent with the experimental 4.21 at ~18.5 m, Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). The good threshold (0.10) equals the theory-experiment spread."
+    level_of_theory: Theory (r2SCAN, 21 m), consistent with experiment at 18.5 m
+    weight: 0.5
   S(q) R-factor:
     good: 0.0
     bad: 0.5

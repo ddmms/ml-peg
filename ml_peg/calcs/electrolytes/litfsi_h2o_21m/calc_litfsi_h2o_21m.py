@@ -35,11 +35,18 @@ Nose-Hoover chain (``NVT_NH``, equivalent to LAMMPS ``fix nvt``) and NPT the
 Martyna-Tobias-Klein chain (``NPT_MTK``, the formulation used by LAMMPS
 ``fix npt``; plain ``NPT`` in janus-core is Melchionna and would not match).
 
-Experimental references:
+Reference values:
 
-* Density: 1.7126 g/cm3 (Gilbert et al., J. Chem. Eng. Data 62, 2056, 2017).
-* Li-O CN: 2.0 each for water/TFSI (Watanabe et al., JPCB 125, 7477, 2021,
-  ~18.5 m, neutron diffraction with isotopic substitution).
+* Density: 1.7126 g/cm3 (experimental; Gilbert et al., J. Chem. Eng. Data
+  62, 2056, 2017).
+* Li-O CN: 2.4 (water), 1.9 (TFSI), 4.3 (total). Theoretical references at
+  21 m: r2SCAN AIMD (Li128, 20 ps) gives 2.23/2.02/4.31; MACE potentials
+  trained on the same r2SCAN dataset converge to 2.35-2.39/1.89-1.91/
+  4.27-4.29 over >2 ns. The total is consistent with the experimental 4.21
+  at ~18.5 m (Watanabe et al., JPCB 125, 7477, 2021, neutron diffraction
+  with isotopic substitution); the experimental water/TFSI split at that
+  concentration is not used, as it disagrees systematically with all MD
+  partitionings and is measured at a different composition.
 * S(q): SAXS (Zhang et al., J. Phys. Chem. B 125, 4501, 2021).
 
 Data live under ``DATA_ROOT/<registry_model_name>/``, where ``DATA_ROOT``

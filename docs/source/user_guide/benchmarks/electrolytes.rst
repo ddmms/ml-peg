@@ -34,16 +34,35 @@ Metrics
    integrating the Li-O_water radial distribution function up to the first
    minimum (R_cut = 2.83 A, from r2SCAN AIMD reference). Water oxygens are
    identified from the first frame as those bonded to a hydrogen
-   (d_OH < 1.25 A). Reference value: 2.0 (Watanabe et al.,
-   *J. Phys. Chem. B* 125, 7477 (2021), neutron diffraction with isotopic
-   substitution at ~18.5 m).
+   (d_OH < 1.25 A). Reference value: 2.4, anchored to theory at 21 m
+   (r2SCAN AIMD, Li128, 20 ps: 2.23; MACE potentials trained on the same
+   r2SCAN dataset, converged over >2 ns: 2.35-2.39). The experimental
+   partitioning of Watanabe et al., *J. Phys. Chem. B* 125, 7477 (2021)
+   (1.93 water / 2.28 TFSI, neutron diffraction with isotopic substitution)
+   is measured at a different composition (~18.5 m) and disagrees
+   systematically with all MD-based partitionings (classical, AIMD, and
+   MLIP), suggesting a method-related bias; it is therefore not used for
+   the per-species references. Weight: 0.25; the "good" threshold (0.15)
+   equals the uncertainty of the reference (AIMD vs converged-MLIP spread).
 
 3. Li-O_TFSI coordination number error
 
    Same definition as above, restricted to TFSI oxygens (those bonded to a
-   sulfur, d_OS < 1.75 A). Reference value: 2.0 (same source).
+   sulfur, d_OS < 1.75 A). Reference value: 1.9, anchored to theory at 21 m
+   (r2SCAN AIMD: 2.02; converged r2SCAN-trained MACE: 1.89-1.91).
+   Weight: 0.25; "good" threshold 0.05 (FT/TfS agreement).
 
-4. S(q) R-factor
+4. Li-O_total coordination number error
+
+   Absolute error in the total Li-O coordination number (water + TFSI).
+   Reference value: 4.3, from theory at 21 m (r2SCAN AIMD: 4.31; converged
+   r2SCAN-trained MACE: 4.27-4.29), and consistent with the experimental
+   total of 4.21 +/- 0.03 at ~18.5 m (Watanabe et al. 2021), which is
+   robust to the concentration difference. Weight: 0.5; "good" threshold
+   0.10 (theory-experiment spread). The three CN metrics together carry
+   the same total weight (1.0) as the density and S(q) families.
+
+5. S(q) R-factor
 
    R-factor between the computed and experimental X-ray structure factor,
    ``sum(|S_exp - S_calc|) / sum(|S_exp|)``. S(q) is computed via dynasor
@@ -88,10 +107,12 @@ Reference data:
 
 * Density: Gilbert et al., *J. Chem. Eng. Data* 62, 2056 (2017),
   DOI: 10.1021/acs.jced.7b00135.
-* Li-O coordination numbers: Watanabe et al., *J. Phys. Chem. B* 125, 7477
-  (2021), DOI: 10.1021/acs.jpcb.1c04693.
+* Li-O coordination numbers: theoretical references at 21 m (r2SCAN AIMD and
+  r2SCAN-trained MACE potentials, Brugnoli et al., arXiv:2603.22099);
+  experimental total CN at ~18.5 m: Watanabe et al., *J. Phys. Chem. B* 125,
+  7477 (2021), DOI: 10.1021/acs.jpcb.1c04693.
 * X-ray S(q): Zhang et al., *J. Phys. Chem. B* 125, 4501 (2021),
   DOI: 10.1021/acs.jpcb.1c02189.
 
 Further details on the simulation protocol and MLIP assessment for this
-system: L. Brugnoli, arXiv:2603.22099 (2026).
+system: Brugnoli et al., arXiv:2603.22099 (2026).

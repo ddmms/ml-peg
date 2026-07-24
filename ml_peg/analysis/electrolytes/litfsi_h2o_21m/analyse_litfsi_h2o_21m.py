@@ -42,8 +42,20 @@ DR = 0.02  # Å (bin width used in calc_rdf.py)
 
 # Experimental references
 RHO_EXP = 1.7126  # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
-CN_EXP_WATER = 2.0  # Watanabe et al., JPCB 125, 7477 (2021)
-CN_EXP_TFSI = 2.0
+
+# Coordination number references.
+# The total CN is anchored to theory at 21 m: r2SCAN AIMD (Li128, 20 ps) gives
+# 4.31, and two independent MACE potentials trained on the same r2SCAN dataset
+# (fine-tuned and from-scratch) converge to 4.27-4.29 over >2 ns; the neutron
+# diffraction experiment (Watanabe et al., JPCB 125, 7477, 2021) gives 4.21 at
+# the nearby composition x_LiTFSA=0.25 (~18.5 m). The water/TFSI partitioning
+# is anchored to theory only: the experimental split (1.93/2.28) is at a
+# different concentration and shows a systematic inversion vs all MD methods,
+# so it is not used. AIMD (20 ps): 2.23/2.02; converged r2SCAN-trained MACE
+# (>2 ns): 2.35-2.39 (water) and 1.89-1.91 (TFSI).
+CN_REF_WATER = 2.4  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
+CN_REF_TFSI = 1.9  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
+CN_REF_TOTAL = 4.3  # theory at 21 m; exp. 4.21 at ~18.5 m (Watanabe 2021)
 
 
 # =============================================================================
@@ -227,8 +239,9 @@ def load_rdf_results() -> dict[str, dict]:
             "cn_water": cn_w,
             "cn_tfsi": cn_f,
             "cn_total": cn_w + cn_f,
-            "err_water": abs(cn_w - CN_EXP_WATER),
-            "err_tfsi": abs(cn_f - CN_EXP_TFSI),
+            "err_water": abs(cn_w - CN_REF_WATER),
+            "err_tfsi": abs(cn_f - CN_REF_TFSI),
+            "err_total": abs(cn_w + cn_f - CN_REF_TOTAL),
             "r": r,
             "gr_water": data["gr_LiO_water"],
             "gr_tfsi": data["gr_LiO_TFSI"],
@@ -276,17 +289,17 @@ def build_cn_bar_chart(data: dict[str, dict]) -> go.Figure:
     )
 
     fig.add_hline(
-        y=CN_EXP_WATER,
+        y=CN_REF_WATER,
         line_dash="dash",
         line_color="steelblue",
-        annotation_text=f"Exp. O<sub>water</sub> ({CN_EXP_WATER})",
+        annotation_text=f"Ref. O<sub>water</sub> ({CN_REF_WATER}, r2SCAN)",
         annotation_position="top right",
     )
     fig.add_hline(
-        y=CN_EXP_TFSI,
+        y=CN_REF_TFSI,
         line_dash="dash",
         line_color="coral",
-        annotation_text=f"Exp. O<sub>TFSI</sub> ({CN_EXP_TFSI})",
+        annotation_text=f"Ref. O<sub>TFSI</sub> ({CN_REF_TFSI}, r2SCAN)",
         annotation_position="bottom right",
     )
 
@@ -682,8 +695,8 @@ def metrics(
     dict[str, dict]
         Metric names mapped to ``{model_name: value}`` dicts. The metric
         order matches ``metrics.yml`` (Density Error, Density Error (%),
-        CN Li-O_water Error, CN Li-O_TFSI Error, S(q) R-factor,
-        First Peak Position Error).
+        CN Li-O_water Error, CN Li-O_TFSI Error, CN Li-O_total Error,
+        S(q) R-factor, First Peak Position Error).
     """
     return {
         "Density Error": {
@@ -697,6 +710,9 @@ def metrics(
         },
         "CN Li-O_TFSI Error": {
             model: d["err_tfsi"] for model, d in rdf_results.items()
+        },
+        "CN Li-O_total Error": {
+            model: d["err_total"] for model, d in rdf_results.items()
         },
         "S(q) R-factor": {model: r["r_factor"] for model, r in xray_sf_results.items()},
         "First Peak Position Error": {
