@@ -63,10 +63,27 @@ def prepare_discovery_inputs(
     max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
     decimals: int = EVALUATION_DECIMALS,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """Validate, align, mask, and round discovery evaluation inputs.
+    """
+    Validate, align, mask, and round discovery evaluation inputs.
 
     Errors strictly above the threshold become NaN before all energies are rounded
     to the shared evaluation precision.
+
+    Parameters
+    ----------
+    reference
+        Discovery reference data.
+    predictions
+        Formation-energy predictions.
+    max_error_threshold
+        Maximum absolute formation-energy error to retain.
+    decimals
+        Number of decimal places used for evaluation.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.Series]
+        Prepared reference data and aligned predictions.
     """
     if max_error_threshold is not None and (
         not math.isfinite(max_error_threshold) or max_error_threshold < 0
@@ -103,7 +120,23 @@ def discovery_subset_indices(
     *,
     max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
 ) -> dict[DiscoverySubset, pd.Index]:
-    """Return benchmark subsets after applying artifact preprocessing."""
+    """
+    Return benchmark subsets after applying artifact preprocessing.
+
+    Parameters
+    ----------
+    reference
+        Discovery reference data.
+    predictions
+        Formation-energy predictions.
+    max_error_threshold
+        Maximum absolute formation-energy error to retain.
+
+    Returns
+    -------
+    dict[DiscoverySubset, pandas.Index]
+        Material identifiers for each discovery subset.
+    """
     prepared_reference, prepared_predictions = prepare_discovery_inputs(
         reference,
         predictions,
@@ -123,7 +156,29 @@ def calc_discovery_metrics(
     canonical: bool = False,
     max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
 ) -> dict[DiscoverySubset, dict[str, MetricValue]]:
-    """Calculate metrics after applying artifact masking and rounding."""
+    """
+    Calculate metrics after applying artifact masking and rounding.
+
+    Parameters
+    ----------
+    reference
+        Discovery reference data.
+    predictions
+        Formation-energy predictions.
+    subset_indices
+        Optional material identifiers for each subset.
+    uniq_proto_prevalence
+        Stable-material prevalence among unique prototypes.
+    canonical
+        Whether to require canonical leaderboard inputs.
+    max_error_threshold
+        Maximum absolute formation-energy error to retain.
+
+    Returns
+    -------
+    dict[DiscoverySubset, dict[str, MetricValue]]
+        Metrics grouped by discovery subset.
+    """
     prepared_reference, prepared_predictions = prepare_discovery_inputs(
         reference,
         predictions,
@@ -141,7 +196,19 @@ def calc_discovery_metrics(
 
 
 def _json_safe_metric(value: MetricValue) -> JsonMetricValue:
-    """Round a metric and convert non-finite values to JSON null."""
+    """
+    Round a metric and convert non-finite values to JSON null.
+
+    Parameters
+    ----------
+    value
+        Metric value to serialize.
+
+    Returns
+    -------
+    float or int or None
+        JSON-safe metric value.
+    """
     if isinstance(value, int):
         return value
     numeric_value = float(value)
@@ -160,10 +227,29 @@ def evaluate_discovery(
     uniq_proto_prevalence: float | None = None,
     max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
 ) -> DiscoveryResults:
-    """Evaluate formation-energy predictions on the three discovery subsets.
+    """
+    Evaluate formation-energy predictions on the three discovery subsets.
 
     Leaderboard mode takes unrounded unique-prototype prevalence; synthetic mode
     derives it from the prepared reference.
+
+    Parameters
+    ----------
+    reference
+        Discovery reference data.
+    predictions
+        Formation-energy predictions.
+    canonical
+        Whether to require canonical leaderboard inputs.
+    uniq_proto_prevalence
+        Stable-material prevalence among unique prototypes.
+    max_error_threshold
+        Maximum absolute formation-energy error to retain.
+
+    Returns
+    -------
+    DiscoveryResults
+        JSON-compatible evaluation result.
     """
     prepared_reference, prepared_predictions = prepare_discovery_inputs(
         reference,
@@ -208,7 +294,27 @@ def evaluate_discovery_paths(
     uniq_proto_prevalence: float | None = None,
     max_error_threshold: float | None = MAX_E_FORM_ERROR_THRESHOLD,
 ) -> DiscoveryResults:
-    """Load local CSV artifacts and evaluate discovery predictions without writes."""
+    """
+    Load local CSV artifacts and evaluate discovery predictions without writes.
+
+    Parameters
+    ----------
+    reference_path
+        Local reference CSV path.
+    prediction_path
+        Local prediction CSV path.
+    canonical
+        Whether to require canonical leaderboard inputs.
+    uniq_proto_prevalence
+        Stable-material prevalence among unique prototypes.
+    max_error_threshold
+        Maximum absolute formation-energy error to retain.
+
+    Returns
+    -------
+    DiscoveryResults
+        JSON-compatible evaluation result.
+    """
     return evaluate_discovery(
         read_csv_artifact(reference_path, dtype={MATERIAL_ID: str}),
         read_csv_artifact(prediction_path, dtype={MATERIAL_ID: str}),
@@ -222,7 +328,16 @@ def write_discovery_metrics_json(
     results: DiscoveryResults,
     output_path: str | os.PathLike[str],
 ) -> None:
-    """Write discovery metrics as JSON."""
+    """
+    Write discovery metrics as JSON.
+
+    Parameters
+    ----------
+    results
+        Evaluation results to serialize.
+    output_path
+        Destination JSON path.
+    """
     with open(output_path, mode="w", encoding="utf-8") as file:
         json.dump(results, file, allow_nan=False, indent=2, sort_keys=True)
         file.write("\n")
