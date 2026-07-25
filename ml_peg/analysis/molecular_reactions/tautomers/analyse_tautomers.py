@@ -8,15 +8,16 @@ from pathlib import Path
 from ase import Atoms
 from ase.calculators.calculator import Calculator
 from ase.io import write
-from mlipaudit.benchmarks.tautomers.tautomers import TautomersModelOutput
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.tautomers.tautomers import TautomersModelOutput
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegTautomersBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -41,12 +42,11 @@ def labels() -> list:
     list
         List of all tautomer pair structure IDs.
     """
-    for model_name in MODELS:
-        path = CALC_PATH / model_name / "model_output.json"
-        if path.exists():
-            output = TautomersModelOutput.model_validate_json(path.read_text())
-            return sorted(output.structure_ids)
-    return []
+    mock_path = CALC_PATH / "mock" / "model_output.json"
+    if not mock_path.exists():
+        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+    output = TautomersModelOutput.model_validate_json(mock_path.read_text())
+    return sorted(output.structure_ids)
 
 
 @pytest.fixture
@@ -59,11 +59,6 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``TautomersResult``.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/molecular_reactions/tautomers/tautomers.zip",
-        filename="tautomers.zip",
-    )
-
     results = {}
     for model_name in MODELS:
         path = CALC_PATH / model_name / "model_output.json"
@@ -71,7 +66,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegTautomersBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = TautomersModelOutput.model_validate_json(
@@ -94,13 +89,9 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/molecular_reactions/tautomers/tautomers.zip",
-        filename="tautomers.zip",
-    )
     benchmark = MlPegTautomersBenchmark(
         force_field=Calculator(),
-        data_input_dir=data_input_dir,
+        data_input_dir=CALC_PATH,
         run_mode="standard",
     )
     elements = sorted(

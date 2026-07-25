@@ -59,12 +59,22 @@ energies are evaluated.
 Metrics
 -------
 
-1. Reaction energy MAE
-
 For each pair the reaction energy is the energy difference between the two
-tautomers. The mean absolute error (MAE) between the predicted and reference
-reaction energies is reported in kcal/mol, averaged across all pairs. Pairs on
-which inference fails are excluded from the average.
+tautomers. The predicted reaction energies are compared against the
+:math:`\omega B97M-D3(BJ)/def2-TZVPPD` reference reaction energies.
+
+1. MAE
+
+The mean absolute error between predicted and reference reaction energies,
+in kcal/mol, averaged over all pairs. Pairs on which inference fails are
+excluded from the average. Reported for information only (not scored).
+
+2. Tautomer Score
+
+For each pair the absolute deviation between the predicted
+and reference reaction energy is passed through a soft threshold (at 0.05
+kcal/mol) to give a value between 0 and 1, and these are averaged across all
+pairs. Pairs for which the model fails to produce an energy score 0.
 
 Computational cost
 ------------------
