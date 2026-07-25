@@ -588,14 +588,13 @@ Summary
 -------
 
 Performance in predicting the phonon dispersion and thermal properties of bulk
-diamond (carbon).
+diamond (Carbon).
 
 The benchmark evaluates (1) phonon frequency accuracy along a fixed high-symmetry
 path in the Brillouin zone, and (2) the Grüneisen parameter, Debye temperature, and
 Slack-formula lattice thermal conductivity — all compared against RSCAN DFT references.
 The total phonon density of states (DOS) is additionally computed and displayed
-alongside the dispersion in the app for qualitative comparison; it does not enter
-the score.
+alongside the dispersion in the app for qualitative comparison.
 The thermal metrics probe two physically independent aspects of the force constants:
 anharmonicity (Grüneisen parameter) and absolute stiffness (Debye temperature).
 
@@ -606,26 +605,19 @@ Metrics
 1. Band MAE
 
 Mean absolute error (MAE) between predicted and reference phonon frequencies.
-
-For bulk diamond, the phonon band structure is computed for each model along the same
-q-point path as the reference calculation. At each q-point, the six phonon frequencies
-are compared to the reference frequencies after sorting the modes to avoid branch
-labelling ambiguities. The MAE is evaluated over all q-points and all phonon branches.
+It is evaluated over all q-points and all phonon branches.
 
 
 2. Band RMSE
 
 Root mean squared error (RMSE) between predicted and reference phonon frequencies.
-
-The RMSE is computed using the same sorted, mode-unlabelled comparison procedure as in
-(1), over all q-points and all phonon branches.
+It is evaluated over all q-points and all phonon branches.
 
 3. Δγ
 
 Absolute error in the mean Grüneisen parameter relative to the DFT reference.
 The mean Grüneisen parameter is computed on a 20×20×20 q-mesh by finite differences
 between force constants at volumes V\ :sub:`0` ± 1% (see the Method section below).
-The DFT reference is produced by the same pipeline using DFT force constants.
 
 4. Δθ\ :sub:`D` (K)
 
@@ -666,8 +658,8 @@ for DFT due to the rapid decay of diamond's interatomic force constants.
 **Relaxation**
 
 Before computing force constants, atomic positions are relaxed for each model using
-the FIRE optimiser with symmetry fixed (``fmax=0.005``, up to 1000 steps), matching
-the general phonon benchmark. The cell is kept fixed at the reference geometry so
+the FIRE optimiser with symmetry fixed (``fmax=0.005``, up to 1000 steps).
+The cell is kept fixed at the reference geometry so
 that band paths remain directly comparable to the DFT reference.
 
 **Phonon band structure**
@@ -702,7 +694,7 @@ It is computed from three sets of second-order force constants:
 3. Compressed volume :math:`V_0(1 - \delta)` — force constants at −1% volumetric strain.
 
 The volumetric strain is applied as a uniform scaling of the unit cell
-(:math:`\delta = 0.01` by default). Atomic positions are scaled affinely with the cell;
+(:math:`\delta = 0.01` by default). Atomic positions are scaled affinely with the cell,
 no re-relaxation is performed at the strained volumes. Mode Grüneisen parameters are
 evaluated on a 20×20×20 sampling mesh via phonopy's ``PhonopyGruneisen`` interface. The
 reported scalar :math:`\bar{\gamma}` is the q-point- and mode-weighted mean over all
@@ -812,8 +804,8 @@ Metrics
 
    For each case, reference phonon frequencies are provided along a fixed high-symmetry
    q-path, pre-converted from CASTEP outputs. Atomic positions are then relaxed for each model
-   using the FIRE optimiser with symmetry fixed (``fmax=0.001``, up to 1000 steps), as in
-   the general phonon benchmark; the cell is kept fixed at the reference geometry. Phonon
+   using the FIRE optimiser with symmetry fixed (``fmax=0.001``, up to 1000 steps).
+   The cell is kept fixed at the reference geometry. Phonon
    frequencies are computed using finite displacements in a 2×2×2 supercell with a
    displacement magnitude of 0.02 Å and ``plusminus=True``, and the resulting force
    constants are symmetrised. The reference dispersion is linearly interpolated onto the
