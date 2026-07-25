@@ -2032,7 +2032,7 @@ dependencies = [
     { name = "dargs" },
     { name = "h5py" },
     { name = "mendeleev", version = "0.19.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-grace' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "mendeleev", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
+    { name = "mendeleev", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "ml-dtypes", version = "0.3.2", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-grace' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "ml-dtypes", version = "0.5.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-6-ml-peg-grace' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
@@ -2130,7 +2130,7 @@ wheels = [
 
 [[package]]
 name = "dm-haiku"
-version = "0.0.16"
+version = "0.0.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
@@ -2138,9 +2138,9 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "tabulate", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/fc/daf4689198f4c0af8b71611f39fcd5d68ce0ae59fa919b9e58192a7d70f5/dm_haiku-0.0.16.tar.gz", hash = "sha256:1830b0ce63c5cef2fb3a63a13033c9d8f612ee7f896f2b0b25a6ba484f5fad28", size = 263092, upload-time = "2025-12-17T15:55:35.145Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/1c/0968ff6092ff510dca8dfb8ce14c4fcb6059dd680ee15e46410de993415d/dm_haiku-0.0.17.tar.gz", hash = "sha256:6daa56f3b54f43675713ef7525d1dec7327f2512b57cc2b12104f76f6d7cf581", size = 265004, upload-time = "2026-07-27T09:46:52.571Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/91/0f53835d0292a74e6b37e68125b669827e2a75a26e01c34741d6c13cca6c/dm_haiku-0.0.16-py3-none-any.whl", hash = "sha256:cc355d4d5aaa85af20e5a23ccd278bc751232ac8e5971261bed39318c07d744f", size = 374267, upload-time = "2025-12-17T15:55:33.9Z" },
+    { url = "https://files.pythonhosted.org/packages/54/82/7045ad957defb3bfc28b89c748a1874c73f37b9337963b52d6de48ca4648/dm_haiku-0.0.17-py3-none-any.whl", hash = "sha256:aa1394276adf59d695c910810ad90febb741503a83c32b022ce1162483904bbb", size = 377007, upload-time = "2026-07-27T09:46:51.365Z" },
 ]
 
 [[package]]
@@ -2668,7 +2668,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.139.2"
+version = "0.140.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc", marker = "python_full_version >= '3.11'" },
@@ -2677,18 +2677,18 @@ dependencies = [
     { name = "typing-extensions", marker = "python_full_version >= '3.11'" },
     { name = "typing-inspection", marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/95/d3f0ae10836324a2eab98a52b61210ac609f08200bf4bb0dc8132d32f78a/fastapi-0.139.2.tar.gz", hash = "sha256:333145a6891e9b5b3cfceb69baf817e8240cde4d4588ae5a10bf56ffacb6255e", size = 423428, upload-time = "2026-07-16T15:06:17.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/fb/fd7671137d9fa3df1d93a2f5111eb982709201724b29f211e4beb2d58688/fastapi-0.140.0.tar.gz", hash = "sha256:f338951b82fd74ca8f843163aec43ea1a1ce84d515415a50fa98fa25572a5544", size = 420968, upload-time = "2026-07-24T21:16:41.187Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/c7/cb03251d9dfb177246a9809a76f189d21df32dbd4a845951881d11323b7f/fastapi-0.139.2-py3-none-any.whl", hash = "sha256:b9ad015a835173d59865e2f5d8296fbc2b317bf56a2ba1a5bfbdd03de2fd4b1c", size = 130234, upload-time = "2026-07-16T15:06:19.557Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/76/6d9e25ad88da9d3ff744bcdbec4736e38c2288611d43f673a5d9bfa27c07/fastapi-0.140.0-py3-none-any.whl", hash = "sha256:e951c0a0d9540bf5d9a2a9e078fd415da2ab7e312d435139e7d9e2e7fe9f0b23", size = 130863, upload-time = "2026-07-24T21:16:42.89Z" },
 ]
 
 [[package]]
 name = "fastjsonschema"
-version = "2.21.2"
+version = "2.22.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/20/b5/23b216d9d985a956623b6bd12d4086b60f0059b27799f23016af04a74ea1/fastjsonschema-2.21.2.tar.gz", hash = "sha256:b1eb43748041c880796cd077f1a07c3d94e93ae84bba5ed36800a33554ae05de", size = 374130, upload-time = "2025-08-14T18:49:36.666Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/11/c802f752919c1fd83d44b3b955c6e7120c79f355d4a448c358198a11178c/fastjsonschema-2.22.0.tar.gz", hash = "sha256:6eb12e8f9900db6166c3d396d178ebdf6a4215fe22a06e19792edd612a20035a", size = 382291, upload-time = "2026-07-25T20:32:35.561Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/a8/20d0723294217e47de6d9e2e40fd4a9d2f7c4b6ef974babd482a59743694/fastjsonschema-2.21.2-py3-none-any.whl", hash = "sha256:1c797122d0a86c5cace2e54bf4e819c36223b552017172f32c5c024a6b77e463", size = 24024, upload-time = "2025-08-14T18:49:34.776Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/9d/4a0f9355ca3e540b2d22d5f269212e2f227b8f277835b02d8908355245d1/fastjsonschema-2.22.0-py3-none-any.whl", hash = "sha256:60f4c92fda6f93efe3b3261638836478e1e11abc01c647e36e478199f7a86a37", size = 26248, upload-time = "2026-07-25T20:32:33.616Z" },
 ]
 
 [[package]]
@@ -3098,14 +3098,14 @@ wheels = [
 
 [[package]]
 name = "gitpython"
-version = "3.1.55"
+version = "3.1.57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gitdb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/ab/ba0d29f2fa2277ed6256b2ac09003494045355f3a10bf32f351761287870/gitpython-3.1.55.tar.gz", hash = "sha256:781e3b1624dad81b24e9524bf0297b69786a0706db2cbceec1e2b05c38e5152f", size = 225071, upload-time = "2026-07-23T02:52:43.246Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/0d/132ed135c871b6bf91adf16a0e43797cd535b81d4973b5d09291c54fc5ee/gitpython-3.1.57.tar.gz", hash = "sha256:c493ec57c0ef6b19743798b6a5af859c71814b524e7e6f97baa2f8e658961488", size = 225898, upload-time = "2026-07-26T07:33:26.351Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/6a/d3b8208d2f8aac66abe8ccc1c23fa2c89464ec42cc71a601e95d05902428/gitpython-3.1.55-py3-none-any.whl", hash = "sha256:7c9ec1e69c158c081632ab35c41471e302c96db2ae42165036a5d2403378812e", size = 216590, upload-time = "2026-07-23T02:52:41.932Z" },
+    { url = "https://files.pythonhosted.org/packages/41/6e/2139de986d9c7c3ac86f1f8be43858ce90bdfe2f7175e6c80c650ba15242/gitpython-3.1.57-py3-none-any.whl", hash = "sha256:4ccf7d73c10f5c9e76043fbb2675ac5a1b3ff5b41e648f56bcbed5f63792ecaf", size = 217151, upload-time = "2026-07-26T07:33:24.838Z" },
 ]
 
 [[package]]
@@ -3667,7 +3667,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "1.24.0"
+version = "1.25.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -3680,9 +3680,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/9b/d3bb4e7d792835daf34dd7091bbc7d7b4e0437d9388f1ea7239cce49f478/huggingface_hub-1.24.0.tar.gz", hash = "sha256:18431ff4daae0749aa9ba102fc952e314c98e1d30ebdec5319d85ca0a83e1ae5", size = 921848, upload-time = "2026-07-17T09:54:01.022Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/50/db3771a6e4fad4bd28fb055d4363b51cb0ae98c1aa504b79d41fdcab5483/huggingface_hub-1.25.1.tar.gz", hash = "sha256:21129595ca7a753be479b319913e22cc8808361ac118bd76cc413db831b28a99", size = 928426, upload-time = "2026-07-27T09:24:10.117Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/c3/aeaaf3911d2529614be18d1c8b5496afc185560e76568063d517283318af/huggingface_hub-1.24.0-py3-none-any.whl", hash = "sha256:6ed4120a84a6beec900640aa7e346bd766a6b7341e41526fef5dc8bd81fb7d59", size = 771904, upload-time = "2026-07-17T09:53:59.106Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/3f/21e816831c6d16f88a6c784974413fa0421ce8a5d04380c2666ed5b503e5/huggingface_hub-1.25.1-py3-none-any.whl", hash = "sha256:004d4e70350517e24c68a7dbb7dc5e40b2b6aefef8f94bf7a85f6f9835102ea5", size = 774909, upload-time = "2026-07-27T09:24:08.079Z" },
 ]
 
 [[package]]
@@ -5758,7 +5758,7 @@ wheels = [
 
 [[package]]
 name = "mendeleev"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
@@ -5782,15 +5782,17 @@ dependencies = [
     { name = "deprecated", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pandas", marker = "(python_full_version < '3.14' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pandas", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
+    { name = "pint", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "pydantic", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
+    { name = "pydantic-core", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "pyfiglet", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "pygments", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
     { name = "sqlalchemy", marker = "extra == 'extra-6-ml-peg-mattersim' or extra == 'extra-6-ml-peg-mlipaudit' or extra == 'extra-6-ml-peg-uma' or extra != 'extra-6-ml-peg-grace'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/8c/96997d9ac99ef11bf9855b975ac710586f837af342e2e477fb7887916dab/mendeleev-1.1.0.tar.gz", hash = "sha256:34081dd9ae58823287382e8defde8276003d8c2784367bb1271e8e32e7fd07e8", size = 1369344, upload-time = "2025-06-10T17:41:40.758Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/ae/206abdffddef0d9f18c93779c0508d0a5f5022b1cb50269957d5c130cb53/mendeleev-1.2.0.tar.gz", hash = "sha256:8be5a6fe9c3780ffb52b179b6e0720eb5aff898e227139845b6a9b81babd67ac", size = 1370425, upload-time = "2026-07-26T22:37:28.647Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/d3/c94840c7e282c18979513ac257d5099efb0a4149df933d132d75d9229158/mendeleev-1.1.0-py3-none-any.whl", hash = "sha256:be3f3468d444ba30d0db6eff3b0660a76637b6f34177a7c18860592fcb718a47", size = 1378472, upload-time = "2025-06-10T17:41:38.437Z" },
+    { url = "https://files.pythonhosted.org/packages/52/c4/b57b40e8732cc04a8cab9b9915f8077285f93ce20164c58599df85fb8ca6/mendeleev-1.2.0-py3-none-any.whl", hash = "sha256:5506b6fe3a43179b441a706b46a7b3dce6d78484ec411f163ec88793aa361235", size = 1379385, upload-time = "2026-07-26T22:37:26.87Z" },
 ]
 
 [[package]]
@@ -6564,7 +6566,7 @@ dependencies = [
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pandas", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pint", version = "0.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pint", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "plotly", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pyisemail", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pymatgen", version = "2025.6.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
@@ -6609,7 +6611,7 @@ dependencies = [
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra == 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pandas", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "pint", version = "0.25.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "pint", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "plotly", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pyisemail", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
     { name = "pymatgen", version = "2026.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
@@ -8353,49 +8355,15 @@ wheels = [
 name = "pint"
 version = "0.24.4"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version < '3.11' and sys_platform == 'win32'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.11' and sys_platform != 'linux' and sys_platform != 'win32')",
-]
 dependencies = [
-    { name = "flexcache", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "flexparser", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "platformdirs", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "flexcache" },
+    { name = "flexparser" },
+    { name = "platformdirs" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/20/bb/52b15ddf7b7706ed591134a895dbf6e41c8348171fb635e655e0a4bbb0ea/pint-0.24.4.tar.gz", hash = "sha256:35275439b574837a6cd3020a5a4a73645eb125ce4152a73a2f126bf164b91b80", size = 342225, upload-time = "2024-11-07T16:29:46.061Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl", hash = "sha256:aa54926c8772159fcf65f82cc0d34de6768c151b32ad1deb0331291c38fe7659", size = 302029, upload-time = "2024-11-07T16:29:43.976Z" },
-]
-
-[[package]]
-name = "pint"
-version = "0.25.3"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "(python_full_version == '3.12.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.12.*' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "python_full_version == '3.11.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version == '3.11.*' and sys_platform == 'win32'",
-    "(python_full_version == '3.11.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.11.*' and sys_platform != 'linux' and sys_platform != 'win32')",
-]
-dependencies = [
-    { name = "flexcache", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "flexparser", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "platformdirs", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-    { name = "typing-extensions", marker = "python_full_version >= '3.11' or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mlipaudit') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/52/9d/b1379cdbd33a49d17d627bc24e2b63cca06a1c5343b38072d2889499e82e/pint-0.25.3.tar.gz", hash = "sha256:f8f5df6cf65314d74da1ade1bf96f8e3e4d0c41b51577ac53c49e7d44ca5acee", size = 255106, upload-time = "2026-03-19T21:57:08.72Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/dd/a9fe6a0a09512da23951c68bf36466aeecd89def3183dc095edbc807ddc5/pint-0.25.3-py3-none-any.whl", hash = "sha256:27eb25143bd5de9fcc4d5a4b484f16faf6b4615aa93ece6b3373a8c1a3c1b97d", size = 307488, upload-time = "2026-03-19T21:57:07.022Z" },
 ]
 
 [[package]]
@@ -8459,23 +8427,23 @@ wheels = [
 
 [[package]]
 name = "prometheus-client"
-version = "0.25.0"
+version = "0.26.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/fb/d9aa83ffe43ce1f19e557c0971d04b90561b0cfd50762aafb01968285553/prometheus_client-0.25.0.tar.gz", hash = "sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28", size = 86035, upload-time = "2026-04-09T19:53:42.359Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/73/f1334c29c2af4cd9dba6c7817e61b611bd0215e2eb5565c6064a4de18802/prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b", size = 92910, upload-time = "2026-07-24T19:36:41.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/9b/d4b1e644385499c8346fa9b622a3f030dce14cd6ef8a1871c221a17a67e7/prometheus_client-0.25.0-py3-none-any.whl", hash = "sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1", size = 64154, upload-time = "2026-04-09T19:53:41.324Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/a3/b69efbf4143b5b9859b977770bbbabcc2796b702fa69dc40271e45cd5a56/prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6", size = 64494, upload-time = "2026-07-24T19:36:40.854Z" },
 ]
 
 [[package]]
 name = "prompt-toolkit"
-version = "3.0.52"
+version = "3.0.53"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "wcwidth" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/96/06e01a7b38dce6fe1db213e061a4602dd6032a8a97ef6c1a862537732421/prompt_toolkit-3.0.52.tar.gz", hash = "sha256:28cde192929c8e7321de85de1ddbe736f1375148b02f2e17edd840042b1be855", size = 434198, upload-time = "2025-08-27T15:24:02.057Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/ea/39b988c938f75cb75d7045b5c69f8bfed47ee2152c8837fb403de29d6fb8/prompt_toolkit-3.0.53.tar.gz", hash = "sha256:9ec8a0ad96d5c56148b3f914aa79c1564c3fde5d2e6b876e7bc327e353cf8fa6", size = 435492, upload-time = "2026-07-26T20:56:14.758Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/03/0d3ce49e2505ae70cf43bc5bb3033955d2fc9f932163e84dc0779cc47f48/prompt_toolkit-3.0.52-py3-none-any.whl", hash = "sha256:9aac639a3bbd33284347de5ad8d68ecc044b91a762dc39b7c21095fcd6a19955", size = 391431, upload-time = "2025-08-27T15:23:59.498Z" },
+    { url = "https://files.pythonhosted.org/packages/54/6f/84908cad2d6aa5144abcf7b42709fe4fdb459bc640ec7ac5786e7693dabc/prompt_toolkit-3.0.53-py3-none-any.whl", hash = "sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2", size = 392288, upload-time = "2026-07-26T20:56:12.512Z" },
 ]
 
 [[package]]
@@ -9861,11 +9829,11 @@ client = [
 
 [[package]]
 name = "pytz"
-version = "2026.2"
+version = "2026.3.post1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ff/46/dd499ec9038423421951e4fad73051febaa13d2df82b4064f87af8b8c0c3/pytz-2026.2.tar.gz", hash = "sha256:0e60b47b29f21574376f218fe21abc009894a2321ea16c6754f3cad6eb7cdd6a", size = 320861, upload-time = "2026-05-04T01:35:29.667Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/48/fb042503b6ca6cd271261dc559fd6432f7d8c713153e9ec5c591af4dfc1c/pytz-2026.3.post1.tar.gz", hash = "sha256:2211d3fcf9a797d3405cac96ac7f61d80e6a644f72a3309607282fe8a2010c5d", size = 319745, upload-time = "2026-07-25T15:12:07.385Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/dd/96da98f892250475bdf2328112d7468abdd4acc7b902b6af23f4ed958ea0/pytz-2026.2-py2.py3-none-any.whl", hash = "sha256:04156e608bee23d3792fd45c94ae47fae1036688e75032eea2e3bf0323d1f126", size = 510141, upload-time = "2026-05-04T01:35:27.408Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/7b/39c34ca613b0b198cb866466651b26b045e2009864c5183c979a3b83f383/pytz-2026.3.post1-py2.py3-none-any.whl", hash = "sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815", size = 508283, upload-time = "2026-07-25T15:12:05.782Z" },
 ]
 
 [[package]]
@@ -10987,14 +10955,14 @@ wheels = [
 
 [[package]]
 name = "scramp"
-version = "1.4.13"
+version = "1.4.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asn1crypto" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/18/68/2c1b2d59fbcde6616cd44decbbd0a60d4036df1e4157f5a98f043dc61e5b/scramp-1.4.13.tar.gz", hash = "sha256:b0858238c6966231b65124a50b06a104e41f2306f22ba7fad77f68f9e336fa3d", size = 20617, upload-time = "2026-07-23T21:03:52.051Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/d3/6dd9b1e7ff7973eeb6550d0d609c3bdca8f27de2719a837628c9fd44c087/scramp-1.4.15.tar.gz", hash = "sha256:d25cdd3dbc493773647bccb93e4e85bbff0c091141ec8ff8d61bad1e3638082d", size = 20958, upload-time = "2026-07-26T17:49:06.655Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/e7/a4a5f42af2ba9e7308e3b4738d5a99f6a84e3e8f65d239fbed96371e026a/scramp-1.4.13-py3-none-any.whl", hash = "sha256:a14c67da98e2f6657d2fa065d774b56ddac659411c027eecfd3881d901d6afd6", size = 15232, upload-time = "2026-07-23T21:03:50.23Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/a4/6a6e67a8bdbc17b89537de2886cef62536d47c25b1f1d85ecfa81a4915f1/scramp-1.4.15-py3-none-any.whl", hash = "sha256:9d6102948d9005e3802384a328429dfd67d691a65791007c354ff89895857396", size = 15891, upload-time = "2026-07-26T17:49:04.913Z" },
 ]
 
 [[package]]
@@ -12370,14 +12338,14 @@ wheels = [
 
 [[package]]
 name = "typeguard"
-version = "4.5.2"
+version = "4.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/1c/dfba5c4633cafc4c701f237d2ba63b416805047fd6d96aab4cfc40969f98/typeguard-4.5.2.tar.gz", hash = "sha256:5a16dcac23502039299c97c8941651bc33d7ea8cc4b2f7d6bbb1b528f6eea423", size = 80240, upload-time = "2026-05-14T12:59:40.857Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/de/4420db493fa8fc0856d5e5c1b159c63a323d2de2317babe36b01568928e8/typeguard-4.6.0.tar.gz", hash = "sha256:e7414f09111317de3e335de92cd397c5c0ca00b1cc1676de12e1d444a79b3f21", size = 82330, upload-time = "2026-07-26T08:40:23.207Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/29/74eeb4d3f3ae61ca096b018ad486b3b3c74b17bec09ab4edab721cbefec3/typeguard-4.5.2-py3-none-any.whl", hash = "sha256:fcf9de18bd945cdb4c7b996e12b4c51ce83f92f191314a6d7cf1739586ec98cf", size = 36748, upload-time = "2026-05-14T12:59:39.473Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/eb/461d5f167b6f5c7d97696f397c82f82e3480e003fce3f0a1cd1dd26e2eb2/typeguard-4.6.0-py3-none-any.whl", hash = "sha256:79878165bb86f2cf5d41d159a0ff1792a796cf496882d2fe1b1c6c7049b9cdd7", size = 36884, upload-time = "2026-07-26T08:40:21.868Z" },
 ]
 
 [[package]]
