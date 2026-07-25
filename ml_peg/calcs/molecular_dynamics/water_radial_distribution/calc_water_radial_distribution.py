@@ -8,14 +8,19 @@ run, and the O-O radial distribution function is compared to experiment.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.water_radial_distribution.water_radial_distribution import (
+    REFERENCE_DATA,
     WaterRadialDistributionModelOutput,
 )
 from mlipaudit.io import write_model_output_to_disk
-import pytest
+from mlipaudit.utils.molecular_liquids import WATERBOX_N500
 
 from ml_peg.calcs.utils.mlipaudit import MlPegWaterRadialDistributionBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -45,6 +50,14 @@ def test_water_radial_distribution(mlip: tuple[str, Any]) -> None:
         key="inputs/molecular_dynamics/water_radial_distribution/water_radial_distribution.zip",
         filename="water_radial_distribution.zip",
     )
+
+    dataset_dir = OUT_PATH / MlPegWaterRadialDistributionBenchmark.name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    for filename in (WATERBOX_N500, REFERENCE_DATA):
+        shutil.copy(
+            data_input_dir / MlPegWaterRadialDistributionBenchmark.name / filename,
+            dataset_dir,
+        )
 
     benchmark = MlPegWaterRadialDistributionBenchmark(
         force_field=calc,

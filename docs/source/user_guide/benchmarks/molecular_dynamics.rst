@@ -95,7 +95,7 @@ Metrics
 1. Peak deviation
 
 The position of the first solvent peak (the radius at which the RDF is maximal)
-is compared to the experimental peak of 2.8.
+is compared to the experimental peak of 2.8 Å.
 
 2. RDF RMSE
 

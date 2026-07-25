@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
-from mlipaudit.io import load_model_output_from_disk
 import numpy as np
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
@@ -18,7 +20,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegWaterRadialDistributionBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -38,21 +39,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _data_input_dir() -> Path:
-    """
-    Download and return the benchmark input data directory.
-
-    Returns
-    -------
-    Path
-        Directory containing the extracted water RDF input data.
-    """
-    return download_s3_data(
-        key="inputs/molecular_dynamics/water_radial_distribution/water_radial_distribution.zip",
-        filename="water_radial_distribution.zip",
-    )
-
-
 @pytest.fixture
 def analyze_results() -> dict:
     """
@@ -63,8 +49,6 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``WaterRadialDistributionResult``.
     """
-    data_input_dir = _data_input_dir()
-
     results = {}
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
@@ -72,7 +56,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegWaterRadialDistributionBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -85,9 +69,8 @@ def analyze_results() -> dict:
 @pytest.fixture
 def struct_info() -> None:
     """Write the combined element set to ``info.json`` for filtering."""
-    data_input_dir = _data_input_dir()
     write_struct_info(
-        data_path=data_input_dir / BENCHMARK / WATERBOX_N500,
+        data_path=CALC_PATH / BENCHMARK / WATERBOX_N500,
         out_path=OUT_PATH,
     )
 
@@ -115,7 +98,7 @@ def rdf_profiles(analyze_results) -> dict[str, tuple[list, list]]:
     dict[str, tuple[list, list]]
         Reference and per-model ``(radii, g(r))`` profiles.
     """
-    reference = np.load(_data_input_dir() / BENCHMARK / REFERENCE_DATA)
+    reference = np.load(CALC_PATH / BENCHMARK / REFERENCE_DATA)
     results = {"ref": (reference["r_OO"].tolist(), reference["g_OO"].tolist())}
     for model_name, result in analyze_results.items():
         if result.failed:
