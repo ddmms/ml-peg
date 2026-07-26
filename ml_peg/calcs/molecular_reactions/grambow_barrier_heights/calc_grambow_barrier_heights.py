@@ -11,11 +11,17 @@ DOI: 10.1038/s41597-020-0460-4
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
-from mlipaudit.benchmarks.reactivity.reactivity import ReactivityModelOutput
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.reactivity.reactivity import (
+    GRAMBOW_DATASET_FILENAME,
+    ReactivityModelOutput,
+)
 
 from ml_peg.calcs.utils.mlipaudit import MlPegGrambowBarrierHeightsBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -48,6 +54,14 @@ def test_grambow_barrier_heights(mlip: tuple[str, Any]) -> None:
 
     out_path = OUT_PATH / model_name
     out_path.mkdir(parents=True, exist_ok=True)
+
+    benchmark_name = MlPegGrambowBarrierHeightsBenchmark.name
+    dataset_dir = OUT_PATH / benchmark_name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        data_input_dir / benchmark_name / GRAMBOW_DATASET_FILENAME,
+        dataset_dir,
+    )
 
     benchmark = MlPegGrambowBarrierHeightsBenchmark(
         force_field=calc,
