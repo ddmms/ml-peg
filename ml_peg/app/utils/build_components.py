@@ -303,17 +303,36 @@ def build_weight_components(
     model_configs = getattr(table, "model_configs", None)
 
     # Callbacks to update table scores when table weight dicts change
-    if table.id != "summary-table":
+    if table.id == "summary-table":
+        register_summary_table_callbacks(
+            initial_rows=table.data,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+            prefix="summary-table",
+        )
+    elif table.id == "framework-summary-table":
+        register_summary_table_callbacks(
+            initial_rows=table.data,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+            prefix="framework-summary-table",
+        )
+    elif table.id.endswith("-framework-summary-table"):
         register_category_table_callbacks(
             table_id=table.id,
             use_thresholds=use_thresholds,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
+            scores_store_id="framework-summary-table-scores-store",
+            summary_suffix="-framework-summary-table",
         )
     else:
-        register_summary_table_callbacks(
-            initial_rows=table.data,
+        register_category_table_callbacks(
+            table_id=table.id,
+            use_thresholds=use_thresholds,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,

@@ -1,11 +1,13 @@
 ml_peg:
   label: ML-PEG
+  type: framework
   color: "#334155"
   text_color: "#ffffff"
   url: "https://github.com/ddmms/ml-peg"
 
 mlip_arena:
   label: MLIP Arena
+  type: framework
   color: "#0f766e"
   text_color: "#ecfeff"
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
@@ -13,6 +15,7 @@ mlip_arena:
 
 mlip_audit:
   label: MLIP Audit
+  type: framework
   color: "#1d4ed8"
   text_color: "#ffffff"
   url: "https://github.com/instadeepai/mlipaudit"
@@ -20,6 +23,7 @@ mlip_audit:
 
 mace-multihead:
   label: Multihead Cross Learning
+  type: paper
   color: "#7c3aed"
   text_color: "#f5f3ff"
   url: "https://arxiv.org/abs/2510.25380"
@@ -28,6 +32,7 @@ mace-multihead:
 
 mace-polar-1:
   label: MACE-POLAR-1
+  type: paper
   color: "#1d4ed8"
   text_color: "#eff6ff"
   url: "https://arxiv.org/abs/2602.19411"

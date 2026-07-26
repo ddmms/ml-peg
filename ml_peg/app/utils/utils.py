@@ -189,6 +189,7 @@ class FrameworkEntry(TypedDict):
     """Style and link metadata for benchmark framework attribution badges."""
 
     label: str
+    type: str
     color: str
     text_color: str
     url: NotRequired[str]
@@ -1161,8 +1162,16 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
                 "'label', 'color', or 'text_color' values."
             )
 
+        entry_type = raw_entry.get("type")
+        entry_type = (
+            entry_type.strip()
+            if isinstance(entry_type, str) and entry_type.strip()
+            else "framework"
+        )
+
         registry_entry: FrameworkEntry = {
             "label": label,
+            "type": entry_type,
             "color": color,
             "text_color": text_color,
         }
@@ -1214,3 +1223,22 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
             f"Unknown framework identifier '{normalized_id}'. "
             f"Known framework IDs: {known_ids}."
         ) from exc
+
+
+def framework_sort_key(framework_id: str) -> tuple[int, str]:
+    """
+    Sort key ordering frameworks before papers, alphabetically by label within each.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier from benchmark app metadata.
+
+    Returns
+    -------
+    tuple[int, str]
+        Group rank (0 for frameworks, 1 for papers) and lowercased label.
+    """
+    config = get_framework_config(framework_id)
+    is_paper = config.get("type") == "paper"
+    return (1 if is_paper else 0, config["label"].casefold())
