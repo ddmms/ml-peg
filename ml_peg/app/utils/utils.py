@@ -154,25 +154,16 @@ def build_threshold_input_style(border_colour: str) -> dict[str, str]:
     }
 
 
-def weight_input_style(value: float | None) -> dict[str, str]:
+def weight_input_style() -> dict[str, str]:
     """
     Build the inline style for a metric weight input.
-
-    A weight of ``0`` excludes the metric from the score. The input stays white
-    with dark text (it is still editable); only its border switches to a muted
-    dashed style to signal the column is switched off.
-
-    Parameters
-    ----------
-    value
-        Current weight value for the input.
 
     Returns
     -------
     dict[str, str]
         Inline Dash style dictionary.
     """
-    style = {
+    return {
         "width": "60px",
         "fontSize": "12px",
         "padding": "2px 4px",
@@ -180,9 +171,6 @@ def weight_input_style(value: float | None) -> dict[str, str]:
         "borderRadius": "3px",
         "textAlign": "center",
     }
-    if value == 0:
-        style |= {"border": "1px dashed #adb5bd"}
-    return style
 
 
 class FrameworkEntry(TypedDict):
