@@ -29,8 +29,8 @@ def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator(precision="high")
 
+    # Read in data and attach calculator with dispersion correction
     data_path = (
         download_s3_data(
             filename="water_cl2_relaxation.zip",
@@ -39,9 +39,7 @@ def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
         / "water_cl2_relaxation"
     )
 
-    # Read in data and attach calculator
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
+    calc = model.get_calculator(precision="high")
     calc = model.add_d3_calculator(calc)
 
     # Get starting atoms object.
