@@ -532,7 +532,7 @@ def plot_hist(
                             nbinsx=nbins,
                             xbins=xbins_dict,
                             autobinx=autobinx_setting,
-                            name=f"{model_name} (Dipole okay)",
+                            name=f"{model_name}",
                             marker_color="#276419",  # Uniform Green
                         )
                     )
@@ -546,7 +546,7 @@ def plot_hist(
                             nbinsx=nbins,
                             xbins=xbins_dict,
                             autobinx=autobinx_setting,
-                            name=f"{model_name} (Breakdown Candidate)",
+                            name=f"{model_name}",
                             marker_color="#D73027",  # Crimson/Red
                         )
                     )
