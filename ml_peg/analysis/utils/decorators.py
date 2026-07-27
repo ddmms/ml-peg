@@ -506,49 +506,53 @@ def plot_hist(
             results = func(*args, **kwargs)
 
             fig = go.Figure()
-            data_all = []
             for model_name, hist_data in results.items():
-                # Create figure
-                for point in hist_data:
-                    data_all.append(point)
-                if bins is None or isinstance(bins, int) or isinstance(bins, float):
-                    fig.add_trace(
-                        go.Histogram(
-                            x=hist_data,
-                            histnorm="probability density",
-                            nbinsx=bins,
-                            name=model_name,
-                        )
-                    )
+                # 1. Split the data into good and bad arrays
+                if good is not None and bad is not None:
+                    # Mask for data points inside the safe zone
+                    good_mask = (hist_data >= good) & (hist_data <= bad)
+
+                    good_data = hist_data[good_mask]
+                    bad_data = hist_data[~good_mask]
                 else:
+                    good_data = hist_data
+                    bad_data = np.array([])
+
+                # 2. Extract bin settings
+                nbins = bins if isinstance(bins, (int, float)) else None
+                xbins_dict = bins if isinstance(bins, dict) else None
+                autobinx_setting = False if xbins_dict else True
+
+                # 3. Add the "Good/Safe" trace (Green)
+                if len(good_data) > 0:
                     fig.add_trace(
                         go.Histogram(
-                            x=hist_data,
+                            x=good_data,
                             histnorm="probability density",
-                            xbins=bins,
-                            autobinx=False,
-                            name=model_name,
+                            nbinsx=nbins,
+                            xbins=xbins_dict,
+                            autobinx=autobinx_setting,
+                            name=f"{model_name} (Dipole okay)",
+                            marker_color="#276419",  # Uniform Green
                         )
                     )
 
-            if good is not None and bad is not None and isinstance(bins, dict):
-                actual_bins = [min(data_all)]
-                point = actual_bins[0]
-                while point < max(data_all):
-                    point += bins["size"]
-                    actual_bins.append(point)
-                colors = np.zeros_like(actual_bins)
-                bad_exists = False
-                for i, point in enumerate(actual_bins):
-                    if point < good or point > bad:
-                        bad_exists = True
-                        colors[i] = bins["start"]
-                    else:
-                        colors[i] = bins["end"]
-                if not bad_exists:
-                    colors = "#276419"
-                fig.update_traces(marker_color=colors)
+                # 4. Add the "Bad/Unsafe" trace (Red / Warning color)
+                if len(bad_data) > 0:
+                    fig.add_trace(
+                        go.Histogram(
+                            x=bad_data,
+                            histnorm="probability density",
+                            nbinsx=nbins,
+                            xbins=xbins_dict,
+                            autobinx=autobinx_setting,
+                            name=f"{model_name} (Breakdown Candidate)",
+                            marker_color="#D73027",  # Crimson/Red
+                        )
+                    )
+
             # Update layout
+            fig.update_xaxes(range=[bins["start"], bins["end"]])
             fig.update_layout(
                 title={"text": title},
                 xaxis={"title": {"text": x_label}},
