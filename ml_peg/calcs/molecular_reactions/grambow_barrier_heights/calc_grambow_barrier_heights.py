@@ -59,13 +59,13 @@ def test_grambow_barrier_heights(mlip: tuple[str, Any]) -> None:
     dataset_dir = OUT_PATH / benchmark_name
     dataset_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(
-        data_input_dir / benchmark_name / GRAMBOW_DATASET_FILENAME,
+        data_input_dir / "grambow_barrier_heights" / GRAMBOW_DATASET_FILENAME,
         dataset_dir,
     )
 
     benchmark = MlPegGrambowBarrierHeightsBenchmark(
         force_field=calc,
-        data_input_dir=data_input_dir,
+        data_input_dir=OUT_PATH,
         run_mode="standard",
     )
     try:
