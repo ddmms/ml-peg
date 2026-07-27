@@ -10,6 +10,7 @@ from dash.html import H1, H3, Br, Div
 from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_loading_summary_table,
+    build_summary_table,
     build_weight_components,
 )
 from ml_peg.app.utils.utils import get_framework_config
@@ -111,9 +112,6 @@ def build_framework_summary_tables(
         Per-framework summary tables keyed by framework id, and the
         {framework_id: {benchmark_name: benchmark_table}} grouping.
     """
-    # Local import avoids a circular import (build_app imports this module).
-    from ml_peg.app.build_app import build_summary_table
-
     framework_tables: dict[str, DataTable] = {}
     framework_grouping: dict[str, dict[str, DataTable]] = {}
 
