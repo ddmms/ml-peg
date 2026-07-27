@@ -33,19 +33,12 @@ class CategoryView(TypedDict):
     tests: list[CategoryTest]
 
 
-class CategoryGroup(TypedDict):
-    """Benchmarks of one category, grouped for display on a framework page."""
-
-    category: str
-    tests: list[Div]
-
-
 class FrameworkView(TypedDict):
     """Data needed to build a single framework page."""
 
     framework_id: str
     label: str
-    category_groups: list[CategoryGroup]
+    benchmarks_by_category: dict[str, list[Div]]
     summary_table: NotRequired[DataTable]
     weight_components: NotRequired[Div]
 
@@ -74,7 +67,7 @@ def build_framework_views(
         if framework_id == "ml_peg":
             continue
 
-        category_groups = []
+        benchmarks_by_category: dict[str, list[Div]] = {}
         for category_name, category_view in category_views.items():
             tests = [
                 test["layout"]
@@ -82,13 +75,13 @@ def build_framework_views(
                 if framework_id in test["framework_ids"]
             ]
             if tests:
-                category_groups.append({"category": category_name, "tests": tests})
+                benchmarks_by_category[category_name] = tests
 
-        if category_groups:
+        if benchmarks_by_category:
             framework_views[framework_id] = {
                 "framework_id": framework_id,
                 "label": get_framework_config(framework_id)["label"],
-                "category_groups": category_groups,
+                "benchmarks_by_category": benchmarks_by_category,
             }
 
     return framework_views
@@ -109,8 +102,8 @@ def build_framework_summary_tables(
     all_frameworks
         Framework ids for each benchmark, grouped by category.
     framework_views
-        Framework page metadata (keys are the frameworks to build tables for;
-        ``ml_peg`` and empty frameworks are already excluded).
+        Framework page metadata, keyed by the frameworks to build tables for.
+        ``ml_peg`` and empty frameworks are already excluded.
 
     Returns
     -------
@@ -168,14 +161,14 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         Framework page layout.
     """
     framework_label = framework_view["label"]
-    category_groups = framework_view["category_groups"]
+    benchmarks_by_category = framework_view["benchmarks_by_category"]
     summary_table = framework_view.get("summary_table")
     weight_components = framework_view.get("weight_components")
 
     sections = []
-    for group in category_groups:
-        sections.append(H3(group["category"], style={"marginTop": "26px"}))
-        sections.append(Div(group["tests"], style={"display": "grid", "gap": "24px"}))
+    for category_name, tests in benchmarks_by_category.items():
+        sections.append(H3(category_name, style={"marginTop": "26px"}))
+        sections.append(Div(tests, style={"display": "grid", "gap": "24px"}))
 
     summary_block = []
     if summary_table is not None:
