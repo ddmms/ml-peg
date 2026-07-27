@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ase import units
 from ase.io import read
 from ase.optimize import LBFGS
 import pytest
@@ -15,8 +14,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-
-KCAL_TO_EV = units.kcal / units.mol
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
