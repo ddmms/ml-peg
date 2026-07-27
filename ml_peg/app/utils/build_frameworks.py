@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NotRequired, TypedDict
+
 from dash.dash_table import DataTable
 from dash.html import H1, H3, Br, Div
 
@@ -13,10 +15,45 @@ from ml_peg.app.utils.build_components import (
 from ml_peg.app.utils.utils import get_framework_config
 
 
+class CategoryTest(TypedDict):
+    """One benchmark's entry within a category view."""
+
+    name: str
+    framework_ids: list[str]
+    layout: Div
+
+
+class CategoryView(TypedDict):
+    """Data needed to build a single category page."""
+
+    title: str
+    description: str
+    summary_table: DataTable
+    weight_components: Div
+    tests: list[CategoryTest]
+
+
+class CategoryGroup(TypedDict):
+    """Benchmarks of one category, grouped for display on a framework page."""
+
+    category: str
+    tests: list[Div]
+
+
+class FrameworkView(TypedDict):
+    """Data needed to build a single framework page."""
+
+    framework_id: str
+    label: str
+    category_groups: list[CategoryGroup]
+    summary_table: NotRequired[DataTable]
+    weight_components: NotRequired[Div]
+
+
 def build_framework_views(
-    category_views: dict[str, dict[str, object]],
+    category_views: dict[str, CategoryView],
     framework_ids: set[str],
-) -> dict[str, dict[str, object]]:
+) -> dict[str, FrameworkView]:
     """
     Build extra framework-focused page metadata for non-default frameworks.
 
@@ -29,10 +66,10 @@ def build_framework_views(
 
     Returns
     -------
-    dict[str, dict[str, object]]
+    dict[str, FrameworkView]
         Mapping of framework ID to grouped benchmark layouts by category.
     """
-    framework_views: dict[str, dict[str, object]] = {}
+    framework_views: dict[str, FrameworkView] = {}
     for framework_id in sorted(framework_ids):
         if framework_id == "ml_peg":
             continue
@@ -60,7 +97,7 @@ def build_framework_views(
 def build_framework_summary_tables(
     all_tables: dict[str, dict[str, DataTable]],
     all_frameworks: dict[str, dict[str, str]],
-    framework_views: dict[str, dict[str, object]],
+    framework_views: dict[str, FrameworkView],
 ) -> tuple[dict[str, DataTable], dict[str, dict[str, DataTable]]]:
     """
     Build a per-framework summary table for each framework page.
@@ -116,7 +153,7 @@ def build_framework_summary_tables(
     return framework_tables, framework_grouping
 
 
-def build_framework_page_layout(framework_view: dict[str, object]) -> Div:
+def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     """
     Build a framework-focused page with its summary table and benchmark sections.
 
