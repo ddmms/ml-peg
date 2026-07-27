@@ -12,6 +12,7 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -23,6 +24,11 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+MODEL_VARIANTS = {
+    dispersion_name: model for model, dispersion_name in DISPERSION_NAME_MAP.items()
+}
+SUMMARY_MODEL_IDS = {model: DISPERSION_NAME_MAP.get(model, model) for model in MODELS}
 
 BENCHMARK_DIR = "cluster_forces"
 BENCHMARK_FILENAME = "cluster_forces.extxyz"
@@ -58,6 +64,7 @@ REFERENCES = (
     },
 )
 PRED_FORCES_KEY = "pred_forces"
+DISPERSION_PRED_FORCES_KEY = "dispersion_pred_forces"
 
 
 def _metric_name(reference: dict[str, str], cluster_size: int) -> str:
@@ -127,6 +134,7 @@ def _group_by_cluster_size(structs: list[Atoms]) -> dict[int, list[Atoms]]:
 def _force_components(
     structs: list[Atoms],
     reference: dict[str, str],
+    pred_forces_key: str,
 ) -> tuple[np.ndarray, np.ndarray, list[Atoms], int]:
     """
     Extract finite force components.
@@ -137,6 +145,8 @@ def _force_components(
         Evaluated clusters.
     reference
         Reference metadata.
+    pred_forces_key
+        Predicted-force array to evaluate.
 
     Returns
     -------
@@ -151,7 +161,7 @@ def _force_components(
     for atoms in structs:
         ref_forces = np.asarray(atoms.arrays[reference["force_key"]], dtype=float)
         ref_flat = ref_forces.reshape(-1)
-        pred_flat = np.asarray(atoms.arrays[PRED_FORCES_KEY], dtype=float).reshape(-1)
+        pred_flat = np.asarray(atoms.arrays[pred_forces_key], dtype=float).reshape(-1)
         finite_mask = np.isfinite(ref_flat) & np.isfinite(pred_flat)
 
         excluded_components += int((~finite_mask).sum())
@@ -222,33 +232,42 @@ def force_data() -> dict[str, dict[str, dict[int, dict[str, Any]]]]:
             continue
 
         grouped_structs = _group_by_cluster_size(structs)
-        model_results: dict[str, dict[int, dict[str, Any]]] = {
-            reference["key"]: {} for reference in REFERENCES
-        }
-        for reference in REFERENCES:
-            for cluster_size, structs_for_size in grouped_structs.items():
-                if not structs_for_size:
-                    continue
+        prediction_variants = [(model, PRED_FORCES_KEY)]
+        if model in DISPERSION_NAME_MAP and all(
+            DISPERSION_PRED_FORCES_KEY in atoms.arrays for atoms in structs
+        ):
+            prediction_variants.append(
+                (DISPERSION_NAME_MAP[model], DISPERSION_PRED_FORCES_KEY)
+            )
 
-                ref, pred, component_structs, excluded_components = _force_components(
-                    structs_for_size, reference
-                )
-                if ref.size == 0:
-                    continue
+        for variant_name, pred_forces_key in prediction_variants:
+            model_results: dict[str, dict[int, dict[str, Any]]] = {
+                reference["key"]: {} for reference in REFERENCES
+            }
+            for reference in REFERENCES:
+                for cluster_size, structs_for_size in grouped_structs.items():
+                    if not structs_for_size:
+                        continue
 
-                model_results[reference["key"]][cluster_size] = {
-                    "ref": ref,
-                    "pred": pred,
-                    "component_structs": component_structs,
-                    "excluded_components": excluded_components,
-                    "n_clusters": len(structs_for_size),
-                    "n_components": int(ref.size),
-                    "reference": reference["label"],
-                    "level_of_theory": reference["level_of_theory"],
-                }
+                    ref, pred, component_structs, excluded_components = (
+                        _force_components(structs_for_size, reference, pred_forces_key)
+                    )
+                    if ref.size == 0:
+                        continue
 
-        if any(model_results[reference["key"]] for reference in REFERENCES):
-            results[model] = model_results
+                    model_results[reference["key"]][cluster_size] = {
+                        "ref": ref,
+                        "pred": pred,
+                        "component_structs": component_structs,
+                        "excluded_components": excluded_components,
+                        "n_clusters": len(structs_for_size),
+                        "n_components": int(ref.size),
+                        "reference": reference["label"],
+                        "level_of_theory": reference["level_of_theory"],
+                    }
+
+            if any(model_results[reference["key"]] for reference in REFERENCES):
+                results[variant_name] = model_results
     return results
 
 
@@ -397,6 +416,8 @@ def force_parity_plots(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
+    model_variants=MODEL_VARIANTS,
+    summary_model_ids=SUMMARY_MODEL_IDS,
 )
 def metrics(
     force_mae: dict[str, dict[str, float]],

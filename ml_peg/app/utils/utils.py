@@ -403,6 +403,7 @@ def none_to_nan(rows: list[dict]) -> None:
 def filter_rows_by_models(
     rows: list[dict] | None,
     selected_models: Sequence[str] | None,
+    model_name_map: Mapping[str, str] | None = None,
 ) -> list[dict]:
     """
     Filter table rows to only those whose model identifier is selected.
@@ -414,6 +415,9 @@ def filter_rows_by_models(
         canonical model key.
     selected_models
         Model identifiers to keep. ``None`` returns the original rows unchanged.
+    model_name_map
+        Optional mapping of row display names to registered model identifiers. This
+        allows all variants of a selected model to remain visible.
 
     Returns
     -------
@@ -427,10 +431,13 @@ def filter_rows_by_models(
     selected = {m for m in selected_models if m}
     if not selected:
         return []
+    name_map = model_name_map or {}
     return [
         row
         for row in rows
-        if (row.get("MLIP") in selected) or (row.get("id") in selected)
+        if (row.get("MLIP") in selected)
+        or (row.get("id") in selected)
+        or (name_map.get(row.get("MLIP")) in selected)
     ]
 
 

@@ -9,10 +9,6 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_density_plot_for_model
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
-
-MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "Cluster Forces"
 DOCS_URL = (
@@ -51,8 +47,9 @@ class ClusterForcesApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register force parity and structure callbacks."""
+        models = [row["id"] for row in self.table.data if row.get("id")]
         density_plots: dict[str, dict] = {}
-        for model in MODELS:
+        for model in models:
             model_plots = {}
             for reference_key, reference_label in REFERENCES:
                 for cluster_size in CLUSTER_SIZES:
@@ -81,7 +78,7 @@ class ClusterForcesApp(BaseApp):
             cell_to_plot=density_plots,
         )
 
-        for model in MODELS:
+        for model in models:
             for reference_key, _ in REFERENCES:
                 for cluster_size in CLUSTER_SIZES:
                     traj_dir = (
@@ -126,7 +123,8 @@ def get_app() -> ClusterForcesApp:
         name=BENCHMARK_NAME,
         description=(
             "Component-wise force MAE for randomly generated neutral 3- to 8-atom "
-            "clusters, split by reference force set and cluster size."
+            "clusters, split by reference force set and cluster size. Native and "
+            "dispersion-corrected results are shown where applicable."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "cluster_forces_metrics_table.json",

@@ -267,6 +267,7 @@ def register_category_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
+    model_name_map: dict[str, str] | None = None,
 ) -> None:
     """
     Register callback to update table scores when stored values change.
@@ -285,6 +286,8 @@ def register_category_table_callbacks(
         Mapping of metric name -> level of theory metadata.
     model_configs
         Optional configuration metadata for each model.
+    model_name_map
+        Optional mapping of model display names to registered model identifiers.
     """
 
     @callback(
@@ -346,8 +349,12 @@ def register_category_table_callbacks(
             stored_raw_data, stored_computed_data, thresholds, toggle_value
         )
         scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
-        filtered_rows = filter_rows_by_models(display_rows, selected_models)
-        filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+        filtered_rows = filter_rows_by_models(
+            display_rows, selected_models, model_name_map
+        )
+        filtered_scores = filter_rows_by_models(
+            scored_rows, selected_models, model_name_map
+        )
         style = (
             get_table_style(
                 filtered_rows,
@@ -443,8 +450,12 @@ def register_category_table_callbacks(
                     stored_raw_data, stored_computed_data, thresholds, toggle_value
                 )
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
-                filtered_rows = filter_rows_by_models(display_rows, selected_models)
-                filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+                filtered_rows = filter_rows_by_models(
+                    display_rows, selected_models, model_name_map
+                )
+                filtered_scores = filter_rows_by_models(
+                    scored_rows, selected_models, model_name_map
+                )
                 style = (
                     get_table_style(
                         filtered_rows,
@@ -487,8 +498,12 @@ def register_category_table_callbacks(
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
-            filtered_rows = filter_rows_by_models(display_rows, selected_models)
-            filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+            filtered_rows = filter_rows_by_models(
+                display_rows, selected_models, model_name_map
+            )
+            filtered_scores = filter_rows_by_models(
+                scored_rows, selected_models, model_name_map
+            )
             style = (
                 get_table_style(
                     filtered_rows,
@@ -560,7 +575,9 @@ def register_category_table_callbacks(
                 scored_rows = source_data
                 updated_store = no_update
 
-            filtered_rows = filter_rows_by_models(scored_rows, selected_models)
+            filtered_rows = filter_rows_by_models(
+                scored_rows, selected_models, model_name_map
+            )
             style = (
                 get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
                 if filtered_rows
@@ -627,7 +644,9 @@ def register_category_table_callbacks(
             if not computed_store:
                 raise PreventUpdate
 
-            filtered_rows = filter_rows_by_models(computed_store, selected_models)
+            filtered_rows = filter_rows_by_models(
+                computed_store, selected_models, model_name_map
+            )
             style = (
                 get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
                 if filtered_rows
@@ -712,6 +731,7 @@ def register_benchmark_to_category_callback(
                 "benchmark_table_id": benchmark_table.id,
                 "benchmark_column": test_name + " Score",
                 "model_name_map": getattr(benchmark_table, "model_name_map", {}),
+                "summary_model_ids": getattr(benchmark_table, "summary_model_ids", {}),
             }
 
     outputs = []
@@ -773,11 +793,15 @@ def register_benchmark_to_category_callback(
                 benchmark_rows = next(iterator)
 
                 name_map = table_info["model_name_map"]
+                summary_model_ids = table_info["summary_model_ids"]
                 benchmark_column = table_info["benchmark_column"]
 
                 for row in benchmark_rows:
                     display_name = row.get("MLIP")
                     original_name = name_map.get(display_name, display_name)
+                    preferred_id = summary_model_ids.get(original_name, original_name)
+                    if row.get("id", original_name) != preferred_id:
+                        continue
                     if original_name not in updated_by_mlip:
                         continue
 

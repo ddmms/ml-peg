@@ -29,6 +29,7 @@ OMOL25_FORCES_KEY = "omol25_forces"
 MAD2_REF_FORCES_KEY = "mad2_ref_forces"
 OMOL25_REF_FORCES_KEY = "omol25_ref_forces"
 PRED_FORCES_KEY = "pred_forces"
+DISPERSION_PRED_FORCES_KEY = "dispersion_pred_forces"
 
 
 def _cluster_data_path() -> Path:
@@ -170,6 +171,9 @@ def test_cluster_forces(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
 
     calc = model.get_calculator(precision="high")
+    dispersion_calc = None
+    if not model.trained_on_dispersion:
+        dispersion_calc = model.add_d3_calculator(calc)
     data_path = _cluster_data_path()
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -186,27 +190,48 @@ def test_cluster_forces(mlip: tuple[str, Any]) -> None:
 
     results: list[Atoms] = []
     failed_calculations = 0
+    failed_dispersion_calculations = 0
     for structure_index, atoms in enumerate(frames):
         atoms_pred = atoms.copy()
         _set_charge_and_spin(atoms_pred)
         atoms_pred.calc = calc
-
         try:
             pred_forces = np.asarray(atoms_pred.get_forces(), dtype=float)
-            calculation_failed = False
             calculation_error = ""
         except Exception as err:
             pred_forces = np.full((len(atoms_pred), 3), np.nan, dtype=float)
-            calculation_failed = True
             calculation_error = f"{type(err).__name__}: {err}"
             failed_calculations += 1
+
+        dispersion_pred_forces = None
+        dispersion_calculation_error = ""
+        if dispersion_calc is not None:
+            atoms_pred.calc = dispersion_calc
+            try:
+                dispersion_pred_forces = np.asarray(
+                    atoms_pred.get_forces(), dtype=float
+                )
+            except Exception as err:
+                dispersion_pred_forces = np.full(
+                    (len(atoms_pred), 3), np.nan, dtype=float
+                )
+                dispersion_calculation_error = f"{type(err).__name__}: {err}"
+                failed_dispersion_calculations += 1
 
         out_atoms = atoms.copy()
         _set_charge_and_spin(out_atoms)
         out_atoms.info["structure_index"] = structure_index
-        out_atoms.info["calculation_failed"] = calculation_failed
+        out_atoms.info["calculation_failed"] = bool(calculation_error)
         if calculation_error:
             out_atoms.info["calculation_error"] = calculation_error[:500]
+        if dispersion_calc is not None:
+            out_atoms.info["dispersion_calculation_failed"] = bool(
+                dispersion_calculation_error
+            )
+            if dispersion_calculation_error:
+                out_atoms.info["dispersion_calculation_error"] = (
+                    dispersion_calculation_error[:500]
+                )
 
         out_atoms.arrays[MAD2_REF_FORCES_KEY] = _reference_forces(
             out_atoms, MAD2_FORCES_KEY
@@ -215,6 +240,8 @@ def test_cluster_forces(mlip: tuple[str, Any]) -> None:
             out_atoms, OMOL25_FORCES_KEY
         )
         out_atoms.arrays[PRED_FORCES_KEY] = pred_forces
+        if dispersion_pred_forces is not None:
+            out_atoms.arrays[DISPERSION_PRED_FORCES_KEY] = dispersion_pred_forces
         out_atoms.arrays.pop(MAD2_FORCES_KEY, None)
         out_atoms.arrays.pop(OMOL25_FORCES_KEY, None)
         results.append(out_atoms)
@@ -225,5 +252,12 @@ def test_cluster_forces(mlip: tuple[str, Any]) -> None:
     write(out_dir / BENCHMARK_FILENAME, results)
     print(
         f"{model_name}: wrote {len(results)} clusters; "
-        f"{failed_calculations} force evaluations failed and were stored as NaNs."
+        f"{failed_calculations} native force evaluations failed"
+        + (
+            f"; {failed_dispersion_calculations} dispersion-corrected force "
+            "evaluations failed"
+            if dispersion_calc is not None
+            else ""
+        )
+        + ". Failed evaluations were stored as NaNs."
     )

@@ -714,12 +714,16 @@ def build_summary_table(
         category_columns.append(category_col)
 
         table_name_map = getattr(table, "model_name_map", {}) or {}
+        summary_model_ids = getattr(table, "summary_model_ids", {}) or {}
         for row in table.data:
             # Category tables may include models not to be included
             # Table headings are of the form "[category] Score"
             # ``original_name`` refers to the original model identifier
             # (no display suffix)
             original_name = table_name_map.get(row["MLIP"], row["MLIP"])
+            preferred_id = summary_model_ids.get(original_name, original_name)
+            if row.get("id", original_name) != preferred_id:
+                continue
             if original_name in summary_data:
                 summary_data[original_name][category_col] = row["Score"]
 

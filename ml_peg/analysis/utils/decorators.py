@@ -1475,6 +1475,8 @@ def build_table(
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
     mlip_name_map: dict[str, str] | None = None,
+    model_variants: dict[str, str] | None = None,
+    summary_model_ids: dict[str, str] | None = None,
 ) -> Callable:
     """
     Build DataTable, including optional metric normalisation.
@@ -1504,6 +1506,12 @@ def build_table(
         Optional mapping of model identifier -> display name. Use this to annotate
         table rows (e.g. append a suffix) without changing the underlying model
         configuration metadata.
+    model_variants
+        Optional mapping of additional model variant identifiers to their registered
+        base model identifiers.
+    summary_model_ids
+        Optional mapping of registered model identifiers to the variant identifier
+        that should contribute to category and overall summaries.
 
     Returns
     -------
@@ -1576,7 +1584,23 @@ def build_table(
             metrics_columns = ("MLIP", "Score") + tuple(results)
 
             # Get all models (including those without results for this benchmark)
-            mlips = tuple(get_model_names())
+            registry_mlips = tuple(get_model_names())
+            variants = model_variants or {}
+            unknown_bases = set(variants.values()) - set(registry_mlips)
+            if unknown_bases:
+                raise KeyError(
+                    "Unknown base models for variants: "
+                    f"{', '.join(sorted(unknown_bases))}"
+                )
+            duplicate_ids = set(variants) & set(registry_mlips)
+            if duplicate_ids:
+                raise ValueError(
+                    "Model variant identifiers conflict with registered models: "
+                    f"{', '.join(sorted(duplicate_ids))}"
+                )
+
+            mlips = registry_mlips + tuple(variants)
+            base_models = {mlip: variants.get(mlip, mlip) for mlip in mlips}
 
             name_map = mlip_name_map if mlip_name_map else {}
             display_names = {mlip: name_map.get(mlip, mlip) for mlip in mlips}
@@ -1630,13 +1654,13 @@ def build_table(
                 tooltip_header=tooltip_header,
             )
 
-            model_configs, model_levels = load_model_configs(mlips)
+            model_configs, model_levels = load_model_configs(registry_mlips)
 
             model_configs = {
-                display_names[name]: config for name, config in model_configs.items()
+                display_names[name]: model_configs[base_models[name]] for name in mlips
             }
             model_levels = {
-                display_names[name]: level for name, level in model_levels.items()
+                display_names[name]: model_levels[base_models[name]] for name in mlips
             }
 
             # Extract metric level of theory from thresholds
@@ -1647,10 +1671,26 @@ def build_table(
                 )
 
             # Save dict of table to be loaded
-            model_name_map = {
-                display_name: original_name
-                for original_name, display_name in display_names.items()
+            model_name_map = {display_names[name]: base_models[name] for name in mlips}
+
+            preferred_summary_ids = summary_model_ids or {}
+            unknown_summary_models = set(preferred_summary_ids) - set(registry_mlips)
+            if unknown_summary_models:
+                raise KeyError(
+                    "Unknown models in summary_model_ids: "
+                    f"{', '.join(sorted(unknown_summary_models))}"
+                )
+            invalid_summary_ids = {
+                model: variant
+                for model, variant in preferred_summary_ids.items()
+                if variant not in base_models or base_models[variant] != model
             }
+            if invalid_summary_ids:
+                invalid = ", ".join(
+                    f"{model} -> {variant}"
+                    for model, variant in sorted(invalid_summary_ids.items())
+                )
+                raise ValueError(f"Invalid summary model variants: {invalid}")
 
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w") as fp:
@@ -1665,6 +1705,7 @@ def build_table(
                         "metric_levels_of_theory": metric_levels,
                         "model_configs": model_configs,
                         "model_name_map": model_name_map,
+                        "summary_model_ids": preferred_summary_ids,
                     },
                     fp,
                 )

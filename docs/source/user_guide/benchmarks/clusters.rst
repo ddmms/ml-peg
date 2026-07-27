@@ -31,6 +31,12 @@ For all calculations, clusters are evaluated with ``charge=0`` and either
 ``spin_multiplicity=1`` for clusters with an even number of electrons or
 ``spin_multiplicity=2`` for clusters with an odd number of electrons.
 
+For models whose training data do not include dispersion, results are shown for both
+the native model and the model with the configured runtime dispersion correction. The
+corrected variant is identified by a suffix such as ``-D3`` and contributes to the
+category and overall scores. Models trained with dispersion already included are shown
+once, without an additional correction.
+
 Computational cost
 ------------------
 
