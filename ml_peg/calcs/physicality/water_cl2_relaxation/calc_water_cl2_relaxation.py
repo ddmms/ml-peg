@@ -33,10 +33,10 @@ def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            filename="WaterCl2.zip",
-            key="inputs/WaterCl2/WaterCl2.zip",
+            filename="water_cl2_relaxation.zip",
+            key="inputs/physicality/water_cl2_relaxation/water_cl2_relaxation.zip",
         )
-        / "WaterCl2"
+        / "water_cl2_relaxation"
     )
 
     # Read in data and attach calculator
