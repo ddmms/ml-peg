@@ -133,7 +133,7 @@ def metrics(get_cl2_stability: dict[str, float]) -> dict[str, dict]:
 
 def test_water_cl2_relaxation(metrics: dict[str, dict]) -> None:
     """
-    Run water Cl2 cluster relaxation test.
+    Run water-Cl2 cluster relaxation test.
 
     Parameters
     ----------

@@ -21,7 +21,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
     """
-    Run WaterCl2 relaxation test.
+    Run water-Cl2 relaxation test.
 
     Parameters
     ----------
