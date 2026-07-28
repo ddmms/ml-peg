@@ -41,8 +41,9 @@ def plot_relaxation(model_name: str):
 
     Returns
     -------
-    list[list, list]
-        List of optimization steps and Cl-Cl distances.
+    list[list, list] | None
+        List of optimization steps and Cl-Cl distances, or None if optmisation missing
+        or incomplete.
     """
 
     @plot_scatter(
@@ -73,6 +74,18 @@ def plot_relaxation(model_name: str):
 
         return results
 
+    log = CALC_PATH / model_name / "relaxation.log"
+    if not log.exists():
+        return None
+    with log.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+        try:
+            fmax = float(lines[-1].split()[4])
+            if fmax > 0.01:
+                return None
+        except (IndexError, ValueError):
+            return None
+
     return cl_cl_distances()[model_name]
 
 
@@ -90,6 +103,9 @@ def get_cl2_stability() -> dict[str, float]:
     results = {}
     for model_name in MODELS:
         cl_cl_distances = plot_relaxation(model_name)
+        if cl_cl_distances is None:
+            results[model_name] = None
+            continue
         final_distance = cl_cl_distances[1][-1]
         results[model_name] = bool(final_distance < 2.2)
 
