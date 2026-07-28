@@ -8,7 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -110,14 +110,17 @@ def barrier_errors() -> dict[str, dict[str, float]]:
 
     for model_name in MODELS:
         for compound in COMPOUNDS:
-            plot_nebs(model_name, compound)
-            with open(
-                CALC_PATH / model_name / f"O_diffusion_{compound}-neb-results.dat",
-                encoding="utf8",
-            ) as f:
-                data = f.readlines()
-                pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
-            results[model_name][compound] = abs(REF_VALUES[compound] - pred_barrier)
+            try:
+                plot_nebs(model_name, compound)
+                with open(
+                    CALC_PATH / model_name / f"O_diffusion_{compound}-neb-results.dat",
+                    encoding="utf8",
+                ) as f:
+                    data = f.readlines()
+                    pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
+                results[model_name][compound] = abs(REF_VALUES[compound] - pred_barrier)
+            except (FileNotFoundError, KeyError):
+                results[model_name][compound] = float("nan")
 
     return results
 
@@ -159,4 +162,10 @@ def test_o_diffusion(metrics: dict[str, dict]) -> None:
     metrics
         All O diffusion metrics.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        out_path=OUT_PATH,
+        glob_pattern="*-band.extxyz",
+        index=0,
+        write_structs=False,
+    )
