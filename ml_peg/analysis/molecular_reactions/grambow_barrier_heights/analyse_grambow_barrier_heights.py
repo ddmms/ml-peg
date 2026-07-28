@@ -13,14 +13,20 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import Atoms
 from ase.calculators.calculator import Calculator
+from ase.io import write
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.reactivity.reactivity import ReactivityModelOutput
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    sample_density_grid,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegGrambowBarrierHeightsBenchmark
@@ -47,7 +53,7 @@ def analyze_results() -> dict:
     Returns
     -------
     dict
-        Mapping of model name to its ``ReactivityResult``.
+        Mapping of model name to ``(benchmark, ReactivityResult)``.
     """
     results = {}
     for model_name in MODELS:
@@ -62,7 +68,7 @@ def analyze_results() -> dict:
         benchmark.model_output = ReactivityModelOutput.model_validate_json(
             path.read_text()
         )
-        results[model_name] = benchmark.analyze()
+        results[model_name] = (benchmark, benchmark.analyze())
     return results
 
 
@@ -114,7 +120,7 @@ def barrier_density(analyze_results) -> dict[str, dict]:
     Parameters
     ----------
     analyze_results
-        Mapping of model name to its ``ReactivityResult``.
+        Mapping of model name to ``(benchmark, ReactivityResult)``.
 
     Returns
     -------
@@ -122,10 +128,27 @@ def barrier_density(analyze_results) -> dict[str, dict]:
         Mapping of model name to density-scatter data.
     """
     density_inputs: dict[str, dict] = {}
-    for model_name, result in analyze_results.items():
-        reactions = result.reaction_results.values()
-        ref = [reaction.activation_energy_ref for reaction in reactions]
-        pred = [reaction.activation_energy_pred for reaction in reactions]
+    for model_name, (benchmark, result) in analyze_results.items():
+        ref: list[float] = []
+        pred: list[float] = []
+        ts_atoms: list[Atoms] = []
+        for reaction_id, reaction in result.reaction_results.items():
+            ref.append(reaction.activation_energy_ref)
+            pred.append(reaction.activation_energy_pred)
+            ts = benchmark._grambow_data[reaction_id].transition_state
+            ts_atoms.append(Atoms(symbols=ts.atom_symbols, positions=ts.coordinates))
+
+        # Write one trajectory per sampled density point, grouping the transition
+        # states of the reactions that share that point's density cell
+        _, _, sampled_mapping = sample_density_grid(ref, pred)
+        traj_dir = OUT_PATH / model_name / "density_traj"
+        traj_dir.mkdir(parents=True, exist_ok=True)
+        for point_idx, source_indices in enumerate(sampled_mapping):
+            write(
+                traj_dir / f"{point_idx}.extxyz",
+                [ts_atoms[i] for i in source_indices],
+            )
+
         density_inputs[model_name] = {
             "ref": ref,
             "pred": pred,
@@ -142,7 +165,7 @@ def get_barrier_mae(analyze_results) -> dict[str, float]:
     Parameters
     ----------
     analyze_results
-        Mapping of model name to its ``ReactivityResult``.
+        Mapping of model name to ``(benchmark, ReactivityResult)``.
 
     Returns
     -------
@@ -151,7 +174,7 @@ def get_barrier_mae(analyze_results) -> dict[str, float]:
     """
     return {
         model_name: result.mae_activation_energy
-        for model_name, result in analyze_results.items()
+        for model_name, (_, result) in analyze_results.items()
     }
 
 
@@ -163,7 +186,7 @@ def get_reaction_energy_mae(analyze_results) -> dict[str, float]:
     Parameters
     ----------
     analyze_results
-        Mapping of model name to its ``ReactivityResult``.
+        Mapping of model name to ``(benchmark, ReactivityResult)``.
 
     Returns
     -------
@@ -172,7 +195,7 @@ def get_reaction_energy_mae(analyze_results) -> dict[str, float]:
     """
     return {
         model_name: result.mae_enthalpy_of_reaction
-        for model_name, result in analyze_results.items()
+        for model_name, (_, result) in analyze_results.items()
     }
 
 
@@ -184,14 +207,16 @@ def get_score(analyze_results) -> dict[str, float]:
     Parameters
     ----------
     analyze_results
-        Mapping of model name to its ``ReactivityResult``.
+        Mapping of model name to ``(benchmark, ReactivityResult)``.
 
     Returns
     -------
     dict[str, float]
         The mlipaudit soft-threshold score (0 to 1) for each model.
     """
-    return {model_name: result.score for model_name, result in analyze_results.items()}
+    return {
+        model_name: result.score for model_name, (_, result) in analyze_results.items()
+    }
 
 
 @pytest.fixture
