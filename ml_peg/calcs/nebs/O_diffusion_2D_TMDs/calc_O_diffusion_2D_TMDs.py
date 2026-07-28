@@ -58,6 +58,7 @@ def relaxed_structs() -> dict[str, Atoms]:
                     write_results=True,
                     file_prefix=OUT_PATH / model_name / struct_name,
                     filter_class=None,
+                    steps=100,
                 )
                 try:
                     geomopt.run()
