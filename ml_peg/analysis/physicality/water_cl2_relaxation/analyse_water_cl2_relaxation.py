@@ -10,8 +10,8 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
-    get_struct_info,
     load_metrics_config,
+    write_struct_info,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -27,15 +27,6 @@ OUT_PATH = APP_ROOT / "data" / "physicality" / "water_cl2_relaxation"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
-)
-
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    include_filenames=True,
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
 )
 
 
@@ -140,4 +131,8 @@ def test_water_cl2_relaxation(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "relaxation.traj",
+        out_path=OUT_PATH,
+        index=0,
+    )
