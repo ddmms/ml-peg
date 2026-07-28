@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 from janus_core.calculations.geom_opt import GeomOpt
 from janus_core.calculations.neb import NEB
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -57,7 +59,14 @@ def relaxed_structs() -> dict[str, Atoms]:
                     file_prefix=OUT_PATH / model_name / struct_name,
                     filter_class=None,
                 )
-                geomopt.run()
+                try:
+                    geomopt.run()
+                except Exception as exc:
+                    warn(
+                        f"Error for {struct_name} with {model_name}: {exc}",
+                        stacklevel=2,
+                    )
+                    struct.info["energy"] = np.nan
                 relaxed_structs[f"{struct_name}-{model_name}"] = geomopt.struct
     return relaxed_structs
 
@@ -80,10 +89,12 @@ def test_o_diffusion(
     compound
         Name of compound to use.
     """
+    init_struct = relaxed_structs[f"{compound}_initial.xyz-{model_name}"]
+    final_struct = relaxed_structs[f"{compound}_end.xyz-{model_name}"]
     try:
         NEB(
-            init_struct=relaxed_structs[f"{compound}_initial.xyz-{model_name}"],
-            final_struct=relaxed_structs[f"{compound}_end.xyz-{model_name}"],
+            init_struct=init_struct,
+            final_struct=final_struct,
             n_images=11,
             interpolator="pymatgen",
             minimize=True,
@@ -91,12 +102,28 @@ def test_o_diffusion(
             file_prefix=OUT_PATH / model_name / f"O_diffusion_{compound}",
         ).run()
     except Exception:
-        NEB(
-            init_struct=relaxed_structs[f"{compound}_initial.xyz-{model_name}"],
-            final_struct=relaxed_structs[f"{compound}_end.xyz-{model_name}"],
-            n_images=11,
-            interpolator="ase",
-            minimize=True,
-            write_band=True,
-            file_prefix=OUT_PATH / model_name / f"O_diffusion_{compound}",
-        ).run()
+        try:
+            NEB(
+                init_struct=init_struct,
+                final_struct=final_struct,
+                n_images=11,
+                interpolator="ase",
+                minimize=True,
+                write_band=True,
+                file_prefix=OUT_PATH / model_name / f"O_diffusion_{compound}",
+            ).run()
+        except Exception as e:
+            warn(f"Error running NEB for {model_name}: {e}", stacklevel=2)
+            out_dir = OUT_PATH / model_name
+            out_dir.mkdir(exist_ok=True, parents=True)
+            write(
+                out_dir / f"O_diffusion_{compound}-neb-band.extxyz",
+                [init_struct, final_struct],
+            )
+            with open(
+                out_dir / f"O_diffusion_{compound}-neb-results.dat",
+                "w",
+                encoding="utf8",
+            ) as out:
+                print("#Barrier [eV] | delta E [eV] | Max force [eV/Å] ", file=out)
+                print(np.nan, np.nan, np.nan, file=out)
