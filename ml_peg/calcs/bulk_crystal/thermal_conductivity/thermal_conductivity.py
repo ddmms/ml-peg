@@ -244,6 +244,7 @@ def init_phono3py(
     fc3_supercell: np.ndarray,
     q_point_mesh: tuple[int, int, int] = (20, 20, 20),
     displacement_distance: float = 0.03,
+    is_plusminus: bool = True,
     symprec: float = 1e-5,
     **kwargs: Any,
 ) -> Phono3py:
@@ -264,6 +265,9 @@ def init_phono3py(
     displacement_distance : float
         Displacement distance for force calculations.
         Defaults to 0.03.
+    is_plusminus : bool
+        Whether to generate both positive and negative displacements. Defaults to
+        True.
     symprec : float
         Symmetry precision for finding space group. Defaults to 1e-5.
     **kwargs : Any
@@ -290,7 +294,10 @@ def init_phono3py(
     )
     ph3.mesh_numbers = q_point_mesh
 
-    ph3.generate_displacements(distance=displacement_distance)
+    ph3.generate_displacements(
+        distance=displacement_distance,
+        is_plusminus=is_plusminus,
+    )
 
     return ph3
 
