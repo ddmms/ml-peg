@@ -506,66 +506,123 @@ def plot_hist(
             results = func(*args, **kwargs)
 
             fig = go.Figure()
+
             for model_name, hist_data in results.items():
-                # 1. Split the data into good and bad arrays
-                if good is not None and bad is not None:
-                    # Mask for data points inside the safe zone
-                    good_mask = (hist_data >= good) & (hist_data <= bad)
-
-                    good_data = hist_data[good_mask]
-                    bad_data = hist_data[~good_mask]
+                # Construct bin edges
+                if isinstance(bins, dict):
+                    edges = np.arange(
+                        bins["start"],
+                        bins["end"] + bins["size"],
+                        bins["size"],
+                    )
                 else:
-                    good_data = hist_data
-                    bad_data = np.array([])
+                    edges = np.histogram_bin_edges(hist_data, bins=bins)
 
-                # 2. Extract bin settings
-                nbins = bins if isinstance(bins, (int, float)) else None
-                xbins_dict = bins if isinstance(bins, dict) else None
-                autobinx_setting = False if xbins_dict else True
+                # Compute probability density histogram
+                counts, edges = np.histogram(hist_data, bins=edges, density=True)
 
-                # 3. Add the "Good/Safe" trace (Green)
-                if len(good_data) > 0:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=good_data,
-                            histnorm="probability density",
-                            nbinsx=nbins,
-                            xbins=xbins_dict,
-                            autobinx=autobinx_setting,
-                            name=f"{model_name}",
-                            marker_color="#276419",  # Uniform Green
-                        )
+                centres = 0.5 * (edges[:-1] + edges[1:])
+                widths = np.diff(edges)
+
+                # Decide colour of each bar
+                colours = []
+                for centre in centres:
+                    if good is not None and bad is not None:
+                        if good <= centre <= bad:
+                            colours.append("#276419")  # Green
+                        else:
+                            colours.append("#D73027")  # Red
+                    else:
+                        colours.append("#276419")
+
+                fig.add_trace(
+                    go.Bar(
+                        x=centres,
+                        y=counts,
+                        width=widths,
+                        marker_color=colours,
+                        name=model_name,
                     )
+                )
 
-                # 4. Add the "Bad/Unsafe" trace (Red / Warning color)
-                if len(bad_data) > 0:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=bad_data,
-                            histnorm="probability density",
-                            nbinsx=nbins,
-                            xbins=xbins_dict,
-                            autobinx=autobinx_setting,
-                            name=f"{model_name}",
-                            marker_color="#D73027",  # Crimson/Red
-                        )
-                    )
-
-            # Update layout
-            fig.update_xaxes(range=[bins["start"], bins["end"]])
             fig.update_layout(
-                title={"text": title},
-                xaxis={"title": {"text": x_label}},
-                yaxis={"title": {"text": y_label}},
+                barmode="overlay",
+                title=title,
+                xaxis_title=x_label,
+                yaxis_title=y_label,
             )
 
-            fig.update_traces()
+            if isinstance(bins, dict):
+                fig.update_xaxes(range=[bins["start"], bins["end"]])
 
-            # Write to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             fig.write_json(filename)
 
             return results
+
+            # results = func(*args, **kwargs)
+
+            # fig = go.Figure()
+            # for model_name, hist_data in results.items():
+            #    # 1. Split the data into good and bad arrays
+            #    if good is not None and bad is not None:
+            #        # Mask for data points inside the safe zone
+            #        good_mask = (hist_data >= good) & (hist_data <= bad)
+
+            #        good_data = hist_data[good_mask]
+            #        bad_data = hist_data[~good_mask]
+            #    else:
+            #        good_data = hist_data
+            #        bad_data = np.array([])
+
+            #    # 2. Extract bin settings
+            #    nbins = bins if isinstance(bins, (int, float)) else None
+            #    xbins_dict = bins if isinstance(bins, dict) else None
+            #    autobinx_setting = False if xbins_dict else True
+
+            #    # 3. Add the "Good/Safe" trace (Green)
+            #    if len(good_data) > 0:
+            #        fig.add_trace(
+            #            go.Histogram(
+            #                x=good_data,
+            #                histnorm="probability density",
+            #                nbinsx=nbins,
+            #                xbins=xbins_dict,
+            #                autobinx=autobinx_setting,
+            #                name=f"{model_name}",
+            #                marker_color="#276419",  # Uniform Green
+            #            )
+            #        )
+
+            #    # 4. Add the "Bad/Unsafe" trace (Red / Warning color)
+            #    if len(bad_data) > 0:
+            #        fig.add_trace(
+            #            go.Histogram(
+            #                x=bad_data,
+            #                histnorm="probability density",
+            #                nbinsx=nbins,
+            #                xbins=xbins_dict,
+            #                autobinx=autobinx_setting,
+            #                name=f"{model_name}",
+            #                marker_color="#D73027",  # Crimson/Red
+            #            )
+            #        )
+
+            ## Update layout
+            # fig.update_xaxes(range=[bins["start"], bins["end"]])
+            # fig.update_layout(
+            #    title={"text": title},
+            #    xaxis={"title": {"text": x_label}},
+            #    yaxis={"title": {"text": y_label}},
+            # )
+
+            # fig.update_traces()
+
+            ## Write to file
+            # Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            # fig.write_json(filename)
+
+            # return results
 
         return plot_hist_wrapper
 
