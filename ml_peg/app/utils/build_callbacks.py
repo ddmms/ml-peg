@@ -174,10 +174,10 @@ def plot_from_table_cell(
         return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
 
 
-_HIGHLIGHTED_SCATTERS: set[str] = set()
+_HIGHLIGHTED_SCATTERS: dict[str, bool] = {}
 
 
-def _register_point_highlight(scatter_id: str) -> None:
+def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> None:
     """
     Ring the most recently clicked point of a scatter plot.
 
@@ -186,16 +186,26 @@ def _register_point_highlight(scatter_id: str) -> None:
     each click a single ring marker (a transparent-fill ``__clicked_point__``
     trace) replaces the previous one. Its type and axes are copied from the
     clicked trace so the ring sits on the same render layer (svg vs WebGL) and
-    subplot as the point.
+    subplot as the point. Frame following can be disabled for viewers whose
+    frames do not correspond one-to-one with scatter points, such as a density
+    cell containing multiple structures.
 
     Parameters
     ----------
     scatter_id
         ID of the Dash ``Graph`` whose clicked point should be highlighted.
+    follow_frames
+        Whether a WEAS frame-change event moves the highlight to the point at
+        the same index. Default is True.
     """
-    if scatter_id in _HIGHLIGHTED_SCATTERS:
+    existing_follow_frames = _HIGHLIGHTED_SCATTERS.get(scatter_id)
+    if existing_follow_frames is not None:
+        if existing_follow_frames != follow_frames:
+            raise ValueError(
+                f"Conflicting frame-follow settings for scatter {scatter_id!r}."
+            )
         return
-    _HIGHLIGHTED_SCATTERS.add(scatter_id)
+    _HIGHLIGHTED_SCATTERS[scatter_id] = follow_frames
 
     clientside_callback(
         """
@@ -230,6 +240,7 @@ def _register_point_highlight(scatter_id: str) -> None:
                 scatterId: "__SCATTER_ID__",
                 x: src.x || [],
                 y: src.y || [],
+                followFrames: __FOLLOW_FRAMES__,
             };
             const out = Object.assign({}, figure, {data: data});
             // Pin the axes to the live rendered range so adding the ring (a large
@@ -256,7 +267,9 @@ def _register_point_highlight(scatter_id: str) -> None:
             }
             return out;
         }
-        """.replace("__SCATTER_ID__", scatter_id),
+        """.replace("__SCATTER_ID__", scatter_id).replace(
+            "__FOLLOW_FRAMES__", str(follow_frames).lower()
+        ),
         Output(scatter_id, "figure", allow_duplicate=True),
         Input(scatter_id, "clickData"),
         State(scatter_id, "figure"),
@@ -317,6 +330,7 @@ def struct_from_scatter(
     struct_id: str,
     structs: str | list[str],
     mode: Literal["struct", "traj"] = "struct",
+    follow_frames: bool | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
@@ -332,8 +346,16 @@ def struct_from_scatter(
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
+    follow_frames
+        Whether stepping through a WEAS trajectory moves the scatter highlight to
+        the point with the same index. If None (default), following is enabled
+        only for a single shared trajectory file. This is for e.g. a NEB, whereas a list
+        of per-point files, including density-cell structure collections, keeps
+        the highlight on the clicked point. Set explicitly to override.
     """
-    _register_point_highlight(scatter_id)
+    if follow_frames is None:
+        follow_frames = mode == "traj" and isinstance(structs, str)
+    _register_point_highlight(scatter_id, follow_frames=follow_frames)
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
@@ -383,6 +405,7 @@ def struct_from_multi_scatters(
     struct_id: str,
     structs: list[str] | list[list[str]],
     mode: Literal["struct", "traj"] = "struct",
+    follow_frames: bool = True,
 ) -> None:
     """
     Attach callback to show a structure when a multiline scatter point is clicked.
@@ -404,6 +427,9 @@ def struct_from_multi_scatters(
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
+    follow_frames
+        Whether stepping through a WEAS trajectory moves the scatter highlight to
+        the point with the same index. Default is True.
 
     Examples
     --------
@@ -417,7 +443,7 @@ def struct_from_multi_scatters(
     When the `i`th data point of the `j`th curve of "test-figure" is clicked,
     `structs[j][i]` will be rendered in the "test-placeholder" Div.
     """
-    _register_point_highlight(scatter_id)
+    _register_point_highlight(scatter_id, follow_frames=follow_frames)
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
