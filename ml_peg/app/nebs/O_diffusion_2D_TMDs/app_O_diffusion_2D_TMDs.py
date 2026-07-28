@@ -18,7 +18,7 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "O diffusion on 2D TMDs"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#oxygen-adatom-diffusion-on-tmds"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#oxygen-adatom-diffusion-on-2d-tmds"
 DATA_PATH = APP_ROOT / "data" / "nebs" / "O_diffusion_2D_TMDs"
 COMPOUNDS = ["MoS2", "MoSe2", "MoTe2", "WS2", "WSe2", "WTe2"]
 
