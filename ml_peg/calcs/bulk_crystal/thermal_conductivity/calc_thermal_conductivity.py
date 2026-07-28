@@ -64,21 +64,22 @@ ase_optimizer: Literal[
     "FIRE2",
     "FIRE",
     "LBFGS",
-] = "LBFGS"
+] = "FIRE"  # "LBFGS"
 ase_filter: Literal["frechet", "exp"] = "frechet"
 max_steps = 300
 fmax = 1e-4  # Run until the forces are smaller than this in eV/A
 enforce_relax_symm = True  # Enforce symmetry during relaxation
 
 # Symmetry parameters
-symprec = 1e-5  # symmetry precision for enforcing relaxation and conductivity calcs
+symprec = 1e-5  # symmetry precision for space-group detection and conductivity calcs
+relax_symprec = 0.01  # looser symmetry precision for FixSymmetry during relaxation
 
 # Conductivity to be calculated if symmetry group changed during relaxation
 conductivity_broken_symm = False
 save_forces = True  # Save force sets to file
 temperatures: list[float] = [300]
-displacement_distance = 0.03
-ignore_imaginary_freqs = True
+displacement_distance = 0.01
+is_plusminus = True
 
 default_dtype = "float64"
 
@@ -254,7 +255,7 @@ def calc_thermal_conductivity_per_structure(
         atoms.calc = calculator
         if max_steps > 0:
             if enforce_relax_symm:
-                atoms.set_constraint(FixSymmetry(atoms, symprec=symprec))
+                atoms.set_constraint(FixSymmetry(atoms, symprec=relax_symprec))
                 filtered_atoms = filter_cls(atoms, mask=[True] * 3 + [False] * 3)
             else:
                 filtered_atoms = filter_cls(atoms)
@@ -311,6 +312,7 @@ def calc_thermal_conductivity_per_structure(
             fc3_supercell=atoms.info["fc3_supercell"],
             q_point_mesh=atoms.info["q_point_mesh"],
             displacement_distance=displacement_distance,
+            is_plusminus=is_plusminus,
             symprec=symprec,
         )
 
@@ -324,16 +326,14 @@ def calc_thermal_conductivity_per_structure(
             tc.TCKeys.ph_freqs: freqs,
         }
 
-        # Determine if conductivity calculation should proceed
-        if ignore_imaginary_freqs:
-            # NequIP/Allegro mode: ignore imaginary frequencies
-            ltc_condition = True
-        else:
-            # MACE mode: check both imaginary freqs and broken symmetry
-            broken_symmetry = relax_dict.get("broken_symmetry", False)
-            ltc_condition = not has_imag_ph_modes and (
-                not broken_symmetry or conductivity_broken_symm
-            )
+        # Determine if conductivity calculation should proceed. Imaginary modes mean
+        # the harmonic reference is unstable, so BTE conductivity is not physically
+        # well-defined and the material scores the maximum SRME penalty. This gate
+        # applies to every model, with no per-model leniency.
+        broken_symmetry = relax_dict.get("broken_symmetry", False)
+        ltc_condition = not has_imag_ph_modes and (
+            not broken_symmetry or conductivity_broken_symm
+        )
 
         if ltc_condition:
             tc.calculate_fc3_set(
