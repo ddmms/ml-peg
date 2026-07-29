@@ -168,6 +168,7 @@ class MatterSimCalc(GenericASECalc):
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
+
 # https://github.com/orbital-materials/orb-models
 @dataclasses.dataclass(kw_only=True)
 class OrbCalc(SumCalc):

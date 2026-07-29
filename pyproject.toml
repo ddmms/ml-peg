@@ -202,33 +202,29 @@ default-groups = [
 
 conflicts = [
     [
-      { extra = "uma" },
-      { extra = "mace" },
+        { extra = "uma" },
+        { extra = "mace" },
     ],
     [
-      { extra = "uma" },
-      { extra = "grace" },
+        { extra = "uma" },
+        { extra = "grace" },
     ],
     [
-      { extra = "mattersim" },
-      { extra = "mace" },
+        { extra = "mattersim" },
+        { extra = "mace" },
     ],
     [
-      { extra = "mattersim" },
-      { extra = "grace" },
+        { extra = "mattersim" },
+        { extra = "grace" },
     ],
-[
-    { extra = "mlipaudit" },
-    { extra = "grace" },
-],
-[
-    { extra = "pet-mad" },
-    { extra = "upet" },
-],
-[
-    { extra = "mace" },
-    { extra = "sevenn" },
-],
+    [
+        { extra = "mlipaudit" },
+        { extra = "grace" },
+    ],
+    [
+        { extra = "mace" },
+        { extra = "sevenn" },
+    ],
 ]
 
 constraint-dependencies = [
