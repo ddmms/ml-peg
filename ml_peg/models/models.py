@@ -8,9 +8,8 @@ import dataclasses
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from mlipx.nodes.generic_ase import Device
-
 from mlipx import GenericASECalculator as MlipxGenericASECalc
+from mlipx.nodes.generic_ase import Device
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator

@@ -166,6 +166,7 @@ select = [
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
+known-third-party = ["mlipx"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.pydocstyle]
