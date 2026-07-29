@@ -36,8 +36,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 M_WATER = 18.01528  # g/mol
 M_ETOH = 46.06844  # g/mol
-LOG_INTERVAL_PS = 0.1  # must match LOG_INTERVAL * TIMESTEP in calc
-EQUILIB_TIME_PS = 500
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -216,7 +214,8 @@ def compute_density(fname, density_col=13):
             stacklevel=2,
         )
         return np.nan
-    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
+    # Discard first half as equilibration
+    skip_frames = len(density_series) // 2
     equilibrated = density_series[skip_frames:]
     if len(equilibrated) == 0:
         return np.nan
