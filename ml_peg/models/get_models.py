@@ -141,7 +141,6 @@ def load_models(
         MatterSimCalc,
         MockCalc,
         OrbCalc,
-        PetMadCalc,
         SevenNetCalc,
         UPETCalc,
     )
@@ -189,16 +188,6 @@ def load_models(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
-                    default_dtype=cfg.get("overwrite_dtype", None),
-                    kwargs=cfg.get("kwargs", {}),
-                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
-                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
-                )
-            case "PETMADCalculator":
-                loaded_models[name] = PetMadCalc(
-                    module=cfg["module"],
-                    class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),

@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING
+from functools import wraps
+from typing import TYPE_CHECKING, Any
 
 from mlipx.nodes.generic_ase import Device
 
@@ -14,6 +15,48 @@ from mlipx import GenericASECalculator as MlipxGenericASECalc
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
+
+
+def _patch_metatomic_nvalchemi_max_neighbors() -> None:
+    """
+    Make metatomic's CUDA neighbor-list call compatible with nvalchemi.
+
+    ``metatomic-ase`` computes ``max_neighbors`` using ``cutoff**3``. For
+    cutoffs above roughly 5 Å this produces a float, while nvalchemi requires
+    an integer tensor dimension. PET-OAM uses a 10 Å cutoff.
+    """
+    import metatomic_ase._neighbors as metatomic_neighbors
+
+    neighbor_list = metatomic_neighbors.nvalchemi_neighbor_list
+    if getattr(neighbor_list, "_ml_peg_integer_max_neighbors", False):
+        return
+
+    @wraps(neighbor_list)
+    def neighbor_list_with_integer_max_neighbors(*args: Any, **kwargs: Any) -> Any:
+        """
+        Convert nvalchemi's maximum-neighbor estimate to an integer.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to the original neighbor-list function.
+        **kwargs
+            Keyword arguments forwarded to the original neighbor-list function.
+
+        Returns
+        -------
+        Any
+            The result from the original neighbor-list function.
+        """
+        max_neighbors = kwargs.get("max_neighbors")
+        if max_neighbors is not None:
+            kwargs["max_neighbors"] = int(max_neighbors)
+        return neighbor_list(*args, **kwargs)
+
+    neighbor_list_with_integer_max_neighbors._ml_peg_integer_max_neighbors = True
+    metatomic_neighbors.nvalchemi_neighbor_list = (
+        neighbor_list_with_integer_max_neighbors
+    )
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -99,35 +142,6 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
 
 @dataclasses.dataclass(kw_only=True)
-class PetMadCalc(GenericASECalc):
-    """Dataclass for PET-MAD calculator."""
-
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
-        """
-        Prepare and load the calculator.
-
-        Parameters
-        ----------
-        precision
-            Level of precision to evaluate the model.
-        **kwargs
-            Any keyword arguments to pass to `get_calculator`.
-
-        Returns
-        -------
-        Calculator
-            Loaded ASE Calculator.
-        """
-        precision_map = {"low": "float32", "high": "float64"}
-        kwargs["dtype"] = precision_map[precision]
-
-        if self.default_dtype is not None:
-            kwargs["dtype"] = self.default_dtype
-
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
-
-
-@dataclasses.dataclass(kw_only=True)
 class MatterSimCalc(GenericASECalc):
     """Dataclass for MatterSim calculator."""
 
@@ -154,7 +168,6 @@ class MatterSimCalc(GenericASECalc):
             kwargs["dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
-
 
 # https://github.com/orbital-materials/orb-models
 @dataclasses.dataclass(kw_only=True)
@@ -357,6 +370,7 @@ class UPETCalc(GenericASECalc):
         if self.default_dtype is not None:
             kwargs["dtype"] = self.default_dtype
 
+        _patch_metatomic_nvalchemi_max_neighbors()
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
