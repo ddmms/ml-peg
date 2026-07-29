@@ -43,7 +43,6 @@ from ml_peg.app.utils.utils import (
     get_scores,
     get_threshold_colours,
     store_data_equal,
-    weight_input_style,
 )
 
 THRESHOLD_INPUT_STEP = 0.0001
@@ -210,6 +209,7 @@ def register_summary_table_callbacks(
         Input("selected-models-store", "data"),
         Input("summary-table-computed-store", "data"),
         Input("cmap-store", "data"),
+        State("summary-table-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
@@ -217,6 +217,7 @@ def register_summary_table_callbacks(
         selected_models: list[str] | None,
         computed_store: list[dict] | None,
         cmap_name: str | None,
+        stored_weights: dict[str, float] | None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Sync the visible summary table from cached unfiltered rows.
@@ -229,6 +230,8 @@ def register_summary_table_callbacks(
             Cached full summary rows for the overall summary table.
         cmap_name
             Matplotlib colormap name from the cmap store.
+        stored_weights
+            Current column weights, used to dim any zero-weight column.
 
         Returns
         -------
@@ -240,7 +243,11 @@ def register_summary_table_callbacks(
 
         filtered_rows = filter_rows_by_models(computed_store, selected_models)
         base_style = (
-            get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+            get_table_style(
+                filtered_rows,
+                cmap_name=cmap_name or "viridis_r",
+                weights=stored_weights,
+            )
             if filtered_rows
             else []
         )
@@ -354,6 +361,7 @@ def register_category_table_callbacks(
                 filtered_rows,
                 scored_data=filtered_scores,
                 cmap_name=cmap_name or "viridis_r",
+                weights=weights,
             )
             if filtered_rows
             else []
@@ -451,6 +459,7 @@ def register_category_table_callbacks(
                         filtered_rows,
                         scored_data=filtered_scores,
                         cmap_name=cmap_name or "viridis_r",
+                        weights=stored_weights,
                     )
                     if filtered_rows
                     else []
@@ -563,7 +572,11 @@ def register_category_table_callbacks(
 
             filtered_rows = filter_rows_by_models(scored_rows, selected_models)
             style = (
-                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                get_table_style(
+                    filtered_rows,
+                    cmap_name=cmap_name or "viridis_r",
+                    weights=stored_weights,
+                )
                 if filtered_rows
                 else []
             )
@@ -602,6 +615,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-computed-store", "data"),
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
+            State(f"{table_id}-weight-store", "data"),
             prevent_initial_call="initial_duplicate",
             optional=True,
         )
@@ -609,6 +623,7 @@ def register_category_table_callbacks(
             computed_store: list[dict] | None,
             selected_models: list[str] | None,
             cmap_name: str | None,
+            stored_weights: dict[str, float] | None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
             """
             Sync the visible category table from its cached unfiltered rows.
@@ -630,7 +645,11 @@ def register_category_table_callbacks(
 
             filtered_rows = filter_rows_by_models(computed_store, selected_models)
             style = (
-                get_table_style(filtered_rows, cmap_name=cmap_name or "viridis_r")
+                get_table_style(
+                    filtered_rows,
+                    cmap_name=cmap_name or "viridis_r",
+                    weights=stored_weights,
+                )
                 if filtered_rows
                 else []
             )
@@ -891,14 +910,13 @@ def register_weight_callbacks(
 
     @callback(
         Output(f"{input_id}-input", "value"),
-        Output(f"{input_id}-input", "style"),
         Input(f"{table_id}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float]) -> tuple[float, dict[str, str]]:
+    def sync_inputs(stored_weights: dict[str, float]) -> float:
         """
-        Sync weight values between the text input and Store.
+        Sync the weight value from the Store into the text input.
 
         Parameters
         ----------
@@ -907,11 +925,10 @@ def register_weight_callbacks(
 
         Returns
         -------
-        tuple[float, dict[str, str]]
-            Weight to set text input value, and its style (greyed when zero).
+        float
+            Weight to set as the text input value.
         """
-        weight = stored_weights[column]
-        return weight, weight_input_style(weight)
+        return stored_weights[column]
 
 
 def register_normalization_callbacks(

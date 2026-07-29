@@ -337,7 +337,7 @@ def run_calcs(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if run_slow:
         options.extend(["--run-slow"])
@@ -442,7 +442,7 @@ def run_analysis(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if models:
         options.extend(["--models", models])

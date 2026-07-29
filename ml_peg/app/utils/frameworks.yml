@@ -11,6 +11,13 @@ mlip_arena:
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
   logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
 
+mlip_audit:
+  label: MLIP Audit
+  color: "#1d4ed8"
+  text_color: "#ffffff"
+  url: "https://github.com/instadeepai/mlipaudit"
+  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
+
 mace-multihead:
   label: Multihead Cross Learning
   color: "#7c3aed"

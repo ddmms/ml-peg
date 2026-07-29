@@ -125,7 +125,7 @@ def build_weight_input(
             value=default_value,
             step=0.01,
             debounce=True,
-            style=weight_input_style(default_value),
+            style=weight_input_style(),
         )
     )
 
