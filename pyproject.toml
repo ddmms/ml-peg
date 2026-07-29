@@ -78,10 +78,10 @@ uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
 upet = [
-    "upet",
+    "upet==0.2.4; python_version >= '3.11'",
 ]
 sevenn = [
-    "sevenn",
+    "sevenn==0.12.1",
 ]
 
 [project.scripts]
