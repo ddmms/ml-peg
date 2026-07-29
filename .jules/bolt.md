@@ -5,3 +5,7 @@
 ## 2024-05-19 - Caching YAML Load for Framework Registry
 **Learning:** `yaml.safe_load` on `frameworks.yml` within `load_framework_registry()` was taking ~2-3 ms per call and it was repeatedly called for every framework entry via `get_framework_config()`. This was a micro-bottleneck, especially when dealing with lists or multiple frameworks.
 **Action:** Applied the `@lru_cache` and `deepcopy` pattern successfully again to `load_framework_registry()` and `get_framework_config()` to avoid caching a mutable dictionary directly and avoid repeated YAML I/O parsing.
+
+## 2026-07-29 - Optimizing Pandas DataFrame Iteration
+**Learning:** Iterating over Pandas DataFrames using `iterrows()` is a significant performance bottleneck due to series conversion and overhead. `itertuples()` or `to_dict('records')` are much faster alternatives depending on whether index-based or dictionary-based row access is required.
+**Action:** Replace `iterrows()` with `to_dict('records')` when column keys are dynamic or dictionary access is preferred, and use `itertuples(index=False, name=None)` for the fastest tuple-based row iteration.
