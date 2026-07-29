@@ -74,9 +74,6 @@ mlipaudit = [
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
-pet-mad = [
-    "pet-mad == 1.4.4; sys_platform != 'win32'"
-]
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
@@ -219,14 +216,18 @@ conflicts = [
       { extra = "mattersim" },
       { extra = "grace" },
     ],
-    [
-      { extra = "mlipaudit" },
-      { extra = "grace" },
-    ],
-    [
-      { extra = "pet-mad" },
-      { extra = "upet" },
-    ],
+[
+    { extra = "mlipaudit" },
+    { extra = "grace" },
+],
+[
+    { extra = "pet-mad" },
+    { extra = "upet" },
+],
+[
+    { extra = "mace" },
+    { extra = "sevenn" },
+],
 ]
 
 constraint-dependencies = [
