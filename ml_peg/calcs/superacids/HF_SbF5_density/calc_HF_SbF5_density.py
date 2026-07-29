@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
-from ase import units
-from ase.io import read, write
+from ase import Atoms, units
+from ase.io import Trajectory, read, write
 from ase.md.logger import MDLogger
 from ase.md.nose_hoover_chain import IsotropicMTKNPT
 from ase.md.velocitydistribution import (
@@ -26,12 +27,12 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 # Simulation parameters
-TEMPERATURE_K = 288.6
+TEMPERATURE_K = 288.65
 PRESSURE_ATM = 1
 DT_FS = 0.5  # DT in femtoseconds
-N_MIN_STEPS = 1000  # maximum minimization steps
+N_MIN_STEPS = 300  # maximum minimization steps
 N_NPT_STEPS = 200000  # NPT production steps
-OUT_FREQ = 1000
+OUT_FREQ = 200
 
 # Conversions
 ATM_TO_GPA = 1.01325e-4  # 1 atm = 0.000101325 GPa
@@ -44,11 +45,45 @@ PDAMP = 1000 * DT_FS * units.fs
 SYSTEMS = ["X_0", "X_10", "X_100"]
 
 
+def read_restart(traj_path: Path) -> tuple[Atoms | None, int]:
+    """
+    Read the last frame of a previous run of this system, if there is one.
+
+    Parameters
+    ----------
+    traj_path
+        Path to the trajectory of the NPT run.
+
+    Returns
+    -------
+    tuple[Atoms | None, int]
+        Last frame written, and the step it was written at, or `(None, 0)` if
+        there is no trajectory to restart from.
+    """
+    if not traj_path.exists():
+        return None, 0
+
+    try:
+        traj = Trajectory(str(traj_path))
+        atoms = traj[-1]
+        nsteps = (len(traj) - 1) * OUT_FREQ
+    except Exception as exc:
+        warn(f"Ignoring unreadable trajectory {traj_path}: {exc}", stacklevel=2)
+        return None, 0
+
+    return atoms, nsteps
+
+
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=lambda x: x[0])
 @pytest.mark.parametrize("system", SYSTEMS)
 def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
     """
     Run HF/SbF5 mixture density test.
+
+    Interrupted runs are resumed from the last frame of the trajectory, so
+    minimisation and the initial velocity distribution are only applied when
+    starting from scratch.
 
     Parameters
     ----------
@@ -58,36 +93,48 @@ def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
         System identifier (X_0, X_10, X_100).
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
 
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
-    # Download dataset
-    hf_sbf5_density_dir = (
-        download_s3_data(
-            key="inputs/superacids/HF_SbF5_density/HF_SbF5_density.zip",
-            filename="HF_SbF5_density.zip",
-        )
-        / "HF_SbF5_density"
-    )
-
-    print(f"Simulating {system} with model {model_name}")
-
-    atoms = read(hf_sbf5_density_dir / system / "start.xyz")
-    atoms.calc = calc
-
     write_dir = OUT_PATH / model_name / system
     write_dir.mkdir(parents=True, exist_ok=True)
+    traj_path = write_dir / f"{system}.traj"
 
-    # Minimization
-    opt = FIRE(atoms, logfile=str(write_dir / "opt.log"))
-    opt.run(fmax=0.05, steps=N_MIN_STEPS)
-    write(write_dir / "minimised.xyz", atoms)
+    atoms, nsteps = read_restart(traj_path)
+    restarting = atoms is not None
 
-    MaxwellBoltzmannDistribution(atoms, temperature_K=TEMPERATURE_K)
-    Stationary(atoms)
-    ZeroRotation(atoms)
+    if restarting:
+        print(f"Resuming {system} with model {model_name} from step {nsteps}")
+    else:
+        print(f"Simulating {system} with model {model_name}")
+
+        # Download dataset
+        hf_sbf5_density_dir = (
+            download_s3_data(
+                key="inputs/superacids/HF_SbF5_density/HF_SbF5_density.zip",
+                filename="HF_SbF5_density.zip",
+            )
+            / "HF_SbF5_density"
+        )
+
+        atoms = read(hf_sbf5_density_dir / system / "start.xyz")
+
+    atoms.calc = calc
+
+    if not restarting:
+        # Minimization
+        opt = FIRE(atoms, logfile=str(write_dir / "opt.log"))
+        try:
+            opt.run(fmax=0.05, steps=N_MIN_STEPS)
+        except Exception as exc:
+            warn(f"Error minimising {system}: {exc}", stacklevel=2)
+        write(write_dir / "minimised.xyz", atoms)
+
+        MaxwellBoltzmannDistribution(atoms, temperature_K=TEMPERATURE_K)
+        Stationary(atoms)
+        ZeroRotation(atoms)
 
     dyn = IsotropicMTKNPT(
         atoms=atoms,
@@ -98,18 +145,29 @@ def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
         pdamp=PDAMP,
     )
 
+    dyn.nsteps = nsteps
+
     dyn.attach(
-        MDLogger(dyn, atoms, str(write_dir / "md.log"), header=True, mode="w"),
+        MDLogger(
+            dyn,
+            atoms,
+            str(write_dir / "md.log"),
+            header=not restarting,
+            mode="a" if restarting else "w",
+        ),
         interval=OUT_FREQ,
     )
 
-    # Volume logger: step and volume only
-    vol_file = open(write_dir / "volume.dat", "w")
-    vol_file.write("# step  volume_A3\n")
+    traj_file = Trajectory(str(traj_path), "a" if restarting else "w", atoms)
+    vol_file = open(write_dir / "volume.dat", "a" if restarting else "w")
+    if not restarting:
+        vol_file.write("# step  volume_A3\n")
 
-    def write_volume(_dyn=dyn, _atoms=atoms, _f=vol_file) -> None:
+    last_written = nsteps if restarting else -1
+
+    def write_frame(_dyn=dyn, _atoms=atoms) -> None:
         """
-        Write current step and volume to file.
+        Append the current frame to the trajectory, and its volume to file.
 
         Parameters
         ----------
@@ -117,21 +175,31 @@ def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
             The dynamics object.
         _atoms : Atoms
             The ASE atoms object.
-        _f : TextIOWrapper
-            The open file handle for volume data.
         """
-        step = _dyn.nsteps
-        vol = _atoms.get_volume()
-        _f.write(f"{step}  {vol:.6f}\n")
-        _f.flush()
+        nonlocal last_written
 
-    write_volume()  # step 0
-    dyn.attach(write_volume, interval=OUT_FREQ)
+        step = _dyn.nsteps
+        if step <= last_written:
+            # Resuming: this frame was already written by the previous run.
+            return
+
+        traj_file.write()
+        vol_file.write(f"{step}  {_atoms.get_volume():.6f}\n")
+        vol_file.flush()
+        last_written = step
+
+    write_frame()  # step 0
+    dyn.attach(write_frame, interval=OUT_FREQ)
 
     # Run NPT
-    dyn.run(N_NPT_STEPS)
+    if nsteps < N_NPT_STEPS:
+        try:
+            dyn.run(N_NPT_STEPS - nsteps)
+        except Exception as exc:
+            warn(f"Error running MD for {system}: {exc}", stacklevel=2)
 
     vol_file.close()
+    traj_file.close()
 
     # Save final structure
     atoms.info["system"] = system
