@@ -12,6 +12,11 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.molecular_dynamics.ethanol_water_density.calc_ethanol_water_density import (  # noqa: E501
+    LOG_INTERVAL,
+    N_COMPOSITIONS,
+    NUM_NPT_STEPS,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -31,10 +36,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 M_WATER = 18.01528  # g/mol
 M_ETOH = 46.06844  # g/mol
-LOG_INTERVAL_PS = 0.1
+LOG_INTERVAL_PS = 0.1  # must match LOG_INTERVAL * TIMESTEP in calc
 EQUILIB_TIME_PS = 500
-TOTAL_TIME_PS = 1000  # must match NUM_NPT_STEPS * TIMESTEP in calc
-N_COMPOSITIONS = 6  # must match compositions.csv (duplicate in calc)
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -205,7 +208,7 @@ def compute_density(fname, density_col=13):
                 density_series.append(float(items[13]))
     except OSError:
         return np.nan
-    n_expected = int(TOTAL_TIME_PS / LOG_INTERVAL_PS) + 1
+    n_expected = NUM_NPT_STEPS // LOG_INTERVAL + 1
     if len(density_series) != n_expected:
         warn(
             f"{fname} has {len(density_series)}/{n_expected} frames "
