@@ -213,3 +213,50 @@ Data availability
 -----------------
 
 https://arxiv.org/html/2603.04228v1
+
+
+Jacobian Symmetry
+=================
+
+Summary
+-------
+
+Performance in predicting conservative forces, by measuring the antisymmetric fraction
+of the finite-difference force Jacobian [1].
+
+
+Metrics
+-------
+
+1. Mean lambda
+
+For ten diverse structures (eight molecules and two periodic systems: a metal and a 2D
+sheet), the Jacobian of predicted forces with respect to atomic positions is built by
+central finite differences, perturbing each degree of freedom by :math:`\pm 10^{-3}` Å.
+For a conservative force field, where forces are the gradient of an energy, this
+Jacobian must be symmetric. Lambda is the fraction of the Jacobian's Frobenius norm that
+is antisymmetric, :math:`\lambda = \lVert J_{\text{anti}} \rVert / \lVert J \rVert`
+where :math:`J_{\text{anti}} = (J - J^T)/2`. Lambda is 0 for perfectly conservative
+forces, and increases towards 1 for models predicting more decoupled, non-conservative
+forces. Lambda is calculated for each structure, and the mean across all structures is
+reported.
+
+2. Max lambda
+
+Same as (1), but the maximum (worst-case) lambda across all structures is reported.
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take a few minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+None required; structures are generated in ASE.
+
+[1] Bigi, Filippo, Marcel Langer, and Michele Ceriotti. "The dark side of the forces:
+assessing non-conservative force models for atomistic machine learning." arXiv preprint
+arXiv:2412.11569 (2024).
