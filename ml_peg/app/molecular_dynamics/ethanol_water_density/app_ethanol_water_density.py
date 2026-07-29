@@ -71,8 +71,9 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
         name=BENCHMARK_NAME,
         description=(
             "Ethanol–water mixture density at 293.15 K. Metrics include density RMSE, "
-            "excess-volume RMSE, and error in the mole-fraction "
-            "location of the maximum excess volume."
+            "excess-volume RMSE, and error in the mole-fraction location of the "
+            "excess-volume minimum, i.e. the composition with the greatest "
+            "volume contraction on mixing."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "density_metrics_table.json",

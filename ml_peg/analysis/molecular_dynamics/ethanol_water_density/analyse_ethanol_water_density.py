@@ -33,6 +33,8 @@ M_WATER = 18.01528  # g/mol
 M_ETOH = 46.06844  # g/mol
 LOG_INTERVAL_PS = 0.1
 EQUILIB_TIME_PS = 500
+TOTAL_TIME_PS = 1000  # must match NUM_NPT_STEPS * TIMESTEP in calc
+N_COMPOSITIONS = 6  # must match compositions.csv (duplicate in calc)
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -203,6 +205,14 @@ def compute_density(fname, density_col=13):
                 density_series.append(float(items[13]))
     except OSError:
         return np.nan
+    n_expected = int(TOTAL_TIME_PS / LOG_INTERVAL_PS) + 1
+    if len(density_series) != n_expected:
+        warn(
+            f"{fname} has {len(density_series)}/{n_expected} frames "
+            "(incomplete run?); density set to NaN.",
+            stacklevel=2,
+        )
+        return np.nan
     skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
     equilibrated = density_series[skip_frames:]
     if len(equilibrated) == 0:
@@ -237,6 +247,16 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
             )
         x = np.asarray(xs, dtype=float)
         rho = np.asarray(rhos, dtype=float)
+
+        # A partial grid would silently skew metrics (wrong excess-volume
+        # endpoints), possibly rewarding models whose runs failed.
+        if model_dir.is_dir() and x.size != N_COMPOSITIONS:
+            warn(
+                f"{model_name} has {x.size}/{N_COMPOSITIONS} compositions; "
+                "metrics set to NaN.",
+                stacklevel=2,
+            )
+            rho[:] = np.nan
 
         order = np.argsort(x)
         curves[model_name] = (x[order], rho[order])
