@@ -62,7 +62,7 @@ mace = [
 ]
 
 mattersim = [
-    "mattersim==1.2.2",
+    "mattersim==1.2.4; python_version >= '3.12'",
 ]
 mlipaudit = [
     "mlipaudit; python_version >= '3.11'",

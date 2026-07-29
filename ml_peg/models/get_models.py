@@ -138,6 +138,7 @@ def load_models(
     from ml_peg.models.models import (
         FairChemCalc,
         GenericASECalc,
+        MatterSimCalc,
         MockCalc,
         OrbCalc,
         PetMadCalc,
@@ -193,6 +194,16 @@ def load_models(
                 )
             case "PETMADCalculator":
                 loaded_models[name] = PetMadCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", "cpu"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "MatterSimCalculator":
+                loaded_models[name] = MatterSimCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),

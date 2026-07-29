@@ -126,6 +126,35 @@ class PetMadCalc(GenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+@dataclasses.dataclass(kw_only=True)
+class MatterSimCalc(GenericASECalc):
+    """Dataclass for MatterSim calculator."""
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Any keyword arguments to pass to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE Calculator.
+        """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
+        if self.default_dtype is not None:
+            kwargs["dtype"] = self.default_dtype
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
 # https://github.com/orbital-materials/orb-models
 @dataclasses.dataclass(kw_only=True)
 class OrbCalc(SumCalc):
