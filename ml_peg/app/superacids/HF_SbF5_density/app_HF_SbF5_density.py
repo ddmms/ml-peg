@@ -11,8 +11,8 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -22,6 +22,9 @@ DOCS_URL = (
     "superacids.html#hf-sbf5-mixture-densities"
 )
 DATA_PATH = APP_ROOT / "data" / "superacids" / "HF_SbF5_density"
+
+# Systems simulated, labelled by the mol % of SbF5 in the mixture
+SYSTEMS = ("X_0", "X_10", "X_100")
 
 
 class HFSbF5DensityApp(BaseApp):
@@ -55,8 +58,16 @@ def get_app() -> HFSbF5DensityApp:
         description=("Liquid densities of HF/SbF5 mixtures at varying compositions."),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "hf_sbf5_density_metrics_table.json",
+        info_path=DATA_PATH / "info.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            *(
+                read_plot(
+                    DATA_PATH / f"figure_density_time_{system}.json",
+                    id=f"{BENCHMARK_NAME}-{system}-figure-density-time",
+                )
+                for system in SYSTEMS
+            ),
         ],
     )
 
