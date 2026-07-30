@@ -55,4 +55,4 @@ def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
         trajectory=write_dir / "relaxation.traj",
         logfile=write_dir / "relaxation.log",
     )
-    opt.run(fmax=0.01, steps=1000)
+    opt.run(fmax=0.01, steps=2000)
