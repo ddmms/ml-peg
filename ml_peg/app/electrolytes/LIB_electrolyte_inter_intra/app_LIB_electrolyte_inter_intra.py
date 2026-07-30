@@ -1,4 +1,4 @@
-"""Run inter intra benchmark app."""
+"""Run LIB electrolyte inter intra benchmark app."""
 
 from __future__ import annotations
 
@@ -14,14 +14,16 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-BENCHMARK_NAME = "Inter-Intra"
-# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/battery_electrolyte.html#inter_intra"
-DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
-INFO_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra" / "info.json"
+BENCHMARK_NAME = "LIB electrolyte Inter-Intra Properties"
+# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#LIB_electrolyte_inter_intra"
+DATA_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra"
+INFO_PATH = (
+    APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra" / "info.json"
+)
 
 
-class InterIntraApp(BaseApp):
-    """Inter intra benchmark app layout and callbacks."""
+class LIBelectrolyteInterIntraApp(BaseApp):
+    """LIB electrolyte inter intra benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -60,20 +62,20 @@ class InterIntraApp(BaseApp):
         )
 
 
-def get_app() -> InterIntraApp:
+def get_app() -> LIBelectrolyteInterIntraApp:
     """
-    Get inter intra benchmark app layout and callback registration.
+    Get LIB electrolyte inter intra benchmark app layout and callback registration.
 
     Returns
     -------
-    InterIntraApp
+    LIBelectrolyteInterIntraApp
         Benchmark layout and callback registration.
     """
-    return InterIntraApp(
+    return LIBelectrolyteInterIntraApp(
         name=BENCHMARK_NAME,
         description=(
             "Evaluate model inter/intra property prediction "
-            "for different densities of LIB full electrolyte"
+            "for different densities of LIB electrolyte"
             " and neat solvent configs"
         ),
         # docs_url=DOCS_URL,

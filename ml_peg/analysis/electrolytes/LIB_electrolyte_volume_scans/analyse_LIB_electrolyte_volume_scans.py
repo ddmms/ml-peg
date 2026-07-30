@@ -1,4 +1,4 @@
-"""Analyse Volume Scans benchmark."""
+"""Analyse LIB electrolyte Volume Scans benchmark."""
 
 from __future__ import annotations
 
@@ -20,13 +20,13 @@ MODELS = get_model_names(current_models)
 
 REF_PATH = (
     download_s3_data(
-        key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
+        key="inputs/electrolytes/volume_scans/volume_scans.zip",
         filename="volume_scans.zip",
     )
     / "volume_scans"
 )
-CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "volume_scans" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
+CALC_PATH = CALCS_ROOT / "electrolytes" / "LIB_electrolyte_volume_scans" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_volume_scans"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)

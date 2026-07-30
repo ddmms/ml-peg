@@ -1,9 +1,9 @@
 ====================
-Battery Electrolytes
+Electrolytes
 ====================
 
-Inter-Intra Properties
-======================
+LIB Electrolyte Inter-Intra Properties
+======================================
 
 Summary
 -------
@@ -49,8 +49,8 @@ Reference data:
   * PBE-D3(BJ)
 
 
-Volume Scans
-============
+LIB Electrolyte Volume Scans
+============================
 
 Summary
 -------
