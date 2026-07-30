@@ -7,6 +7,7 @@ from pathlib import Path
 import traceback
 import warnings
 
+from ase.io import read, write
 import h5py
 import numpy as np
 import pandas as pd
@@ -45,10 +46,16 @@ INFO = get_struct_info(
     glob_pattern="phononDB-PBE-structures.extxyz",
     info_keys=["name", tc.TCKeys.mat_id],
     write_info=True,
-    write_structs=True,
-    struct_name_key=tc.TCKeys.mat_id,
+    write_structs=False,
     out_path=OUT_PATH,
 )
+
+# Write per-material reference structures for the app viewer into a mock/ subdir,
+# keeping them out of the data-dir root which holds the figure/table/info JSON.
+STRUCT_OUT = OUT_PATH / "mock"
+STRUCT_OUT.mkdir(parents=True, exist_ok=True)
+for _struct in read(REF_PATH / "phononDB-PBE-structures.extxyz", index=":"):
+    write(STRUCT_OUT / f"{_struct.info[tc.TCKeys.mat_id]}.xyz", _struct)
 
 # Order by material ID to match the parity data (ordered by the sorted reference index).
 _order = sorted(
