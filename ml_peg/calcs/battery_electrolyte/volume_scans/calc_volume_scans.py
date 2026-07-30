@@ -11,7 +11,6 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
-from ml_peg.app import APP_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -38,9 +37,6 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
     out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    assets_dir = APP_ROOT / "data/assets/battery_electrolyte/volume_scans" / model_name
-    assets_dir.mkdir(parents=True, exist_ok=True)
-
     data_path = (
         download_s3_data(
             key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
@@ -49,11 +45,10 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
         / "volume_scans"
     )
 
-    structure_paths = data_path.glob("*.extxyz")
+    structure_paths = data_path.glob("*.xyz")
 
     for struct_path in tqdm(structure_paths, total=2):
-        file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.extxyz"
-        asset_prefix = assets_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.extxyz"
+        file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
             struct.calc = copy(calc)
@@ -74,4 +69,3 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
 
             struct.calc = None
         write(file_prefix, configs)
-        write(asset_prefix, configs)

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read
+from ase.io import read, write
 from aseMolec import extAtoms
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -30,6 +30,16 @@ OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index=":",
+    include_filenames=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    info_keys=["sys_formula"],
+)
 
 conf_types = ["Solvent", "Electrolyte"]
 
@@ -55,12 +65,15 @@ def get_volscan_results(
 
     for model in results.keys():
         if model == "ref":
-            configs = read(REF_PATH / f"{conf_type.lower()}_VS_PBED3.extxyz", ":")
+            configs = read(REF_PATH / f"{conf_type.lower()}_VS_PBED3.xyz", ":")
 
         else:
             configs = read(
-                CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.extxyz", ":"
+                CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.xyz", ":"
             )
+            structs_dir = OUT_PATH / model
+            structs_dir.mkdir(parents=True, exist_ok=True)
+            write(structs_dir / f"{model}-{conf_type.lower()}-volscan.extxyz", configs)
 
         energies = [
             frame.calc.__dict__["results"]["energy"] * 1000 / len(frame)

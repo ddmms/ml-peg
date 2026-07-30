@@ -9,7 +9,7 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
     plot_from_table_cell,
-    struct_from_scatter,
+    struct_from_multi_scatters,
 )
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
@@ -20,6 +20,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Volume-Scans"
 # DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/battery_electrolyte.html#volume_scans"
 DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class VolumeScansApp(BaseApp):
@@ -41,12 +42,12 @@ class VolumeScansApp(BaseApp):
             for model in MODELS
         }
 
-        # Assets dir will be parent directory
         assets_dir = "assets/battery_electrolyte/volume_scans"
         structs = {
             model: {
-                "Solvent": f"{assets_dir}/{model}/solvent_VS_{model}_D3.extxyz",
-                "Electrolyte": f"{assets_dir}/{model}/electrolyte_VS_{model}_D3.extxyz",
+                "Solvent": f"{assets_dir}/{model}/{model}-solvent-volscan.extxyz",
+                "Electrolyte": f"{assets_dir}/{model}/"
+                f"{model}-electrolyte-volscan.extxyz",
             }
             for model in MODELS
         }
@@ -59,10 +60,13 @@ class VolumeScansApp(BaseApp):
 
         for model in MODELS:
             for volscan in ("solvent", "electrolyte"):
-                struct_from_scatter(
+                struct_from_multi_scatters(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{volscan}VS",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=structs[model][volscan.capitalize()],
+                    structs=[
+                        structs[model][volscan.capitalize()],
+                        structs[model][volscan.capitalize()],
+                    ],
                     mode="traj",
                 )
 
@@ -88,6 +92,7 @@ def get_app() -> VolumeScansApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
