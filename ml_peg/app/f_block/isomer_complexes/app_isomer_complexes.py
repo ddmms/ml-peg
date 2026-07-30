@@ -14,10 +14,9 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Lanthanide Isomer Complexes"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/lanthanides.html"
-    "#isomer-complexes"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/f_block.html#isomer-complexes"
 )
-DATA_PATH = APP_ROOT / "data" / "lanthanides" / "isomer_complexes"
+DATA_PATH = APP_ROOT / "data" / "f_block" / "isomer_complexes"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -41,7 +40,7 @@ class IsomerComplexesApp(BaseApp):
         if MODELS:
             structs_dir = DATA_PATH / MODELS[0]
             structs = [
-                f"/assets/lanthanides/isomer_complexes/{MODELS[0]}/{struct_file.stem}.xyz"
+                f"/assets/f_block/isomer_complexes/{MODELS[0]}/{struct_file.stem}.xyz"
                 for struct_file in sorted(structs_dir.glob("*.xyz"))
             ]
 

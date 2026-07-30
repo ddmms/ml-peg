@@ -13,14 +13,13 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
-from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-OUT_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
+OUT_PATH = Path(__file__).parent / "outputs"
 
 EXCLUDE_ELEMENTS = (89, 90)
 
