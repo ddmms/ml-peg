@@ -89,7 +89,7 @@ class ThermalConductivityApp(BaseApp):
         # Structure viewer for every plot. Keyed on each point's material id
         # (customdata), not its index: the violin/status plots filter and reorder
         # points, so index-based matching would show the wrong crystal.
-        struct_template = "/assets/bulk_crystal/thermal_conductivity/{id}.xyz"
+        struct_template = "/assets/bulk_crystal/thermal_conductivity/mock/{id}.xyz"
         struct_placeholder = f"{BENCHMARK_NAME}-struct-placeholder"
         scatter_ids = [f"{BENCHMARK_NAME}-figure", f"{BENCHMARK_NAME}-fast-figure"]
         if violin_data:
