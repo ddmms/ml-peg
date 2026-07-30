@@ -1,4 +1,4 @@
-"""Run calculations for Volume Scans."""
+"""Run calculations for LIB electrolyte inter intra benchmark."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
+from aseMolec import anaAtoms
 import numpy as np
 import pytest
 from tqdm import tqdm
@@ -16,18 +17,19 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
+
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_volume_scans(mlip: tuple[str, Any]) -> None:
+def test_intra_inter(mlip: tuple[str, Any]) -> None:
     """
-    Run calculations required for Volume Scan tests.
+    Run calculations required for intra/inter molecule property comparison.
 
     Parameters
     ----------
     mlip
-        Name of models and models used for Volume Scan calculations.
+        Name of model use and model to get calculator.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
@@ -39,15 +41,15 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            key="inputs/battery_electrolyte/volume_scans/volume_scans.zip",
-            filename="volume_scans.zip",
+            key="inputs/electrolytes/inter_intra/inter_intra.zip",
+            filename="inter_intra.zip",
         )
-        / "volume_scans"
+        / "inter_intra"
     )
 
     structure_paths = data_path.glob("*.xyz")
 
-    for struct_path in tqdm(structure_paths, total=2):
+    for struct_path in tqdm(structure_paths, total=6):
         file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
@@ -55,7 +57,6 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
             struct.info["spin"] = 0
             struct.info["charge"] = 1
             try:
-                struct.calc = copy(calc)
                 struct.info["energy"] = struct.get_potential_energy()
                 struct.arrays["forces"] = struct.get_forces()
                 struct.info["virial"] = (
@@ -69,3 +70,13 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
 
             struct.calc = None
         write(file_prefix, configs)
+
+    eval_file_prefix = out_dir
+    test = read(eval_file_prefix / f"output_{model_name}_D3.xyz", ":")
+    single_molecule_test = []
+    for molsym in ["EMC", "EC", "PF6", "Li"]:
+        single_molecule_test += read(
+            eval_file_prefix / f"output{molsym}_{model_name}_D3.xyz", ":"
+        )
+    anaAtoms.collect_molec_results_dict(test, single_molecule_test)
+    write(eval_file_prefix / f"intrainter_{model_name}_D3.xyz", test)

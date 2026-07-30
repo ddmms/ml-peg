@@ -1,4 +1,4 @@
-"""Analyse inter intra benchmark."""
+"""Analyse LIB electrolyte inter intra benchmark."""
 
 from __future__ import annotations
 
@@ -24,13 +24,13 @@ MODELS = get_model_names(current_models)
 
 REF_PATH = (
     download_s3_data(
-        key="inputs/battery_electrolyte/inter_intra/inter_intra.zip",
+        key="inputs/electrolytes/inter_intra/inter_intra.zip",
         filename="inter_intra.zip",
     )
     / "inter_intra"
 )
-CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "inter_intra" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
+CALC_PATH = CALCS_ROOT / "electrolytes" / "LIB_electrolyte_inter_intra" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 

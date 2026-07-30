@@ -1,4 +1,4 @@
-"""Run Volume Scans Benchmark app."""
+"""Run LIB electrolyte Volume Scans Benchmark app."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-BENCHMARK_NAME = "Volume-Scans"
-# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/battery_electrolyte.html#volume_scans"
-DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "volume_scans"
+BENCHMARK_NAME = "LIB Electrolyte Volume-Scans"
+# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#LIB_electrolyte_volume_scans"
+DATA_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_volume_scans"
 INFO_PATH = DATA_PATH / "info.json"
 
 
-class VolumeScansApp(BaseApp):
-    """Volume Scans benchmark app layout and callbacks."""
+class LIBelectrolyteVolumeScansApp(BaseApp):
+    """LIB Electrolyte Volume Scans benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -42,7 +42,7 @@ class VolumeScansApp(BaseApp):
             for model in MODELS
         }
 
-        assets_dir = "assets/battery_electrolyte/volume_scans"
+        assets_dir = "assets/electrolytes/LIB_electrolyte_volume_scans"
         structs = {
             model: {
                 "Solvent": f"{assets_dir}/{model}/{model}-solvent-volscan.extxyz",
@@ -71,16 +71,16 @@ class VolumeScansApp(BaseApp):
                 )
 
 
-def get_app() -> VolumeScansApp:
+def get_app() -> LIBelectrolyteVolumeScansApp:
     """
     Get Volume Scan benchmark app layout and callback registration.
 
     Returns
     -------
-    VolumeScansApp
+    LIBelectrolyteVolumeScansApp
         Benchmark layout and callback registration.
     """
-    return VolumeScansApp(
+    return LIBelectrolyteVolumeScansApp(
         name=BENCHMARK_NAME,
         description=(
             "Evaluate model energy predictions on "
@@ -105,9 +105,9 @@ if __name__ == "__main__":
     )
 
     # Construct layout and register callbacks
-    VolumeScan_app = get_app()
-    full_app.layout = VolumeScan_app.layout
-    VolumeScan_app.register_callbacks()
+    LIBelectrolyteVolumeScans_app = get_app()
+    full_app.layout = LIBelectrolyteVolumeScans_app.layout
+    LIBelectrolyteVolumeScans_app.register_callbacks()
 
     # Run app
     full_app.run(port=8054, debug=True)
