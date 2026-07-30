@@ -8,7 +8,7 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.load import read_density_plot_for_model, read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -17,6 +17,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Inter-Intra"
 # DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/battery_electrolyte.html#inter_intra"
 DATA_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
+INFO_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra" / "info.json"
 
 
 class InterIntraApp(BaseApp):
@@ -24,14 +25,16 @@ class InterIntraApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        parity_plots = {
+        plots = {
             model: {
-                "Intra-Forces": read_plot(
-                    DATA_PATH / f"intra-forces_parity_{model}.json",
+                "Intra-Forces": read_density_plot_for_model(
+                    DATA_PATH / "intra-forces_density_parity.json",
+                    model=model,
                     id=f"{BENCHMARK_NAME}-{model}-figure",
                 ),
-                "Inter-Forces": read_plot(
-                    DATA_PATH / f"inter-forces_parity_{model}.json",
+                "Inter-Forces": read_density_plot_for_model(
+                    DATA_PATH / "inter-forces_density_parity.json",
+                    model=model,
                     id=f"{BENCHMARK_NAME}-{model}-figure",
                 ),
                 "Inter-Energy": read_plot(
@@ -53,7 +56,7 @@ class InterIntraApp(BaseApp):
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            cell_to_plot=parity_plots,
+            cell_to_plot=plots,
         )
 
 
@@ -78,6 +81,7 @@ def get_app() -> InterIntraApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 
