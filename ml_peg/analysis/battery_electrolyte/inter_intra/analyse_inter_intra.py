@@ -8,8 +8,12 @@ from ase.io import read
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, rmse
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    plot_density_scatter,
+    plot_parity,
+)
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -27,9 +31,18 @@ REF_PATH = (
 )
 CALC_PATH = CALCS_ROOT / "battery_electrolyte" / "inter_intra" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "battery_electrolyte" / "inter_intra"
-
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index=":",
+    include_filenames=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    info_keys=["sys_formula"],
+)
 
 property_metadata = {
     "Intra-Forces": ["arrays", "forces_intram"],
@@ -81,7 +94,7 @@ def get_property_results(prop_key: str) -> dict[str, float]:
     return results
 
 
-def plot_results(prop_key: str, results: dict[str, float]) -> None:
+def plot_parity_results(prop_key: str, results: dict[str, float]) -> None:
     """
     Plot inter-intra property parity plots.
 
@@ -100,7 +113,7 @@ def plot_results(prop_key: str, results: dict[str, float]) -> None:
         y_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
         plot_combined=False,
     )
-    def plot_result() -> dict[str, list[float]]:
+    def plot_parity_result() -> dict[str, list[float]]:
         """
         Plot the inter-intra propery parity plots.
 
@@ -111,7 +124,47 @@ def plot_results(prop_key: str, results: dict[str, float]) -> None:
         """
         return results
 
-    plot_result()
+    plot_parity_result()
+
+
+def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> None:
+    """
+    Plot inter-intra property parity density plots.
+
+    Parameters
+    ----------
+    prop_key
+        Name of inter-intra property to be plotted.
+    results
+        Results from all models for a single property.
+    """
+
+    @plot_density_scatter(
+        filename=OUT_PATH / f"{prop_key.lower()}_density_parity.json",
+        title=prop_key,
+        x_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        y_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+    )
+    def plot_density_parity_result() -> dict[str, list[float]]:
+        """
+        Plot the inter-intra propery density parity plots.
+
+        Returns
+        -------
+        dict[str, tuple[list[float]]]
+            Dictionary of reference and predicted inter-intra property.
+        """
+        results_formatted: dict[str, dict] = {}
+        ref_vals = results["ref"]
+        for model, model_pred in results.items():
+            if model != "ref":
+                results_formatted[model] = {
+                    "ref": ref_vals,
+                    "pred": model_pred,
+                }
+        return results_formatted
+
+    plot_density_parity_result()
 
 
 @pytest.fixture
@@ -128,7 +181,10 @@ def get_property_rmses() -> dict[str, dict]:
 
     for prop_key in property_metadata.keys():
         results = get_property_results(prop_key)
-        plot_results(prop_key, results)
+        if "Forces" in prop_key:
+            plot_density_parity_results(prop_key, results)
+        else:
+            plot_parity_results(prop_key, results)
         for model in MODELS:
             model_rmse = rmse(results["ref"], results[model])
             property_rmse[prop_key][model] = model_rmse
