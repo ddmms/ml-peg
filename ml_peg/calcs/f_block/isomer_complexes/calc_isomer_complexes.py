@@ -102,7 +102,7 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     # download lanthanide isomer complexes dataset
     isomer_complexes_dir = (
         download_s3_data(
-            key="inputs/lanthanides/isomer_complexes/isomer_complexes.zip",
+            key="inputs/f_block/isomer_complexes/isomer_complexes.zip",
             filename="isomer_complexes.zip",
         )
         / "isomer_complexes"
