@@ -20,3 +20,4 @@ Benchmarks
     conformers
     molecular_dynamics
     defect
+    amorphous_materials

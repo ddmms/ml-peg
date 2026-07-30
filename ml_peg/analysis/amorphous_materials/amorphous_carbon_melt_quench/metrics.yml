@@ -1,0 +1,13 @@
+metrics:
+  MAE vs DFT:
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: Mean absolute error in sp3 fraction compared to DFT reference
+    level_of_theory: LDA
+  MAE vs Expt:
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: Mean absolute error in sp3 fraction compared to experimental reference
+    level_of_theory: Experimental
