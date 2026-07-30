@@ -78,7 +78,7 @@ relax_symprec = 0.01  # looser symmetry precision for FixSymmetry during relaxat
 conductivity_broken_symm = False
 save_forces = True  # Save force sets to file
 temperatures: list[float] = [300]
-displacement_distance = 0.01
+displacement_distance = 0.03
 is_plusminus = True
 
 default_dtype = "float64"
