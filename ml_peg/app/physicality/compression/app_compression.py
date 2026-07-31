@@ -18,6 +18,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Compression"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "compression"
 FIGURE_PATH = DATA_PATH / "figures"
+INFO_PATH = DATA_PATH / "info.json"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#compression"
 )
@@ -164,6 +165,7 @@ def get_app() -> CompressionApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "compression_metrics_table.json",
         extra_components=extra_components,
+        info_path=INFO_PATH,
     )
 
 
