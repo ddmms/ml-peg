@@ -226,7 +226,7 @@ sevennet-omni-mpa:
   class_name: SevenNetCalculator
   device: "cpu"
   trained_on_dispersion: false
-  level_of_theory: PBE+U
+  level_of_theory: PBE
   kwargs:
     model: "7net-omni"
     modal: "mpa"
