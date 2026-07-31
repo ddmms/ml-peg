@@ -5,14 +5,16 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.build import bulk, surface
 from ase.io import write
+import numpy as np
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -51,6 +53,7 @@ def make_slab(
     return slab
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_extensivity(mlip: tuple[str, Any]) -> None:
     """
@@ -87,14 +90,15 @@ def test_extensivity(mlip: tuple[str, Any]) -> None:
     slab2_big = slab2.copy()
     slab2_big.set_cell(tall_cell, scale_atoms=False)
 
-    slab1_big.calc = calc
-    slab1_big.get_potential_energy()
-
-    slab2_big.calc = copy(calc)
-    slab2_big.get_potential_energy()
-
-    combined.calc = copy(calc)
-    combined.get_potential_energy()
+    for struct in (slab1_big, slab2_big, combined):
+        struct.calc = copy(calc)
+        try:
+            energy = struct.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy: {exc}", stacklevel=2)
+            energy = np.nan
+        struct.info["energy"] = energy
+        struct.calc = None
 
     # Write output structures
     write_dir = OUT_PATH / model_name

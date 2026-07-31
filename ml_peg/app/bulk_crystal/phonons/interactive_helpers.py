@@ -18,7 +18,8 @@ from matplotlib import gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ml_peg.app.utils.plot_helpers import build_violin_distribution
+from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, build_violin_distribution
+from ml_peg.app.utils.weas import generate_weas_html
 
 
 def _load_band(calc_root: Path, rel_path: str | None) -> dict[str, Any] | None:
@@ -211,7 +212,7 @@ def build_bz_violin_content(
     )
     graph = dcc.Graph(id=scatter_id, figure=fig)
     meta = {"model": model_display, "type": "bz"}
-    content = html.Div([html.P(instructions), graph])
+    content = html.Div([html.P(instructions, style=INSTRUCTION_STYLE), graph])
     return content, meta
 
 
@@ -294,9 +295,10 @@ def render_dispersion_component(
     selected = selection_context.get("selection") or {}
     data_paths = selected.get("data_paths")
     label = selected.get("label") or selected.get("id", "")
+    uris = None
     image_src = None
     if data_paths:
-        image_src = render_band_dos_png(
+        uris = render_band_dos_png(
             calc_root=calc_root,
             paths=data_paths,
             model_label=model_display,
@@ -306,19 +308,97 @@ def render_dispersion_component(
             reference_label=reference_label,
             prediction_label=model_display,
         )
+        if uris:
+            image_src = uris["png"]
     elif selected.get("image"):
         image_src = f"/{selected['image']}"
     if not image_src:
         return None
-    return html.Div(
-        [
-            html.H4(label),
-            html.Img(
-                src=image_src,
-                style={"maxWidth": "100%", "border": "1px solid #ccc"},
+
+    stem = f"{label}_phonon_dispersion" if label else "phonon_dispersion"
+    link_style = {
+        "display": "inline-flex",
+        "alignItems": "center",
+        "gap": "8px",
+        "marginTop": "4px",
+        "marginBottom": "0px",
+    }
+    if uris:
+        download_controls = html.Div(
+            [
+                html.A(
+                    fmt.upper(),
+                    href=uri,
+                    download=f"{stem}.{fmt}",
+                    className="download-button plot-download-button",
+                    style={"width": "60px"},
+                )
+                for fmt, uri in uris.items()
+            ],
+            style=link_style,
+        )
+    else:
+        download_controls = html.Div(
+            html.A(
+                "Download plot",
+                href=image_src,
+                download=f"{stem}.png",
+                className="download-button plot-download-button",
+                style={"width": "112px"},
             ),
-        ]
-    )
+            style=link_style,
+        )
+    children = [
+        html.H4(label, style={"marginTop": "10px", "marginBottom": "4px"}),
+        download_controls,
+        html.Img(
+            src=image_src,
+            style={
+                "maxWidth": "100%",
+                "maxHeight": "500px",
+                "border": "1px solid #ccc",
+                "display": "block",
+            },
+        ),
+    ]
+
+    structure_paths = selected.get("structure_paths")
+    if structure_paths:
+        iframe_style = {
+            "height": "400px",
+            "width": "100%",
+            "border": "1px solid #ddd",
+            "borderRadius": "5px",
+        }
+        children.append(
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.P(html.B("DFT structure")),
+                            html.Iframe(
+                                srcDoc=generate_weas_html(structure_paths["ref"]),
+                                style=iframe_style,
+                            ),
+                        ],
+                        style={"width": "50%", "paddingRight": "4px"},
+                    ),
+                    html.Div(
+                        [
+                            html.P(html.B(f"MLIP structure ({model_display})")),
+                            html.Iframe(
+                                srcDoc=generate_weas_html(structure_paths["pred"]),
+                                style=iframe_style,
+                            ),
+                        ],
+                        style={"width": "50%", "paddingLeft": "4px"},
+                    ),
+                ],
+                style={"display": "flex", "marginTop": "16px"},
+            )
+        )
+
+    return html.Div(children)
 
 
 def render_band_dos_png(
@@ -356,8 +436,9 @@ def render_band_dos_png(
 
     Returns
     -------
-    str | None
-        Base64-encoded data URI or ``None`` when assets are missing.
+    dict[str, str] | None
+        Mapping of ``"png"``, ``"svg"``, ``"json"`` to base64 data URIs, or
+        ``None`` when assets are missing.
     """
     calc_root = Path(calc_root)
     ref_band = _load_band(calc_root, paths.get("ref_band"))
@@ -460,8 +541,47 @@ def render_band_dos_png(
     ax2.grid(True, linestyle=":", linewidth=0.5)
     fig.suptitle(system_label, x=0.4, fontsize=14)
 
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+    png_buf = BytesIO()
+    fig.savefig(png_buf, format="png", dpi=150, bbox_inches="tight")
+    svg_buf = BytesIO()
+    fig.savefig(svg_buf, format="svg", bbox_inches="tight")
     plt.close(fig)
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+
+    json_dict = {
+        "reference": {
+            "distances": [np.asarray(s).tolist() for s in ref_band["distances"]],
+            "frequencies": [np.asarray(s).tolist() for s in ref_band["frequencies"]],
+            "labels": ref_band.get("labels", []),
+            "path_connections": ref_band.get("path_connections", []),
+        },
+        "prediction": {
+            "distances": [np.asarray(s).tolist() for s in pred_band["distances"]],
+            "frequencies": [np.asarray(s).tolist() for s in pred_band["frequencies"]],
+        },
+        "frequency_unit": frequency_unit,
+        "reference_label": reference_label,
+        "prediction_label": prediction_label,
+    }
+    json_bytes = json.dumps(json_dict, indent=2).encode("utf-8")
+
+    def _enc(data: bytes) -> str:
+        """
+        Base64-encode bytes to an ASCII string.
+
+        Parameters
+        ----------
+        data
+            Raw bytes to encode.
+
+        Returns
+        -------
+        str
+            Base64-encoded ASCII string.
+        """
+        return base64.b64encode(data).decode("ascii")
+
+    return {
+        "png": f"data:image/png;base64,{_enc(png_buf.getvalue())}",
+        "svg": f"data:image/svg+xml;base64,{_enc(svg_buf.getvalue())}",
+        "json": f"data:application/json;base64,{_enc(json_bytes)}",
+    }

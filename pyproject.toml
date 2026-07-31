@@ -1,6 +1,6 @@
 [project]
 name = "ml-peg"
-version = "0.4.2"
+version = "0.5.1"
 description = "ML Performance and Extrapolation Guide"
 authors = [
     { name = "Elliott Kasoar" },
@@ -24,11 +24,12 @@ classifiers = [
 readme = "README.md"
 
 dependencies = [
+    "ase>=3.28.0",
     "boto3<2,>=1.40.49",
     "dash<5,>=4.0.0",
     "janus-core<1.0.0,>=0.8.6",
     "kaleido<2,>=1.0.0",
-    "matcalc<0.5,>=0.4.5",
+    "matcalc<0.5,>=0.4.7; python_version >= '3.11'",
     "matminer<0.10,>=0.9.3",
     "mdanalysis<3,>=2.9.0",
     "mlipx<0.2,>=0.1.5",
@@ -39,10 +40,12 @@ dependencies = [
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",
     "typer<1.0.0,>=0.19.1",
-    "asemolec",
 ]
 
 [project.optional-dependencies]
+asemolec = [
+    "asemolec"
+]
 chgnet = [
     "chgnet == 0.4.0",
 ]
@@ -60,7 +63,14 @@ mace = [
 ]
 
 mattersim = [
-    "mattersim==1.2.2",
+    "mattersim==1.2.4; python_version >= '3.12'",
+]
+mlipaudit = [
+    "mlipaudit; python_version >= '3.11'",
+    # dm-haiku 0.0.16 (pulled via mlip -> e3nn-jax -> haiku) still uses
+    # jax.core.DropVar, removed in JAX 0.11. Cap jax below 0.11.
+    "jax<0.11; python_version >= '3.11'",
+    "jaxlib<0.11; python_version >= '3.11'",
 ]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
@@ -204,10 +214,15 @@ conflicts = [
       { extra = "mattersim" },
       { extra = "grace" },
     ],
+    [
+      { extra = "mlipaudit" },
+      { extra = "grace" },
+    ],
 ]
 
 constraint-dependencies = [
     "tensorflow>=2.16.1",
+    "pymatgen-core<2026.7.24",
 ]
 
 [tool.uv.build-backend]
@@ -215,3 +230,4 @@ module-root = ""
 
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
+mlipaudit = { git = "https://github.com/instadeepai/MLIPAudit.git", branch = "mlpeg-migration" }

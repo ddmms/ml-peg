@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
@@ -122,18 +123,22 @@ def get_interaction_energy(fragments: dict[str, Atoms], calc: Calculator) -> flo
         Interaction energy in eV.
     """
     fragments["complex"].calc = calc
-    e_complex = fragments["complex"].get_potential_energy()
-    fragments["complex"].calc = None
-
     fragments["protein"].calc = calc
-    e_protein = fragments["protein"].get_potential_energy()
-    fragments["protein"].calc = None
-
     fragments["ligand"].calc = calc
-    e_ligand = fragments["ligand"].get_potential_energy()
-    fragments["ligand"].calc = None
+    try:
+        e_complex = fragments["complex"].get_potential_energy()
+        e_protein = fragments["protein"].get_potential_energy()
+        e_ligand = fragments["ligand"].get_potential_energy()
+        result = e_complex - e_protein - e_ligand
+    except Exception as exc:
+        warn(f"Error calculating energies: {exc}", stacklevel=2)
+        result = np.nan
+    finally:
+        fragments["complex"].calc = None
+        fragments["protein"].calc = None
+        fragments["ligand"].calc = None
 
-    return e_complex - e_protein - e_ligand
+    return result
 
 
 def mda_atoms_to_ase(atom_list, charge: float, identifier: str) -> Atoms:
@@ -286,8 +291,7 @@ def run_benchmark(benchmark: zntrack.Node, name: str, out_path: Path) -> None:
         / name
     )
 
-    benchmark.model.default_dtype = "float64"
-    calc = benchmark.model.get_calculator()
+    calc = benchmark.model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = benchmark.model.add_d3_calculator(calc)
 

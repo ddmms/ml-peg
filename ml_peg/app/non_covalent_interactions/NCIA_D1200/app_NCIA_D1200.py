@@ -9,13 +9,14 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "NCIA D1200"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#ncia-d1200"
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_D1200"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class NCIAD1200App(BaseApp):
@@ -77,6 +78,8 @@ def get_app() -> NCIAD1200App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 

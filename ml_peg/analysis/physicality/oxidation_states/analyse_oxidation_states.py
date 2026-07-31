@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 
@@ -178,6 +178,7 @@ def oxidation_states_passfail_metrics(
     return get_oxidation_states_passfail
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_oxidation_states_passfail_metrics(
     oxidation_states_passfail_metrics: dict[str, dict],
 ) -> None:
@@ -189,7 +190,11 @@ def test_oxidation_states_passfail_metrics(
     oxidation_states_passfail_metrics
         All oxidation states pass fail.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "Fe2Cl_mock-final.extxyz",
+        out_path=OUT_PATH,
+        index=0,
+    )
 
 
 def normalised_peak_error(peak_pos: float, ref_range: list[float, float]) -> float:

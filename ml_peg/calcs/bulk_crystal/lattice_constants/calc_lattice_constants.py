@@ -6,6 +6,7 @@ from copy import copy
 import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.build import bulk
@@ -13,8 +14,8 @@ from janus_core.calculations.geom_opt import GeomOpt
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -136,9 +137,12 @@ def test_lattice_consts(mlip: tuple[str, Any]) -> None:
 
     for name, crystal in crystals.items():
         crystal.calc = copy(calc)
-        GeomOpt(
-            struct=crystal,
-            fmax=0.03,
-            write_traj=True,
-            file_prefix=OUT_PATH / model_name / name,
-        ).run()
+        try:
+            GeomOpt(
+                struct=crystal,
+                fmax=0.03,
+                write_traj=True,
+                file_prefix=OUT_PATH / model_name / name,
+            ).run()
+        except Exception as exc:
+            warn(f"Error during optimisation for {name}: {exc}", stacklevel=2)

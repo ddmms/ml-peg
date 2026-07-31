@@ -13,14 +13,15 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_density_inputs,
+    get_struct_info,
     load_metrics_config,
     mae,
     write_density_trajectories,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "high_pressure_relaxation" / "outputs"
@@ -40,6 +41,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # the parity metrics and the convergence rate.
 ENERGY_OUTLIER_MIN = -25
 ENERGY_OUTLIER_MAX = 25
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*/*.xyz",
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 def get_converged_data_for_pressure(

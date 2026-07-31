@@ -13,16 +13,18 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pandas as pd
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -51,6 +53,7 @@ def get_atoms(atoms_path):
     return atoms
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_dipconfs(mlip: tuple[str, Any]) -> None:
     """
@@ -97,14 +100,22 @@ def test_dipconfs(mlip: tuple[str, Any]) -> None:
         # Get zero ref conformer model energy
         zero_conf = get_atoms(data_path / zero_conf_label / "struc.xyz")
         zero_conf.calc = calc
-        e_model_zero_conf = zero_conf.get_potential_energy()
+        try:
+            e_model_zero_conf = zero_conf.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {zero_conf_label}: {exc}", stacklevel=2)
+            e_model_zero_conf = np.nan
 
         # Get current conformer model energy
         atoms = get_atoms(data_path / label / "struc.xyz")
         atoms.calc = calc
-        atoms.info["model_rel_energy"] = (
-            atoms.get_potential_energy() - e_model_zero_conf
-        )
+        try:
+            atoms.info["model_rel_energy"] = (
+                atoms.get_potential_energy() - e_model_zero_conf
+            )
+        except Exception as exc:
+            warn(f"Error calculating relative energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_rel_energy"] = np.nan
         atoms.info["ref_energy"] = e_rel_ref
 
         write_dir = OUT_PATH / model_name

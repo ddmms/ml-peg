@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal, get_args
 
 from typer import Context, Exit, Option, Typer
+from yaml import safe_load
 
 from ml_peg import __version__
 from ml_peg.analysis import ANALYSIS_ROOT
@@ -74,9 +75,85 @@ def get_tests(root: Path, script_prefix: str, category: str = "*") -> tuple[str,
     )
 
 
+_TEST_ROOTS: dict[str, Path] = {
+    "calc": CALCS_ROOT,
+    "analyse": ANALYSIS_ROOT,
+    "app": APP_ROOT,
+}
+
+
+def complete_test(ctx: Context, incomplete: str) -> list[str]:
+    """
+    Complete test names for the invoked command, scoped to ``--category``.
+
+    The command name (``ctx.info_name``) doubles as the script prefix, e.g.
+    ``calc`` -> ``calc_*.py`` in ``CALCS_ROOT``.
+
+    Parameters
+    ----------
+    ctx
+        Typer context, used to identify the command and the selected category.
+    incomplete
+        Partially typed test name.
+
+    Returns
+    -------
+    list[str]
+        Matching test names.
+    """
+    root = _TEST_ROOTS.get(ctx.info_name)
+    if root is None:
+        return []
+    category = ctx.params.get("category") or "*"
+    return [
+        test
+        for test in get_tests(root, ctx.info_name, category)
+        if test.startswith(incomplete)
+    ]
+
+
+def complete_models(ctx: Context, incomplete: str) -> list[str]:
+    """
+    Complete comma-separated model names from ``models.yml``.
+
+    Parameters
+    ----------
+    ctx
+        Typer context, used to read ``--models-file`` if provided.
+    incomplete
+        Partially typed value; only the segment after the last comma is completed.
+
+    Returns
+    -------
+    list[str]
+        Matching model names, preserving any already-typed comma-separated prefix.
+    """
+    from ml_peg.models.get_models import get_model_names
+
+    names = sorted(get_model_names(filepath=ctx.params.get("models_file")))
+
+    prefix, sep, last = incomplete.rpartition(",")
+    head = f"{prefix}{sep}" if sep else ""
+    return [f"{head}{name}" for name in names if name.startswith(last)]
+
+
+def get_frameworks() -> tuple[str, ...]:
+    """
+    Get available MLIP framework ids.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Tuple of "*" followed by sorted framework ids from the framework registry.
+    """
+    frameworks = safe_load((APP_ROOT / "utils" / "frameworks.yml").read_text())
+    return ("*",) + tuple(sorted(frameworks))
+
+
 AnalysisCategories = Literal[(get_categories(ANALYSIS_ROOT, "analyse"))]
 AppCategories = Literal[(get_categories(APP_ROOT, "app"))]
 CalcCategories = Literal[(get_categories(CALCS_ROOT, "calc"))]
+Frameworks = Literal[(get_frameworks())]
 
 
 app = Typer(
@@ -94,7 +171,17 @@ def run_dash_app(
             help=(
                 "Comma-separated models to build interactivity for. Default is all "
                 "models."
-            )
+            ),
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
         ),
     ] = None,
     category: Annotated[
@@ -102,6 +189,14 @@ def run_dash_app(
         Option(
             help="Category to build app for. Default is all categories.",
             case_sensitive=False,
+        ),
+    ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to build app for. Default is all tests.",
+            case_sensitive=False,
+            autocompletion=complete_test,
         ),
     ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
@@ -115,8 +210,12 @@ def run_dash_app(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    test
+        Test to build app for. Default is `*`, corresponding to all tests.
     port
         Port to run application on. Default is 8050.
     debug
@@ -126,10 +225,11 @@ def run_dash_app(
 
     # Overwrite current_models before it is imported elsewhere
     ml_peg_models.current_models = models
+    ml_peg_models.models_file = models_file
 
     from ml_peg.app.run_app import run_app
 
-    run_app(category=category, port=port, debug=debug)
+    run_app(category=category, test=test, port=port, debug=debug)
 
 
 @app.command(
@@ -142,7 +242,19 @@ def run_calcs(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run calculations on. Default is all models."
+            help=(
+                "Comma-separated models to run calculations on. Default is all models."
+            ),
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
         ),
     ] = None,
     category: Annotated[
@@ -153,8 +265,25 @@ def run_calcs(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run calculations for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run calculations for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
     ] = "*",
+    framework: Annotated[
+        Frameworks,
+        Option(
+            help="MLIP framework to run calculations for. Default is all frameworks.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+    run_mock: Annotated[
+        bool, Option(help="Whether to run with mock calculator in addition to models.")
+    ] = True,
+    mock_only: Annotated[
+        bool, Option(help="Whether to only run mock calculator with no models.")
+    ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
     ] = True,
@@ -175,12 +304,21 @@ def run_calcs(
     models
         Models to run calculations for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run calculations for. Default is `*`, corresponding to all
         categories.
     test
         Test to run calculation for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework to run calculations for. Default is `*`, corresponding to all
+        frameworks.
+    run_mock
+        Whether to run mock calculations. Default is `True`.
+    mock_only
+        Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
         Whether to run slow calculations. Default is `True`.
     run_very_slow
@@ -199,7 +337,7 @@ def run_calcs(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if run_slow:
         options.extend(["--run-slow"])
@@ -207,8 +345,20 @@ def run_calcs(
     if run_very_slow:
         options.extend(["--run-very-slow"])
 
+    if run_mock:
+        options.extend(["--run-mock"])
+
+    if mock_only:
+        options.extend(["--mock-only"])
+
     if models:
         options.extend(["--models", models])
+
+    if models_file:
+        options.extend(["--models-file", models_file])
+
+    if framework != "*":
+        options.extend(["--framework", framework])
 
     # Parse any custom options to pytest
     options.extend(ctx.args)
@@ -221,7 +371,17 @@ def run_analysis(
     models: Annotated[
         str | None,
         Option(
-            help="Comma-separated models to run analysis for. Default is all models."
+            help="Comma-separated models to run analysis for. Default is all models.",
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
         ),
     ] = None,
     category: Annotated[
@@ -232,7 +392,18 @@ def run_analysis(
         ),
     ] = "*",
     test: Annotated[
-        str, Option(help="Test to run analysis for. Default is all tests.")
+        str,
+        Option(
+            help="Test to run analysis for. Default is all tests.",
+            autocompletion=complete_test,
+        ),
+    ] = "*",
+    framework: Annotated[
+        Frameworks,
+        Option(
+            help="MLIP framework to run analysis for. Default is all frameworks.",
+            case_sensitive=False,
+        ),
     ] = "*",
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
@@ -246,11 +417,16 @@ def run_analysis(
     models
         Models to run analysis for, in comma-separated list. Default is `None`,
         corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to run analysis for. Default is `*`, corresponding to all categories.
     test
         Test to run analysis for. Default is `*`, corresponding to all tests in the
         category.
+    framework
+        MLIP framework to run analysis for. Default is `*`, corresponding to all
+        frameworks.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -266,10 +442,16 @@ def run_analysis(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if models:
         options.extend(["--models", models])
+
+    if models_file:
+        options.extend(["--models-file", models_file])
+
+    if framework != "*":
+        options.extend(["--framework", framework])
 
     pytest.main(options)
 
@@ -384,11 +566,31 @@ def list_apps(
 
 
 @list_app.command(name="models", help="List models currently available")
-def list_models() -> None:
-    """List currently available models."""
+def list_models(
+    models_file: Annotated[
+        str,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """
+    List currently available models.
+
+    Parameters
+    ----------
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
+    """
     from ml_peg.models.get_models import get_model_names
 
-    print(f"Available models: {', '.join(get_model_names())}")
+    if models_file is None:
+        from ml_peg.models import models_file
+
+    print(f"Available models: {', '.join(get_model_names(filepath=models_file))}")
 
 
 @app.command(name="download", help="Download data from S3 bucket")

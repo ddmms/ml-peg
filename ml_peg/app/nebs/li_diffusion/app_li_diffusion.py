@@ -7,19 +7,17 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_cell,
-    struct_from_scatter,
-)
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Li diffusion"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/nebs.html#li-diffusion"
 DATA_PATH = APP_ROOT / "data" / "nebs" / "li_diffusion"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class LiDiffusionApp(BaseApp):
@@ -30,11 +28,11 @@ class LiDiffusionApp(BaseApp):
         scatter_plots = {
             model: {
                 "Path B error": read_plot(
-                    DATA_PATH / f"figure_{model}_neb_b.json",
+                    DATA_PATH / model / "figure_neb_b.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-b",
                 ),
                 "Path C error": read_plot(
-                    DATA_PATH / f"figure_{model}_neb_c.json",
+                    DATA_PATH / model / "figure_neb_c.json",
                     id=f"{BENCHMARK_NAME}-{model}-figure-c",
                 ),
             }
@@ -45,8 +43,8 @@ class LiDiffusionApp(BaseApp):
         assets_dir = "/assets/nebs/li_diffusion"
         structs = {
             model: {
-                "Path B error": f"{assets_dir}/{model}/{model}-b-neb-band.extxyz",
-                "Path C error": f"{assets_dir}/{model}/{model}-c-neb-band.extxyz",
+                "Path B error": f"{assets_dir}/{model}/b-neb-band.extxyz",
+                "Path C error": f"{assets_dir}/{model}/c-neb-band.extxyz",
             }
             for model in MODELS
         }
@@ -85,6 +83,7 @@ def get_app() -> LiDiffusionApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

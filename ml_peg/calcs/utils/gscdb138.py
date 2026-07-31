@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -122,7 +123,11 @@ def run_gscdb138(
                     print(f"Skipping {specy}")
                     continue
                 atoms.calc = calc
-                energy = atoms.get_potential_energy()
+                try:
+                    energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {specy}: {exc}", stacklevel=2)
+                    energy = np.nan
                 e_rel_model += stoi * energy
                 atoms.info["model_energy"] = energy
                 atoms.calc = None

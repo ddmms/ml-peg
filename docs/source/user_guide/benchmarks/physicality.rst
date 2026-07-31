@@ -182,6 +182,66 @@ Starting configurations for the MD are available on S3 bucket. Experimental refe
 [1] Kocer, Emir, et al. "Machine learning potentials for redox chemistry in solution." arXiv preprint arXiv:2410.03299 (2024).
 
 
+Water Slab Dipoles
+==================
+
+Summary
+-------
+
+Distribution of dipole of water slab, checking for width of distribution and structures with dielectric breakdown.
+
+
+Metrics
+-------
+
+1. Standard Deviation of Dipole Distribution
+
+For a number of samples from an MD simulation, the total dipole is calculated. Compare to a reference of a LR model trained on revPBE-D3.
+
+2. Number of structures with dielectric breakdown
+
+Estimate band gap based on dipole, count structures where band gap disappears.
+
+
+Computational Cost
+------------------
+
+High: Requires around 500 ps of MD of 40 A slab to get converged distribution, around 1 day on one GPU.
+
+
+Data availability
+-----------------
+
+https://arxiv.org/html/2603.04228v1
+
+
+Water-Cl2 cluster relaxation
+==========================
+
+Summary
+-------
+
+This test is mainly for long-range models to probe the stability of a Cl2 molecule when two solvated Cl- ions are present far outside the receptive field of the Cl2 molecule, and the total charge of the system being -2.
+
+Geometry relaxation may lead to the Cl2 molecule dissociating (incorrect behaviour) or staying stable (correct behaviour).
+
+Metrics
+-------
+
+1. Dissociation of the Cl-Cl bond based on the interatomic distance.
+
+Computational Cost
+------------------
+
+Low: Requires up to 1000 optimizer steps for a 400-atom system, taking several GPU-minutes to complete.
+
+
+Data availability
+-----------------
+
+The initial structures were generated for MACE-POLAR-1 https://arxiv.org/abs/2602.19411
+
+
 Compression
 ===========
 

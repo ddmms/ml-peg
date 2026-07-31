@@ -1,0 +1,325 @@
+"""Run calculations for EOS tests."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import shutil
+from typing import Any
+import warnings
+
+from ase.filters import ExpCellFilter
+from ase.io import write
+from ase.io.extxyz import save_calc_results
+from ase.lattice.cubic import (
+    BodyCenteredCubic,
+    FaceCenteredCubic,
+    FaceCenteredCubicFactory,
+    SimpleCubicFactory,
+)
+from ase.lattice.hexagonal import HexagonalClosedPacked, HexagonalFactory
+from ase.optimize import LBFGS
+import numpy as np
+import pandas as pd
+import pytest
+from tqdm import tqdm
+
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+MODELS = load_models(current_models)
+OUT_PATH = Path(__file__).parent / "outputs"
+
+magnetic_moments = {
+    "Ni": {"FCC": 0.6, "HCP": 0.59, "BCC": 0.55},
+    "Fe": {"BCC": 2.0, "FCC": 2.2, "A15": 2.2, "C15": 2.2},
+}
+
+
+class A15Factory(SimpleCubicFactory):
+    """A factory for creating A15 lattices."""
+
+    xtal_name = "A15"
+    bravais_basis = [
+        [0, 0, 0],
+        [0.5, 0.5, 0.5],
+        [0.5, 0.25, 0.0],
+        [0.5, 0.75, 0.0],
+        [0.0, 0.5, 0.25],
+        [0.0, 0.5, 0.75],
+        [0.25, 0.0, 0.5],
+        [0.75, 0.0, 0.5],
+    ]
+
+
+class C15Factory(FaceCenteredCubicFactory):
+    """
+    A factory for creating C15 (MgCu2-type) Laves lattices.
+
+    Contains 2 atoms on 8a sites and 4 atoms on 16d sites in the primitive basis.
+    """
+
+    xtal_name = "C15"
+
+    # 6-atom basis (2 'A' sites and 4 'B' sites)
+    # When multiplied by 4 FCC translations, you get 24 atoms total.
+    bravais_basis = [
+        # A sites (8a)
+        [0.000, 0.000, 0.000],
+        [0.250, 0.250, 0.250],
+        # B sites (16d)
+        [0.625, 0.625, 0.625],
+        [0.625, 0.875, 0.875],
+        [0.875, 0.625, 0.875],
+        [0.875, 0.875, 0.625],
+    ]
+
+
+class OmegaFactory(HexagonalFactory):
+    """A factory for creating Omega lattices."""
+
+    xtal_name = "Omega"
+    bravais_basis = [
+        [0, 0, 0],
+        [1 / 3, 2 / 3, 0.5],
+        [2 / 3, 1 / 3, 0.5],
+    ]
+
+
+A15 = A15Factory()
+C15 = C15Factory()
+Omega = OmegaFactory()
+
+lattices = {
+    "BCC": BodyCenteredCubic,  # cubic
+    "FCC": FaceCenteredCubic,
+    "A15": A15,
+    "C15": C15,
+    "HCP": HexagonalClosedPacked,  # hexagonal
+    "OMEGA": Omega,
+}
+
+
+def get_lattice_constants(lattice, volume_per_atom, symbol, calc):
+    """
+    Calculate lattice constants for a given lattice and volume per atom.
+
+    Parameters
+    ----------
+    lattice
+        ASE lattice class to use for structure generation.
+    volume_per_atom
+        Array of volumes per atom to sample for the EOS curve.
+    symbol
+        Chemical symbol of the element to use for structure generation.
+    calc
+        ASE calculator to use for energy calculations.
+
+    Returns
+    -------
+    list[float] for cubic lattices or list[tuple[float, float]] for hexagonal lattices
+        List of lattice constants for each volume per atom.
+    """
+    if lattice in [HexagonalClosedPacked, Omega]:
+        if lattice == Omega:
+            # assuming ideal c/a ratio for omega is 0.6123
+            ideal_ratio = 0.6323
+            a0 = (
+                lattice.calc_num_atoms()
+                * volume_per_atom[len(volume_per_atom) // 2]
+                / (ideal_ratio * np.sqrt(3) / 2)
+            ) ** (1 / 3)
+            lattice_name = "Omega"
+        elif lattice == HexagonalClosedPacked:
+            ideal_ratio = 1.63
+            # create a cell assuming ideal c/a ratio of 1.63 for HCP
+            a0 = (
+                lattice.calc_num_atoms()
+                * volume_per_atom[len(volume_per_atom) // 2]
+                / (np.sqrt(2))
+            ) ** (1 / 3)
+            lattice_name = "HCP"
+        try:
+            unit_cell = lattice(symbol=symbol, latticeconstant=(a0, a0 * ideal_ratio))
+            unit_cell.info["charge"] = 0
+            if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
+                unit_cell.info["spin"] = (
+                    int(round(magnetic_moments[symbol][lattice_name] * len(unit_cell)))
+                    + 1
+                )
+            else:
+                unit_cell.info["spin"] = 1
+
+            unit_cell.calc = calc
+            uc_filter = ExpCellFilter(unit_cell, constant_volume=True)
+            opt = LBFGS(uc_filter)
+            converged = opt.run(fmax=1e-3, steps=25)
+            a, c = unit_cell.cell[0, 0], unit_cell.cell[2, 2]
+            ratio = c / a
+            print(f"Optimized c/a ratio for {symbol} for {lattice_name}: {ratio:.4f}")
+            print(
+                "Difference from ideal c/a ratio: "
+                + f"{(ratio - ideal_ratio) / ideal_ratio * 100:.1f} %"
+            )
+        except Exception as e:
+            message = (
+                f"Error optimizing {lattice_name} structure for {symbol}: {e}, "
+                + "using ideal c/a ratio instead."
+            )
+            warnings.warn(message, stacklevel=2)
+            ratio = ideal_ratio
+        if not converged:
+            message = (
+                f"Cell shape optimization for {symbol} "
+                + f"{lattice_name} did not converge!"
+            )
+            print(message)
+            warnings.warn(message, stacklevel=2)
+
+        if lattice == HexagonalClosedPacked:
+            lattice_constants = (
+                lattice.calc_num_atoms() * volume_per_atom / (np.sqrt(2))
+            ) ** (1 / 3)
+        elif lattice == Omega:
+            lattice_constants = (
+                lattice.calc_num_atoms() * volume_per_atom / (ratio * np.sqrt(3) / 2)
+            ) ** (1 / 3)
+        return [(a, a * ratio) for a in lattice_constants]
+    # assuming cubic lattice
+    return (lattice.calc_num_atoms() * volume_per_atom) ** (1 / 3)
+
+
+def equation_of_state(
+    calc, lattice, volumes_per_atoms, symbol="W", size=(2, 2, 2), lattice_name=None
+):
+    """
+    Compute the equation of state for a given element and lattice.
+
+    Parameters
+    ----------
+    calc
+        ASE calculator to use for energy calculations.
+    lattice
+        ASE lattice class to use for structure generation.
+    volumes_per_atoms
+        Array of volumes per atom to sample for the EOS curve.
+    symbol
+        Chemical symbol of the element to use for structure generation.
+    size
+        Size of the supercell to generate for each volume per atom.
+    lattice_name
+        Optional name of the lattice for magnetic moment lookup.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Lattice constants (A) and energies (eV/atom) arrays.
+    """
+    if lattice in [HexagonalClosedPacked, Omega]:
+        lattice(symbol="W", latticeconstant=(3.16, 3.16 * 1.6123))
+    else:
+        lattice(symbol="W", latticeconstant=3.16)
+
+    try:
+        lattice_constants = get_lattice_constants(
+            lattice, volumes_per_atoms, symbol, calc
+        )
+    except Exception as e:
+        print("Error occurred while adjusting " + f"{symbol} {lattice_name} cell: {e}")
+
+    structures = [
+        lattice(latticeconstant=lc, size=size, symbol=symbol)
+        for lc in lattice_constants
+    ]
+
+    for structure in structures:
+        structure.info["charge"] = 0
+        if symbol in magnetic_moments and lattice_name in magnetic_moments[symbol]:
+            structure.info["spin"] = (
+                int(round(magnetic_moments[symbol][lattice_name] * len(structure))) + 1
+            )
+        else:
+            structure.info["spin"] = 1
+        structure.calc = calc
+
+        try:
+            structure.get_potential_energy()
+            save_calc_results(structure, calc_prefix="MLIP_")
+        except Exception as e:
+            print(f"Error calculating energy for {lattice_name} {symbol}: {e}")
+            print("Setting energy to NaN for this structure.")
+            warnings.warn(
+                f"Energy calculation failed for {lattice_name} {symbol}: {e}"
+                + ", MLIP energy set to NaN.",
+                stacklevel=2,
+            )
+            structure.info["MLIP_energy"] = np.nan
+
+    return structures
+
+
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_equation_of_state(mlip: tuple[str, Any]) -> None:
+    """
+    Test equation of state calculation for three BCC metals.
+
+    Parameters
+    ----------
+    mlip
+        Tuple of (model_name, model) as provided by pytest parametrize.
+    """
+    model_name, model = mlip
+
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
+
+    calc = model.get_calculator(precision="high")
+
+    data_path = (
+        download_s3_data(
+            filename="energy_volume_curves_metals.zip",
+            key="inputs/bulk_crystal/energy_volume_curves_metals/energy_volume_curves_metals.zip",
+        )
+        / "energy_volume_curves_metals"
+    )
+    filenames = list(data_path.glob("*DFT*"))
+
+    for filename in (pbar_1 := tqdm(filenames, desc=f"{model_name}")):
+        element = filename.name.split("_")[0]
+        pbar_1.set_description(f"{model_name}/{element}")
+
+        dft_data = pd.read_csv(filename, comment="#")
+
+        saved_dft_data_file = OUT_PATH / Path(filename).name
+        if not saved_dft_data_file.exists():
+            shutil.copy(filename, saved_dft_data_file)
+
+        volume_cols = [col for col in dft_data.columns if "V/atom" in col]
+        vmin = dft_data.min()[volume_cols].min()
+        vmax = dft_data.max()[volume_cols].max()
+
+        volumes_per_atoms = np.linspace(
+            np.round(vmin * 0.95),
+            np.round(vmax * 1.05),
+            50,
+            endpoint=False,
+        )
+
+        phases = [col.split("_")[1] for col in dft_data.columns if "Delta" in col]
+        print(f"Found DFT data for {len(phases)} phases: {', '.join(phases)}")
+
+        for phase in (pbar_2 := tqdm(phases, desc=element, leave=False)):
+            pbar_2.set_description(f"{model_name}/{element}/{phase}")
+            assert phase in lattices, f"Lattice {phase} not implemented for EOS test."
+            lattice = lattices[phase]
+
+            structures = equation_of_state(
+                calc,
+                lattice,
+                volumes_per_atoms,
+                symbol=element,
+                lattice_name=phase,
+            )
+
+            output_file = write_dir / f"{element}_{phase}_eos_structures.xyz"
+            write(output_file, structures)

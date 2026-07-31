@@ -12,8 +12,8 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -22,6 +22,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#elasticity"
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity"
+INFO_PATH = APP_ROOT / "data" / "bulk_crystal" / "elasticity" / "info.json"
 
 
 class ElasticityApp(BaseApp):
@@ -118,6 +119,7 @@ def get_app() -> ElasticityApp:
     """
     return ElasticityApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description=(
             "Performance when predicting VRH bulk and shear moduli for crystalline "
             "materials compared against Materials Project reference data."
@@ -128,6 +130,7 @@ def get_app() -> ElasticityApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

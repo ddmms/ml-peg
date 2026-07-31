@@ -103,6 +103,44 @@ Reference data:
 * PBE-D3(BJ), MPRelaxSet settings
 
 
+CMRAds200
+=========
+
+Summary
+-------
+
+Performance in predicting adsorption energies for 200 adsorbate-surface reactions involving eight adsorbates on 25 transition metal surfaces at full coverage.
+
+Metrics
+-------
+
+MAE of adsorption energies
+
+For each adsorbate-surface reaction, the adsorption energy is calculated as the difference between the energy of the surface + molecule and the sum of individual surface and molecule energies. This is compared to the PBE reference
+adsorption energy from the CMR database.
+
+Computational cost
+------------------
+
+Low: tests are likely to take a couple of minutes to run on CPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* Structures and adsorption reactions were taken from the Computational Materials Repository (CMR) database of adsorption and surface energies.
+
+  * P. S. Schmidt and K. S. Thygesen, “Benchmark Database of Transition Metal Surface and Adsorption Energies from Many-Body Perturbation Theory,” J. Phys. Chem. C, vol. 122, pp. 4381–4390, 2018. https://doi.org/10.1021/acs.jpcc.7b12258
+
+* The benchmark includes OH, CH, NO, CO, N2, N, O, and H adsorption reactions on 3d, 4d, and 5d transition metal surfaces.
+
+Reference data:
+
+* Same as input data
+* PBE adsorption energies from the CMR database
+
+
 Elemental Slab Oxygen Adsorption
 ================================
 
@@ -167,7 +205,6 @@ One is of the clean surface with the adsorbate in the gas phase far from the sur
 the second is of the transition state structure with the adsorbate at the surface
 (minimum barrier geometry to dissociation and chemisorption).
 
-
 Computational cost
 ------------------
 
@@ -231,3 +268,57 @@ Reference data:
 
 * Same as input data
 * PBE (with D3 dispersion correction), FHI-aims "intermediate" settings
+
+
+Cleavage Energy
+===============
+
+Summary
+-------
+
+Performance in predicting cleavage energies for 36,718 surface configurations
+across a wide range of materials and Miller indices.
+
+Metrics
+-------
+
+1. Cleavage energy MAE
+
+Accuracy of cleavage energy predictions compared to DFT reference values.
+
+For each surface, the cleavage energy is calculated as
+``(E_slab - thickness_ratio * E_bulk) / (2 * A)``, where ``E_slab`` and
+``E_bulk`` are single-point energies of the slab and the lattice-matched bulk
+unit cell, ``thickness_ratio`` is the number of bulk unit cells in the slab
+thickness, and ``A`` is the surface area. Results are reported in meV/A^2.
+The mean absolute error is computed over all 36,718 surfaces.
+
+2. Cleavage energy RMSE
+
+Root mean squared error of cleavage energy predictions across all surfaces.
+
+Computational cost
+------------------
+
+Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs. Takes roughly 5-20 minutes on GPU or a few hours on CPUs.
+
+Data availability
+-----------------
+
+Input data:
+
+* Surface configurations were obtained from the Materials Project, covering
+  3,699 unique bulk materials with multiple Miller indices and terminations
+  per material. The original unfiltered data source is available at
+  Zenodo (DOI: 10.5281/zenodo.10381505).
+
+Reference data:
+
+* DFT cleavage energies calculated using PBE functional.
+
+Publication:
+
+* A. Mehdizadeh and P. Schindler, "Surface stability modeling with universal
+  machine learning interatomic potentials: a comprehensive cleavage energy
+  benchmarking study," Mach. Learn.: Sci. Technol., 2025.
+  https://iopscience.iop.org/article/10.1088/3050-287X/ae1408
