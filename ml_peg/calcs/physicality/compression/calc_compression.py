@@ -546,7 +546,7 @@ def run_compression(model_name: str, model) -> None:
     model
         Model wrapper providing ``get_calculator``.
     """
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_dir = write_dir / "compression"
