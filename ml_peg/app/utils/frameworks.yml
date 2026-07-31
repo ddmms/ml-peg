@@ -136,3 +136,14 @@ aceff:
   tooltip: "Benchmark from the AceFF paper (arXiv:2601.00581), click to read"
   description: "Benchmarks from 'AceFF: A State-of-the-Art Machine Learning Potential for Small Molecules'."
   paper_url: "https://arxiv.org/abs/2601.00581"
+
+omol25-electrolytes:
+  label: OMol25 Electrolytes
+  type: paper
+  color: "#0f766e"
+  text_color: "#ecfeff"
+  url: "https://arxiv.org/abs/2603.20183"
+  icon: "📄"
+  tooltip: "Benchmark from the OMol25 electrolyte solvation paper (arXiv:2603.20183), click to read"
+  description: "Benchmarks from 'Prediction and Experimental Verification of Electrolyte Solvation Structure from an OMol25-Trained Interatomic Potential'."
+  paper_url: "https://arxiv.org/abs/2603.20183"
