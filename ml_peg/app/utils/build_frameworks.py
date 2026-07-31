@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 from dash.dash_table import DataTable
 from dash.html import H1, H3, Br, Div
@@ -34,14 +34,24 @@ class CategoryView(TypedDict):
     tests: list[CategoryTest]
 
 
-class FrameworkView(TypedDict):
-    """Data needed to build a single framework page."""
+class _FrameworkViewRequired(TypedDict):
+    """Keys always present in a framework page view."""
 
     framework_id: str
     label: str
     benchmarks_by_category: dict[str, list[Div]]
-    summary_table: NotRequired[DataTable]
-    weight_components: NotRequired[Div]
+
+
+class FrameworkView(_FrameworkViewRequired, total=False):
+    """
+    Data needed to build a single framework page.
+
+    Inherits the required keys and adds the summary table and weight controls,
+    which are only set once the framework's summary table has been built.
+    """
+
+    summary_table: DataTable
+    weight_components: Div
 
 
 def build_framework_views(

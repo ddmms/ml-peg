@@ -8,7 +8,7 @@ from functools import lru_cache
 import json
 from numbers import Number
 from pathlib import Path
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
 
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
@@ -185,17 +185,27 @@ def weight_input_style(value: float | None) -> dict[str, str]:
     return style
 
 
-class FrameworkEntry(TypedDict):
-    """Style and link metadata for benchmark framework attribution badges."""
+class _FrameworkEntryRequired(TypedDict):
+    """Keys always present in a framework attribution badge entry."""
 
     label: str
     type: str
     color: str
     text_color: str
-    url: NotRequired[str]
-    logo: NotRequired[str]
-    icon: NotRequired[str]
-    tooltip: NotRequired[str]
+
+
+class FrameworkEntry(_FrameworkEntryRequired, total=False):
+    """
+    Style and link metadata for benchmark framework attribution badges.
+
+    Inherits the required style keys and adds the optional link and hover
+    metadata, which individual frameworks may omit.
+    """
+
+    url: str
+    logo: str
+    icon: str
+    tooltip: str
 
 
 def get_mlip_column_width(
