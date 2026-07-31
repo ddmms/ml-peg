@@ -1,0 +1,19 @@
+metrics:
+  MAE:
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Mean absolute error in NPT density over all 25 systems
+    level_of_theory: Experimental
+  RMSE:
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Root mean squared error in NPT density over all 25 systems
+    level_of_theory: Experimental
+  MAPE:
+    good: 0.0
+    bad: 10.0
+    unit: "%"
+    tooltip: Mean absolute percentage error in NPT density over all 25 systems
+    level_of_theory: Experimental
