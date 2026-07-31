@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.constraints import FixAtoms
 from ase.io import read, write
@@ -53,21 +54,28 @@ def test_lattice_energy(mlip: tuple[str, Any]) -> None:
         slab.info["system"] = system
         slab.calc = calc
 
-        if not (system.startswith("gas_phase") and system.startswith("bulk")):
+        # Only slabs are optimised with their bottom layer fixed
+        if not system.startswith(("gas_phase", "bulk")):
             z_min = np.min(slab.positions[:, 2])
             c = FixAtoms(
                 indices=[at.index for at in slab if at.position[2] < (z_min + 0.1)]
             )
             slab.set_constraint(c)
 
-        if system.startswith("gas_phase"):
-            opt = BFGS(slab)
-            opt.run(fmax=0.01, steps=500)
-        elif not system.startswith("bulk"):
-            opt = BFGS(slab)
-            opt.run(fmax=0.05, steps=500)
+        # Catch errors to ensure all systems are calculated and written out
+        try:
+            if system.startswith("gas_phase"):
+                opt = BFGS(slab)
+                opt.run(fmax=0.01, steps=500)
+            elif not system.startswith("bulk"):
+                opt = BFGS(slab)
+                opt.run(fmax=0.05, steps=500)
 
-        slab.get_potential_energy()
+            slab.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
+            slab.calc = None
+            slab.info["energy"] = np.nan
 
         # Write output structures
         write_dir = OUT_PATH / model_name
