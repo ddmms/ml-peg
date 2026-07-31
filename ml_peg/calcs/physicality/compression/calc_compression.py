@@ -593,7 +593,14 @@ def run_compression(model_name: str, model) -> None:
 
                 atoms.calc = calc
 
-                energy = float(atoms.get_potential_energy())
+                try:
+                    energy = float(atoms.get_potential_energy())
+                except Exception as exc:
+                    print(
+                        f"[{model_name}] {struct_label} scale={scale:.3f}: "
+                        f"error calculating energy: {exc}"
+                    )
+                    energy = np.nan
                 volume = float(atoms.get_volume())
                 volume_per_atom = volume / n_atoms
                 energy_per_atom = energy / n_atoms

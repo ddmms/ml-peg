@@ -14,7 +14,7 @@ import pytest
 from scipy.signal import find_peaks
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -25,6 +25,16 @@ CALC_PATH = CALCS_ROOT / "physicality" / "compression" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "compression"
 CURVE_PATH = OUT_PATH / "curves"
 FIGURE_PATH = OUT_PATH / "figures"
+
+# Save per-structure element lists (and labels) for app filtering
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="compression/*.xyz",
+    index="0",
+    include_filenames=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 # Palette for overlaid structure curves
 _PALETTE = [
