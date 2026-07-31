@@ -119,3 +119,14 @@ mace-mp:
   tooltip: "Benchmark from the MACE-MP foundation model paper (JCP 163, 184110), click to read"
   description: "Benchmarks from 'A foundation model for atomistic materials chemistry'."
   paper_url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
+
+omol25-electrolytes:
+  label: OMol25 Electrolytes
+  type: paper
+  color: "#0f766e"
+  text_color: "#ecfeff"
+  url: "https://arxiv.org/abs/2603.20183"
+  icon: "📄"
+  tooltip: "Benchmark from the OMol25 electrolyte solvation paper (arXiv:2603.20183), click to read"
+  description: "Benchmarks from 'Prediction and Experimental Verification of Electrolyte Solvation Structure from an OMol25-Trained Interatomic Potential'."
+  paper_url: "https://arxiv.org/abs/2603.20183"
