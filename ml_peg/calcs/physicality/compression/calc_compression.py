@@ -7,18 +7,18 @@ from pathlib import Path
 
 from ase import Atoms, units
 from ase.build import bulk, make_supercell
-from ase.data import atomic_numbers, covalent_radii, chemical_symbols
+from ase.data import atomic_numbers, chemical_symbols, covalent_radii
 from ase.io import read as ase_read
 from ase.io import write
 import numpy as np
 import pandas as pd
 import pytest
-from pyxtal.tolerance import Tol_matrix
 from pyxtal.database.element import Element
+from pyxtal.tolerance import Tol_matrix
 import tqdm
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -33,8 +33,10 @@ MIN_SCALE = 0.25
 MAX_SCALE = 3.0
 N_POINTS = 100
 
-#filter out element where pyxtal doesn't have a covalent radius
-ELEMENTS: list[str] = [e for e in chemical_symbols if Element(e).covalent_radius is not None ]
+# filter out element where pyxtal doesn't have a covalent radius
+ELEMENTS: list[str] = [
+    e for e in chemical_symbols if Element(e).covalent_radius is not None
+]
 
 PROTOTYPES: list[str] = [
     "sc",
@@ -549,7 +551,7 @@ def run_compression(model_name: str, model) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
     traj_dir = write_dir / "compression"
     traj_dir.mkdir(parents=True, exist_ok=True)
-    
+
     _generate_all_random(
         RANDOM_STRUCTURES,
         ELEMENTS,
