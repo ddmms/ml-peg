@@ -426,58 +426,55 @@ def plot_hist(
             results = func(*args, **kwargs)
 
             fig = go.Figure()
-            data_all = []
+
             for model_name, hist_data in results.items():
-                # Create figure
-                for point in hist_data:
-                    data_all.append(point)
-                if bins is None or isinstance(bins, int) or isinstance(bins, float):
-                    fig.add_trace(
-                        go.Histogram(
-                            x=hist_data,
-                            histnorm="probability density",
-                            nbinsx=bins,
-                            name=model_name,
-                        )
+                # Construct bin edges
+                if isinstance(bins, dict):
+                    edges = np.arange(
+                        bins["start"],
+                        bins["end"] + bins["size"],
+                        bins["size"],
                     )
                 else:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=hist_data,
-                            histnorm="probability density",
-                            xbins=bins,
-                            autobinx=False,
-                            name=model_name,
-                        )
-                    )
+                    edges = np.histogram_bin_edges(hist_data, bins=bins)
 
-            if good is not None and bad is not None and isinstance(bins, dict):
-                actual_bins = [min(data_all)]
-                point = actual_bins[0]
-                while point < max(data_all):
-                    point += bins["size"]
-                    actual_bins.append(point)
-                colors = np.zeros_like(actual_bins)
-                bad_exists = False
-                for i, point in enumerate(actual_bins):
-                    if point < good or point > bad:
-                        bad_exists = True
-                        colors[i] = bins["start"]
+                # Compute probability density histogram
+                counts, edges = np.histogram(hist_data, bins=edges, density=True)
+
+                centres = 0.5 * (edges[:-1] + edges[1:])
+                widths = np.diff(edges)
+
+                # Decide colour of each bar
+                colours = []
+                for centre in centres:
+                    if good is not None and bad is not None:
+                        if good <= centre <= bad:
+                            colours.append("#276419")  # Green
+                        else:
+                            colours.append("#D73027")  # Red
                     else:
-                        colors[i] = bins["end"]
-                if not bad_exists:
-                    colors = "#276419"
-                fig.update_traces(marker_color=colors)
-            # Update layout
+                        colours.append("#276419")
+
+                fig.add_trace(
+                    go.Bar(
+                        x=centres,
+                        y=counts,
+                        width=widths,
+                        marker_color=colours,
+                        name=model_name,
+                    )
+                )
+
             fig.update_layout(
-                title={"text": title},
-                xaxis={"title": {"text": x_label}},
-                yaxis={"title": {"text": y_label}},
+                barmode="overlay",
+                title=title,
+                xaxis_title=x_label,
+                yaxis_title=y_label,
             )
 
-            fig.update_traces()
+            if isinstance(bins, dict):
+                fig.update_xaxes(range=[bins["start"], bins["end"]])
 
-            # Write to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             fig.write_json(filename)
 
