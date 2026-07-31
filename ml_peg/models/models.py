@@ -378,7 +378,6 @@ class UPETCalc(GenericASECalc):
 class SevenNetCalc(SumCalc):
     """Dataclass for SevenNet calculator."""
 
-    model: str
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -400,4 +399,4 @@ class SevenNetCalc(SumCalc):
 
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         device_str = device.value if isinstance(device, Device) else (device or "cpu")
-        return SevenNetCalculator(model=self.model, device=device_str, **self.kwargs)
+        return SevenNetCalculator(device=device_str, **self.kwargs)

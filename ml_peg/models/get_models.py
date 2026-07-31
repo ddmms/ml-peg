@@ -214,11 +214,9 @@ def load_models(
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "SevenNetCalculator":
-                kwargs = cfg.get("kwargs", {})
                 loaded_models[name] = SevenNetCalc(
-                    model=kwargs["model"],
                     device=cfg.get("device", "cpu"),
-                    kwargs={k: v for k, v in kwargs.items() if k != "model"},
+                    kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
