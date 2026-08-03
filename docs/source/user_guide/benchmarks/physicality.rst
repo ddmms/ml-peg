@@ -126,6 +126,30 @@ Metrics
    positive correlation, so a value of +1, indicating that as atoms get closer together, the
    energy increases.
 
+Matbench Discovery metrics
+--------------------------
+
+A separate, opt-in result reports 12 homonuclear metrics without changing the
+five-metric homo- and heteronuclear score. The reference-free metrics are tortuosity,
+force flips, energy-difference flips, energy jump, force total variation, and force
+jump. PBE-relative metrics cover energy and force MAE, repulsive-wall distance MAE,
+bond-length error, well-depth error, and vibrational-frequency error.
+
+Element-specific windows keep the repulsive wall from dominating general metrics.
+Scoring covers H-U except Po, At, Rn, Fr, and Ra; known-discontinuous PBE curves keep
+reference-free metrics but not PBE-relative ones, and non-finite wall-window curves
+are skipped. Projected forces map to ``-force_parallel`` on atom 0 and
+``+force_parallel`` on atom 1. JSON results include schema and source-framework
+versions. To write strict JSON:
+
+.. code-block:: python
+
+   from ml_peg.analysis.physicality.diatomics.analyse_diatomics import (
+       write_mbd_diatomic_metrics,
+   )
+
+   write_mbd_diatomic_metrics("mbd_diatomics_metrics.json")
+
 Computational cost
 ------------------
 
@@ -134,7 +158,8 @@ High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
 Data availability
 -----------------
 
-None required; diatomics are generated in ASE.
+Predicted diatomics are generated in ASE. The optional PBE-relative metric family
+uses the bundled Matbench Discovery DFT reference curves.
 
 
 Oxidation States
