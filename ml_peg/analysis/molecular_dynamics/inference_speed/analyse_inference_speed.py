@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
-from mlipaudit.io import load_model_output_from_disk
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
