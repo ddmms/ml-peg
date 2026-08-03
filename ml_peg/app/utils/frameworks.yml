@@ -33,3 +33,12 @@ mace-polar-1:
   url: "https://arxiv.org/abs/2602.19411"
   icon: "📄"
   tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411) - click to read"
+
+
+omol25-electrolytes:
+  label: OMol25 Electrolytes
+  color: "#0f766e"
+  text_color: "#ecfeff"
+  url: "https://arxiv.org/abs/2603.20183"
+  icon: "📄"
+  tooltip: "Benchmark from the OMol25 electrolyte solvation paper (arXiv:2603.20183) - click to read"
