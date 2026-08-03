@@ -10,6 +10,7 @@ TM score, and radius of gyration relative to the reference structure.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -50,6 +51,11 @@ def test_protein_folding_stability(mlip: tuple[str, Any]) -> None:
         key="inputs/biomolecules/protein_folding_stability/protein_folding_stability.zip",
         filename="protein_folding_stability.zip",
     )
+
+    # Save the input data to the calculation outputs so the analysis is self
+    # contained and does not need to download it again.
+    name = MlPegFoldingStabilityBenchmark.name
+    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
 
     benchmark = MlPegFoldingStabilityBenchmark(
         force_field=calc,
