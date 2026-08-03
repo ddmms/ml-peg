@@ -8,7 +8,7 @@ from functools import lru_cache
 import json
 from numbers import Number
 from pathlib import Path
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
 
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
@@ -173,16 +173,27 @@ def weight_input_style() -> dict[str, str]:
     }
 
 
-class FrameworkEntry(TypedDict):
-    """Style and link metadata for benchmark framework attribution badges."""
+class _FrameworkEntryRequired(TypedDict):
+    """Keys always present in a framework attribution badge entry."""
 
     label: str
+    type: str
     color: str
     text_color: str
-    url: NotRequired[str]
-    logo: NotRequired[str]
-    icon: NotRequired[str]
-    tooltip: NotRequired[str]
+
+
+class FrameworkEntry(_FrameworkEntryRequired, total=False):
+    """
+    Style and link metadata for benchmark framework attribution badges.
+
+    Inherits the required style keys and adds the optional link and hover
+    metadata, which individual frameworks may omit.
+    """
+
+    url: str
+    logo: str
+    icon: str
+    tooltip: str
 
 
 def get_mlip_column_width(
@@ -1149,8 +1160,16 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
                 "'label', 'color', or 'text_color' values."
             )
 
+        entry_type = raw_entry.get("type")
+        entry_type = (
+            entry_type.strip()
+            if isinstance(entry_type, str) and entry_type.strip()
+            else "framework"
+        )
+
         registry_entry: FrameworkEntry = {
             "label": label,
+            "type": entry_type,
             "color": color,
             "text_color": text_color,
         }
@@ -1202,3 +1221,22 @@ def get_framework_config(framework_id: str) -> FrameworkEntry:
             f"Unknown framework identifier '{normalized_id}'. "
             f"Known framework IDs: {known_ids}."
         ) from exc
+
+
+def framework_sort_key(framework_id: str) -> tuple[int, str]:
+    """
+    Sort key ordering frameworks before papers, alphabetically by label within each.
+
+    Parameters
+    ----------
+    framework_id
+        Framework identifier from benchmark app metadata.
+
+    Returns
+    -------
+    tuple[int, str]
+        Group rank (0 for frameworks, 1 for papers) and lowercased label.
+    """
+    config = get_framework_config(framework_id)
+    is_paper = config.get("type") == "paper"
+    return (1 if is_paper else 0, config["label"].casefold())

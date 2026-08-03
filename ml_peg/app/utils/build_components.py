@@ -15,7 +15,7 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 import yaml
 
-from ml_peg.analysis.utils.utils import Thresholds
+from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_download_callbacks,
@@ -24,16 +24,275 @@ from ml_peg.app.utils.register_callbacks import (
     register_weight_callbacks,
 )
 from ml_peg.app.utils.utils import (
+    build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
     get_framework_config,
+    get_mlip_column_width,
     get_threshold_colours,
+    load_model_registry_configs,
+    sig_fig_format,
     weight_input_style,
 )
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
 LINK_COLUMN_WIDTH = 36
+
+# Models to include as summary-table rows
+MODELS = get_model_names(current_models)
+
+
+def _format_summary_column_header(column_id: str) -> str:
+    """
+    Format summary-table headers for more compact wrapping.
+
+    Non-static summary columns always place ``Score`` on its own line. Longer
+    multi-word titles are split across two title lines first, yielding a compact
+    three-line header.
+
+    Parameters
+    ----------
+    column_id
+        Summary-table column identifier.
+
+    Returns
+    -------
+    str
+        Header label with explicit newline breaks.
+    """
+    if column_id in {"MLIP", "Score"} or not column_id.endswith(" Score"):
+        return column_id
+
+    title = column_id.removesuffix(" Score")
+    if len(title) > 14 and " " in title:
+        words = title.split()
+        split_index = min(
+            range(1, len(words)),
+            key=lambda index: abs(
+                len(" ".join(words[:index])) - len(" ".join(words[index:]))
+            ),
+        )
+        title = "\n".join(
+            [" ".join(words[:split_index]), " ".join(words[split_index:])]
+        )
+    return f"{title}\nScore"
+
+
+def build_summary_table(
+    tables: dict[str, DataTable],
+    table_id: str = "summary-table",
+    description: str | None = None,
+    weights: dict[str, float] | None = None,
+    header_labels: dict[str, str] | None = None,
+) -> DataTable:
+    """
+    Build summary table from a set of tables.
+
+    Parameters
+    ----------
+    tables
+        Dictionary of tables to be summarised.
+    table_id
+        ID of table being built. Default is 'summary-table'.
+    description
+        Description of summary table. Default is None.
+    weights
+        Weights for each column. Default is `None`, which sets all weights to 1.
+    header_labels
+        Optional mapping of table key to display header text. Column ids are
+        unchanged, so only the rendered header differs. Default is None.
+
+    Returns
+    -------
+    DataTable
+        Summary table with scores from tables being summarised.
+    """
+    summary_data = {}
+    category_columns = []  # Track all category columns
+    for category_name, table in tables.items():
+        # Prepare rows for all current models
+        if not summary_data:
+            summary_data = {model: {} for model in MODELS}
+
+        category_col = f"{category_name} Score"
+        category_columns.append(category_col)
+
+        table_name_map = getattr(table, "model_name_map", {}) or {}
+        for row in table.data:
+            # Category tables may include models not to be included
+            # Table headings are of the form "[category] Score"
+            # ``original_name`` refers to the original model identifier
+            # (no display suffix)
+            original_name = table_name_map.get(row["MLIP"], row["MLIP"])
+            if original_name in summary_data:
+                summary_data[original_name][category_col] = row["Score"]
+
+    # Ensure all models have entries for all category columns (None if missing)
+    data = []
+    for mlip in summary_data:
+        row = {"MLIP": mlip}
+        for category_col in category_columns:
+            row[category_col] = summary_data[mlip].get(category_col, None)
+        data.append(row)
+
+    data = calc_table_scores(data, weights=weights)
+
+    columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
+
+    # Map each column id to its visible header text (labels + line wrapping)
+    display_headers = {}
+    for column_id in columns_headers:
+        header = column_id
+        if (
+            header not in {"MLIP", "Score"}
+            and header.endswith(" Score")
+            and header_labels
+        ):
+            key = header.removesuffix(" Score")
+            if key in header_labels:
+                header = header_labels[key] + " Score"
+        if table_id != "summary-table":
+            display_headers[column_id] = _format_summary_column_header(header)
+        elif header in {"MLIP", "Score"} or not header.endswith(" Score"):
+            display_headers[column_id] = header
+        else:
+            display_headers[column_id] = "\n".join(
+                [*header.removesuffix(" Score").split(), "Score"]
+            )
+
+    columns = [
+        {"name": display_headers[header], "id": header} for header in columns_headers
+    ]
+    tooltip_header = {
+        header + " Score": table.description for header, table in tables.items()
+    }
+
+    for column in columns:
+        column_id = column["id"]
+        if column_id != "MLIP":
+            column["type"] = "numeric"
+            column["format"] = sig_fig_format()
+
+    style = get_table_style(data)
+    registry_configs = load_model_registry_configs()
+    row_models: list[str] = []
+    for row in data:
+        mlip = row.get("MLIP")
+        if isinstance(mlip, str) and mlip not in row_models:
+            row_models.append(mlip)
+    model_configs = {mlip: (registry_configs.get(mlip) or {}) for mlip in row_models}
+    model_levels = {
+        mlip: (model_configs[mlip].get("level_of_theory")) for mlip in row_models
+    }
+    warning_styles, tooltip_rows = build_level_of_theory_warnings(
+        data,
+        model_levels,
+        {},
+        model_configs,
+    )
+    style_with_warnings = style + warning_styles
+
+    summary_header_padding = 12 if table_id == "summary-table" else 24
+    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
+    column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
+    for column_id in columns_headers:
+        if column_id in {"MLIP", "Score"}:
+            continue
+        longest_line = max(
+            len(line) for line in display_headers[column_id].splitlines()
+        )
+        column_widths[column_id] = min(
+            max(longest_line * 9 + summary_header_padding, 100), 150
+        )
+
+    style_cell_conditional = []
+    for column_id, width in column_widths.items():
+        col_width = f"{width}px"
+        alignment = "left" if column_id == "MLIP" else "center"
+        style_cell_conditional.append(
+            {
+                "if": {"column_id": column_id},
+                "width": col_width,
+                "minWidth": col_width,
+                "maxWidth": col_width,
+                "textAlign": alignment,
+            }
+        )
+
+    tooltip_header["Score"] = "Weighted average of scores (higher is better)"
+
+    # Per-model docs link, on the overall summary table only, rendered as an
+    # icon just after the model name. Its styling lives in
+    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
+    # NaN/level-of-theory greying is kept off for the link column.
+    if table_id == "summary-table":
+        models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
+        for row in data:
+            anchor = row.get("MLIP")
+            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
+        columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
+        style_cell_conditional.append(
+            {
+                "if": {"column_id": "link"},
+                "width": f"{LINK_COLUMN_WIDTH}px",
+                "minWidth": f"{LINK_COLUMN_WIDTH}px",
+                "maxWidth": f"{LINK_COLUMN_WIDTH}px",
+                "textAlign": "left",
+                "padding": "0",
+                "borderLeft": "none",
+            }
+        )
+        style_cell_conditional.append(
+            {"if": {"column_id": "MLIP"}, "borderRight": "none"}
+        )
+        style_with_warnings = style_with_warnings + [
+            {
+                "if": {"column_id": "link"},
+                "backgroundColor": "white",
+                "backgroundImage": "none",
+            }
+        ]
+
+    table = DataTable(
+        data=data,
+        columns=columns,
+        id=table_id,
+        markdown_options={"link_target": "_blank"},
+        sort_action="native",
+        style_data_conditional=style_with_warnings,
+        style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "pre-line",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": header_cell_padding,
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
+        tooltip_data=tooltip_rows,
+        tooltip_delay=100,
+        tooltip_duration=None,
+        tooltip_header=tooltip_header,
+        editable=False,
+        fill_width=False,
+    )
+    table.column_widths = column_widths
+    table.description = description
+    table.model_levels_of_theory = model_levels
+    table.metric_levels_of_theory = {}
+    table.model_configs = model_configs
+    table.weights = weights
+    return table
 
 
 def grid_template_from_widths(
@@ -303,17 +562,36 @@ def build_weight_components(
     model_configs = getattr(table, "model_configs", None)
 
     # Callbacks to update table scores when table weight dicts change
-    if table.id != "summary-table":
+    if table.id == "summary-table":
+        register_summary_table_callbacks(
+            initial_rows=table.data,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+            prefix="summary-table",
+        )
+    elif table.id == "framework-summary-table":
+        register_summary_table_callbacks(
+            initial_rows=table.data,
+            model_levels=model_levels,
+            metric_levels=metric_levels,
+            model_configs=model_configs,
+            prefix="framework-summary-table",
+        )
+    elif table.id.endswith("-framework-summary-table"):
         register_category_table_callbacks(
             table_id=table.id,
             use_thresholds=use_thresholds,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
+            scores_store_id="framework-summary-table-scores-store",
+            summary_suffix="-framework-summary-table",
         )
     else:
-        register_summary_table_callbacks(
-            initial_rows=table.data,
+        register_category_table_callbacks(
+            table_id=table.id,
+            use_thresholds=use_thresholds,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
