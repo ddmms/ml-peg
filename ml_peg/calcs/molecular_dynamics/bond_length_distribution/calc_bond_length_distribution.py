@@ -9,6 +9,7 @@ equilibrium length is measured over the trajectory.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -16,6 +17,7 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.bond_length_distribution.bond_length_distribution import (
+    BOND_LENGTH_DISTRIBUTION_DATASET_FILENAME,
     BondLengthDistributionModelOutput,
 )
 from mlipaudit.io import write_model_output_to_disk
@@ -47,6 +49,15 @@ def test_bond_length_distribution(mlip: tuple[str, Any]) -> None:
     data_input_dir = download_s3_data(
         key="inputs/molecular_dynamics/bond_length_distribution/bond_length_distribution.zip",
         filename="bond_length_distribution.zip",
+    )
+
+    dataset_dir = OUT_PATH / MlPegBondLengthDistributionBenchmark.name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        data_input_dir
+        / MlPegBondLengthDistributionBenchmark.name
+        / BOND_LENGTH_DISTRIBUTION_DATASET_FILENAME,
+        dataset_dir,
     )
 
     benchmark = MlPegBondLengthDistributionBenchmark(
