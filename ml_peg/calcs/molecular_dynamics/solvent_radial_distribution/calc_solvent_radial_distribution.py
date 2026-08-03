@@ -9,6 +9,7 @@ function of the atom of interest is compared to experiment.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -48,6 +49,11 @@ def test_solvent_radial_distribution(mlip: tuple[str, Any]) -> None:
         key="inputs/molecular_dynamics/solvent_radial_distribution/solvent_radial_distribution.zip",
         filename="solvent_radial_distribution.zip",
     )
+
+    # Save the input data to the calculation outputs so the analysis is self
+    # contained and does not need to download it again.
+    name = MlPegSolventRadialDistributionBenchmark.name
+    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
 
     benchmark = MlPegSolventRadialDistributionBenchmark(
         force_field=calc,

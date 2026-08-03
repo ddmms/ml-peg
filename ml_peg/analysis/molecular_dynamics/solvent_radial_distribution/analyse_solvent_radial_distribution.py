@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
+from ase.io import read
+import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
@@ -14,12 +17,10 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
-    write_struct_info,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegSolventRadialDistributionBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -40,19 +41,40 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _data_input_dir() -> Path:
+def solvent_pdb(solvent: str) -> Path:
     """
-    Download and return the benchmark input data directory.
+    Get the path to a solvent's equilibrated structure saved by the calculation.
+
+    Parameters
+    ----------
+    solvent
+        Name of the solvent.
 
     Returns
     -------
     Path
-        Directory containing the extracted solvent RDF input data.
+        Path to the solvent's equilibrated PDB file.
     """
-    return download_s3_data(
-        key="inputs/molecular_dynamics/solvent_radial_distribution/solvent_radial_distribution.zip",
-        filename="solvent_radial_distribution.zip",
-    )
+    return CALC_PATH / BENCHMARK / f"{solvent}_eq.pdb"
+
+
+def check_dataset() -> None:
+    """
+    Check the input structures saved by the calculation are available.
+
+    The calculation copies the downloaded input data into its outputs, so the
+    analysis does not need to download it again.
+
+    Raises
+    ------
+    ValueError
+        If any solvent structure is missing from the calculation outputs.
+    """
+    for solvent in SOLVENTS:
+        if not solvent_pdb(solvent).exists():
+            raise ValueError(
+                f"{solvent_pdb(solvent)} does not exist. Please run the calculation."
+            )
 
 
 @pytest.fixture
@@ -65,7 +87,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``SolventRadialDistributionResult``.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -74,7 +96,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegSolventRadialDistributionBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -85,15 +107,33 @@ def analyze_results() -> dict:
 
 
 @pytest.fixture
-def struct_info() -> None:
-    """Write the combined element set to ``info.json`` for filtering."""
-    data_input_dir = _data_input_dir()
-    write_struct_info(
-        data_path=[
-            data_input_dir / BENCHMARK / f"{solvent}_eq.pdb" for solvent in SOLVENTS
+def struct_info() -> dict:
+    """
+    Write per-solvent element info to ``info.json`` for filtering.
+
+    Elements are stored as one list per solvent, so individual solvents can be
+    excluded once partial filtering is supported. The order follows ``SOLVENTS``.
+
+    Returns
+    -------
+    dict
+        Mapping with the per-solvent lists of elements.
+    """
+    check_dataset()
+
+    info = {
+        "systems": list(SOLVENTS),
+        "elements": [
+            sorted(set(read(solvent_pdb(solvent)).get_chemical_symbols()))
+            for solvent in SOLVENTS
         ],
-        out_path=OUT_PATH,
-    )
+    }
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
+        json.dump(info, f, indent=1)
+
+    return info
 
 
 @pytest.fixture
@@ -149,7 +189,11 @@ def get_peak_deviation(analyze_results) -> dict[str, float]:
         Average deviation of the first solvent peak from the reference, in Angstrom.
     """
     return {
-        model_name: result.avg_peak_deviation
+        model_name: (
+            result.avg_peak_deviation
+            if result.avg_peak_deviation is not None
+            else np.nan
+        )
         for model_name, result in analyze_results.items()
     }
 
@@ -187,7 +231,7 @@ def metrics(
 
 
 def test_solvent_radial_distribution(
-    metrics: dict[str, dict], struct_info: None
+    metrics: dict[str, dict], struct_info: dict
 ) -> None:
     """
     Run solvent radial distribution analysis.
@@ -196,6 +240,6 @@ def test_solvent_radial_distribution(
     ----------
     metrics : dict[str, dict]
         Solvent RDF metric results provided by fixtures.
-    struct_info : None
+    struct_info : dict
         Element info written to ``info.json`` for filtering.
     """
