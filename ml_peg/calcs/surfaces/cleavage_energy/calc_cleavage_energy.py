@@ -77,6 +77,7 @@ def _miller_indices(value: Any) -> list[int]:
     return [int(index) for index in value]
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_cleavage_energy(mlip: tuple[str, Any]) -> None:
     """

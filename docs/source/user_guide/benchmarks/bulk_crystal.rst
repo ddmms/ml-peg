@@ -459,8 +459,8 @@ Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
 Computational cost
 ------------------
 
-Medium: tests are likely to take minutes to run on GPU, or hours on CPU for each model.
-The benchmark is marked as slow and excluded from default test runs.
+Medium: tests are likely to take tens of minutes to run on GPU, or hours on CPU
+for each model. The benchmark is marked ``medium`` and runs by default.
 
 
 Data availability

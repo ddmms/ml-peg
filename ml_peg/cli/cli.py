@@ -286,10 +286,16 @@ def run_calcs(
     ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
-    ] = True,
+    ] = False,
     run_very_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled very slow.")
     ] = False,
+    timings_out: Annotated[
+        Path | None,
+        Option(
+            help=("Optional: write runtimes for one selected model to this YAML file.")
+        ),
+    ] = None,
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
     ] = True,
@@ -320,15 +326,27 @@ def run_calcs(
     mock_only
         Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
-        Whether to run slow calculations. Default is `True`.
+        Whether to run slow calculations. Default is `False`.
     run_very_slow
         Whether to run very slow calculations. Default is `False`.
+    timings_out
+        YAML file to update with measured benchmark runtimes. Timing mode requires
+        one selected model and disables the mock calculator. Default is `None`.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
     import pytest
 
     from ml_peg.calcs import CALCS_ROOT
+
+    if timings_out:
+        timing_models = [
+            name.strip() for name in (models or "").split(",") if name.strip()
+        ]
+        if len(timing_models) != 1:
+            raise ValueError("Timing mode requires exactly one model via --models")
+        if mock_only:
+            raise ValueError("Timing mode cannot be combined with --mock-only")
 
     options = list(CALCS_ROOT.glob(f"{category}/{test}/calc_*.py"))
     if not options:
@@ -345,7 +363,7 @@ def run_calcs(
     if run_very_slow:
         options.extend(["--run-very-slow"])
 
-    if run_mock:
+    if run_mock and not timings_out:
         options.extend(["--run-mock"])
 
     if mock_only:
@@ -359,6 +377,9 @@ def run_calcs(
 
     if framework != "*":
         options.extend(["--framework", framework])
+
+    if timings_out:
+        options.extend(["--timings-out", timings_out])
 
     # Parse any custom options to pytest
     options.extend(ctx.args)

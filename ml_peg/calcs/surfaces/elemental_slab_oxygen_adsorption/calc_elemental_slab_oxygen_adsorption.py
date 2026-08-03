@@ -12,6 +12,7 @@ from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
 import numpy as np
+import pytest
 from tqdm import tqdm
 import zntrack
 
@@ -168,6 +169,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.fast
 def test_elemental_slab_oxygen_adsorption():
     """Run elemental slab oxygen adsorption benchmark via pytest."""
     build_project(repro=True)

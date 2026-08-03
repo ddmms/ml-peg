@@ -15,6 +15,12 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 import yaml
 
+from ml_peg.analysis.utils.speed import (
+    SPEED_LEVELS,
+    SPEED_ORDER,
+    load_runtimes,
+    summarise_speeds,
+)
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
@@ -1159,6 +1165,231 @@ def build_framework_badge(framework_id: str) -> Component:
     return badge
 
 
+def build_speed_badge(speed: str | None) -> Component | None:
+    """
+    Build a badge showing a benchmark's computational cost.
+
+    Parameters
+    ----------
+    speed
+        Speed level name, or None when the benchmark carries no speed marker.
+
+    Returns
+    -------
+    Component | None
+        Styled badge, or None when there is no recognised level to show.
+    """
+    config = SPEED_LEVELS.get(speed) if speed else None
+    if config is None:
+        return None
+
+    segment_style = {
+        "display": "inline-flex",
+        "alignItems": "center",
+        "padding": "2px 8px",
+        "lineHeight": "1.8",
+    }
+    return html.Span(
+        [
+            html.Span(
+                "Test speed",
+                style={
+                    **segment_style,
+                    "backgroundColor": "#e2e8f0",
+                    "color": "#475569",
+                    "borderRadius": "999px 0 0 999px",
+                },
+            ),
+            html.Span(
+                config["label"],
+                style={
+                    **segment_style,
+                    "backgroundColor": config["color"],
+                    "color": config["text_color"],
+                    "borderRadius": "0 999px 999px 0",
+                },
+            ),
+        ],
+        className="speed-badge",
+        style={
+            "display": "inline-flex",
+            "alignItems": "stretch",
+            "fontSize": "11px",
+            "fontWeight": "600",
+            "letterSpacing": "0.02em",
+            "textTransform": "uppercase",
+        },
+        # Drawn by speed_badge.css rather than the native `title` attribute,
+        # whose show delay browsers do not let us configure.
+        **{"data-tooltip": config["tooltip"]},
+    )
+
+
+def _format_duration(minutes: float) -> str:
+    """
+    Format a duration in minutes as a short human-readable string.
+
+    Parameters
+    ----------
+    minutes
+        Duration in minutes.
+
+    Returns
+    -------
+    str
+        Rounded duration using minutes, hours, or days.
+    """
+    if 0 < minutes < 1:
+        return "1 min"
+    if minutes < 90:
+        return f"{round(minutes)} min"
+    if minutes < 60 * 36:
+        return f"{minutes / 60:.0f} hours"
+    return f"{minutes / 1440:.0f} days"
+
+
+def build_cost_panel(speeds: dict[str, str | None]) -> Div:
+    """
+    Build the panel describing what a set of benchmarks costs to run.
+
+    Runtime totals include only benchmarks recorded in ``runtimes.yml``. Missing
+    runtimes are omitted.
+
+    Parameters
+    ----------
+    speeds
+        Mapping of ``<category>/<benchmark>`` to speed level, with None for
+        benchmarks carrying no speed marker.
+
+    Returns
+    -------
+    Div
+        Panel listing benchmark counts and cumulative runtimes per model.
+    """
+    counts = summarise_speeds(speeds.values())
+    provenance, measured = load_runtimes()
+    runtimes = {
+        level: sum(
+            measured[key]
+            for key, speed in speeds.items()
+            if speed == level and key in measured
+        )
+        for level in SPEED_ORDER
+    }
+
+    tiles = []
+    for level in SPEED_ORDER:
+        count = counts.get(level, 0)
+        label = SPEED_LEVELS[level]["label"]
+        contents = [
+            Div(
+                str(count),
+                style={
+                    "fontSize": "26px",
+                    "fontWeight": "700",
+                    "color": "#212529",
+                    "lineHeight": "1.1",
+                },
+            ),
+            Div(
+                label,
+                style={
+                    "fontSize": "11px",
+                    "fontWeight": "600",
+                    "letterSpacing": "0.04em",
+                    "textTransform": "uppercase",
+                    "color": "#6c757d",
+                    "marginTop": "2px",
+                },
+            ),
+        ]
+        if runtimes[level]:
+            contents.append(
+                Div(
+                    _format_duration(runtimes[level]),
+                    style={
+                        "fontSize": "13px",
+                        "fontWeight": "600",
+                        "color": "#212529",
+                        "marginTop": "8px",
+                    },
+                )
+            )
+        tiles.append(Div(contents, style={"minWidth": "88px"}))
+
+    panel_contents = [
+        Div(
+            tiles,
+            style={
+                "display": "flex",
+                "flexWrap": "wrap",
+                "gap": "20px",
+                "margin": "2px 0",
+            },
+        )
+    ]
+    total_runtime = sum(runtimes.values())
+    if total_runtime:
+        panel_contents.extend(
+            [
+                Div(
+                    [
+                        Div("Everything"),
+                        Div(
+                            _format_duration(total_runtime),
+                            style={"fontWeight": "700"},
+                        ),
+                    ],
+                    style={
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "gap": "24px",
+                        "fontSize": "13px",
+                        "fontWeight": "600",
+                        "color": "#212529",
+                        "marginTop": "14px",
+                        "paddingTop": "14px",
+                        "borderTop": "1px solid #e2e8f0",
+                    },
+                ),
+                Div(
+                    (
+                        f"Timings are for {provenance.get('model', 'mace-mp-0a')}, "
+                        "other models may be faster or slower"
+                    ),
+                    style={
+                        "fontSize": "12px",
+                        "color": "#6c757d",
+                        "marginTop": "14px",
+                        "maxWidth": "440px",
+                        "lineHeight": "1.5",
+                    },
+                ),
+            ]
+        )
+
+    return Div(
+        [
+            H2(
+                "Benchmark speeds",
+                style={"color": "black", "marginTop": "30px"},
+            ),
+            Div(
+                panel_contents,
+                style={
+                    "backgroundColor": "#f8fafc",
+                    "border": "1px solid #e2e8f0",
+                    "borderRadius": "12px",
+                    "padding": "16px 20px",
+                    "marginBottom": "12px",
+                    "width": "fit-content",
+                    "maxWidth": "820px",
+                },
+            ),
+        ]
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1168,6 +1399,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
+    speed: str | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1193,6 +1425,9 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
+    speed
+        Benchmark speed level used to render a cost badge. Default is None, which
+        renders no badge.
 
     Returns
     -------
@@ -1215,8 +1450,13 @@ def build_test_layout(
                 "gap": "10px",
             },
         ),
-        H3(description),
     ]
+
+    speed_badge = build_speed_badge(speed)
+    if speed_badge is not None:
+        layout_contents.append(Div(speed_badge, style={"margin": "8px 0 0"}))
+
+    layout_contents.append(H3(description))
 
     layout_contents.extend(
         [

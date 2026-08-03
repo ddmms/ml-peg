@@ -89,6 +89,7 @@ def get_ref_energy(data_path: Path) -> float:
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     """
