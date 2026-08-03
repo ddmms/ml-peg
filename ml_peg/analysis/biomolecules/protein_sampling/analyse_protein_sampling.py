@@ -6,9 +6,12 @@ import json
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
+from ase.io import read
+import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.sampling.sampling import STRUCTURE_NAMES
 from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table
@@ -19,7 +22,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegSamplingBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -37,19 +39,41 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _data_input_dir() -> Path:
+def structure_xyz(structure_name: str) -> Path:
     """
-    Download and return the benchmark input data directory.
+    Get the path to a starting structure saved by the calculation.
+
+    Parameters
+    ----------
+    structure_name
+        Name of the structure.
 
     Returns
     -------
     Path
-        Directory containing the extracted protein sampling input data.
+        Path to the structure's starting geometry.
     """
-    return download_s3_data(
-        key="inputs/biomolecules/protein_sampling/protein_sampling.zip",
-        filename="protein_sampling.zip",
-    )
+    return CALC_PATH / BENCHMARK / "starting_structures" / f"{structure_name}.xyz"
+
+
+def check_dataset() -> None:
+    """
+    Check the input structures saved by the calculation are available.
+
+    The calculation copies the downloaded input data into its outputs, so the
+    analysis does not need to download it again.
+
+    Raises
+    ------
+    ValueError
+        If any starting structure is missing from the calculation outputs.
+    """
+    for structure_name in STRUCTURE_NAMES:
+        if not structure_xyz(structure_name).exists():
+            raise ValueError(
+                f"{structure_xyz(structure_name)} does not exist. "
+                "Please run the calculation."
+            )
 
 
 @pytest.fixture
@@ -62,7 +86,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``SamplingResult``.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -71,7 +95,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegSamplingBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -82,17 +106,38 @@ def analyze_results() -> dict:
 
 
 @pytest.fixture
-def struct_info() -> None:
-    """Write the combined element set to ``info.json`` for filtering."""
-    elements = sorted(MlPegSamplingBenchmark.required_elements)
+def struct_info() -> dict:
+    """
+    Write per-structure element info to ``info.json`` for filtering.
+
+    Elements are stored as one list per structure, so individual structures can
+    be excluded once partial filtering is supported. The order follows
+    ``STRUCTURE_NAMES``.
+
+    Returns
+    -------
+    dict
+        Mapping with the per-structure lists of elements.
+    """
+    check_dataset()
+
+    info = {
+        "systems": list(STRUCTURE_NAMES),
+        "elements": [
+            sorted(set(read(structure_xyz(name)).get_chemical_symbols()))
+            for name in STRUCTURE_NAMES
+        ],
+    }
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
-        json.dump({"elements": elements}, f, indent=1)
+        json.dump(info, f, indent=1)
+
+    return info
 
 
 @pytest.fixture
-def get_rmsd_backbone(analyze_results) -> dict[str, float | None]:
+def get_rmsd_backbone(analyze_results) -> dict[str, float]:
     """
     Get the mean backbone dihedral distribution RMSD for each model.
 
@@ -103,17 +148,21 @@ def get_rmsd_backbone(analyze_results) -> dict[str, float | None]:
 
     Returns
     -------
-    dict[str, float | None]
+    dict[str, float]
         Backbone dihedral distribution RMSD averaged over residues and systems.
     """
     return {
-        model_name: result.rmsd_backbone_total
+        model_name: (
+            result.rmsd_backbone_total
+            if result.rmsd_backbone_total is not None
+            else np.nan
+        )
         for model_name, result in analyze_results.items()
     }
 
 
 @pytest.fixture
-def get_hellinger_backbone(analyze_results) -> dict[str, float | None]:
+def get_hellinger_backbone(analyze_results) -> dict[str, float]:
     """
     Get the mean backbone dihedral Hellinger distance for each model.
 
@@ -124,17 +173,21 @@ def get_hellinger_backbone(analyze_results) -> dict[str, float | None]:
 
     Returns
     -------
-    dict[str, float | None]
+    dict[str, float]
         Backbone dihedral Hellinger distance averaged over residues and systems.
     """
     return {
-        model_name: result.hellinger_distance_backbone_total
+        model_name: (
+            result.hellinger_distance_backbone_total
+            if result.hellinger_distance_backbone_total is not None
+            else np.nan
+        )
         for model_name, result in analyze_results.items()
     }
 
 
 @pytest.fixture
-def get_outliers_ratio_backbone(analyze_results) -> dict[str, float | None]:
+def get_outliers_ratio_backbone(analyze_results) -> dict[str, float]:
     """
     Get the mean backbone dihedral outliers ratio for each model.
 
@@ -145,12 +198,16 @@ def get_outliers_ratio_backbone(analyze_results) -> dict[str, float | None]:
 
     Returns
     -------
-    dict[str, float | None]
+    dict[str, float]
         Fraction of sampled backbone dihedrals lying far from the reference data,
         averaged over residues and systems.
     """
     return {
-        model_name: result.outliers_ratio_backbone_total
+        model_name: (
+            result.outliers_ratio_backbone_total
+            if result.outliers_ratio_backbone_total is not None
+            else np.nan
+        )
         for model_name, result in analyze_results.items()
     }
 
@@ -164,9 +221,9 @@ def get_outliers_ratio_backbone(analyze_results) -> dict[str, float | None]:
     mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
-    get_rmsd_backbone: dict[str, float | None],
-    get_hellinger_backbone: dict[str, float | None],
-    get_outliers_ratio_backbone: dict[str, float | None],
+    get_rmsd_backbone: dict[str, float],
+    get_hellinger_backbone: dict[str, float],
+    get_outliers_ratio_backbone: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -192,7 +249,7 @@ def metrics(
     }
 
 
-def test_protein_sampling(metrics: dict[str, dict], struct_info: None) -> None:
+def test_protein_sampling(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run protein sampling analysis.
 
@@ -200,6 +257,6 @@ def test_protein_sampling(metrics: dict[str, dict], struct_info: None) -> None:
     ----------
     metrics : dict[str, dict]
         Protein sampling metric results provided by fixtures.
-    struct_info : None
+    struct_info : dict
         Element info written to ``info.json`` for filtering.
     """
