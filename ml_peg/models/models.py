@@ -126,6 +126,35 @@ class PetMadCalc(GenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+@dataclasses.dataclass(kw_only=True)
+class MatterSimCalc(GenericASECalc):
+    """Dataclass for MatterSim calculator."""
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Any keyword arguments to pass to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE Calculator.
+        """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
+        if self.default_dtype is not None:
+            kwargs["dtype"] = self.default_dtype
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
 # https://github.com/orbital-materials/orb-models
 @dataclasses.dataclass(kw_only=True)
 class OrbCalc(SumCalc):
@@ -216,17 +245,19 @@ class FairChemCalc(SumCalc):
     model_name: str
     task_name: str
     device: Device | str = "cpu"
-    default_dtype: str = "float32"
+    default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
-            Unused additional keyword arguments.
+            Any additional keyword arguments.
 
         Returns
         -------
@@ -234,10 +265,24 @@ class FairChemCalc(SumCalc):
             Loaded ASE fairchem Calculator.
         """
         from fairchem.core import FAIRChemCalculator, pretrained_mlip
-        # torch.serialization.add_safe_globals([slice])
+        from fairchem.core.units.mlip_unit.api.inference import (
+            inference_settings_default,
+        )
+
+        # fairchem defaults to float32; map the requested precision to the base
+        # dtype so precision="high" runs in float64. A configured default_dtype
+        # overrides this.
+        precision_map = {"low": "float32", "high": "float64"}
+        dtype = self.default_dtype or precision_map[precision]
+        inference_settings = dataclasses.replace(
+            inference_settings_default(), base_precision_dtype=dtype
+        )
 
         predictor = pretrained_mlip.get_predict_unit(
-            self.model_name, device=self.device, overrides=self.overrides
+            self.model_name,
+            device=self.device,
+            overrides=self.overrides,
+            inference_settings=inference_settings,
         )
         return FAIRChemCalculator(predictor, task_name=self.task_name)
 

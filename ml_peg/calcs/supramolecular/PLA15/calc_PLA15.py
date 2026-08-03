@@ -6,6 +6,7 @@ from pathlib import Path
 
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import pytest
 import zntrack
 
 from ml_peg.calcs.supramolecular.utils.plf547_pla15_utils import run_benchmark
@@ -63,6 +64,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_pla15():
     """Run PLA15 benchmark via pytest."""
     build_project(repro=True)

@@ -154,6 +154,25 @@ def build_threshold_input_style(border_colour: str) -> dict[str, str]:
     }
 
 
+def weight_input_style() -> dict[str, str]:
+    """
+    Build the inline style for a metric weight input.
+
+    Returns
+    -------
+    dict[str, str]
+        Inline Dash style dictionary.
+    """
+    return {
+        "width": "60px",
+        "fontSize": "12px",
+        "padding": "2px 4px",
+        "border": "1px solid #6c757d",
+        "borderRadius": "3px",
+        "textAlign": "center",
+    }
+
+
 class FrameworkEntry(TypedDict):
     """Style and link metadata for benchmark framework attribution badges."""
 

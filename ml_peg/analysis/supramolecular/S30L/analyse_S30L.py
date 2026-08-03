@@ -241,6 +241,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_s30l(metrics: dict[str, dict]) -> None:
     """
     Run S30L test.

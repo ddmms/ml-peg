@@ -78,6 +78,7 @@ def get_systems(info_path, xyz_dir):
     return systems
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_bh2o_36(mlip: tuple[str, Any]) -> None:
     """

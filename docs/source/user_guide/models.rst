@@ -211,6 +211,20 @@ orb-v3-consv-inf-omat
      kwargs:
        name: "orb_v3_conservative_inf_omat"
 
+orb-v3-direct-inf-omat
+----------------------
+
+.. code-block:: yaml
+
+   orb-v3-direct-inf-omat:
+     module: orb_models.inference.calculator
+     class_name: OrbCalc
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       name: "orb_v3_direct_inf_omat"
+
 orb-v3-consv-omol
 -----------------
 
@@ -340,9 +354,25 @@ mattersim-5M
      module: mattersim.forcefield
      class_name: MatterSimCalculator
      device: "cpu"
-     load_path: "mattersim-v1.0.0-5m"
      trained_on_dispersion: false
      level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-5m"
+
+mattersim-1M
+------------
+
+
+.. code-block:: yaml
+
+   mattersim-1M:
+     module: mattersim.forcefield
+     class_name: MatterSimCalculator
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-1m"
 
 GRACE
 =====

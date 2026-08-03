@@ -14,6 +14,7 @@ Benchmarks
     molecular_reactions
     bulk_crystal
     lanthanides
+    actinides
     non_covalent_interactions
     tm_complexes
     conformers

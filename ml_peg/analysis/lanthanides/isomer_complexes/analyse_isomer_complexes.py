@@ -173,6 +173,7 @@ def metrics(isomer_complex_errors: dict[str, float | None]) -> dict[str, dict]:
     return {"MAE": isomer_complex_errors}
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_isomer_complexes(metrics: dict[str, dict]) -> None:
     """
     Run lanthanide isomer complexes benchmark analysis.

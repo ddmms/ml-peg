@@ -5,7 +5,15 @@ from __future__ import annotations
 from importlib import import_module
 import warnings
 
-from dash import Dash, Input, Output, callback, clientside_callback, ctx, no_update
+from dash import (
+    Dash,
+    Input,
+    Output,
+    callback,
+    clientside_callback,
+    ctx,
+    no_update,
+)
 from dash.dash_table import DataTable
 from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
@@ -30,7 +38,6 @@ from ml_peg.app.utils.build_components import (
 )
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
-    build_tutorial_button,
     register_onboarding_callbacks,
 )
 from ml_peg.app.utils.register_callbacks import (
@@ -38,12 +45,20 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.storage import (
+    build_header_controls,
+    register_storage_callbacks,
+)
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     get_framework_config,
     get_mlip_column_width,
     load_model_registry_configs,
     sig_fig_format,
+)
+from ml_peg.app.utils.weight_presets import (
+    build_weight_preset_selector,
+    register_weight_preset_callbacks,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -959,6 +974,8 @@ def build_nav(
         style={"marginBottom": "8px", "fontSize": "13px"},
     )
 
+    weight_preset_selector = build_weight_preset_selector(_summary_label_style)
+
     sidebar = Div(
         id="sidebar-nav",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
@@ -1034,6 +1051,22 @@ def build_nav(
                         "color": "#212529",
                     },
                 ),
+                # Time-based progress bar: fills continuously over ~10s, easing
+                # toward ~95% (keyframe in loading.css; same single-element bar
+                # as the pre-hydration loader in dash_loading.css). It vanishes
+                # with the mask when ready, so it never reaches a fake 100%.
+                Div(
+                    style={
+                        "width": "200px",
+                        "height": "6px",
+                        "borderRadius": "3px",
+                        "background": (
+                            "linear-gradient(#119DFF, #119DFF) left center "
+                            "/ 5% 100% no-repeat, #d0ebff"
+                        ),
+                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
+                    },
+                ),
             ],
             id="startup-mask",
             style={
@@ -1053,7 +1086,7 @@ def build_nav(
         ),
         Interval(id="startup-mask-poll", interval=250, n_intervals=0),
         build_onboarding_modal(),
-        build_tutorial_button(),
+        build_header_controls(),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -1114,6 +1147,7 @@ def build_nav(
                             [
                                 get_model_filter(MODELS),
                                 cmap_selector,
+                                weight_preset_selector,
                                 get_element_filter(),
                                 Store(
                                     id="selected-models-store",
@@ -1169,6 +1203,7 @@ def build_nav(
 
     # Hide the start-up mask once the page has rendered, or after a timeout as
     # a safety net, then stop polling. Clientside, so it adds no server load.
+    # (The progress bar fills via a CSS animation, not this callback.)
     clientside_callback(
         """
         function(n) {
@@ -1184,6 +1219,8 @@ def build_nav(
         Output("startup-mask-poll", "disabled"),
         Input("startup-mask-poll", "n_intervals"),
     )
+
+    register_storage_callbacks()
 
     @callback(
         Output("model-filter-checklist", "value"),
@@ -1257,6 +1294,10 @@ def build_nav(
             selected = cmap_name or "viridis_r"
             return selected, selected
         raise PreventUpdate
+
+    register_weight_preset_callbacks(
+        summary_table, _default_weight_store_data(summary_table)
+    )
 
     @callback(
         Output("model-filter-details", "open"),

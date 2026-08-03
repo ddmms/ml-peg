@@ -28,6 +28,7 @@ KJ_TO_EV = units.kJ / units.mol
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_criegee22(mlip: tuple[str, Any]) -> None:
     """
