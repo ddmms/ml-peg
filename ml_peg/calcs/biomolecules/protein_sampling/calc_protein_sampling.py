@@ -9,6 +9,7 @@ distributions to assess how well the model explores conformational space.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -49,6 +50,11 @@ def test_protein_sampling(mlip: tuple[str, Any]) -> None:
         key="inputs/biomolecules/protein_sampling/protein_sampling.zip",
         filename="protein_sampling.zip",
     )
+
+    # Save the input data to the calculation outputs so the analysis is self
+    # contained and does not need to download it again.
+    name = MlPegSamplingBenchmark.name
+    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
 
     benchmark = MlPegSamplingBenchmark(
         force_field=calc,
