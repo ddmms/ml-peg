@@ -315,11 +315,21 @@ def plot_from_scatter(
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
-    structs: str | list[str],
+    structs: str | list[str] | None = None,
     mode: Literal["struct", "traj"] = "struct",
+    struct_template: str | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
+
+    Two matching modes:
+
+    - index-based (default): the clicked point number indexes ``structs``. Requires
+      ``structs`` to be in the same order as the scatter points.
+    - id-based (``struct_template`` given): the clicked point's identifier (last
+      element of its ``customdata``) fills ``struct_template``. Use this when the
+      points are filtered, reordered, or split across traces (e.g. violins, or
+      scatters with multiple category traces), where index-based matching fails.
 
     Parameters
     ----------
@@ -328,10 +338,14 @@ def struct_from_scatter(
     struct_id
         ID for Dash plot placeholder Div where structures will be visualised.
     structs
-        List of structure filenames in same order as scatter data to be visualised.
+        Structure filenames in the same order as the scatter points (index-based).
+        Ignored when ``struct_template`` is given.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
+    struct_template
+        Asset path template containing ``{id}``, filled from the clicked point's
+        ``customdata`` (id-based matching). Default is None.
     """
     _register_point_highlight(scatter_id)
 
@@ -356,13 +370,22 @@ def struct_from_scatter(
         """
         if not click_data:
             return Div()
-        idx = click_data["points"][0]["pointNumber"]
+        point = click_data["points"][0]
 
-        if isinstance(structs, str):
+        if struct_template is not None:
+            customdata = point.get("customdata")
+            if not customdata:
+                return Div()
+            identifier = (
+                customdata[-1] if isinstance(customdata, (list, tuple)) else customdata
+            )
+            struct = struct_template.format(id=identifier)
+            index = 0
+        elif isinstance(structs, str):
             struct = structs
-            index = idx
+            index = point["pointNumber"]
         else:
-            struct = structs[idx]
+            struct = structs[point["pointNumber"]]
             index = 0
 
         return Div(

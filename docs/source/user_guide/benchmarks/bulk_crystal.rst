@@ -482,6 +482,84 @@ Reference data:
     `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
 
 
+Thermal conductivity
+====================
+
+Summary
+-------
+
+Performance in evaluating lattice thermal conductivity for 103 binary compounds in
+rocksalt, zincblende, and wurtzite structures.
+
+Metrics
+-------
+
+1. κSRE (PBE)
+
+Mean symmetric relative error (SRE) between predicted and PBE reference lattice
+thermal conductivity values.
+
+DFT-optimised structures are relaxed with fixed symmetries to 0.0001 eV/Å forces.
+Interatomic force constants are calculated using finite differences with a 0.03 Å
+displacement. The Wigner transport equation is solved within the single-mode
+relaxation-time approximation (RTA) to obtain lattice thermal conductivity. The
+symmetric relative error in the thermal conductivity at 300 K for a single material
+is calculated as:
+
+.. math::
+
+    \operatorname{SRE}(\kappa_i) =
+    2\frac{|\kappa_i^{\mathrm{pred}} - \kappa_i^{\mathrm{ref}}|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa^{\mathrm{pred}}` and :math:`\kappa^{\mathrm{ref}}` are the
+predicted and reference thermal conductivities for material :math:`i`. The mean SRE
+is calculated across all materials in the dataset.
+
+2. κSRME (PBE)
+
+Mean symmetric relative mean error (SRME) between predicted and PBE reference lattice
+phonon-mode contributions to thermal conductivity. Thermal conductivity is calculated
+as above. The symmetric relative mean error in the phonon-mode contributions to
+thermal conductivity at 300 K for a single material is calculated as:
+
+.. math::
+
+    \operatorname{SRME}(\kappa_i) =
+    2\frac{\sum_j |\kappa_i^{\mathrm{pred}}(q)_s -
+    \kappa_i^{\mathrm{ref}}(q)_s|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa_i^{\mathrm{pred}}(q)_s` and
+:math:`\kappa_i^{\mathrm{ref}}(q)_s` are the predicted and reference thermal
+conductivity contributions from phonon mode :math:`s` at wavevector :math:`q` for
+material :math:`i`. The mean SRME is calculated across all materials in the dataset.
+
+Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2024).
+Thermal conductivity predictions with foundation atomistic models. arXiv preprint
+arXiv:2408.00755.
+
+Computational cost
+------------------
+
+High: tests are likely to take hours to run on both CPU and GPU. Thermal conductivity
+evaluation requires a CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* DFT-optimised structures from the reference dataset.
+
+Reference data:
+
+* DFT (PBE) data
+* A. Togo, L. Chaput, and I. Tanaka, Phys. Rev. B, 91, 094306 (2015), and
+  A. Seko et al., Phys. Rev. Lett., 115, 205901 (2015).
+* https://github.com/atztogo/phonondb/blob/main/mdr/phono3py_103compounds_fd_PBE/README.md
+
+
 Phonons
 =======
 
