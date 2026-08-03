@@ -414,3 +414,22 @@ GRACE-2L-OAM
      trained_on_dispersion: false
      kwargs:
        model: "<local path to the GRACE-2L-OAM model>"
+
+
+SevenNet
+========
+
+sevennet-omni-mpa
+-----------------
+
+.. code-block:: yaml
+
+  sevennet-omni-mpa:
+    module: sevenn.sevennet_calculator
+    class_name: SevenNetCalculator
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "7net-omni"
+      modal: "mpa"
