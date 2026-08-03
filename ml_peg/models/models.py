@@ -169,6 +169,44 @@ class MatterSimCalc(GenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+@dataclasses.dataclass(kw_only=True)
+class VivaceCalc(SumCalc):
+    """Dataclass for Vivace calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Unused precision argument, kept for the common model API.
+        **kwargs
+            Keyword arguments passed to the Vivace calculator.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE calculator.
+        """
+        from simpoly.vivace.calculator import MLFFCalculator
+
+        kwargs.update(self.kwargs)
+        calc = MLFFCalculator(**kwargs)
+
+        # Vivace sets dtype from checkpoint metadata inside MLFFCalculator.
+        # Leave precision/overwrite_dtype untouched unless SimPoly exposes it.
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        if device is not None:
+            calc.device = device
+            calc.model = calc.model.to(device=device)
+
+        return calc
+
+
 # https://github.com/orbital-materials/orb-models
 @dataclasses.dataclass(kw_only=True)
 class OrbCalc(SumCalc):
