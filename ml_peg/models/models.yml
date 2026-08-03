@@ -199,7 +199,7 @@ pet-mad:
   dispersion_kwargs:
     xc: pbesol
 
-pet-mad-1.5-s:
+pet-mad-s-1p5:
   module: upet.calculator
   class_name: UPETCalculator
   device: "cpu"
