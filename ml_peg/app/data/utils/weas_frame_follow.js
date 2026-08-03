@@ -5,7 +5,7 @@
             return;
         }
         var active = window.__mlPegActiveTraj;
-        if (!active) {
+        if (!active || !active.followFrames) {
             return;
         }
         var container = document.getElementById(active.scatterId);
