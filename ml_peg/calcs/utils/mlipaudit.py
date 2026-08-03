@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-
-from mlipaudit.benchmarks.bond_length_distribution.bond_length_distribution import (
+from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
-)
-from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
     ConformerSelectionBenchmark,
+    TautomersBenchmark,
 )
-from mlipaudit.benchmarks.tautomers.tautomers import TautomersBenchmark
 
 
 class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
@@ -23,6 +20,7 @@ class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
     """
 
     skip_if_elements_missing = False
+
 
 class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
     """
