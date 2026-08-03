@@ -1,0 +1,6 @@
+metrics:
+  Stable trajectories:
+    good: 100.0
+    bad: 0.0
+    unit: "%"
+    tooltip: Percentage of melt-quench trajectories completed without exploding

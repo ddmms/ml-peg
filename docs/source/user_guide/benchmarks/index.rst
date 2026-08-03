@@ -19,4 +19,5 @@ Benchmarks
     tm_complexes
     conformers
     molecular_dynamics
+    carbon
     defect
