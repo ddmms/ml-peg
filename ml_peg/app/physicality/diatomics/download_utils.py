@@ -10,7 +10,7 @@ from pathlib import Path
 from dash import Input, Output, State, callback, dcc, no_update
 from dash.exceptions import PreventUpdate
 
-from ml_peg.app.utils.build_callbacks import (
+from ml_peg.app.physicality.diatomics.curve_utils import (
     load_model_curves,
     render_periodic_curve_gallery_png,
 )

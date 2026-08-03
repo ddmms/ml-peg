@@ -8,10 +8,12 @@ from dash.html import Div, Label
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.physicality.diatomics.curve_utils import (
+    register_image_gallery_callbacks,
+)
 from ml_peg.app.physicality.diatomics.download_utils import (
     register_data_download_callbacks,
 )
-from ml_peg.app.utils.build_callbacks import register_image_gallery_callbacks
 from ml_peg.app.utils.build_components import build_data_download_controls
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
