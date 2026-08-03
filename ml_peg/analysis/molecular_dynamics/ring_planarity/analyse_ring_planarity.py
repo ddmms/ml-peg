@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.ring_planarity.ring_planarity import RING_PLANARITY_DATASET
 from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
@@ -20,7 +21,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegRingPlanarityBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -28,7 +28,6 @@ MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 BENCHMARK = MlPegRingPlanarityBenchmark.name
-DATASET_FILENAME = "ring_planarity_data.json"
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "ring_planarity" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "ring_planarity"
@@ -39,19 +38,21 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _data_input_dir() -> Path:
+def check_dataset() -> None:
     """
-    Download and return the benchmark input data directory.
+    Check the dataset saved by the calculation is available.
 
-    Returns
-    -------
-    Path
-        Directory containing the extracted ring planarity input data.
+    The calculation copies the downloaded dataset into its outputs, so the
+    analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
     """
-    return download_s3_data(
-        key="inputs/molecular_dynamics/ring_planarity/ring_planarity.zip",
-        filename="ring_planarity.zip",
-    )
+    dataset_path = CALC_PATH / BENCHMARK / RING_PLANARITY_DATASET
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -64,7 +65,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``RingPlanarityResult``.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -73,7 +74,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegRingPlanarityBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -84,19 +85,37 @@ def analyze_results() -> dict:
 
 
 @pytest.fixture
-def struct_info() -> None:
-    """Write the combined element set to ``info.json`` for filtering."""
-    data_path = _data_input_dir() / BENCHMARK / DATASET_FILENAME
-    with open(data_path, encoding="utf-8") as f:
-        data = json.load(f)
+def struct_info() -> dict:
+    """
+    Write per-molecule element info to ``info.json`` for filtering.
 
-    elements = sorted(
-        {symbol for molecule in data.values() for symbol in molecule["atom_symbols"]}
+    Elements are stored as one list per molecule, so individual molecules can be
+    excluded once partial filtering is supported. The order follows the dataset,
+    matching the order of the molecules in ``analyze()``'s results.
+
+    Returns
+    -------
+    dict
+        Mapping with the per-molecule lists of elements.
+    """
+    check_dataset()
+
+    benchmark = MlPegRingPlanarityBenchmark(
+        force_field=Calculator(),
+        data_input_dir=CALC_PATH,
+        run_mode="standard",
     )
+    data = benchmark._qm9_structures
+    info = {
+        "molecules": list(data),
+        "elements": [sorted(set(molecule.atom_symbols)) for molecule in data.values()],
+    }
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
-        json.dump({"elements": elements}, f, indent=1)
+        json.dump(info, f, indent=1)
+
+    return info
 
 
 @pytest.fixture
@@ -152,7 +171,9 @@ def get_mae_deviation(analyze_results) -> dict[str, float]:
         Mean planarity deviation of the ring atoms over the trajectories, in Angstrom.
     """
     return {
-        model_name: result.mae_deviation
+        model_name: (
+            result.mae_deviation if result.mae_deviation is not None else np.nan
+        )
         for model_name, result in analyze_results.items()
     }
 
@@ -189,7 +210,7 @@ def metrics(
     }
 
 
-def test_ring_planarity(metrics: dict[str, dict], struct_info: None) -> None:
+def test_ring_planarity(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run ring planarity analysis.
 
@@ -197,6 +218,6 @@ def test_ring_planarity(metrics: dict[str, dict], struct_info: None) -> None:
     ----------
     metrics : dict[str, dict]
         Ring planarity metric results provided by fixtures.
-    struct_info : None
+    struct_info : dict
         Element info written to ``info.json`` for filtering.
     """
