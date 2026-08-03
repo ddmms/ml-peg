@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+from mlipaudit.benchmarks import (
     ConformerSelectionBenchmark,
-)
-from mlipaudit.benchmarks.solvent_radial_distribution.solvent_radial_distribution import (  # noqa: E501
     SolventRadialDistributionBenchmark,
+    TautomersBenchmark,
 )
-from mlipaudit.benchmarks.tautomers.tautomers import TautomersBenchmark
 
 
 class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
