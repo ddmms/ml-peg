@@ -62,6 +62,7 @@ def rebuild_table(
 
     columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
+    summary_model_ids = dict(table_json.get("summary_model_ids") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
@@ -225,6 +226,7 @@ def rebuild_table(
     table.model_configs = model_configs
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
+    table.summary_model_ids = summary_model_ids
     table.column_widths = column_widths
 
     return table

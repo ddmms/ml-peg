@@ -13,6 +13,7 @@ Benchmarks
     molecular
     molecular_reactions
     bulk_crystal
+    clusters
     lanthanides
     actinides
     non_covalent_interactions

@@ -301,6 +301,7 @@ def build_weight_components(
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
     model_configs = getattr(table, "model_configs", None)
+    model_name_map = getattr(table, "model_name_map", None)
 
     # Callbacks to update table scores when table weight dicts change
     if table.id != "summary-table":
@@ -310,6 +311,7 @@ def build_weight_components(
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
+            model_name_map=model_name_map,
         )
     else:
         register_summary_table_callbacks(
