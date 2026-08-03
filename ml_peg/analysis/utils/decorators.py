@@ -498,6 +498,7 @@ def plot_scatter(
     horizontal_lines: list[float | dict[str, Any]] | None = None,
     filename: str = "scatter.json",
     highlight_range: dict = None,
+    hlines: dict[str, float] | None = None,
 ) -> Callable:
     """
     Plot scatter plot of MLIP results.
@@ -524,6 +525,9 @@ def plot_scatter(
         Filename to save plot as JSON. Default is "scatter.json".
     highlight_range
         Dictionary of rectangle title and x-axis endpoints.
+    hlines
+        Dictionary of label and y-axis value, drawn as dashed horizontal
+        reference lines. Default is `None`.
 
     Returns
     -------
@@ -599,19 +603,31 @@ def plot_scatter(
                     )
                 )
 
-                colors = pc.qualitative.Plotly
+            colors = pc.qualitative.Plotly
 
-                if highlight_range:
-                    for i, (h_text, range) in enumerate(highlight_range.items()):
-                        fig.add_vrect(
-                            x0=range[0],
-                            x1=range[1],
-                            annotation_text=h_text,
-                            annotation_position="top",
-                            fillcolor=colors[i],
-                            opacity=0.25,
-                            line_width=0,
-                        )
+            # Drawn once, rather than once per model, so that the shaded
+            # regions do not stack up and darken
+            if highlight_range:
+                for i, (h_text, range) in enumerate(highlight_range.items()):
+                    fig.add_vrect(
+                        x0=range[0],
+                        x1=range[1],
+                        annotation_text=h_text,
+                        annotation_position="top",
+                        fillcolor=colors[i],
+                        opacity=0.25,
+                        line_width=0,
+                    )
+
+            if hlines:
+                for label, value in hlines.items():
+                    fig.add_hline(
+                        y=value,
+                        line_dash="dash",
+                        line_color="black",
+                        annotation_text=label,
+                        annotation_position="top right",
+                    )
 
             fig.update_layout(
                 title={"text": title},
