@@ -16,6 +16,7 @@ Benchmarks
     lanthanides
     actinides
     non_covalent_interactions
+    electrolytes
     tm_complexes
     conformers
     molecular_dynamics
