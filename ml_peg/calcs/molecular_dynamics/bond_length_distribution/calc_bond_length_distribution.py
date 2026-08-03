@@ -41,7 +41,7 @@ def test_bond_length_distribution(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
