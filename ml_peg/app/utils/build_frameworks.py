@@ -15,6 +15,8 @@ from ml_peg.app.utils.build_components import (
 )
 from ml_peg.app.utils.utils import get_framework_config
 
+# GitHub mark from Bootstrap Icons `github.svg` (MIT), fill set to #181717:
+# https://github.com/twbs/icons/blob/main/icons/github.svg
 GITHUB_ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ij48cGF0aCBmaWxsPSIjMTgxNzE3IiBkPSJNOCAwQzMuNTggMCAwIDMuNTggMCA4YzAgMy41NCAyLjI5IDYuNTMgNS40NyA3LjU5LjQuMDcuNTUtLjE3LjU1LS4zOCAwLS4xOS0uMDEtLjgyLS4wMS0xLjQ5LTIuMDEuMzctMi41My0uNDktMi42OS0uOTQtLjA5LS4yMy0uNDgtLjk0LS44Mi0xLjEzLS4yOC0uMTUtLjY4LS41Mi0uMDEtLjUzLjYzLS4wMSAxLjA4LjU4IDEuMjMuODIuNzIgMS4yMSAxLjg3Ljg3IDIuMzMuNjYuMDctLjUyLjI4LS44Ny41MS0xLjA3LTEuNzgtLjItMy42NC0uODktMy42NC0zLjk1IDAtLjg3LjMxLTEuNTkuODItMi4xNS0uMDgtLjItLjM2LTEuMDIuMDgtMi4xMiAwIDAgLjY3LS4yMSAyLjIuODIuNjQtLjE4IDEuMzItLjI3IDItLjI3LjY4IDAgMS4zNi4wOSAyIC4yNyAxLjUzLTEuMDQgMi4yLS44MiAyLjItLjgyLjQ0IDEuMS4xNiAxLjkyLjA4IDIuMTIuNTEuNTYuODIgMS4yNy44MiAyLjE1IDAgMy4wNy0xLjg3IDMuNzUtMy42NSAzLjk1LjI5LjI1LjU0LjczLjU0IDEuNDggMCAxLjA3LS4wMSAxLjkzLS4wMSAyLjIgMCAuMjEuMTUuNDYuNTUuMzhBOC4wMTMgOC4wMTMgMCAwIDAgMTYgOGMwLTQuNDItMy41OC04LTgtOHoiLz48L3N2Zz4="  # noqa: E501
 
 
@@ -176,7 +178,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     summary_table = framework_view.get("summary_table")
     weight_components = framework_view.get("weight_components")
 
-    chip_style = {
+    link_style = {
         "display": "inline-flex",
         "alignItems": "center",
         "gap": "6px",
@@ -189,22 +191,22 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         "fontWeight": "500",
         "textDecoration": "none",
     }
-    chip_specs = []
+    link_specs = []
     if config.get("paper_url"):
-        chip_specs.append((Span("📄"), "Paper", config["paper_url"]))
+        link_specs.append((Span("📄"), "Paper", config["paper_url"]))
     if config.get("project_url"):
-        chip_specs.append((Span("🌐"), "Website", config["project_url"]))
+        link_specs.append((Span("🌐"), "Website", config["project_url"]))
     if config.get("github"):
         github_icon = Img(src=GITHUB_ICON, style={"height": "15px", "display": "block"})
-        chip_specs.append((github_icon, "GitHub", config["github"]))
-    chips = [
-        A([icon, label], href=href, target="_blank", style=chip_style)
-        for icon, label, href in chip_specs
+        link_specs.append((github_icon, "GitHub", config["github"]))
+    links = [
+        A([icon, label], href=href, target="_blank", style=link_style)
+        for icon, label, href in link_specs
     ]
 
-    card_children = []
+    description_box_children = []
     if config.get("description"):
-        card_children.append(
+        description_box_children.append(
             Div(
                 config["description"],
                 style={
@@ -215,24 +217,24 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 },
             )
         )
-    if chips:
-        card_children.append(
+    if links:
+        description_box_children.append(
             Div(
-                chips,
+                links,
                 style={
                     "display": "flex",
                     "flexWrap": "wrap",
                     "gap": "10px",
-                    "marginTop": "12px" if card_children else "0",
+                    "marginTop": "12px" if description_box_children else "0",
                 },
             )
         )
 
-    card_children_block = []
-    if card_children:
-        card_children_block.append(
+    description_box_block = []
+    if description_box_children:
+        description_box_block.append(
             Div(
-                card_children,
+                description_box_children,
                 style={
                     "backgroundColor": "#f8fafc",
                     "border": "1px solid #e2e8f0",
@@ -268,7 +270,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     return Div(
         [
             H1(f"{framework_label} Benchmarks"),
-            *card_children_block,
+            *description_box_block,
             Div(
                 (
                     "These benchmarks also appear on their category pages and "
