@@ -1,4 +1,4 @@
-"""Run Relastab app."""
+"""Run Defectstab app."""
 
 from __future__ import annotations
 
@@ -17,14 +17,17 @@ from ml_peg.models.get_models import get_model_names
 
 # Get all models
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Relastab Relative Stability"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defect.html#relastab"
-DATA_PATH = APP_ROOT / "data" / "defect" / "Relastab"
+BENCHMARK_NAME = "Defectstab Formation Energies"
+# Update this URL when documentation is added
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defects.html#defectstab"
+)
+DATA_PATH = APP_ROOT / "data" / "defects" / "Defectstab"
 INFO_PATH = DATA_PATH / "info.json"
 
 
-class RelastabApp(BaseApp):
-    """Relastab benchmark app layout and callbacks."""
+class DefectstabApp(BaseApp):
+    """Defectstab benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -33,22 +36,23 @@ class RelastabApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        # Assuming first model has structure files
+        # Assets dir will be parent directory - individual files for each system
+        # Assuming the first model has all structures
         structs_dir = DATA_PATH / MODELS[0]
-        # Sort glob to match analysis order
+        # Sort files to match the order in the scatter plot
         structs = [
-            f"/assets/defect/Relastab/{MODELS[0]}/{struct_path.name}"
-            for struct_path in sorted(structs_dir.glob("*.xyz"))
+            f"/assets/defects/Defectstab/{MODELS[0]}/{struct_file.name}"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "Global Min Fe": scatter,
-                "Top 5 Spearman Fe": scatter,
-                "Global Min CaWO4": scatter,
-                "Top 5 Spearman CaWO4": scatter,
+                "RMSD Fe SIA": scatter,
+                "RMSD Boron Carbide Stoichiometry": scatter,
+                "RMSD Boron Carbide Defects": scatter,
+                "RMSD MAPI Tetragonal": scatter,
                 "Score": scatter,
             },
         )
@@ -61,20 +65,20 @@ class RelastabApp(BaseApp):
         )
 
 
-def get_app() -> RelastabApp:
+def get_app() -> DefectstabApp:
     """
-    Get Relastab benchmark app.
+    Get Defectstab benchmark app layout and callback registration.
 
     Returns
     -------
-    RelastabApp
+    DefectstabApp
         Benchmark layout and callback registration.
     """
-    return RelastabApp(
+    return DefectstabApp(
         name=BENCHMARK_NAME,
-        description="Relative stability ranking of defect configurations.",
+        description="Formation energies of point defects.",
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "relastab_metrics_table.json",
+        table_path=DATA_PATH / "defectstab_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
@@ -88,9 +92,9 @@ if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
 
     # Construct layout and register callbacks
-    rel_app = get_app()
-    full_app.layout = rel_app.layout
-    rel_app.register_callbacks()
+    defectstab_app = get_app()
+    full_app.layout = defectstab_app.layout
+    defectstab_app.register_callbacks()
 
     # Run app
     full_app.run(port=8055, debug=True)
