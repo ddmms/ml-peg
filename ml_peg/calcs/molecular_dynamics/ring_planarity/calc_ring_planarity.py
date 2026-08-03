@@ -9,13 +9,17 @@ perfect plane is measured over the trajectory.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.benchmarks.ring_planarity.ring_planarity import RingPlanarityModelOutput
+from mlipaudit.benchmarks.ring_planarity.ring_planarity import (
+    RING_PLANARITY_DATASET,
+    RingPlanarityModelOutput,
+)
 from mlipaudit.io import write_model_output_to_disk
 
 from ml_peg.calcs.utils.mlipaudit import MlPegRingPlanarityBenchmark
@@ -45,6 +49,13 @@ def test_ring_planarity(mlip: tuple[str, Any]) -> None:
     data_input_dir = download_s3_data(
         key="inputs/molecular_dynamics/ring_planarity/ring_planarity.zip",
         filename="ring_planarity.zip",
+    )
+
+    dataset_dir = OUT_PATH / MlPegRingPlanarityBenchmark.name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        data_input_dir / MlPegRingPlanarityBenchmark.name / RING_PLANARITY_DATASET,
+        dataset_dir,
     )
 
     benchmark = MlPegRingPlanarityBenchmark(
