@@ -58,6 +58,7 @@ def build_project(repro: bool = False) -> None:
 
 
 @pytest.mark.framework("mace-multihead", "mace-polar-1")
+@pytest.mark.fast
 def test_plf547():
     """Run PLF547 conformation energies benchmark via pytest."""
     build_project(repro=True)

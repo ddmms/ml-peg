@@ -65,6 +65,7 @@ def build_project(repro: bool = False) -> None:
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 def test_pla15():
     """Run PLA15 benchmark via pytest."""
     build_project(repro=True)
