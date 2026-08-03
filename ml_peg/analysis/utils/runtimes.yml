@@ -1,0 +1,118 @@
+# Runtime per benchmark and model, in minutes.
+# Blank entries are ignored.
+# Keys match directory names under ml_peg/calcs/.
+
+measured_with:
+  model: mace-mp-0a
+  device: NVIDIA GeForce RTX 5090
+
+benchmarks:
+  actinides:
+    plutonium_dioxide:
+
+  bulk_crystal:
+    elasticity: 600
+    elemental_tm_vacancies:
+    energy_volume_curves_metals:
+    high_pressure_relaxation:
+    iron_properties:
+    lattice_constants: 1
+    low_dimensional_relaxation:
+    phonons: 500
+
+  conformers:
+    37Conf8: 1.5
+    ACONFL: 1.2
+    DipCONFS: 1.8
+    Folmsbee:
+    Glucose205:
+    MPCONF196:
+    Maltose222:
+    OpenFF_Tors:
+    UpU46:
+    solvMPCONF196:
+
+  defect:
+    Defectstab:
+    Relastab:
+
+  electric_field:
+    GSCDB138_field:
+
+  isomers:
+    GSCDB138_isomers:
+
+  lanthanides:
+    isomer_complexes:
+
+  molecular:
+    BMIMCl_RDF:
+    GMTKN55:
+    Wiggle150:
+
+  molecular_crystal:
+    CPOSS209:
+    DMC_ICE13:
+    X23:
+
+  molecular_dynamics:
+    ethanol_water_density:
+    liquid_densities:
+    water_density:
+
+  molecular_reactions:
+    BH2O_36:
+    BH9:
+    CRBH20:
+    CYCLO70:
+    Criegee22:
+    GSCDB138_barriers:
+    RDB7:
+    tautomers:
+
+  nebs:
+    O_diffusion_2D_TMDs:
+    li_diffusion:
+    si_defects:
+
+  non_covalent_interactions:
+    GSCDB138_NCIs:
+    IONPI19:
+    NCIA_D1200:
+    NCIA_D442x10:
+    NCIA_HB300SPXx10:
+    NCIA_HB375x10:
+    NCIA_IHB100x10:
+    NCIA_R739x5:
+    NCIA_SH250x10:
+    QUID:
+
+  physicality:
+    diatomics:
+    extensivity:
+    locality:
+    oxidation_states:
+    water_cl2_relaxation:
+    water_slab_dipoles:
+
+  supramolecular:
+    LNCI16:
+    PLA15:
+    PLF547:
+    S30L:
+
+  surfaces:
+    CMRAds200:
+    OC157:
+    S24:
+    SBH17:
+    cleavage_energy:
+    elemental_slab_oxygen_adsorption:
+    graphene_wetting_under_strain:
+
+  thermochemistry:
+    GSCDB138_thermochemistry:
+
+  tm_complexes:
+    3dTMV:
+    GSCDB138_tm_complexes:

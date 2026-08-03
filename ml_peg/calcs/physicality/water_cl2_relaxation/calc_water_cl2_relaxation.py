@@ -18,6 +18,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
     """

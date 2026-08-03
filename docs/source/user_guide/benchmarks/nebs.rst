@@ -32,7 +32,8 @@ compared to the reference activation energy for this path.
 Computational cost
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Medium: tests are likely to take hours to run on GPU. The benchmark is marked
+``slow`` and runs by default.
 
 
 Data availability
@@ -74,7 +75,8 @@ Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 Computational cost
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Medium: tests are likely to take hours to run on GPU. The benchmark is marked
+``slow`` and runs by default.
 
 Data availability
 -----------------

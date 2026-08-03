@@ -1,0 +1,39 @@
+/* Fast-appearing tooltip for the benchmark test-speed badge.
+
+   The native `title` attribute cannot have its delay configured, and browsers
+   wait roughly 1-2 seconds before showing it. The badge therefore carries a
+   `data-tooltip` attribute instead, and the bubble is drawn here so the delay
+   is ours to set. */
+.speed-badge {
+    position: relative;
+}
+
+.speed-badge::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    /* Above the loading overlays (1200/1400) and header controls (1600). */
+    z-index: 1700;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: #212529;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    /* The badge itself is uppercase with extra tracking, which would otherwise
+       be inherited by the bubble. */
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 80ms ease-in;
+    transition-delay: 100ms;
+}
+
+.speed-badge:hover::after {
+    opacity: 1;
+    visibility: visible;
+}

@@ -76,7 +76,8 @@ for which the model fails to produce an energy profile score 0.
 Computational cost
 ------------------
 
-Medium: Minutes on GPU. Minutes to tens of minutes on CPU.
+Low: minutes on GPU, and minutes to tens of minutes on CPU. The benchmark is
+marked ``fast``.
 
 Data availability
 -----------------
