@@ -188,15 +188,48 @@ orb-v3-consv-omol:
 #     task_name: "omol"
 
 pet-mad:
-  module: pet_mad.calculator
-  class_name: PETMADCalculator
+  module: upet.calculator
+  class_name: UPETCalculator
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBEsol
   kwargs:
-    version: "v1.0.2"
+    model: "pet-mad-s"
+    version: "1.0.2"
   dispersion_kwargs:
     xc: pbesol
+
+pet-mad-1.5-s:
+  module: upet.calculator
+  class_name: UPETCalculator
+  device: "cpu"
+  trained_on_dispersion: false
+  level_of_theory: r2SCAN
+  kwargs:
+    model: "pet-mad-s"
+    version: "1.5.0"
+  dispersion_kwargs:
+    xc: r2scan
+
+pet-oam-xl:
+  module: upet.calculator
+  class_name: UPETCalculator
+  device: "cpu"
+  trained_on_dispersion: False
+  level_of_theory: PBE
+  kwargs:
+    model: "pet-oam-xl"
+    version: "1.0.0"
+
+sevennet-omni-mpa:
+  module: sevenn.sevennet_calculator
+  class_name: SevenNetCalculator
+  device: "cpu"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "7net-omni"
+    modal: "mpa"
 
 # mace-polar-1-s:
 #   module: mace.calculators

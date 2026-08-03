@@ -178,18 +178,19 @@ FairChem/UMA entries use the dedicated ``FAIRChemCalculator`` branch:
        model_name: uma-s-1p1
        task_name: omat
 
-PET-MAD entries use the dedicated ``PETMADCalculator`` branch:
+PET-MAD entries use UPET's ``UPETCalculator``:
 
 .. code-block:: yaml
 
    pet-mad:
-     module: pet_mad.calculator
-     class_name: PETMADCalculator
+     module: upet.calculator
+     class_name: UPETCalculator
      device: cuda
      trained_on_dispersion: false
      level_of_theory: PBEsol
      kwargs:
-       version: v1.0.2
+       model: pet-mad-s
+       version: 1.0.2
      dispersion_kwargs:
        xc: pbesol
 

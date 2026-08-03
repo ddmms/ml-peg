@@ -141,7 +141,8 @@ def load_models(
         MatterSimCalc,
         MockCalc,
         OrbCalc,
-        PetMadCalc,
+        SevenNetCalc,
+        UPETCalc,
     )
 
     if run_mock is None:
@@ -192,8 +193,8 @@ def load_models(
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
-            case "PETMADCalculator":
-                loaded_models[name] = PetMadCalc(
+            case "MatterSimCalculator":
+                loaded_models[name] = MatterSimCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
@@ -202,12 +203,19 @@ def load_models(
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
-            case "MatterSimCalculator":
-                loaded_models[name] = MatterSimCalc(
+            case "UPETCalculator":
+                loaded_models[name] = UPETCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "SevenNetCalculator":
+                loaded_models[name] = SevenNetCalc(
+                    device=cfg.get("device", "cpu"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
