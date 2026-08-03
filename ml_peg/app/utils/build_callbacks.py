@@ -174,7 +174,10 @@ def plot_from_table_cell(
         return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
 
 
-_HIGHLIGHTED_SCATTERS: dict[str, bool] = {}
+# A scatter can be passed to more than one helper, but its highlight callback
+# should only be registered once. Store the first frame-follow setting so later
+# registrations can be skipped or rejected when they disagree.
+registered_highlights: dict[str, bool] = {}
 
 
 def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> None:
@@ -198,14 +201,14 @@ def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> No
         Whether a WEAS frame-change event moves the highlight to the point at
         the same index. Default is True.
     """
-    existing_follow_frames = _HIGHLIGHTED_SCATTERS.get(scatter_id)
+    existing_follow_frames = registered_highlights.get(scatter_id)
     if existing_follow_frames is not None:
         if existing_follow_frames != follow_frames:
             raise ValueError(
                 f"Conflicting frame-follow settings for scatter {scatter_id!r}."
             )
         return
-    _HIGHLIGHTED_SCATTERS[scatter_id] = follow_frames
+    registered_highlights[scatter_id] = follow_frames
 
     clientside_callback(
         """
