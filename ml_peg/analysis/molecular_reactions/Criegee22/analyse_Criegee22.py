@@ -15,6 +15,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -35,22 +36,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels_list = [
-            path.stem for path in sorted((CALC_PATH / model_name).glob("*.xyz"))
-        ]
-        break
-    return labels_list
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -60,7 +52,7 @@ def labels() -> list:
     x_label="Predicted barrier / kcal/mol",
     y_label="Reference barrier / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -76,7 +68,7 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             structs = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
 
             results[model_name].append(

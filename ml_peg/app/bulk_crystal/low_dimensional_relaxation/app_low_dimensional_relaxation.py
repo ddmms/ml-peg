@@ -23,6 +23,7 @@ DOCS_URL = (
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "low_dimensional_relaxation"
 ASSETS_PREFIX = "/assets/bulk_crystal/low_dimensional_relaxation"
+INFO_PATH = DATA_PATH / "info.json"
 
 # (plot_json_filename, metric_cell_name, plot_id_suffix, traj_dirname)
 PLOT_CONFIGS = [
@@ -168,6 +169,7 @@ def get_app() -> LowDimensionalRelaxationApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

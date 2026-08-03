@@ -8,7 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -87,4 +87,8 @@ def test_extensivity(metrics: dict[str, dict]) -> None:
     metrics
         All extensivity atoms metrics.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "slabs.xyz",
+        out_path=OUT_PATH,
+        index=0,
+    )

@@ -18,7 +18,7 @@ from sklearn.metrics import f1_score
 from tqdm import tqdm
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -50,6 +50,16 @@ BZ_COLUMN = "Avg BZ MAE"
 STABILITY_COLUMN = "Stability F1"
 STABILITY_THRESHOLD = -0.05 * THZ_TO_K
 T_300K_INDEX = 3  # Index for 300K in thermal properties (0, 75, 150, 300, 600)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    sort_key=lambda x: int(x.stem.split("-")[1]),
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    model_name="DFT",
+)
 
 
 def _load_band_structure(file_path: Path) -> dict[str, Any] | None:

@@ -1,0 +1,3 @@
+mock:
+  module: ml_peg.models.mock
+  class_name: MockCalculator

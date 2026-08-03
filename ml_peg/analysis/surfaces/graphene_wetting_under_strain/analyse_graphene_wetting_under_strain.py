@@ -15,7 +15,7 @@ from scipy.optimize import curve_fit
 import yaml
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -34,6 +34,13 @@ with open(CALC_PATH / "database_info.yml") as fp:
     DATABASE_INFO = yaml.safe_load(fp)
 ORIENTATIONS = DATABASE_INFO["orientations"]
 STRAINS = DATABASE_INFO["strains"]
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 def get_molecule_distance(sys: Atoms) -> float:

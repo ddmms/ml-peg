@@ -10,7 +10,15 @@ import math
 from pathlib import Path
 from typing import Literal
 
-from dash import Input, Output, State, callback, callback_context, html
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    callback_context,
+    clientside_callback,
+    html,
+)
 from dash.dcc import Graph
 from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
@@ -18,7 +26,7 @@ from dash.html import Div, Iframe
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.decorators import (
+from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_COLS,
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
@@ -166,6 +174,72 @@ def plot_from_table_cell(
         return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
 
 
+_HIGHLIGHTED_SCATTERS: set[str] = set()
+
+
+def _register_point_highlight(scatter_id: str) -> None:
+    """
+    Ring the most recently clicked point of a scatter plot.
+
+    Registered once per ``scatter_id`` and runs entirely client-side, so it adds
+    no server load and works for any scatter wired for click interactions. On
+    each click a single ring marker (a transparent-fill ``__clicked_point__``
+    trace) replaces the previous one. Its type and axes are copied from the
+    clicked trace so the ring sits on the same render layer (svg vs WebGL) and
+    subplot as the point.
+
+    Parameters
+    ----------
+    scatter_id
+        ID of the Dash ``Graph`` whose clicked point should be highlighted.
+    """
+    if scatter_id in _HIGHLIGHTED_SCATTERS:
+        return
+    _HIGHLIGHTED_SCATTERS.add(scatter_id)
+
+    clientside_callback(
+        """
+        function(clickData, figure) {
+            const dc = window.dash_clientside;
+            if (!clickData || !figure || !figure.data) { return dc.no_update; }
+            const pt = clickData.points[0];
+            const src = figure.data[pt.curveNumber] || {};
+            const data = figure.data.filter(
+                (t) => t.name !== '__clicked_point__'
+            );
+            data.push({
+                x: [pt.x],
+                y: [pt.y],
+                type: src.type || 'scatter',
+                mode: 'markers',
+                name: '__clicked_point__',
+                xaxis: src.xaxis,
+                yaxis: src.yaxis,
+                hoverinfo: 'skip',
+                showlegend: false,
+                marker: {
+                    size: 16,
+                    color: 'rgba(0,0,0,0)',
+                    line: {color: '#ff1493', width: 3},
+                },
+            });
+            // Record the clicked curve so a playing WEAS trajectory can move
+            // this ring to the matching frame's point (weas_frame_follow.js).
+            window.__mlPegActiveTraj = {
+                scatterId: "__SCATTER_ID__",
+                x: src.x || [],
+                y: src.y || [],
+            };
+            return Object.assign({}, figure, {data: data});
+        }
+        """.replace("__SCATTER_ID__", scatter_id),
+        Output(scatter_id, "figure", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        State(scatter_id, "figure"),
+        prevent_initial_call=True,
+    )
+
+
 def plot_from_scatter(
     scatter_id: str,
     plot_id: str,
@@ -184,6 +258,7 @@ def plot_from_scatter(
         List of plots to show, in same order as scatter data.
     """
     register_plot_download_callbacks()
+    _register_point_highlight(scatter_id)
 
     @callback(
         Output(plot_id, "children", allow_duplicate=True),
@@ -234,6 +309,7 @@ def struct_from_scatter(
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
     """
+    _register_point_highlight(scatter_id)
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
@@ -317,6 +393,7 @@ def struct_from_multi_scatters(
     When the `i`th data point of the `j`th curve of "test-figure" is clicked,
     `structs[j][i]` will be rendered in the "test-placeholder" Div.
     """
+    _register_point_highlight(scatter_id)
 
     @callback(
         Output(struct_id, "children", allow_duplicate=True),
@@ -918,6 +995,7 @@ def model_asset_from_scatter(
     missing_message
         Message shown when no asset can be produced for the click event.
     """
+    _register_point_highlight(scatter_id)
 
     @callback(
         Output(asset_container_id, "children"),

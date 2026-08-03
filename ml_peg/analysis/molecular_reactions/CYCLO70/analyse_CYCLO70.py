@@ -19,6 +19,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -41,24 +42,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_KCAL = units.mol / units.kcal
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    model_name="mock",
+    glob_pattern="*_forward.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            return [
-                path.stem.split("_")[0]
-                for path in sorted(model_dir.glob("*_forward.xyz"))
-            ]
-    return []
+LABELS = [filename.removesuffix("_forward") for filename in INFO["filenames"]]
 
 
 @pytest.fixture
@@ -69,7 +63,9 @@ def labels() -> list:
     y_label="Reference barrier / kcal/mol",
     hoverdata={
         "Labels": [
-            f"{label}_{dir}" for label in labels() for dir in ("forward", "reverse")
+            f"{label}_{direction}"
+            for label in LABELS
+            for direction in ("forward", "reverse")
         ],
     },
 )
@@ -89,20 +85,25 @@ def barrier_heights() -> dict[str, list]:
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
-        for label in labels():
-            for dir in ("forward", "reverse"):
-                atoms = read(CALC_PATH / model_name / f"{label}_{dir}.xyz", index=":")
+        for label in LABELS:
+            for direction in ("forward", "reverse"):
+                atoms = read(
+                    CALC_PATH / model_name / f"{label}_{direction}.xyz",
+                    index=":",
+                )
 
                 # Atoms includes reactants/products and TS
                 results[model_name].append(
-                    atoms[-1].info[f"model_{dir}_bh"] * EV_TO_KCAL
+                    atoms[-1].info[f"model_{direction}_bh"] * EV_TO_KCAL
                 )
 
                 if not ref_stored:
-                    results["ref"].append(atoms[-1].info[f"ref_{dir}_bh"] * EV_TO_KCAL)
+                    results["ref"].append(
+                        atoms[-1].info[f"ref_{direction}_bh"] * EV_TO_KCAL
+                    )
 
                 # Write structures for app
-                write(structs_dir / f"{label}_{dir}.xyz", atoms)
+                write(structs_dir / f"{label}_{direction}.xyz", atoms)
 
         ref_stored = True
     return results

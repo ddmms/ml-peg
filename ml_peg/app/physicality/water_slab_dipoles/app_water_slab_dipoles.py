@@ -17,6 +17,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Dipoles of Water Slabs"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#water-slab-dipoles"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "water_slab_dipoles"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class WaterSlabDipolesApp(BaseApp):
@@ -62,6 +63,7 @@ def get_app() -> WaterSlabDipolesApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

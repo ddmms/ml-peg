@@ -113,6 +113,13 @@ def run_dash_app(
             case_sensitive=False,
         ),
     ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to build app for. Default is all tests.",
+            case_sensitive=False,
+        ),
+    ] = "*",
     port: Annotated[str, Option(help="Port to run application on.")] = 8050,
     debug: Annotated[bool, Option(help="Whether to run with Dash debugging.")] = True,
 ) -> None:
@@ -128,6 +135,8 @@ def run_dash_app(
         Path to model definitions YAML file. Default is models.yml in models directory.
     category
         Category to build app for. Default is `*`, corresponding to all categories.
+    test
+        Test to build app for. Default is `*`, corresponding to all tests.
     port
         Port to run application on. Default is 8050.
     debug
@@ -141,7 +150,7 @@ def run_dash_app(
 
     from ml_peg.app.run_app import run_app
 
-    run_app(category=category, port=port, debug=debug)
+    run_app(category=category, test=test, port=port, debug=debug)
 
 
 @app.command(

@@ -11,6 +11,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -35,19 +36,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels = [path.stem for path in (CALC_PATH / model_name).glob("*.log")]
-    return labels
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.traj",
+    index=0,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+    include_filenames=True,
+)
 
 
 def compute_density(fname, density_col=13):
@@ -84,7 +81,7 @@ def compute_density(fname, density_col=13):
     x_label="Predicted density / kcal/mol",
     y_label="Reference density / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def liquid_densities() -> dict[str, list]:
@@ -100,7 +97,7 @@ def liquid_densities() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
 
             results[model_name].append(

@@ -21,6 +21,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#maltose222"
 )
 DATA_PATH = APP_ROOT / "data" / "conformers" / "Maltose222"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class Maltose222App(BaseApp):
@@ -79,6 +80,8 @@ def get_app() -> Maltose222App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
 
 
