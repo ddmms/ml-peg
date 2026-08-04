@@ -95,6 +95,21 @@ class LinearElasticCalculator(Calculator):
         self.results["stress"] = self.elastic_tensor @ strain_voigt
 
 
+class FailingStressCalculator(Calculator):
+    """Raise when stress is requested."""
+
+    implemented_properties = ["stress"]
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+    ) -> None:
+        """Raise a configured stress failure."""
+        raise RuntimeError("configured stress failure")
+
+
 class PairDistanceCalculator(Calculator):
     """Return a pair-distance binding contribution for two Cu solutes."""
 
@@ -162,6 +177,21 @@ class CellTiltCalculator(Calculator):
             raise ValueError("Atoms are required")
 
         self.results["energy"] = 10.0 + atoms.cell[2, 0] + 2.0 * atoms.cell[2, 1]
+
+
+class FailingCellTiltCalculator(CellTiltCalculator):
+    """Fail for one configured in-plane cell tilt."""
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+    ) -> None:
+        """Calculate tilt energy unless the first tilt component is 0.5."""
+        if atoms is not None and atoms.cell[2, 0] == pytest.approx(0.5):
+            raise RuntimeError("configured GSF failure")
+        super().calculate(atoms, properties, system_changes)
 
 
 class FormulaEnergyCalculator(Calculator):
@@ -274,6 +304,17 @@ def test_finite_strain_elastic_tensor_recovers_linear_response() -> None:
     assert properties["C_21"] == pytest.approx(55.0)
 
 
+def test_stress_voigt_warns_and_returns_nan_on_failure() -> None:
+    """A failed stress evaluation returns a correctly shaped NaN vector."""
+    atoms = Atoms("Al", cell=[4.0, 4.0, 4.0], pbc=True)
+
+    with pytest.warns(UserWarning, match="Stress calculation failed"):
+        stress = calc.stress_voigt(atoms, FailingStressCalculator())
+
+    assert stress.shape == (6,)
+    assert np.isnan(stress).all()
+
+
 def test_solute_solute_binding_uses_evalpot_max_index_and_energy_cycle() -> None:
     """Solute-solute binding uses evalpot shell slicing and energy cycle."""
     pure_structure = bulk("Al", "fcc", a=4.0, cubic=True).repeat((2, 2, 2))
@@ -348,6 +389,27 @@ def test_surface_area_uses_first_two_cell_vectors() -> None:
     assert calc.surface_area(atoms) == pytest.approx(6.0)
 
 
+def test_relax_with_fixed_cell_warns_and_returns_atoms_on_failure(monkeypatch) -> None:
+    """A failed fixed-cell relaxation preserves the latest structure."""
+    atoms = Atoms("Al", cell=[4.0, 4.0, 4.0], pbc=True)
+
+    class FailingOptimizer:
+        def __init__(self, atoms, logfile=None):
+            pass
+
+        def run(self, *, steps, fmax):
+            raise RuntimeError("optimizer failed")
+
+    monkeypatch.setattr(calc, "BFGS", FailingOptimizer)
+
+    with pytest.warns(
+        UserWarning, match="Fixed-cell relaxation failed: optimizer failed"
+    ):
+        relaxed = calc.relax_with_fixed_cell(atoms)
+
+    assert relaxed is atoms
+
+
 def test_generalized_stacking_fault_energies_are_zero_referenced(monkeypatch) -> None:
     """GSF energies are normalized to the undisplaced point regardless of order."""
     atoms = Atoms("Al", cell=np.eye(3), pbc=True)
@@ -367,6 +429,32 @@ def test_generalized_stacking_fault_energies_are_zero_referenced(monkeypatch) ->
 
     assert raw_energies == pytest.approx([10.5, 10.0, 10.5])
     assert norm_energies == pytest.approx([0.5, 0.0, 0.5])
+
+
+def test_generalized_stacking_fault_energies_keep_successful_points(
+    monkeypatch,
+) -> None:
+    """A failed GSF point warns without discarding successful points."""
+    atoms = Atoms("Al", cell=np.eye(3), pbc=True)
+
+    monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
+    monkeypatch.setattr(calc, "relax_atoms_direction", lambda atoms, **kwargs: atoms)
+
+    with pytest.warns(UserWarning, match="GSF displacement.*configured GSF failure"):
+        raw_energies, norm_energies = calc.generalized_stacking_fault_energies(
+            atoms,
+            FailingCellTiltCalculator(),
+            ((0.5, 0.0), (0.0, 0.0), (0.0, 0.25)),
+            zlayers=1,
+            relax_method="atoms_z",
+            relax_steps=0,
+            relax_fmax=0.0,
+        )
+
+    assert np.isnan(raw_energies[0])
+    assert raw_energies[1:] == pytest.approx([10.0, 10.5])
+    assert np.isnan(norm_energies[0])
+    assert norm_energies[1:] == pytest.approx([0.0, 0.5])
 
 
 def test_solute_stacking_fault_interaction_uses_relaxed_energy_cycle(
@@ -444,17 +532,25 @@ def test_calculation_writes_successful_records_after_partial_failure(
         {"Al": -3.0, "Cu": -4.0, "AlCu": -7.5}, failing_ids={"broken"}
     )
     model = FixedEnergyModel(calculator)
-    monkeypatch.setattr(calc, "STRUCTURE_IDS", tuple(structures))
+    monkeypatch.setattr(calc, "STRUCTURE_IDS", (*structures, "missing"))
     monkeypatch.setattr(calc, "OUT_PATH", tmp_path)
 
     def fake_load_oqmd_structure(oqmd_id, data_path):
+        if oqmd_id == "missing":
+            raise OSError("configured load failure")
         return structures[oqmd_id].copy()
 
     monkeypatch.setattr(calc, "load_oqmd_structure", fake_load_oqmd_structure)
     monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
 
-    with pytest.warns(UserWarning, match="Error calculating OQMD_broken"):
+    with pytest.warns(UserWarning) as warnings:
         calc.test_alzncumg_regression(("stub-model", model), tmp_path)
+
+    warning_messages = [str(warning.message) for warning in warnings]
+    assert any("Error loading OQMD_missing" in message for message in warning_messages)
+    assert any(
+        "Error calculating OQMD_broken" in message for message in warning_messages
+    )
 
     output_path = tmp_path / "stub-model" / "bulk_properties.json"
     output_data = json.loads(output_path.read_text())
@@ -467,3 +563,4 @@ def test_calculation_writes_successful_records_after_partial_failure(
     assert (tmp_path / "stub-model" / "OQMD_Cu.xyz").is_file()
     assert (tmp_path / "stub-model" / "OQMD_AlCu.xyz").is_file()
     assert not (tmp_path / "stub-model" / "OQMD_broken.xyz").exists()
+    assert not (tmp_path / "stub-model" / "OQMD_missing.xyz").exists()

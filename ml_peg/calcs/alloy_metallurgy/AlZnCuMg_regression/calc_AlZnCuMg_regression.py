@@ -341,6 +341,29 @@ def surface_area(atoms: Atoms) -> float:
     return float(np.linalg.norm(np.cross(atoms.cell[0], atoms.cell[1])))
 
 
+def _potential_energy(atoms: Atoms, context: str) -> float:
+    """
+    Return potential energy or NaN when calculator evaluation fails.
+
+    Parameters
+    ----------
+    atoms
+        Structure with an attached calculator.
+    context
+        Description included in the warning when evaluation fails.
+
+    Returns
+    -------
+    float
+        Potential energy in eV, or NaN when evaluation fails.
+    """
+    try:
+        return float(atoms.get_potential_energy())
+    except Exception as exc:
+        warn(f"Energy calculation failed for {context}: {exc}", stacklevel=2)
+        return np.nan
+
+
 def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
     """
     Calculate the energy per atom for a pure elemental reference structure.
@@ -358,7 +381,7 @@ def elemental_energy_per_atom(atoms: Atoms, calculator: Calculator) -> float:
         Total potential energy divided by number of atoms, in eV/atom.
     """
     prepare_atoms(atoms, calculator)
-    return float(atoms.get_potential_energy()) / len(atoms)
+    return _potential_energy(atoms, "elemental reference") / len(atoms)
 
 
 def relaxed_oqmd_structure(
@@ -414,7 +437,10 @@ def relax_with_fixed_cell(
     Atoms
         The relaxed ``atoms`` object.
     """
-    BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    try:
+        BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    except Exception as exc:
+        warn(f"Fixed-cell relaxation failed: {exc}", stacklevel=2)
     return atoms
 
 
@@ -444,9 +470,13 @@ def relax_cell_and_atoms(
     Atoms
         The relaxed structure extracted from the ``UnitCellFilter``.
     """
-    filtered = UnitCellFilter(atoms, mask=strain_mask)
-    BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
-    return filtered.atoms
+    try:
+        filtered = UnitCellFilter(atoms, mask=strain_mask)
+        BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
+        return filtered.atoms
+    except Exception as exc:
+        warn(f"Cell-and-atoms relaxation failed: {exc}", stacklevel=2)
+        return atoms
 
 
 def relax_cell_and_atoms_direction(
@@ -481,9 +511,13 @@ def relax_cell_and_atoms_direction(
     atoms.set_constraint(
         [FixedLine(index, atom_direction) for index in range(len(atoms))]
     )
-    filtered = UnitCellFilter(atoms, mask=strain_mask)
-    BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
-    return filtered.atoms
+    try:
+        filtered = UnitCellFilter(atoms, mask=strain_mask)
+        BFGS(filtered, logfile=None).run(steps=steps, fmax=fmax)
+        return filtered.atoms
+    except Exception as exc:
+        warn(f"Directional cell-and-atoms relaxation failed: {exc}", stacklevel=2)
+        return atoms
 
 
 def relax_atoms_direction(
@@ -515,7 +549,10 @@ def relax_atoms_direction(
     atoms.set_constraint(
         [FixedLine(index, atom_direction) for index in range(len(atoms))]
     )
-    BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    try:
+        BFGS(atoms, logfile=None).run(steps=steps, fmax=fmax)
+    except Exception as exc:
+        warn(f"Directional atomic relaxation failed: {exc}", stacklevel=2)
     return atoms
 
 
@@ -620,7 +657,8 @@ def fcc_surface_energy(
     slab = build_fcc_surface(element, lattice, surface_label)
     prepare_atoms(slab, calculator)
     slab = relax_with_fixed_cell(slab)
-    excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
+    slab_energy = _potential_energy(slab, f"FCC {surface_label} surface")
+    excess_energy = slab_energy - len(slab) * reference_energy
     return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
 
 
@@ -668,7 +706,8 @@ def hcp_surface_energy(
     slab.center(vacuum=20.0, axis=2)
     slab.set_pbc([True, True, True])
     prepare_atoms(slab, calculator)
-    excess_energy = float(slab.get_potential_energy()) - len(slab) * reference_energy
+    slab_energy = _potential_energy(slab, f"HCP {surface_label} surface")
+    excess_energy = slab_energy - len(slab) * reference_energy
     return excess_energy / (2.0 * surface_area(slab)) * EV_PER_A2_TO_MJ_PER_M2
 
 
@@ -708,7 +747,8 @@ def fcc_stacking_fault_energy(
         steps=STACKING_FAULT_RELAX_STEPS,
         fmax=STACKING_FAULT_RELAX_FMAX,
     )
-    excess_energy = float(fault.get_potential_energy()) - len(fault) * reference_energy
+    fault_energy = _potential_energy(fault, "FCC stacking fault")
+    excess_energy = fault_energy - len(fault) * reference_energy
     return excess_energy / surface_area(fault) * EV_PER_A2_TO_MJ_PER_M2
 
 
@@ -780,7 +820,7 @@ def relaxed_stacking_fault_energy(
         steps=STACKING_FAULT_RELAX_STEPS,
         fmax=STACKING_FAULT_RELAX_FMAX,
     )
-    return structure, float(structure.get_potential_energy())
+    return structure, _potential_energy(structure, "relaxed stacking fault")
 
 
 def solute_stacking_fault_structure(
@@ -1005,7 +1045,7 @@ def generalized_stacking_fault_energies(
             )
         else:
             raise ValueError(f"Unsupported GSF relaxation method: {relax_method}")
-        energy = float(tilted.get_potential_energy()) / area
+        energy = _potential_energy(tilted, f"GSF displacement {displacement}") / area
         raw_energies.append(energy)
         if displacement == (0.0, 0.0):
             reference_energy = energy
@@ -1035,7 +1075,10 @@ def relax_atoms(
     """
     if steps <= 0:
         return
-    BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
+    try:
+        BFGS(atoms, logfile=None).run(fmax=fmax, steps=steps)
+    except Exception as exc:
+        warn(f"Atomic relaxation failed: {exc}", stacklevel=2)
 
 
 def solute_structure(
@@ -1111,7 +1154,7 @@ def relaxed_energy(
     """
     prepare_atoms(atoms, calculator)
     relax_atoms(atoms, steps=relax_steps, fmax=relax_fmax)
-    return float(atoms.get_potential_energy())
+    return _potential_energy(atoms, "relaxed structure")
 
 
 def solute_solute_binding(
@@ -1270,7 +1313,11 @@ def stress_voigt(atoms: Atoms, calculator: Calculator) -> np.ndarray:
         Stress vector in eV/Angstrom^3.
     """
     prepare_atoms(atoms, calculator)
-    return np.asarray(atoms.get_stress(voigt=True), dtype=float)
+    try:
+        return np.asarray(atoms.get_stress(voigt=True), dtype=float)
+    except Exception as exc:
+        warn(f"Stress calculation failed: {exc}", stacklevel=2)
+        return np.full(6, np.nan)
 
 
 def finite_strain_elastic_tensor(
@@ -1330,7 +1377,7 @@ def legacy_elastic_tensor(
     """
     reference = atoms.copy()
     prepare_atoms(reference, calculator)
-    eq_stress = Stress.from_voigt(reference.get_stress())
+    eq_stress = Stress.from_voigt(stress_voigt(reference, calculator))
     structure = AseAtomsAdaptor.get_structure(reference)
     deformed_set = DeformedStructureSet(
         structure,
@@ -1346,7 +1393,9 @@ def legacy_elastic_tensor(
         deformed_atoms = AseAtomsAdaptor.get_atoms(deformed_structure)
         prepare_atoms(deformed_atoms, calculator)
         relax_with_fixed_cell(deformed_atoms, steps=100, fmax=0.001)
-        resultant_stresses.append(Stress.from_voigt(deformed_atoms.get_stress()))
+        resultant_stresses.append(
+            Stress.from_voigt(stress_voigt(deformed_atoms, calculator))
+        )
 
     tensor = ElasticTensor.from_independent_strains(
         strains=applied_strains,
@@ -1652,9 +1701,12 @@ def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
     output_dir = OUT_PATH / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    structures = {
-        oqmd_id: load_oqmd_structure(oqmd_id, data_path) for oqmd_id in STRUCTURE_IDS
-    }
+    structures: dict[str, Atoms] = {}
+    for oqmd_id in STRUCTURE_IDS:
+        try:
+            structures[oqmd_id] = load_oqmd_structure(oqmd_id, data_path)
+        except Exception as exc:
+            warn(f"Error loading OQMD_{oqmd_id}: {exc}", stacklevel=2)
     energies: dict[str, float] = {}
 
     for oqmd_id, atoms in tqdm(
@@ -1680,10 +1732,20 @@ def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
     records = []
     for oqmd_id, total_energy in energies.items():
         atoms = structures[oqmd_id]
-        record = structure_properties(atoms, total_energy, reference_energies)
-        atoms.info.update(record)
+        try:
+            record = structure_properties(atoms, total_energy, reference_energies)
+            atoms.info.update(record)
+        except Exception as exc:
+            warn(
+                f"Error building properties for OQMD_{oqmd_id}: {exc}",
+                stacklevel=2,
+            )
+            continue
         records.append(record)
-        write(output_dir / f"OQMD_{oqmd_id}.xyz", atoms)
+        try:
+            write(output_dir / f"OQMD_{oqmd_id}.xyz", atoms)
+        except Exception as exc:
+            warn(f"Error writing OQMD_{oqmd_id}: {exc}", stacklevel=2)
 
     with open(output_dir / "bulk_properties.json", "w") as file:
         json.dump(
@@ -1714,17 +1776,26 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
     output_dir.mkdir(parents=True, exist_ok=True)
 
     reference_ids = (*FCC_SURFACE_IDS, *HCP_SURFACE_SPECS)
-    pure_reference_structures = {
-        oqmd_id: relaxed_oqmd_structure(oqmd_id, calc, data_path)
-        for oqmd_id in tqdm(reference_ids, desc=f"{model_name} reference relaxations")
-    }
+    pure_reference_structures = {}
+    for oqmd_id in tqdm(reference_ids, desc=f"{model_name} reference relaxations"):
+        try:
+            pure_reference_structures[oqmd_id] = relaxed_oqmd_structure(
+                oqmd_id, calc, data_path
+            )
+        except Exception as exc:
+            warn(
+                f"Error preparing reference OQMD_{oqmd_id} with {model_name}: {exc}",
+                stacklevel=2,
+            )
     pure_reference_energies = {
-        oqmd_id: float(atoms.get_potential_energy()) / len(atoms)
+        oqmd_id: elemental_energy_per_atom(atoms, calc)
         for oqmd_id, atoms in pure_reference_structures.items()
     }
 
     surface_records = []
     for oqmd_id in FCC_SURFACE_IDS:
+        if oqmd_id not in pure_reference_structures:
+            continue
         for surface_label in FCC_SURFACE_LABELS:
             reference_key = f"{oqmd_id}-SurfaceEnergy_{surface_label}"
             try:
@@ -1750,6 +1821,8 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
             )
 
     for oqmd_id, surface_specs in HCP_SURFACE_SPECS.items():
+        if oqmd_id not in pure_reference_structures:
+            continue
         for surface_label, direction in surface_specs.items():
             reference_key = f"{oqmd_id}-SurfaceHCP_{surface_label}"
             try:
@@ -1778,6 +1851,8 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
 
     stacking_fault_records = []
     for oqmd_id in FCC_SURFACE_IDS:
+        if oqmd_id not in pure_reference_structures:
+            continue
         for fault_label, displacement_fraction in FCC_STACKING_FAULT_SPECS.items():
             reference_key = f"{oqmd_id}-{fault_label}"
             try:
@@ -1864,12 +1939,12 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
         zplane_repeats,
         layers,
     ) in progress:
-        matrix_element = next(
-            iter(element_counts(pure_reference_structures[matrix_oqmd_id]))
-        )
-        progress.set_postfix(matrix=matrix_element, solute=solute_element)
         reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
         try:
+            matrix_element = next(
+                iter(element_counts(pure_reference_structures[matrix_oqmd_id]))
+            )
+            progress.set_postfix(matrix=matrix_element, solute=solute_element)
             interaction_energies = solute_stacking_fault_interaction(
                 matrix_oqmd_id,
                 solute_element,
@@ -1931,6 +2006,8 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any], data_path: Path) -> None:
         try:
             atoms = relaxed_oqmd_structure(oqmd_id, calc, data_path)
             tensor = legacy_elastic_tensor(atoms, calc)
+            record = elastic_properties(atoms, tensor)
+            atoms.info.update(record)
         except Exception as exc:
             warn(
                 f"Error calculating elastic properties for OQMD_{oqmd_id} "
@@ -1939,8 +2016,6 @@ def test_alzncumg_elasticity(mlip: tuple[str, Any], data_path: Path) -> None:
             )
             continue
 
-        record = elastic_properties(atoms, tensor)
-        atoms.info.update(record)
         records.append(record)
 
     with open(output_dir / "elastic_properties.json", "w") as file:
@@ -1978,18 +2053,18 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any], data_path: Path) -> None:
             matrix_id=matrix_oqmd_id,
             pair=f"{solute_1}-{solute_2}",
         )
-        pure_structure = pure_structures.get(matrix_oqmd_id)
-        if pure_structure is None:
-            pure_structure = conventional_fcc_supercell(
-                matrix_oqmd_id, repeats, calc, data_path
-            )
-            pure_structures[matrix_oqmd_id] = pure_structure
-        progress.set_postfix(
-            matrix=pure_structure.info["matrix_element"],
-            pair=f"{solute_1}-{solute_2}",
-        )
         reference_key = solute_pair_reference_key(matrix_oqmd_id, solute_1, solute_2)
         try:
+            pure_structure = pure_structures.get(matrix_oqmd_id)
+            if pure_structure is None:
+                pure_structure = conventional_fcc_supercell(
+                    matrix_oqmd_id, repeats, calc, data_path
+                )
+                pure_structures[matrix_oqmd_id] = pure_structure
+            progress.set_postfix(
+                matrix=pure_structure.info["matrix_element"],
+                pair=f"{solute_1}-{solute_2}",
+            )
             distances, binding_energies = solute_solute_binding(
                 pure_structure,
                 calc,
