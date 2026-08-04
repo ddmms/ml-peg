@@ -24,3 +24,4 @@ repos:
   hooks:
     - id: numpydoc-validation
       files: ^ml_peg/
+      exclude: (^|/)test_
