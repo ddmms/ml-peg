@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from warnings import warn
 
@@ -21,7 +20,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "surfaces" / "metal_surface_reconstructions" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
+OUT_PATH = APP_ROOT / "data" / "surfaces" / "metal_surface_reconstructions"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -37,8 +36,9 @@ ALL_INFO = get_struct_info(
     glob_pattern="*.xyz",
     index="0",
     info_keys=["system"],
-    write_info=False,
-    write_structs=False,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
 )
 
 # Reference structures are required for all slabs, and only contain elements also
@@ -55,10 +55,6 @@ INFO = {
     for key, values in ALL_INFO.items()
 }
 SYSTEMS = INFO["system"]
-
-OUT_PATH.mkdir(parents=True, exist_ok=True)
-with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
-    json.dump(INFO, f, indent=1)
 
 
 def read_struct(model_name: str, system: str) -> Atoms | None:
