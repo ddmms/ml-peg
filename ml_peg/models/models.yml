@@ -230,7 +230,7 @@ pet-mad:
 pet-mad-s-1p5:
   module: upet.calculator
   class_name: UPETCalculator
-  datasets: [MAD]
+  datasets: [MAD-1p5]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: r2SCAN
@@ -243,6 +243,7 @@ pet-mad-s-1p5:
 pet-oam-xl:
   module: upet.calculator
   class_name: UPETCalculator
+  datasets: [MPtrj, sAlex, OMAT]
   device: "cpu"
   trained_on_dispersion: False
   level_of_theory: PBE
@@ -253,6 +254,7 @@ pet-oam-xl:
 sevennet-omni-mpa:
   module: sevenn.sevennet_calculator
   class_name: SevenNetCalculator
+  datasets: [sAlex]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -260,14 +262,15 @@ sevennet-omni-mpa:
     model: "7net-omni"
     modal: "mpa"
 
-# Vivace:
-#   module: simpoly.vivace.calculator
-#   class_name: MLFFCalculator
-#   device: "cuda"
-#   trained_on_dispersion: true
-#   level_of_theory: r2SCAN+D3
-#   kwargs:
-#     model_path: /path/to/model.pt
+Vivace:
+  module: simpoly.vivace.calculator
+  class_name: MLFFCalculator
+  datasets: [MAD]
+  device: "cuda"
+  trained_on_dispersion: true
+  level_of_theory: r2SCAN+D3
+  kwargs:
+    model_path: /path/to/model.pt
 
 mace-polar-1-s:
   module: mace.calculators
