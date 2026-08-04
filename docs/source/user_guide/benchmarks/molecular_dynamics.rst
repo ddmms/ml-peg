@@ -24,7 +24,7 @@ calculation. This is compared to the reference density, obtained from experiment
 Computational cost
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 Data availability
 -----------------
@@ -103,7 +103,7 @@ calculation. This is compared to the reference density, obtained from experiment
 Computational cost
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 Data availability
 -----------------
@@ -145,7 +145,7 @@ The concentration of the minimal excess volume is estimated by fitting a quadrat
 Computational cost
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 
 Data availability

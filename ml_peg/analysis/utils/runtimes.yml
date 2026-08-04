@@ -7,18 +7,15 @@ measured_with:
   device: NVIDIA A100 40 GB
 
 benchmarks:
-  actinides:
-    plutonium_dioxide:
-
   bulk_crystal:
-    elasticity: 600
+    elasticity: 500
     elemental_tm_vacancies: 1
     energy_volume_curves_metals: 1
     high_pressure_relaxation:
     iron_properties: 46
     lattice_constants: 1
     low_dimensional_relaxation:
-    phonons: 500
+    phonons: 420
 
   conformers:
     37Conf8: 1
@@ -39,11 +36,12 @@ benchmarks:
   electric_field:
     GSCDB138_field: 1.5
 
+  f_block:
+    isomer_complexes: 1
+    plutonium_dioxide:
+
   isomers:
     GSCDB138_isomers: 1
-
-  lanthanides:
-    isomer_complexes: 1
 
   molecular:
     BMIMCl_RDF: 11
@@ -56,9 +54,9 @@ benchmarks:
     X23: 1
 
   molecular_dynamics:
-    ethanol_water_density:
-    liquid_densities:
-    water_density:
+    ethanol_water_density: 17000
+    liquid_densities: 170000
+    water_density: 12000
 
   molecular_reactions:
     BH2O_36: 1
@@ -67,7 +65,7 @@ benchmarks:
     CYCLO70: 1
     Criegee22: 1
     GSCDB138_barriers: 1.8
-    RDB7:
+    RDB7: 22
     tautomers:
 
   nebs:
