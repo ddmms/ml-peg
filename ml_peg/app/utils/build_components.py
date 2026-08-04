@@ -1294,55 +1294,94 @@ def build_cost_panel(
         for level in SPEED_ORDER
     }
 
-    tiles = []
-    for level in SPEED_ORDER:
-        count = counts.get(level, 0)
-        label = SPEED_LEVELS[level]["label"]
-        contents = [
-            Div(
-                str(count),
-                style={
-                    "fontSize": "26px",
-                    "fontWeight": "700",
-                    "color": "#212529",
-                    "lineHeight": "1.1",
-                },
-            ),
-            Div(
-                label,
-                style={
-                    "fontSize": "11px",
-                    "fontWeight": "600",
-                    "letterSpacing": "0.04em",
-                    "textTransform": "uppercase",
-                    "color": "#6c757d",
-                    "marginTop": "2px",
-                },
-            ),
-        ]
-        if runtimes[level]:
-            contents.append(
-                Div(
-                    _format_duration(runtimes[level]),
-                    style={
-                        "fontSize": "13px",
-                        "fontWeight": "600",
-                        "color": "#212529",
-                        "marginTop": "8px",
-                    },
-                )
-            )
-        tiles.append(Div(contents, style={"minWidth": "88px"}))
-
+    row_heading_style = {
+        "fontSize": "12px",
+        "fontWeight": "600",
+        "color": "#6c757d",
+        "padding": "6px 18px 6px 0",
+        "textAlign": "left",
+        "whiteSpace": "nowrap",
+    }
+    speed_heading_style = {
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "letterSpacing": "0.04em",
+        "textTransform": "uppercase",
+        "color": "#6c757d",
+        "padding": "6px 12px",
+        "textAlign": "center",
+        "whiteSpace": "nowrap",
+    }
     panel_contents = [
         Div(
-            tiles,
-            style={
-                "display": "flex",
-                "flexWrap": "wrap",
-                "gap": "20px",
-                "margin": "2px 0",
-            },
+            html.Table(
+                [
+                    html.Tr(
+                        [html.Th("Test speed", style=row_heading_style)]
+                        + [
+                            html.Th(
+                                SPEED_LEVELS[level]["label"],
+                                style=speed_heading_style,
+                            )
+                            for level in SPEED_ORDER
+                        ]
+                    ),
+                    html.Tr(
+                        [html.Th("Typical runtime per test", style=row_heading_style)]
+                        + [
+                            html.Td(
+                                SPEED_LEVELS[level]["runtime"],
+                                style={
+                                    "fontSize": "12px",
+                                    "color": "#6c757d",
+                                    "padding": "6px 12px",
+                                    "textAlign": "center",
+                                    "whiteSpace": "nowrap",
+                                },
+                            )
+                            for level in SPEED_ORDER
+                        ]
+                    ),
+                    html.Tr(
+                        [html.Th("Number of tests", style=row_heading_style)]
+                        + [
+                            html.Td(
+                                str(counts.get(level, 0)),
+                                style={
+                                    "fontSize": "26px",
+                                    "fontWeight": "700",
+                                    "color": "#212529",
+                                    "lineHeight": "1.1",
+                                    "padding": "6px 12px",
+                                    "textAlign": "center",
+                                },
+                            )
+                            for level in SPEED_ORDER
+                        ]
+                    ),
+                    html.Tr(
+                        [html.Th("Total runtime", style=row_heading_style)]
+                        + [
+                            html.Td(
+                                _format_duration(runtimes[level])
+                                if runtimes[level]
+                                else "",
+                                style={
+                                    "fontSize": "13px",
+                                    "fontWeight": "600",
+                                    "color": "#212529",
+                                    "padding": "6px 12px",
+                                    "textAlign": "center",
+                                    "whiteSpace": "nowrap",
+                                },
+                            )
+                            for level in SPEED_ORDER
+                        ]
+                    ),
+                ],
+                style={"borderCollapse": "collapse"},
+            ),
+            style={"overflowX": "auto"},
         )
     ]
     total_runtime = sum(runtimes.values())
@@ -1362,7 +1401,8 @@ def build_cost_panel(
                     "marginTop": "14px",
                     "paddingTop": "14px",
                     "borderTop": "1px solid #e2e8f0",
-                    "maxWidth": "440px",
+                    "width": "100%",
+                    "boxSizing": "border-box",
                     "lineHeight": "1.5",
                 },
             )

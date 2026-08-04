@@ -13,30 +13,35 @@ import yaml
 SPEED_LEVELS: dict[str, dict[str, str]] = {
     "fast": {
         "label": "Fast",
+        "runtime": "Under 10 min",
         "tooltip": "Tests run in seconds to minutes on GPU",
         "color": "#dcfce7",
         "text_color": "#166534",
     },
     "medium": {
         "label": "Medium",
+        "runtime": "10 min to 1 hour",
         "tooltip": "Tests run in tens of minutes on GPU",
         "color": "#fef9c3",
         "text_color": "#854d0e",
     },
     "slow": {
         "label": "Slow",
+        "runtime": "1 to 10 hours",
         "tooltip": "Tests run in hours on GPU",
         "color": "#ffedd5",
         "text_color": "#9a3412",
     },
     "very_slow": {
         "label": "Very slow",
+        "runtime": "10 hours to 1 day",
         "tooltip": "Tests run in 10 hours to a day on GPU",
         "color": "#fee2e2",
         "text_color": "#991b1b",
     },
     "multi_day": {
         "label": "Multi-day",
+        "runtime": "Multiple days",
         "tooltip": "Tests require multiple GPU days",
         "color": "#ede9fe",
         "text_color": "#5b21b6",
