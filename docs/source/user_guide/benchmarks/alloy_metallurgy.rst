@@ -135,7 +135,7 @@ Computational cost
   stress-strain elastic tensor for 8 structures; likely minutes to tens of minutes
   on GPU.
 
-* **Solute-solute binding** (``test_alzncumg_solute_solute``, marked ``very_slow``):
+* **Solute-solute binding** (``test_alzncumg_solute_solute``, marked ``slow``):
   High — many FCC supercell relaxations per solute pair; likely hours on GPU.
 
 
