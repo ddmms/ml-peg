@@ -130,6 +130,7 @@ FCC_STACKING_FAULT_SPECS = {
 }
 GSF_SPECS = (
     {
+        "phase": "Theta double-prime",
         "structure_label": "NOTINOQMD_00002",
         "surface_label": "111",
         "structure_file": "AIIDA_339739",
@@ -153,6 +154,7 @@ GSF_SPECS = (
         "relax_fmax": 0.005,
     },
     {
+        "phase": "Theta",
         "structure_label": "NOTINOQMD_00001",
         "surface_label": "0m11",
         "structure_file": "AIIDA_481617",
@@ -926,6 +928,8 @@ def generalized_stacking_fault_energies(
     relax_method: str,
     relax_steps: int,
     relax_fmax: float,
+    progress_description: str | None = None,
+    progress_postfix: dict[str, str] | None = None,
 ) -> tuple[list[float], list[float]]:
     """
     Calculate relaxed GSF raw and zero-referenced energies in eV/A^2.
@@ -947,6 +951,10 @@ def generalized_stacking_fault_energies(
         Maximum number of BFGS steps for each fault structure.
     relax_fmax
         Force convergence threshold in eV/Angstrom.
+    progress_description
+        Optional description for per-displacement progress reporting.
+    progress_postfix
+        Optional phase metadata displayed with displacement progress.
 
     Returns
     -------
@@ -968,7 +976,16 @@ def generalized_stacking_fault_energies(
     area = surface_area(repeated)
     raw_energies = []
     reference_energy = None
-    for displacement in displacements:
+    tracked_displacements = (
+        tqdm(
+            displacements,
+            desc=progress_description,
+            postfix=progress_postfix,
+        )
+        if progress_description
+        else displacements
+    )
+    for displacement in tracked_displacements:
         tilted = tilted_structure(repeated, displacement)
         prepare_atoms(tilted, calculator)
         if relax_method == "atoms_z":
@@ -1786,7 +1803,7 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
             )
 
     gsf_records = []
-    for spec in tqdm(GSF_SPECS, desc=f"{model_name} GSF"):
+    for spec in GSF_SPECS:
         reference_key = f"{spec['structure_label']}-GSF_{spec['surface_label']}"
         try:
             # Special structures expected at:
@@ -1804,6 +1821,11 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
                 relax_method=spec["relax_method"],
                 relax_steps=spec["relax_steps"],
                 relax_fmax=spec["relax_fmax"],
+                progress_description=f"{model_name} GSF",
+                progress_postfix={
+                    "phase": spec["phase"],
+                    "surface": spec["surface_label"],
+                },
             )
         except Exception as exc:
             warn(
@@ -1823,35 +1845,55 @@ def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None
         )
 
     solute_stacking_fault_records = []
-    for spec in tqdm(SOLUTE_STACKING_FAULT_SPECS, desc=f"{model_name} solute-SF"):
-        matrix_oqmd_id, solute_elements, inplane_repeats, zplane_repeats, layers = spec
-        for solute_element in solute_elements:
-            reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
-            try:
-                interaction_energies = solute_stacking_fault_interaction(
-                    matrix_oqmd_id,
-                    solute_element,
-                    calc,
-                    inplane_repeats=inplane_repeats,
-                    zplane_repeats=zplane_repeats,
-                    solute_layers=layers,
-                    data_path=data_path,
-                )
-            except Exception as exc:
-                warn(
-                    f"Error calculating {reference_key} with {model_name}: {exc}",
-                    stacklevel=2,
-                )
-                continue
-            solute_stacking_fault_records.append(
-                {
-                    "reference_key": reference_key,
-                    "matrix_oqmd_id": matrix_oqmd_id,
-                    "solute_element": solute_element,
-                    "solute_layers": layers,
-                    "interaction_energies": interaction_energies,
-                }
+    solute_stacking_fault_jobs = tuple(
+        (matrix_oqmd_id, solute_element, inplane_repeats, zplane_repeats, layers)
+        for (
+            matrix_oqmd_id,
+            solute_elements,
+            inplane_repeats,
+            zplane_repeats,
+            layers,
+        ) in SOLUTE_STACKING_FAULT_SPECS
+        for solute_element in solute_elements
+    )
+    progress = tqdm(solute_stacking_fault_jobs, desc=f"{model_name} solute-SF")
+    for (
+        matrix_oqmd_id,
+        solute_element,
+        inplane_repeats,
+        zplane_repeats,
+        layers,
+    ) in progress:
+        matrix_element = next(
+            iter(element_counts(pure_reference_structures[matrix_oqmd_id]))
+        )
+        progress.set_postfix(matrix=matrix_element, solute=solute_element)
+        reference_key = f"{matrix_oqmd_id}-SolSF_{solute_element}"
+        try:
+            interaction_energies = solute_stacking_fault_interaction(
+                matrix_oqmd_id,
+                solute_element,
+                calc,
+                inplane_repeats=inplane_repeats,
+                zplane_repeats=zplane_repeats,
+                solute_layers=layers,
+                data_path=data_path,
             )
+        except Exception as exc:
+            warn(
+                f"Error calculating {reference_key} with {model_name}: {exc}",
+                stacklevel=2,
+            )
+            continue
+        solute_stacking_fault_records.append(
+            {
+                "reference_key": reference_key,
+                "matrix_oqmd_id": matrix_oqmd_id,
+                "solute_element": solute_element,
+                "solute_layers": layers,
+                "interaction_energies": interaction_energies,
+            }
+        )
 
     with open(output_dir / "fault_surface_properties.json", "w") as file:
         json.dump(
@@ -1924,42 +1966,55 @@ def test_alzncumg_solute_solute(mlip: tuple[str, Any], data_path: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
-    for matrix_oqmd_id, solute_pairs, repeats, max_index in tqdm(
-        SOLUTE_SOLUTE_SPECS, desc=f"{model_name} solute-solute matrices"
-    ):
-        pure_structure = conventional_fcc_supercell(
-            matrix_oqmd_id, repeats, calc, data_path
+    solute_solute_jobs = tuple(
+        (matrix_oqmd_id, solute_1, solute_2, repeats, max_index)
+        for matrix_oqmd_id, solute_pairs, repeats, max_index in SOLUTE_SOLUTE_SPECS
+        for solute_1, solute_2 in solute_pairs
+    )
+    pure_structures: dict[str, Atoms] = {}
+    progress = tqdm(solute_solute_jobs, desc=f"{model_name} solute-solute")
+    for matrix_oqmd_id, solute_1, solute_2, repeats, max_index in progress:
+        progress.set_postfix(
+            matrix_id=matrix_oqmd_id,
+            pair=f"{solute_1}-{solute_2}",
         )
-        for solute_1, solute_2 in solute_pairs:
-            reference_key = solute_pair_reference_key(
-                matrix_oqmd_id, solute_1, solute_2
+        pure_structure = pure_structures.get(matrix_oqmd_id)
+        if pure_structure is None:
+            pure_structure = conventional_fcc_supercell(
+                matrix_oqmd_id, repeats, calc, data_path
             )
-            try:
-                distances, binding_energies = solute_solute_binding(
-                    pure_structure,
-                    calc,
-                    solute_1,
-                    solute_2,
-                    max_index=max_index,
-                )
-            except Exception as exc:
-                warn(
-                    f"Error calculating {reference_key} with {model_name}: {exc}",
-                    stacklevel=2,
-                )
-                continue
+            pure_structures[matrix_oqmd_id] = pure_structure
+        progress.set_postfix(
+            matrix=pure_structure.info["matrix_element"],
+            pair=f"{solute_1}-{solute_2}",
+        )
+        reference_key = solute_pair_reference_key(matrix_oqmd_id, solute_1, solute_2)
+        try:
+            distances, binding_energies = solute_solute_binding(
+                pure_structure,
+                calc,
+                solute_1,
+                solute_2,
+                max_index=max_index,
+            )
+        except Exception as exc:
+            warn(
+                f"Error calculating {reference_key} with {model_name}: {exc}",
+                stacklevel=2,
+            )
+            continue
 
-            records.append(
-                {
-                    "matrix_oqmd_id": matrix_oqmd_id,
-                    "matrix_element": pure_structure.info["matrix_element"],
-                    "solute_1": solute_1,
-                    "solute_2": solute_2,
-                    "reference_key": reference_key,
-                    "distances": distances,
-                    "binding_energies": binding_energies,
-                }
-            )
+        records.append(
+            {
+                "matrix_oqmd_id": matrix_oqmd_id,
+                "matrix_element": pure_structure.info["matrix_element"],
+                "solute_1": solute_1,
+                "solute_2": solute_2,
+                "reference_key": reference_key,
+                "distances": distances,
+                "binding_energies": binding_energies,
+            }
+        )
 
     with open(output_dir / "solute_solute_bindings.json", "w") as file:
         json.dump({"interactions": records}, file, indent=2)
