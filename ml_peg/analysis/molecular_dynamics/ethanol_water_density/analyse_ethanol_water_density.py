@@ -12,6 +12,11 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.molecular_dynamics.ethanol_water_density.calc_ethanol_water_density import (  # noqa: E501
+    LOG_INTERVAL,
+    N_COMPOSITIONS,
+    NUM_NPT_STEPS,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -31,8 +36,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 M_WATER = 18.01528  # g/mol
 M_ETOH = 46.06844  # g/mol
-LOG_INTERVAL_PS = 0.1
-EQUILIB_TIME_PS = 500
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -203,7 +206,16 @@ def compute_density(fname, density_col=13):
                 density_series.append(float(items[13]))
     except OSError:
         return np.nan
-    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
+    n_expected = NUM_NPT_STEPS // LOG_INTERVAL + 1
+    if len(density_series) != n_expected:
+        warn(
+            f"{fname} has {len(density_series)}/{n_expected} frames "
+            "(incomplete run?); density set to NaN.",
+            stacklevel=2,
+        )
+        return np.nan
+    # Discard first half as equilibration
+    skip_frames = len(density_series) // 2
     equilibrated = density_series[skip_frames:]
     if len(equilibrated) == 0:
         return np.nan
@@ -237,6 +249,16 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
             )
         x = np.asarray(xs, dtype=float)
         rho = np.asarray(rhos, dtype=float)
+
+        # A partial grid would silently skew metrics (wrong excess-volume
+        # endpoints), possibly rewarding models whose runs failed.
+        if model_dir.is_dir() and x.size != N_COMPOSITIONS:
+            warn(
+                f"{model_name} has {x.size}/{N_COMPOSITIONS} compositions; "
+                "metrics set to NaN.",
+                stacklevel=2,
+            )
+            rho[:] = np.nan
 
         order = np.argsort(x)
         curves[model_name] = (x[order], rho[order])
