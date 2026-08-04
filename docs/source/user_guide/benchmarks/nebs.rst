@@ -32,8 +32,7 @@ compared to the reference activation energy for this path.
 Computational cost
 ------------------
 
-Medium: tests are likely to take hours to run on GPU. The benchmark is marked
-``slow`` and runs by default.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 
 Data availability
@@ -75,8 +74,7 @@ Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 Computational cost
 ------------------
 
-Medium: tests are likely to take hours to run on GPU. The benchmark is marked
-``slow`` and runs by default.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 Data availability
 -----------------
@@ -132,7 +130,7 @@ The benchmark includes the following 2D TMD materials (2H phase):
 Computational cost
 ------------------
 
-Medium: tests involving multiple foundation models are likely to take around an one hour to run on a single GPU.
+Fast: the benchmark takes around one minute per model on an A100 GPU.
 
 Data availability
 -----------------

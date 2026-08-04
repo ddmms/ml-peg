@@ -561,7 +561,7 @@ comparison. This part of the test is marked ``slow``.
 
 The MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower. This part of the test is marked ``very_slow``.
+models will be slower. This part of the test is marked ``slow``.
 
 
 Data availability

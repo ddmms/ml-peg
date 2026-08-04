@@ -60,7 +60,7 @@ This is effectively equivalent to:
 Speed markers
 ~~~~~~~~~~~~~
 
-Every benchmark carries one of four speed markers, describing roughly how long
+Every benchmark carries one of five speed markers, describing roughly how long
 its calculations take per model on a GPU:
 
 .. list-table::
