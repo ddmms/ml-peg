@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 import yaml
 
@@ -117,16 +116,3 @@ def get_app() -> GrapheneWettingUnderStrainApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    graphene_wetting_under_strain_app = get_app()
-    full_app.layout = graphene_wetting_under_strain_app.layout
-    graphene_wetting_under_strain_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8052, debug=True)

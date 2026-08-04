@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dash import Dash, dcc
+from dash import dcc
 from dash.dcc import Loading
 from dash.html import Div, Label
 
@@ -94,11 +94,3 @@ def get_app() -> DiatomicsApp:
         extra_components=extra_components,
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    dash_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    diatomics_app = get_app()
-    dash_app.layout = diatomics_app.layout
-    diatomics_app.register_callbacks()
-    dash_app.run(port=8055, debug=True)
