@@ -423,7 +423,7 @@ def _calc_model_mp_id(
 
 
 @pytest.mark.framework("mace-multihead")
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 def test_phonons(
     model_name: str,
