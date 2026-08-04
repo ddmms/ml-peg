@@ -28,14 +28,24 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+
 # Extract system metadata from mock calculation (filenames)
-SYSTEM_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    index="0",
-    include_filenames=True,
-    out_path=OUT_PATH,
-)
+def get_info() -> dict[str, list]:
+    """
+    Get and write out metadata for each system.
+
+    Returns
+    -------
+    dict[str, list]
+        Metadata for each system.
+    """
+    return get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        index="1",
+        include_filenames=True,
+        out_path=OUT_PATH,
+    )
 
 
 def compute_adsorption_energy(
@@ -68,7 +78,7 @@ def compute_adsorption_energy(
     x_label="Predicted adsorption energy / eV",
     y_label="Reference adsorption energy / eV",
     hoverdata={
-        "System": SYSTEM_INFO["filenames"],
+        "System": get_info()["filenames"],
     },
 )
 def adsorption_energies() -> dict[str, list]:
@@ -117,7 +127,6 @@ def adsorption_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
 def adsorption_mae(adsorption_energies) -> dict[str, float]:
     """
     Get mean absolute error for adsorption energies.
@@ -134,7 +143,7 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if adsorption_energies[model_name]:
+        if adsorption_energies.get(model_name):
             results[model_name] = mae(
                 adsorption_energies["ref"], adsorption_energies[model_name]
             )
@@ -143,20 +152,14 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     return results
 
 
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
-)
-def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
+def get_metrics(adsorption_energies: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
-    adsorption_mae
-        Mean absolute errors for all models.
+    adsorption_energies
+        Dictionary of all reference and predicted adsorption energies.
 
     Returns
     -------
@@ -164,8 +167,31 @@ def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": adsorption_mae,
+        "MAE": adsorption_mae(adsorption_energies),
     }
+
+
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+)
+def metrics(adsorption_energies: dict[str, list[float]]) -> dict[str, dict]:
+    """
+    Get all GMTKN55 metrics.
+
+    Parameters
+    ----------
+    adsorption_energies
+        Dictionary of reference and predicted adsorption energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return get_metrics(adsorption_energies)
 
 
 def test_elemental_slab_oxygen_adsorption(metrics: dict[str, dict]) -> None:
