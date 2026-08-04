@@ -1171,7 +1171,7 @@ def build_nav(
                         if combined_framework_table is not None
                         else []
                     ),
-                    build_cost_panel(benchmark_speeds),
+                    build_cost_panel(benchmark_speeds, title_font_size="32px"),
                     build_faqs(),
                 ]
             ), sidebar_children

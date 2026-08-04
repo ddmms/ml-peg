@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 from dash.dash_table import DataTable
-from dash.html import H1, H3, A, Br, Div, Img, Span
+from dash.html import H1, H2, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
     build_cost_panel,
@@ -259,7 +259,27 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
 
     sections = []
     for category_name, tests in benchmarks_by_category.items():
-        sections.append(H3(category_name, style={"marginTop": "26px"}))
+        sections.append(
+            Div(
+                style={
+                    "width": "100%",
+                    "height": "1px",
+                    "backgroundColor": "#a7adb3",
+                    "margin": "32px 0 0",
+                }
+            )
+        )
+        sections.append(
+            H2(
+                category_name,
+                style={
+                    "color": "black",
+                    "fontSize": "30px",
+                    "marginTop": "24px",
+                    "marginBottom": "12px",
+                },
+            )
+        )
         sections.append(Div(tests, style={"display": "grid", "gap": "24px"}))
 
     summary_block = []
