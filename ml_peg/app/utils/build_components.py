@@ -1248,7 +1248,9 @@ def _format_duration(minutes: float) -> str:
     return f"{minutes / 1440:.0f} days"
 
 
-def build_cost_panel(speeds: dict[str, str | None]) -> Div:
+def build_cost_panel(
+    speeds: dict[str, str | None], title_font_size: str | None = None
+) -> Div:
     """
     Build the panel describing what a set of benchmarks costs to run.
 
@@ -1260,6 +1262,8 @@ def build_cost_panel(speeds: dict[str, str | None]) -> Div:
     speeds
         Mapping of ``<category>/<benchmark>`` to speed level, with None for
         benchmarks carrying no speed marker.
+    title_font_size
+        Optional CSS font size for the panel heading. Default is None.
 
     Returns
     -------
@@ -1336,46 +1340,30 @@ def build_cost_panel(speeds: dict[str, str | None]) -> Div:
         if device:
             timing_note += f" on {device}"
         timing_note += ". Other models and devices may be faster or slower."
-        panel_contents.extend(
-            [
-                Div(
-                    [
-                        Div("Everything"),
-                        Div(
-                            _format_duration(total_runtime),
-                            style={"fontWeight": "700"},
-                        ),
-                    ],
-                    style={
-                        "display": "flex",
-                        "justifyContent": "space-between",
-                        "gap": "24px",
-                        "fontSize": "13px",
-                        "fontWeight": "600",
-                        "color": "#212529",
-                        "marginTop": "14px",
-                        "paddingTop": "14px",
-                        "borderTop": "1px solid #e2e8f0",
-                    },
-                ),
-                Div(
-                    timing_note,
-                    style={
-                        "fontSize": "12px",
-                        "color": "#6c757d",
-                        "marginTop": "14px",
-                        "maxWidth": "440px",
-                        "lineHeight": "1.5",
-                    },
-                ),
-            ]
+        panel_contents.append(
+            Div(
+                timing_note,
+                style={
+                    "fontSize": "12px",
+                    "color": "#6c757d",
+                    "marginTop": "14px",
+                    "paddingTop": "14px",
+                    "borderTop": "1px solid #e2e8f0",
+                    "maxWidth": "440px",
+                    "lineHeight": "1.5",
+                },
+            )
         )
 
     return Div(
         [
             H2(
-                "Benchmark speeds",
-                style={"color": "black", "marginTop": "30px"},
+                "Test speeds",
+                style={
+                    "color": "black",
+                    "marginTop": "30px",
+                    **({"fontSize": title_font_size} if title_font_size else {}),
+                },
             ),
             Div(
                 panel_contents,
