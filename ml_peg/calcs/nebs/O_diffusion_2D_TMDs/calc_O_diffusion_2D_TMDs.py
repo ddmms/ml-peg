@@ -72,7 +72,7 @@ def relaxed_structs() -> dict[str, Atoms]:
     return relaxed_structs
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("compound", COMPOUNDS)
 @pytest.mark.parametrize("model_name", MODELS)
 def test_o_diffusion(
