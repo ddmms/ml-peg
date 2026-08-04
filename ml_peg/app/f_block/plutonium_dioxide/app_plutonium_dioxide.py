@@ -13,8 +13,8 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Plutonium Dioxide"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/actinides.html#plutonium-dioxide"
-DATA_PATH = APP_ROOT / "data" / "actinides" / "plutonium_dioxide"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/f_block.html#plutonium-dioxide"
+DATA_PATH = APP_ROOT / "data" / "f_block" / "plutonium_dioxide"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -60,7 +60,7 @@ class PuO2App(BaseApp):
             cell_to_plot=density_plots,
         )
 
-        assets_prefix = "assets/actinides/plutonium_dioxide"
+        assets_prefix = "assets/f_block/plutonium_dioxide"
 
         for prop, scatter_suffix in [
             ("density_traj_energy", "energy-figure"),
