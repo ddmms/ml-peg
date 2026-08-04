@@ -1237,15 +1237,28 @@ def _format_duration(minutes: float) -> str:
     Returns
     -------
     str
-        Rounded duration using minutes, hours, or days.
+        Duration using minutes, hours and days.
     """
     if 0 < minutes < 1:
         return "1 min"
-    if minutes < 90:
-        return f"{round(minutes)} min"
-    if minutes < 60 * 36:
-        return f"{minutes / 60:.0f} hours"
-    return f"{minutes / 1440:.0f} days"
+
+    rounded_minutes = round(minutes)
+    if rounded_minutes < 60:
+        return f"{rounded_minutes} min"
+
+    hours, remaining_minutes = divmod(rounded_minutes, 60)
+    hour_text = f"{hours} hour{'s' if hours != 1 else ''}"
+    if hours < 24:
+        if remaining_minutes:
+            return f"{hour_text} {remaining_minutes} min"
+        return hour_text
+
+    rounded_hours = round(minutes / 60)
+    days, remaining_hours = divmod(rounded_hours, 24)
+    day_text = f"{days} day{'s' if days != 1 else ''}"
+    if remaining_hours:
+        return f"{day_text} {remaining_hours} hour{'s' if remaining_hours != 1 else ''}"
+    return day_text
 
 
 def build_cost_panel(
