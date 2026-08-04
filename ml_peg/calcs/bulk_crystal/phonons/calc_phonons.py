@@ -192,7 +192,7 @@ def _ref_complete(mp_id: str, out_dir: Path) -> bool:
 
 
 @pytest.mark.framework("mace-multihead")
-@pytest.mark.slow
+@pytest.mark.medium
 def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     """
     Generate DFT reference outputs from ALEX pre-computed force constants.
