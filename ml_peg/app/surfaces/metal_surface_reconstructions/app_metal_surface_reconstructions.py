@@ -18,7 +18,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Metal Surfaces"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#metal-surface-reconstructions"
-DATA_PATH = APP_ROOT / "data" / "surfaces" / "metal_surfaces"
+DATA_PATH = APP_ROOT / "data" / "surfaces" / "metal_surface_reconstructions"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -36,14 +36,14 @@ class MetalSurfaceApp(BaseApp):
         if self.info:
             systems = self.info["system"]
         else:
-            structs_dir = DATA_PATH / MODELS[0]
+            structs_dir = DATA_PATH / "mock"
             systems = [
                 struct_file.stem for struct_file in sorted(structs_dir.glob("*.xyz"))
             ]
 
         # Assets dir will be parent directory - individual files for each system
         structs = [
-            f"/assets/surfaces/metal_surfaces/{MODELS[0]}/{system}.xyz"
+            f"/assets/surfaces/metal_surface_reconstructions/mock/{system}.xyz"
             for system in systems
         ]
 
