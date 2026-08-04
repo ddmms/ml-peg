@@ -1330,6 +1330,12 @@ def build_cost_panel(speeds: dict[str, str | None]) -> Div:
     ]
     total_runtime = sum(runtimes.values())
     if total_runtime:
+        model = provenance.get("model", "mace-mp-0a")
+        device = provenance.get("device")
+        timing_note = f"Timings are for {model}"
+        if device:
+            timing_note += f" on {device}"
+        timing_note += ". Other models and devices may be faster or slower."
         panel_contents.extend(
             [
                 Div(
@@ -1353,10 +1359,7 @@ def build_cost_panel(speeds: dict[str, str | None]) -> Div:
                     },
                 ),
                 Div(
-                    (
-                        f"Timings are for {provenance.get('model', 'mace-mp-0a')}, "
-                        "other models may be faster or slower"
-                    ),
+                    timing_note,
                     style={
                         "fontSize": "12px",
                         "color": "#6c757d",

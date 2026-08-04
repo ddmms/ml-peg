@@ -236,7 +236,7 @@ def run_npt(atoms, calc, output_fname):
         dyn.atoms.info["energy"] = np.nan
 
 
-@pytest.mark.very_slow
+@pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=list(MODELS.keys()))
 @pytest.mark.parametrize("case_idx", range(N_COMPOSITIONS))
 def test_water_ethanol_density_curves(mlip: tuple[str, Any], case_idx: int) -> None:

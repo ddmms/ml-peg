@@ -290,6 +290,9 @@ def run_calcs(
     run_very_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled very slow.")
     ] = False,
+    run_multi_day: Annotated[
+        bool, Option(help="Whether to run calculations labelled multi-day.")
+    ] = False,
     timings_out: Annotated[
         Path | None,
         Option(
@@ -329,6 +332,8 @@ def run_calcs(
         Whether to run slow calculations. Default is `False`.
     run_very_slow
         Whether to run very slow calculations. Default is `False`.
+    run_multi_day
+        Whether to run multi-day calculations. Default is `False`.
     timings_out
         YAML file to update with measured benchmark runtimes. Timing mode requires
         one selected model and disables the mock calculator. Default is `None`.
@@ -362,6 +367,9 @@ def run_calcs(
 
     if run_very_slow:
         options.extend(["--run-very-slow"])
+
+    if run_multi_day:
+        options.extend(["--run-multi-day"])
 
     if run_mock and not timings_out:
         options.extend(["--run-mock"])
