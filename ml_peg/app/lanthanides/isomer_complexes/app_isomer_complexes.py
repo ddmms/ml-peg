@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -77,16 +76,3 @@ def get_app() -> IsomerComplexesApp:
         info_path=INFO_PATH,
         framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    app_instance = get_app()
-    full_app.layout = app_instance.layout
-    app_instance.register_callbacks()
-
-    # Run app
-    full_app.run(port=8061, debug=True)
