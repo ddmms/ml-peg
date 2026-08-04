@@ -27,6 +27,8 @@ Help for this command can be found by running ``ml_peg calc --help``:
     │                                                [default: no-run-slow]                                                     │
     │ --run-very-slow    --no-run-very-slow          Whether to run calculations labelled very slow.                            │
     │                                                [default: no-run-very-slow]                                                │
+    │ --run-multi-day    --no-run-multi-day          Whether to run calculations labelled multi-day.                            │
+    │                                                [default: no-run-multi-day]                                                │
     │ --timings-out                            PATH  Write benchmark runtimes for one model to this YAML file.                   │
     │ --verbose          --no-verbose                Whether to run pytest with verbose and stdout printed. [default: verbose]  │
     │ --help                                         Show this message and exit.                                                │
@@ -73,10 +75,13 @@ its calculations take per model on a GPU:
    * - ``slow``
      - Hours
    * - ``very_slow``
-     - 10 hours or more
+     - 10 hours to a day
+   * - ``multi_day``
+     - Multiple GPU days
 
 By default only ``fast`` and ``medium`` benchmarks run. Add ``--run-slow`` to
-include ``slow`` ones, and ``--run-very-slow`` to include ``very_slow`` ones.
+include ``slow`` ones, ``--run-very-slow`` to include ``very_slow`` ones, and
+``--run-multi-day`` to include ``multi_day`` ones.
 
 To run a single tier rather than adding to the default selection, use
 ``--fast-only`` or ``--medium-only``.
@@ -102,8 +107,9 @@ not required when running benchmarks. To record one:
 
 The published reference timings use ``mace-mp-0a``. Another model can be timed
 by selecting it with ``--models`` and writing to a separate file. Add
-``--run-slow`` or ``--run-very-slow`` when needed. After a successful reference
-run, copy the result and GPU name into ``ml_peg/analysis/utils/runtimes.yml``.
+``--run-slow``, ``--run-very-slow`` or ``--run-multi-day`` when needed. After a
+successful reference run, copy the result and GPU name into
+``ml_peg/analysis/utils/runtimes.yml``.
 
 
 Analysis

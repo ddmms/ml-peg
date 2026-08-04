@@ -31,9 +31,15 @@ SPEED_LEVELS: dict[str, dict[str, str]] = {
     },
     "very_slow": {
         "label": "Very slow",
-        "tooltip": "Tests run in 10 hours or more on GPU",
+        "tooltip": "Tests run in 10 hours to a day on GPU",
         "color": "#fee2e2",
         "text_color": "#991b1b",
+    },
+    "multi_day": {
+        "label": "Multi-day",
+        "tooltip": "Tests require multiple GPU days",
+        "color": "#ede9fe",
+        "text_color": "#5b21b6",
     },
 }
 
