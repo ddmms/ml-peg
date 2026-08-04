@@ -50,7 +50,11 @@ class MetalSurfaceApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter, "Displacement": scatter},
+            column_to_plot={
+                "MAE": scatter,
+                "Displacement": scatter,
+                "Ranking Error": scatter,
+            },
         )
 
         struct_from_scatter(
