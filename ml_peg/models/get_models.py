@@ -143,6 +143,7 @@ def load_models(
         OrbCalc,
         SevenNetCalc,
         UPETCalc,
+        VivaceCalc,
     )
 
     if run_mock is None:
@@ -216,6 +217,13 @@ def load_models(
             case "SevenNetCalculator":
                 loaded_models[name] = SevenNetCalc(
                     device=cfg.get("device", "cpu"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "MLFFCalculator":
+                loaded_models[name] = VivaceCalc(
+                    device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
