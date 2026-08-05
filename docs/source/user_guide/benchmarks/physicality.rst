@@ -216,7 +216,7 @@ https://arxiv.org/html/2603.04228v1
 
 
 Water-Cl2 cluster relaxation
-==========================
+============================
 
 Summary
 -------
