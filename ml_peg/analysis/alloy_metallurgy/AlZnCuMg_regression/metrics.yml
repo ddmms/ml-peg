@@ -49,13 +49,13 @@ metrics:
     level_of_theory: PBE
   Surface Energy MAE:
     good: 0.0
-    bad: 500.0
+    bad: 100.0
     unit: mJ/m²
     tooltip: "Mean absolute error of legacy FCC and HCP surface energies for pure Al, Cu, Mg, and Zn references compared to DFT"
     level_of_theory: PBE
   Stacking Fault Energy MAE:
     good: 0.0
-    bad: 500.0
+    bad: 100.0
     unit: mJ/m²
     tooltip: "Mean absolute error of relaxed FCC stable and unstable stacking-fault energies for pure Al and Cu references compared to DFT"
     level_of_theory: PBE
@@ -67,7 +67,7 @@ metrics:
     level_of_theory: PBE
   Solute-Stacking Fault MAE:
     good: 0.0
-    bad: 0.1
+    bad: 0.01
     unit: eV
     tooltip: "Mean absolute error of relaxed solute-stacking-fault interaction energies by solute layer compared to DFT"
     level_of_theory: PBE
