@@ -14,7 +14,7 @@ benchmarks:
     high_pressure_relaxation:
     iron_properties: 46
     lattice_constants: 1
-    low_dimensional_relaxation:
+    low_dimensional_relaxation: 673
     phonons: 420
 
   conformers:
