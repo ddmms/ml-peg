@@ -60,7 +60,7 @@ class PuO2App(BaseApp):
             cell_to_plot=density_plots,
         )
 
-        assets_prefix = "assets/f_block/plutonium_dioxide"
+        assets_prefix = "/assets/f_block/plutonium_dioxide"
 
         for prop, scatter_suffix in [
             ("density_traj_energy", "energy-figure"),
