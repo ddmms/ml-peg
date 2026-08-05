@@ -425,13 +425,27 @@ def register_image_gallery_callbacks(
         if not model_name:
             raise PreventUpdate
 
-        png_bytes, width, height = render_periodic_curve_gallery_png(
-            curve_dir=curve_base,
-            model_name=model_name,
-            element_value=element_value,
-            overview_label=overview_label,
-            dpi=200,
-        )
+        try:
+            png_bytes, width, height = render_periodic_curve_gallery_png(
+                curve_dir=curve_base,
+                model_name=model_name,
+                element_value=element_value,
+                overview_label=overview_label,
+                dpi=200,
+            )
+        except PreventUpdate:
+            # Say which directory was empty rather than leaving a blank plot,
+            # trimmed to the package root so no server paths are exposed.
+            missing = curve_base / model_name
+            if "ml_peg" in missing.parts:
+                missing = Path(*missing.parts[missing.parts.index("ml_peg") :])
+            fig = go.Figure()
+            fig.add_annotation(
+                text=f"No curve data for {model_name}<br>{missing}",
+                showarrow=False,
+            )
+            fig.update_layout(xaxis={"visible": False}, yaxis={"visible": False})
+            return fig
         src, width, height = _data_url_from_bytes(
             png_bytes,
             mime="image/png",
