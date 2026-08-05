@@ -16,6 +16,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Al-Zn-Cu-Mg regression"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/alloy_metallurgy.html#al-zn-cu-mg-regression"
 DATA_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "AlZnCuMg_regression"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class AlZnCuMgRegressionApp(BaseApp):
@@ -136,6 +137,7 @@ def get_app() -> AlZnCuMgRegressionApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

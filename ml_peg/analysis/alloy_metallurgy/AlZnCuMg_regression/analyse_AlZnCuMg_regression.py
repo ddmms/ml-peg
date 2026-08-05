@@ -33,6 +33,16 @@ ELASTIC_MODULI_PROPERTIES = ("k_voigt", "g_voigt")
 ELASTIC_CONSTANT_PROPERTIES = tuple(
     f"C_{row + 1}{column + 1}" for row in range(6) for column in range(row + 1)
 )
+REQUIRED_ELEMENTS = ("Al", "Cu", "Mg", "Zn")
+
+
+def write_benchmark_info() -> None:
+    """Write benchmark-wide element requirements for application filtering."""
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    (OUT_PATH / "info.json").write_text(
+        json.dumps({"elements": REQUIRED_ELEMENTS}, indent=1),
+        encoding="utf8",
+    )
 
 
 def load_references() -> dict[str, Any]:
@@ -1464,4 +1474,5 @@ def test_alzncumg_regression(metrics: dict[str, dict[str, float]]) -> None:
     metrics
         First-slice analysis metrics.
     """
+    write_benchmark_info()
     return
