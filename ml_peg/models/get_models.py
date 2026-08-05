@@ -138,6 +138,7 @@ def load_models(
     from ml_peg.models.models import (
         FairChemCalc,
         GenericASECalc,
+        GraceCalc,
         MatterSimCalc,
         MockCalc,
         OrbCalc,
@@ -224,6 +225,15 @@ def load_models(
             case "MLFFCalculator":
                 loaded_models[name] = VivaceCalc(
                     device=cfg.get("device", "auto"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "grace_fm":
+                loaded_models[name] = GraceCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", "cpu"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),

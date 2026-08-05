@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 from functools import wraps
 from typing import TYPE_CHECKING, Any
+from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
@@ -474,3 +475,46 @@ class SevenNetCalc(SumCalc):
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         device_str = device.value if isinstance(device, Device) else (device or "cpu")
         return SevenNetCalculator(device=device_str, **self.kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class GraceCalc(GenericASECalc):
+    """Dataclass for GRACE calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Additional keyword arguments (ignored).
+
+        Returns
+        -------
+        Calculator
+            Loaded GRACE ASE calculator.
+        """
+        from tensorpotential.calculator.foundation_models import MODELS_NAME_LIST
+
+        precision_map = {"low": "", "high": "-fp64"}
+        suffix = precision_map[precision]
+
+        if self.default_dtype is not None:
+            suffix = self.default_dtype
+
+        model_name = f"{self.kwargs['model']}{suffix}"
+        if model_name in MODELS_NAME_LIST:
+            self.kwargs["model"] = model_name
+        else:
+            warn(
+                "Unable to find model with requested precision, using default",
+                stacklevel=2,
+            )
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
