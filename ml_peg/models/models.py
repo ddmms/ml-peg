@@ -140,43 +140,46 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
-def _patch_mattersim_setstate() -> None:
-    """Rebuild the model from mattersim's own saved model_args on copy()."""
-    from mattersim.forcefield.m3gnet.m3gnet import M3Gnet
-    from mattersim.forcefield.potential import MatterSimCalculator, Potential
-    import torch
-
-    def __setstate__(self, state):  # noqa: N807
-        """
-        Restore from copy/pickle by rebuilding at the saved architecture.
-
-        Parameters
-        ----------
-        self
-            The ``MatterSimCalculator`` instance being restored.
-        state
-            State dict produced by ``__getstate__``, containing the saved
-            model weights, architecture (``model_args``) and name.
-        """
-        model_state_dict = state.pop("_model_state_dict")
-        model_args = state.pop("_model_args")
-        model_name = state.pop("_model_name")
-        self.__dict__.update(state)
-        model = M3Gnet(device=self.device, **model_args).to(self.device)
-        model.load_state_dict(model_state_dict)
-        model.eval()
-        self.potential = Potential(
-            model, device=self.device, model_name=model_name, load_training_state=False
-        )
-        if self.dtype == torch.float64:
-            self.potential.model.double()
-
-    MatterSimCalculator.__setstate__ = __setstate__
-
-
 @dataclasses.dataclass(kw_only=True)
 class MatterSimCalc(GenericASECalc):
     """Dataclass for MatterSim calculator."""
+
+    @staticmethod
+    def _patch_mattersim_setstate() -> None:
+        """Rebuild the model from mattersim's own saved model_args on copy()."""
+        from mattersim.forcefield.m3gnet.m3gnet import M3Gnet
+        from mattersim.forcefield.potential import MatterSimCalculator, Potential
+        import torch
+
+        def __setstate__(self, state):  # noqa: N807
+            """
+            Restore from copy/pickle by rebuilding at the saved architecture.
+
+            Parameters
+            ----------
+            self
+                The ``MatterSimCalculator`` instance being restored.
+            state
+                State dict produced by ``__getstate__``, containing the saved
+                model weights, architecture (``model_args``) and name.
+            """
+            model_state_dict = state.pop("_model_state_dict")
+            model_args = state.pop("_model_args")
+            model_name = state.pop("_model_name")
+            self.__dict__.update(state)
+            model = M3Gnet(device=self.device, **model_args).to(self.device)
+            model.load_state_dict(model_state_dict)
+            model.eval()
+            self.potential = Potential(
+                model,
+                device=self.device,
+                model_name=model_name,
+                load_training_state=False,
+            )
+            if self.dtype == torch.float64:
+                self.potential.model.double()
+
+        MatterSimCalculator.__setstate__ = __setstate__
 
     def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
@@ -200,7 +203,7 @@ class MatterSimCalc(GenericASECalc):
         if self.default_dtype is not None:
             kwargs["dtype"] = self.default_dtype
 
-        _patch_mattersim_setstate()
+        self._patch_mattersim_setstate()
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
