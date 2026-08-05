@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 import plotly.graph_objects as go
@@ -54,8 +55,19 @@ def load_references() -> dict[str, Any]:
     dict[str, Any]
         Reference data keyed by evalpot material parameter name.
     """
-    with open(CALC_PATH / "references" / "DFT.json") as file:
-        return json.load(file)
+    reference_path = CALC_PATH / "references" / "DFT.json"
+    try:
+        with reference_path.open(encoding="utf8") as file:
+            references = json.load(file)
+        if not isinstance(references, dict):
+            raise TypeError("expected a JSON object")
+        return references
+    except Exception as exc:
+        warn(
+            f"Unable to load reference data from {reference_path}: {exc}",
+            stacklevel=2,
+        )
+        return {}
 
 
 def reference_value(
@@ -79,12 +91,13 @@ def reference_value(
         Scalar value if present and numeric.
     """
     entry = references.get(f"{oqmd_id}-{property_name}")
-    if not entry:
+    if not isinstance(entry, (list, tuple)) or not entry:
         return None
     try:
-        return float(entry[0])
+        value = float(entry[0])
     except (TypeError, ValueError):
         return None
+    return value if math.isfinite(value) else None
 
 
 def reference_series(references: dict[str, Any], key: str) -> list[float]:
@@ -104,15 +117,20 @@ def reference_series(references: dict[str, Any], key: str) -> list[float]:
         Numeric reference series, or an empty list when unavailable.
     """
     entry = references.get(key)
-    if not entry or not isinstance(entry[0], list):
+    if not isinstance(entry, (list, tuple)) or not entry:
+        return []
+    if not isinstance(entry[0], list):
         return []
 
     values = []
     for value in entry[0]:
         try:
-            values.append(float(value))
+            converted = float(value)
         except (TypeError, ValueError):
             return []
+        if not math.isfinite(converted):
+            return []
+        values.append(converted)
     return values
 
 
@@ -165,12 +183,13 @@ def scalar_reference(references: dict[str, Any], key: str) -> float | None:
         Scalar value if present and numeric.
     """
     entry = references.get(key)
-    if not entry:
+    if not isinstance(entry, (list, tuple)) or not entry:
         return None
     try:
-        return float(entry[0])
+        value = float(entry[0])
     except (TypeError, ValueError):
         return None
+    return value if math.isfinite(value) else None
 
 
 def load_model_records() -> dict[str, dict[str, dict[str, Any]]]:
@@ -187,11 +206,14 @@ def load_model_records() -> dict[str, dict[str, dict[str, Any]]]:
         record_path = CALC_PATH / model_name / "bulk_properties.json"
         if not record_path.exists():
             continue
-        with open(record_path) as file:
-            data = json.load(file)
-        records_by_model[model_name] = {
-            record["oqmd_id"]: record for record in data["structures"]
-        }
+        try:
+            with record_path.open(encoding="utf8") as file:
+                data = json.load(file)
+            records_by_model[model_name] = {
+                record["oqmd_id"]: record for record in data["structures"]
+            }
+        except Exception as exc:
+            warn(f"Unable to load bulk records for {model_name}: {exc}", stacklevel=2)
     return records_by_model
 
 
@@ -209,11 +231,17 @@ def load_elastic_records() -> dict[str, dict[str, dict[str, Any]]]:
         record_path = CALC_PATH / model_name / "elastic_properties.json"
         if not record_path.exists():
             continue
-        with open(record_path) as file:
-            data = json.load(file)
-        records_by_model[model_name] = {
-            record["oqmd_id"]: record for record in data["structures"]
-        }
+        try:
+            with record_path.open(encoding="utf8") as file:
+                data = json.load(file)
+            records_by_model[model_name] = {
+                record["oqmd_id"]: record for record in data["structures"]
+            }
+        except Exception as exc:
+            warn(
+                f"Unable to load elastic records for {model_name}: {exc}",
+                stacklevel=2,
+            )
     return records_by_model
 
 
@@ -231,11 +259,17 @@ def load_solute_solute_records() -> dict[str, dict[str, dict[str, Any]]]:
         record_path = CALC_PATH / model_name / "solute_solute_bindings.json"
         if not record_path.exists():
             continue
-        with open(record_path) as file:
-            data = json.load(file)
-        records_by_model[model_name] = {
-            record["reference_key"]: record for record in data["interactions"]
-        }
+        try:
+            with record_path.open(encoding="utf8") as file:
+                data = json.load(file)
+            records_by_model[model_name] = {
+                record["reference_key"]: record for record in data["interactions"]
+            }
+        except Exception as exc:
+            warn(
+                f"Unable to load solute records for {model_name}: {exc}",
+                stacklevel=2,
+            )
     return records_by_model
 
 
@@ -253,19 +287,26 @@ def load_fault_surface_records() -> dict[str, dict[str, dict[str, dict[str, Any]
         record_path = CALC_PATH / model_name / "fault_surface_properties.json"
         if not record_path.exists():
             continue
-        with open(record_path) as file:
-            data = json.load(file)
-        records_by_model[model_name] = {
-            group_name: {
-                record["reference_key"]: record for record in data.get(group_name, [])
+        try:
+            with record_path.open(encoding="utf8") as file:
+                data = json.load(file)
+            records_by_model[model_name] = {
+                group_name: {
+                    record["reference_key"]: record
+                    for record in data.get(group_name, [])
+                }
+                for group_name in (
+                    "surfaces",
+                    "stacking_faults",
+                    "gsf",
+                    "solute_stacking_faults",
+                )
             }
-            for group_name in (
-                "surfaces",
-                "stacking_faults",
-                "gsf",
-                "solute_stacking_faults",
+        except Exception as exc:
+            warn(
+                f"Unable to load fault records for {model_name}: {exc}",
+                stacklevel=2,
             )
-        }
     return records_by_model
 
 
@@ -295,15 +336,19 @@ def common_structure_ids(
     common_ids = set.intersection(
         *(set(records) for records in records_by_model.values())
     )
-    return sorted(
-        oqmd_id
-        for oqmd_id in common_ids
-        if reference_value(references, oqmd_id, property_name) is not None
-        and all(
-            property_name in model_records[oqmd_id]
-            for model_records in records_by_model.values()
-        )
-    )
+    valid_ids = []
+    for oqmd_id in sorted(common_ids):
+        try:
+            ref_value = reference_value(references, oqmd_id, property_name)
+            model_values = [
+                float(model_records[oqmd_id][property_name])
+                for model_records in records_by_model.values()
+            ]
+            if ref_value is not None and all(map(math.isfinite, model_values)):
+                valid_ids.append(oqmd_id)
+        except Exception as exc:
+            warn(f"Unable to process {oqmd_id} {property_name}: {exc}", stacklevel=2)
+    return valid_ids
 
 
 def get_property_structure_ids(property_name: str) -> list[str]:
@@ -368,7 +413,7 @@ def scalar_property_values(property_name: str) -> dict[str, list[float]]:
             continue
         results["ref"].append(ref_value)
         for model_name, model_records in records_by_model.items():
-            results[model_name].append(model_records[oqmd_id][property_name])
+            results[model_name].append(float(model_records[oqmd_id][property_name]))
 
     return results
 
@@ -398,7 +443,7 @@ def multi_property_values(property_names: tuple[str, ...]) -> dict[str, list[flo
                 continue
             results["ref"].append(ref_value)
             for model_name, model_records in records_by_model.items():
-                results[model_name].append(model_records[oqmd_id][property_name])
+                results[model_name].append(float(model_records[oqmd_id][property_name]))
 
     return results
 
@@ -432,7 +477,7 @@ def property_values_from_records(
             continue
         results["ref"].append(ref_value)
         for model_name, model_records in records_by_model.items():
-            results[model_name].append(model_records[oqmd_id][property_name])
+            results[model_name].append(float(model_records[oqmd_id][property_name]))
 
     return results
 
@@ -466,7 +511,7 @@ def multi_property_values_from_records(
                 continue
             results["ref"].append(ref_value)
             for model_name, model_records in records_by_model.items():
-                results[model_name].append(model_records[oqmd_id][property_name])
+                results[model_name].append(float(model_records[oqmd_id][property_name]))
 
     return results
 
@@ -535,10 +580,16 @@ def has_series_data(values: dict[str, list[float]]) -> bool:
     bool
         True if the series can be plotted and scored.
     """
-    return bool(values["ref"]) and any(
-        bool(model_values)
-        for model_name, model_values in values.items()
-        if model_name != "ref"
+    reference_values = values.get("ref", [])
+    model_values = [
+        series for model_name, series in values.items() if model_name != "ref"
+    ]
+    if not reference_values or not model_values:
+        return False
+    expected_length = len(reference_values)
+    return all(
+        len(series) == expected_length and all(math.isfinite(value) for value in series)
+        for series in [reference_values, *model_values]
     )
 
 
@@ -666,7 +717,9 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
 
         for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
             if reference_key in model_records:
-                model_vals = model_records[reference_key]["binding_energies"]
+                model_vals = model_records[reference_key].get("binding_energies")
+                if not isinstance(model_vals, list):
+                    continue
                 x_vals = list(range(1, len(model_vals) + 1))
                 fig.add_trace(
                     go.Scatter(
@@ -741,7 +794,9 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
 
         for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
             if reference_key in model_records["gsf"]:
-                model_vals = model_records["gsf"][reference_key]["norm_energies"]
+                model_vals = model_records["gsf"][reference_key].get("norm_energies")
+                if not isinstance(model_vals, list):
+                    continue
                 x_vals = list(range(1, len(model_vals) + 1))
                 fig.add_trace(
                     go.Scatter(
@@ -819,9 +874,11 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
 
         for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
             if reference_key in model_records["solute_stacking_faults"]:
-                model_vals = model_records["solute_stacking_faults"][reference_key][
+                model_vals = model_records["solute_stacking_faults"][reference_key].get(
                     "interaction_energies"
-                ]
+                )
+                if not isinstance(model_vals, list):
+                    continue
                 x_vals = list(range(1, len(model_vals) + 1))
                 fig.add_trace(
                     go.Scatter(
@@ -875,30 +932,34 @@ def solute_solute_binding_values(
         set.intersection(*(set(records) for records in records_by_model.values()))
     )
     for reference_key in common_keys:
-        reference_values = solute_solute_reference_series(references, reference_key)
-        if not reference_values:
-            continue
-        model_values_by_name = {
-            model_name: model_records[reference_key]["binding_energies"]
-            for model_name, model_records in records_by_model.items()
-        }
-        common_length = min(
-            len(reference_values),
-            *(len(model_values) for model_values in model_values_by_name.values()),
-        )
-        for index in range(common_length):
-            try:
-                model_values = {
-                    model_name: float(model_values[index])
-                    for model_name, model_values in model_values_by_name.items()
-                }
-            except (TypeError, ValueError):
+        try:
+            reference_values = solute_solute_reference_series(references, reference_key)
+            if not reference_values:
                 continue
-
-            results["ref"].append(reference_values[index])
-            for model_name, model_value in model_values.items():
-                results[model_name].append(model_value)
-            labels.append(f"{reference_key} shell {index + 1}")
+            model_values_by_name = {
+                model_name: model_records[reference_key]["binding_energies"]
+                for model_name, model_records in records_by_model.items()
+            }
+            common_length = min(
+                len(reference_values),
+                *(len(values) for values in model_values_by_name.values()),
+            )
+            for index in range(common_length):
+                model_values = {
+                    model_name: float(values[index])
+                    for model_name, values in model_values_by_name.items()
+                }
+                if not all(map(math.isfinite, model_values.values())):
+                    continue
+                results["ref"].append(reference_values[index])
+                for model_name, model_value in model_values.items():
+                    results[model_name].append(model_value)
+                labels.append(f"{reference_key} shell {index + 1}")
+        except Exception as exc:
+            warn(
+                f"Unable to process solute record {reference_key}: {exc}",
+                stacklevel=2,
+            )
     return results, labels
 
 
@@ -962,21 +1023,25 @@ def fault_surface_scalar_values(
         )
     )
     for reference_key in common_keys:
-        ref_value = scalar_reference(references, reference_key)
-        if ref_value is None:
-            continue
         try:
+            ref_value = scalar_reference(references, reference_key)
+            if ref_value is None:
+                continue
             model_values = {
                 model_name: float(model_records[group_name][reference_key][value_key])
                 for model_name, model_records in records_by_model.items()
             }
-        except (KeyError, TypeError, ValueError):
-            continue
-
-        results["ref"].append(ref_value)
-        for model_name, model_value in model_values.items():
-            results[model_name].append(model_value)
-        labels.append(reference_key)
+            if not all(map(math.isfinite, model_values.values())):
+                continue
+            results["ref"].append(ref_value)
+            for model_name, model_value in model_values.items():
+                results[model_name].append(model_value)
+            labels.append(reference_key)
+        except Exception as exc:
+            warn(
+                f"Unable to process {group_name} record {reference_key}: {exc}",
+                stacklevel=2,
+            )
     return results, labels
 
 
@@ -1008,30 +1073,34 @@ def gsf_values(
         )
     )
     for reference_key in common_keys:
-        reference_values = reference_series(references, f"{reference_key}_normE")
-        if not reference_values:
-            continue
-        model_values_by_name = {
-            model_name: model_records["gsf"][reference_key]["norm_energies"]
-            for model_name, model_records in records_by_model.items()
-        }
-        common_length = min(
-            len(reference_values),
-            *(len(model_values) for model_values in model_values_by_name.values()),
-        )
-        for index in range(common_length):
-            try:
-                model_values = {
-                    model_name: float(model_values[index])
-                    for model_name, model_values in model_values_by_name.items()
-                }
-            except (TypeError, ValueError):
+        try:
+            reference_values = reference_series(references, f"{reference_key}_normE")
+            if not reference_values:
                 continue
-
-            results["ref"].append(reference_values[index])
-            for model_name, model_value in model_values.items():
-                results[model_name].append(model_value)
-            labels.append(f"{reference_key} point {index + 1}")
+            model_values_by_name = {
+                model_name: model_records["gsf"][reference_key]["norm_energies"]
+                for model_name, model_records in records_by_model.items()
+            }
+            common_length = min(
+                len(reference_values),
+                *(len(values) for values in model_values_by_name.values()),
+            )
+            for index in range(common_length):
+                model_values = {
+                    model_name: float(values[index])
+                    for model_name, values in model_values_by_name.items()
+                }
+                if not all(map(math.isfinite, model_values.values())):
+                    continue
+                results["ref"].append(reference_values[index])
+                for model_name, model_value in model_values.items():
+                    results[model_name].append(model_value)
+                labels.append(f"{reference_key} point {index + 1}")
+        except Exception as exc:
+            warn(
+                f"Unable to process GSF record {reference_key}: {exc}",
+                stacklevel=2,
+            )
     return results, labels
 
 
@@ -1066,32 +1135,36 @@ def solute_stacking_fault_values(
         )
     )
     for reference_key in common_keys:
-        reference_values = reference_series(references, reference_key)
-        if not reference_values:
-            continue
-        model_values_by_name = {
-            model_name: model_records["solute_stacking_faults"][reference_key][
-                "interaction_energies"
-            ]
-            for model_name, model_records in records_by_model.items()
-        }
-        common_length = min(
-            len(reference_values),
-            *(len(model_values) for model_values in model_values_by_name.values()),
-        )
-        for index in range(common_length):
-            try:
-                model_values = {
-                    model_name: float(model_values[index])
-                    for model_name, model_values in model_values_by_name.items()
-                }
-            except (TypeError, ValueError):
+        try:
+            reference_values = reference_series(references, reference_key)
+            if not reference_values:
                 continue
-
-            results["ref"].append(reference_values[index])
-            for model_name, model_value in model_values.items():
-                results[model_name].append(model_value)
-            labels.append(f"{reference_key} layer {index}")
+            model_values_by_name = {
+                model_name: model_records["solute_stacking_faults"][reference_key][
+                    "interaction_energies"
+                ]
+                for model_name, model_records in records_by_model.items()
+            }
+            common_length = min(
+                len(reference_values),
+                *(len(values) for values in model_values_by_name.values()),
+            )
+            for index in range(common_length):
+                model_values = {
+                    model_name: float(values[index])
+                    for model_name, values in model_values_by_name.items()
+                }
+                if not all(map(math.isfinite, model_values.values())):
+                    continue
+                results["ref"].append(reference_values[index])
+                for model_name, model_value in model_values.items():
+                    results[model_name].append(model_value)
+                labels.append(f"{reference_key} layer {index}")
+        except Exception as exc:
+            warn(
+                f"Unable to process solute-SF record {reference_key}: {exc}",
+                stacklevel=2,
+            )
     return results, labels
 
 
@@ -1461,8 +1534,14 @@ def copy_structures_to_app_data() -> None:
         output_dir = OUT_PATH / model_name
         output_dir.mkdir(parents=True, exist_ok=True)
         for structure_path in sorted(model_dir.glob("OQMD_*.xyz")):
-            atoms = read(structure_path)
-            write(output_dir / structure_path.name, atoms)
+            try:
+                atoms = read(structure_path)
+                write(output_dir / structure_path.name, atoms)
+            except Exception as exc:
+                warn(
+                    f"Unable to copy structure {structure_path}: {exc}",
+                    stacklevel=2,
+                )
 
 
 def test_alzncumg_regression(metrics: dict[str, dict[str, float]]) -> None:
