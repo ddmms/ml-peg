@@ -1,9 +1,9 @@
 metrics:
-  Formation Energy MAE:
+  Solute-Referenced Formation Energy MAE:
     good: 0.0
     bad: 0.1
     unit: eV/atom
-    tooltip: "Mean absolute error of formation energies for the first Al-Cu-Mg-Zn OQMD structure slice compared to DFT"
+    tooltip: "Mean absolute error of formation energies referenced to each model's dilute-solute energies in Al, compared to equivalently referenced DFT values"
     level_of_theory: PBE
   Volume MAE:
     good: 0.0

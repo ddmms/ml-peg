@@ -25,7 +25,7 @@ class AlZnCuMgRegressionApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         formation_scatter = read_plot(
-            DATA_PATH / "figure_formation_energy.json",
+            DATA_PATH / "figure_solute_formation_energy.json",
             id=f"{BENCHMARK_NAME}-figure",
         )
         volume_scatter = read_plot(
@@ -41,7 +41,7 @@ class AlZnCuMgRegressionApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
         column_to_plot = {
-            "Formation Energy MAE": formation_scatter,
+            "Solute-Referenced Formation Energy MAE": formation_scatter,
             "Volume MAE": volume_scatter,
             "Lattice Constant MAE": lattice_scatter,
             "Beta Angle MAE": beta_angle_scatter,
@@ -88,6 +88,23 @@ class AlZnCuMgRegressionApp(BaseApp):
                     id=plot_id,
                 )
 
+        pure_element_path = DATA_PATH / "figure_pure_element_properties.json"
+        if pure_element_path.exists():
+            pure_element_plot = read_plot(
+                pure_element_path,
+                id=f"{BENCHMARK_NAME}-pure-element-figure",
+            )
+            for column_name in (
+                "Lattice Constant MAE",
+                "Bulk Modulus MAE",
+                "Shear Modulus MAE",
+                "Elastic Constant MAE",
+                "Surface Energy MAE",
+                "Stacking Fault Energy MAE",
+            ):
+                if column_name in column_to_plot:
+                    column_to_plot[column_name] = pure_element_plot
+
         structs_dir = next(
             (
                 DATA_PATH / model_name
@@ -127,9 +144,9 @@ def get_app() -> AlZnCuMgRegressionApp:
     return AlZnCuMgRegressionApp(
         name=BENCHMARK_NAME,
         description=(
-            "Bulk formation-energy, volume, lattice, solute-solute, elastic, "
-            "surface, stacking-fault, and generalized stacking-fault errors for "
-            "the staged Al-Cu-Mg-Zn structure slice."
+            "Solute-referenced formation-energy, volume, lattice, solute-solute, "
+            "elastic, surface, stacking-fault, and generalized stacking-fault "
+            "errors for the staged Al-Cu-Mg-Zn structure slice."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "AlZnCuMg_regression_metrics_table.json",

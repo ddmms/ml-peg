@@ -1649,10 +1649,62 @@ def get_elemental_reference_energies(
     return reference_energies
 
 
+def get_solute_reference_energies(
+    al_reference: Atoms,
+    calculator: Calculator,
+    elemental_reference_energies: dict[str, float],
+) -> dict[str, float]:
+    """
+    Get dilute-solute reference energies from substitutions in bulk Al.
+
+    Parameters
+    ----------
+    al_reference
+        Relaxed pure-Al structure used to obtain the FCC lattice constant.
+    calculator
+        ASE calculator used for atom-only solute relaxations.
+    elemental_reference_energies
+        Stable bulk elemental energies in eV/atom.
+
+    Returns
+    -------
+    dict[str, float]
+        Energy of each element as a dilute substitution in a 256-atom Al cell.
+    """
+    lattice, matrix_element = fcc_lattice_and_element(al_reference)
+    if matrix_element != "Al":
+        raise ValueError("Solute references require a pure-Al FCC structure")
+    al_energy = elemental_reference_energies["Al"]
+    pure_structure = bulk("Al", "fcc", a=lattice, cubic=True).repeat((4, 4, 4))
+    reference_energies = {"Al": al_energy}
+
+    for element in elemental_reference_energies:
+        if element == "Al":
+            continue
+        try:
+            solute_energy = relaxed_energy(
+                solute_structure(pure_structure, element),
+                calculator,
+                relax_steps=SOLUTE_RELAX_STEPS,
+                relax_fmax=SOLUTE_RELAX_FMAX,
+            )
+            reference_energy = solute_energy - (len(pure_structure) - 1) * al_energy
+            if not np.isfinite(reference_energy):
+                raise ValueError("non-finite solute reference energy")
+            reference_energies[element] = reference_energy
+        except Exception as exc:
+            warn(
+                f"Error calculating dilute {element}-in-Al reference: {exc}",
+                stacklevel=2,
+            )
+    return reference_energies
+
+
 def structure_properties(
     atoms: Atoms,
     total_energy: float,
-    reference_energies: dict[str, float],
+    elemental_reference_energies: dict[str, float],
+    solute_reference_energies: dict[str, float],
 ) -> dict[str, Any]:
     """
     Build the scalar output record for one structure.
@@ -1663,8 +1715,10 @@ def structure_properties(
         Calculated structure.
     total_energy
         Total potential energy in eV.
-    reference_energies
-        Elemental reference energies in eV/atom.
+    elemental_reference_energies
+        Stable bulk elemental reference energies in eV/atom.
+    solute_reference_energies
+        Dilute-solute reference energies in eV/atom.
 
     Returns
     -------
@@ -1672,16 +1726,21 @@ def structure_properties(
         JSON-serialisable scalar properties.
     """
     structure_info = legacy_structure_info(atoms)
-    return {
+    properties = {
         "oqmd_id": atoms.info["oqmd_id"],
         "potential_energy": total_energy,
         "formation_energy": formation_energy_per_atom(
-            atoms, total_energy, reference_energies
+            atoms, total_energy, elemental_reference_energies
         ),
         "oqmd_formation_energy": atoms.info.get("oqmd_formation_energy"),
         "oqmd_volume_peratom": atoms.info.get("oqmd_volume_per_atom"),
         **structure_info,
     }
+    if set(element_counts(atoms)).issubset(solute_reference_energies):
+        properties["solformation_energy"] = formation_energy_per_atom(
+            atoms, total_energy, solute_reference_energies
+        )
+    return properties
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -1729,11 +1788,38 @@ def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
             )
 
     reference_energies = get_elemental_reference_energies(structures, energies)
+    solute_reference_energies = {}
+    al_reference = next(
+        (
+            atoms
+            for oqmd_id, atoms in structures.items()
+            if oqmd_id in energies and element_counts(atoms) == {"Al": len(atoms)}
+        ),
+        None,
+    )
+    if al_reference is not None:
+        try:
+            solute_reference_energies = get_solute_reference_energies(
+                al_reference,
+                calc,
+                reference_energies,
+            )
+        except Exception as exc:
+            warn(f"Error calculating dilute-solute references: {exc}", stacklevel=2)
+    else:
+        warn(
+            "Unable to calculate dilute-solute references without pure Al", stacklevel=2
+        )
     records = []
     for oqmd_id, total_energy in energies.items():
         atoms = structures[oqmd_id]
         try:
-            record = structure_properties(atoms, total_energy, reference_energies)
+            record = structure_properties(
+                atoms,
+                total_energy,
+                reference_energies,
+                solute_reference_energies,
+            )
             atoms.info.update(record)
         except Exception as exc:
             warn(
@@ -1751,6 +1837,7 @@ def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
         json.dump(
             {
                 "elemental_reference_energies": reference_energies,
+                "solute_reference_energies": solute_reference_energies,
                 "structures": records,
             },
             file,

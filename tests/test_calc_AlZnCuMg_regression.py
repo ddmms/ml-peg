@@ -285,6 +285,32 @@ def test_formation_energy_per_atom_uses_element_counts() -> None:
     assert formation_energy == pytest.approx(-0.5)
 
 
+def test_solute_reference_energies_use_dilute_al_substitutions(monkeypatch) -> None:
+    """Solute references subtract 255 bulk-Al atoms from a dilute supercell."""
+    al_reference = bulk("Al", "fcc", a=4.0, cubic=True)
+    seen_structures = []
+
+    def fake_relaxed_energy(atoms, calculator, *, relax_steps, relax_fmax):
+        seen_structures.append(atoms.copy())
+        assert relax_steps == calc.SOLUTE_RELAX_STEPS
+        assert relax_fmax == calc.SOLUTE_RELAX_FMAX
+        return -769.0
+
+    monkeypatch.setattr(calc, "relaxed_energy", fake_relaxed_energy)
+
+    references = calc.get_solute_reference_energies(
+        al_reference,
+        FormulaEnergyCalculator({}),
+        {"Al": -3.0, "Cu": -4.0},
+    )
+
+    assert references == {"Al": -3.0, "Cu": pytest.approx(-4.0)}
+    assert len(seen_structures) == 1
+    assert len(seen_structures[0]) == 256
+    assert seen_structures[0].symbols.count("Al") == 255
+    assert seen_structures[0].symbols.count("Cu") == 1
+
+
 def test_finite_strain_elastic_tensor_recovers_linear_response() -> None:
     """Elastic finite differences recover a synthetic linear stress response."""
     atoms = Atoms("Al", cell=[4.0, 4.0, 4.0], pbc=True)
@@ -542,6 +568,11 @@ def test_calculation_writes_successful_records_after_partial_failure(
 
     monkeypatch.setattr(calc, "load_oqmd_structure", fake_load_oqmd_structure)
     monkeypatch.setattr(calc, "relax_cell_and_atoms", lambda atoms, **kwargs: atoms)
+    monkeypatch.setattr(
+        calc,
+        "get_solute_reference_energies",
+        lambda *args: {"Al": -2.5, "Cu": -3.5},
+    )
 
     with pytest.warns(UserWarning) as warnings:
         calc.test_alzncumg_regression(("stub-model", model), tmp_path)
@@ -558,7 +589,9 @@ def test_calculation_writes_successful_records_after_partial_failure(
 
     assert set(records) == {"Al", "Cu", "AlCu"}
     assert output_data["elemental_reference_energies"] == {"Al": -3.0, "Cu": -4.0}
+    assert output_data["solute_reference_energies"] == {"Al": -2.5, "Cu": -3.5}
     assert records["AlCu"]["formation_energy"] == pytest.approx(-0.25)
+    assert records["AlCu"]["solformation_energy"] == pytest.approx(-0.75)
     assert (tmp_path / "stub-model" / "OQMD_Al.xyz").is_file()
     assert (tmp_path / "stub-model" / "OQMD_Cu.xyz").is_file()
     assert (tmp_path / "stub-model" / "OQMD_AlCu.xyz").is_file()

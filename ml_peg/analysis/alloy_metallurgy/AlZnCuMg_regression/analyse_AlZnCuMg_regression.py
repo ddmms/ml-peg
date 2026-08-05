@@ -35,6 +35,82 @@ ELASTIC_CONSTANT_PROPERTIES = tuple(
     f"C_{row + 1}{column + 1}" for row in range(6) for column in range(row + 1)
 )
 REQUIRED_ELEMENTS = ("Al", "Cu", "Mg", "Zn")
+PURE_ELEMENT_PROPERTY_SPECS = {
+    "8100": (
+        "Al FCC",
+        (
+            ("a", "bulk", "lattice_a"),
+            ("K", "elastic", "k_voigt"),
+            ("G", "elastic", "g_voigt"),
+            ("C₁₁", "elastic", "C_11"),
+            ("C₁₂", "elastic", "C_21"),
+            ("C₄₄", "elastic", "C_44"),
+            ("γsurf (111)", "surfaces", "8100-SurfaceEnergy_111"),
+            ("γsurf (100)", "surfaces", "8100-SurfaceEnergy_100"),
+            ("γsurf (110)", "surfaces", "8100-SurfaceEnergy_110"),
+            ("γSSF", "stacking_faults", "8100-StableSF"),
+            ("γUSF", "stacking_faults", "8100-UnStableSF"),
+        ),
+    ),
+    "635950": (
+        "Cu FCC",
+        (
+            ("a", "bulk", "lattice_a"),
+            ("K", "elastic", "k_voigt"),
+            ("G", "elastic", "g_voigt"),
+            ("C₁₁", "elastic", "C_11"),
+            ("C₁₂", "elastic", "C_21"),
+            ("C₄₄", "elastic", "C_44"),
+            ("γsurf (111)", "surfaces", "635950-SurfaceEnergy_111"),
+            ("γsurf (100)", "surfaces", "635950-SurfaceEnergy_100"),
+            ("γsurf (110)", "surfaces", "635950-SurfaceEnergy_110"),
+            ("γSSF", "stacking_faults", "635950-StableSF"),
+            ("γUSF", "stacking_faults", "635950-UnStableSF"),
+        ),
+    ),
+    "9226": (
+        "Mg HCP",
+        (
+            ("a", "bulk", "lattice_a"),
+            ("c", "bulk", "lattice_c"),
+            ("K", "elastic", "k_voigt"),
+            ("G", "elastic", "g_voigt"),
+            ("C₁₁", "elastic", "C_11"),
+            ("C₁₂", "elastic", "C_21"),
+            ("C₁₃", "elastic", "C_31"),
+            ("C₃₃", "elastic", "C_33"),
+            ("C₄₄", "elastic", "C_44"),
+            ("γsurf (0001)", "surfaces", "9226-SurfaceHCP_0001"),
+            ("γsurf (101̅0)", "surfaces", "9226-SurfaceHCP_10m10"),
+            ("γsurf (112̅0)", "surfaces", "9226-SurfaceHCP_11m20"),
+            ("γsurf (11̅01)", "surfaces", "9226-SurfaceHCP_1m101"),
+            ("γsurf (101̅2)", "surfaces", "9226-SurfaceHCP_10m12"),
+            ("γsurf (112̅1)", "surfaces", "9226-SurfaceHCP_11m21"),
+            ("γsurf (112̅2)", "surfaces", "9226-SurfaceHCP_11m22"),
+        ),
+    ),
+    "122929": (
+        "Zn HCP",
+        (
+            ("a", "bulk", "lattice_a"),
+            ("c", "bulk", "lattice_c"),
+            ("K", "elastic", "k_voigt"),
+            ("G", "elastic", "g_voigt"),
+            ("C₁₁", "elastic", "C_11"),
+            ("C₁₂", "elastic", "C_21"),
+            ("C₁₃", "elastic", "C_31"),
+            ("C₃₃", "elastic", "C_33"),
+            ("C₄₄", "elastic", "C_44"),
+            ("γsurf (0001)", "surfaces", "122929-SurfaceHCP_0001"),
+            ("γsurf (101̅0)", "surfaces", "122929-SurfaceHCP_10m10"),
+            ("γsurf (112̅0)", "surfaces", "122929-SurfaceHCP_11m20"),
+            ("γsurf (11̅01)", "surfaces", "122929-SurfaceHCP_1m101"),
+            ("γsurf (101̅2)", "surfaces", "122929-SurfaceHCP_10m12"),
+            ("γsurf (112̅1)", "surfaces", "122929-SurfaceHCP_11m21"),
+            ("γsurf (112̅2)", "surfaces", "122929-SurfaceHCP_11m22"),
+        ),
+    ),
+}
 
 
 def write_benchmark_info() -> None:
@@ -663,6 +739,130 @@ def errors_from_values(values: dict[str, list[float]]) -> dict[str, float]:
     }
 
 
+def write_pure_element_plot(filename: Path) -> None:
+    """
+    Write pure-element bulk, elastic, surface, and stacking-fault deviations.
+
+    Parameters
+    ----------
+    filename
+        Output path for the combined Plotly JSON figure.
+    """
+    references = load_references()
+    bulk_records = load_model_records()
+    elastic_records = load_elastic_records()
+    fault_records = load_fault_surface_records()
+    model_names = list(dict.fromkeys((*bulk_records, *elastic_records, *fault_records)))
+    if not references or not model_names:
+        return
+
+    fig = make_subplots(
+        rows=len(PURE_ELEMENT_PROPERTY_SPECS),
+        cols=1,
+        subplot_titles=[title for title, _ in PURE_ELEMENT_PROPERTY_SPECS.values()],
+        vertical_spacing=0.08,
+    )
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+    plotted = False
+
+    for row, (structure_id, (_, property_specs)) in enumerate(
+        PURE_ELEMENT_PROPERTY_SPECS.items(), start=1
+    ):
+        fig.add_hline(
+            y=0,
+            line={"color": "black", "dash": "dot", "width": 1},
+            row=row,
+            col=1,
+        )
+        for color_index, model_name in enumerate(model_names):
+            labels = []
+            deviations = []
+            hover_values = []
+            for label, source, property_name in property_specs:
+                reference_key = (
+                    property_name
+                    if source in ("surfaces", "stacking_faults")
+                    else f"{structure_id}-{property_name}"
+                )
+                reference = scalar_reference(references, reference_key)
+                if reference in (None, 0):
+                    continue
+
+                if source == "bulk":
+                    record = bulk_records.get(model_name, {}).get(structure_id, {})
+                    value_key = property_name
+                elif source == "elastic":
+                    record = elastic_records.get(model_name, {}).get(structure_id, {})
+                    value_key = property_name
+                else:
+                    record = (
+                        fault_records.get(model_name, {})
+                        .get(source, {})
+                        .get(property_name, {})
+                    )
+                    value_key = (
+                        "surface_energy"
+                        if source == "surfaces"
+                        else "stacking_fault_energy"
+                    )
+                if value_key not in record:
+                    continue
+
+                try:
+                    prediction = float(record[value_key])
+                    if not math.isfinite(prediction):
+                        raise ValueError("non-finite prediction")
+                    labels.append(label)
+                    deviations.append(100.0 * (prediction - reference) / reference)
+                    hover_values.append([prediction, reference])
+                except Exception as exc:
+                    warn(
+                        f"Unable to process {model_name} {reference_key}: {exc}",
+                        stacklevel=2,
+                    )
+
+            if not labels:
+                continue
+            plotted = True
+            fig.add_trace(
+                go.Scatter(
+                    x=labels,
+                    y=deviations,
+                    customdata=hover_values,
+                    mode="lines+markers",
+                    name=model_name,
+                    line={"color": colors[color_index % len(colors)], "width": 1.5},
+                    marker={"size": 7},
+                    showlegend=(row == 1),
+                    hovertemplate=(
+                        "%{x}<br>Deviation: %{y:.2f}%"
+                        "<br>Predicted: %{customdata[0]:.4g}"
+                        "<br>DFT: %{customdata[1]:.4g}<extra>%{fullData.name}</extra>"
+                    ),
+                ),
+                row=row,
+                col=1,
+            )
+
+    if not plotted:
+        return
+    fig.update_layout(
+        title_text="Pure-element properties",
+        height=1100,
+        legend={
+            "orientation": "h",
+            "x": 0.5,
+            "xanchor": "center",
+            "y": 1.04,
+            "yanchor": "bottom",
+        },
+        margin={"b": 90, "l": 80, "r": 30, "t": 150},
+    )
+    fig.update_xaxes(tickangle=-35, showgrid=True)
+    fig.update_yaxes(title_text="Deviation from DFT / %", zeroline=False)
+    fig.write_json(filename)
+
+
 def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
     """
     Write a multi-panel Plotly JSON of solute-solute binding energies.
@@ -684,7 +884,18 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
     cols = min(3, num_keys)
     rows = math.ceil(num_keys / max(1, cols))
 
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    subplot_titles = []
+    for reference_key in common_keys:
+        try:
+            matrix_id, _, pair_label = reference_key.partition("-SolSol_")
+            matrix = {"8100": "Al", "635950": "Cu"}.get(matrix_id, matrix_id)
+            solute_1, solute_2 = pair_label.split("_")
+            subplot_titles.append(f"{solute_1}-{solute_2} in {matrix}")
+        except Exception as exc:
+            warn(f"Unable to format plot title {reference_key}: {exc}", stacklevel=2)
+            subplot_titles.append(reference_key)
+
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=subplot_titles)
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -738,11 +949,12 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
                 )
 
     fig.update_layout(
-        title_text="Solute-solute binding energies", height=max(400, 300 * rows)
+        title_text="Solute-solute binding energies in Al and Cu",
+        height=max(400, 300 * rows),
     )
     for i in range(1, num_keys + 1):
         fig.layout[f"yaxis{i}"].title = "Binding energy / meV"
-        fig.layout[f"xaxis{i}"].title = "Neighbor Shell"
+        fig.layout[f"xaxis{i}"].title = "Nearest-neighbor index"
 
     fig.write_json(filename)
 
@@ -770,7 +982,15 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
     cols = min(3, num_keys)
     rows = math.ceil(num_keys / max(1, cols))
 
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    subplot_titles = {
+        "NOTINOQMD_00001-GSF_0m11": "Al₂Cu θ (01̅1)",
+        "NOTINOQMD_00002-GSF_111": "Al₃Cu θ″ (111)",
+    }
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        subplot_titles=[subplot_titles.get(key, key) for key in common_keys],
+    )
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#e377c2"]
 
     for i, reference_key in enumerate(common_keys):
@@ -815,11 +1035,12 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
                 )
 
     fig.update_layout(
-        title_text="Generalized stacking-fault energies", height=max(400, 300 * rows)
+        title_text="Generalized stacking-fault energies",
+        height=max(400, 300 * rows),
     )
     for i in range(1, num_keys + 1):
-        fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / eV A^-2"
-        fig.layout[f"xaxis{i}"].title = "GSF Point"
+        fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / eV Å⁻²"
+        fig.layout[f"xaxis{i}"].title = "Site index"
 
     fig.write_json(filename)
 
@@ -850,7 +1071,13 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
     cols = min(3, num_keys)
     rows = math.ceil(num_keys / max(1, cols))
 
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=common_keys)
+    subplot_titles = []
+    for reference_key in common_keys:
+        matrix_id, _, solute = reference_key.partition("-SolSF_")
+        matrix = {"8100": "Al", "635950": "Cu"}.get(matrix_id, matrix_id)
+        subplot_titles.append(f"{solute} in {matrix}")
+
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=subplot_titles)
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#e377c2"]
 
     for i, reference_key in enumerate(common_keys):
@@ -901,7 +1128,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
     )
     for i in range(1, num_keys + 1):
         fig.layout[f"yaxis{i}"].title = "Interaction energy / eV"
-        fig.layout[f"xaxis{i}"].title = "Layer"
+        fig.layout[f"xaxis{i}"].title = "SF index"
 
     fig.write_json(filename)
 
@@ -1303,29 +1530,29 @@ def elastic_metrics() -> dict[str, dict[str, float]]:
     return metrics
 
 
-STRUCTURE_IDS = get_property_structure_ids("formation_energy")
+STRUCTURE_IDS = get_property_structure_ids("solformation_energy")
 LATTICE_COMPONENT_LABELS = get_lattice_component_labels()
 BETA_STRUCTURE_IDS = get_property_structure_ids("angle_beta")
 
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_formation_energy.json",
-    title="Formation energies",
-    x_label="Predicted formation energy / eV atom^-1",
-    y_label="DFT formation energy / eV atom^-1",
+    filename=OUT_PATH / "figure_solute_formation_energy.json",
+    title="Solute-referenced formation energies",
+    x_label="Predicted solute-referenced formation energy / eV atom^-1",
+    y_label="DFT solute-referenced formation energy / eV atom^-1",
     hoverdata={"OQMD ID": STRUCTURE_IDS},
 )
-def formation_energies() -> dict[str, list[float]]:
+def solute_formation_energies() -> dict[str, list[float]]:
     """
-    Get reference and predicted formation energies.
+    Get reference and predicted solute-referenced formation energies.
 
     Returns
     -------
     dict[str, list[float]]
-        Reference and model formation energies in eV/atom.
+        Reference and model solute-referenced formation energies in eV/atom.
     """
-    return scalar_property_values("formation_energy")
+    return scalar_property_values("solformation_energy")
 
 
 @pytest.fixture
@@ -1389,16 +1616,16 @@ def beta_angles() -> dict[str, list[float]]:
 
 
 @pytest.fixture
-def formation_energy_errors(
-    formation_energies: dict[str, list[float]],
+def solute_formation_energy_errors(
+    solute_formation_energies: dict[str, list[float]],
 ) -> dict[str, float]:
     """
-    Get formation-energy mean absolute errors.
+    Get solute-referenced formation-energy mean absolute errors.
 
     Parameters
     ----------
-    formation_energies
-        Reference and predicted formation energies.
+    solute_formation_energies
+        Reference and predicted solute-referenced formation energies.
 
     Returns
     -------
@@ -1406,8 +1633,8 @@ def formation_energy_errors(
         MAE by model.
     """
     return {
-        model_name: mae(formation_energies["ref"], values)
-        for model_name, values in formation_energies.items()
+        model_name: mae(solute_formation_energies["ref"], values)
+        for model_name, values in solute_formation_energies.items()
         if model_name != "ref"
     }
 
@@ -1488,7 +1715,7 @@ def beta_angle_errors(beta_angles: dict[str, list[float]]) -> dict[str, float]:
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    formation_energy_errors: dict[str, float],
+    solute_formation_energy_errors: dict[str, float],
     volume_errors: dict[str, float],
     lattice_constant_errors: dict[str, float],
     beta_angle_errors: dict[str, float],
@@ -1498,8 +1725,8 @@ def metrics(
 
     Parameters
     ----------
-    formation_energy_errors
-        Formation-energy MAEs.
+    solute_formation_energy_errors
+        Solute-referenced formation-energy MAEs.
     volume_errors
         Volume-per-atom MAEs.
     lattice_constant_errors
@@ -1513,8 +1740,9 @@ def metrics(
         Metrics by model.
     """
     copy_structures_to_app_data()
+    write_pure_element_plot(OUT_PATH / "figure_pure_element_properties.json")
     results = {
-        "Formation Energy MAE": formation_energy_errors,
+        "Solute-Referenced Formation Energy MAE": solute_formation_energy_errors,
         "Volume MAE": volume_errors,
         "Lattice Constant MAE": lattice_constant_errors,
         "Beta Angle MAE": beta_angle_errors,
