@@ -130,6 +130,14 @@ grace-2l-omat:
   kwargs:
     model: GRACE-2L-OMAT
 
+grace-2l-smax-omat-medium:
+  module: tensorpotential.calculator
+  class_name: grace_fm
+  device: "cpu"
+  trained_on_dispersion: false
+  kwargs:
+    model: GRACE-2L-SMAX-OMAT-medium
+
 # MACE-OFF23(L):
 #   module: mace.calculators
 #   class_name: mace_off
