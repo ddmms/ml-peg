@@ -122,13 +122,13 @@ orb-v3-consv-omol:
 #     model_name: "uma-m-1p1"
 #     task_name: "omat"
 
-grace-2l-smax-omat-m:
+grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
   device: "cpu"
   trained_on_dispersion: false
   kwargs:
-    model: GRACE-2L-SMAX-OMAT-medium
+    model: GRACE-2L-OMAT
 
 # MACE-OFF23(L):
 #   module: mace.calculators
