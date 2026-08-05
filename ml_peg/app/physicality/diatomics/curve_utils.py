@@ -55,20 +55,24 @@ def load_model_curves(
 
     filtered: dict[str, dict] = {}
     for curve_file in model_curve_dir.glob("*.json"):
+        # Curve files are written as "{pair}.json" with a matching "pair" key, so
+        # the view filter can be applied to the filename and skip reading the
+        # files that are not needed. Only ~2% of a model's curves are in any view.
         try:
-            payload = json.loads(curve_file.read_text())
+            first, second = curve_file.stem.split("-")
+        except ValueError:
+            first = second = curve_file.stem
+        if selected_element is None:
+            if first != second:
+                continue
+        elif selected_element not in (first, second):
+            continue
+
+        try:
+            curve = json.loads(curve_file.read_text())
         except Exception:
             continue
-        pair = payload.get("pair") or curve_file.stem
-        try:
-            first, second = pair.split("-")
-        except ValueError:
-            first = second = pair
-        if selected_element is None:
-            if first == second:
-                filtered[pair] = payload
-        elif selected_element in (first, second):
-            filtered[pair] = payload
+        filtered[curve.get("pair") or curve_file.stem] = curve
 
     return selected_element, filtered
 
@@ -126,14 +130,14 @@ def render_periodic_curve_gallery_png(
         ax.axis("off")
 
     has_data = False
-    for pair, payload in filtered.items():
+    for pair, curve in filtered.items():
         first, second = pair.split("-") if "-" in pair else (pair, pair)
         other = second if selected_element == first else first
         pos = PERIODIC_TABLE_POSITIONS.get(other)
         if pos is None:
             continue
-        x_vals = payload.get("distance") or []
-        y_vals = payload.get("energy") or []
+        x_vals = curve.get("distance") or []
+        y_vals = curve.get("energy") or []
         if not x_vals or not y_vals:
             continue
         try:
@@ -383,15 +387,12 @@ def register_image_gallery_callbacks(
         model_curve_dir = curve_base / model_name
         if model_curve_dir.exists():
             for curve_file in model_curve_dir.glob("*.json"):
+                # Pair names are the filenames, so the dropdown options can be
+                # built without reading any curve files.
                 try:
-                    payload = json.loads(curve_file.read_text())
-                except Exception:
-                    continue
-                pair = payload.get("pair") or curve_file.stem
-                try:
-                    first, second = pair.split("-")
+                    first, second = curve_file.stem.split("-")
                 except ValueError:
-                    first = second = pair
+                    first = second = curve_file.stem
                 element_opts.extend([first, second])
 
         options = [{"label": overview_label, "value": overview_label}] + [
