@@ -58,7 +58,8 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch == 0.3.16",
+    "graph-longrange",
 ]
 
 mattersim = [
@@ -248,3 +249,4 @@ module-root = ""
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 mlipaudit = { git = "https://github.com/instadeepai/MLIPAudit.git", branch = "mlpeg-migration" }
+graph-longrange = { git = "https://github.com/WillBaldwin0/graph_electrostatics", tag = "v0.4.0" }
