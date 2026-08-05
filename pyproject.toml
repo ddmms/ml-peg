@@ -55,7 +55,7 @@ dpa3 = [
     "deepmd-kit == 3.1.0",
 ]
 grace = [
-    "tensorpotential == 0.5.1; python_version < '3.13'",
+    "tensorpotential == 0.6.0",
 ]
 mace = [
     "mace-torch==0.3.15",
@@ -212,20 +212,8 @@ conflicts = [
         { extra = "mace" },
     ],
     [
-        { extra = "uma" },
-        { extra = "grace" },
-    ],
-    [
         { extra = "mattersim" },
         { extra = "mace" },
-    ],
-    [
-        { extra = "mattersim" },
-        { extra = "grace" },
-    ],
-    [
-        { extra = "mlipaudit" },
-        { extra = "grace" },
     ],
     [
         { extra = "mace" },
