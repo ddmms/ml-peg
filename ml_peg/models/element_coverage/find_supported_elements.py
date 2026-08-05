@@ -92,7 +92,7 @@ def probe_model(model_name: str, device: str) -> list[str] | None:
         model = load_models(model_name)[model_name]
         if hasattr(model, "device"):
             model.device = device
-        calc = model.get_calculator()
+        calc = model.get_calculator(precision="low")
     except Exception as exc:  # noqa: BLE001 - env-dependent import/load failures
         print(
             f"  ! {model_name}: could not load in this env "
