@@ -330,7 +330,7 @@ def run_elasticity_benchmark(
 
 
 @pytest.mark.framework("mace-multihead")
-@pytest.mark.slow
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_elasticity(mlip: tuple[str, Any]) -> None:
     """
