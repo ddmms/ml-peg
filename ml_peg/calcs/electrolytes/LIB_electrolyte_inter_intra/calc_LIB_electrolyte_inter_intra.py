@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
+import pytest
+
+pytest.importorskip("aseMolec", reason="Please install `asemolec` extra")
 from aseMolec import anaAtoms
 import numpy as np
 import pytest
