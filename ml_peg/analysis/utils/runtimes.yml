@@ -8,7 +8,7 @@ measured_with:
 
 benchmarks:
   bulk_crystal:
-    elasticity: 819
+    elasticity: 1200
     elemental_tm_vacancies: 1
     energy_volume_curves_metals: 1
     high_pressure_relaxation: 1232
