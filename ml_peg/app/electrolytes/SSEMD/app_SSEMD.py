@@ -18,7 +18,7 @@ BENCHMARK_NAME = "SSE-MD Scores"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#sse-md"
 )
-DATA_PATH = APP_ROOT / "electrolytes" / "SSEMD"
+DATA_PATH = APP_ROOT / "data" / "electrolytes" / "SSEMD"
 
 
 class SSEMDApp(BaseApp):
