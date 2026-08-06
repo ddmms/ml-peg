@@ -20,6 +20,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 S3_KEY = "inputs/nebs/OC20NEB/OC20NEB.zip"
 S3_FILENAME = "OC20NEB.zip"
+FMAX = 0.05
 
 
 @pytest.mark.very_slow
@@ -70,7 +71,7 @@ def test_oc20neb(model_name: str) -> None:
             neb.neb.climb = True
             neb.plot_band = True
             neb.write_band = True
-            neb.run(fmax=0.05, steps=300)
+            neb.run(fmax=FMAX, steps=300)
 
             forces = neb.neb.get_forces()
             neb.results["max_force"] = np.sqrt((forces**2).sum(axis=1).max())
