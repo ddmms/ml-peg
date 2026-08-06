@@ -44,10 +44,10 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            key="inputs/electrolytes/inter_intra/inter_intra.zip",
-            filename="inter_intra.zip",
+            key="inputs/electrolytes/LIB_electrolyte_inter_intra/LIB_electrolyte_inter_intra.zip",
+            filename="LIB_electrolyte_inter_intra.zip",
         )
-        / "inter_intra"
+        / "LIB_electrolyte_inter_intra"
     )
 
     structure_paths = data_path.glob("*.xyz")
