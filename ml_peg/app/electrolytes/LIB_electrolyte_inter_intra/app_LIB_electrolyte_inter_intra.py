@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -15,7 +14,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "LIB electrolyte Inter-Intra Properties"
-# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#LIB_electrolyte_inter_intra"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#lib-electrolyte-inter-intra-properties"
 DATA_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra"
 INFO_PATH = (
     APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra" / "info.json"
@@ -85,11 +84,3 @@ def get_app() -> LIBelectrolyteInterIntraApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    InterIntra_app = get_app()
-    full_app.layout = InterIntra_app.layout
-    InterIntra_app.register_callbacks()
-    full_app.run(port=8054, debug=True)

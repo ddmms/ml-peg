@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -18,7 +17,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "LIB Electrolyte Volume-Scans"
-# DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#LIB_electrolyte_volume_scans"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#lib-electrolyte-volume-scans"
 DATA_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_volume_scans"
 INFO_PATH = DATA_PATH / "info.json"
 
@@ -42,7 +41,7 @@ class LIBelectrolyteVolumeScansApp(BaseApp):
             for model in MODELS
         }
 
-        assets_dir = "assets/electrolytes/LIB_electrolyte_volume_scans"
+        assets_dir = "/assets/electrolytes/LIB_electrolyte_volume_scans"
         structs = {
             model: {
                 "Solvent": f"{assets_dir}/{model}/{model}-solvent-volscan.extxyz",
@@ -86,7 +85,7 @@ def get_app() -> LIBelectrolyteVolumeScansApp:
             "Evaluate model energy predictions on "
             "battery solvent and electrolyte Volume Scans"
         ),
-        # docs_url=DOCS_URL,
+        docs_url=DOCS_URL,
         table_path=DATA_PATH / "vol_scan_rmses_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
@@ -94,20 +93,3 @@ def get_app() -> LIBelectrolyteVolumeScansApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(
-        __name__,
-        assets_folder=DATA_PATH.parent.parent,
-        suppress_callback_exceptions=True,
-    )
-
-    # Construct layout and register callbacks
-    LIBelectrolyteVolumeScans_app = get_app()
-    full_app.layout = LIBelectrolyteVolumeScans_app.layout
-    LIBelectrolyteVolumeScans_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8054, debug=True)
