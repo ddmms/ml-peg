@@ -32,7 +32,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 METRIC_LABELS = {
     "delta_E": "Reaction Energy MAE",
-    # "barrier" : "Barrier MAE",
     "all_barrier": "All Barrier MAE",
     "converged_barrier": "Converged Barrier MAE",
     "fmax": "Unconverged Percentage",
