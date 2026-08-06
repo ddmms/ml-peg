@@ -31,6 +31,14 @@ mlip_audit:
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
 
+matbench-discovery:
+  label: Matbench Discovery
+  color: "#061e25"
+  text_color: "#ffffff"
+  url: "https://matbench-discovery.materialsproject.org"
+  logo: "https://matbench-discovery.materialsproject.org/favicon.svg"
+  tooltip: "Benchmarks adapted from the Matbench Discovery framework"
+
 mace-multihead:
   label: Multihead Cross Learning
   type: paper
