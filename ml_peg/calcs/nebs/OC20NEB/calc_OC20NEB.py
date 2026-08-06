@@ -22,7 +22,7 @@ S3_KEY = "inputs/nebs/OC20NEB/OC20NEB.zip"
 S3_FILENAME = "OC20NEB.zip"
 
 
-@pytest.mark.slow
+@pytest.mark.very_slow
 @pytest.mark.parametrize("model_name", MODELS)
 def test_oc20neb(model_name: str) -> None:
     """
