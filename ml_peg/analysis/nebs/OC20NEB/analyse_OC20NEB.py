@@ -14,7 +14,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config, mae, write_struct_info
 from ml_peg.app import APP_ROOT
-from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs import CALCS_ROOT, FMAX
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -34,7 +34,6 @@ METRIC_LABELS = {
     "barrier": "Barrier MAE",
     "fmax": "Unconverged Percentage",
 }
-FMAX = 0.05
 
 
 def _build_neb_profile_figure(
