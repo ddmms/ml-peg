@@ -32,7 +32,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 METRIC_LABELS = {
     "delta_E": "Reaction Energy MAE",
-    "barrier": "Barrier MAE",
+    # "barrier" : "Barrier MAE",
+    "all_barrier": "All Barrier MAE",
+    "converged_barrier": "Converged Barrier MAE",
     "fmax": "Unconverged Percentage",
 }
 
@@ -277,7 +279,7 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             # Store metric points
             metric_values = {
                 "delta_E": (ref_data[reaction]["delta_E"], pred_delta_e),
-                "barrier": (ref_data[reaction]["barrier"], pred_barrier),
+                "all_barrier": (ref_data[reaction]["barrier"], pred_barrier),
                 "fmax": (None, pred_fmax),
             }
 
@@ -291,6 +293,9 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                             "reaction": reaction,
                             "ref": ref_val,
                             "pred": pred_val,
+                            "converged": True
+                            if metric_values["fmax"][1] < FMAX
+                            else False,
                             "data_paths": data_paths,
                             "profile_figure": profile_figure,
                         }
@@ -306,13 +311,27 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                         }
                     )
 
+        # converged_barrier reuses all_barrier's points, filtered to converged runs
+        metrics_data["converged_barrier"]["points"] = [
+            point
+            for point in metrics_data["all_barrier"]["points"]
+            if point["converged"]
+        ]
+        metrics_data["converged_barrier"]["ref"] = [
+            point["ref"] for point in metrics_data["converged_barrier"]["points"]
+        ]
+        metrics_data["converged_barrier"]["pred"] = [
+            point["pred"] for point in metrics_data["converged_barrier"]["points"]
+        ]
+
         # Calculate MAEs
         for metric_key in METRIC_LABELS.keys():
             if metric_key != "fmax":
                 ref_vals = metrics_data[metric_key]["ref"]
                 pred_vals = metrics_data[metric_key]["pred"]
-                if pred_vals:
-                    metrics_data[metric_key]["mae"] = mae(ref_vals, pred_vals)
+
+            if pred_vals:
+                metrics_data[metric_key]["mae"] = mae(ref_vals, pred_vals)
 
         unconverged_percentage = (
             np.sum([fmax > FMAX for fmax in metrics_data["fmax"]["pred"]])
