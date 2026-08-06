@@ -8,9 +8,9 @@ from dash.dash_table import DataTable
 from dash.html import H1, H2, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
-    build_cost_panel,
     build_download_controls,
     build_loading_summary_table,
+    build_speed_panel,
     build_summary_table,
     build_weight_components,
 )
@@ -315,7 +315,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 },
             ),
             *summary_block,
-            build_cost_panel(framework_view["speeds"]),
+            build_speed_panel(framework_view["speeds"]),
             *sections,
         ]
     )

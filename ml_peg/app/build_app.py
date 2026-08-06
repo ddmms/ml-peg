@@ -27,12 +27,12 @@ from ml_peg.app.filters import (
     register_element_filter_callbacks,
 )
 from ml_peg.app.utils.build_components import (
-    build_cost_panel,
     build_download_controls,
     build_faqs,
     build_footer,
     build_loading_summary_table,
     build_page_loading_spinner,
+    build_speed_panel,
     build_summary_table,
     build_weight_components,
 )
@@ -1171,7 +1171,7 @@ def build_nav(
                         if combined_framework_table is not None
                         else []
                     ),
-                    build_cost_panel(benchmark_speeds, title_font_size="32px"),
+                    build_speed_panel(benchmark_speeds, title_font_size="32px"),
                     build_faqs(),
                 ]
             ), sidebar_children

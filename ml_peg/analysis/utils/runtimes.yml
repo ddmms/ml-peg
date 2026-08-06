@@ -1,4 +1,4 @@
-# Runtime per benchmark and model, in minutes.
+# Maintainer reference runtimes per benchmark and model, in minutes.
 # Blank entries are ignored.
 # Keys match directory names under ml_peg/calcs/.
 
