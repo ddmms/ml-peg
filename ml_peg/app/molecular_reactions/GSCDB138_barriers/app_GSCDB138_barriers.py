@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
-
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.gscdb138 import GSCDB138BenchmarkApp
 
@@ -47,15 +45,3 @@ def get_app() -> GSCDB138BenchmarkApp:
         data_path=DATA_PATH,
         datasets=DATASETS,
     )
-
-
-if __name__ == "__main__":
-    from ml_peg.app import APP_ROOT
-
-    full_app = Dash(__name__, assets_folder=(APP_ROOT / "data"))
-
-    gscdb_app = get_app()
-    full_app.layout = gscdb_app.layout
-    gscdb_app.register_callbacks()
-
-    full_app.run(port=8052, debug=True)

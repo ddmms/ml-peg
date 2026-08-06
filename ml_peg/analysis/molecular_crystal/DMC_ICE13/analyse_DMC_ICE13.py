@@ -165,6 +165,7 @@ def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     return get_metrics(lattice_energies)
 
 
+@pytest.mark.framework("mace-multihead")
 def test_dmc_ice13(metrics: dict[str, dict]) -> None:
     """
     Run DMC-ICE13 test.
