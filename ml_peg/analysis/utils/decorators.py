@@ -446,14 +446,12 @@ def plot_hist(
 
                 # Decide colour of each bar
                 colours = []
-                for centre in centres:
-                    if good is not None and bad is not None:
-                        if good <= centre <= bad:
-                            colours.append("#276419")  # Green
-                        else:
-                            colours.append("#D73027")  # Red
-                    else:
-                        colours.append("#276419")
+                if good is None or bad is None:
+                    colours = ["#276419"] * len(centres)
+                else:
+                    colours = [
+                        "#276419" if good <= c <= bad else "#D73027" for c in centres
+                    ]
 
                 fig.add_trace(
                     go.Bar(
