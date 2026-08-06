@@ -56,14 +56,16 @@ def get_volscan_results(
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     densities = {"ref": []} | {mlip: [] for mlip in MODELS}
 
-    for model in results.keys():
+    for model in results:
         if model == "ref":
             configs = read(REF_PATH / f"{conf_type.lower()}_VS_PBED3.xyz", ":")
 
         else:
-            configs = read(
-                CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.xyz", ":"
-            )
+            model_path = CALC_PATH / model / f"{conf_type.lower()}_VS_{model}_D3.xyz"
+            if not model_path.exists():
+                continue
+
+            configs = read(model_path, ":")
             structs_dir = OUT_PATH / model
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{model}-{conf_type.lower()}-volscan.extxyz", configs)
@@ -131,9 +133,12 @@ def get_volscan_rmses() -> dict[str, dict]:
     for conf_type in conf_types:
         results = get_volscan_results(conf_type)
         for model in MODELS:
-            model_rmse = rmse(results["ref"][1], results[model][1])
-            volscan_rmse[conf_type][model] = model_rmse
-            plot_volscans(conf_type, model, results)
+            try:
+                model_rmse = rmse(results["ref"][1], results[model][1])
+                volscan_rmse[conf_type][model] = model_rmse
+                plot_volscans(conf_type, model, results)
+            except IndexError:
+                volscan_rmse[conf_type][model] = None
 
     return volscan_rmse
 
