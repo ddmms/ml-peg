@@ -16,20 +16,13 @@ from ml_peg.analysis.utils.decorators import (
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-REF_PATH = (
-    download_s3_data(
-        key="inputs/electrolytes/inter_intra/inter_intra.zip",
-        filename="inter_intra.zip",
-    )
-    / "inter_intra"
-)
 CALC_PATH = CALCS_ROOT / "electrolytes" / "LIB_electrolyte_inter_intra" / "outputs"
+REF_PATH = CALC_PATH / "ref"
 OUT_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
