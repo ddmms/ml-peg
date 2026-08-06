@@ -258,6 +258,7 @@ def equation_of_state(
     return structures
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_equation_of_state(mlip: tuple[str, Any]) -> None:
     """

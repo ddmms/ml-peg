@@ -22,6 +22,7 @@ DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_surface_barrier(mlip: tuple[str, Any]) -> None:
     """

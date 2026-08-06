@@ -208,6 +208,7 @@ def build_project(repro: bool = False) -> None:
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 def test_oc157():
     """Run OC157 benchmark via pytest."""
     build_project(repro=True)

@@ -99,7 +99,7 @@ def _ref_forces(atoms: Atoms) -> np.ndarray:
     return np.asarray(atoms.arrays["ref_forces"], dtype=float)
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_si_defects(mlip: tuple[str, Any]) -> None:
     """
