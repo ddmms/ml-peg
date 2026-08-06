@@ -237,6 +237,7 @@ def load_models(
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                 )
             case _:
                 loaded_models[name] = GenericASECalc(
