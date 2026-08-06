@@ -18,7 +18,6 @@ import yaml
 from ml_peg.analysis.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
-    load_runtimes,
     summarise_speeds,
 )
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
@@ -1225,50 +1224,11 @@ def build_speed_badge(speed: str | None) -> Component | None:
     )
 
 
-def _format_duration(minutes: float) -> str:
-    """
-    Format a duration in minutes as a short human-readable string.
-
-    Parameters
-    ----------
-    minutes
-        Duration in minutes.
-
-    Returns
-    -------
-    str
-        Duration using minutes, hours and days.
-    """
-    if 0 < minutes < 1:
-        return "1 min"
-
-    rounded_minutes = round(minutes)
-    if rounded_minutes < 60:
-        return f"{rounded_minutes} min"
-
-    hours, remaining_minutes = divmod(rounded_minutes, 60)
-    hour_text = f"{hours} hour{'s' if hours != 1 else ''}"
-    if hours < 24:
-        if remaining_minutes:
-            return f"{hour_text} {remaining_minutes} min"
-        return hour_text
-
-    rounded_hours = round(minutes / 60)
-    days, remaining_hours = divmod(rounded_hours, 24)
-    day_text = f"{days} day{'s' if days != 1 else ''}"
-    if remaining_hours:
-        return f"{day_text} {remaining_hours} hour{'s' if remaining_hours != 1 else ''}"
-    return day_text
-
-
-def build_cost_panel(
+def build_speed_panel(
     speeds: dict[str, str | None], title_font_size: str | None = None
 ) -> Div:
     """
-    Build the panel describing what a set of benchmarks costs to run.
-
-    Runtime totals include only benchmarks recorded in ``runtimes.yml``. Missing
-    runtimes are omitted.
+    Build a panel summarising benchmark speed classifications.
 
     Parameters
     ----------
@@ -1281,18 +1241,9 @@ def build_cost_panel(
     Returns
     -------
     Div
-        Panel listing benchmark counts and cumulative runtimes per model.
+        Panel listing benchmark counts and typical runtime ranges.
     """
     counts = summarise_speeds(speeds.values())
-    provenance, measured = load_runtimes()
-    runtimes = {
-        level: sum(
-            measured[key]
-            for key, speed in speeds.items()
-            if speed == level and key in measured
-        )
-        for level in SPEED_ORDER
-    }
 
     row_heading_style = {
         "fontSize": "12px",
@@ -1312,101 +1263,57 @@ def build_cost_panel(
         "textAlign": "center",
         "whiteSpace": "nowrap",
     }
-    panel_contents = [
-        Div(
-            html.Table(
-                [
-                    html.Tr(
-                        [html.Th("Test speed", style=row_heading_style)]
-                        + [
-                            html.Th(
-                                SPEED_LEVELS[level]["label"],
-                                style=speed_heading_style,
-                            )
-                            for level in SPEED_ORDER
-                        ]
-                    ),
-                    html.Tr(
-                        [html.Th("Typical runtime per test", style=row_heading_style)]
-                        + [
-                            html.Td(
-                                SPEED_LEVELS[level]["runtime"],
-                                style={
-                                    "fontSize": "12px",
-                                    "color": "#6c757d",
-                                    "padding": "6px 12px",
-                                    "textAlign": "center",
-                                    "whiteSpace": "nowrap",
-                                },
-                            )
-                            for level in SPEED_ORDER
-                        ]
-                    ),
-                    html.Tr(
-                        [html.Th("Number of tests", style=row_heading_style)]
-                        + [
-                            html.Td(
-                                str(counts.get(level, 0)),
-                                style={
-                                    "fontSize": "26px",
-                                    "fontWeight": "700",
-                                    "color": "#212529",
-                                    "lineHeight": "1.1",
-                                    "padding": "6px 12px",
-                                    "textAlign": "center",
-                                },
-                            )
-                            for level in SPEED_ORDER
-                        ]
-                    ),
-                    html.Tr(
-                        [html.Th("Total runtime", style=row_heading_style)]
-                        + [
-                            html.Td(
-                                _format_duration(runtimes[level])
-                                if runtimes[level]
-                                else "",
-                                style={
-                                    "fontSize": "13px",
-                                    "fontWeight": "600",
-                                    "color": "#212529",
-                                    "padding": "6px 12px",
-                                    "textAlign": "center",
-                                    "whiteSpace": "nowrap",
-                                },
-                            )
-                            for level in SPEED_ORDER
-                        ]
-                    ),
-                ],
-                style={"borderCollapse": "collapse"},
-            ),
-            style={"overflowX": "auto"},
-        )
-    ]
-    total_runtime = sum(runtimes.values())
-    if total_runtime:
-        model = provenance.get("model", "mace-mp-0a")
-        device = provenance.get("device")
-        timing_note = f"Timings are for {model}"
-        if device:
-            timing_note += f" on {device}"
-        timing_note += ". Other models and devices may be faster or slower."
-        panel_contents.append(
-            Div(
-                timing_note,
-                style={
-                    "fontSize": "12px",
-                    "color": "#6c757d",
-                    "marginTop": "14px",
-                    "paddingTop": "14px",
-                    "borderTop": "1px solid #e2e8f0",
-                    "width": "100%",
-                    "boxSizing": "border-box",
-                    "lineHeight": "1.5",
-                },
-            )
-        )
+    panel_contents = Div(
+        html.Table(
+            [
+                html.Tr(
+                    [html.Th("Test speed", style=row_heading_style)]
+                    + [
+                        html.Th(
+                            SPEED_LEVELS[level]["label"],
+                            style=speed_heading_style,
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+                html.Tr(
+                    [html.Th("Typical runtime per test", style=row_heading_style)]
+                    + [
+                        html.Td(
+                            SPEED_LEVELS[level]["runtime"],
+                            style={
+                                "fontSize": "12px",
+                                "color": "#6c757d",
+                                "padding": "6px 12px",
+                                "textAlign": "center",
+                                "whiteSpace": "nowrap",
+                            },
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+                html.Tr(
+                    [html.Th("Number of tests", style=row_heading_style)]
+                    + [
+                        html.Td(
+                            str(counts.get(level, 0)),
+                            style={
+                                "fontSize": "26px",
+                                "fontWeight": "700",
+                                "color": "#212529",
+                                "lineHeight": "1.1",
+                                "padding": "6px 12px",
+                                "textAlign": "center",
+                            },
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+            ],
+            style={"borderCollapse": "collapse"},
+        ),
+        style={"overflowX": "auto"},
+    )
 
     return Div(
         [

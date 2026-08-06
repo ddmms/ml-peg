@@ -86,7 +86,7 @@ include ``slow`` ones, ``--run-very-slow`` to include ``very_slow`` ones, and
 To run a single tier rather than adding to the default selection, use
 ``--fast-only`` or ``--medium-only``.
 
-The markers are also the source of the cost badge shown next to each benchmark
+The markers are also the source of the speed badge shown next to each benchmark
 in the app. Where a benchmark has tests at more than one level, the badge shows
 the slowest, since that reflects the cost of running the whole benchmark.
 
@@ -94,8 +94,9 @@ the slowest, since that reflects the cost of running the whole benchmark.
 Recording reference runtimes (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These optional measurements provide extra cost information in the app. They are
-not required when running benchmarks. To record one:
+Maintainers can optionally record runtimes to help review speed-marker
+assignments. These measurements are not shown in the app and are not required
+when running benchmarks. To record one:
 
 .. code-block:: bash
 
@@ -105,8 +106,8 @@ not required when running benchmarks. To record one:
         --models mace-mp-0a \
         --timings-out /tmp/ml-peg-mace-mp-0a-runtimes.yml
 
-The published reference timings use ``mace-mp-0a``. Another model can be timed
-by selecting it with ``--models`` and writing to a separate file. Add
+The reference timings use ``mace-mp-0a``. Another model can be timed by
+selecting it with ``--models`` and writing to a separate file. Add
 ``--run-slow``, ``--run-very-slow`` or ``--run-multi-day`` when needed. After a
 successful reference run, copy the result and GPU name into
 ``ml_peg/analysis/utils/runtimes.yml``.
