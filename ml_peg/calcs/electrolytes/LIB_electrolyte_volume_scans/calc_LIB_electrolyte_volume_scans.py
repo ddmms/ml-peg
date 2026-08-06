@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
+import shutil
 from typing import Any
 
 from ase.io import read, write
@@ -35,7 +36,9 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
     calc = model.add_d3_calculator(calc)
 
     out_dir = OUT_PATH / model_name
+    ref_dir = OUT_PATH / "ref"
     out_dir.mkdir(parents=True, exist_ok=True)
+    ref_dir.mkdir(parents=True, exist_ok=True)
 
     data_path = (
         download_s3_data(
@@ -48,6 +51,9 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
     structure_paths = data_path.glob("*.xyz")
 
     for struct_path in tqdm(structure_paths, total=2):
+        # Copy structure files to output directory
+        shutil.copy(struct_path, ref_dir / struct_path.name)
+
         file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
