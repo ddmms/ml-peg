@@ -159,7 +159,7 @@ RUNTIMES_FILE = Path(__file__).with_name("runtimes.yml")
 
 def load_runtimes() -> tuple[dict[str, str], dict[str, float]]:
     """
-    Load measured benchmark runtimes from ``runtimes.yml``.
+    Load maintainer reference runtimes from ``runtimes.yml``.
 
     Benchmarks left blank in the file are ignored.
 
