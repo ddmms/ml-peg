@@ -12,9 +12,10 @@ import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config, mae, write_struct_info
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
-from ml_peg.calcs import CALCS_ROOT, FMAX
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.nebs.OC20NEB.calc_OC20NEB import FMAX
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -246,6 +247,8 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
         model_assets_dir.mkdir(parents=True, exist_ok=True)
 
         for reaction in ref_data.keys():
+            if not (CALC_PATH / model_name / f"{reaction}-neb-results.dat").is_file():
+                continue
             with open(
                 CALC_PATH / model_name / f"{reaction}-neb-results.dat", encoding="utf8"
             ) as f:
@@ -308,12 +311,15 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
             if metric_key != "fmax":
                 ref_vals = metrics_data[metric_key]["ref"]
                 pred_vals = metrics_data[metric_key]["pred"]
-                metrics_data[metric_key]["mae"] = mae(ref_vals, pred_vals)
+                if pred_vals:
+                    metrics_data[metric_key]["mae"] = mae(ref_vals, pred_vals)
 
         unconverged_percentage = (
             np.sum([fmax > FMAX for fmax in metrics_data["fmax"]["pred"]])
             / len(metrics_data["fmax"]["pred"])
             * 100
+            if metrics_data["fmax"]["pred"]
+            else np.nan
         )
 
         stats[model_name] = {
@@ -412,8 +418,10 @@ def test_oc20neb(metrics, interactive_dataset) -> None:
     interactive_dataset
         Scatter metadata produced by the ``interactive_dataset`` fixture.
     """
-    write_struct_info(
-        data_path=list(CALC_PATH.glob("mock/*-neb-band.extxyz")),
+    get_struct_info(
+        calc_path=CALC_PATH,
         out_path=OUT_PATH,
+        glob_pattern="*-neb-band.extxyz",
         index=0,
+        write_structs=False,
     )
