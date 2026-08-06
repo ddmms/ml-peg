@@ -5,10 +5,10 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
-    battery_electrolyte
     bulk_crystal
     conformers
     defect
+    electrolytes
     f_block
     molecular
     molecular_crystal
