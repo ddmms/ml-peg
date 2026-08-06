@@ -39,10 +39,10 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            key="inputs/electrolytes/LIB_electrolyte_volume_scans/volume_scans.zip",
-            filename="volume_scans.zip",
+            key="inputs/electrolytes/LIB_electrolyte_volume_scans/LIB_electrolyte_volume_scans.zip",
+            filename="LIB_electrolyte_volume_scans.zip",
         )
-        / "volume_scans"
+        / "LIB_electrolyte_volume_scans"
     )
 
     structure_paths = data_path.glob("*.xyz")
