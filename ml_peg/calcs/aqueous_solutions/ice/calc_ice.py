@@ -22,7 +22,10 @@ OUT_PATH = Path(__file__).parent / "outputs"
 # MD settings
 TEMPERATURE = 250  # Kelvin
 FRICTION = 0.05  # Langevin friction coefficient
-TIMESTEP = 0.5  # fs, matches the frame spacing the reference was built with
+TIMESTEP = 0.5  # fs, MD integration step
+# Frames are written every TRAJ_EVERY steps, so the stored spacing is
+# TIMESTEP * TRAJ_EVERY fs -- this must match the reference's spacing.
+TRAJ_EVERY = 4
 EQUIL_STEPS = 50000  # equilibration steps (not recorded)
 RUN_STEPS = 600000  # production steps (recorded)
 
@@ -73,7 +76,7 @@ def test_ice(mlip: tuple[str, Any]) -> None:
         timestep=TIMESTEP,
         friction=FRICTION,
         stats_every=100,
-        traj_every=1,
+        traj_every=TRAJ_EVERY,
         traj_start=EQUIL_STEPS,
         file_prefix=write_dir / "md",
         write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
