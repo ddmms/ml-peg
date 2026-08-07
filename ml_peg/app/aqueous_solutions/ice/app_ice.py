@@ -177,14 +177,6 @@ def get_app() -> IceApp:
     """
     extra_components = [
         Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-        Div(
-            id=f"{BENCHMARK_NAME}-figure-bar",
-            children="Click on a metric to see bar plot.",
-        ),
-        Div(
-            id=f"{BENCHMARK_NAME}-figure-plot-container",
-            children="Click on a bar to see comparison.",
-        ),
     ]
     for model_name in MODELS:
         extra_components.append(Div(id=f"{BENCHMARK_NAME}-figure-bar-{model_name}"))

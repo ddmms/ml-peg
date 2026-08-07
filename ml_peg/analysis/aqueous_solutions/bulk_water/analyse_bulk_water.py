@@ -9,7 +9,11 @@ import pytest
 from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
 from ml_peg.analysis.utils.decorators import build_table, cell_to_bar
-from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -17,6 +21,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "aqueous_solutions" / "bulk_water" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "aqueous_solutions" / "bulk_water"
 RDF_CURVE_PATH = OUT_PATH / "rdf_curves"
@@ -337,6 +342,7 @@ def build_vacf_interactive_data(
     filename=OUT_PATH / "bulk_water_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     mean_rdf_score: dict[str, float],

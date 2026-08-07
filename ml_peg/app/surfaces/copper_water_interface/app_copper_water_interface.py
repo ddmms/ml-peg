@@ -251,17 +251,8 @@ def get_app() -> CopperWaterInterfaceApp:
             id=f"{BENCHMARK_NAME}-figure-placeholder-dipole",
             children=Div(TABLE_HINT, style=INSTRUCTION_STYLE),
         ),
-        Div(
-            id=f"{BENCHMARK_NAME}-figure-bar",
-            children="Click on a metric to see bar plot.",
-        ),
-        Div(
-            id=f"{BENCHMARK_NAME}-figure-plot-container",
-            children="Click on a bar to see comparison.",
-        ),
     ]
     for model_name in MODELS:
-        extra_components.append(Div(id=f"{BENCHMARK_NAME}-figure-bar-{model_name}"))
         extra_components.append(Div(id=f"{BENCHMARK_NAME}-figure-bar-{model_name}"))
         extra_components.append(
             Div(id=f"{BENCHMARK_NAME}-figure-plot-container-{model_name}")

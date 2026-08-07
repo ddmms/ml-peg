@@ -21,7 +21,11 @@ from ml_peg.analysis.utils.dipoles import (
     get_z_dipoles_average_integrated_profile,
     get_z_dipoles_frames,
 )
-from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -29,6 +33,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "surfaces" / "copper_water_interface" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "surfaces" / "copper_water_interface"
 RDF_CURVE_PATH = OUT_PATH / "rdf_curves"
@@ -750,6 +755,7 @@ def build_dipole_profile_plot(
     filename=OUT_PATH / "copper_water_interface_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     mean_rdf_score: dict[str, float],
