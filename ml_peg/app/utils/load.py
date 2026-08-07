@@ -15,9 +15,11 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
+    clean_table_data,
     clean_thresholds,
     clean_weights,
     is_numeric_column,
+    none_to_nan,
     sig_fig_format,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
@@ -53,6 +55,11 @@ def rebuild_table(
         table_json = json.load(f)
 
     data = table_json["data"]
+    # Remove values greater than int64 limits
+    clean_table_data(data)
+    # Replace None scores with NaN
+    none_to_nan(data)
+
     columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -77,18 +84,18 @@ def rebuild_table(
         col["id"] for col in columns if col.get("id") not in {"MLIP", "Score", "id"}
     ]
 
-    # Add missing models with None for all metrics
+    # Add missing models with NaN for all metrics
     for original_model in all_registry_models:
         # Convert original model name (from registry) to display name (for table)
         display_name = original_to_display.get(original_model, original_model)
         if display_name not in existing_display_names:
-            # Create row with None for all metrics (will appear grayed out) while
+            # Create row with NaN for all metrics (will appear hashed out) while
             # storing the original model name in ``id`` so callbacks have a stable key
             new_row = {"MLIP": display_name, "id": original_model}
             for metric in metric_columns:
-                new_row[metric] = None
-            # Score will be None (calculated later by calc_table_scores)
-            new_row["Score"] = None
+                new_row[metric] = "NaN"
+            # Score will be NaN (calculated later by calc_table_scores)
+            new_row["Score"] = "NaN"
             data.append(new_row)
 
             # Update model_name_map if this is a new model not in original JSON
@@ -129,7 +136,7 @@ def rebuild_table(
 
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
-    column_widths = calculate_column_widths(width_labels)
+    column_widths = calculate_column_widths(width_labels, min_metric_width=170)
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
@@ -202,9 +209,7 @@ def rebuild_table(
             }
         ],
         sort_action="native",
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
+        fill_width=False,
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -220,6 +225,7 @@ def rebuild_table(
     table.model_configs = model_configs
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
+    table.column_widths = column_widths
 
     return table
 

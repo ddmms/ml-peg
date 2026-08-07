@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -15,6 +14,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#bmimcl-rdf"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular" / "BMIMCl_RDF"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class BMIMClRDFApp(BaseApp):
@@ -54,13 +54,5 @@ def get_app() -> BMIMClRDFApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    bmimcl_app = get_app()
-    full_app.layout = bmimcl_app.layout
-    bmimcl_app.register_callbacks()
-
-    full_app.run(port=8054, debug=True)

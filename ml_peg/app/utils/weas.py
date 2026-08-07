@@ -38,6 +38,28 @@ def generate_weas_html(
         frame = index
         atoms_txt = "atoms"
 
+    # In traj mode, report the current frame to the parent page on every change
+    # (play, step, slider) so a linked plot can highlight the matching point.
+    # WEAS has no frame-change event, so poll editor.avr.currentFrame via rAF.
+    frame_reporter = (
+        """
+        let __mlPegLastFrame = editor.avr.currentFrame;
+        function __mlPegReportFrame() {
+            const f = editor.avr.currentFrame;
+            if (f !== __mlPegLastFrame) {
+                __mlPegLastFrame = f;
+                window.parent.postMessage(
+                    {type: "ml-peg-weas-frame", frame: f}, "*"
+                );
+            }
+            requestAnimationFrame(__mlPegReportFrame);
+        }
+        requestAnimationFrame(__mlPegReportFrame);
+        """
+        if mode == "traj"
+        else ""
+    )
+
     return f"""
     <!doctype html>
     <html lang="en">
@@ -65,13 +87,23 @@ def generate_weas_html(
         import {{ WEAS, parseXYZ, parseCIF, parseCube, parseXSF }} from 'https://unpkg.com/weas/dist/index.mjs';
         const domElement = document.getElementById("viewer");
 
-        // hide the buttons
+        // WEAS calls download/upload "export"/"import" in the browser bundle.
         const guiConfig = {{
             buttons: {{
-                enabled: false,
+                enabled: true,
+                fullscreen: true,
+                undo: false,
+                redo: false,
+                export: true,
+                import: false,
+                measurement: false,
             }},
         }};
         const editor = new WEAS({{ domElement, viewerConfig: {{ _modelStyle: 1 }}, guiConfig}});
+        const originalExportImage = editor.tjs.exportImage.bind(editor.tjs);
+        editor.tjs.exportImage = function(resolution = 3) {{
+            return originalExportImage(resolution);
+        }};
 
         let structureData;
         const filename = "{str(filename)}";
@@ -106,7 +138,7 @@ def generate_weas_html(
 
         editor.avr.currentFrame = {frame};
         editor.render();
-
+        {frame_reporter}
         </script>
     </body>
     </html>

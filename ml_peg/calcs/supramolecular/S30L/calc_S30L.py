@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from pathlib import Path
-import warnings
+from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import mlipx
 from mlipx.abc import NodeWithCalculator
+import numpy as np
+import pytest
 from tqdm import tqdm
 import zntrack
 
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -59,9 +61,7 @@ class S30LBenchmark(zntrack.Node):
                 try:
                     return int(f.read_text().strip())
                 except ValueError:
-                    warnings.warn(
-                        f"Invalid charge in {f} - assuming neutral.", stacklevel=2
-                    )
+                    warn(f"Invalid charge in {f} - assuming neutral.", stacklevel=2)
         return 0
 
     def read_atoms(self, folder: Path, ident: str) -> Atoms:
@@ -134,12 +134,16 @@ class S30LBenchmark(zntrack.Node):
             Interaction energy in eV.
         """
         frags["complex"].calc = calc
-        e_complex = frags["complex"].get_potential_energy()
         frags["host"].calc = calc
-        e_host = frags["host"].get_potential_energy()
         frags["guest"].calc = calc
-        e_guest = frags["guest"].get_potential_energy()
-        return e_complex - e_host - e_guest
+        try:
+            e_complex = frags["complex"].get_potential_energy()
+            e_host = frags["host"].get_potential_energy()
+            e_guest = frags["guest"].get_potential_energy()
+            return e_complex - e_host - e_guest
+        except Exception as exc:
+            warn(f"Error calculating energies: {exc}", stacklevel=2)
+            return np.nan
 
     @staticmethod
     def parse_references(path: Path) -> dict[int, float]:
@@ -218,17 +222,15 @@ class S30LBenchmark(zntrack.Node):
 
                 complex_atoms_list.append(complex_atoms)
 
-            except Exception as e:
-                print(f"Error processing system {idx}: {e}")
+            except Exception as exc:
+                warn(f"Error processing system {idx}: {exc}", stacklevel=2)
                 continue
 
         return complex_atoms_list
 
     def run(self):
         """Run S30L benchmark calculations."""
-        # Use double precision
-        self.model.default_dtype = "float64"
-        calc = self.model.get_calculator()
+        calc = self.model.get_calculator(precision="high")
 
         # Add D3 calculator for this test
         calc = self.model.add_d3_calculator(calc)
@@ -284,6 +286,7 @@ def build_project(repro: bool = False) -> None:
         project.build()
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_s30l():
     """Run S30L benchmark via pytest."""
     build_project(repro=True)

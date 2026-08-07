@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -12,14 +11,15 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "SBH17 chemisorption barriers"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#sbh17"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "SBH17"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class SBH17App(BaseApp):
@@ -72,17 +72,5 @@ def get_app() -> SBH17App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    SBH17_app = get_app()
-    full_app.layout = SBH17_app.layout
-    SBH17_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8055, debug=True)

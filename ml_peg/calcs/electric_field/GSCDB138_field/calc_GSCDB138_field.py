@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 
 from ml_peg.calcs.utils.gscdb138 import run_gscdb138
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -23,6 +23,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 DATASETS = ["Dip146", "HR46", "OEEF", "Pol130", "T144", "V30"]
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_gscdb138(mlip: tuple[str, Any]) -> None:
     """

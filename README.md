@@ -6,6 +6,7 @@
 [![Docs status][docs-badge]][docs-link]
 [![License][license-badge]][license-link]
 [![DOI][doi-badge]][doi-link]
+[![Ask DeepWiki][deepwiki-badge]][deepwiki-link]
 
 🔗 See our live guide: https://ml-peg.stfc.ac.uk
 
@@ -64,6 +65,47 @@ pytest -v  # Discover and run all tests
 
 Please refer to the [online documentation](https://ddmms.github.io/ml-peg/developer_guide/index.html)
 for information about contributing new benchmarks and models.
+
+
+### Command-line interface
+
+To help run calculations, analysis, and the application, we provide the `ml_peg`
+command line tool, which is installed with the package. This provides the following
+commands:
+
+```shell
+ml_peg app
+ml_peg calc
+ml_peg analyse
+ml_peg download
+ml_peg list
+```
+
+For example, to run the X23 test with mace-mp-0a and orb-v3-consv-inf-omat, you can run:
+
+```shell
+ml_peg calc --test X23 --models mace-mp-0a,orb-v3-consv-inf-omat
+```
+
+A description of each subcommand, as well as valid options, can be listed using the
+`--help` option. For example:
+
+```shell
+ml_peg calc --help
+```
+
+The `ml_peg list` command provides a further set of subcommands:
+
+```shell
+ml_peg list calcs
+ml_peg list analysis
+ml_peg list app
+ml_peg list models
+```
+
+which list the available tests and categories that may be run for `ml_peg calc`,
+`ml_peg analyse` and `ml_peg app`, and the MLIPs that these can be run for.
+
 
 ### Tutorials
 
@@ -145,3 +187,5 @@ The app should now be accessible at http://localhost:8050.
 [license-link]: https://opensource.org/license/gpl-3-0
 [doi-link]: https://doi.org/10.5281/zenodo.16904444
 [doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.16904444.svg
+[deepwiki-link]: https://deepwiki.com/ddmms/ml-peg
+[deepwiki-badge]: https://deepwiki.com/badge.svg

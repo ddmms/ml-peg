@@ -9,15 +9,17 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -112,6 +114,7 @@ def get_atoms(data_path, complex_id: int):
     return read(data_path / str(complex_id) / "struc.xyz")
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_3dtmv(mlip: tuple[str, Any]) -> None:
     """
@@ -123,9 +126,7 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    # Use double precision
-    model.default_dtype = "float64"
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)
 
@@ -142,13 +143,21 @@ def test_3dtmv(mlip: tuple[str, Any]) -> None:
         atoms_ox.info["charge"] = MOLECULAR_DATA[complex_id]["charge_ox"]
         atoms_ox.info["spin"] = MOLECULAR_DATA[complex_id]["mult_ox"]
         atoms_ox.calc = copy(calc)
-        oxidized_energy = atoms_ox.get_potential_energy()
+        try:
+            oxidized_energy = atoms_ox.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {complex_id}: {exc}", stacklevel=2)
+            oxidized_energy = np.nan
 
         atoms_in = atoms.copy()
         atoms_in.info["charge"] = MOLECULAR_DATA[complex_id]["charge_in"]
         atoms_in.info["spin"] = MOLECULAR_DATA[complex_id]["mult_in"]
         atoms_in.calc = copy(calc)
-        initial_energy = atoms_in.get_potential_energy()
+        try:
+            initial_energy = atoms_in.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating energy for {complex_id}: {exc}", stacklevel=2)
+            initial_energy = np.nan
 
         model_ion_energy = oxidized_energy - initial_energy
 

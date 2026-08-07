@@ -1,0 +1,13 @@
+/* Compact, underline-free model docs-link column on the summary table. */
+td[data-dash-column="link"] {
+    font-size: 14px;
+    padding: 0;
+}
+td[data-dash-column="link"] .dash-cell-value p {
+    margin: 0;
+}
+td[data-dash-column="link"] a {
+    text-decoration: none;
+    display: inline-block;
+    padding: 5px 8px;
+}
