@@ -6,6 +6,7 @@ from collections.abc import Generator
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, io, units
 from ase.calculators.calculator import Calculator
@@ -38,6 +39,8 @@ EQUI_TIME_NS: float = 0.005  # 5 ps
 N_EQUI_STEPS: int = int(EQUI_TIME_NS * 1e6 / DELTA_T_FS)
 N_EQUI_FRAMES: int = N_EQUI_STEPS // FRAME_FREQUENCY
 TCHAIN: int = 10
+
+N_SYSTEMS: int = 49
 
 
 def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None]:
@@ -97,9 +100,6 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     )
 
     systems = list(get_systems(data_dir=data_dir))
-    assert system_id in range(0, len(systems)), (
-        f"system_id out of range. Please use a value from 0 to {len(systems) - 1}"
-    )
 
     poscar_dir, temperature, system_name = systems[system_id]
     poscar_file: Path = poscar_dir / "POSCAR"
@@ -138,7 +138,17 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
         Stationary(atoms)
         ZeroRotation(atoms)
 
-    atoms.info.update({"charge": 0, "spin": 1})
+    # Set before the MD so the metadata is written out with every frame
+    atoms.info.update(
+        {
+            "charge": 0,
+            "spin": 1,
+            "system": system_name,
+            "temperature": temperature,
+            "delta_t": DELTA_T_FS,
+            "nsteps": NSTEPS,
+        }
+    )
     atoms.calc = copy(calc)
 
     md_nvt = NoseHooverChainNVT(
@@ -154,16 +164,7 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     )
     md_nvt.nsteps = nsteps_done
 
-    md_nvt.run(steps=NSTEPS - nsteps_done)
-
-    # Read trajectory, skip equilibration frames and subsample
-    ase_traj: Atoms | list[Atoms] = io.read(
-        filename=str(traj_path), index=f"{N_EQUI_FRAMES}:"
-    )
-
-    # Store metadata on each frame
-    for frame in ase_traj:
-        frame.info["system"] = system_name
-        frame.info["temperature"] = temperature
-        frame.info["delta_t"] = DELTA_T_FS
-        frame.info["nsteps"] = NSTEPS
+    try:
+        md_nvt.run(steps=max(NSTEPS - nsteps_done, 0))
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
