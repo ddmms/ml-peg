@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import itertools
 import math
-import os
 from pathlib import Path
 import pickle
 
@@ -112,8 +111,8 @@ def get_rmax_from_cell(lattice_vectors: np.ndarray) -> float:
     for n in itertools.product(range(-2, 2 + 1), repeat=3):
         if n == (0, 0, 0):
             continue
-        R = np.array(n) @ lattice_vectors
-        dist = np.linalg.norm(R)
+        lattice_image = np.array(n) @ lattice_vectors
+        dist = np.linalg.norm(lattice_image)
         if dist < min_dist:
             min_dist = dist
     return min_dist * 0.5
@@ -163,7 +162,7 @@ def compute_rdf(
     Returns
     -------
     tuple[list, list]
-        ``(bin_centres, rdf_values)``
+        Bin centres and RDF values, as ``(bin_centres, rdf_values)``.
     """
     nbins = int(np.ceil(rmax / bin_size))
     edges = np.arange(0.0, nbins + 1) * bin_size
@@ -235,10 +234,9 @@ def compute_rdfs_all(
     return rdfs
 
 
-def metric_pnas(
-    rdf_ref: dict, model_rdf: dict
-) -> dict[str, float]:
-    """Compute normalised MAEs relative to reference RDF data.
+def metric_pnas(rdf_ref: dict, model_rdf: dict) -> dict[str, float]:
+    """
+    Compute normalised MAEs relative to reference RDF data.
 
     Given two sets of RDFs returns the mean absolute error
     per element pair.
@@ -268,15 +266,14 @@ def metric_pnas(
         ref_vals = np.asarray(data[1][:-1])
         mod_vals = np.asarray(model_rdf[name][1][:-1])
         diff = ref_vals - mod_vals
-        mae_val = np.sum(np.absolute(diff)) / (
-            np.sum(ref_vals) + np.sum(mod_vals)
-        )
+        mae_val = np.sum(np.absolute(diff)) / (np.sum(ref_vals) + np.sum(mod_vals))
         error[name] = float(mae_val)
     return error
 
 
 def compute_rdf_score(g_aimd: dict, g_model: dict) -> float:
-    """Compute RDF similarity score using PNAS metric.
+    """
+    Compute RDF similarity score using PNAS metric.
 
     Returns the minimum ``(1 - error)`` across all element pairs for a
     single system.  A score of 1.0 indicates perfect agreement.
@@ -299,7 +296,8 @@ def compute_rdf_score(g_aimd: dict, g_model: dict) -> float:
 
 
 def load_reference_rdfs() -> dict[str, dict]:
-    """Load AIMD reference RDFs for all systems from ``rdf_aimd.pkl`` files.
+    """
+    Load AIMD reference RDFs for all systems from ``rdf_aimd.pkl`` files.
 
     Extracts the SSEs_data zip (same approach as ``calc_SSEMD.py``) and
     walks the directory tree to find ``rdf_aimd.pkl`` files alongside each
@@ -323,12 +321,10 @@ def load_reference_rdfs() -> dict[str, dict]:
     for pkl_file in sorted(data_dir.rglob("rdf_aimd.pkl")):
         temp_dir = pkl_file.parent
         compound_dir = temp_dir.parent.parent
-        system_name = (
-            f"{compound_dir.name}_{temp_dir.parent.name}_{temp_dir.name}"
-        )
+        system_name = f"{compound_dir.name}_{temp_dir.parent.name}_{temp_dir.name}"
 
         with open(pkl_file, "rb") as f:
-            rdf_data = pickle.load(f)  # noqa: S301
+            rdf_data = pickle.load(f)
 
         ref_rdfs[system_name] = rdf_data
 
@@ -336,7 +332,8 @@ def load_reference_rdfs() -> dict[str, dict]:
 
 
 def compute_model_rdfs(model_name: str) -> dict[str, dict]:
-    """Compute RDFs from a model's MD trajectory outputs.
+    """
+    Compute RDFs from a model's MD trajectory outputs.
 
     Reads the saved ``.traj`` files produced by ``calc_SSEMD.py``, skips
     equilibration frames, subsamples, and computes RDFs for every element
@@ -364,9 +361,6 @@ def compute_model_rdfs(model_name: str) -> dict[str, dict]:
 
         # Read trajectory, skip equilibration and subsample
         ase_traj = io.read(str(traj_file), index=f"{N_EQUI_FRAMES}:")
-
-        # if not ase_traj:
-        #     continue
 
         time_between_frames = DELTA_T_FS * FRAME_FREQUENCY
         mda_traj = ase2mda(ase_traj, time_between_frames)
