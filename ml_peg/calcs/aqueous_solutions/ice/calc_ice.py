@@ -23,8 +23,8 @@ OUT_PATH = Path(__file__).parent / "outputs"
 TEMPERATURE = 250  # Kelvin
 FRICTION = 0.05  # Langevin friction coefficient
 TIMESTEP = 0.5  # fs, matches the frame spacing the reference was built with
-EQUIL_STEPS = 25000  # equilibration steps (not recorded)
-RUN_STEPS = 300000  # production steps (recorded)
+EQUIL_STEPS = 50000  # equilibration steps (not recorded)
+RUN_STEPS = 600000  # production steps (recorded)
 
 
 @pytest.mark.very_slow
