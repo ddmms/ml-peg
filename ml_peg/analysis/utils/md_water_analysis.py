@@ -24,6 +24,9 @@ from ml_peg.analysis.utils import aml_md_analysis as aml
 # ASE writes/reads positions and velocities in Å; mdtraj stores them in nm.
 ANG_TO_NM = 0.1
 
+# Marks a model whose MD raised, so it scores as NaN instead of being dropped.
+FAILED = "failed"
+
 
 def _load_positions(traj_file: Path, topology: str) -> mdt.Trajectory:
     """
@@ -183,6 +186,11 @@ def create_rdfs(
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
         traj_file = model_dir / "md-traj.extxyz"
+        # "md-failed" is written by the calc when MD raised. Flag the model so it
+        # scores NaN, rather than dropping out of the table as if never run.
+        if (model_dir / "md-failed").exists():
+            rdfs[model_name] = FAILED
+            continue
         if not traj_file.exists():
             continue
 
@@ -253,6 +261,11 @@ def create_vdos(
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
         traj_file = model_dir / "md-traj.extxyz"
+        # "md-failed" is written by the calc when MD raised. Flag the model so it
+        # scores NaN, rather than dropping out of the table as if never run.
+        if (model_dir / "md-failed").exists():
+            vdos[model_name] = FAILED
+            continue
         if not traj_file.exists():
             continue
 
@@ -319,6 +332,11 @@ def create_vacf(
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
         traj_file = model_dir / "md-traj.extxyz"
+        # "md-failed" is written by the calc when MD raised. Flag the model so it
+        # scores NaN, rather than dropping out of the table as if never run.
+        if (model_dir / "md-failed").exists():
+            vacf[model_name] = FAILED
+            continue
         if not traj_file.exists():
             continue
 
@@ -372,6 +390,9 @@ def property_scores(
     store_ref = False
     for model_name in models:
         if created[model_name] is None:
+            continue
+        if created[model_name] == FAILED:
+            results[model_name] = [np.nan]
             continue
         errors = errors_fn(created[ref_key(model_name)], created[model_name])
         # Mae is stored per pair in [2] slot of tuple
@@ -462,6 +483,9 @@ def build_bar_data(
 
     for model_name in models:
         if scores.get(model_name) is None or created.get(model_name) is None:
+            continue
+        # Failed runs have no curves to plot; the NaN in the table conveys the failure.
+        if created[model_name] == FAILED:
             continue
 
         model_data = {}
