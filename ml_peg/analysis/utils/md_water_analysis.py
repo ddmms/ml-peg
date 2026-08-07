@@ -506,7 +506,10 @@ def build_bar_data(
                 point_data = {
                     "x_values": error_data[0].tolist(),  # r values
                     "ref": ref_data[pair][1].tolist(),  # reference curve
-                    "pred": model_prop_data[pair][1].tolist(),  # predicted curve
+                    # errors_fn interpolates the model curve onto the reference
+                    # grid and returns diff = ref - interpolated, so recover the
+                    # scored curve rather than the model's own (different) grid.
+                    "pred": (ref_data[pair][1] - error_data[1]).tolist(),
                     "error": error_data[1].tolist(),
                     "ylabel": ylabel,
                     "xlabel": xlabel,  # error array
