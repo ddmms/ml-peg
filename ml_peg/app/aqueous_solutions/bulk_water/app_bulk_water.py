@@ -186,7 +186,6 @@ def get_app() -> BulkWaterApp:
     ]
     for model_name in MODELS:
         extra_components.append(Div(id=f"{BENCHMARK_NAME}-figure-bar-{model_name}"))
-        extra_components.append(Div(id=f"{BENCHMARK_NAME}-figure-bar-{model_name}"))
         extra_components.append(
             Div(id=f"{BENCHMARK_NAME}-figure-plot-container-{model_name}")
         )

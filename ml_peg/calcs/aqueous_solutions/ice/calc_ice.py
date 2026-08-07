@@ -27,6 +27,7 @@ EQUIL_STEPS = 25000  # equilibration steps (not recorded)
 RUN_STEPS = 300000  # production steps (recorded)
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ice(mlip: tuple[str, Any]) -> None:
     """
@@ -42,14 +43,14 @@ def test_ice(mlip: tuple[str, Any]) -> None:
     """
     # Setup calculator with d3 correction
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
     # Get ice benchmark data
     data_dir = (
         download_s3_data(
             filename="ice.zip",
-            key="inputs/aqueous-solutions/ice/ice.zip",
+            key="inputs/aqueous_solutions/ice/ice.zip",
         )
         / "ice"
     )
@@ -81,4 +82,6 @@ def test_ice(mlip: tuple[str, Any]) -> None:
     try:
         md.run()
     except Exception as exc:
-        warn(f"Error during MD: {exc}", stacklevel=2)
+        warn(f"Error running MD: {exc}", stacklevel=2)
+        # Mark the run invalid so analysis skips the partial trajectory.
+        (write_dir / "md-failed").touch()
