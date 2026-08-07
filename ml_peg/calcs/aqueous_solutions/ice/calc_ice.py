@@ -22,7 +22,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 # MD settings
 TEMPERATURE = 250  # Kelvin
 FRICTION = 0.05  # Langevin friction coefficient
-TIMESTEP = 1  # fs
+TIMESTEP = 0.5  # fs, matches the frame spacing the reference was built with
 EQUIL_STEPS = 25000  # equilibration steps (not recorded)
 RUN_STEPS = 300000  # production steps (recorded)
 
