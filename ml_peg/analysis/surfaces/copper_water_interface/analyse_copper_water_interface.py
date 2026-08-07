@@ -30,6 +30,7 @@ from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.surfaces.copper_water_interface.calc_copper_water_interface import (  # noqa: E501
     TIMESTEP,
+    TRAJ_EVERY,
 )
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -192,7 +193,9 @@ def created_vdos() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VDOS for all models.
     """
-    return md.create_vdos(MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH, dt=TIMESTEP)
+    return md.create_vdos(
+        MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+    )
 
 
 @pytest.fixture
@@ -268,6 +271,7 @@ def build_vdos_interactive_data(
         errors_fn=aml.compute_all_errors,
         ref_key=lambda m: "ref",
         xlim=[0, 4000],
+        ylog=True,
     )
 
 
@@ -455,7 +459,9 @@ def created_vacf() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VACF for all models.
     """
-    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, dt=TIMESTEP)
+    return md.create_vacf(
+        MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+    )
 
 
 @pytest.fixture

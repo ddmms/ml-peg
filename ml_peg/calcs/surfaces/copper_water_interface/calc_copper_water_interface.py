@@ -24,7 +24,10 @@ OUT_PATH = Path(__file__).parent / "outputs"
 # MD settings
 TEMPERATURE = 330  # Kelvin
 FRICTION = 0.05  # Langevin friction coefficient
-TIMESTEP = 1  # fs
+TIMESTEP = 1  # fs, MD integration step
+# Frames are written every TRAJ_EVERY steps, so the stored spacing is
+# TIMESTEP * TRAJ_EVERY fs -- this must match the reference's spacing.
+TRAJ_EVERY = 1
 EQUIL_STEPS = 50  # equilibration steps (not recorded)
 RUN_STEPS = 3000  # production steps (recorded)
 
@@ -88,8 +91,8 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
         equil_steps=EQUIL_STEPS,
         timestep=TIMESTEP,
         friction=FRICTION,
-        stats_every=TIMESTEP,
-        traj_every=TIMESTEP,
+        stats_every=100,
+        traj_every=TRAJ_EVERY,
         traj_start=EQUIL_STEPS,
         file_prefix=write_dir / "md",
         write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},

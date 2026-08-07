@@ -451,6 +451,7 @@ def build_bar_data(
     errors_fn: Callable,
     ref_key: Callable,
     xlim: list | None = None,
+    ylog: bool = False,
 ) -> dict:
     """
     Build interactive data structure for a property bar plot.
@@ -478,6 +479,8 @@ def build_bar_data(
         ``created``.
     xlim
         Optional x-axis limits for the per-pair curve. Default is None.
+    ylog
+        Plot the per-pair curve on a log y-axis. Default is False.
 
     Returns
     -------
@@ -524,6 +527,8 @@ def build_bar_data(
                 }
                 if xlim is not None:
                     point_data["xlim"] = xlim
+                if ylog:
+                    point_data["ylog"] = True
 
                 pair_point_list.append(
                     {

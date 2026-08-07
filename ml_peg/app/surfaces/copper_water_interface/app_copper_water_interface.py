@@ -90,6 +90,10 @@ def render_subplot_component(click_data: dict) -> html.Div | None:
         ax1.set_xlim(rdf_data["xlim"])
         ax2.set_xlim(rdf_data["xlim"])
 
+    # Log y-axis for spectra (VDOS); only on ax1, the error curve is signed.
+    if rdf_data.get("ylog"):
+        ax1.set_yscale("log")
+
     # Convert to base64 for display
     buffer = BytesIO()
     plt.tight_layout()
