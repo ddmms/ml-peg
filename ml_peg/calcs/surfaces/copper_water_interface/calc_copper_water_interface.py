@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.constraints import FixAtoms
 from ase.io import read
@@ -28,6 +29,7 @@ EQUIL_STEPS = 50  # equilibration steps (not recorded)
 RUN_STEPS = 3000  # production steps (recorded)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     """
@@ -44,8 +46,8 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     """
     # Setup calculator with d3 correction
     model_name, model = mlip
-    calc = model.get_calculator()
-    # calc = model.add_d3_calculator(calc)
+    calc = model.get_calculator(precision="low")
+    calc = model.add_d3_calculator(calc)
 
     # Get copper water benchmark data
     data_dir = (
@@ -93,7 +95,9 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
         write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
     )
 
-    # try:
-    md.run()
-    # except Exception as exc:
-    #    warn(f"Error during MD: {exc}", stacklevel=2)
+    try:
+        md.run()
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
+        # Mark the run invalid so analysis skips the partial trajectory.
+        (write_dir / "md-failed").touch()
