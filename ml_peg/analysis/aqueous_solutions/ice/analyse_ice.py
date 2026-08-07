@@ -16,6 +16,7 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.aqueous_solutions.ice.calc_ice import TIMESTEP
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -157,7 +158,7 @@ def created_vdos() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VDOS for all models.
     """
-    return md.create_vdos(MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH)
+    return md.create_vdos(MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH, dt=TIMESTEP)
 
 
 @pytest.fixture
@@ -251,7 +252,7 @@ def created_vacf() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of VACF for all models.
     """
-    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH)
+    return md.create_vacf(MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, dt=TIMESTEP)
 
 
 @pytest.fixture

@@ -525,8 +525,8 @@ def run_vdos_single(
 def compute_all_vdos(
     trj: mdt.Trajectory,
     dt: float = 1,
-    dt_window: float = 100.0,
-    dt_pad: float = 100.0,
+    dt_window: float = 2000.0,
+    dt_pad: float = 2000.0,
 ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     """
     Compute VDOS separately for all atom types in a trajectory.

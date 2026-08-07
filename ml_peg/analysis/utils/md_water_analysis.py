@@ -215,7 +215,11 @@ def create_rdfs(
 
 
 def create_vdos(
-    models: list, data_path: Path, calc_path: Path, curve_path: Path
+    models: list,
+    data_path: Path,
+    calc_path: Path,
+    curve_path: Path,
+    dt: float = 1,
 ) -> dict[str, dict]:
     """
     Create VDOS for all models.
@@ -230,6 +234,9 @@ def create_vdos(
         Path to the calculation outputs (one subdir per model).
     curve_path
         Path to write per-model VDOS curve pickles for app use.
+    dt
+        Time between stored trajectory frames, in fs. Must match the spacing used
+        to build the reference so the frequency/time axes align.
 
     Returns
     -------
@@ -271,9 +278,7 @@ def create_vdos(
 
         test_vel = _load_velocities(traj_file, ref_topology)
 
-        ref_dt = 1
-
-        vdos[model_name] = aml.compute_all_vdos(test_vel, ref_dt)
+        vdos[model_name] = aml.compute_all_vdos(test_vel, dt)
 
         # Write rdf curves to file for app use
         with open(curve_path / model_name / "vdos_curves.pkl", "wb") as f_out:
@@ -287,6 +292,7 @@ def create_vacf(
     data_path: Path,
     calc_path: Path,
     curve_path: Path,
+    dt: float = 1,
 ) -> dict[str, dict]:
     """
     Create VACF for all models.
@@ -301,6 +307,9 @@ def create_vacf(
         Path to the calculation outputs (one subdir per model).
     curve_path
         Path to write per-model VACF curve pickles for app use.
+    dt
+        Time between stored trajectory frames, in fs. Must match the spacing used
+        to build the reference so the frequency/time axes align.
 
     Returns
     -------
@@ -341,13 +350,12 @@ def create_vacf(
             continue
 
         test_vel = _load_velocities(traj_file, ref_topology)
-        ref_dt = 1
 
         # Reference and model VACFs are compared by interpolation onto a common
         # time axis (see aml.compute_all_errors_vacf), so trajectory lengths need
         # not match: the precomputed reference is used directly for every model.
         vacf[f"ref_{model_name}"] = vacf["ref"]
-        vacf[model_name] = aml.compute_all_vacfs(test_vel, ref_dt)
+        vacf[model_name] = aml.compute_all_vacfs(test_vel, dt)
 
         # Write vacf curves to file for app use
         with open(curve_path / model_name / "vacf_curves.pkl", "wb") as f_out:
