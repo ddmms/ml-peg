@@ -223,7 +223,15 @@ def load_initial_structure(cell: str) -> Atoms:
             f"Starting structure for {cell} not found at {path}. "
             "Both cells (p64_w170, p16_w42) are needed to run the reference MD."
         )
-    return ase_read(path)
+    struct = ase_read(path)
+
+    # Both cells are neutral, closed-shell (equal numbers of Li+ and TFSI-).
+    # Models trained on molecular data, such as orb-v3-consv-omol, refuse to
+    # evaluate a structure that does not carry these keys.
+    struct.info.setdefault("charge", 0)
+    struct.info.setdefault("spin", 1)
+
+    return struct
 
 
 def _run_stage(
