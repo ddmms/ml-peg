@@ -1659,6 +1659,54 @@ def build_no_results_notice() -> Div:
     )
 
 
+# Style for links embedded in a disclaimer box, so they stay legible against the
+# amber background instead of using the default browser link colours.
+DISCLAIMER_LINK_STYLE = {
+    "color": "#8a5a00",
+    "fontWeight": "600",
+    "textDecoration": "underline",
+}
+
+
+def build_disclaimer(text: str | list[str | Component]) -> Div:
+    """
+    Build a highlighted disclaimer box.
+
+    Parameters
+    ----------
+    text
+        Body of the disclaimer, either as a string or as a list of strings and
+        components, allowing inline links. The bold "Disclaimer:" label is added
+        automatically, so it should not be repeated here.
+
+    Returns
+    -------
+    Div
+        Styled callout containing the disclaimer.
+    """
+    body = text if isinstance(text, list) else [text]
+    return Div(
+        [
+            html.Span("⚠", style={"lineHeight": "1.5"}, **{"aria-hidden": "true"}),
+            Div([html.Strong("Disclaimer: "), *body], style={"lineHeight": "1.5"}),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "10px",
+            "backgroundColor": "#fff8e5",
+            "border": "1px solid #f0d48a",
+            "borderLeft": "4px solid #e0a300",
+            "borderRadius": "6px",
+            "padding": "10px 14px",
+            "marginBottom": "8px",
+            "maxWidth": "900px",
+            "fontSize": "13px",
+            "color": "#5c4600",
+        },
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1670,6 +1718,7 @@ def build_test_layout(
     column_widths: dict[str, int] | None = None,
     speed: str | None = None,
     credits: BenchmarkCredits | None = None,
+    disclaimer: str | list[str | Component] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1704,6 +1753,9 @@ def build_test_layout(
         renders no badge.
     credits
         Benchmark citations and benchmark contributors. Default is None.
+    disclaimer
+        Text or inline components for a highlighted disclaimer below the description.
+        Default is None, in which case no box is shown.
 
     Returns
     -------
@@ -1735,6 +1787,7 @@ def build_test_layout(
     layout_contents.extend(
         [
             H3(description),
+            *([build_disclaimer(disclaimer)] if disclaimer else []),
             build_benchmark_credit_components(
                 add_framework_citations(credits, framework_ids)
             ),
