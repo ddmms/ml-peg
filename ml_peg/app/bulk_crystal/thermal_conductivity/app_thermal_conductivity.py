@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from dash.dcc import Graph
-from dash.html import Div
+from dash.html import A, Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -13,6 +13,7 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_cell,
     struct_from_scatter,
 )
+from ml_peg.app.utils.build_components import DISCLAIMER_LINK_STYLE
 from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -23,8 +24,24 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/"
     "benchmarks/bulk_crystal.html#thermal-conductivity"
 )
+SOURCE_URL = (
+    "https://github.com/ddmms/ml-peg/tree/main/"
+    "ml_peg/calcs/bulk_crystal/thermal_conductivity"
+)
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "thermal_conductivity"
 INFO_PATH = DATA_PATH / "info.json"
+# Mixed text and links, so the "docs" and "source code" words are clickable.
+DISCLAIMER = [
+    "ML-PEG results may differ from those reported by Matbench Discovery, as its "
+    "evaluation procedure has evolved over time and specific parameters may depend "
+    "on when a model was added. In ML-PEG, we apply a consistent protocol across all "
+    "models: FIRE minimisation with a force threshold of 0.0001 eV/Å and a "
+    "displacement amplitude of 0.03 Å. See the ",
+    A("docs", href=DOCS_URL, target="_blank", style=DISCLAIMER_LINK_STYLE),
+    " and ",
+    A("source code", href=SOURCE_URL, target="_blank", style=DISCLAIMER_LINK_STYLE),
+    " for further information.",
+]
 
 
 class ThermalConductivityApp(BaseApp):
@@ -123,4 +140,5 @@ def get_app() -> ThermalConductivityApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        disclaimer=DISCLAIMER,
     )

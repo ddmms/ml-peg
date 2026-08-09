@@ -1163,6 +1163,54 @@ def build_framework_badge(framework_id: str) -> Component:
     return badge
 
 
+# Style for links embedded in a disclaimer box, so they stay legible against the
+# amber background instead of using the default browser link colours.
+DISCLAIMER_LINK_STYLE = {
+    "color": "#8a5a00",
+    "fontWeight": "600",
+    "textDecoration": "underline",
+}
+
+
+def build_disclaimer(text: str | list[str | Component]) -> Div:
+    """
+    Build a highlighted disclaimer box.
+
+    Parameters
+    ----------
+    text
+        Body of the disclaimer, either as a string or as a list of strings and
+        components, allowing inline links. The bold "Disclaimer:" label is added
+        automatically, so it should not be repeated here.
+
+    Returns
+    -------
+    Div
+        Styled callout containing the disclaimer.
+    """
+    body = text if isinstance(text, list) else [text]
+    return Div(
+        [
+            html.Span("⚠", style={"lineHeight": "1.5"}, **{"aria-hidden": "true"}),
+            Div([html.Strong("Disclaimer: "), *body], style={"lineHeight": "1.5"}),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "10px",
+            "backgroundColor": "#fff8e5",
+            "border": "1px solid #f0d48a",
+            "borderLeft": "4px solid #e0a300",
+            "borderRadius": "6px",
+            "padding": "10px 14px",
+            "marginBottom": "8px",
+            "maxWidth": "900px",
+            "fontSize": "13px",
+            "color": "#5c4600",
+        },
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1172,6 +1220,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
+    disclaimer: str | list[str | Component] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1197,6 +1246,10 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
+    disclaimer
+        Text for a highlighted disclaimer box shown below the description, as a string
+        or a list of strings and components for inline links. Default is None, in which
+        case no box is shown.
 
     Returns
     -------
@@ -1221,6 +1274,9 @@ def build_test_layout(
         ),
         H3(description),
     ]
+
+    if disclaimer:
+        layout_contents.append(build_disclaimer(disclaimer))
 
     layout_contents.extend(
         [
