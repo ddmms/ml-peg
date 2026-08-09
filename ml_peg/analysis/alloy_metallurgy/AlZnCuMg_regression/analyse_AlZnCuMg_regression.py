@@ -35,6 +35,8 @@ ELASTIC_CONSTANT_PROPERTIES = tuple(
     f"C_{row + 1}{column + 1}" for row in range(6) for column in range(row + 1)
 )
 REQUIRED_ELEMENTS = ("Al", "Cu", "Mg", "Zn")
+EV_PER_A2_TO_MJ_PER_M2 = 16021.76634
+EV_TO_MEV = 1000.0
 PURE_ELEMENT_PROPERTY_SPECS = {
     "8100": (
         "Al FCC",
@@ -1002,7 +1004,7 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
             fig.add_trace(
                 go.Scatter(
                     x=x_vals,
-                    y=reference_values,
+                    y=[value * EV_PER_A2_TO_MJ_PER_M2 for value in reference_values],
                     mode="lines+markers",
                     name="DFT",
                     marker={"color": "black", "symbol": "square"},
@@ -1021,7 +1023,7 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
                 fig.add_trace(
                     go.Scatter(
                         x=x_vals,
-                        y=model_vals,
+                        y=[value * EV_PER_A2_TO_MJ_PER_M2 for value in model_vals],
                         mode="lines+markers",
                         name=model_name,
                         marker={
@@ -1039,7 +1041,7 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
         height=max(400, 300 * rows),
     )
     for i in range(1, num_keys + 1):
-        fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / eV Å⁻²"
+        fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / mJ m⁻²"
         fig.layout[f"xaxis{i}"].title = "Site index"
 
     fig.write_json(filename)
@@ -1089,7 +1091,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
             fig.add_trace(
                 go.Scatter(
                     x=x_vals,
-                    y=reference_values,
+                    y=[value * EV_TO_MEV for value in reference_values],
                     mode="lines+markers",
                     name="DFT",
                     marker={"color": "black", "symbol": "square"},
@@ -1110,7 +1112,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
                 fig.add_trace(
                     go.Scatter(
                         x=x_vals,
-                        y=model_vals,
+                        y=[value * EV_TO_MEV for value in model_vals],
                         mode="lines+markers",
                         name=model_name,
                         marker={
@@ -1127,7 +1129,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
         title_text="Solute-stacking-fault interactions", height=max(400, 300 * rows)
     )
     for i in range(1, num_keys + 1):
-        fig.layout[f"yaxis{i}"].title = "Interaction energy / eV"
+        fig.layout[f"yaxis{i}"].title = "Interaction energy / meV"
         fig.layout[f"xaxis{i}"].title = "SF index"
 
     fig.write_json(filename)
@@ -1286,7 +1288,7 @@ def gsf_values(
     Returns
     -------
     tuple[dict[str, list[float]], list[str]]
-        Reference/model values in eV/A^2 and hover labels.
+        Reference/model values in mJ/m^2 and hover labels.
     """
     references = load_references()
     results = {"ref": []} | {model_name: [] for model_name in records_by_model}
@@ -1319,9 +1321,9 @@ def gsf_values(
                 }
                 if not all(map(math.isfinite, model_values.values())):
                     continue
-                results["ref"].append(reference_values[index])
+                results["ref"].append(reference_values[index] * EV_PER_A2_TO_MJ_PER_M2)
                 for model_name, model_value in model_values.items():
-                    results[model_name].append(model_value)
+                    results[model_name].append(model_value * EV_PER_A2_TO_MJ_PER_M2)
                 labels.append(f"{reference_key} point {index + 1}")
         except Exception as exc:
             warn(
@@ -1345,7 +1347,7 @@ def solute_stacking_fault_values(
     Returns
     -------
     tuple[dict[str, list[float]], list[str]]
-        Reference/model values in eV and hover labels.
+        Reference/model values in meV and hover labels.
     """
     references = load_references()
     results = {"ref": []} | {model_name: [] for model_name in records_by_model}
@@ -1383,9 +1385,9 @@ def solute_stacking_fault_values(
                 }
                 if not all(map(math.isfinite, model_values.values())):
                     continue
-                results["ref"].append(reference_values[index])
+                results["ref"].append(reference_values[index] * EV_TO_MEV)
                 for model_name, model_value in model_values.items():
-                    results[model_name].append(model_value)
+                    results[model_name].append(model_value * EV_TO_MEV)
                 labels.append(f"{reference_key} layer {index}")
         except Exception as exc:
             warn(
