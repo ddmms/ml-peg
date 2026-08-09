@@ -58,7 +58,8 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch == 0.3.16",
+    "graph-longrange",
 ]
 
 mattersim = [
@@ -74,11 +75,20 @@ mlipaudit = [
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
-pet-mad = [
-    "pet-mad == 1.4.4; sys_platform != 'win32'"
-]
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
+]
+upet = [
+    "upet==0.2.4; python_version >= '3.11'",
+]
+sevenn = [
+    "sevenn==0.12.1",
+]
+vivace = [
+    "simpoly[vivace,cuda13] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform == 'linux'",
+    "simpoly[vivace] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform != 'linux'",
+    "cuequivariance ==0.8.1; sys_platform != 'linux'",
+    "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
 ]
 
 [project.scripts]
@@ -163,6 +173,7 @@ select = [
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
+known-third-party = ["mlipx"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.pydocstyle]
@@ -198,24 +209,32 @@ default-groups = [
 
 conflicts = [
     [
-      { extra = "uma" },
+        { extra = "uma" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "uma" },
+        { extra = "grace" },
+    ],
+    [
+        { extra = "mattersim" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "mattersim" },
+        { extra = "grace" },
+    ],
+    [
+        { extra = "mlipaudit" },
+        { extra = "grace" },
+    ],
+    [
+        { extra = "mace" },
+        { extra = "sevenn" },
+    ],
+    [
+      { extra = "vivace" },
       { extra = "mace" },
-    ],
-    [
-      { extra = "uma" },
-      { extra = "grace" },
-    ],
-    [
-      { extra = "mattersim" },
-      { extra = "mace" },
-    ],
-    [
-      { extra = "mattersim" },
-      { extra = "grace" },
-    ],
-    [
-      { extra = "mlipaudit" },
-      { extra = "grace" },
     ],
 ]
 
@@ -230,3 +249,4 @@ module-root = ""
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 mlipaudit = { git = "https://github.com/instadeepai/MLIPAudit.git", branch = "mlpeg-migration" }
+graph-longrange = { git = "https://github.com/WillBaldwin0/graph_electrostatics", tag = "v0.4.0" }

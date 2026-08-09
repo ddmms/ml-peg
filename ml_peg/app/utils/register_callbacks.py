@@ -140,6 +140,7 @@ def register_summary_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
+    prefix: str = "summary-table",
 ) -> None:
     """
     Register callbacks to update summary table.
@@ -155,14 +156,20 @@ def register_summary_table_callbacks(
         Mapping from metric column name to its level of theory badge text.
     model_configs
         Optional metadata/configuration dictionary for each model.
+    prefix
+        Selects which top-level summary table these callbacks update, so the same
+        logic serves both the overall categories summary ("summary-table") and
+        the frameworks summary ("framework-summary-table"). It is the table's id
+        and the prefix of its `-scores-store`, `-weight-store`, and
+        `-computed-store`. Default is "summary-table".
     """
     default_rows = deepcopy(initial_rows) if initial_rows else []
 
     @callback(
-        Output("summary-table-computed-store", "data", allow_duplicate=True),
-        Input("summary-table-scores-store", "data"),
-        Input("summary-table-weight-store", "data"),
-        State("summary-table-computed-store", "data"),
+        Output(f"{prefix}-computed-store", "data", allow_duplicate=True),
+        Input(f"{prefix}-scores-store", "data"),
+        Input(f"{prefix}-weight-store", "data"),
+        State(f"{prefix}-computed-store", "data"),
         prevent_initial_call=True,
     )
     def update_summary_computed_store(
@@ -203,11 +210,11 @@ def register_summary_table_callbacks(
         return updated_rows
 
     @callback(
-        Output("summary-table", "data", allow_duplicate=True),
-        Output("summary-table", "style_data_conditional", allow_duplicate=True),
-        Output("summary-table", "tooltip_data", allow_duplicate=True),
+        Output(prefix, "data", allow_duplicate=True),
+        Output(prefix, "style_data_conditional", allow_duplicate=True),
+        Output(prefix, "tooltip_data", allow_duplicate=True),
         Input("selected-models-store", "data"),
-        Input("summary-table-computed-store", "data"),
+        Input(f"{prefix}-computed-store", "data"),
         Input("cmap-store", "data"),
         State("summary-table-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
@@ -275,6 +282,8 @@ def register_category_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
+    scores_store_id: str = "summary-table-scores-store",
+    summary_suffix: str = "-summary-table",
 ) -> None:
     """
     Register callback to update table scores when stored values change.
@@ -293,6 +302,14 @@ def register_category_table_callbacks(
         Mapping of metric name -> level of theory metadata.
     model_configs
         Optional configuration metadata for each model.
+    scores_store_id
+        ID of the global scores store this summary table writes into. Default is
+        "summary-table-scores-store" (the overall summary's inputs).
+    summary_suffix
+        Only a table whose id ends with this suffix writes to the scores store
+        (the summary tables, not the benchmark tables this is also registered
+        for). The suffix is stripped from the id to derive the score column key.
+        Default is "-summary-table".
     """
 
     @callback(
@@ -663,9 +680,9 @@ def register_category_table_callbacks(
             return filtered_rows, style, tooltip_data
 
     @callback(
-        Output("summary-table-scores-store", "data", allow_duplicate=True),
+        Output(scores_store_id, "data", allow_duplicate=True),
         Input(f"{table_id}-computed-store", "data"),
-        State("summary-table-scores-store", "data"),
+        State(scores_store_id, "data"),
         prevent_initial_call="initial_duplicate",
     )
     def update_scores_store(
@@ -687,15 +704,15 @@ def register_category_table_callbacks(
         dict[str, dict[str, float]]
             Updated summary-score mapping.
         """
-        # Only category summary tables should write to the global store
-        if not table_id.endswith("-summary-table"):
+        # Only summary tables should write to the global store
+        if not table_id.endswith(summary_suffix):
             raise PreventUpdate
 
         if not computed_rows:
             raise PreventUpdate
 
-        # Category table IDs are of form "[category]-summary-table"
-        category_key = table_id.removesuffix("-summary-table") + " Score"
+        # Summary table IDs are of form "[key]{summary_suffix}"
+        category_key = table_id.removesuffix(summary_suffix) + " Score"
 
         new_scores = {
             row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
@@ -711,89 +728,97 @@ def register_category_table_callbacks(
         return patch
 
 
-def register_benchmark_to_category_callback(
-    all_tables: dict[str, dict[str, DataTable]], category_to_title: dict[str, str]
+def register_benchmark_to_group_callback(
+    all_tables: dict[str, dict[str, DataTable]],
+    group_to_id: dict[str, str],
+    table_id_suffix: str = "-summary-table",
 ) -> None:
     """
-    Propagate a benchmark table's Score into its category summary table column.
+    Propagate benchmark Scores into each group's summary table columns.
 
     Parameters
     ----------
     all_tables
-        Tables for all tests, grouped by category.
-    category_to_title
-        Dictionary mapping category directory names to their display titles/table IDs.
+        Benchmark tables grouped by group key (category title or framework id).
+    group_to_id
+        Mapping of group key to the id-prefix used in its summary table id.
+    table_id_suffix
+        Suffix appended to the id-prefix to form the summary table id. Default is
+        "-summary-table".
     """
-    all_info = {}
-    for category, tables in all_tables.items():
-        all_info[category] = {}
+    all_info: dict[str, dict[str, dict]] = {}
+    for group, tables in all_tables.items():
+        all_info[group] = {}
         for test_name, benchmark_table in tables.items():
-            all_info[category][test_name] = {
+            all_info[group][test_name] = {
                 "benchmark_table_id": benchmark_table.id,
                 "benchmark_column": test_name + " Score",
                 "model_name_map": getattr(benchmark_table, "model_name_map", {}),
             }
 
+    # De-duplicate benchmark computed-store Inputs (a benchmark may be in >1 group)
+    # For frameworks, a benchmark can be tagged with several frameworks, and Dash
+    # errors if the same Input appears twice in one callback, so list each once.
+    benchmark_ids: list[str] = []
+    seen: set[str] = set()
+    for _group, group_info in sorted(all_info.items()):
+        for _test, info in sorted(group_info.items()):
+            bid = info["benchmark_table_id"]
+            if bid not in seen:
+                seen.add(bid)
+                benchmark_ids.append(bid)
+
     outputs = []
-    inputs = []
-    for category, category_info in sorted(all_info.items()):
-        category_table_id = f"{category_to_title[category]}-summary-table"
+    state_inputs = []
+    for group, _group_info in sorted(all_info.items()):
+        group_table_id = f"{group_to_id[group]}{table_id_suffix}"
         outputs.append(
-            Output(f"{category_table_id}-computed-store", "data", allow_duplicate=True)
+            Output(f"{group_table_id}-computed-store", "data", allow_duplicate=True)
         )
+        state_inputs.append(State(f"{group_table_id}-weight-store", "data"))
+        state_inputs.append(State(f"{group_table_id}-computed-store", "data"))
 
-        inputs.extend(
-            [
-                State(f"{category_table_id}-weight-store", "data"),
-                State(f"{category_table_id}-computed-store", "data"),
-            ]
-        )
-        inputs.extend(
-            [
-                Input(f"{table_info['benchmark_table_id']}-computed-store", "data")
-                for _, table_info in sorted(category_info.items())
-            ]
-        )
+    benchmark_inputs = [Input(f"{bid}-computed-store", "data") for bid in benchmark_ids]
 
-    @callback(outputs, inputs, prevent_initial_call=True)
-    def update_category_from_benchmark(*args) -> list[list[dict]]:
+    @callback(outputs, state_inputs + benchmark_inputs, prevent_initial_call=True)
+    def update_group_from_benchmark(*args) -> list:
         """
-        Update cached category summary rows from all benchmarks' cached scores.
+        Update cached group summary rows from all benchmarks' cached scores.
 
         Parameters
         ----------
         *args
-            States and Inputs for all category summary tables and benchmark tables.
-            Ordered by category. For each category, the weights, computed store, and
-            benchmark computed stores are listed sequentially.
+            Per-group (weight-store, computed-store) States followed by the
+            de-duplicated benchmark computed-store Inputs.
 
         Returns
         -------
-        list[list[dict]]
-            Refreshed cached rows for each category summary table.
+        list
+            Refreshed cached rows (or ``no_update``) for each group summary table.
         """
-        # Rebuild inputs for each category
-        iterator = iter(args)
+        n_state = len(state_inputs)
+        states = list(args[:n_state])
+        benchmark_vals = args[n_state:]
+        bench_by_id = dict(zip(benchmark_ids, benchmark_vals, strict=True))
+
+        state_iter = iter(states)
         patched_outputs = []
 
-        for _category, category_info in sorted(all_info.items()):
-            category_weights = next(iterator)
-            current_rows = next(iterator)
+        for _group, group_info in sorted(all_info.items()):
+            group_weights = next(state_iter)
+            current_rows = next(state_iter)
 
-            updated_rows = []
-            for row in current_rows:
-                updated_row = row.copy()
-                updated_rows.append(updated_row)
-
+            updated_rows = [row.copy() for row in current_rows]
             updated_by_mlip = {row["MLIP"]: row for row in updated_rows}
-
             benchmark_changed = False
 
-            for _test_name, table_info in sorted(category_info.items()):
-                benchmark_rows = next(iterator)
+            for _test, info in sorted(group_info.items()):
+                benchmark_rows = bench_by_id.get(info["benchmark_table_id"])
+                if not benchmark_rows:
+                    continue
 
-                name_map = table_info["model_name_map"]
-                benchmark_column = table_info["benchmark_column"]
+                name_map = info["model_name_map"]
+                benchmark_column = info["benchmark_column"]
 
                 for row in benchmark_rows:
                     display_name = row.get("MLIP")
@@ -812,8 +837,8 @@ def register_benchmark_to_category_callback(
                 patched_outputs.append(no_update)
                 continue
 
-            # Recompute overall category scores using existing utility
-            rescored_rows, _ = update_score_style(updated_rows, category_weights)
+            # Recompute overall group scores
+            rescored_rows, _ = update_score_style(updated_rows, group_weights)
 
             patch = Patch()
             score_changed = False
