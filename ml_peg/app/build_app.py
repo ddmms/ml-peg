@@ -20,7 +20,6 @@ from dash.exceptions import PreventUpdate
 from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
-from ml_peg.analysis.utils.utils import calc_table_scores, get_table_style
 from ml_peg.app import APP_ROOT
 from ml_peg.app.filters import (
     get_element_filter,
@@ -28,20 +27,25 @@ from ml_peg.app.filters import (
     register_element_filter_callbacks,
 )
 from ml_peg.app.utils.build_components import (
-    LINK_COLUMN_WIDTH,
     build_download_controls,
     build_faqs,
     build_footer,
     build_loading_summary_table,
     build_page_loading_spinner,
+    build_summary_table,
     build_weight_components,
+)
+from ml_peg.app.utils.build_frameworks import (
+    build_framework_page_layout,
+    build_framework_summary_tables,
+    build_framework_views,
 )
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     register_onboarding_callbacks,
 )
 from ml_peg.app.utils.register_callbacks import (
-    register_benchmark_to_category_callback,
+    register_benchmark_to_group_callback,
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
@@ -50,11 +54,8 @@ from ml_peg.app.utils.storage import (
     register_storage_callbacks,
 )
 from ml_peg.app.utils.utils import (
-    build_level_of_theory_warnings,
+    framework_sort_key,
     get_framework_config,
-    get_mlip_column_width,
-    load_model_registry_configs,
-    sig_fig_format,
 )
 from ml_peg.app.utils.weight_presets import (
     build_weight_preset_selector,
@@ -171,42 +172,6 @@ def _default_weight_store_data(table: DataTable) -> dict[str, float]:
         if column_id not in reserved:
             weights.setdefault(column_id, 1.0)
     return weights
-
-
-def _format_summary_column_header(column_id: str) -> str:
-    """
-    Format summary-table headers for more compact wrapping.
-
-    Non-static summary columns always place ``Score`` on its own line. Longer
-    multi-word titles are split across two title lines first, yielding a compact
-    three-line header.
-
-    Parameters
-    ----------
-    column_id
-        Summary-table column identifier.
-
-    Returns
-    -------
-    str
-        Header label with explicit newline breaks.
-    """
-    if column_id in {"MLIP", "Score"} or not column_id.endswith(" Score"):
-        return column_id
-
-    title = column_id.removesuffix(" Score")
-    if len(title) > 14 and " " in title:
-        words = title.split()
-        split_index = min(
-            range(1, len(words)),
-            key=lambda index: abs(
-                len(" ".join(words[:index])) - len(" ".join(words[index:]))
-            ),
-        )
-        title = "\n".join(
-            [" ".join(words[:split_index]), " ".join(words[split_index:])]
-        )
-    return f"{title}\nScore"
 
 
 def _framework_sidebar_label(framework_id: str, label: str) -> Div:
@@ -543,7 +508,9 @@ def build_category(
 
     # Register callback for all benchmark tables -> category table
     # Category summary table columns add "Score" to name for clarity
-    register_benchmark_to_category_callback(all_tables, category_to_title)
+    register_benchmark_to_group_callback(
+        all_tables, category_to_title, table_id_suffix="-summary-table"
+    )
 
     return category_views, category_tables, category_weights, framework_ids
 
@@ -604,297 +571,6 @@ def build_category_page_layout(
     )
 
 
-def build_framework_views(
-    category_views: dict[str, dict[str, object]],
-    framework_ids: set[str],
-) -> dict[str, dict[str, object]]:
-    """
-    Build extra framework-focused page metadata for non-default frameworks.
-
-    Parameters
-    ----------
-    category_views
-        Category metadata including benchmark layout components.
-    framework_ids
-        All framework IDs discovered from benchmark apps.
-
-    Returns
-    -------
-    dict[str, dict[str, object]]
-        Mapping of framework ID to grouped benchmark layouts by category.
-    """
-    framework_views: dict[str, dict[str, object]] = {}
-    for framework_id in sorted(framework_ids):
-        if framework_id == "ml_peg":
-            continue
-
-        category_groups = []
-        for category_name, category_view in category_views.items():
-            tests = [
-                test["layout"]
-                for test in category_view["tests"]
-                if framework_id in test["framework_ids"]
-            ]
-            if tests:
-                category_groups.append({"category": category_name, "tests": tests})
-
-        if category_groups:
-            framework_views[framework_id] = {
-                "framework_id": framework_id,
-                "label": get_framework_config(framework_id)["label"],
-                "category_groups": category_groups,
-            }
-
-    return framework_views
-
-
-def build_framework_page_layout(framework_view: dict[str, object]) -> Div:
-    """
-    Build a framework-focused page containing benchmark sections only.
-
-    Parameters
-    ----------
-    framework_view
-        Framework page metadata with grouped benchmark layouts by category.
-
-    Returns
-    -------
-    Div
-        Framework page layout.
-    """
-    framework_label = framework_view["label"]
-    category_groups = framework_view["category_groups"]
-
-    sections = []
-    for group in category_groups:
-        sections.append(H3(group["category"], style={"marginTop": "26px"}))
-        sections.append(Div(group["tests"], style={"display": "grid", "gap": "24px"}))
-
-    return Div(
-        [
-            H1(f"{framework_label} Benchmarks"),
-            Div(
-                (
-                    "These benchmarks also remain in their category pages. "
-                    "Framework pages omit the category summary table and reuse the "
-                    "same benchmark controls, so weight and threshold edits stay in "
-                    "sync across both views."
-                ),
-                style={
-                    "fontSize": "13px",
-                    "fontStyle": "italic",
-                    "color": "#64748b",
-                    "marginTop": "8px",
-                    "marginBottom": "8px",
-                },
-            ),
-            *sections,
-        ]
-    )
-
-
-def build_summary_table(
-    tables: dict[str, DataTable],
-    table_id: str = "summary-table",
-    description: str | None = None,
-    weights: dict[str, float] | None = None,
-) -> DataTable:
-    """
-    Build summary table from a set of tables.
-
-    Parameters
-    ----------
-    tables
-        Dictionary of tables to be summarised.
-    table_id
-        ID of table being built. Default is 'summary-table'.
-    description
-        Description of summary table. Default is None.
-    weights
-        Weights for each column. Default is `None`, which sets all weights to 1.
-
-    Returns
-    -------
-    DataTable
-        Summary table with scores from tables being summarised.
-    """
-    summary_data = {}
-    category_columns = []  # Track all category columns
-    for category_name, table in tables.items():
-        # Prepare rows for all current models
-        if not summary_data:
-            summary_data = {model: {} for model in MODELS}
-
-        category_col = f"{category_name} Score"
-        category_columns.append(category_col)
-
-        table_name_map = getattr(table, "model_name_map", {}) or {}
-        for row in table.data:
-            # Category tables may include models not to be included
-            # Table headings are of the form "[category] Score"
-            # ``original_name`` refers to the original model identifier
-            # (no display suffix)
-            original_name = table_name_map.get(row["MLIP"], row["MLIP"])
-            if original_name in summary_data:
-                summary_data[original_name][category_col] = row["Score"]
-
-    # Ensure all models have entries for all category columns (None if missing)
-    data = []
-    for mlip in summary_data:
-        row = {"MLIP": mlip}
-        for category_col in category_columns:
-            row[category_col] = summary_data[mlip].get(category_col, None)
-        data.append(row)
-
-    data = calc_table_scores(data, weights=weights)
-
-    columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
-    if table_id == "summary-table":
-        display_headers = {
-            header: (
-                header
-                if header in {"MLIP", "Score"} or not header.endswith(" Score")
-                else "\n".join([*header.removesuffix(" Score").split(), "Score"])
-            )
-            for header in columns_headers
-        }
-    else:
-        display_headers = {
-            header: _format_summary_column_header(header) for header in columns_headers
-        }
-
-    columns = [
-        {"name": display_headers[header], "id": header} for header in columns_headers
-    ]
-    tooltip_header = {
-        header + " Score": table.description for header, table in tables.items()
-    }
-
-    for column in columns:
-        column_id = column["id"]
-        if column_id != "MLIP":
-            column["type"] = "numeric"
-            column["format"] = sig_fig_format()
-
-    style = get_table_style(data)
-    registry_configs = load_model_registry_configs()
-    row_models: list[str] = []
-    for row in data:
-        mlip = row.get("MLIP")
-        if isinstance(mlip, str) and mlip not in row_models:
-            row_models.append(mlip)
-    model_configs = {mlip: (registry_configs.get(mlip) or {}) for mlip in row_models}
-    model_levels = {
-        mlip: (model_configs[mlip].get("level_of_theory")) for mlip in row_models
-    }
-    warning_styles, tooltip_rows = build_level_of_theory_warnings(
-        data,
-        model_levels,
-        {},
-        model_configs,
-    )
-    style_with_warnings = style + warning_styles
-
-    summary_header_padding = 12 if table_id == "summary-table" else 24
-    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
-    column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
-    for column_id in columns_headers:
-        if column_id in {"MLIP", "Score"}:
-            continue
-        longest_line = max(
-            len(line) for line in display_headers[column_id].splitlines()
-        )
-        column_widths[column_id] = min(
-            max(longest_line * 9 + summary_header_padding, 100), 150
-        )
-
-    style_cell_conditional = []
-    for column_id, width in column_widths.items():
-        col_width = f"{width}px"
-        alignment = "left" if column_id == "MLIP" else "center"
-        style_cell_conditional.append(
-            {
-                "if": {"column_id": column_id},
-                "width": col_width,
-                "minWidth": col_width,
-                "maxWidth": col_width,
-                "textAlign": alignment,
-            }
-        )
-
-    tooltip_header["Score"] = "Weighted average of scores (higher is better)"
-
-    # Per-model docs link, on the overall summary table only, rendered as an
-    # icon just after the model name. Its styling lives in
-    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
-    # NaN/level-of-theory greying is kept off for the link column.
-    if table_id == "summary-table":
-        models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
-        for row in data:
-            anchor = row.get("MLIP")
-            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
-        columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
-        style_cell_conditional.append(
-            {
-                "if": {"column_id": "link"},
-                "width": f"{LINK_COLUMN_WIDTH}px",
-                "minWidth": f"{LINK_COLUMN_WIDTH}px",
-                "maxWidth": f"{LINK_COLUMN_WIDTH}px",
-                "textAlign": "left",
-                "padding": "0",
-                "borderLeft": "none",
-            }
-        )
-        style_cell_conditional.append(
-            {"if": {"column_id": "MLIP"}, "borderRight": "none"}
-        )
-        style_with_warnings = style_with_warnings + [
-            {
-                "if": {"column_id": "link"},
-                "backgroundColor": "white",
-                "backgroundImage": "none",
-            }
-        ]
-
-    table = DataTable(
-        data=data,
-        columns=columns,
-        id=table_id,
-        markdown_options={"link_target": "_blank"},
-        sort_action="native",
-        style_data_conditional=style_with_warnings,
-        style_cell_conditional=style_cell_conditional,
-        style_header={
-            "whiteSpace": "pre-line",
-            "height": "auto",
-            "minHeight": "70px",
-            "textAlign": "center",
-            "verticalAlign": "middle",
-            "lineHeight": "1.4",
-            "padding": header_cell_padding,
-        },
-        style_header_conditional=[
-            {
-                "if": {"column_id": "MLIP"},
-                "textAlign": "left",
-            }
-        ],
-        tooltip_data=tooltip_rows,
-        tooltip_delay=100,
-        tooltip_duration=None,
-        tooltip_header=tooltip_header,
-        editable=False,
-        fill_width=False,
-    )
-    table.column_widths = column_widths
-    table.description = description
-    table.model_levels_of_theory = model_levels
-    table.metric_levels_of_theory = {}
-    table.model_configs = model_configs
-    table.weights = weights
-    return table
-
-
 def build_nav(
     full_app: Dash,
     category_views: dict[str, dict[str, object]],
@@ -902,6 +578,8 @@ def build_nav(
     summary_table: DataTable,
     weight_components: Div,
     all_apps: dict[str, Dash],
+    combined_framework_table: DataTable | None = None,
+    framework_weight_components: Div | None = None,
 ) -> None:
     """
     Build page layouts and sidebar navigation.
@@ -920,15 +598,18 @@ def build_nav(
         Weight sliders, text boxes and reset button.
     all_apps
         Dictionary of all test apps.
+    combined_framework_table
+        Frameworks summary table shown on the home page, or None when there are
+        no external frameworks.
+    framework_weight_components
+        Weight controls for the combined framework summary table, or None.
     """
     category_paths = {
         category_name: _category_to_path(category_name)
         for category_name in sorted(category_views)
     }
-    framework_order = sorted(
-        framework_views,
-        key=lambda framework_id: framework_views[framework_id]["label"],
-    )
+    # Frameworks first, then papers, alphabetical by label within each
+    framework_order = sorted(framework_views, key=framework_sort_key)
     framework_paths = {
         framework_id: _framework_to_path(framework_id)
         for framework_id in framework_order
@@ -1011,6 +692,27 @@ def build_nav(
             ]
         )
 
+    # Computed + weight stores for each per-framework summary table
+    framework_state_stores = []
+    for framework_view in framework_views.values():
+        fw_table = framework_view.get("summary_table")
+        if fw_table is None:
+            continue
+        framework_state_stores.extend(
+            [
+                Store(
+                    id=f"{fw_table.id}-computed-store",
+                    storage_type="session",
+                    data=fw_table.data,
+                ),
+                Store(
+                    id=f"{fw_table.id}-weight-store",
+                    storage_type="session",
+                    data=_default_weight_store_data(fw_table),
+                ),
+            ]
+        )
+
     test_state_stores = []
     for app in all_apps.values():
         test_state_stores.extend(app.stores)
@@ -1023,8 +725,17 @@ def build_nav(
         ),
         Store(id="cmap-store", storage_type="local", data="viridis_r"),
         *category_state_stores,
+        *framework_state_stores,
         *test_state_stores,
     ]
+    if combined_framework_table is not None:
+        global_state_stores.append(
+            Store(
+                id="framework-summary-table-weight-store",
+                storage_type="session",
+                data=_default_weight_store_data(combined_framework_table),
+            )
+        )
 
     full_layout = [
         # Start-up mask: covers the page and tutorial with a spinner until the
@@ -1092,6 +803,11 @@ def build_nav(
             id="summary-table-scores-store",
             storage_type="session",
         ),
+        *(
+            [Store(id="framework-summary-table-scores-store", storage_type="session")]
+            if combined_framework_table is not None
+            else []
+        ),
         Div(global_state_stores, style={"display": "none"}),
         Div(
             [
@@ -1158,6 +874,17 @@ def build_nav(
                                     id="summary-table-computed-store",
                                     storage_type="session",
                                     data=summary_table.data,
+                                ),
+                                *(
+                                    [
+                                        Store(
+                                            id="framework-summary-table-computed-store",
+                                            storage_type="session",
+                                            data=combined_framework_table.data,
+                                        )
+                                    ]
+                                    if combined_framework_table is not None
+                                    else []
                                 ),
                                 Store(
                                     id="filter-recompute-done",
@@ -1348,6 +1075,7 @@ def build_nav(
         if pathname in (None, "", "/", "/summary"):
             summary_counts = (
                 f"{len(category_views)} categories · {len(all_apps)} benchmarks"
+                f" · {len(framework_views)} frameworks"
             )
             return Div(
                 [
@@ -1388,6 +1116,29 @@ def build_nav(
                             weight_components,
                         ],
                         style={"width": "fit-content"},
+                    ),
+                    *(
+                        [
+                            H1(
+                                "Frameworks Summary",
+                                style={"marginTop": "32px"},
+                            ),
+                            Div(
+                                [
+                                    build_download_controls(
+                                        combined_framework_table.id, row=True
+                                    ),
+                                    build_loading_summary_table(
+                                        combined_framework_table
+                                    ),
+                                    Br(),
+                                    framework_weight_components,
+                                ],
+                                style={"width": "fit-content"},
+                            ),
+                        ]
+                        if combined_framework_table is not None
+                        else []
                     ),
                     build_faqs(),
                 ]
@@ -1439,6 +1190,36 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         all_layouts, all_tables, all_frameworks
     )
     framework_views = build_framework_views(cat_views, framework_ids)
+    # Build per-framework summary tables and the combined framework summary
+    framework_tables, framework_grouping = build_framework_summary_tables(
+        all_tables, all_frameworks, framework_views
+    )
+    combined_framework_table = None
+    framework_weight_components = None
+    if framework_tables:
+        combined_framework_table = build_summary_table(
+            dict(
+                sorted(
+                    framework_tables.items(),
+                    key=lambda item: framework_sort_key(item[0]),
+                )
+            ),
+            table_id="framework-summary-table",
+            header_labels={
+                fid: str(framework_views[fid]["label"]) for fid in framework_tables
+            },
+        )
+        framework_weight_components = build_weight_components(
+            header="Weights",
+            table=combined_framework_table,
+            include_download_controls=False,
+            column_widths=combined_framework_table.column_widths,
+        )
+        register_benchmark_to_group_callback(
+            framework_grouping,
+            {fid: fid for fid in framework_grouping},
+            table_id_suffix="-framework-summary-table",
+        )
     # Build overall summary table
     summary_table = build_summary_table(
         dict(sorted(cat_tables.items())), weights=cat_weights
@@ -1457,5 +1238,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         summary_table,
         weight_components,
         all_apps,
+        combined_framework_table,
+        framework_weight_components,
     )
     register_onboarding_callbacks()
