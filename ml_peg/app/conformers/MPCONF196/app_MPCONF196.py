@@ -33,12 +33,11 @@ class MPCONF196App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
+        model_dir = DATA_PATH / "mock"
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"/assets/conformers/MPCONF196/{MODELS[0]}/{label}.xyz"
-                for label in labels
+                f"/assets/conformers/MPCONF196/mock/{label}.xyz" for label in labels
             ]
         else:
             structs = []

@@ -62,7 +62,12 @@ def interaction_energies() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in INFO["filenames"]:
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path)
             if not ref_stored:
                 results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
@@ -73,7 +78,11 @@ def interaction_energies() -> dict[str, list]:
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}.xyz", atoms)
 
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

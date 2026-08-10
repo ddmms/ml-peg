@@ -179,9 +179,12 @@ def all_errors(rel_energies: dict[str, list[float]]) -> dict[str, list[float]]:
     """
     errors = {}
     for model_name in MODELS:
-        errors[model_name] = np.abs(
-            np.subtract(rel_energies[model_name], rel_energies["ref"])
-        )
+        if rel_energies[model_name]:
+            errors[model_name] = np.abs(
+                np.subtract(rel_energies[model_name], rel_energies["ref"])
+            )
+        else:
+            errors[model_name] = [np.nan] * len(rel_energies["ref"])
     return errors
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import (
@@ -101,17 +101,23 @@ def ionization_energies() -> dict[str, list]:
 
     for model_name in MODELS:
         for complex_id in LABELS:
-            atoms = read(CALC_PATH / model_name / f"{complex_id}.xyz")
+            struct_path = CALC_PATH / model_name / f"{complex_id}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path)
             model_ion_energy = atoms.info["model_ionization_energy"]
             ref_ion_energy = atoms.info["ref_ionization_energy"]
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{complex_id}.xyz", atoms)
             results[model_name].append(model_ion_energy * EV_TO_KCAL)
             if not ref_stored:
                 results["ref"].append(ref_ion_energy * EV_TO_KCAL)
-        ref_stored = True
+
+        if not ref_stored:
+            if len(results["ref"]) == len(LABELS):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

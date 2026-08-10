@@ -82,15 +82,20 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            results[model_name] = [float("nan")] * len(LABELS) * 2
+            continue
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
         for label in LABELS:
             for direction in ("forward", "reverse"):
-                atoms = read(
-                    CALC_PATH / model_name / f"{label}_{direction}.xyz",
-                    index=":",
-                )
+                struct_path = model_dir / f"{label}_{direction}.xyz"
+                if not struct_path.exists():
+                    results[model_name].append(float("nan"))
+                    continue
+                atoms = read(struct_path, index=":")
 
                 # Atoms includes reactants/products and TS
                 results[model_name].append(
@@ -105,7 +110,12 @@ def barrier_heights() -> dict[str, list]:
                 # Write structures for app
                 write(structs_dir / f"{label}_{direction}.xyz", atoms)
 
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]) * 2:
+                ref_stored = True
+            else:
+                results["ref"] = []
+
     return results
 
 

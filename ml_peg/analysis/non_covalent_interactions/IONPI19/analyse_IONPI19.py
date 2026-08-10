@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -115,18 +115,24 @@ def conformer_energies() -> dict[str, list]:
             model_int_energy = 0
             for spec, stoic in zip(SPECIES[system], STOICH[system], strict=False):
                 label = spec
-                atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+                struct_path = CALC_PATH / model_name / f"{label}.xyz"
+                if not struct_path.exists():
+                    model_int_energy = float("nan")
+                    ref_int_energy = float("nan")
+                    break
+                atoms = read(struct_path)
                 model_int_energy += atoms.info["model_energy"] * stoic
                 ref_int_energy = atoms.info["ref_int_energy"]
 
-                # Write structures for app
-                structs_dir = OUT_PATH / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{label}.xyz", atoms)
             results[model_name].append(model_int_energy * EV_TO_KCAL)
             if not ref_stored:
                 results["ref"].append(ref_int_energy * EV_TO_KCAL)
-        ref_stored = True
+
+        if not ref_stored:
+            if len(results["ref"]) == 20:
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
