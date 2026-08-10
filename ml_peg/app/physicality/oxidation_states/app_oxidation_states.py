@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -21,6 +20,7 @@ BENCHMARK_NAME = "Iron Oxidation States"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#oxidation-states"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "oxidation_states"
 REF_PATH = CALCS_ROOT / "physicality" / "oxidation_states" / "data"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class FeOxidationStatesApp(BaseApp):
@@ -74,21 +74,6 @@ def get_app() -> FeOxidationStatesApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=DATA_PATH / "info.json",
+        framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(
-        __name__,
-        assets_folder=DATA_PATH.parent.parent,
-        suppress_callback_exceptions=True,
-    )
-
-    # Construct layout and register callbacks
-    FeOxidationStatesApp = get_app()
-    full_app.layout = FeOxidationStatesApp.layout
-    FeOxidationStatesApp.register_callbacks()
-
-    # Run app
-    full_app.run(port=8054, debug=True)

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import ase.io
+import numpy as np
 import pytest
 from tqdm import tqdm
 import yaml
@@ -66,7 +68,11 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
     atoms.calc = calc
     atoms.info.setdefault("charge", 0)
     atoms.info.setdefault("spin", 1)
-    water_energy = atoms.get_potential_energy()
+    try:
+        water_energy = atoms.get_potential_energy()
+    except Exception as exc:
+        warn(f"Error calculating energy: {exc}", stacklevel=2)
+        water_energy = np.nan
 
     # Iterate through strain conditions
     for strain in strains:
@@ -74,7 +80,14 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
         atoms.calc = calc
         atoms.info.setdefault("charge", 0)
         atoms.info.setdefault("spin", 1)
-        graphene_energy = atoms.get_potential_energy()
+        try:
+            graphene_energy = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for strain {strain}: {exc}",
+                stacklevel=2,
+            )
+            graphene_energy = np.nan
 
         # Iterate through orientations
         for orientation in orientations:
@@ -89,7 +102,11 @@ def test_graphene_wetting_energy(mlip: tuple[str, Any]) -> None:
                 atoms.calc = calc
                 atoms.info.setdefault("charge", 0)
                 atoms.info.setdefault("spin", 1)
-                mlip_potential_energy = atoms.get_potential_energy()
+                try:
+                    mlip_potential_energy = atoms.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy: {exc}", stacklevel=2)
+                    mlip_potential_energy = np.nan
                 mlip_adsorption_energy = (
                     mlip_potential_energy - graphene_energy - water_energy
                 )

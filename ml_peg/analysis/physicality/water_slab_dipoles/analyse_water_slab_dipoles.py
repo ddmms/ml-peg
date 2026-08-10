@@ -11,7 +11,11 @@ import pytest
 from scipy.constants import e, epsilon_0
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -188,4 +192,8 @@ def test_water_slab_dipoles(metrics: dict[str, dict]) -> None:
     metrics
         All water slab dipole metrics.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "slab-final.extxyz",
+        out_path=OUT_PATH,
+        index=0,
+    )

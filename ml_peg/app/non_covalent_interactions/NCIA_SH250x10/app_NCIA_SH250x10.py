@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -19,6 +18,7 @@ DOCS_URL = (
     "non_covalent_interactions.html#ncia-sh250x10"
 )
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_SH250x10"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class NCIASH250x10App(BaseApp):
@@ -80,12 +80,6 @@ def get_app() -> NCIASH250x10App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    benchmark_app = get_app()
-    full_app.layout = benchmark_app.layout
-    benchmark_app.register_callbacks()
-    full_app.run(port=8061, debug=True)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -19,6 +18,7 @@ MODELS = get_model_names(current_models)
 
 BENCHMARK_NAME = "PLA15"
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLA15"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class PLA15App(BaseApp):
@@ -81,17 +81,6 @@ def get_app() -> PLA15App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    pla15_app = get_app()
-    full_app.layout = pla15_app.layout
-    pla15_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8055, debug=True)

@@ -1,0 +1,8 @@
+metrics:
+  MAE:
+    tooltip: "Mean Absolute Error of reaction barrier heights"
+    unit: kcal/mol
+    level_of_theory: r2SCAN
+    good: 1.0
+    bad: 3.0
+    weight: 1.0

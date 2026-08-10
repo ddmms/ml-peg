@@ -38,6 +38,28 @@ def generate_weas_html(
         frame = index
         atoms_txt = "atoms"
 
+    # In traj mode, report the current frame to the parent page on every change
+    # (play, step, slider) so a linked plot can highlight the matching point.
+    # WEAS has no frame-change event, so poll editor.avr.currentFrame via rAF.
+    frame_reporter = (
+        """
+        let __mlPegLastFrame = editor.avr.currentFrame;
+        function __mlPegReportFrame() {
+            const f = editor.avr.currentFrame;
+            if (f !== __mlPegLastFrame) {
+                __mlPegLastFrame = f;
+                window.parent.postMessage(
+                    {type: "ml-peg-weas-frame", frame: f}, "*"
+                );
+            }
+            requestAnimationFrame(__mlPegReportFrame);
+        }
+        requestAnimationFrame(__mlPegReportFrame);
+        """
+        if mode == "traj"
+        else ""
+    )
+
     return f"""
     <!doctype html>
     <html lang="en">
@@ -116,7 +138,7 @@ def generate_weas_html(
 
         editor.avr.currentFrame = {frame};
         editor.render();
-
+        {frame_reporter}
         </script>
     </body>
     </html>

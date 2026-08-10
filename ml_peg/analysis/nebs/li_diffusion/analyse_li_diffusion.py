@@ -9,7 +9,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -27,20 +27,20 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 REF_VALUES = {"path_b": 0.27, "path_c": 2.5}
 
 
-def plot_nebs(model: str, path: Literal["b", "c"]) -> None:
+def plot_nebs(model_name: str, path: Literal["b", "c"]) -> None:
     """
     Plot NEB paths and save all structure files.
 
     Parameters
     ----------
-    model
+    model_name
         Name of MLIP.
     path
         Path "b" or "c" for NEB.
     """
 
     @plot_scatter(
-        filename=OUT_PATH / f"figure_{model}_neb_{path.lower()}.json",
+        filename=OUT_PATH / model_name / f"figure_neb_{path.lower()}.json",
         title=f"NEB path {path.upper()}",
         x_label="Image",
         y_label="Energy / eV",
@@ -57,16 +57,16 @@ def plot_nebs(model: str, path: Literal["b", "c"]) -> None:
         """
         results = {}
         structs = read(
-            CALC_PATH / f"li_diffusion_{path.lower()}-{model}-neb-band.extxyz",
+            CALC_PATH / model_name / f"li_diffusion_{path.lower()}-neb-band.extxyz",
             index=":",
         )
-        results[model] = [
+        results[model_name] = [
             list(range(len(structs))),
             [struct.get_potential_energy() for struct in structs],
         ]
-        structs_dir = OUT_PATH / model
+        structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
-        write(structs_dir / f"{model}-{path.lower()}-neb-band.extxyz", structs)
+        write(structs_dir / f"{path.lower()}-neb-band.extxyz", structs)
 
         return results
 
@@ -86,13 +86,17 @@ def path_b_error() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        plot_nebs(model_name, "b")
-        with open(
-            CALC_PATH / f"li_diffusion_b-{model_name}-neb-results.dat", encoding="utf8"
-        ) as f:
-            data = f.readlines()
-            pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
-        results[model_name] = abs(REF_VALUES["path_b"] - pred_barrier)
+        try:
+            plot_nebs(model_name, "b")
+            with open(
+                CALC_PATH / model_name / "li_diffusion_b-neb-results.dat",
+                encoding="utf8",
+            ) as f:
+                data = f.readlines()
+                pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
+            results[model_name] = abs(REF_VALUES["path_b"] - pred_barrier)
+        except (FileNotFoundError, KeyError):
+            results[model_name] = float("nan")
     return results
 
 
@@ -109,13 +113,17 @@ def path_c_error() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        plot_nebs(model_name, "c")
-        with open(
-            CALC_PATH / f"li_diffusion_c-{model_name}-neb-results.dat", encoding="utf8"
-        ) as f:
-            data = f.readlines()
-            pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
-        results[model_name] = abs(REF_VALUES["path_c"] - pred_barrier)
+        try:
+            plot_nebs(model_name, "c")
+            with open(
+                CALC_PATH / model_name / "li_diffusion_c-neb-results.dat",
+                encoding="utf8",
+            ) as f:
+                data = f.readlines()
+                pred_barrier, _, _ = tuple(float(x) for x in data[1].split())
+            results[model_name] = abs(REF_VALUES["path_c"] - pred_barrier)
+        except (FileNotFoundError, KeyError):
+            results[model_name] = float("nan")
     return results
 
 
@@ -158,4 +166,8 @@ def test_li_diffusion(metrics: dict[str, dict]) -> None:
     metrics
         All Li diffusion metrics.
     """
-    return
+    write_struct_info(
+        data_path=CALC_PATH / "mock" / "li_diffusion_b-neb-band.extxyz",
+        out_path=OUT_PATH,
+        index=0,
+    )

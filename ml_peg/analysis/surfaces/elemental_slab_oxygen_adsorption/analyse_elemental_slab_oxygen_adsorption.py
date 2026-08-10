@@ -5,10 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -21,6 +26,15 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+# Extract system metadata from mock calculation (filenames)
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    include_filenames=True,
+    out_path=OUT_PATH,
 )
 
 
@@ -47,23 +61,6 @@ def compute_adsorption_energy(
     return mol_surf_e - (surface_e + molecule_e)
 
 
-def system_names() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    system_names_list = []
-    for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*.xyz")):
-            system_names_list.append(system_path.stem)
-        break  # only need the first model to list available systems
-    return system_names_list
-
-
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_adsorption_energies.json",
@@ -71,7 +68,7 @@ def system_names() -> list:
     x_label="Predicted adsorption energy / eV",
     y_label="Reference adsorption energy / eV",
     hoverdata={
-        "System": system_names(),
+        "System": SYSTEM_INFO["filenames"],
     },
 )
 def adsorption_energies() -> dict[str, list]:
@@ -137,9 +134,12 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            adsorption_energies["ref"], adsorption_energies[model_name]
-        )
+        if adsorption_energies[model_name]:
+            results[model_name] = mae(
+                adsorption_energies["ref"], adsorption_energies[model_name]
+            )
+        else:
+            results[model_name] = np.nan
     return results
 
 

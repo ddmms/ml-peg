@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from dash import Dash, Input, Output, callback, dcc
+from dash import Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
@@ -21,6 +21,7 @@ BENCHMARK_NAME = "Iron Properties"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "iron_properties"
 FIGURES_PATH = DATA_PATH / "figures"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#iron-properties"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
@@ -161,12 +162,5 @@ def get_app() -> IronPropertiesApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "iron_properties_metrics_table.json",
         extra_components=extra_components,
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    dash_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    iron_properties_app = get_app()
-    dash_app.layout = iron_properties_app.layout
-    iron_properties_app.register_callbacks()
-    dash_app.run(port=8060, debug=True)

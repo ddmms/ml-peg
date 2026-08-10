@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-from dash import Dash
 from dash.dcc import Graph
 from dash.html import Div
 
@@ -23,6 +22,7 @@ DOCS_URL = (
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "low_dimensional_relaxation"
 ASSETS_PREFIX = "/assets/bulk_crystal/low_dimensional_relaxation"
+INFO_PATH = DATA_PATH / "info.json"
 
 # (plot_json_filename, metric_cell_name, plot_id_suffix, traj_dirname)
 PLOT_CONFIGS = [
@@ -168,12 +168,5 @@ def get_app() -> LowDimensionalRelaxationApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    ld_app = get_app()
-    full_app.layout = ld_app.layout
-    ld_app.register_callbacks()
-    full_app.run(port=8064, debug=True)

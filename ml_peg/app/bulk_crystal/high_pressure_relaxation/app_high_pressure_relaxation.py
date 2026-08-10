@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -17,7 +16,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "High-pressure relaxation"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#high-pressure-relaxation"
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "high_pressure_relaxation"
-
+INFO_PATH = DATA_PATH / "info.json"
 
 PRESSURES = [0, 25, 50, 75, 100, 125, 150]
 PRESSURE_LABELS = ["P000", "P025", "P050", "P075", "P100", "P125", "P150"]
@@ -119,12 +118,5 @@ def get_app() -> HighPressureRelaxationApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    hp_app = get_app()
-    full_app.layout = hp_app.layout
-    hp_app.register_callbacks()
-    full_app.run(port=8055, debug=True)

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dash import Dash
+import warnings
+
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -12,16 +13,14 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
 # Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "X23 Lattice Energies"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_crystal.html#x23"
 )
 DATA_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class X23App(BaseApp):
@@ -35,9 +34,11 @@ class X23App(BaseApp):
         )
 
         # Assets dir will be parent directory - individual files for each system
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
+        if not structs_dir.exists():
+            warnings.warn(f"Structures directory {structs_dir} not found", stacklevel=2)
         structs = [
-            f"/assets/molecular_crystal/X23/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/molecular_crystal/X23/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -73,17 +74,6 @@ def get_app() -> X23App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids=["mace-multihead", "mace-polar-1"],
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    x23_app = get_app()
-    full_app.layout = x23_app.layout
-    x23_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8053, debug=True)

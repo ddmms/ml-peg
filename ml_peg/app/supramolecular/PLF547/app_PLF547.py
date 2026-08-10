@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -22,6 +21,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#plf547"
 )
 DATA_PATH = APP_ROOT / "data" / "supramolecular" / "PLF547"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 def _structure_paths(model_name: str) -> list[str]:
@@ -96,14 +96,6 @@ def get_app() -> PLF547App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids=["mace-multihead", "mace-polar-1"],
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    plf_app = get_app()
-    full_app.layout = plf_app.layout
-    plf_app.register_callbacks()
-
-    full_app.run(port=8055, debug=True)

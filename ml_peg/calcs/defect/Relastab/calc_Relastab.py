@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -71,8 +73,12 @@ def test_relastab(mlip: tuple[str, Any]) -> None:
 
             # Calculate
             atoms.calc = calc
-
-            atoms.get_potential_energy()
+            try:
+                e_pred = atoms.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating energy for {poscar}: {exc}", stacklevel=2)
+                e_pred = np.nan
+            atoms.info["energy_pred"] = e_pred
             atoms.info["system"] = poscar.stem
             atoms.info["subset"] = subset_name
 

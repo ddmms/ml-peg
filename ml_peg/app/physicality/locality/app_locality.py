@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -18,6 +17,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#locality"
 )
 DATA_PATH = APP_ROOT / "data" / "physicality" / "locality"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class LocalityApp(BaseApp):
@@ -52,23 +52,12 @@ def get_app() -> LocalityApp:
     """
     return LocalityApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description="Force sensitivity for ghost atoms and randomly place hydrogens.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "locality_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    # Construct layout and register callbacks
-    locality_app = get_app()
-    full_app.layout = locality_app.layout
-    locality_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8051, debug=True)

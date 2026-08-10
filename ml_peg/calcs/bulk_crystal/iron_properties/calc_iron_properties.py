@@ -16,9 +16,9 @@ This benchmark is computationally expensive and marked with @pytest.mark.slow.
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from warnings import warn
 
 from ase.build import bulk
 from ase.constraints import FixedLine
@@ -51,8 +51,6 @@ from ml_peg.models.get_models import load_models
 if TYPE_CHECKING:
     from ase import Atoms
     from ase.calculators.calculator import Calculator
-
-logger = logging.getLogger(__name__)
 
 MODELS = load_models(current_models)
 
@@ -139,10 +137,17 @@ def run_eos_calculation(calc: Calculator) -> dict[str, Any]:
 
         # Relax atomic positions at fixed cell volume
         # (matches LAMMPS minimize behavior)
-        opt = BFGS(atoms, logfile=None)
-        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+        try:
+            opt = BFGS(atoms, logfile=None)
+            opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+        except Exception as exc:
+            warn(f"EoS relaxation failed: {exc}", stacklevel=2)
 
-        energy = atoms.get_potential_energy()
+        try:
+            energy = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Energy calculation failed: {exc}", stacklevel=2)
+            energy = np.nan
         volume = atoms.get_volume()
 
         n_atoms = len(atoms)
@@ -196,9 +201,12 @@ def run_elastic_calculation(
     atoms_ref.calc = calc
 
     # Box relaxation
-    ecf = ExpCellFilter(atoms_ref)
-    opt = BFGS(ecf, logfile=None)
-    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+    try:
+        ecf = ExpCellFilter(atoms_ref)
+        opt = BFGS(ecf, logfile=None)
+        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+    except Exception as exc:
+        warn(f"Elasticity relaxation failed: {exc}", stacklevel=2)
 
     # Apply random jiggle to atoms to prevent staying on saddle points
     rng = np.random.default_rng(seed=87287)
@@ -219,8 +227,16 @@ def run_elastic_calculation(
         atoms_pos.calc = calc
 
         opt_pos = BFGS(atoms_pos, logfile=None)
-        opt_pos.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-        stress_pos = atoms_pos.get_stress(voigt=True)
+        try:
+            opt_pos.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+        except Exception as exc:
+            warn(f"Positive strain relaxation failed: {exc}", stacklevel=2)
+
+        try:
+            stress_pos = atoms_pos.get_stress(voigt=True)
+        except Exception as exc:
+            warn(f"Positive strain stress calculation failed: {exc}", stacklevel=2)
+            stress_pos = np.nan * np.ones(6)
 
         # Negative strain with off-diagonal cell adjustment
         atoms_neg = apply_voigt_strain(atoms_ref.copy(), direction, -ELASTIC_STRAIN)
@@ -228,8 +244,15 @@ def run_elastic_calculation(
         atoms_neg.calc = calc
 
         opt_neg = BFGS(atoms_neg, logfile=None)
-        opt_neg.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-        stress_neg = atoms_neg.get_stress(voigt=True)
+        try:
+            opt_neg.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+        except Exception as exc:
+            warn(f"Negative strain relaxation failed: {exc}", stacklevel=2)
+        try:
+            stress_neg = atoms_neg.get_stress(voigt=True)
+        except Exception as exc:
+            warn(f"Negative strain stress calculation failed: {exc}", stacklevel=2)
+            stress_neg = np.nan * np.ones(6)
 
         # Compute elastic constants using stress differences
         # C_ij = dσ_i / dε_j = (σ_pos - σ_neg) / (2 * ε)
@@ -308,15 +331,21 @@ def run_bain_path_calculation(
         atoms_relaxed = relax_volume_isotropic(atoms, calc)
 
         # Step 2: Atomic position relaxation at fixed cell
-        opt = BFGS(atoms_relaxed, logfile=None)
         try:
+            opt = BFGS(atoms_relaxed, logfile=None)
             opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-        except Exception:
-            logger.warning(
-                "BFGS relaxation failed for Bain path c/a=%.3f", ratio, exc_info=True
-            )
+        except Exception as exc:
+            warn(f"Relaxation failed for Bain path c/a={ratio}: {exc}", stacklevel=2)
 
-        energy = atoms_relaxed.get_potential_energy()
+        try:
+            energy = atoms_relaxed.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Energy calculation failed for Bain path c/a={ratio}: {exc}",
+                stacklevel=2,
+            )
+            energy = np.nan
+
         cell = atoms_relaxed.get_cell()
         ca_actual = cell[2, 2] / cell[1, 1]
 
@@ -376,7 +405,12 @@ def run_vacancy_calculation(
     atoms_perfect.calc = calc
 
     n_atoms = len(atoms_perfect)
-    E_perfect = atoms_perfect.get_potential_energy()  # noqa: N806
+    try:
+        E_perfect = atoms_perfect.get_potential_energy()  # noqa: N806
+    except Exception as exc:
+        warn(f"Energy calculation failed for perfect BCC: {exc}", stacklevel=2)
+        E_perfect = np.nan  # noqa: N806
+
     E_coh = E_perfect / n_atoms  # noqa: N806
 
     atoms_defect = atoms_perfect.copy()
@@ -384,9 +418,18 @@ def run_vacancy_calculation(
     _set_iron_info(atoms_defect)
     atoms_defect.calc = calc
 
-    opt = BFGS(atoms_defect, logfile=None)
-    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-    E_defect = atoms_defect.get_potential_energy()  # noqa: N806
+    try:
+        opt = BFGS(atoms_defect, logfile=None)
+        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+    except Exception as exc:
+        warn(f"Relaxation failed for vacancy defect: {exc}", stacklevel=2)
+
+    try:
+        E_defect = atoms_defect.get_potential_energy()  # noqa: N806
+    except Exception as exc:
+        warn(f"Energy calculation failed for vacancy defect: {exc}", stacklevel=2)
+        E_defect = np.nan  # noqa: N806
+
     E_vac = (E_defect - E_perfect) + E_coh  # noqa: N806
 
     return {
@@ -452,6 +495,7 @@ def run_surface_calculations(
 
     for name, cfg in SURFACE_CONFIG.items():
         print(f"Running surface calculation for {name}...")
+
         create_fn = cfg["create_fn"]
         area_axes = cfg["area_axes"]
         vacuum = cfg["vacuum"]
@@ -465,10 +509,23 @@ def run_surface_calculations(
             slab_kwargs = {"layers": cfg["layers"], "vacuum": vacuum}
 
         # Bulk reference
-        atoms_bulk = create_fn(lattice_parameter, **bulk_kwargs)
+        try:
+            atoms_bulk = create_fn(lattice_parameter, **bulk_kwargs)
+        except ValueError as err:
+            warn(f"Failed to create bulk structure for {name}: {err}", stacklevel=2)
+            surfaces[name] = np.nan
+            continue
+
         _set_iron_info(atoms_bulk)
         atoms_bulk.calc = calc
-        e_bulk = atoms_bulk.get_potential_energy()
+        try:
+            e_bulk = atoms_bulk.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Energy calculation failed for bulk reference {name}: {exc}",
+                stacklevel=2,
+            )
+            e_bulk = np.nan
         cell = atoms_bulk.get_cell()
         area = np.linalg.norm(np.cross(cell[area_axes[0]], cell[area_axes[1]]))
 
@@ -476,9 +533,17 @@ def run_surface_calculations(
         atoms_slab = create_fn(lattice_parameter, **slab_kwargs)
         _set_iron_info(atoms_slab)
         atoms_slab.calc = calc
-        opt = BFGS(atoms_slab, logfile=None)
-        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-        e_slab = atoms_slab.get_potential_energy()
+        try:
+            opt = BFGS(atoms_slab, logfile=None)
+            opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+        except Exception as exc:
+            warn(f"Relaxation failed for {name}: {exc}", stacklevel=2)
+
+        try:
+            e_slab = atoms_slab.get_potential_energy()
+        except Exception as exc:
+            warn(f"Energy calculation failed for {name}: {exc}", stacklevel=2)
+            e_slab = np.nan
 
         surfaces[name] = calculate_surface_energy(e_slab, e_bulk, area)
 
@@ -516,23 +581,41 @@ def run_sfe_calculation(
     dict[str, Any]
         Dictionary with displacements, sfe_J_per_m2, and max_sfe.
     """
-    config = SFE_CONFIG[sfe_type]
-    atoms = config["create_fn"](lattice_parameter)
-    _set_iron_info(atoms)
-    atoms.calc = calc
-
     # Calculate Burgers vector magnitude: b = a * sqrt(3) / 2
     burgers_vector = lattice_parameter * np.sqrt(3) / 2
     step_size = burgers_vector / SFE_STEPS
+
+    config = SFE_CONFIG[sfe_type]
+
+    try:
+        atoms = config["create_fn"](lattice_parameter)
+    except Exception as err:
+        warn(f"Failed to create SFE structure for {sfe_type}: {err}", stacklevel=2)
+        return {
+            "displacements": [step * step_size for step in range(SFE_STEPS + 1)],
+            "sfe_J_per_m2": [np.nan for _ in range(SFE_STEPS + 1)],
+            "max_sfe": np.nan,
+        }
+
+    _set_iron_info(atoms)
+    atoms.calc = calc
 
     cell = atoms.get_cell()
     ly = cell[1, 1]
     lz = cell[2, 2]
     area = ly * lz
 
-    opt = BFGS(atoms, logfile=None)
-    opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-    e0 = atoms.get_potential_energy()
+    try:
+        opt = BFGS(atoms, logfile=None)
+        opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
+    except Exception as exc:
+        warn(f"Relaxation failed for SFE {sfe_type}: {exc}", stacklevel=2)
+
+    try:
+        e0 = atoms.get_potential_energy()
+    except Exception as exc:
+        warn(f"Energy calculation failed for {sfe_type}: {exc}", stacklevel=2)
+        e0 = np.nan
 
     positions = atoms.get_positions()
     x_mid = (positions[:, 0].min() + positions[:, 0].max()) / 2 + 0.1
@@ -552,19 +635,23 @@ def run_sfe_calculation(
 
         atoms.set_constraint(constraints)
 
-        opt = BFGS(atoms, logfile=None)
         try:
+            opt = BFGS(atoms, logfile=None)
             opt.run(fmax=BFGS_FMAX, steps=BFGS_MAX_ITER)
-        except Exception:
-            logger.warning(
-                "BFGS relaxation failed for SFE %s step %d",
-                sfe_type,
-                step,
-                exc_info=True,
-            )
+        except Exception as exc:
+            warn(f"Relaxation failed for SFE {sfe_type}: {exc}", stacklevel=2)
 
         atoms.set_constraint()
-        energy = atoms.get_potential_energy()
+
+        try:
+            energy = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Energy calculation failed for SFE {sfe_type} step {step}: {exc}",
+                stacklevel=2,
+            )
+            energy = np.nan
+
         sfe = (energy - e0) / (2 * area) * EV_PER_A2_TO_J_PER_M2
 
         displacements.append(step * step_size)
@@ -650,13 +737,22 @@ def run_ts_calculation(
         atoms.set_positions(positions)
 
         # Calculate energy (no relaxation!)
-        energy = atoms.get_potential_energy()
+        try:
+            energy = atoms.get_potential_energy()
+        except Exception as exc:
+            warn(f"Energy calculation failed for TS step {dd}: {exc}", stacklevel=2)
+            energy = np.nan
 
         # Calculate forces for stress
-        forces = atoms.get_forces()
+        try:
+            forces = atoms.get_forces()
 
-        # Sum of z-forces on upper region
-        fz_upper = np.sum(forces[upper_indices, 2])
+            # Sum of z-forces on upper region
+            fz_upper = np.sum(forces[upper_indices, 2])
+        except Exception as exc:
+            warn(f"Force calculation failed for TS step {dd}: {exc}", stacklevel=2)
+            forces = np.nan
+            fz_upper = np.nan
 
         # Convert to stress (GPa): σ = F / A
         # Negate because forces on upper atoms point downward (negative z)
@@ -836,14 +932,18 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     write(structures_dir / "vacancy.extxyz", vac_atoms)
 
     for name, cfg in SURFACE_CONFIG.items():
-        create_fn = cfg["create_fn"]
-        if "size" in cfg:
-            slab = create_fn(a0, size=cfg["size"], vacuum=cfg["vacuum"])
-        else:
-            slab = create_fn(a0, layers=cfg["layers"], vacuum=cfg["vacuum"])
-        _set_iron_info(slab)
-        slab.info["description"] = f"BCC Fe ({name}) surface slab"
-        write(structures_dir / f"surface_{name}.extxyz", slab)
+        try:
+            create_fn = cfg["create_fn"]
+            if "size" in cfg:
+                slab = create_fn(a0, size=cfg["size"], vacuum=cfg["vacuum"])
+            else:
+                slab = create_fn(a0, layers=cfg["layers"], vacuum=cfg["vacuum"])
+            _set_iron_info(slab)
+            slab.info["description"] = f"BCC Fe ({name}) surface slab"
+            write(structures_dir / f"surface_{name}.extxyz", slab)
+        except Exception as exc:
+            warn(f"Failed to create structure for surface {name}: {exc}", stacklevel=2)
+            continue
 
     # Save all results as JSON
     (write_dir / "results.json").write_text(json.dumps(results, indent=2, default=str))

@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import copy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 import numpy as np
@@ -84,10 +85,18 @@ def test_cmrads200(mlip: tuple[str, Any]) -> None:
         stoichiometry_list = np.array(
             cmrads_reactions_dict[reaction_id]["Stoichiometry"].split(",")
         ).astype(float)
-        systems_energies = np.array(
-            [structs_energy_dict[sys].get_potential_energy() for sys in systems_list]
-        )
-        reaction_energy = np.sum(systems_energies * stoichiometry_list)
+        try:
+            systems_energies = np.array(
+                [
+                    structs_energy_dict[sys].get_potential_energy()
+                    for sys in systems_list
+                ]
+            )
+            reaction_energy = np.sum(systems_energies * stoichiometry_list)
+        except Exception as exc:
+            warn(f"Energy calculation failed for {reaction_id}: {exc}", stacklevel=2)
+            reaction_energy = np.nan
+
         mol_surface = structs_energy_dict[systems_list[0]].copy()
         mol_surface.info["pred_adsorption_energy"] = reaction_energy
         mol_surface.info["PBE_adsorption_energy"] = cmrads_reactions_dict[reaction_id][

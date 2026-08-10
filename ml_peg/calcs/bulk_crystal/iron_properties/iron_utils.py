@@ -7,6 +7,7 @@ This module provides structure creation and EOS fitting functions for iron bench
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from warnings import warn
 
 from ase import Atoms
 from ase.build import bulk
@@ -75,12 +76,15 @@ def fit_eos(
         - V0: Equilibrium volume per atom (Angstrom^3)
         - a0: Equilibrium lattice parameter (Angstrom) - for BCC
     """
-    eos = EquationOfState(vol, ene, eos="birchmurnaghan")
-    V0, E0, B0_raw = eos.fit()  # noqa: N806
-
-    B0_GPa = B0_raw * EV_PER_A3_TO_GPA  # noqa: N806
-    Bp = eos.eos_parameters[2]  # noqa: N806
-    a0 = (V0 * 2) ** (1.0 / 3.0)
+    try:
+        eos = EquationOfState(vol, ene, eos="birchmurnaghan")
+        V0, E0, B0_raw = eos.fit()  # noqa: N806
+        B0_GPa = B0_raw * EV_PER_A3_TO_GPA  # noqa: N806
+        Bp = eos.eos_parameters[2]  # noqa: N806
+        a0 = (V0 * 2) ** (1.0 / 3.0)
+    except Exception as exc:
+        warn(f"EOS fitting failed: {exc}", stacklevel=2)
+        return dict.fromkeys(["E0", "B0", "Bp", "V0", "a0"], np.nan)
 
     return {"E0": E0, "B0": B0_GPa, "Bp": Bp, "V0": V0, "a0": a0}
 
@@ -150,7 +154,14 @@ def relax_volume_isotropic(
         test_atoms = atoms.copy()
         test_atoms.set_cell(original_cell * scale, scale_atoms=True)
         test_atoms.calc = calc
-        return test_atoms.get_potential_energy()
+        try:
+            return test_atoms.get_potential_energy()
+        except Exception as exc:
+            warn(
+                f"Energy calculation failed for scale factor {scale}: {exc}",
+                stacklevel=2,
+            )
+            return np.nan
 
     # Find optimal scale factor that minimizes energy
     result = minimize_scalar(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import units
 from ase.io import read
@@ -25,6 +26,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_water_dipole(mlip: tuple[str, Any]) -> None:
     """
@@ -84,6 +86,9 @@ def test_water_dipole(mlip: tuple[str, Any]) -> None:
 
     print("Starting MD")
 
-    md.run()
+    try:
+        md.run()
+    except Exception as exc:
+        warn(f"Error during MD: {exc}", stacklevel=2)
 
     print("Finished MD")

@@ -10,6 +10,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -26,36 +27,18 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "CMRAds200"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
 
-
-def labels() -> list:
-    """
-    Get list of labels.
-
-    Returns
-    -------
-    list
-        List of all energy labels.
-    """
-    structs = read(CALC_PATH / "mol_surface_structs.extxyz", index=":")
-    return [struct.info["sys_formula"] for struct in structs]
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="mol_surface_structs.extxyz",
+    info_keys=["sys_formula"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
-def system_names() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            structs = read(model_dir / "mol_surface_structs.extxyz", index=":")
-            system_names = [struct.info["sys_formula"] for struct in structs]
-            break
-    return system_names
+LABELS = SYSTEM_INFO["sys_formula"]
 
 
 @pytest.fixture
@@ -65,7 +48,7 @@ def system_names() -> list:
     x_label="Predicted adsorption energy / eV",
     y_label="Reference adsorption energy / eV",
     hoverdata={
-        "System": system_names(),
+        "System": SYSTEM_INFO["sys_formula"],
     },
 )
 def adsorption_energies() -> dict[str, list]:
