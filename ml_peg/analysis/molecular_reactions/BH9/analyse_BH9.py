@@ -113,12 +113,11 @@ def barrier_heights() -> dict[str, list]:
 
     system_names = SYSTEM_INFO["filenames"]
     for model_name in MODELS:
-        model_barriers = []
-        ref_barriers = []
         model_dir = CALC_PATH / model_name
         if not model_dir.exists():
-            results[model_name] = []
+            results[model_name] = [float("nan")] * len(system_names)
             continue
+
         for system_name in system_names:
             model_forward_barrier = 0
             ref_forward_barrier = 0
@@ -127,7 +126,12 @@ def barrier_heights() -> dict[str, list]:
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
 
-            atoms = read(model_dir / f"{system_name}.xyz", index=":")
+            struct_path = model_dir / f"{system_name}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path, index=":")
             model_forward_barrier += atoms[0].info["model_energy"]
             for struct in atoms[1:]:
                 model_forward_barrier -= struct.info["model_energy"]
@@ -136,13 +140,15 @@ def barrier_heights() -> dict[str, list]:
 
             write(structs_dir / f"{system_name}.xyz", atoms)
 
-            model_barriers.append(model_forward_barrier * EV_TO_KCAL)
-            ref_barriers.append(ref_forward_barrier * EV_TO_KCAL)
+            results[model_name].append(model_forward_barrier * EV_TO_KCAL)
+            if not ref_stored:
+                results["ref"].append(ref_forward_barrier * EV_TO_KCAL)
 
-        results[model_name] = model_barriers
         if not ref_stored:
-            results["ref"] = ref_barriers
-            ref_stored = True
+            if len(results["ref"]) == len(SYSTEM_INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
