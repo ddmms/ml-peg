@@ -31,12 +31,12 @@ class QUIDApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
+        model_dir = DATA_PATH / "mock"
         if model_dir.exists():
             # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*.xyz"))
             structs = [
-                f"/assets/non_covalent_interactions/QUID/{MODELS[0]}/{ts_file.name}"
+                f"/assets/non_covalent_interactions/QUID/mock/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:

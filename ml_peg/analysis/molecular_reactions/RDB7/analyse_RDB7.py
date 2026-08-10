@@ -44,7 +44,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
-    model_name=next(iter(MODELS)),
     glob_pattern="*_ts.xyz",
     include_filenames=True,
     write_info=True,
@@ -70,7 +69,11 @@ def barrier_heights() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in tqdm(LABELS):
-            atoms = read(CALC_PATH / model_name / f"{label}_ts.xyz")
+            struct_path = CALC_PATH / model_name / f"{label}_ts.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+            atoms = read(struct_path)
             results[model_name].append(atoms.info["model_forward_barrier"] * EV_TO_KCAL)
             if not ref_stored:
                 results["ref"].append(atoms.info["ref_forward_barrier"] * EV_TO_KCAL)
@@ -79,7 +82,12 @@ def barrier_heights() -> dict[str, list]:
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}_ts.xyz", atoms)
-        ref_stored = True
+
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
