@@ -49,7 +49,7 @@ def get_model_filter(models) -> Details:
                     "fontSize": "11px",
                     "textTransform": "uppercase",
                     "letterSpacing": "0.07em",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "padding": "5px",
                 },
             ),
@@ -82,7 +82,7 @@ _SUMMARY_STYLE = {
     "fontSize": "11px",
     "textTransform": "uppercase",
     "letterSpacing": "0.07em",
-    "color": "#6c757d",
+    "color": "var(--mlpeg-muted)",
     "padding": "5px",
 }
 
@@ -94,21 +94,21 @@ _BTN_BASE = {
     "height": f"{_CELL}px",
     "fontSize": "9px",
     "fontWeight": "500",
-    "border": "1px solid #ced4da",
+    "border": "1px solid var(--mlpeg-border-strong)",
     "borderRadius": "2px",
     "cursor": "pointer",
     "lineHeight": f"{_CELL}px",
     "textAlign": "center",
-    "backgroundColor": "#e9ecef",
-    "color": "#343a40",
+    "backgroundColor": "var(--mlpeg-surface-3)",
+    "color": "var(--mlpeg-heading)",
     "overflow": "hidden",
 }
 
 _BTN_EXCLUDED = {
     **_BTN_BASE,
-    "backgroundColor": "#f5c2c7",
-    "border": "1px solid #dc3545",
-    "color": "#842029",
+    "backgroundColor": "var(--mlpeg-bad-soft)",
+    "border": "1px solid var(--mlpeg-bad-border)",
+    "color": "var(--mlpeg-bad-fg)",
     "fontWeight": "700",
 }
 
@@ -130,9 +130,9 @@ _LEGEND_SWATCH_EXCLUDED = {
 _PRESET_BUTTON_STYLE = {
     "padding": "4px 8px",
     "fontSize": "12px",
-    "backgroundColor": "#f8f9fa",
-    "color": "#343a40",
-    "border": "1px solid #ced4da",
+    "backgroundColor": "var(--mlpeg-surface-2)",
+    "color": "var(--mlpeg-heading)",
+    "border": "1px solid var(--mlpeg-border-strong)",
     "borderRadius": "4px",
     "cursor": "pointer",
 }
@@ -140,7 +140,7 @@ _PRESET_BUTTON_STYLE = {
 _APPLY_BUTTON_STYLE = {
     "padding": "4px 12px",
     "fontSize": "12px",
-    "backgroundColor": "#228be6",
+    "backgroundColor": "var(--mlpeg-accent)",
     "color": "#fff",
     "border": "none",
     "borderRadius": "4px",
@@ -383,7 +383,7 @@ def _build_preset_section() -> Div:
                         style={
                             "fontSize": "11px",
                             "fontWeight": "600",
-                            "color": "#6c757d",
+                            "color": "var(--mlpeg-muted)",
                             "minWidth": "92px",
                         },
                     ),
@@ -426,7 +426,9 @@ def _build_preset_section() -> Div:
                 style={
                     "fontSize": "11px",
                     "fontWeight": "600",
-                    "color": "#6c757d",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.07em",
+                    "color": "var(--mlpeg-muted)",
                     "minWidth": "92px",
                 },
             ),
@@ -486,7 +488,7 @@ def _build_preset_section() -> Div:
             "gap": "6px",
             "marginTop": "8px",
             "paddingTop": "10px",
-            "borderTop": "1px solid #dee2e6",
+            "borderTop": "1px solid var(--mlpeg-border)",
         },
     )
 
@@ -511,6 +513,9 @@ def get_element_filter() -> Div:
             id={"type": "element-btn", "index": sym},
             n_clicks=0,
             style=_btn_style(sym, False),
+            # State is otherwise colour-only; the title carries it to screen
+            # readers (and as a hover tooltip) and is updated by the sync callback.
+            title=f"{sym} — included",
         )
         for sym in PERIODIC_TABLE_SYMBOLS
     ]
@@ -554,7 +559,7 @@ def get_element_filter() -> Div:
             "flexDirection": "column",
             "gap": "6px",
             "fontSize": "12px",
-            "color": "#343a40",
+            "color": "var(--mlpeg-heading)",
             "paddingTop": "2px",
             "whiteSpace": "nowrap",
         },
@@ -584,9 +589,9 @@ def get_element_filter() -> Div:
                 style={
                     "padding": "4px 12px",
                     "fontSize": "12px",
-                    "backgroundColor": "#fff5f5",
-                    "color": "#842029",
-                    "border": "1px solid #f1aeb5",
+                    "backgroundColor": "var(--mlpeg-bad-soft)",
+                    "color": "var(--mlpeg-bad-fg)",
+                    "border": "1px solid var(--mlpeg-bad-border)",
                     "borderRadius": "4px",
                     "cursor": "pointer",
                 },
@@ -598,9 +603,9 @@ def get_element_filter() -> Div:
                 style={
                     "padding": "4px 12px",
                     "fontSize": "12px",
-                    "backgroundColor": "#e9ecef",
-                    "color": "#343a40",
-                    "border": "1px solid #ced4da",
+                    "backgroundColor": "var(--mlpeg-surface-3)",
+                    "color": "var(--mlpeg-heading)",
+                    "border": "1px solid var(--mlpeg-border-strong)",
                     "borderRadius": "4px",
                     "cursor": "pointer",
                 },
@@ -702,13 +707,14 @@ def register_element_filter_callbacks() -> None:
 
     @callback(
         Output({"type": "element-btn", "index": ALL}, "style"),
+        Output({"type": "element-btn", "index": ALL}, "title"),
         Output("element-filter-count", "children"),
         Input("element-filter-pending", "data"),
         prevent_initial_call=True,
     )
     def sync_button_styles(pending):
         """
-        Synchronise element button styles and kept-count with the selection.
+        Synchronise element button styles, titles, and kept-count with selection.
 
         Parameters
         ----------
@@ -718,12 +724,18 @@ def register_element_filter_callbacks() -> None:
         Returns
         -------
         tuple
-            Style dictionaries for all element buttons, and the kept-count text.
+            Style dictionaries and accessible titles for all element buttons,
+            plus the kept-count text. The title conveys included/excluded state
+            to screen readers (the style alone conveys it only through colour).
         """
         excluded = set(pending or [])
         styles = [_btn_style(sym, sym in excluded) for sym in all_symbols]
+        titles = [
+            f"{sym} — {'excluded' if sym in excluded else 'included'}"
+            for sym in all_symbols
+        ]
         kept = len(all_symbols) - len(excluded & set(all_symbols))
-        return styles, f"Keeping {kept} / {len(all_symbols)} elements"
+        return styles, titles, f"Keeping {kept} / {len(all_symbols)} elements"
 
     @callback(
         Output("element-filter-apply", "children"),

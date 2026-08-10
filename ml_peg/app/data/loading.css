@@ -1,16 +1,122 @@
+/* ML-PEG start-up loader (shown by #startup-mask until the app is interactive):
+   a modern circular spinner + branded wordmark, centered. The same spinner style
+   is reused for the in-app navigation spinner and the pre-hydration placeholder
+   (utils/dash_loading.css). */
+
 @keyframes ml-peg-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* Start-up progress bar: fill continuously, easing toward ~95% (it vanishes
-   with the start-up mask when content is ready, so it never reaches 100%). */
-@keyframes ml-peg-bar-fill {
-  from {
-    background-size: 5% 100%;
+@keyframes ml-peg-pulse {
+  0%,
+  100% {
+    opacity: 1;
   }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.mlpeg-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--mlpeg-surface, #ffffff);
+  z-index: 2100; /* above the onboarding modal (2000) */
+}
+
+/* Determinate progress ring. An animated custom property (--mlpeg-pct) drives
+   both the conic fill and the centre number, starting as soon as the mask paints
+   (before the heavy hydration) so the loader climbs from the start rather than
+   sitting at 0 then jumping. A gentle opacity pulse (compositor-driven, never
+   blocked by the main thread) keeps it visibly alive while the app hydrates. The
+   clientside poll hides the mask once the first table row exists. */
+@property --mlpeg-pct {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+@keyframes mlpeg-fill {
   to {
-    background-size: 95% 100%;
+    --mlpeg-pct: 92;
+  }
+}
+.mlpeg-progress-ring {
+  --mlpeg-pct: 0;
+  position: relative;
+  width: 66px;
+  height: 66px;
+  animation:
+    mlpeg-fill 6s ease-out forwards,
+    ml-peg-pulse 1.6s ease-in-out infinite;
+}
+.mlpeg-progress-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--mlpeg-accent, #119dff) calc(var(--mlpeg-pct) * 1%),
+    var(--mlpeg-surface-3, #eef2f6) 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 5px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 5px)
+  );
+}
+.mlpeg-progress-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mlpeg-ink, #1b2430);
+  font-variant-numeric: tabular-nums;
+}
+.mlpeg-progress-num::after {
+  counter-reset: mlpeg-pct var(--mlpeg-pct);
+  content: counter(mlpeg-pct) "%";
+}
+/* Compact variant for in-table / in-panel loading overlays. */
+.mlpeg-progress-ring--sm {
+  width: 44px;
+  height: 44px;
+}
+.mlpeg-progress-ring--sm .mlpeg-progress-num {
+  font-size: 11px;
+}
+
+.mlpeg-loader-word {
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--mlpeg-ink, #1b2430);
+}
+
+.mlpeg-loader-text {
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 13px;
+  color: var(--mlpeg-ink-3, #8a94a3);
+  animation: ml-peg-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mlpeg-loader-text {
+    animation: none;
   }
 }

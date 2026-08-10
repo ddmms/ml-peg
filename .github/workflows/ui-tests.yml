@@ -1,0 +1,34 @@
+name: ui-tests
+
+# Browser-driven tests for the Dash app (tests/app). These boot the real app on
+# an ephemeral port and drive it with Playwright, so they need the app data and a
+# headless Chromium.
+
+on: [push, pull_request]
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install Playwright browser
+        run: uv run playwright install --with-deps chromium
+
+      - name: Download and unpack app data
+        run: |
+          uv run ml_peg download --key app/data/data.tar.gz --filename data.tar.gz
+          tar xzf data.tar.gz -C ml_peg/app/
+
+      - name: Run UI tests
+        run: uv run pytest tests/app -q

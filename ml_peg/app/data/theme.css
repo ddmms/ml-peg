@@ -1,0 +1,1468 @@
+/* ==========================================================================
+   ML-PEG design system — tokens, fonts, and base typography.
+
+   Auto-loaded as a Dash asset (assets_folder = ml_peg/app/data). This file is
+   the single source of truth for colour, spacing, radius, shadow and type
+   tokens used across the app. Layout containers opt in via `className`s that
+   reference these variables; interactivity is untouched.
+   ========================================================================== */
+
+/* ---- Self-hosted fonts (no network dependency) -------------------------- */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/inter-variable.woff2") format("woff2");
+}
+
+/* ---- Tokens ------------------------------------------------------------- */
+:root {
+  /* Brand + accent (ML-PEG blue, kept as the single accent so it stays
+     coherent with the blue heatmap). */
+  --mlpeg-accent: #0d8ff0;
+  --mlpeg-accent-strong: #0b6fce;
+  --mlpeg-accent-soft: #eaf5ff;
+
+  /* Ink / surfaces / borders — warm, airy neutrals (Airbnb-style): near-black
+     text, warm greys, very light warm borders, lots of white. */
+  --mlpeg-ink: #222222;
+  --mlpeg-ink-2: #5e5e5e;
+  --mlpeg-ink-3: #929292;
+  --mlpeg-surface: #ffffff;
+  --mlpeg-surface-2: #f4f4f4;
+  --mlpeg-surface-3: #eaeaea;
+  --mlpeg-border: #dcdcdc;
+  --mlpeg-border-strong: #c6c6c6;
+
+  /* Semantic */
+  --mlpeg-bad: #e5484d;
+  /* Soft "excluded/negative" surface used by the element filter — themed so it
+     doesn't read as a pink island in dark mode. */
+  --mlpeg-bad-soft: #f5c2c7;
+  --mlpeg-bad-border: #dc3545;
+  --mlpeg-bad-fg: #842029;
+
+  /* Spacing scale (8px base) — a little more generous for an airier feel. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* Radius + shadow — softer, rounder, shadow-defined cards that lift on
+     hover (Airbnb's signature). */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.13);
+  --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.2);
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --fs-sm: 12px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-xl: 28px;
+
+  /* Layout */
+  --sidebar-w: 256px;
+  /* Fluid content width: 1400px floor keeps laptops (≤~1520px) identical to
+     before; 92vw fills 1920×1080 / 2560×1440 monitors edge-to-edge; 2560px
+     ceiling keeps line length readable on ultrawide (3440+ centres).
+     Coupled: INTERACTIVE_ZONE_MAX_WIDTH in build_components.py caps the
+     plot/viewer zone below this — retune them together. */
+  --content-max: clamp(1400px, 92vw, 2560px);
+  /* Rendered height of the sticky .mlpeg-topbar (sp-5 padding + two header
+     lines + border; measured 119.8px, constant from 769px up). The sticky
+     sidebar offsets by this so it pins below the topbar, not under it. */
+  --header-h: 120px;
+
+  /* Theme-dependent colours that were previously hardcoded (in CSS and in
+     Python inline styles — React accepts var() in style dicts). Light values
+     match the old literals exactly; [data-theme="dark"] overrides below. */
+  --mlpeg-muted: #6c757d;
+  --mlpeg-heading: #212529;
+  --mlpeg-divider: #a7adb3;
+  --mlpeg-nav-fg: #5e5e5e;
+  --mlpeg-nav-active-fg: #0b6fce;
+  --mlpeg-nav-active-bg: #eaf5ff;
+  --mlpeg-accent-soft-border: #cfe6fb;
+  --mlpeg-table-missing-bg: #dbdbdb;
+  --mlpeg-table-missing-stripe: #c6c6c6;
+  --mlpeg-table-nan-bg: #f3d9d9;
+  --mlpeg-table-nan-stripe: #e0aeae;
+  --mlpeg-link-cell-bg: #ffffff;
+  --mlpeg-overlay: rgba(255, 255, 255, 0.78);
+  --mlpeg-overlay-soft: rgba(255, 255, 255, 0.65);
+  --mlpeg-row-hover: rgba(0, 0, 0, 0.06);
+
+  color-scheme: light;
+}
+
+/* ---- Dash 4 component tokens --------------------------------------------
+   dcc.Dropdown / RadioItems / Checklist style themselves from Dash's own
+   --Dash-* custom properties (injected via a runtime :root rule). Overriding
+   them on html[data-theme] wins on specificity regardless of injection order.
+   Brand the interactive fill to the ML-PEG accent in both themes. */
+html[data-theme] {
+  --Dash-Fill-Interactive-Strong: var(--mlpeg-accent);
+}
+
+/* ---- Table-zoom control (Settings → Table zoom) ------------------------
+   A slider whose % is applied to --mlpeg-table-zoom (run_app's no-flash script +
+   the settings apply callback); only the tables read that var (see the
+   .dash-table-container / .mlpeg-scoring-grid rule below) so a smaller % fits more
+   table on screen while the sidebar/header/cards stay full size. Because the
+   slider lives in the (un-zoomed) chrome, dragging it never moves under the cursor;
+   updatemode="mouseup" also means it only resizes on release, not during the drag.
+   The Dash-4 slider (.dash-slider-*) takes the accent from --Dash-Fill-Interactive
+   -Strong; we just pad it and size the marks. */
+.mlpeg-zoom-slider {
+  padding: 6px 6px 2px;
+}
+.mlpeg-zoom-slider .dash-slider-mark {
+  font-size: 10px;
+  color: var(--mlpeg-muted);
+}
+/* Scale ONLY the table and its weight/threshold grid (both natural-width, so they
+   scale together and stay column-aligned). `zoom` (not transform) reflows so the
+   scroll container remeasures and more columns/rows fit. Everything else — sidebar,
+   header, cards, download buttons — is untouched. Default 1 = no scaling. */
+.dash-table-container,
+.mlpeg-scoring-grid {
+  zoom: var(--mlpeg-table-zoom, 1);
+}
+
+/* ---- Dark theme ---------------------------------------------------------
+   Applied via <html data-theme="dark">, set before first paint by the inline
+   script in run_app.py and kept in sync with the theme-store by the settings
+   callbacks. Heatmap cell colours are data colours (inline styles computed in
+   Python) and deliberately unchanged — they read as pastel islands. */
+[data-theme="dark"] {
+  --mlpeg-accent: #3aa4f5;
+  --mlpeg-accent-strong: #66b8f7;
+  --mlpeg-accent-soft: #12314d;
+
+  --mlpeg-ink: #e8eaed;
+  --mlpeg-ink-2: #a7adb8;
+  --mlpeg-ink-3: #6b7280;
+  --mlpeg-surface: #161a21;
+  --mlpeg-surface-2: #1e242e;
+  --mlpeg-surface-3: #262d39;
+  --mlpeg-border: #363f4f;
+  --mlpeg-border-strong: #4a5568;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.6);
+
+  --mlpeg-muted: #a7adb8;
+  --mlpeg-heading: #e8eaed;
+  --mlpeg-divider: #39414f;
+  --mlpeg-nav-fg: #a7adb8;
+  --mlpeg-nav-active-fg: #66b8f7;
+  --mlpeg-nav-active-bg: #12314d;
+  --mlpeg-accent-soft-border: #1d4569;
+  --mlpeg-table-missing-bg: #262d39;
+  --mlpeg-table-missing-stripe: #39414f;
+  --mlpeg-table-nan-bg: #3a2226;
+  --mlpeg-table-nan-stripe: #55323a;
+  --mlpeg-bad-soft: #3a2226;
+  --mlpeg-bad-border: #7a3b3f;
+  --mlpeg-bad-fg: #f0b4b8;
+  --mlpeg-link-cell-bg: #161a21;
+  --mlpeg-overlay: rgba(15, 17, 21, 0.78);
+  --mlpeg-overlay-soft: rgba(15, 17, 21, 0.65);
+  --mlpeg-row-hover: rgba(255, 255, 255, 0.09);
+
+  /* Dash 4 dcc controls (dropdowns, radio, checklist) read these. */
+  --Dash-Text-Primary: rgba(232, 234, 237, 0.87);
+  --Dash-Text-Strong: rgba(232, 234, 237, 0.92);
+  --Dash-Text-Weak: rgba(232, 234, 237, 0.65);
+  --Dash-Text-Disabled: rgba(232, 234, 237, 0.4);
+  --Dash-Stroke-Strong: rgba(255, 255, 255, 0.35);
+  --Dash-Stroke-Weak: rgba(255, 255, 255, 0.12);
+  --Dash-Fill-Inverse-Strong: #161a21;
+  --Dash-Fill-Interactive-Weak: rgba(255, 255, 255, 0.06);
+  --Dash-Fill-Primary-Hover: rgba(255, 255, 255, 0.06);
+  --Dash-Fill-Primary-Active: rgba(255, 255, 255, 0.1);
+  --Dash-Fill-Disabled: rgba(255, 255, 255, 0.12);
+
+  color-scheme: dark;
+}
+[data-theme="dark"] body {
+  background: #0f1115;
+}
+
+/* ---- Base --------------------------------------------------------------- */
+html {
+  box-sizing: border-box;
+}
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  color: var(--mlpeg-ink);
+  background: var(--mlpeg-surface-2);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-sans);
+  color: var(--mlpeg-ink);
+  letter-spacing: -0.015em;
+}
+
+a {
+  color: var(--mlpeg-accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Keyboard focus ring (accessibility) */
+:focus-visible {
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Quiet, modern scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mlpeg-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--mlpeg-border-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--mlpeg-ink-3);
+  background-clip: content-box;
+}
+
+/* ---- Tables: inherit the UI font, align digits -------------------------- */
+.dash-table-container,
+.dash-spreadsheet-container,
+.dash-spreadsheet,
+.dash-spreadsheet-inner {
+  font-family: var(--font-sans) !important;
+}
+/* Tabular, monospaced-friendly numerals keep columns visually aligned. */
+.dash-table-container .dash-cell,
+.dash-table-container .dash-cell-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Shell / header / sidebar / content -------------------------------- */
+.mlpeg-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Sticky top bar: wordmark on the left, header actions on the right, so the
+   controls read as part of the header (not a detached floating overlay) and the
+   layout scales cleanly at any width. */
+.mlpeg-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+  padding: var(--sp-5) var(--sp-8);
+  border-bottom: 1px solid var(--mlpeg-border);
+  background: var(--mlpeg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1600;
+}
+.mlpeg-header {
+  margin: 0;
+  color: var(--mlpeg-ink);
+  line-height: 1.1;
+  /* Wordmark base size; the subtitle/doc-link spans scale from this via em. */
+  font-size: 28px;
+}
+
+.mlpeg-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: flex-start;
+  /* Anchor the full-height sidebar strip (::before) below. */
+  position: relative;
+}
+
+/* Full-height sidebar column painted behind the sticky nav. The sidebar itself
+   is sticky + max-height:100vh so it can't stretch, which left its background /
+   right divider stopping partway down tall pages. .mlpeg-body's height tracks
+   its tallest child (the content) on tall pages and stretches to the viewport
+   via flex:1 on short pages, so top/bottom:0 spans the whole page either way. */
+.mlpeg-body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--sidebar-w);
+  background: var(--mlpeg-surface);
+  border-right: 1px solid var(--mlpeg-border);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mlpeg-sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-3);
+  /* No border-right: the .mlpeg-body::before strip owns the full-height divider
+     (restored on the mobile drawer). Keep the background — the mobile off-canvas
+     drawer needs it opaque over the scrim. */
+  background: var(--mlpeg-surface);
+  position: sticky;
+  /* Pin below the sticky topbar (z-index 1600, opaque), not under it — with
+     top: 0 the first --header-h of nav vanished behind the header once the
+     page scrolled. The mobile drawer overrides this (fixed, top: 0). */
+  top: var(--header-h);
+  align-self: flex-start;
+  max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+  /* Sit above the strip so nav links always render on top. */
+  z-index: 1;
+}
+
+.mlpeg-content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-10);
+  /* Keep content above the sidebar strip (strip is confined to the 256px
+     column, but this makes the layering explicit regardless). */
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Benchmark cards ---------------------------------------------------- */
+.mlpeg-benchmark-grid {
+  display: grid;
+  /* Single column constrained to the available width (not max-content), so a
+     very wide benchmark table scrolls inside its card instead of stretching the
+     whole page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-6);
+}
+
+.mlpeg-card {
+  min-width: 0; /* allow the card to shrink below its content's natural width */
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--sp-6);
+}
+
+/* ---- Summary card: the headline table on home/category pages ------------
+   Same card language as the benchmark cards, plus an accent top bar so the
+   summary reads as the page's primary table. No overflow:hidden — the
+   .mlpeg-table-scroll inside must keep its own horizontal scrolling. */
+.mlpeg-summary-card {
+  min-width: 0;
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+
+/* ---- Collapsible benchmark cards (lazy-mounted bodies) -----------------
+   Shadow-defined, generously rounded cards that lift on hover — the core of
+   the Airbnb-like feel. Border kept hairline (warm) under the shadow. */
+.mlpeg-bench-card {
+  min-width: 0;
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  /* No overflow:hidden — it clipped click-to-view detail (WEAS structure iframe,
+     tall/wide detail plots, DataTable hover tooltips) at the card edge. The
+     header rounds its own top corners (below) so corners stay clean. */
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+.mlpeg-bench-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+.mlpeg-bench-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-5) var(--sp-6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  color: var(--mlpeg-ink);
+  /* Round the top corners here now that the card itself no longer clips. */
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+}
+.mlpeg-bench-header:hover {
+  background: var(--mlpeg-surface-2);
+}
+.mlpeg-bench-header--open {
+  border-bottom: 1px solid var(--mlpeg-border);
+}
+.mlpeg-bench-title {
+  flex: 1;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+/* Circular chevron affordance (rotates on open). */
+.mlpeg-bench-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink-2);
+  font-size: 15px;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+.mlpeg-bench-header:hover .mlpeg-bench-chevron {
+  background: var(--mlpeg-surface-3);
+}
+.mlpeg-bench-header--open .mlpeg-bench-chevron {
+  transform: rotate(90deg);
+  background: var(--mlpeg-accent-soft);
+  color: var(--mlpeg-accent-strong);
+}
+.mlpeg-bench-body:not(:empty) {
+  padding: var(--sp-6);
+}
+
+/* ---- Tables scroll internally (scroll the table, not the page) ---------- */
+.mlpeg-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  /* NB: overflow-x:auto forces overflow-y to compute as auto too (CSS Overflow
+     spec), so this box clips DataTable hover tooltips on both axes — the reason
+     they're presented at <body> level by tooltip_portal.js instead. Keep
+     overflow-x:auto so wide tables scroll inside their card, not across the page. */
+  overflow-y: visible;
+  padding-bottom: 2px; /* room for the scrollbar without clipping the last row */
+}
+
+/* ---- Sidebar rhythm ----------------------------------------------------- */
+.mlpeg-sidebar details {
+  margin-bottom: var(--sp-4);
+}
+.mlpeg-sidebar details:last-child {
+  margin-bottom: 0;
+}
+.mlpeg-sidebar summary {
+  margin-bottom: var(--sp-2);
+  padding: 4px 6px;
+  list-style: none;
+}
+.mlpeg-sidebar summary::-webkit-details-marker {
+  display: none;
+}
+
+/* ---- Content spacing rhythm -------------------------------------------- */
+.mlpeg-content h1 {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  margin: var(--sp-2) 0 var(--sp-5);
+}
+.mlpeg-content h3 {
+  color: var(--mlpeg-ink-2);
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: var(--sp-5);
+}
+
+/* ---- Sidebar nav links: pill hover (active pill is set inline) ---------- */
+.sidebar-link {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.sidebar-link:hover {
+  background: var(--mlpeg-surface-2) !important;
+  color: var(--mlpeg-ink) !important;
+}
+
+/* ---- Framework/category group divider: a quiet uppercase overline ------
+   (kept lower-key than the H2 so the benchmark cards stay the focus). */
+.mlpeg-content h3.mlpeg-group-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mlpeg-ink-3);
+  margin: var(--sp-8) 0 var(--sp-3);
+}
+
+/* ---- Inline documentation link (replaces the old disclosure widget) ---- */
+.mlpeg-doc-link {
+  display: inline-block;
+  margin: var(--sp-1) 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mlpeg-accent);
+}
+.mlpeg-doc-link:hover {
+  color: var(--mlpeg-accent-strong);
+  text-decoration: underline;
+}
+
+/* ---- Chips (quiet, unified pills) -------------------------------------- */
+.mlpeg-chip {
+  display: inline-block;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--mlpeg-ink-2);
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  margin: 0 var(--sp-2) var(--sp-4) 0;
+}
+
+/* ---- Table chrome: clear rows, hover highlight, hairline column rules --- */
+/* A hairline right border on every cell/header separates adjacent columns so
+   neighbours with similar heatmap colours don't blend into one block. The
+   leftmost edge stays clean (no left border); the last column drops its right
+   border so the table edge stays flush. */
+.dash-table-container td.dash-cell,
+.dash-table-container th.dash-header {
+  border-left: none !important;
+  border-right: 1px solid var(--mlpeg-border) !important;
+}
+.dash-table-container td.dash-cell:last-child,
+.dash-table-container th.dash-header:last-child {
+  border-right: none !important;
+}
+.dash-table-container td.dash-cell {
+  border-bottom: 1px solid var(--mlpeg-border) !important;
+}
+.dash-table-container th.dash-header {
+  border-top: none !important;
+  border-bottom: 2px solid var(--mlpeg-border-strong) !important;
+}
+/* Hover highlights the whole row with a soft neutral wash that reads clearly
+   over the (pastel) heatmap cells — a gentle "this row" cue, no blue tint. */
+.dash-table-container tbody tr:hover td.dash-cell {
+  box-shadow: inset 0 0 0 9999px var(--mlpeg-row-hover);
+  cursor: pointer;
+}
+/* Quieter header: subtle fill, muted small labels, muted sort carets. */
+.dash-table-container th.dash-header {
+  background: var(--mlpeg-surface-2) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--mlpeg-ink-2) !important;
+  letter-spacing: 0.02em;
+}
+.dash-table-container .column-header--sort {
+  color: var(--mlpeg-ink-2);
+  font-size: 14px;
+  padding: 0 2px;
+}
+.dash-table-container .column-header--sort:hover {
+  color: var(--mlpeg-accent);
+}
+
+/* ---- Top control toolbar (visible models / colour / presets / elements) - */
+.mlpeg-controls-toolbar {
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4) var(--sp-5);
+  margin-bottom: var(--sp-6);
+}
+.mlpeg-controls-toolbar > details {
+  margin-bottom: var(--sp-2);
+}
+.mlpeg-controls-toolbar > details:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- Collapsible "Adjust scoring" panel below each table ---------------- */
+.mlpeg-controls-details {
+  margin-top: var(--sp-3);
+}
+.mlpeg-controls-summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mlpeg-ink-2);
+  padding: 8px 16px;
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--mlpeg-surface);
+  list-style: none;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.mlpeg-controls-summary:hover {
+  background: var(--mlpeg-surface-2);
+}
+.mlpeg-controls-summary::-webkit-details-marker {
+  display: none;
+}
+.mlpeg-controls-summary::before {
+  content: "\25B8"; /* ▸ */
+  color: var(--mlpeg-ink-3);
+  transition: transform 0.15s ease;
+}
+.mlpeg-controls-details[open] .mlpeg-controls-summary::before {
+  transform: rotate(90deg);
+}
+
+/* No border here: the panel sits inside an already-bordered card, so a second
+   border reads as a redundant box-in-a-box. The tinted surface + radius alone
+   group the controls. */
+.mlpeg-controls-panel {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--mlpeg-surface-2);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  margin-top: var(--sp-2);
+}
+
+/* ---- Scoring grids: column separators + ghost reset ------------------- */
+/* The Good/Bad/Weight grids butt columns together with a 0 gap; a light
+   right border on each cell gives the "lines" that make the grid readable. */
+.mlpeg-scoring-grid > * {
+  border-right: 1px solid var(--mlpeg-border) !important;
+}
+.mlpeg-scoring-grid > *:last-child {
+  border-right-color: transparent !important;
+}
+.mlpeg-scoring-reset:hover {
+  background: var(--mlpeg-accent-soft, #eaf4fe) !important;
+  border-color: var(--mlpeg-accent) !important;
+}
+
+/* ---- Form controls: make native/Dash inputs match the card language ----
+   The CSV selector, the VISIBLE MODELS multiselect and the weight/threshold
+   number inputs otherwise render as unstyled Dash and are the loudest "this is
+   a default app" tell. Give them the same borders, radii and focus ring. */
+input[type="number"] {
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 8px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--mlpeg-ink);
+  background: var(--mlpeg-surface);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--mlpeg-accent);
+  box-shadow: 0 0 0 3px var(--mlpeg-accent-soft);
+}
+/* Disabled (e.g. zero-weight columns) reads as inert; invalid gets a red cue so a
+   bad threshold/weight entry is obvious rather than silently ignored. */
+input[type="number"]:disabled {
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink-3);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+input[type="number"]:invalid {
+  border-color: var(--mlpeg-bad);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.12);
+}
+/* Quiet the native spinner buttons (values are typed + applied on Enter). */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Weight/threshold fields are ONE box — the inner <input>. dcc.Input wraps it in
+   a .dash-input-container; keep that as a transparent sizing wrapper only (no
+   second border/fill), otherwise the field reads as a redundant box-in-a-box.
+   Thresholds tint the inner border via an inherited --mlpeg-input-border set in
+   Python so the good/bad colour keeps following the colormap. */
+.mlpeg-scoring-grid .dash-input-container,
+.mlpeg-scoring-grid .dash-input {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+.mlpeg-scoring-grid input[type="number"] {
+  border-color: var(--mlpeg-input-border, var(--mlpeg-border-strong)) !important;
+}
+
+/* dcc.Dropdown (Dash 4): the VISIBLE MODELS multiselect + CSV/colour pickers.
+   Dash 4 replaced react-select (the old .Select-* classes, now dead) with this
+   `.dash-dropdown-*` component, which otherwise renders in Dash's default look.
+   Brand it to match the number inputs and cards: quiet border, app surfaces,
+   and the soft accent focus ring instead of Dash's hard blue outline. */
+.dash-dropdown {
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--mlpeg-surface) !important;
+  color: var(--mlpeg-ink);
+  font-family: var(--font-sans);
+  min-height: 36px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+/* The "ugly blue box": Dash draws a 1px solid --Dash-Fill-Interactive-Strong
+   border + outline on focus. Swap it for the app's soft accent ring (identical
+   to input[type=number]:focus) and drop the doubled global :focus-visible ring. */
+.dash-dropdown:focus,
+.dash-dropdown:focus-visible {
+  outline: none !important;
+  border-color: var(--mlpeg-accent) !important;
+  box-shadow: 0 0 0 3px var(--mlpeg-accent-soft) !important;
+}
+.dash-dropdown-placeholder {
+  color: var(--mlpeg-ink-3) !important;
+}
+/* "N selected" chip */
+.dash-dropdown-value-count {
+  color: var(--mlpeg-accent-strong) !important;
+  background: var(--mlpeg-accent-soft) !important;
+}
+/* Menu popover: match the card language (surface, hairline border, shadow). */
+.dash-dropdown-content {
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--mlpeg-surface) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.dash-dropdown-option:hover {
+  background: var(--mlpeg-row-hover) !important;
+}
+/* Search box inside the menu: app input styling + soft focus ring (Dash's
+   default is another hard blue outline). */
+.dash-dropdown-search-container {
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--mlpeg-surface) !important;
+}
+.dash-dropdown-search-container:focus-within {
+  outline: none !important;
+  border-color: var(--mlpeg-accent) !important;
+  box-shadow: 0 0 0 3px var(--mlpeg-accent-soft) !important;
+}
+.dash-dropdown-search {
+  font-size: var(--fs-sm);
+  color: var(--mlpeg-ink);
+}
+.dash-dropdown-search:focus,
+.dash-dropdown-search:focus-visible {
+  outline: none !important;
+}
+/* Select all / Deselect all: Dash renders these as tiny 0.875em text links with
+   zero padding — hard to hit and easy to miss. Give them a real, readable
+   button affordance sized like the other secondary buttons. */
+.dash-dropdown-actions {
+  gap: var(--sp-2) !important;
+  padding: var(--sp-3) !important;
+  border-top: 1px solid var(--mlpeg-border) !important;
+}
+.dash-dropdown-action-button {
+  font-size: var(--fs-sm) !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--mlpeg-surface-2) !important;
+  color: var(--mlpeg-ink) !important;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.dash-dropdown-action-button:hover {
+  background: var(--mlpeg-surface-3) !important;
+  border-color: var(--mlpeg-ink-3) !important;
+  color: var(--mlpeg-accent-strong) !important;
+}
+
+/* ---- Table text: keep the model-name key column dark (not recessive) --- */
+.dash-table-container td[data-dash-column="MLIP"] .dash-cell-value {
+  color: var(--mlpeg-ink) !important;
+  font-weight: 500;
+}
+
+/* ---- Sticky model-name column ------------------------------------------
+   Keep the leftmost MLIP (model name) column pinned while a wide table scrolls
+   horizontally inside .mlpeg-table-scroll (verified overflow-safe for sticky).
+   The background MUST be opaque so scrolled cells slide UNDER it; --mlpeg-surface
+   matches normal cells in both themes. NaN/missing rows set their striped bg
+   INLINE (style_data_conditional) which overrides this stylesheet rule (no
+   !important here) so those rows stay correct; the warning icon (inline
+   background-image) and the row-hover inset box-shadow both layer on top.
+   The summary table's 36px "link" column (right after MLIP) is pinned too,
+   offset by the shared MLIP width (--mlip-col-w, set on the root in build_app). */
+.dash-table-container td[data-dash-column="MLIP"],
+.dash-table-container th[data-dash-column="MLIP"] {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--mlpeg-surface);
+}
+.dash-table-container th[data-dash-column="MLIP"] {
+  background-color: var(--mlpeg-surface-2);
+  z-index: 4;
+}
+.dash-table-container td[data-dash-column="link"],
+.dash-table-container th[data-dash-column="link"] {
+  position: sticky;
+  left: var(--mlip-col-w, 0px);
+  z-index: 2;
+}
+.dash-table-container th[data-dash-column="link"] {
+  z-index: 4;
+}
+/* Soft right edge so the pinned column reads as pinned once content scrolls under
+   it. Applied to both pinned columns; on the summary table MLIP's edge sits under
+   the opaque link column, so the link column shows the separator instead. */
+.dash-table-container td[data-dash-column="MLIP"],
+.dash-table-container th[data-dash-column="MLIP"],
+.dash-table-container td[data-dash-column="link"],
+.dash-table-container th[data-dash-column="link"] {
+  box-shadow: 6px 0 6px -6px rgba(0, 0, 0, 0.18);
+}
+
+/* ---- DataTable hover tooltip ------------------------------------------
+   Presented at <body> level by tooltip_portal.js so it is never clipped by the
+   horizontally-scrolling table wrapper (see that file for why CSS alone can't
+   fix it). Dash's native tooltip is hidden only once the JS has marked <html>,
+   so tooltips still work (clipped) if the asset ever fails to load. */
+.mlpeg-tooltip-js .dash-tooltip {
+  visibility: hidden !important;
+}
+.mlpeg-tooltip-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1800; /* above the sticky topbar (1600) and settings panel (1700) */
+  display: none;
+}
+.mlpeg-tooltip-portal.is-visible {
+  display: block;
+}
+/* The card itself (also re-themes the native tooltip, which is hardcoded light
+   #f6f6f6 / #e4e4e4, for the split second before the JS hides it). */
+.dash-table-tooltip {
+  box-sizing: border-box;
+  background-color: var(--mlpeg-surface) !important;
+  color: var(--mlpeg-ink);
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  min-width: 220px;
+  max-width: 360px;
+  /* Never taller than the viewport; long explanations scroll inside the card
+     without dragging the page behind them. */
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  padding: 8px 12px;
+  /* Selectable so a pinned card's text can be copied. */
+  user-select: text;
+}
+/* Pinned (clicked) card: click a body cell to keep its card open so it can be
+   moused over to select/copy text or follow links; dismiss with ×, Escape, or a
+   click outside. A stronger shadow + accent ring signals the pinned state. */
+.mlpeg-tooltip-portal.is-pinned .dash-table-tooltip {
+  box-shadow: var(--shadow-hover);
+  border-color: var(--mlpeg-accent);
+  padding-right: 26px; /* room for the × so it never overlaps the text */
+}
+.mlpeg-tooltip-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none; /* only shown while pinned */
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mlpeg-ink-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.mlpeg-tooltip-close:hover {
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink);
+}
+.mlpeg-tooltip-portal.is-pinned .mlpeg-tooltip-close {
+  display: inline-flex;
+}
+
+/* ---- Header actions (Clear cache / Tutorial) --------------------------- */
+.mlpeg-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+/* Both header actions are the same class of secondary action, so give them
+   one matched pill treatment (white fill, hairline border, dark label).
+   Direct children only, and not the theme toggle (which styles itself as a
+   switch): buttons inside the settings popover style themselves. */
+.mlpeg-header-actions > button:not(.mlpeg-theme-toggle) {
+  border-radius: var(--radius-pill) !important;
+  border: 1px solid var(--mlpeg-border-strong) !important;
+  background: var(--mlpeg-surface) !important;
+  color: var(--mlpeg-ink) !important;
+  font-weight: 600 !important;
+  /* Match the Settings summary exactly so "Tutorial" and "Settings" read as one
+     matched pair (the button otherwise inherited the 15px body size). */
+  font-size: var(--fs-sm) !important;
+  padding: 7px 15px !important;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.mlpeg-header-actions > button:not(.mlpeg-theme-toggle):hover {
+  background: var(--mlpeg-surface-2) !important;
+  border-color: var(--mlpeg-ink-3) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Header light/dark toggle ------------------------------------------
+   A pill switch whose knob carries a sun (light) or moon (dark); the knob
+   slides and the icon swaps purely off html[data-theme], so it shows the
+   right state on first paint without a value being pushed into it. */
+.mlpeg-theme-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 54px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--mlpeg-surface-2);
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    border-color 0.2s ease;
+}
+.mlpeg-theme-toggle:hover {
+  border-color: var(--mlpeg-ink-3);
+}
+.mlpeg-theme-toggle:focus-visible {
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 2px;
+}
+.mlpeg-theme-toggle-knob {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  /* 20px knob in the 28px pill leaves ~3px clear all round so neither the knob
+     nor its shadow touches/spills past the pill edge (22px read as cropped). */
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.22);
+  transform: translateY(-50%);
+  transition:
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.25s ease;
+}
+.mlpeg-theme-toggle-knob::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 13px;
+  height: 13px;
+  background-color: #f59e0b; /* amber sun */
+  -webkit-mask: url("icons/sun.svg") center / contain no-repeat;
+  mask: url("icons/sun.svg") center / contain no-repeat;
+  transition: background-color 0.25s ease;
+}
+[data-theme="dark"] .mlpeg-theme-toggle {
+  background: var(--mlpeg-surface-3);
+}
+[data-theme="dark"] .mlpeg-theme-toggle-knob {
+  /* Mirror of the 4px left margin: 52px inner − 4 − 20 = 28 → translate 24px
+     leaves an equal 4px on the right. */
+  transform: translate(24px, -50%);
+  background: #1e293b;
+}
+[data-theme="dark"] .mlpeg-theme-toggle-knob::after {
+  background-color: #e2e8f0; /* pale moon */
+  -webkit-mask-image: url("icons/moon.svg");
+  mask-image: url("icons/moon.svg");
+}
+
+/* ---- Mobile: off-canvas sidebar + hamburger ---------------------------- */
+.mlpeg-hamburger {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  /* Above the sticky topbar (1600) so the button is actually tappable, and above
+     the drawer (1720)/scrim (1710) so it still closes an open menu. */
+  z-index: 1730;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--mlpeg-ink);
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+#sidebar-scrim {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mlpeg-hamburger {
+    display: inline-flex;
+  }
+  .mlpeg-body {
+    display: block;
+  }
+  /* The desktop sidebar strip is meaningless once the sidebar is an off-canvas
+     drawer — hide it so it can't paint a ghost column behind the content. */
+  .mlpeg-body::before {
+    display: none;
+  }
+  .mlpeg-topbar {
+    /* Fixed-height header band so the fixed hamburger can be centred against it
+       (see .mlpeg-hamburger below). Zero vertical padding keeps the content
+       centre at min-height/2 regardless of box-sizing; 60px left padding clears
+       the fixed hamburger (left:10 + width:44 = 54, +6 gap). */
+    min-height: 56px;
+    padding: 0 12px 0 60px;
+    gap: var(--sp-3);
+  }
+  .mlpeg-hamburger {
+    /* Centre the 44px button in the 56px band: 6 + 44/2 = 28 = 56/2, so it lines
+       up with the wordmark and the top-right actions. Coupled to the topbar
+       min-height above — keep the two in sync. */
+    top: 6px;
+  }
+  .mlpeg-header {
+    font-size: 19px; /* smaller wordmark on phones */
+  }
+  .mlpeg-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 280px;
+    max-height: none;
+    /* Restore the right edge on the drawer (removed from the base rule, where
+       the full-height strip now owns the divider). */
+    border-right: 1px solid var(--mlpeg-border);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    /* Above the sticky topbar (1600) so the open drawer's top items aren't
+       hidden under the header. */
+    z-index: 1720;
+    box-shadow: var(--shadow-md);
+  }
+  body.sidebar-open .mlpeg-sidebar {
+    transform: translateX(0);
+  }
+  body.sidebar-open #sidebar-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    /* Above the sticky topbar (1600), just below the drawer (1720). */
+    z-index: 1710;
+  }
+  .mlpeg-content {
+    max-width: 100%;
+    padding: var(--sp-4);
+  }
+  .sidebar-link {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  /* 16px form controls prevent iOS Safari zoom-on-focus */
+  input,
+  select {
+    font-size: 16px;
+  }
+  .mlpeg-header-actions {
+    gap: 6px;
+  }
+  .mlpeg-header-actions > button {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+  .mlpeg-settings-summary {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+  /* Hide the top-right actions while the drawer is open so the scrim reads as
+     a true modal (they are fixed above the scrim otherwise). */
+  body.sidebar-open .mlpeg-header-actions {
+    display: none;
+  }
+  /* De-clutter the header on phones: drop the long subtitle + doc link.
+     (!important overrides the span's inline display:block.) */
+  .mlpeg-subtitle,
+  .mlpeg-doclink {
+    display: none !important;
+  }
+  /* Phones: the pinned model-name / link columns eat scarce horizontal space and
+     hide the metric columns behind them — let the whole table scroll instead.
+     Backgrounds (surface / surface-2) already match the other cells/headers, so
+     nothing else needs resetting; only drop the pin + its right-edge shadow.
+     Same selectors as the base sticky rules but later in source order, so this
+     wins at equal specificity — no !important needed. */
+  .dash-table-container td[data-dash-column="MLIP"],
+  .dash-table-container th[data-dash-column="MLIP"],
+  .dash-table-container td[data-dash-column="link"],
+  .dash-table-container th[data-dash-column="link"] {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+}
+
+/* Very small phones: reclaim horizontal/vertical space for the data by trimming
+   the shell/card padding and the grid gap. Comes after the 768px block so it
+   wins where they overlap. (Input font-size stays 16px above — don't shrink it,
+   or iOS Safari zooms on focus.) */
+@media (max-width: 400px) {
+  .mlpeg-content {
+    padding: var(--sp-3);
+  }
+  .mlpeg-card,
+  .mlpeg-summary-card,
+  .mlpeg-bench-body:not(:empty) {
+    padding: var(--sp-4);
+  }
+  .mlpeg-benchmark-grid {
+    gap: var(--sp-4);
+  }
+}
+
+/* ---- Header settings popover (theme / colour scheme / expand / cache) --- */
+.mlpeg-settings {
+  position: relative;
+}
+.mlpeg-settings-summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  /* Match the pill treatment of .mlpeg-header-actions button. */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--mlpeg-border-strong);
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  padding: 7px 15px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.mlpeg-settings-summary:hover {
+  background: var(--mlpeg-surface-2);
+  border-color: var(--mlpeg-ink-3);
+  box-shadow: var(--shadow-sm);
+}
+.mlpeg-settings-summary::-webkit-details-marker {
+  display: none;
+}
+/* Crisp SVG gear painted with a CSS mask so it stays sharp at any DPI and
+   follows the theme ink colour (currentColor), instead of an OS-dependent glyph. */
+.mlpeg-settings-gear {
+  display: inline-block;
+  /* flex-shrink:0 keeps the square from being squeezed by the "Settings" label
+     when the header is tight; line-height:1 stops the inline box adding stray
+     height that pushed the glyph off-centre / clipped it against the text. */
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  background-color: currentColor;
+  /* 80% leaves a little breathing room inside the 16px box so the cog's stroke
+     never touches the edge and its optical weight matches the "Settings" label
+     next to it. (gear.svg is a symmetric cog whose teeth sit inside the 24px
+     viewBox with margin, so no tooth is clipped at this size.) */
+  -webkit-mask: url("icons/gear.svg") center / 80% no-repeat;
+  mask: url("icons/gear.svg") center / 80% no-repeat;
+}
+.mlpeg-settings-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  box-sizing: border-box;
+  width: 280px;
+  /* Never spill past the viewport on small screens (the panel is right-aligned
+     under a fixed button near the right edge). */
+  max-width: calc(100vw - 24px);
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
+  padding: var(--sp-4);
+  z-index: 1700;
+}
+.mlpeg-settings-group {
+  margin-bottom: var(--sp-4);
+}
+.mlpeg-settings-group:last-child {
+  margin-bottom: 0;
+}
+/* Inline control row (e.g. the Theme switch): label on the left, control on the
+   right, so a horizontal switch reads naturally instead of sitting under a
+   stacked label like the dropdowns do. */
+.mlpeg-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.mlpeg-settings-row .mlpeg-settings-label {
+  margin-bottom: 0;
+}
+.mlpeg-settings-label {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mlpeg-muted);
+  margin-bottom: var(--sp-2);
+}
+/* Group heading (Appearance / Behaviour) — a touch stronger than the item
+   labels so the panel reads as two tidy sections. */
+.mlpeg-settings-section {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--mlpeg-heading);
+  margin-bottom: var(--sp-2);
+}
+.mlpeg-settings-divider {
+  height: 1px;
+  background: var(--mlpeg-divider);
+  margin: var(--sp-4) 0;
+}
+.mlpeg-settings-check label {
+  font-size: 13px;
+  cursor: pointer;
+}
+.mlpeg-settings-clear {
+  box-sizing: border-box;
+  width: 100%;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--mlpeg-border-strong);
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  padding: 7px 14px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.mlpeg-settings-clear:hover {
+  background: var(--mlpeg-surface-2);
+  border-color: var(--mlpeg-ink-3);
+}
+
+/* ---- Expand/collapse-all pills above the benchmark grid ----------------- */
+.mlpeg-expand-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.mlpeg-expand-btn {
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--mlpeg-border-strong);
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink-2);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  padding: 6px 14px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.mlpeg-expand-btn:hover {
+  background: var(--mlpeg-surface-2);
+  border-color: var(--mlpeg-ink-3);
+  color: var(--mlpeg-ink);
+}
+
+/* ---- Dark-theme component fixes ----------------------------------------
+   Base cell colours are inline "white/black-ish" defaults from Dash; in dark
+   mode the stylesheet must win for uncoloured cells while the per-cell inline
+   heatmap styles (inline > stylesheet) keep their data colours. */
+/* Must out-specific Dash's own `...dash-spreadsheet-inner td { background:
+   white }` rule WITHOUT !important — important would also defeat the per-cell
+   inline heatmap colours, which have to keep winning here. */
+[data-theme="dark"]
+  .dash-table-container
+  .dash-spreadsheet-container
+  .dash-spreadsheet-inner
+  td.dash-cell {
+  background-color: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+}
+/* Plots: figure chrome (paper/plot background, font, gridlines) is repainted
+   from the theme tokens clientside by assets/theme_plots.js, so charts follow
+   dark mode instead of sitting on white islands. This just frames them as a
+   subtle panel to match the surrounding cards. */
+[data-theme="dark"] .dash-graph {
+  background: var(--mlpeg-surface);
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+/* ---- Onboarding tutorial: video stage with overlay navigation ----------
+   Arrows float on the video edges and a transparent centre catcher advances on
+   click. Catcher is z-index 1 (over the video), arrows z-index 2 (over the
+   catcher) so edge clicks hit the arrows and centre clicks advance. */
+.onboarding-video-stage {
+  position: relative;
+  line-height: 0; /* remove the inline descender gap under the video */
+}
+.onboarding-advance {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.onboarding-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.onboarding-nav:hover {
+  background: rgba(15, 23, 42, 0.82);
+}
+.onboarding-nav:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.onboarding-nav:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.onboarding-nav--prev {
+  left: 10px;
+}
+.onboarding-nav--next {
+  right: 10px;
+}
+
+/* Respect users who ask for less motion: keep the state changes (colour, chevron
+   orientation) but drop the animated transforms/lifts and long transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .mlpeg-bench-card:hover {
+    transform: none;
+  }
+}

@@ -33,6 +33,8 @@ from ml_peg.analysis.utils.utils import (
     update_score_style,
 )
 from ml_peg.app.utils.utils import (
+    DEFAULT_COLORMAP,
+    SUMMARY_TABLE_ID,
     Thresholds,
     build_level_of_theory_warnings,
     build_threshold_input_style,
@@ -140,7 +142,7 @@ def register_summary_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
-    prefix: str = "summary-table",
+    prefix: str = SUMMARY_TABLE_ID,
 ) -> None:
     """
     Register callbacks to update summary table.
@@ -216,7 +218,7 @@ def register_summary_table_callbacks(
         Input("selected-models-store", "data"),
         Input(f"{prefix}-computed-store", "data"),
         Input("cmap-store", "data"),
-        State("summary-table-weight-store", "data"),
+        State(f"{prefix}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
@@ -252,7 +254,7 @@ def register_summary_table_callbacks(
         base_style = (
             get_table_style(
                 filtered_rows,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=stored_weights,
             )
             if filtered_rows
@@ -265,11 +267,12 @@ def register_summary_table_callbacks(
             metric_levels=metric_levels,
             model_configs=model_configs,
         )
-        # Keep the model-link column white, even on greyed no-data rows.
+        # Keep the model-link column on the plain surface (theme-aware), even
+        # on greyed no-data rows.
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                "backgroundColor": "white",
+                "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
         ]
@@ -377,7 +380,7 @@ def register_category_table_callbacks(
             get_table_style(
                 filtered_rows,
                 scored_data=filtered_scores,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=weights,
             )
             if filtered_rows
@@ -412,7 +415,15 @@ def register_category_table_callbacks(
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
-            prevent_initial_call="initial_duplicate",
+            # Do NOT fire on initial load: every benchmark table is already baked
+            # at build time with the default view (all models, default cmap and
+            # weights), so an initial firing only re-derives what is already shown
+            # AND — because most benchmark tables are lazy-mounted/routed and so
+            # absent from the page — floods the server with one full recompute per
+            # off-screen benchmark and logs a "nonexistent object" error for each.
+            # It still fires on every real user change (weights/thresholds/toggle/
+            # model filter/colour), so interactivity is unchanged.
+            prevent_initial_call=True,
             optional=True,
         )
         def update_benchmark_table_scores(
@@ -465,17 +476,24 @@ def register_category_table_callbacks(
                 trigger_id in (f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
-                display_rows = get_scores(
-                    stored_raw_data, stored_computed_data, thresholds, toggle_value
-                )
+                # Colour/normalise flips don't change scores, but the computed-store
+                # is only warmed to calc_metric_scores(raw, thresholds) by the
+                # weights/thresholds branch below — which is prevent_initial_call=True,
+                # so before the user's first weight edit the store still holds the raw
+                # baked rows. Recompute the per-metric scores here so cell colouring
+                # and the normalised view are correct on the very first colour/toggle
+                # flip (the heavy colouring maths in get_table_style stays memoized).
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+                display_rows = get_scores(
+                    stored_raw_data, scored_rows, thresholds, toggle_value
+                )
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
                 style = (
                     get_table_style(
                         filtered_rows,
                         scored_data=filtered_scores,
-                        cmap_name=cmap_name or "viridis_r",
+                        cmap_name=cmap_name or DEFAULT_COLORMAP,
                         weights=stored_weights,
                     )
                     if filtered_rows
@@ -520,7 +538,7 @@ def register_category_table_callbacks(
                 get_table_style(
                     filtered_rows,
                     scored_data=filtered_scores,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
                 )
                 if filtered_rows
                 else []
@@ -559,7 +577,9 @@ def register_category_table_callbacks(
             Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
-            prevent_initial_call="initial_duplicate",
+            # Baked at build time; skip the redundant/erroring initial firing for
+            # every off-screen category summary (see update_benchmark_table_scores).
+            prevent_initial_call=True,
             optional=True,
         )
         def update_table_scores(
@@ -591,7 +611,7 @@ def register_category_table_callbacks(
             style = (
                 get_table_style(
                     filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
                 )
                 if filtered_rows
@@ -633,7 +653,8 @@ def register_category_table_callbacks(
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
             State(f"{table_id}-weight-store", "data"),
-            prevent_initial_call="initial_duplicate",
+            # Baked at build time; skip the redundant/erroring initial firing.
+            prevent_initial_call=True,
             optional=True,
         )
         def sync_table_from_computed_store(
@@ -664,7 +685,7 @@ def register_category_table_callbacks(
             style = (
                 get_table_style(
                     filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
                 )
                 if filtered_rows
@@ -807,6 +828,13 @@ def register_benchmark_to_group_callback(
         for _group, group_info in sorted(all_info.items()):
             group_weights = next(state_iter)
             current_rows = next(state_iter)
+
+            # A group whose computed-store is empty/None (e.g. cleared session
+            # state) has nothing to propagate into — skip it rather than iterate
+            # None (TypeError) or strict-zip a length mismatch below.
+            if not current_rows:
+                patched_outputs.append(no_update)
+                continue
 
             updated_rows = [row.copy() for row in current_rows]
             updated_by_mlip = {row["MLIP"]: row for row in updated_rows}
@@ -1143,7 +1171,7 @@ def register_normalization_callbacks(
             style = get_table_style(
                 display_rows,
                 scored_data=scored_rows,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
             )
             columns = format_metric_columns(
                 current_columns, cleaned_thresholds, normalized_active

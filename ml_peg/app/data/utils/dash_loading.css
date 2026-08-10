@@ -1,41 +1,59 @@
-/* Replace Dash's stock top-left "Loading..." pre-hydration placeholder with a
-   centered ML-PEG loader matching the in-app page spinner. Assets CSS loads in
-   <head> before the app entry point, so this applies during the cold-start
-   window. The ml-peg-spin keyframe is defined in loading.css. */
+/* Pre-hydration loader: replaces Dash's stock top-left "Loading..." text with a
+   centered circular spinner + ML-PEG wordmark matching the #startup-mask
+   (loading.css). Assets CSS loads in <head> before the app entry point, so this
+   covers the cold-start window before Dash hydrates. */
+
 ._dash-loading {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    background: #ffffff;
-    z-index: 1400;
-    /* Hide the literal "Loading..." text node. */
-    font-size: 0;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--mlpeg-surface, #ffffff);
+  z-index: 1400;
+  /* Hide the literal "Loading..." text node. */
+  font-size: 0;
 }
 
 ._dash-loading::before {
-    content: "";
-    width: 52px;
-    height: 52px;
-    border: 5px solid #d0ebff;
-    border-top-color: #119dff;
-    border-radius: 50%;
-    box-sizing: border-box;
-    animation: ml-peg-spin 0.8s linear infinite;
+  content: "";
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0%,
+    var(--mlpeg-accent, #119dff) 100%
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 4px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 4px)
+  );
+  animation: ml-peg-spin 0.85s linear infinite;
 }
 
-/* Single-element progress bar (gradient fill over a track), so it appears from
-   the very first paint. Same ml-peg-bar-fill keyframe as the start-up mask. */
 ._dash-loading::after {
-    content: "";
-    width: 200px;
-    height: 6px;
-    border-radius: 3px;
-    background:
-        linear-gradient(#119dff, #119dff) left center / 5% 100% no-repeat,
-        #d0ebff;
-    animation: ml-peg-bar-fill 10s ease-out forwards;
+  content: "ML-PEG";
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--mlpeg-ink, #1b2430);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ._dash-loading::before {
+    animation: none;
+    background: none;
+    border: 4px solid var(--mlpeg-surface-3, #eef2f6);
+    border-top-color: var(--mlpeg-accent, #119dff);
+  }
 }

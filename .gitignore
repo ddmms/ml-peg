@@ -41,4 +41,12 @@ __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 !ml_peg/app/data/table_download/
+!ml_peg/app/data/theme.css
+!ml_peg/app/data/theme_plots.js
+!ml_peg/app/data/settings_popover.js
+!ml_peg/app/data/fonts/
+!ml_peg/app/data/icons/
+# The UI icons are referenced by theme.css (gear/sun/moon); re-include them
+# explicitly since the global *.svg rule above would otherwise drop them.
+!ml_peg/app/data/icons/*.svg
 certs/

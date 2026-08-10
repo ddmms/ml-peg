@@ -5,13 +5,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from copy import deepcopy
-import json
 from pathlib import Path
 import warnings
 
 from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import Div
+import orjson
 
 from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
@@ -107,7 +107,10 @@ class BaseApp(ABC):
             for col in self.table.columns
             if col["id"] not in ("MLIP", "Score", "id", "link")
         ]
-        self.original_table = deepcopy(self.table)
+        # Keep only the original row data (not a full DataTable deepcopy) so the
+        # element filter can restore values; deepcopying every table was a
+        # measurable chunk of cold start.
+        self.original_data = deepcopy(self.table.data)
         self.layout = self.build_layout()
         if info_path:
             self.load_info(info_path)
@@ -130,8 +133,10 @@ class BaseApp(ABC):
         """
         if not info_path.exists():
             warnings.warn(f"{info_path} does not exist, skipping.", stacklevel=2)
-        with open(info_path) as f:
-            self.info = json.load(f)
+            self.info = None
+            return
+        with open(info_path, "rb") as f:
+            self.info = orjson.loads(f.read())
 
     def build_layout(self) -> Div:
         """
@@ -206,7 +211,7 @@ class BaseApp(ABC):
                     row[metric] = None
         else:
             for current_row, original_row in zip(
-                table_data, self.original_table.data, strict=True
+                table_data, self.original_data, strict=True
             ):
                 for metric in self.metrics:
                     current_row[metric] = original_row[metric]
@@ -223,6 +228,18 @@ class BaseApp(ABC):
         list[Store]
             List of Stores to be registered with full app.
         """
+        # Weights/thresholds (and their derived computed/raw rows) are scoped to
+        # the session, not local, on purpose. Within a tab this still resyncs
+        # everywhere it needs to: prevent_initial_call only suppresses the
+        # app-load initial batch, while a table INSERTED later (router page
+        # visit, lazy card expand) fires its score callbacks on insertion and
+        # re-reads these stores — pinned by tests/app/test_state_resync.py.
+        # Local persistence would instead rehydrate every store on every page
+        # load, firing one full recompute per REGISTERED benchmark (mostly for
+        # tables absent from the page, whose outputs are dropped) for any
+        # returning user with edited state — an off-screen recompute flood for
+        # working state that is per-tab by intent anyway.
+        # See register_callbacks.update_benchmark_table_scores.
         return [
             Store(
                 id=f"{self.table_id}-computed-store",

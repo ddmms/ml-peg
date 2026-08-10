@@ -3,7 +3,6 @@
 }
 
 .sidebar-link:hover {
-  background-color: #e8f4ff !important;
-  color: #119dff !important;
-  box-shadow: inset 3px 0 0 #119dff;
+  background-color: var(--mlpeg-surface-2) !important;
+  color: var(--mlpeg-ink) !important;
 }

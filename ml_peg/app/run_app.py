@@ -8,6 +8,7 @@ from pathlib import Path
 from dash import Dash
 
 from ml_peg.app.build_app import build_full_app
+from ml_peg.app.utils.settings import ZOOM_MAX, ZOOM_MIN
 
 DATA_PATH = Path(__file__).parent / "data"
 ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
@@ -48,6 +49,45 @@ app = Dash(
     title="ML-PEG",  # set browser tab title
     update_title=None,  # prevent the tab changing to Updating... during callbacks
     external_scripts=_analytics_scripts,
+    # Benchmark cards mount their bodies lazily, so their control ids are absent
+    # from the initial layout; allow callbacks to reference not-yet-present ids.
+    suppress_callback_exceptions=True,
+    meta_tags=[
+        # Render at real device width so the responsive layout + media queries
+        # apply on phones (without this, mobile browsers assume a ~980px page).
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"},
+    ],
+)
+
+# Apply the saved theme before first paint so a dark-mode reload doesn't flash
+# white. Reads the persisted dcc.Store value straight from localStorage — Dash
+# stores local data under the component id ("theme-store", JSON-encoded; see
+# ml_peg.app.utils.settings). Falls back to the OS preference, then light.
+app.index_string = app.index_string.replace(
+    "{%metas%}",
+    "{%metas%}\n"
+    "    <script>(function(){try{"
+    'var t=null;var s=window.localStorage.getItem("theme-store");'
+    "if(s){t=JSON.parse(s);}"
+    'if(t!=="dark"&&t!=="light"){'
+    "t=window.matchMedia"
+    '&&window.matchMedia("(prefers-color-scheme: dark)").matches'
+    '?"dark":"light";}'
+    'document.documentElement.setAttribute("data-theme",t);'
+    '}catch(e){document.documentElement.setAttribute("data-theme","light");}'
+    # Apply the saved table zoom before paint too (same store pattern), clamped
+    # to the slider range (ZOOM_MIN/ZOOM_MAX in settings.py). Sets a CSS var the
+    # tables read (see theme.css) — not page zoom. Its own try/catch: a corrupt
+    # zoom value must not reset a valid theme above.
+    "try{"
+    'var z=null;var zs=window.localStorage.getItem("zoom-store");'
+    "if(zs){z=JSON.parse(zs);}"
+    'if(typeof z==="number"&&z>0){'
+    f"z=Math.max({ZOOM_MIN},Math.min({ZOOM_MAX},z));"
+    "document.documentElement.style.setProperty("
+    '"--mlpeg-table-zoom",String(z/100));}'
+    "}catch(e){}"
+    "})();</script>",
 )
 
 # Inject the inline gtag init into the parsed <head> so the browser executes it
