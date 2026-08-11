@@ -134,7 +134,9 @@ def complete_models(ctx: Context, incomplete: str) -> list[str]:
 
     prefix, sep, last = incomplete.rpartition(",")
     head = f"{prefix}{sep}" if sep else ""
-    return [f"{head}{name}" for name in names if name.startswith(last)]
+    return [
+        f"{head}{name}" for name in names if name.startswith(last) and name not in head
+    ]
 
 
 def get_frameworks() -> tuple[str, ...]:

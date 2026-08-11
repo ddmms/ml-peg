@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -81,16 +80,3 @@ def get_app() -> CleavageEnergyApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(
-        __name__,
-        assets_folder=DATA_PATH.parent.parent,
-    )
-
-    cleavage_energy_app = get_app()
-    full_app.layout = cleavage_energy_app.layout
-    cleavage_energy_app.register_callbacks()
-
-    full_app.run(port=8056, debug=True)

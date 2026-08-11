@@ -58,7 +58,8 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch == 0.3.16",
+    "graph-longrange",
 ]
 
 mattersim = [
@@ -82,6 +83,12 @@ upet = [
 ]
 sevenn = [
     "sevenn==0.12.1",
+]
+vivace = [
+    "simpoly[vivace,cuda13] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform == 'linux'",
+    "simpoly[vivace] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform != 'linux'",
+    "cuequivariance ==0.8.1; sys_platform != 'linux'",
+    "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
 ]
 
 [project.scripts]
@@ -225,6 +232,10 @@ conflicts = [
         { extra = "mace" },
         { extra = "sevenn" },
     ],
+    [
+      { extra = "vivace" },
+      { extra = "mace" },
+    ],
 ]
 
 constraint-dependencies = [
@@ -238,3 +249,4 @@ module-root = ""
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 mlipaudit = { git = "https://github.com/instadeepai/MLIPAudit.git", branch = "mlpeg-migration" }
+graph-longrange = { git = "https://github.com/WillBaldwin0/graph_electrostatics", tag = "v0.4.0" }

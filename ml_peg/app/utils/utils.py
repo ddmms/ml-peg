@@ -186,14 +186,18 @@ class FrameworkEntry(_FrameworkEntryRequired, total=False):
     """
     Style and link metadata for benchmark framework attribution badges.
 
-    Inherits the required style keys and adds the optional link and hover
-    metadata, which individual frameworks may omit.
+    Inherits the required style keys and adds the optional link, hover and
+    description metadata, which individual frameworks may omit.
     """
 
     url: str
     logo: str
     icon: str
     tooltip: str
+    description: str
+    project_url: str
+    paper_url: str
+    github: str
 
 
 def get_mlip_column_width(
@@ -1186,6 +1190,10 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
         tooltip = raw_entry.get("tooltip")
         if isinstance(tooltip, str) and tooltip.strip():
             registry_entry["tooltip"] = tooltip.strip()
+        for key in ("description", "project_url", "paper_url", "github"):
+            value = raw_entry.get(key)
+            if isinstance(value, str) and value.strip():
+                registry_entry[key] = value.strip()
 
         registry[normalized_id] = registry_entry
 

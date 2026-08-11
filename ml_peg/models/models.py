@@ -218,6 +218,43 @@ def _patch_mattersim_graph_dtype() -> None:
 class MatterSimCalc(GenericASECalc):
     """Dataclass for MatterSim calculator."""
 
+    @staticmethod
+    def _patch_mattersim_setstate() -> None:
+        """Rebuild the model from mattersim's own saved model_args on copy()."""
+        from mattersim.forcefield.m3gnet.m3gnet import M3Gnet
+        from mattersim.forcefield.potential import MatterSimCalculator, Potential
+        import torch
+
+        def __setstate__(self, state):  # noqa: N807
+            """
+            Restore from copy/pickle by rebuilding at the saved architecture.
+
+            Parameters
+            ----------
+            self
+                The ``MatterSimCalculator`` instance being restored.
+            state
+                State dict produced by ``__getstate__``, containing the saved
+                model weights, architecture (``model_args``) and name.
+            """
+            model_state_dict = state.pop("_model_state_dict")
+            model_args = state.pop("_model_args")
+            model_name = state.pop("_model_name")
+            self.__dict__.update(state)
+            model = M3Gnet(device=self.device, **model_args).to(self.device)
+            model.load_state_dict(model_state_dict)
+            model.eval()
+            self.potential = Potential(
+                model,
+                device=self.device,
+                model_name=model_name,
+                load_training_state=False,
+            )
+            if self.dtype == torch.float64:
+                self.potential.model.double()
+
+        MatterSimCalculator.__setstate__ = __setstate__
+
     def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
@@ -240,9 +277,48 @@ class MatterSimCalc(GenericASECalc):
         if self.default_dtype is not None:
             kwargs["dtype"] = self.default_dtype
 
+        self._patch_mattersim_setstate()
         _patch_mattersim_graph_dtype()
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class VivaceCalc(SumCalc):
+    """Dataclass for Vivace calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Unused precision argument, kept for the common model API.
+        **kwargs
+            Keyword arguments passed to the Vivace calculator.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE calculator.
+        """
+        from simpoly.vivace.calculator import MLFFCalculator
+
+        kwargs.update(self.kwargs)
+        calc = MLFFCalculator(**kwargs)
+
+        # Vivace sets dtype from checkpoint metadata inside MLFFCalculator.
+        # Leave precision/overwrite_dtype untouched unless SimPoly exposes it.
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        if device is not None:
+            calc.device = device
+            calc.model = calc.model.to(device=device)
+
+        return calc
 
 
 # https://github.com/orbital-materials/orb-models
