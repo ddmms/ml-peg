@@ -1,0 +1,73 @@
+metrics:
+  Mean ΔE (1 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom across 10 diverse structures after a 1 Å rigid translation"
+    level_of_theory: null
+  Max ΔE (1 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom across 10 diverse structures after a 1 Å rigid translation"
+    level_of_theory: null
+  Mean ΔF (1 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Mean absolute force change across 10 diverse structures after a 1 Å rigid translation"
+    level_of_theory: null
+  Max ΔF (1 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) absolute force change across 10 diverse structures after a 1 Å rigid translation"
+    level_of_theory: null
+  Mean ΔE (40 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom across 10 diverse structures after a 40 Å rigid translation"
+    level_of_theory: null
+  Max ΔE (40 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom across 10 diverse structures after a 40 Å rigid translation"
+    level_of_theory: null
+  Mean ΔF (40 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Mean absolute force change across 10 diverse structures after a 40 Å rigid translation"
+    level_of_theory: null
+  Max ΔF (40 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) absolute force change across 10 diverse structures after a 40 Å rigid translation"
+    level_of_theory: null
+  Mean ΔE (1000 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom across 10 diverse structures after a 1000 Å rigid translation"
+    level_of_theory: null
+  Max ΔE (1000 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom across 10 diverse structures after a 1000 Å rigid translation"
+    level_of_theory: null
+  Mean ΔF (1000 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Mean absolute force change across 10 diverse structures after a 1000 Å rigid translation"
+    level_of_theory: null
+  Max ΔF (1000 Å):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) absolute force change across 10 diverse structures after a 1000 Å rigid translation"
+    level_of_theory: null
