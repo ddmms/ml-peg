@@ -7,9 +7,38 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 TIMEOUT = 60_000
+
+
+def _settle(locator: Locator, timeout: int = TIMEOUT) -> None:
+    """Wait until a locator's bounding box stops moving.
+
+    The benchmark page keeps reflowing for a moment after load while its Plotly
+    figures autosize and re-theme; on a slow CI runner that shift can outlast
+    Playwright's own actionability wait, so hovers/clicks time out with "element
+    is not stable". Poll the box until it is unchanged across two ~120ms samples
+    before interacting.
+
+    Parameters
+    ----------
+    locator
+        Element to wait on.
+    timeout
+        Maximum time to wait, in milliseconds.
+    """
+    page = locator.page
+    locator.wait_for(state="visible", timeout=timeout)
+    deadline = timeout
+    prev = locator.bounding_box()
+    while deadline > 0:
+        page.wait_for_timeout(120)
+        deadline -= 120
+        curr = locator.bounding_box()
+        if prev is not None and curr == prev:
+            return
+        prev = curr
 
 
 def _goto_ionpi19(page: Page) -> None:
@@ -58,7 +87,11 @@ def test_csv_download(ready_page: Page) -> None:
     """The CSV export control downloads a .csv file for the benchmark table."""
     _goto_ionpi19(ready_page)
     ready_page.locator("#IONPI19-table-download-format").click()
-    ready_page.locator('[role="option"]', has_text="CSV").first.click()
+    csv_option = ready_page.locator('[role="option"]', has_text="CSV").first
+    _settle(csv_option)
+    # force past the sticky topbar (z-index 1600), which can overlap the option
+    # once Playwright scrolls it up under the header.
+    csv_option.click(force=True)
 
     with ready_page.expect_download(timeout=TIMEOUT) as download_info:
         ready_page.locator("#IONPI19-table-download-button").click()
@@ -262,6 +295,7 @@ def test_click_pins_info_card(ready_page: Page) -> None:
     # Every model row carries a level-of-theory tooltip on its MLIP cell.
     cell = ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]').first
     expect(cell).to_be_visible(timeout=TIMEOUT)
+    _settle(cell)  # wait out the post-load reflow so the cell stops moving
     cell.hover()  # let Dash render the cell's tooltip so there is content to pin
     ready_page.wait_for_selector(".mlpeg-tooltip-portal.is-visible", timeout=TIMEOUT)
     ready_page.wait_for_timeout(250)  # let the hovered tooltip settle before pinning
