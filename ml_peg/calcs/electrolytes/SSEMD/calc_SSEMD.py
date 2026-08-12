@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from copy import copy
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -109,6 +110,11 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
     # Write output directory
     write_dir: Path = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save reference RDFs for the analysis
+    saved_ref_file: Path = OUT_PATH / f"{system_name}_rdf_aimd.pkl"
+    if not saved_ref_file.exists():
+        shutil.copy(poscar_dir / "rdf_aimd.pkl", saved_ref_file)
 
     log_path: Path = write_dir / f"{file_name}.log"
     traj_path: Path = write_dir / f"{file_name}.traj"

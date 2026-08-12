@@ -24,7 +24,6 @@ from ml_peg.calcs.electrolytes.SSEMD.calc_SSEMD import (
     FRAME_FREQUENCY,
     N_EQUI_FRAMES,
 )
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -297,11 +296,9 @@ def compute_rdf_score(g_aimd: dict, g_model: dict) -> float:
 
 def load_reference_rdfs() -> dict[str, dict]:
     """
-    Load AIMD reference RDFs for all systems from ``rdf_aimd.pkl`` files.
+    Load AIMD reference RDFs from the calculation outputs.
 
-    Extracts the SSEs_data zip (same approach as ``calc_SSEMD.py``) and
-    walks the directory tree to find ``rdf_aimd.pkl`` files alongside each
-    POSCAR.  Each pickle contains a dict mapping element pair labels to
+    Each ``rdf_aimd.pkl`` file contains a dict mapping element pair labels to
     ``(bins, rdf_values)`` tuples.
 
     Returns
@@ -309,24 +306,12 @@ def load_reference_rdfs() -> dict[str, dict]:
     dict[str, dict]
         Mapping of ``system_name -> {pair_label: (bins, rdf_values)}``.
     """
-    data_dir = (
-        download_s3_data(
-            key="inputs/electrolytes/SSE/SSE.zip",
-            filename="SSE.zip",
-        )
-        / "SSE"
-    )
-
     ref_rdfs: dict[str, dict] = {}
-    for pkl_file in sorted(data_dir.rglob("rdf_aimd.pkl")):
-        temp_dir = pkl_file.parent
-        compound_dir = temp_dir.parent.parent
-        system_name = f"{compound_dir.name}_{temp_dir.parent.name}_{temp_dir.name}"
+    for pkl_file in sorted(CALC_PATH.glob("*_rdf_aimd.pkl")):
+        system_name = pkl_file.stem.removesuffix("_rdf_aimd")
 
         with open(pkl_file, "rb") as f:
-            rdf_data = pickle.load(f)
-
-        ref_rdfs[system_name] = rdf_data
+            ref_rdfs[system_name] = pickle.load(f)
 
     return ref_rdfs
 
