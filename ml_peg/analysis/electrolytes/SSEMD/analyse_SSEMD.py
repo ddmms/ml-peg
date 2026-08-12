@@ -362,9 +362,9 @@ def rdf_scores() -> dict[str, list]:
     """
     Get per-system RDF similarity scores for all models.
 
-    Computes RDFs from model trajectories and compares them against
-    AIMD reference data (or a pseudo-reference from the first available
-    model while the reference loader is a placeholder).
+    Compares RDFs computed from each model's trajectories against the AIMD
+    reference RDFs. Systems without both a model and a reference RDF score
+    as NaN.
 
     Returns
     -------
@@ -397,13 +397,13 @@ def rdf_scores() -> dict[str, list]:
                 )
                 results[model_name].append(score)
             else:
-                results[model_name].append(None)
+                results[model_name].append(np.nan)
 
     return results
 
 
 @pytest.fixture
-def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float | None]:
+def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float]:
     """
     Compute mean RDF score for each model across all systems.
 
@@ -414,17 +414,15 @@ def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float | None]:
 
     Returns
     -------
-    dict[str, float | None]
-        Mean RDF score per model, or ``None`` if no data available.
+    dict[str, float]
+        Mean RDF score per model, ignoring systems scored as NaN, or NaN if
+        the model has no scored systems.
     """
-    results: dict[str, float | None] = {}
+    results: dict[str, float] = {}
     for model_name in MODELS:
         scores = rdf_scores.get(model_name, [])
-        valid = [s for s in scores if s is not None]
-        if valid:
-            results[model_name] = float(np.mean(valid))
-        else:
-            results[model_name] = None
+        valid = [s for s in scores if s is not None and not np.isnan(s)]
+        results[model_name] = float(np.mean(valid)) if valid else np.nan
     return results
 
 
@@ -435,7 +433,7 @@ def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float | None]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(ssemd_errors: dict[str, float | None]) -> dict[str, dict]:
+def metrics(ssemd_errors: dict[str, float]) -> dict[str, dict]:
     """
     Get all SSE-MD metrics.
 
