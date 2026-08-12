@@ -13,14 +13,13 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
-from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-OUT_PATH = CALCS_ROOT / "lanthanides" / "isomer_complexes" / "outputs"
+OUT_PATH = Path(__file__).parent / "outputs"
 
 EXCLUDE_ELEMENTS = (89, 90)
 
@@ -89,6 +88,7 @@ def get_ref_energy(data_path: Path) -> float:
     raise ValueError("Unable to extract energy")
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     """
@@ -102,7 +102,7 @@ def test_isomer_complexes(mlip: tuple[str, Any]) -> None:
     # download lanthanide isomer complexes dataset
     isomer_complexes_dir = (
         download_s3_data(
-            key="inputs/lanthanides/isomer_complexes/isomer_complexes.zip",
+            key="inputs/f_block/isomer_complexes/isomer_complexes.zip",
             filename="isomer_complexes.zip",
         )
         / "isomer_complexes"

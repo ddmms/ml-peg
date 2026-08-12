@@ -91,7 +91,6 @@ mace-matpes-r2scan
 mace-mh-1-omat
 --------------
 
-
 .. code-block:: yaml
 
    mace-mh-1-omat:
@@ -104,9 +103,9 @@ mace-mh-1-omat
        model: "mh-1"
        head: omat_pbe
 
+
 MACE-OFF23(L)
 -------------
-
 
 .. code-block:: yaml
 
@@ -121,7 +120,6 @@ MACE-OFF23(L)
 mace-omol
 ---------
 
-
 .. code-block:: yaml
 
    mace-omol:
@@ -135,7 +133,6 @@ mace-omol
 
 mace-mh-1-omol
 --------------
-
 
 .. code-block:: yaml
 
@@ -152,7 +149,6 @@ mace-mh-1-omol
 mace-polar-1-s
 --------------
 
-
 .. code-block:: yaml
 
    mace-polar-1-s:
@@ -166,7 +162,6 @@ mace-polar-1-s
 
 mace-polar-1-m
 --------------
-
 
 .. code-block:: yaml
 
@@ -182,7 +177,6 @@ mace-polar-1-m
 mace-polar-1-l
 --------------
 
-
 .. code-block:: yaml
 
    mace-polar-1-l:
@@ -193,6 +187,7 @@ mace-polar-1-l
      level_of_theory: ωB97M-V
      kwargs:
        model: "polar-1-l"
+
 
 Orb
 ===
@@ -211,6 +206,20 @@ orb-v3-consv-inf-omat
      kwargs:
        name: "orb_v3_conservative_inf_omat"
 
+orb-v3-direct-inf-omat
+----------------------
+
+.. code-block:: yaml
+
+   orb-v3-direct-inf-omat:
+     module: orb_models.inference.calculator
+     class_name: OrbCalc
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       name: "orb_v3_direct_inf_omat"
+
 orb-v3-consv-omol
 -----------------
 
@@ -225,6 +234,7 @@ orb-v3-consv-omol
      kwargs:
        name: "orb_v3_conservative_omol"
 
+
 PET
 ===
 
@@ -233,23 +243,56 @@ pet-mad
 
 .. code-block:: yaml
 
-   pet-mad:
-     module: pet_mad.calculator
-     class_name: PETMADCalculator
-     device: "cpu"
-     trained_on_dispersion: false
-     level_of_theory: PBEsol
-     kwargs:
-       version: "v1.0.2"
-     dispersion_kwargs:
-       xc: pbesol
+  pet-mad:
+    module: upet.calculator
+    class_name: UPETCalculator
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBEsol
+    kwargs:
+      model: "pet-mad-s"
+      version: "1.0.2"
+    dispersion_kwargs:
+      xc: pbesol
+
+pet-mad-s-1p5
+-------------
+
+.. code-block:: yaml
+
+  pet-mad-s-1p5:
+    module: upet.calculator
+    class_name: UPETCalculator
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: r2SCAN
+    kwargs:
+      model: "pet-mad-s"
+      version: "1.5.0"
+    dispersion_kwargs:
+      xc: r2scan
+
+pet-oam-xl
+----------
+
+.. code-block:: yaml
+
+  pet-oam-xl:
+    module: upet.calculator
+    class_name: UPETCalculator
+    device: "cpu"
+    trained_on_dispersion: False
+    level_of_theory: PBE
+    kwargs:
+      model: "pet-oam-xl"
+      version: "1.0.0"
+
 
 UMA (FairChem)
 ==============
 
 uma-s-1p1-omat
 --------------
-
 
 .. code-block:: yaml
 
@@ -266,7 +309,6 @@ uma-s-1p1-omat
 uma-m-1p1-omat
 --------------
 
-
 .. code-block:: yaml
 
    uma-m-1p1-omat:
@@ -281,7 +323,6 @@ uma-m-1p1-omat
 
 uma-s-1p1-omol
 --------------
-
 
 .. code-block:: yaml
 
@@ -298,7 +339,6 @@ uma-s-1p1-omol
 uma-s-1p2-omol
 --------------
 
-
 .. code-block:: yaml
 
    uma-s-1p2-omol:
@@ -314,7 +354,6 @@ uma-s-1p2-omol
 uma-m-1p1-omol
 --------------
 
-
 .. code-block:: yaml
 
    uma-m-1p1-omol:
@@ -327,12 +366,12 @@ uma-m-1p1-omol
        model_name: "uma-m-1p1"
        task_name: "omol"
 
+
 MatterSim
 =========
 
 mattersim-5M
 ------------
-
 
 .. code-block:: yaml
 
@@ -340,16 +379,31 @@ mattersim-5M
      module: mattersim.forcefield
      class_name: MatterSimCalculator
      device: "cpu"
-     load_path: "mattersim-v1.0.0-5m"
      trained_on_dispersion: false
      level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-5m"
+
+mattersim-1M
+------------
+
+.. code-block:: yaml
+
+   mattersim-1M:
+     module: mattersim.forcefield
+     class_name: MatterSimCalculator
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       load_path: "mattersim-v1.0.0-1m"
+
 
 GRACE
 =====
 
 GRACE-2L-OAM
 ------------
-
 
 .. code-block:: yaml
 
@@ -360,3 +414,22 @@ GRACE-2L-OAM
      trained_on_dispersion: false
      kwargs:
        model: "<local path to the GRACE-2L-OAM model>"
+
+
+SevenNet
+========
+
+sevennet-omni-mpa
+-----------------
+
+.. code-block:: yaml
+
+  sevennet-omni-mpa:
+    module: sevenn.sevennet_calculator
+    class_name: SevenNetCalculator
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "7net-omni"
+      modal: "mpa"

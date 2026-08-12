@@ -986,6 +986,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_cposs209(metrics: dict[str, dict]) -> None:
     """
     Run CPOSS209 test.

@@ -169,6 +169,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_ncia_d442x10(
     metrics: dict[str, dict],
     interaction_density: dict[str, dict],

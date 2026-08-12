@@ -21,6 +21,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     """
