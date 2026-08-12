@@ -19,6 +19,7 @@ DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electrolytes.html#sse-md"
 )
 DATA_PATH = APP_ROOT / "data" / "electrolytes" / "SSEMD"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class SSEMDApp(BaseApp):
@@ -58,6 +59,7 @@ def get_app() -> SSEMDApp:
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
 
 

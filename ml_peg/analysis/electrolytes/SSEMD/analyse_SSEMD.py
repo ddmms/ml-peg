@@ -15,6 +15,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
 )
 from ml_peg.app import APP_ROOT
@@ -39,28 +40,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 BIN_SIZE: float = 0.05  # Angstrom
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of SSE-MD system names from trajectory outputs.
-
-    Returns
-    -------
-    list[str]
-        List of system names derived from trajectory file names.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            traj_files = sorted(model_dir.glob("*.traj"))
-            if traj_files:
-                for traj_file in traj_files:
-                    # Strip model name suffix to recover system name
-                    system_name = traj_file.stem.removesuffix(f"_{model_name}")
-                    system_names.append(system_name)
-                break
-    return system_names
+# Elemental info for filtering, and system labels for hoverdata
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.traj",
+    index=0,
+    out_path=OUT_PATH,
+    info_keys=["system"],
+)
+SYSTEM_NAMES: list[str] = INFO["system"]
 
 
 def ase2mda(atoms: list[Atoms], time_between_frames: float) -> Universe:
@@ -367,7 +355,7 @@ def compute_model_rdfs(model_name: str) -> dict[str, dict]:
     x_label="Predicted RDF score",
     y_label="Reference RDF score (ideal = 1)",
     hoverdata={
-        "System": get_system_names(),
+        "System": SYSTEM_NAMES,
     },
 )
 def rdf_scores() -> dict[str, list]:
@@ -384,8 +372,7 @@ def rdf_scores() -> dict[str, list]:
         Dictionary with ``"ref"`` key (ideal scores of 1.0) and one key
         per model containing per-system RDF scores.
     """
-    system_names = get_system_names()
-    results: dict[str, list] = {"ref": [1.0] * len(system_names)} | {
+    results: dict[str, list] = {"ref": [1.0] * len(SYSTEM_NAMES)} | {
         mlip: [] for mlip in MODELS
     }
 
@@ -403,7 +390,7 @@ def rdf_scores() -> dict[str, list]:
     for model_name in MODELS:
         model_rdfs = all_model_rdfs.get(model_name, {})
 
-        for system_name in system_names:
+        for system_name in SYSTEM_NAMES:
             if system_name in model_rdfs and system_name in ref_rdfs:
                 score = compute_rdf_score(
                     ref_rdfs[system_name], model_rdfs[system_name]
