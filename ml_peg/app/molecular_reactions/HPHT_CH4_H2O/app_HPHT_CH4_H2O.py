@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dash import Dash, Input, Output, callback, dcc
 from dash.html import Div
-import numpy as np
-import plotly.graph_objects as go
+import plotly.io as pio
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -21,8 +20,8 @@ DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / BENCHMARK_NAME
 CALCS_ROOT = APP_ROOT.parent / "calcs"
 
 
-class HPHT_CH4_H2OApp(BaseApp):
-    """PROTON benchmark app layout and callbacks."""
+class HPHTCH4H2OApp(BaseApp):
+    """HPHT_CH4_H2O benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -48,74 +47,53 @@ class HPHT_CH4_H2OApp(BaseApp):
 
         @callback(
             Output(f"{BENCHMARK_NAME}-fes-plot", "children"),
-            Input(f"{BENCHMARK_NAME}-figure", "clickData"),
+            Input(f"{BENCHMARK_NAME}-figure", "clickdata"),
         )
-        def update_fes_plot(clickData):
+        def update_fes_plot(clickdata):
+            """
+            Display all the free energy profiles of the selected structure.
 
-            if clickData is None:
+            Parameters
+            ----------
+            clickdata : dict or None
+                Dash click event data containing the selected structure.
+
+            Returns
+            -------
+            str or dash.dcc.Graph
+                Free energy profile graph or an error message.
+            """
+            if clickdata is None:
                 return "Click on a point to show free energy profile"
             try:
-                point = clickData["points"][0]
+                point = clickdata["points"][0]
                 structure = point["customdata"][0]
-                model = MODELS[0]
-                ref_file = DATA_PATH / f"{structure}.data"
-                model_file = DATA_PATH / model / f"{structure}.data"
-                ref = np.loadtxt(ref_file)
-                model_data = np.loadtxt(model_file)
 
-                bins = ref[:, 0]
-                F_ref = ref[:, 1]
-                F_model = model_data[:, 1]
+                figure_file = DATA_PATH / "fes_plots" / f"{structure}.json"
 
-                fig = go.Figure()
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=bins,
-                        y=F_ref,
-                        mode="lines",
-                        name="Reference",
-                    )
-                )
-                for model in MODELS:
-                    model_file = DATA_PATH / model / f"{structure}.data"
-                    if not model_file.exists():
-                        continue
-                    model_data = np.loadtxt(model_file)
-                    F_model = model_data[:, 1]
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=bins,
-                            y=F_model,
-                            mode="lines",
-                            name=model,
-                        )
-                    )
-                fig.update_layout(
-                    title=f"Free Energy Profile - {structure}",
-                    xaxis_title="Reaction coordinate",
-                    yaxis_title="Free energy (kJ/mol)",
-                    template="plotly_white",
-                )
+                if not figure_file.exists():
+                    return f"No free energy profile available for {structure}"
+                fig = pio.read_json(figure_file)
                 return dcc.Graph(figure=fig)
             except Exception as e:
-                return f"Erreur : {e}"
+                return f"Error loading free energy profile: {e}"
 
 
-def get_app() -> HPHT_CH4_H2OApp:
+def get_app() -> HPHTCH4H2OApp:
     """
-    Get PROTON benchmark app layout and callback registration.
+    Get the configured HPHT_CH4_H2O benchmark application.
 
     Returns
     -------
-    PROTONApp
-        Benchmark layout and callback registration.
+    HPHTCH4H2OApp
+        Configured benchmark application with registered callbacks.
     """
-    return HPHT_CH4_H2OApp(
+    return HPHTCH4H2OApp(
         name=BENCHMARK_NAME,
         description=(
-            "Performance in predicting free energy profiles for the HPHT_CH4_H2O benchmark."
+            "Performance in predicting free energy profiles of proton hopping"
+            "in CH4/H2O mixtures under high pressure (HP) and high temperature (HT)"
+            "Reference data from DFT-MD (PBE) simulations."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "fes_metrics_table.json",
