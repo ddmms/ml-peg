@@ -52,8 +52,8 @@ def test_diverse_carbon_structures(mlip: tuple[str, Any]) -> None:
     results = []
     for atoms in tqdm(atoms_list, desc=model_name):
         # Reference energy and forces stored by ASE's SinglePointCalculator on read
-        ref_energy = atoms.get_potential_energy()
-        ref_forces = atoms.get_forces()
+        ref_energy = atoms.info["REF_energy"]
+        ref_forces = atoms.arrays["REF_forces"]
 
         atoms.calc = calc
         pred_energy = atoms.get_potential_energy()
