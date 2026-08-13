@@ -23,7 +23,6 @@ import numpy as np
 import pytest
 
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import GraceCalc
 
 GRACE_MODELS = (
     ("grace-2l-omat", "GRACE-2L-OMAT", False),
@@ -89,6 +88,8 @@ def test_registered_grace_model_precision(
 def test_grace_can_switch_from_high_to_low_precision() -> None:
     """Precision selection is not retained between calculator calls."""
     pytest.importorskip("tensorpotential")
+    from ml_peg.models.models import GraceCalc
+
     model = GraceCalc(
         module="tensorpotential.calculator",
         class_name="grace_fm",
