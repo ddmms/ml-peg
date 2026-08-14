@@ -1,0 +1,101 @@
+.plot-settings {
+  width: fit-content;
+  max-width: 100%;
+  margin: 6px 0 8px;
+  border: 1px solid #d7e3f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #243746;
+  font-size: 12px;
+}
+
+.plot-settings-summary {
+  padding: 7px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.plot-settings-body {
+  min-width: 390px;
+  max-width: 100%;
+  padding: 4px 10px 10px;
+  box-sizing: border-box;
+}
+
+.plot-settings-axis-row {
+  display: grid;
+  grid-template-columns: 48px 105px 95px 95px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.plot-settings-axis-label {
+  font-weight: 600;
+}
+
+.plot-settings-scale,
+.plot-settings-number {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.plot-settings-number {
+  height: 30px;
+  padding: 4px 7px;
+  border: 1px solid #8aa1b4;
+  border-radius: 5px;
+}
+
+.plot-settings-help {
+  margin-top: 8px;
+  color: #5f6f7e;
+  font-size: 11px;
+}
+
+.plot-settings-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.plot-settings-apply,
+.plot-settings-reset {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid #0b5cad;
+  border-radius: 5px;
+  background: #0b73d9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plot-settings-reset {
+  border-color: #8aa1b4;
+  background: #fff;
+  color: #243746;
+}
+
+.plot-settings-message {
+  min-height: 16px;
+  margin-top: 5px;
+  color: #b42318;
+}
+
+@media (max-width: 520px) {
+  .plot-settings-body {
+    min-width: 0;
+  }
+
+  .plot-settings-axis-row {
+    grid-template-columns: 42px 1fr 1fr;
+  }
+
+  .plot-settings-scale {
+    grid-column: 2 / 4;
+  }
+}
