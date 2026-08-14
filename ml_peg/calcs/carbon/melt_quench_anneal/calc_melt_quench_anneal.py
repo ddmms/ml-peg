@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import chain
 import json
 from math import ceil
 from pathlib import Path
@@ -14,12 +15,15 @@ from warnings import warn
 from ase import Atoms, units
 from ase.io import read, write
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
-from ase.neighborlist import NeighborList, natural_cutoffs
-from ase.optimize import LBFGS
 from janus_core.calculations.md import NVT_CSVR
 import numpy as np
 import pytest
 
+from ml_peg.calcs.carbon.melt_quench_anneal.structure_utils import (
+    RELAX_FMAX,
+    RELAX_STEPS,
+    clean_and_relax,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -36,9 +40,12 @@ DENSITIES = (1.0,)
 # the reference C and C75H15O10 material configs. Carbon takes the remainder.
 COMPOSITION_PERCENTAGES = {
     "C": {},
-    # "CHO": {"H": 15.0, "O": 10.0},
+    "CHO": {"H": 15.0, "O": 10.0},
 }
 
+# Independent repeats per composition-density pair, each from its own random
+# starting structure and initial velocities. Runs are numbered from 1.
+N_RUNS = 5
 BASE_SEED = 10
 FS_PER_PS = 1000.0
 INITIAL_TEMPERATURE_K = 100.0
@@ -64,14 +71,14 @@ TRAJ_EVERY = 1000
 CHECK_EVERY = 10
 MAX_TEMPERATURE_K = 10 * MELT_TEMPERATURE_K
 
-# Post-MD clean and relax. Isolated fragments smaller than MIN_CLUSTER_SIZE are
-# dropped before relaxing, so gas-phase molecules ejected during the melt do not
-# contribute to the final amorphous structure.
+# Stages longer than this are split into equal chunks, each writing its own final
+# structure. A job killed at its scheduler walltime then loses at most one chunk
+# rather than the whole stage, since completed chunks are skipped on resubmission.
+MAX_CHUNK_TIME_PS = 25.0
+
+# Stages whose final structure is cleaned and relaxed after the MD. Chunked
+# stages are relaxed at their last chunk only.
 RELAX_STAGE_NAMES = ("anneal", "cool")
-MIN_CLUSTER_SIZE = 20
-BOND_SCALE = 1.10
-RELAX_FMAX = 0.01
-RELAX_STEPS = 5000
 
 
 def composition_counts(composition: str, n_atoms: int | None = None) -> dict[str, int]:
@@ -116,6 +123,41 @@ COMPOSITIONS = {
 }
 
 
+@dataclass(frozen=True)
+class Run:
+    """
+    One independent trajectory.
+
+    Attributes
+    ----------
+    composition : str
+        Key in ``COMPOSITIONS``.
+    density : float
+        Target mass density in g cm^-3.
+    number : int
+        Repeat number, from 1 to `N_RUNS`, naming the output directory.
+    seed : int
+        Random seed for the starting structure, initial velocities and
+        thermostat.
+    """
+
+    composition: str
+    density: float
+    number: int
+    seed: int
+
+
+# Flat list of every trajectory, ordered composition-major so that a scheduler
+# array index maps to a fixed run. Appending compositions, densities or runs
+# keeps existing indices stable; reordering them does not.
+RUNS = tuple(
+    Run(composition, density, number, BASE_SEED + number - 1)
+    for composition in COMPOSITIONS
+    for density in DENSITIES
+    for number in range(1, N_RUNS + 1)
+)
+
+
 def cell_dir(model_name: str) -> Path:
     """
     Get the output directory for one model at the current cell size.
@@ -134,7 +176,7 @@ def cell_dir(model_name: str) -> Path:
     return OUT_PATH / model_name / cell
 
 
-def trajectory_dir(model_name: str, composition: str, density: float) -> Path:
+def trajectory_dir(model_name: str, run: Run) -> Path:
     """
     Get the output directory for one trajectory.
 
@@ -142,18 +184,16 @@ def trajectory_dir(model_name: str, composition: str, density: float) -> Path:
     ----------
     model_name
         Registered model name.
-    composition
-        Key in ``COMPOSITIONS``.
-    density
-        Target mass density in g cm^-3.
+    run
+        Trajectory to locate.
 
     Returns
     -------
     Path
         Directory for the trajectory's Janus and relaxation outputs.
     """
-    run_name = f"rho-{density:g}".replace(".", "p")
-    return cell_dir(model_name) / composition / run_name
+    density_name = f"rho-{run.density:g}".replace(".", "p")
+    return cell_dir(model_name) / run.composition / density_name / f"run-{run.number}"
 
 
 def stage_file_prefix(output_dir: Path, stage_name: str) -> Path:
@@ -248,7 +288,46 @@ class Stage:
         return self.start_temperature != self.end_temperature
 
 
-STAGES = (
+def chunk_stage(
+    stage: Stage, max_time_ps: float = MAX_CHUNK_TIME_PS
+) -> tuple[Stage, ...]:
+    """
+    Split a long stage into equal chunks.
+
+    Each chunk writes its own final structure, so a killed job resumes at the
+    last completed chunk. A ramped stage has its temperature range divided
+    between chunks, leaving the overall ramp rate unchanged.
+
+    Parameters
+    ----------
+    stage
+        Stage to split.
+    max_time_ps
+        Longest chunk duration in ps. Default is `MAX_CHUNK_TIME_PS`.
+
+    Returns
+    -------
+    tuple[Stage, ...]
+        Chunks making up the stage, or the stage itself if short enough.
+    """
+    if stage.time_ps <= max_time_ps:
+        return (stage,)
+
+    n_chunks = ceil(stage.time_ps / max_time_ps)
+    temperature_range = stage.end_temperature - stage.start_temperature
+    return tuple(
+        Stage(
+            f"{stage.name}-{index:02d}",
+            stage.start_temperature + temperature_range * index / n_chunks,
+            stage.start_temperature + temperature_range * (index + 1) / n_chunks,
+            stage.time_ps / n_chunks,
+            stage.timestep_fs,
+        )
+        for index in range(n_chunks)
+    )
+
+
+BASE_STAGES = (
     Stage(
         "melt",
         MELT_TEMPERATURE_K,
@@ -286,6 +365,8 @@ STAGES = (
     ),
 )
 
+STAGES = tuple(chain.from_iterable(chunk_stage(stage) for stage in BASE_STAGES))
+
 TOTAL_STEPS = sum(stage.steps for stage in STAGES)
 TOTAL_TIME_PS = sum(stage.time_ps for stage in STAGES)
 
@@ -293,6 +374,14 @@ EXPECTED_OUTPUT_FILES = ("initial.extxyz",) + tuple(
     f"{stage.name}/{stage.name}-{suffix}"
     for stage in STAGES
     for suffix in ("final.extxyz", "stats.dat", "traj.extxyz")
+)
+
+# Chunked stages are relaxed at their last chunk, which holds the structure at
+# the end of the stage.
+RELAX_STAGES = tuple(
+    chunk_stage(stage)[-1].name
+    for stage in BASE_STAGES
+    if stage.name in RELAX_STAGE_NAMES
 )
 
 
@@ -469,33 +558,27 @@ def _outputs_complete(output_dir: Path) -> bool:
     )
 
 
-def _load_previous_results(status_path: Path) -> dict[tuple[str, float], dict]:
+def _load_previous_result(status_path: Path) -> dict:
     """
-    Load existing status records by composition and density.
+    Load the existing status record for one trajectory.
 
     Parameters
     ----------
     status_path
-        Per-model status file.
+        Per-trajectory status file.
 
     Returns
     -------
-    dict[tuple[str, float], dict]
-        Existing records keyed by composition and density.
+    dict
+        Existing record, or an empty dict if it is missing or unreadable.
     """
     if not status_path.exists():
         return {}
     try:
-        records = json.loads(status_path.read_text())
+        record = json.loads(status_path.read_text())
     except (json.JSONDecodeError, OSError):
         return {}
-    if not isinstance(records, list):
-        return {}
-    return {
-        (record["composition"], float(record["density_g_cm3"])): record
-        for record in records
-        if "composition" in record and "density_g_cm3" in record
-    }
+    return record if isinstance(record, dict) else {}
 
 
 def run_trajectory(
@@ -535,7 +618,7 @@ def run_trajectory(
     completed_steps = 0
     completed_time_ps = 0.0
 
-    for stage in STAGES:
+    for stage_index, stage in enumerate(STAGES):
         if _stage_complete(output_dir, stage):
             struct = read(stage_file(output_dir, stage.name, "final.extxyz"))
             struct.calc = calc
@@ -555,7 +638,9 @@ def run_trajectory(
             traj_every=TRAJ_EVERY,
             restart_every=TOTAL_STEPS + 1,
             file_prefix=stage_file_prefix(output_dir, stage.name),
-            seed=seed,
+            # Offset per stage so consecutive stages, and the chunks of a split
+            # stage, do not each replay the same thermostat noise sequence.
+            seed=seed + stage_index,
         )
         if stage.is_ramp:
             md.dyn.attach(_set_ramp_temperature, interval=1, md=md, stage=stage)
@@ -582,9 +667,12 @@ def run_trajectory(
     }
 
 
-def run_benchmark(model_name: str, model: Any) -> None:
+def run_benchmark(model_name: str, model: Any, runs: Sequence[Run] = RUNS) -> None:
     """
-    Run all composition-density trajectories for one model.
+    Run trajectories for one model.
+
+    Each trajectory writes its own ``status.json``, so runs dispatched
+    concurrently as separate jobs never write to the same file.
 
     Parameters
     ----------
@@ -592,240 +680,69 @@ def run_benchmark(model_name: str, model: Any) -> None:
         Registered model name.
     model
         Model wrapper used to construct the calculator.
+    runs
+        Trajectories to run. Default is `RUNS`.
     """
-    output_root = cell_dir(model_name)
-    output_root.mkdir(parents=True, exist_ok=True)
-    status_path = output_root / "status.json"
-    previous_results = _load_previous_results(status_path)
-    results = []
-    status_path.write_text("[]\n")
     calc = None
 
-    for composition_index, composition in enumerate(COMPOSITIONS):
-        seed = BASE_SEED + composition_index
-        for density in DENSITIES:
-            output_dir = trajectory_dir(model_name, composition, density)
-            result = None
-            if _outputs_complete(output_dir):
-                result = previous_results.get((composition, density), {}).copy()
-                result.setdefault("stable", True)
-                result.setdefault("completed_steps", TOTAL_STEPS)
-                result.setdefault("completed_time_ps", TOTAL_TIME_PS)
-                result.setdefault("failure", None)
-                result.setdefault("failed_stage", None)
-                result.setdefault("walltime_seconds", None)
-                print(
-                    f"Skipping {model_name} {composition} at {density:g} g cm^-3: "
-                    "outputs found"
-                )
-            else:
-                if calc is None:
-                    calc = model.get_calculator(precision="low")
-                    calc = model.add_d3_calculator(calc)
-                atoms = build_structure(composition, density, seed)
-                atoms.calc = calc
-                start_time = perf_counter()
-                try:
-                    result = run_trajectory(atoms, output_dir, seed)
-                except Exception as exc:
-                    result = {
-                        "stable": False,
-                        "completed_steps": 0,
-                        "completed_time_ps": 0.0,
-                        "failure": f"{type(exc).__name__}: {exc}",
-                        "failed_stage": None,
-                    }
-                result["walltime_seconds"] = perf_counter() - start_time
-            result.update(
-                {
-                    "composition": composition,
-                    "density_g_cm3": density,
-                    "seed": seed,
-                    "run_name": output_dir.name,
-                    "n_cell_size": N_CELL_SIZE,
-                    "n_atoms": N_ATOMS,
-                    "anneal_temperature_K": ANNEAL_TEMPERATURE_K,
-                }
-            )
-            results.append(result)
-            status_path.write_text(json.dumps(results, indent=2) + "\n")
-            if not result["stable"]:
-                warn(
-                    f"{model_name} failed for {composition} at {density:g} g cm^-3: "
-                    f"{result['failure']}",
-                    stacklevel=2,
-                )
-
-
-def _bond_graph(atoms: Atoms, bond_scale: float = BOND_SCALE) -> list[list[int]]:
-    """
-    Build the bonded-neighbour adjacency list of a structure.
-
-    Parameters
-    ----------
-    atoms
-        Structure to analyse.
-    bond_scale
-        Multiplier applied to the natural covalent cutoffs.
-
-    Returns
-    -------
-    list[list[int]]
-        Neighbour indices for each atom.
-    """
-    cutoffs = natural_cutoffs(atoms, mult=bond_scale)
-    neighbor_list = NeighborList(
-        cutoffs, skin=0.0, self_interaction=False, bothways=True
-    )
-    neighbor_list.update(atoms)
-    return [
-        neighbor_list.get_neighbors(index)[0].tolist() for index in range(len(atoms))
-    ]
-
-
-def _components(graph: list[list[int]]) -> list[list[int]]:
-    """
-    Find the connected components of a bond graph.
-
-    Parameters
-    ----------
-    graph
-        Neighbour indices for each atom.
-
-    Returns
-    -------
-    list[list[int]]
-        Atom indices making up each connected component.
-    """
-    seen = np.zeros(len(graph), dtype=bool)
-    components = []
-    for start in range(len(graph)):
-        if seen[start]:
-            continue
-        queue = deque([start])
-        seen[start] = True
-        component = []
-        while queue:
-            node = queue.popleft()
-            component.append(node)
-            for neighbor in graph[node]:
-                if not seen[neighbor]:
-                    seen[neighbor] = True
-                    queue.append(neighbor)
-        components.append(component)
-    return components
-
-
-def remove_small_clusters(
-    atoms: Atoms,
-    min_cluster_size: int = MIN_CLUSTER_SIZE,
-    bond_scale: float = BOND_SCALE,
-) -> tuple[Atoms, dict[str, Any]]:
-    """
-    Remove isolated fragments smaller than a minimum size.
-
-    Parameters
-    ----------
-    atoms
-        Structure to clean.
-    min_cluster_size
-        Smallest connected component retained.
-    bond_scale
-        Multiplier applied to the natural covalent cutoffs.
-
-    Returns
-    -------
-    tuple[ase.Atoms, dict[str, Any]]
-        Cleaned structure and a summary of what was removed.
-    """
-    components = _components(_bond_graph(atoms, bond_scale=bond_scale))
-    sizes = np.array([len(component) for component in components], dtype=int)
-    small = sizes < min_cluster_size
-    removed = sorted(
-        {
-            index
-            for component_index in np.where(small)[0]
-            for index in components[component_index]
-        }
-    )
-
-    mask = np.ones(len(atoms), dtype=bool)
-    if removed:
-        mask[removed] = False
-    cleaned = atoms[mask]
-
-    info = {
-        "n_atoms_in": len(atoms),
-        "n_atoms_out": len(cleaned),
-        "n_clusters": len(components),
-        "n_small_clusters": int(small.sum()),
-        "small_cluster_sizes": sorted(sizes[small].tolist()),
-        "n_removed_atoms": len(removed),
-        "min_cluster_size": min_cluster_size,
-        "bond_scale": bond_scale,
-    }
-    return cleaned, info
-
-
-def clean_and_relax(
-    structure_path: Path,
-    calc: Any,
-    file_prefix: Path,
-) -> dict[str, Any]:
-    """
-    Remove small clusters from an MD structure and relax what remains.
-
-    Parameters
-    ----------
-    structure_path
-        Final structure written by an MD stage.
-    calc
-        Calculator used for the relaxation.
-    file_prefix
-        Prefix for the cleaned, relaxed, log and trajectory outputs.
-
-    Returns
-    -------
-    dict[str, Any]
-        Cluster removal summary and relaxation outcome.
-    """
-    atoms = read(structure_path)
-    cleaned, info = remove_small_clusters(atoms)
-    # Velocities from the MD stage are meaningless after relaxation.
-    cleaned.arrays.pop("momenta", None)
-    write(file_prefix.with_name(f"{file_prefix.name}-cleaned.extxyz"), cleaned)
-
-    # A low-density cell can fragment entirely into small clusters, leaving
-    # nothing to relax.
-    if not len(cleaned):
-        info.update(
-            {"converged": False, "relax_steps": 0, "empty_after_cleaning": True}
+    for run in runs:
+        output_dir = trajectory_dir(model_name, run)
+        label = (
+            f"{model_name} {run.composition} at {run.density:g} g cm^-3 "
+            f"run {run.number}"
         )
-        return info
+        status_path = output_dir / "status.json"
 
-    cleaned.calc = calc
-    optimizer = LBFGS(
-        cleaned,
-        logfile=str(file_prefix.with_name(f"{file_prefix.name}-relax.log")),
-        trajectory=str(file_prefix.with_name(f"{file_prefix.name}-relax.traj")),
-    )
-    converged = optimizer.run(fmax=RELAX_FMAX, steps=RELAX_STEPS)
-    write(file_prefix.with_name(f"{file_prefix.name}-relaxed.extxyz"), cleaned)
+        if _outputs_complete(output_dir):
+            result = _load_previous_result(status_path)
+            result.setdefault("stable", True)
+            result.setdefault("completed_steps", TOTAL_STEPS)
+            result.setdefault("completed_time_ps", TOTAL_TIME_PS)
+            result.setdefault("failure", None)
+            result.setdefault("failed_stage", None)
+            result.setdefault("walltime_seconds", None)
+            print(f"Skipping {label}: outputs found")
+        else:
+            if calc is None:
+                calc = model.get_calculator(precision="low")
+                calc = model.add_d3_calculator(calc)
+            atoms = build_structure(run.composition, run.density, run.seed)
+            atoms.calc = calc
+            start_time = perf_counter()
+            try:
+                result = run_trajectory(atoms, output_dir, run.seed)
+            except Exception as exc:
+                result = {
+                    "stable": False,
+                    "completed_steps": 0,
+                    "completed_time_ps": 0.0,
+                    "failure": f"{type(exc).__name__}: {exc}",
+                    "failed_stage": None,
+                }
+            result["walltime_seconds"] = perf_counter() - start_time
 
-    info.update(
-        {
-            "converged": bool(converged),
-            "relax_steps": int(optimizer.get_number_of_steps()),
-            "max_relax_steps": RELAX_STEPS,
-            "fmax": RELAX_FMAX,
-            "max_force": float(np.linalg.norm(cleaned.get_forces(), axis=1).max()),
-            "energy": float(cleaned.get_potential_energy()),
-        }
-    )
-    return info
+        result.update(
+            {
+                "model": model_name,
+                "composition": run.composition,
+                "density_g_cm3": run.density,
+                "run": run.number,
+                "run_id": RUNS.index(run),
+                "seed": run.seed,
+                "n_cell_size": N_CELL_SIZE,
+                "n_atoms": N_ATOMS,
+                "anneal_temperature_K": ANNEAL_TEMPERATURE_K,
+            }
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        status_path.write_text(json.dumps(result, indent=2) + "\n")
+        if not result["stable"]:
+            warn(f"{label} failed: {result['failure']}", stacklevel=2)
 
 
-def run_clean_and_relax(model_name: str, model: Any) -> None:
+def run_clean_and_relax(
+    model_name: str, model: Any, runs: Sequence[Run] = RUNS
+) -> None:
     """
     Clean and relax the annealed and cooled structures for one model.
 
@@ -835,59 +752,85 @@ def run_clean_and_relax(model_name: str, model: Any) -> None:
         Registered model name.
     model
         Model wrapper used to construct the calculator.
+    runs
+        Trajectories to clean and relax. Default is `RUNS`.
     """
-    results = []
     calc = None
 
-    for composition in COMPOSITIONS:
-        for density in DENSITIES:
-            output_dir = trajectory_dir(model_name, composition, density)
-            for stage_name in RELAX_STAGE_NAMES:
-                structure_path = stage_file(output_dir, stage_name, "final.extxyz")
-                file_prefix = stage_file_prefix(output_dir, stage_name)
-                relaxed_path = stage_file(output_dir, stage_name, "relaxed.extxyz")
-                info_path = stage_file(output_dir, stage_name, "relax.json")
+    for run in runs:
+        output_dir = trajectory_dir(model_name, run)
+        label = (
+            f"{model_name} {run.composition} at {run.density:g} g cm^-3 "
+            f"run {run.number}"
+        )
+        for stage_name in RELAX_STAGES:
+            structure_path = stage_file(output_dir, stage_name, "final.extxyz")
+            file_prefix = stage_file_prefix(output_dir, stage_name)
+            relaxed_path = stage_file(output_dir, stage_name, "relaxed.extxyz")
+            info_path = stage_file(output_dir, stage_name, "relax.json")
 
-                if not structure_path.is_file():
-                    warn(
-                        f"Skipping {model_name} {composition} at {density:g} g cm^-3: "
-                        f"{structure_path} not found",
-                        stacklevel=2,
-                    )
-                    continue
-                if relaxed_path.is_file() and relaxed_path.stat().st_size > 0:
-                    print(f"Skipping {relaxed_path}: output found")
-                    continue
-
-                if calc is None:
-                    calc = model.get_calculator(precision="high")
-                    calc = model.add_d3_calculator(calc)
-
-                start_time = perf_counter()
-                info = clean_and_relax(structure_path, calc, file_prefix)
-                info.update(
-                    {
-                        "composition": composition,
-                        "density_g_cm3": density,
-                        "n_cell_size": N_CELL_SIZE,
-                        "stage": stage_name,
-                        "walltime_seconds": perf_counter() - start_time,
-                    }
+            if not structure_path.is_file():
+                warn(
+                    f"Skipping {label}: {structure_path} not found",
+                    stacklevel=2,
                 )
-                info_path.write_text(json.dumps(info, indent=2) + "\n")
-                results.append(info)
-                if not info["converged"]:
-                    warn(
-                        f"{model_name} {composition} at {density:g} g cm^-3 "
-                        f"{stage_name} relaxation did not reach "
-                        f"fmax={RELAX_FMAX} in {RELAX_STEPS} steps",
-                        stacklevel=2,
-                    )
+                continue
+            if relaxed_path.is_file() and relaxed_path.stat().st_size > 0:
+                print(f"Skipping {relaxed_path}: output found")
+                continue
+
+            if calc is None:
+                calc = model.get_calculator(precision="high")
+                calc = model.add_d3_calculator(calc)
+
+            start_time = perf_counter()
+            info = clean_and_relax(structure_path, calc, file_prefix)
+            info.update(
+                {
+                    "model": model_name,
+                    "composition": run.composition,
+                    "density_g_cm3": run.density,
+                    "run": run.number,
+                    "run_id": RUNS.index(run),
+                    "seed": run.seed,
+                    "n_cell_size": N_CELL_SIZE,
+                    "stage": stage_name,
+                    "walltime_seconds": perf_counter() - start_time,
+                }
+            )
+            info_path.write_text(json.dumps(info, indent=2) + "\n")
+            if not info["converged"]:
+                warn(
+                    f"{label} {stage_name} relaxation did not reach "
+                    f"fmax={RELAX_FMAX} in {RELAX_STEPS} steps",
+                    stacklevel=2,
+                )
+
+
+def select_runs(run_id: int) -> tuple[Run, ...]:
+    """
+    Select the trajectories to run from a run index.
+
+    Parameters
+    ----------
+    run_id
+        Index into `RUNS`, or -1 to select every trajectory. One index per job
+        lets a scheduler array run each trajectory independently.
+
+    Returns
+    -------
+    tuple[Run, ...]
+        Selected trajectories.
+    """
+    assert run_id in range(-1, len(RUNS)), (
+        f"run_id out of range. Please use -1 for all runs, or 0 to {len(RUNS) - 1}"
+    )
+    return RUNS if run_id < 0 else (RUNS[run_id],)
 
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_melt_quench_anneal(mlip: tuple[str, Any]) -> None:
+def test_melt_quench_anneal(mlip: tuple[str, Any], run_id: int) -> None:
     """
     Run the carbon melt-quench-anneal MD benchmark.
 
@@ -895,13 +838,15 @@ def test_melt_quench_anneal(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Tuple of model name and model wrapper.
+    run_id
+        Index of the trajectory to run, or -1 for all of them.
     """
-    run_benchmark(*mlip)
+    run_benchmark(*mlip, runs=select_runs(run_id))
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_melt_quench_anneal_relax(mlip: tuple[str, Any]) -> None:
+def test_melt_quench_anneal_relax(mlip: tuple[str, Any], run_id: int) -> None:
     """
     Clean and relax the annealed and cooled structures.
 
@@ -911,5 +856,7 @@ def test_melt_quench_anneal_relax(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Tuple of model name and model wrapper.
+    run_id
+        Index of the trajectory to relax, or -1 for all of them.
     """
-    run_clean_and_relax(*mlip)
+    run_clean_and_relax(*mlip, runs=select_runs(run_id))
