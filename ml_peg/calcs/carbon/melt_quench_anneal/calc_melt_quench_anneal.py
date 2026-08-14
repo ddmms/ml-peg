@@ -150,6 +150,11 @@ class Run:
 # Flat list of every trajectory, ordered composition-major so that a scheduler
 # array index maps to a fixed run. Appending compositions, densities or runs
 # keeps existing indices stable; reordering them does not.
+#
+# Run n uses the same seed in every composition, so runs are paired across
+# compositions: C run 1 and CHO run 1 start from the same random draws for their
+# site displacements and initial velocities, differing only in which species sit
+# on which site and in the cell size set by the target density.
 RUNS = tuple(
     Run(composition, density, number, BASE_SEED + number - 1)
     for composition in COMPOSITIONS
