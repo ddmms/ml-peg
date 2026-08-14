@@ -22,7 +22,6 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "alloy_metallurgy" / "AlZnCuMg_regression" / "outputs"
-DATA_PATH = CALCS_ROOT / "alloy_metallurgy" / "AlZnCuMg_regression" / "data"
 OUT_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "AlZnCuMg_regression"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
