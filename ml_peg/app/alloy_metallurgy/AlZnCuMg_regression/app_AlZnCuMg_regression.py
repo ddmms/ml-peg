@@ -157,10 +157,3 @@ def get_app() -> AlZnCuMgRegressionApp:
         info_path=INFO_PATH,
     )
 
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    AlZnCuMg_app = get_app()
-    full_app.layout = AlZnCuMg_app.layout
-    AlZnCuMg_app.register_callbacks()
-    full_app.run(port=8054, debug=True)
