@@ -105,8 +105,8 @@ magnitude ±0.5%.
     components of the 6×6 Voigt elastic tensor.
 
 
-Solute-solute binding (very slow)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Solute-solute binding (slow)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Binding energy curves as a function of solute-solute separation distance.
 Pure-element FCC supercells are constructed and fully relaxed, then pairs of
