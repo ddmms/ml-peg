@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING
+from functools import wraps
+from typing import TYPE_CHECKING, Any
+from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
@@ -14,39 +16,79 @@ if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
-current_models = None
+
+def _patch_metatomic_nvalchemi_max_neighbors() -> None:
+    """
+    Make metatomic's CUDA neighbor-list call compatible with nvalchemi.
+
+    ``metatomic-ase`` computes ``max_neighbors`` using ``cutoff**3``. For
+    cutoffs above roughly 5 Å this produces a float, while nvalchemi requires
+    an integer tensor dimension. PET-OAM uses a 10 Å cutoff.
+    """
+    import metatomic_ase._neighbors as metatomic_neighbors
+
+    neighbor_list = metatomic_neighbors.nvalchemi_neighbor_list
+    if getattr(neighbor_list, "_ml_peg_integer_max_neighbors", False):
+        return
+
+    @wraps(neighbor_list)
+    def neighbor_list_with_integer_max_neighbors(*args: Any, **kwargs: Any) -> Any:
+        """
+        Convert nvalchemi's maximum-neighbor estimate to an integer.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to the original neighbor-list function.
+        **kwargs
+            Keyword arguments forwarded to the original neighbor-list function.
+
+        Returns
+        -------
+        Any
+            The result from the original neighbor-list function.
+        """
+        max_neighbors = kwargs.get("max_neighbors")
+        if max_neighbors is not None:
+            kwargs["max_neighbors"] = int(max_neighbors)
+        return neighbor_list(*args, **kwargs)
+
+    neighbor_list_with_integer_max_neighbors._ml_peg_integer_max_neighbors = True
+    metatomic_neighbors.nvalchemi_neighbor_list = (
+        neighbor_list_with_integer_max_neighbors
+    )
 
 
 @dataclasses.dataclass(kw_only=True)
 class SumCalc:
     """
-    Base class that tracks whether a model already includes D3 dispersion.
+    Base class that tracks whether a model already includes dispersion corrections.
 
     ``add_d3_calculator`` only wraps calculators with an explicit TorchDFTD3
-    correction when ``trained_on_d3`` is ``False``; otherwise the original
+    correction when ``trained_on_dispersion`` is ``False``; otherwise the original
     calculator is returned untouched.
     """
 
-    trained_on_d3: bool = False
-    d3_kwargs: dict = dataclasses.field(default_factory=dict)
+    trained_on_dispersion: bool = False
+    dispersion_kwargs: dict = dataclasses.field(default_factory=dict)
 
     def add_d3_calculator(self, calcs) -> Calculator | SumCalculator:
         """
-        Add D3 dispersion to calculator(s).
+        Add dispersion corrections to calculator(s).
 
         Parameters
         ----------
         calcs
-            Calculator, or list of calculators, to add D3 dispersion to via a
+            Calculator, or list of calculators, to add dispersion corrections to via a
             SumCalculator.
 
         Returns
         -------
         SumCalculator | Calculator
-            Calculator(s) with D3 dispersion added, or the original calculator when
-            the model is already trained with D3 corrections.
+            Calculator(s) with dispersion corrections added, or the original calculator
+            when the model is already trained with dispersion corrections.
         """
-        if self.trained_on_d3:
+        if self.trained_on_dispersion:
             return calcs
         from ase import units
         from ase.calculators.mixing import SumCalculator
@@ -57,11 +99,11 @@ class SumCalc:
             calcs = [calcs]
 
         d3_calc = TorchDFTD3Calculator(
-            device=self.d3_kwargs.get("device", "cpu"),
-            damping=self.d3_kwargs.get("damping", "bj"),
-            xc=self.d3_kwargs.get("xc", "pbe"),
-            dtype=getattr(torch, self.d3_kwargs.get("dtype", "float32")),
-            cutoff=self.d3_kwargs.get("cutoff", 40.0 * units.Bohr),
+            device=self.dispersion_kwargs.get("device", "cpu"),
+            damping=self.dispersion_kwargs.get("damping", "bj"),
+            xc=self.dispersion_kwargs.get("xc", "pbe"),
+            dtype=getattr(torch, self.dispersion_kwargs.get("dtype", "float32")),
+            cutoff=self.dispersion_kwargs.get("cutoff", 40.0 * units.Bohr),
         )
         calcs.append(d3_calc)
 
@@ -74,12 +116,14 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -88,6 +132,9 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["default_dtype"] = precision_map[precision]
+
         if self.default_dtype is not None:
             kwargs["default_dtype"] = self.default_dtype
 
@@ -95,15 +142,54 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
 
 @dataclasses.dataclass(kw_only=True)
-class PetMadCalc(GenericASECalc):
-    """Dataclass for PET-MAD calculator."""
+class MatterSimCalc(GenericASECalc):
+    """Dataclass for MatterSim calculator."""
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    @staticmethod
+    def _patch_mattersim_setstate() -> None:
+        """Rebuild the model from mattersim's own saved model_args on copy()."""
+        from mattersim.forcefield.m3gnet.m3gnet import M3Gnet
+        from mattersim.forcefield.potential import MatterSimCalculator, Potential
+        import torch
+
+        def __setstate__(self, state):  # noqa: N807
+            """
+            Restore from copy/pickle by rebuilding at the saved architecture.
+
+            Parameters
+            ----------
+            self
+                The ``MatterSimCalculator`` instance being restored.
+            state
+                State dict produced by ``__getstate__``, containing the saved
+                model weights, architecture (``model_args``) and name.
+            """
+            model_state_dict = state.pop("_model_state_dict")
+            model_args = state.pop("_model_args")
+            model_name = state.pop("_model_name")
+            self.__dict__.update(state)
+            model = M3Gnet(device=self.device, **model_args).to(self.device)
+            model.load_state_dict(model_state_dict)
+            model.eval()
+            self.potential = Potential(
+                model,
+                device=self.device,
+                model_name=model_name,
+                load_training_state=False,
+            )
+            if self.dtype == torch.float64:
+                self.potential.model.double()
+
+        MatterSimCalculator.__setstate__ = __setstate__
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -112,12 +198,53 @@ class PetMadCalc(GenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
         if self.default_dtype is not None:
             kwargs["dtype"] = self.default_dtype
-        else:
-            kwargs["dtype"] = self.default_dtype
+
+        self._patch_mattersim_setstate()
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class VivaceCalc(SumCalc):
+    """Dataclass for Vivace calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Unused precision argument, kept for the common model API.
+        **kwargs
+            Keyword arguments passed to the Vivace calculator.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE calculator.
+        """
+        from simpoly.vivace.calculator import MLFFCalculator
+
+        kwargs.update(self.kwargs)
+        calc = MLFFCalculator(**kwargs)
+
+        # Vivace sets dtype from checkpoint metadata inside MLFFCalculator.
+        # Leave precision/overwrite_dtype untouched unless SimPoly exposes it.
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        if device is not None:
+            calc.device = device
+            calc.model = calc.model.to(device=device)
+
+        return calc
 
 
 # https://github.com/orbital-materials/orb-models
@@ -127,15 +254,17 @@ class OrbCalc(SumCalc):
 
     name: str
     device: Device | None = None
-    default_dtype: str = "float32-high"
+    default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Level of precision to evaluate the model.
         **kwargs
             Any keyword arguments to pass to `get_calculator`.
 
@@ -145,7 +274,7 @@ class OrbCalc(SumCalc):
             Loaded ASE Orb Calculator.
         """
         from orb_models.forcefield import pretrained
-        from orb_models.forcefield.calculator import ORBCalculator
+        from orb_models.forcefield.inference.calculator import ORBCalculator
         import torch._dynamo
 
         torch._dynamo.config.suppress_errors = True
@@ -155,21 +284,30 @@ class OrbCalc(SumCalc):
         os.environ["TORCH_DISABLE_MODULE_HIERARCHY_TRACKING"] = "1"
 
         method = getattr(pretrained, self.name)
+
+        precision_map = {"low": "float32-high", "high": "float64"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
         if self.device is None:
-            orbff = method(precision=self.default_dtype, **self.kwargs)
-            calc = ORBCalculator(orbff, **self.kwargs)
+            orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
+            calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
         elif self.device == Device.AUTO:
             orbff = method(
                 device=Device.resolve_auto(),
-                precision=self.default_dtype,
+                precision=dtype,
                 **self.kwargs,
             )
             calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
         else:
-            orbff = method(
-                device=self.device, precision=self.default_dtype, **self.kwargs
+            orbff, atoms_adapter = method(
+                device=self.device, precision=dtype, **self.kwargs
             )
-            calc = ORBCalculator(orbff, device=self.device, **self.kwargs)
+            calc = ORBCalculator(
+                orbff, atoms_adapter=atoms_adapter, device=self.device, **self.kwargs
+            )
 
         return calc
 
@@ -199,23 +337,44 @@ class FairChemCalc(SumCalc):
     model_name: str
     task_name: str
     device: Device | str = "cpu"
-    default_dtype: str = "float32"
+    default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self) -> Calculator:
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Any additional keyword arguments.
 
         Returns
         -------
         Calculator
-            Loaded ASE Orb Calculator.
+            Loaded ASE fairchem Calculator.
         """
         from fairchem.core import FAIRChemCalculator, pretrained_mlip
-        # torch.serialization.add_safe_globals([slice])
+        from fairchem.core.units.mlip_unit.api.inference import (
+            inference_settings_default,
+        )
+
+        # fairchem defaults to float32; map the requested precision to the base
+        # dtype so precision="high" runs in float64. A configured default_dtype
+        # overrides this.
+        precision_map = {"low": "float32", "high": "float64"}
+        dtype = self.default_dtype or precision_map[precision]
+        inference_settings = dataclasses.replace(
+            inference_settings_default(), base_precision_dtype=dtype
+        )
 
         predictor = pretrained_mlip.get_predict_unit(
-            self.model_name, device=self.device, overrides=self.overrides
+            self.model_name,
+            device=self.device,
+            overrides=self.overrides,
+            inference_settings=inference_settings,
         )
         return FAIRChemCalculator(predictor, task_name=self.task_name)
 
@@ -235,3 +394,130 @@ class FairChemCalc(SumCalc):
             return self.model_name in pretrained_mlip._MODEL_CKPTS.checkpoints
         except Exception:
             return False
+
+
+@dataclasses.dataclass(kw_only=True)
+class MockCalc(SumCalc):
+    """Dataclass for mock calculator."""
+
+    model_name: str = "mock"
+    trained_on_dispersion: bool = True
+
+    def get_calculator(self, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Any additional keyword arguments passed to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded mock ASE Calculator.
+        """
+        from ml_peg.models.mock import MockCalculator
+
+        return MockCalculator()
+
+
+@dataclasses.dataclass(kw_only=True)
+class UPETCalc(GenericASECalc):
+    """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Any keyword arguments to pass to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded upet ASE calculator.
+        """
+        precision_map = {"low": "float32", "high": "float64"}
+        kwargs["dtype"] = precision_map[precision]
+
+        if self.default_dtype is not None:
+            kwargs["dtype"] = self.default_dtype
+
+        _patch_metatomic_nvalchemi_max_neighbors()
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class SevenNetCalc(SumCalc):
+    """Dataclass for SevenNet calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored).
+
+        Returns
+        -------
+        Calculator
+            Loaded SevenNet ASE calculator.
+        """
+        from sevenn.sevennet_calculator import SevenNetCalculator
+
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        device_str = device.value if isinstance(device, Device) else (device or "cpu")
+        return SevenNetCalculator(device=device_str, **self.kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class GraceCalc(GenericASECalc):
+    """Dataclass for GRACE calculator."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Additional keyword arguments (ignored).
+
+        Returns
+        -------
+        Calculator
+            Loaded GRACE ASE calculator.
+        """
+        from tensorpotential.calculator.foundation_models import MODELS_NAME_LIST
+
+        precision_map = {"low": "", "high": "-fp64"}
+        suffix = precision_map[precision]
+
+        if self.default_dtype is not None:
+            suffix = self.default_dtype
+
+        model_name = f"{self.kwargs['model']}{suffix}"
+        if model_name in MODELS_NAME_LIST:
+            self.kwargs["model"] = model_name
+        else:
+            warn(
+                "Unable to find model with requested precision, using default",
+                stacklevel=2,
+            )
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)

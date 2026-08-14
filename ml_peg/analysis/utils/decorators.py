@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Callable
 import functools
 import json
@@ -13,143 +12,23 @@ from typing import Any
 from dash import dash_table
 import numpy as np
 import pandas as pd
+import plotly.colors as pc
 import plotly.graph_objects as go
 
-from ml_peg.analysis.utils.utils import calc_table_scores
+from ml_peg.analysis.utils.periodic_table import (
+    PERIODIC_TABLE_COLS,
+    PERIODIC_TABLE_POSITIONS,
+    PERIODIC_TABLE_ROWS,
+)
+from ml_peg.analysis.utils.utils import (
+    DENSITY_GRID_SIZE,
+    DENSITY_MAX_POINTS_PER_CELL,
+    DENSITY_SAMPLE_SEED,
+    calc_table_scores,
+    sample_density_grid,
+)
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
-
-PERIODIC_TABLE_POSITIONS: dict[str, tuple[int, int]] = {
-    # First row
-    "H": (0, 0),
-    "He": (0, 17),
-    # Second row
-    "Li": (1, 0),
-    "Be": (1, 1),
-    "B": (1, 12),
-    "C": (1, 13),
-    "N": (1, 14),
-    "O": (1, 15),
-    "F": (1, 16),
-    "Ne": (1, 17),
-    # Third row
-    "Na": (2, 0),
-    "Mg": (2, 1),
-    "Al": (2, 12),
-    "Si": (2, 13),
-    "P": (2, 14),
-    "S": (2, 15),
-    "Cl": (2, 16),
-    "Ar": (2, 17),
-    # Fourth row
-    "K": (3, 0),
-    "Ca": (3, 1),
-    "Sc": (3, 2),
-    "Ti": (3, 3),
-    "V": (3, 4),
-    "Cr": (3, 5),
-    "Mn": (3, 6),
-    "Fe": (3, 7),
-    "Co": (3, 8),
-    "Ni": (3, 9),
-    "Cu": (3, 10),
-    "Zn": (3, 11),
-    "Ga": (3, 12),
-    "Ge": (3, 13),
-    "As": (3, 14),
-    "Se": (3, 15),
-    "Br": (3, 16),
-    "Kr": (3, 17),
-    # Fifth row
-    "Rb": (4, 0),
-    "Sr": (4, 1),
-    "Y": (4, 2),
-    "Zr": (4, 3),
-    "Nb": (4, 4),
-    "Mo": (4, 5),
-    "Tc": (4, 6),
-    "Ru": (4, 7),
-    "Rh": (4, 8),
-    "Pd": (4, 9),
-    "Ag": (4, 10),
-    "Cd": (4, 11),
-    "In": (4, 12),
-    "Sn": (4, 13),
-    "Sb": (4, 14),
-    "Te": (4, 15),
-    "I": (4, 16),
-    "Xe": (4, 17),
-    # Sixth row
-    "Cs": (5, 0),
-    "Ba": (5, 1),
-    "La": (8, 3),
-    "Hf": (5, 3),
-    "Ta": (5, 4),
-    "W": (5, 5),
-    "Re": (5, 6),
-    "Os": (5, 7),
-    "Ir": (5, 8),
-    "Pt": (5, 9),
-    "Au": (5, 10),
-    "Hg": (5, 11),
-    "Tl": (5, 12),
-    "Pb": (5, 13),
-    "Bi": (5, 14),
-    "Po": (5, 15),
-    "At": (5, 16),
-    "Rn": (5, 17),
-    # Seventh row
-    "Fr": (6, 0),
-    "Ra": (6, 1),
-    "Ac": (9, 3),
-    "Rf": (6, 3),
-    "Db": (6, 4),
-    "Sg": (6, 5),
-    "Bh": (6, 6),
-    "Hs": (6, 7),
-    "Mt": (6, 8),
-    "Ds": (6, 9),
-    "Rg": (6, 10),
-    "Cn": (6, 11),
-    "Nh": (6, 12),
-    "Fl": (6, 13),
-    "Mc": (6, 14),
-    "Lv": (6, 15),
-    "Ts": (6, 16),
-    "Og": (6, 17),
-    # Lanthanides (row 8)
-    "Ce": (8, 4),
-    "Pr": (8, 5),
-    "Nd": (8, 6),
-    "Pm": (8, 7),
-    "Sm": (8, 8),
-    "Eu": (8, 9),
-    "Gd": (8, 10),
-    "Tb": (8, 11),
-    "Dy": (8, 12),
-    "Ho": (8, 13),
-    "Er": (8, 14),
-    "Tm": (8, 15),
-    "Yb": (8, 16),
-    "Lu": (8, 17),
-    # Actinides (row 9)
-    "Th": (9, 4),
-    "Pa": (9, 5),
-    "U": (9, 6),
-    "Np": (9, 7),
-    "Pu": (9, 8),
-    "Am": (9, 9),
-    "Cm": (9, 10),
-    "Bk": (9, 11),
-    "Cf": (9, 12),
-    "Es": (9, 13),
-    "Fm": (9, 14),
-    "Md": (9, 15),
-    "No": (9, 16),
-    "Lr": (9, 17),
-}
-PERIODIC_TABLE_ROWS = 10
-PERIODIC_TABLE_COLS = 18
 
 
 def plot_parity(
@@ -158,6 +37,8 @@ def plot_parity(
     y_label: str | None = None,
     hoverdata: dict | None = None,
     filename: str = "parity.json",
+    symbol_by: list | None = None,
+    symbol_labels: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -174,6 +55,13 @@ def plot_parity(
         Hover data dictionary. Default is `{}`.
     filename
         Filename to save plot as JSON. Default is "parity.json".
+    symbol_by
+        Per-point list of group values. When provided, each point receives a
+        marker symbol based on its group, while trace colours still represent
+        models. Legend-only traces above the plot show one marker symbol per group.
+    symbol_labels
+        Optional mapping from ``symbol_by`` values to shorter display names
+        used in the legend. Values absent from this dict are shown as-is.
 
     Returns
     -------
@@ -225,6 +113,17 @@ def plot_parity(
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
             fig = go.Figure()
+            marker_kwargs = {}
+            if symbol_by:
+                symbols = ["circle", "square", "diamond", "cross", "x"]
+                groups = list(dict.fromkeys(symbol_by))
+                group_symbol = {
+                    g: symbols[i % len(symbols)] for i, g in enumerate(groups)
+                }
+                marker_kwargs = {
+                    "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
+                }
+
             for mlip, value in results.items():
                 if mlip == "ref":
                     continue
@@ -236,8 +135,25 @@ def plot_parity(
                         mode="markers",
                         customdata=customdata,
                         hovertemplate=hovertemplate,
+                        **marker_kwargs,
                     )
                 )
+
+            if symbol_by:
+                for group in groups:
+                    label = (symbol_labels or {}).get(group, group)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            name=label,
+                            mode="markers",
+                            marker={"symbol": group_symbol[group], "color": "black"},
+                            hoverinfo="skip",
+                            legend="legend2",
+                            showlegend=True,
+                        )
+                    )
 
             full_fig = fig.full_figure_for_development()
             x_range = full_fig.layout.xaxis.range
@@ -262,6 +178,16 @@ def plot_parity(
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+            if symbol_by:
+                fig.update_layout(
+                    legend2={
+                        "orientation": "h",
+                        "yanchor": "bottom",
+                        "y": 1.02,
+                        "xanchor": "left",
+                        "x": 0,
+                    }
+                )
 
             fig.update_traces()
 
@@ -426,13 +352,147 @@ def cell_to_scatter(
     return decorator
 
 
+def plot_hist(
+    *,
+    bins: int | dict[str, float] | None = None,
+    good: float | None = None,
+    bad: float | None = None,
+    title: str | None = None,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    filename: str | Path,
+) -> Callable:
+    """
+    Plot histogram of MLIP results.
+
+    Parameters
+    ----------
+    bins
+        Bins for histogram. Either int or dictionary
+        with start, end, size. Default is None.
+    good
+        Minimum threshold for good values. Requires bins dict.
+        Default is None.
+    bad
+        Maximum threshold for good values. Requires bins dict.
+        Default is None.
+    title
+        Graph title.
+    x_label
+        Label for x-axis. Default is `None`.
+    y_label
+        Label for y axis. Default is `None`.
+    filename
+        Filename to save plot as JSON.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_hist_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot histogram.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_hist_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot histogram.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            fig = go.Figure()
+
+            for model_name, hist_data in results.items():
+                # Construct bin edges
+                if isinstance(bins, dict):
+                    edges = np.arange(
+                        bins["start"],
+                        bins["end"] + bins["size"],
+                        bins["size"],
+                    )
+                else:
+                    edges = np.histogram_bin_edges(hist_data, bins=bins)
+
+                # Compute probability density histogram
+                counts, edges = np.histogram(hist_data, bins=edges, density=True)
+
+                centres = 0.5 * (edges[:-1] + edges[1:])
+                widths = np.diff(edges)
+
+                # Decide colour of each bar
+                colours = []
+                if good is None or bad is None:
+                    colours = ["#276419"] * len(centres)
+                else:
+                    colours = [
+                        "#276419" if good <= c <= bad else "#D73027" for c in centres
+                    ]
+
+                fig.add_trace(
+                    go.Bar(
+                        x=centres,
+                        y=counts,
+                        width=widths,
+                        marker_color=colours,
+                        name=model_name,
+                    )
+                )
+
+            fig.update_layout(
+                barmode="overlay",
+                title=title,
+                xaxis_title=x_label,
+                yaxis_title=y_label,
+            )
+
+            if isinstance(bins, dict):
+                fig.update_xaxes(range=[bins["start"], bins["end"]])
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_hist_wrapper
+
+    return plot_hist_decorator
+
+
 def plot_scatter(
     title: str | None = None,
     x_label: str | None = None,
     y_label: str | None = None,
     show_line: bool = False,
+    show_markers: bool = True,
     hoverdata: dict | None = None,
+    horizontal_lines: list[float | dict[str, Any]] | None = None,
     filename: str = "scatter.json",
+    highlight_range: dict = None,
 ) -> Callable:
     """
     Plot scatter plot of MLIP results.
@@ -447,10 +507,18 @@ def plot_scatter(
         Label for y-axis. Default is `None`.
     show_line
         Whether to show line between points. Default is False.
+    show_markers
+        Whether to show markers on the plot. Default is True.
     hoverdata
         Hover data dictionary. Default is `{}`.
+    horizontal_lines
+        Optional horizontal reference lines. Each entry can be either a float ``y``
+        value or a dict with keys ``y`` (required), ``name``, ``color``, ``dash``,
+        and ``width``. Default is ``None``.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
+    highlight_range
+        Dictionary of rectangle title and x-axis endpoints.
 
     Returns
     -------
@@ -491,6 +559,11 @@ def plot_scatter(
                 Results dictionary.
             """
             results = func(*args, **kwargs)
+            dynamic_horizontal_lines: list[float | dict[str, Any]] = []
+            if isinstance(results, dict) and "horizontal_lines" in results:
+                dynamic = results.pop("horizontal_lines")
+                if isinstance(dynamic, list):
+                    dynamic_horizontal_lines = dynamic
 
             hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
             customdata = []
@@ -499,7 +572,13 @@ def plot_scatter(
                     hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
-            mode = "lines+markers" if show_line else "markers"
+            modes = []
+            if show_line:
+                modes.append("lines")
+            if show_markers:
+                modes.append("markers")
+
+            mode = "+".join(modes)
 
             fig = go.Figure()
             for mlip, value in results.items():
@@ -515,11 +594,105 @@ def plot_scatter(
                     )
                 )
 
+                colors = pc.qualitative.Plotly
+
+                if highlight_range:
+                    for i, (h_text, range) in enumerate(highlight_range.items()):
+                        fig.add_vrect(
+                            x0=range[0],
+                            x1=range[1],
+                            annotation_text=h_text,
+                            annotation_position="top",
+                            fillcolor=colors[i],
+                            opacity=0.25,
+                            line_width=0,
+                        )
+
             fig.update_layout(
                 title={"text": title},
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+
+            all_horizontal_lines = (
+                list(horizontal_lines or []) + dynamic_horizontal_lines
+            )
+            for i, line in enumerate(all_horizontal_lines):
+                if isinstance(line, dict):
+                    if "y" not in line:
+                        continue
+                    y_val = line["y"]
+                    name = line.get("name", "Reference line")
+                    color = line.get("color", "red")
+                    dash = line.get("dash", "dash")
+                    width = line.get("width", 1)
+                else:
+                    y_val = line
+                    name = f"Reference line {i + 1}"
+                    color = "red"
+                    dash = "dash"
+                    width = 1
+
+                fig.add_shape(
+                    type="line",
+                    xref="paper",
+                    yref="y",
+                    x0=0,
+                    x1=1,
+                    y0=y_val,
+                    y1=y_val,
+                    line={"color": color, "width": width, "dash": dash},
+                )
+                # Dummy trace to expose the horizontal line in the legend.
+                fig.add_trace(
+                    go.Scatter(
+                        x=[None],
+                        y=[None],
+                        mode="lines",
+                        name=name,
+                        line={"color": color, "width": width, "dash": dash},
+                        hoverinfo="skip",
+                        showlegend=True,
+                    )
+                )
+
+            # When horizontal reference lines are present, expand y-limits with
+            # padding so an extreme reference line does not sit on the boundary.
+            if all_horizontal_lines:
+
+                def _as_finite_float(v: Any) -> float | None:
+                    try:
+                        out = float(v)
+                    except (TypeError, ValueError):
+                        return None
+                    return out if np.isfinite(out) else None
+
+                y_values = [
+                    y_float
+                    for value in results.values()
+                    if isinstance(value, tuple | list)
+                    and len(value) >= 2
+                    and isinstance(value[1], list | tuple | np.ndarray)
+                    for y in value[1]
+                    for y_float in [_as_finite_float(y)]
+                    if y_float is not None
+                ]
+                y_values.extend(
+                    y_float
+                    for line in all_horizontal_lines
+                    for y_float in [
+                        _as_finite_float(
+                            line.get("y") if isinstance(line, dict) else line
+                        )
+                    ]
+                    if y_float is not None
+                )
+
+                if y_values:
+                    y_min, y_max = min(y_values), max(y_values)
+                    span = y_max - y_min
+                    pad = 0.05 * (span if span > 0 else max(abs(y_min), 1.0))
+                    fig.update_yaxes(range=[y_min - pad, y_max + pad])
 
             fig.update_traces()
 
@@ -541,9 +714,9 @@ def plot_density_scatter(
     y_label: str | None = None,
     filename: str = "density_scatter.json",
     colorbar_title: str = "Density",
-    grid_size: int = 80,
-    max_points_per_cell: int = 5,
-    seed: int = 0,
+    grid_size: int = DENSITY_GRID_SIZE,
+    max_points_per_cell: int = DENSITY_MAX_POINTS_PER_CELL,
+    seed: int = DENSITY_SAMPLE_SEED,
     hover_metadata: dict[str, str] | None = None,
     annotation_metadata: dict[str, str] | None = None,
 ) -> Callable:
@@ -621,70 +794,6 @@ def plot_density_scatter(
             dict
                 Results dictionary.
             """
-
-            def _downsample(
-                ref_vals: np.ndarray, pred_vals: np.ndarray
-            ) -> tuple[list[float], list[float], list[int]]:
-                """
-                Downsample data points while keeping dense regions representative.
-
-                Parameters
-                ----------
-                ref_vals
-                    Reference (x-axis) values for all systems.
-                pred_vals
-                    Predicted (y-axis) values for all systems.
-
-                Returns
-                -------
-                tuple[list[float], list[float], list[int]]
-                    Downsampled reference values, predicted values, and density counts
-                    corresponding to each retained point.
-                """
-                if ref_vals.size == 0:
-                    return [], [], []
-
-                delta_x = ref_vals.max() - ref_vals.min()
-                delta_y = pred_vals.max() - pred_vals.min()
-                eps = 1e-9
-
-                norm_x = np.clip(
-                    # Normalise to [0, 1). Clamp to avoid hitting the upper bound so
-                    # bin indices always live in [0, grid_size - 1].
-                    (ref_vals - ref_vals.min()) / max(delta_x, eps),
-                    0.0,
-                    0.999999,
-                )
-                norm_y = np.clip(
-                    (pred_vals - pred_vals.min()) / max(delta_y, eps),
-                    0.0,
-                    0.999999,
-                )
-                bins_x = (norm_x * grid_size).astype(int)
-                bins_y = (norm_y * grid_size).astype(int)
-                cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
-                for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
-                    cell_points[(int(cx), int(cy))].append(idx)
-
-                rng = np.random.default_rng(seed)
-                sampled_x: list[float] = []
-                sampled_y: list[float] = []
-                sampled_density: list[int] = []
-                for indices in cell_points.values():
-                    if len(indices) > max_points_per_cell:
-                        chosen = rng.choice(
-                            indices, size=max_points_per_cell, replace=False
-                        )
-                    else:
-                        chosen = indices
-                    density = len(indices)
-                    for idx in chosen:
-                        sampled_x.append(float(ref_vals[idx]))
-                        sampled_y.append(float(pred_vals[idx]))
-                        sampled_density.append(density)
-
-                return sampled_x, sampled_y, sampled_density
-
             results = func(*args, **kwargs)
             if not isinstance(results, dict):
                 raise TypeError(
@@ -724,7 +833,16 @@ def plot_density_scatter(
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
                 else:
-                    sampled = _downsample(ref_vals, pred_vals)
+                    sampled_indices, sampled_density, _ = sample_density_grid(
+                        ref_vals,
+                        pred_vals,
+                        grid_size=grid_size,
+                        max_points_per_cell=max_points_per_cell,
+                        seed=seed,
+                    )
+                    sampled_x = [float(ref_vals[idx]) for idx in sampled_indices]
+                    sampled_y = [float(pred_vals[idx]) for idx in sampled_indices]
+                    sampled = (sampled_x, sampled_y, sampled_density)
                     global_min = min(global_min, ref_vals.min(), pred_vals.min())
                     global_max = max(global_max, ref_vals.max(), pred_vals.max())
 
@@ -844,6 +962,8 @@ def plot_periodic_table(
     hoverdata: dict[str, dict[str, Any]] | None = None,
     filename: str = "periodic_table.json",
     colorscale: str = "Viridis",
+    zmin: float | None = None,
+    zmax: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -860,6 +980,8 @@ def plot_periodic_table(
         Output filename for the JSON figure.
     colorscale
         Plotly colourscale name. Default is ``"Viridis"``.
+    zmin, zmax
+        Optional colour scale limits. If not provided, they are inferred from the data.
 
     Returns
     -------
@@ -936,6 +1058,8 @@ def plot_periodic_table(
                     colorscale=colorscale,
                     colorbar={"title": colorbar_title},
                     showscale=True,
+                    zmin=zmin,
+                    zmax=zmax,
                 )
             )
 
@@ -1480,7 +1604,6 @@ def build_table(
     thresholds: Thresholds,
     filename: str = "table.json",
     metric_tooltips: dict[str, str] | None = None,
-    normalize: bool = True,
     normalizer: Callable[[float, float, float], float] | None = None,
     weights: dict[str, float] | None = None,
     mlip_name_map: dict[str, str] | None = None,
@@ -1488,7 +1611,7 @@ def build_table(
     """
     Build DataTable, including optional metric normalisation.
 
-    If `normalize` is `True`, by default each metric is normalised to 0-1 scale where:
+    By default each metric is normalised to 0-1 scale where:
     - Values <= Y get score 0
     - Values >= X get score 1
     - Values between Y and X scale linearly, by default.
@@ -1503,8 +1626,6 @@ def build_table(
         Filename to save table. Default is "table.json".
     metric_tooltips
         Tooltips for table metric headers. Defaults are set for "MLIP" and "Score".
-    normalize
-        Whether to apply normalisation when calculating the score. Default is True.
     normalizer
         Optional function to map (value, X, Y) -> normalised score. Default is
         ml_peg.analysis.utils.utils.normalize_metric.
@@ -1584,7 +1705,7 @@ def build_table(
             #     metric_2: {mlip_1: value_3, mlip_2: value_4},
             # }
 
-            metrics_columns = ("MLIP",) + tuple(results)
+            metrics_columns = ("MLIP", "Score") + tuple(results)
 
             # Get all models (including those without results for this benchmark)
             mlips = tuple(get_model_names())
@@ -1613,36 +1734,26 @@ def build_table(
             summary_tooltips = {
                 "MLIP": "Model identifier, hover for configuration details.",
             }
-            if normalize:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, "
-                    "Higher is better (normalised 0 to 1)."
-                )
-            else:
-                summary_tooltips["Score"] = (
-                    "Weighted score across metrics, higher is better."
-                )
+            summary_tooltips["Score"] = (
+                "Weighted score across metrics, Higher is better (normalised 0 to 1)."
+            )
 
             if metric_tooltips:
                 tooltip_header = metric_tooltips | summary_tooltips
             else:
                 tooltip_header = summary_tooltips
 
-            # Calculate scores, including any normalisation
-            if normalize:
-                metrics_data = calc_table_scores(
-                    metrics_data=metrics_data,
-                    thresholds=thresholds,
-                    normalizer=normalizer,
-                )
-            else:
-                metrics_data = calc_table_scores(metrics_data)
-
-            metrics_columns += ("Score",)
-
             metric_weights = weights if weights else {}
             for column in results:
-                metric_weights.setdefault(column, 1)
+                metric_weights.setdefault(column, 1.0)
+
+            # Calculate scores, including any normalisation
+            metrics_data = calc_table_scores(
+                metrics_data=metrics_data,
+                thresholds=thresholds,
+                normalizer=normalizer,
+                weights=metric_weights,
+            )
 
             table = dash_table.DataTable(
                 metrics_data,

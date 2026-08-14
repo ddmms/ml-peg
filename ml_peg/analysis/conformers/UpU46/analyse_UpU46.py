@@ -15,15 +15,19 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
-
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "conformers" / "UpU46" / "outputs"
@@ -34,22 +38,14 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    labels_list = []
-    for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*")):
-            labels_list.append(system_path.stem)
-        break  # only need the first model to list available systems
-    return labels_list
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -59,7 +55,7 @@ def labels() -> list:
     x_label="Predicted energy / kcal/mol",
     y_label="Reference energy / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def conformer_energies() -> dict[str, list]:
@@ -75,7 +71,7 @@ def conformer_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             atoms = read(CALC_PATH / model_name / f"{label}.xyz")
 
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
@@ -118,7 +114,7 @@ def get_mae(conformer_energies) -> dict[str, float]:
     filename=OUT_PATH / "upu46_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
@@ -139,6 +135,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_upu46(metrics: dict[str, dict]) -> None:
     """
     Run UpU46 test.

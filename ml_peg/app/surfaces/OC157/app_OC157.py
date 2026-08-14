@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 import numpy as np
 
@@ -13,14 +12,15 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "OC157"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#oc157"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "OC157"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class OC157App(BaseApp):
@@ -38,7 +38,7 @@ class OC157App(BaseApp):
         structs = list(
             np.repeat(
                 [
-                    f"assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
+                    f"/assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
                     for i in range(len(list(structs_dir.glob("*.xyz"))))
                 ],
                 3,
@@ -70,6 +70,7 @@ def get_app() -> OC157App:
     """
     return OC157App(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description=(
             "Performance in predicting relative energies between 3 structures for 157 "
             "molecule-surface combinations."
@@ -80,17 +81,5 @@ def get_app() -> OC157App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    # Construct layout and register callbacks
-    oc157_app = get_app()
-    full_app.layout = oc157_app.layout
-    oc157_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8051, debug=True)

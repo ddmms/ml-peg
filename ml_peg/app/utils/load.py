@@ -15,9 +15,11 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
+    clean_table_data,
     clean_thresholds,
     clean_weights,
     is_numeric_column,
+    none_to_nan,
     sig_fig_format,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
@@ -53,6 +55,11 @@ def rebuild_table(
         table_json = json.load(f)
 
     data = table_json["data"]
+    # Remove values greater than int64 limits
+    clean_table_data(data)
+    # Replace None scores with NaN
+    none_to_nan(data)
+
     columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -77,18 +84,18 @@ def rebuild_table(
         col["id"] for col in columns if col.get("id") not in {"MLIP", "Score", "id"}
     ]
 
-    # Add missing models with None for all metrics
+    # Add missing models with NaN for all metrics
     for original_model in all_registry_models:
         # Convert original model name (from registry) to display name (for table)
         display_name = original_to_display.get(original_model, original_model)
         if display_name not in existing_display_names:
-            # Create row with None for all metrics (will appear grayed out) while
+            # Create row with NaN for all metrics (will appear hashed out) while
             # storing the original model name in ``id`` so callbacks have a stable key
             new_row = {"MLIP": display_name, "id": original_model}
             for metric in metric_columns:
-                new_row[metric] = None
-            # Score will be None (calculated later by calc_table_scores)
-            new_row["Score"] = None
+                new_row[metric] = "NaN"
+            # Score will be NaN (calculated later by calc_table_scores)
+            new_row["Score"] = "NaN"
             data.append(new_row)
 
             # Update model_name_map if this is a new model not in original JSON
@@ -129,7 +136,7 @@ def rebuild_table(
 
     scored_data = calc_metric_scores(data, thresholds)
     style = get_table_style(data, scored_data=scored_data)
-    column_widths = calculate_column_widths(width_labels)
+    column_widths = calculate_column_widths(width_labels, min_metric_width=170)
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
@@ -182,14 +189,27 @@ def rebuild_table(
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
-        editable=True,
+        editable=False,
         id=id,
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
+        style_header={
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "70px",
+            "textAlign": "center",
+            "verticalAlign": "middle",
+            "lineHeight": "1.4",
+            "padding": "8px",
+        },
+        style_header_conditional=[
+            {
+                "if": {"column_id": "MLIP"},
+                "textAlign": "left",
+            }
+        ],
         sort_action="native",
-        persistence=True,
-        persistence_type="session",
-        persisted_props=["data"],
+        fill_width=False,
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -205,6 +225,7 @@ def rebuild_table(
     table.model_configs = model_configs
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
+    table.column_widths = column_widths
 
     return table
 
@@ -315,7 +336,53 @@ def read_density_plot_for_model(
     # Check if model has actual data (not just the reference line)
     # If only 1 trace (the y=x line) or 0 traces, model has no data
     if len(filtered_fig.get("data", [])) <= 1:
-        warn("No model data found", stacklevel=2)
+        warn(f"No model data found for {model}", stacklevel=2)
         return None
 
     return Graph(id=id, figure=filtered_fig)
+
+
+def collect_traj_assets(
+    *,
+    data_path: Path,
+    assets_prefix: str,
+    models: list[str],
+    traj_dirname: str = "density_traj",
+    suffix: str = ".extxyz",
+) -> dict[str, list[str]]:
+    """
+    Collect trajectory asset paths for each model.
+
+    Parameters
+    ----------
+    data_path
+        Base data directory containing per-model folders.
+    assets_prefix
+        Assets URL prefix (e.g., ``"/assets/molecular_reactions/RDB7"``).
+    models
+        Ordered list of model names to include.
+    traj_dirname
+        Subdirectory name containing trajectories (default: ``"density_traj"``).
+    suffix
+        File suffix to match (default: ``".extxyz"``).
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Mapping of model name to list of asset paths.
+    """
+    assets_base = assets_prefix.rstrip("/")
+    struct_trajs: dict[str, list[str]] = {}
+
+    for model in models:
+        traj_dir = data_path / model / traj_dirname
+        traj_files = sorted(
+            traj_dir.glob(f"*{suffix}"), key=lambda path: int(path.stem)
+        )
+        if traj_files:
+            struct_trajs[model] = [
+                f"{assets_base}/{model}/{traj_dirname}/{traj_file.name}"
+                for traj_file in traj_files
+            ]
+
+    return struct_trajs

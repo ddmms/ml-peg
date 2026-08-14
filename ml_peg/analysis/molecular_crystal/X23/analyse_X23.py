@@ -6,17 +6,23 @@ from pathlib import Path
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "molecular_crystal" / "X23" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_crystal" / "X23"
 
@@ -28,27 +34,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-
-def get_system_names() -> list[str]:
-    """
-    Get list of X23 system names.
-
-    Returns
-    -------
-    list[str]
-        List of system names from structure files.
-    """
-    system_names = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            if xyz_files:
-                for xyz_file in xyz_files:
-                    atoms = read(xyz_file)
-                    system_names.append(atoms.info["system"])
-                break
-    return system_names
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="0",
+    info_keys=["system"],
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -58,7 +52,7 @@ def get_system_names() -> list[str]:
     x_label="Predicted lattice energy / kJ/mol",
     y_label="Reference lattice energy / kJ/mol",
     hoverdata={
-        "System": get_system_names(),
+        "System": INFO["system"],
     },
 )
 def lattice_energies() -> dict[str, list]:
@@ -108,8 +102,7 @@ def lattice_energies() -> dict[str, list]:
     return results
 
 
-@pytest.fixture
-def x23_errors(lattice_energies) -> dict[str, float]:
+def get_errors(lattice_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for lattice energies.
 
@@ -125,30 +118,23 @@ def x23_errors(lattice_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if lattice_energies[model_name]:
+        if lattice_energies.get(model_name):
             results[model_name] = mae(
                 lattice_energies["ref"], lattice_energies[model_name]
             )
         else:
-            results[model_name] = None
+            results[model_name] = np.nan
     return results
 
 
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "x23_metrics_table.json",
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
-)
-def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
+def get_metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
     """
     Get all X23 metrics.
 
     Parameters
     ----------
-    x23_errors
-        Mean absolute errors for all systems.
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
 
     Returns
     -------
@@ -156,10 +142,35 @@ def metrics(x23_errors: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "MAE": x23_errors,
+        "MAE": get_errors(lattice_energies),
     }
 
 
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "x23_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
+)
+def metrics(lattice_energies: dict[str, list]) -> dict[str, dict]:
+    """
+    Get all X23 metrics.
+
+    Parameters
+    ----------
+    lattice_energies
+        Dictionary of reference and predicted lattice energies.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return get_metrics(lattice_energies)
+
+
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_x23(metrics: dict[str, dict]) -> None:
     """
     Run X23 test.

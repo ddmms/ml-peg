@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms, units
 from ase.io import read, write
@@ -16,8 +17,8 @@ import pytest
 from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
 
@@ -93,6 +94,7 @@ def get_monomers(atoms: Atoms) -> tuple[Atoms, Atoms]:
     return (atoms_a, atoms_b)
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
     """
@@ -104,7 +106,9 @@ def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
+    # Add D3 calculator for this test
+    calc = model.add_d3_calculator(calc)
 
     data_path = (
         download_s3_data(
@@ -114,10 +118,6 @@ def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
         / "NCIA_R739x5"
     )
     ref_energies = get_ref_energies(data_path)
-
-    calc = model.get_calculator()
-    # Add D3 calculator for this test
-    calc = model.add_d3_calculator(calc)
 
     for label, ref_energy in tqdm(ref_energies.items()):
         xyz_fname = f"{label}.xyz"
@@ -135,11 +135,15 @@ def test_ncia_r739x5(mlip: tuple[str, Any]) -> None:
         atoms_a.calc = calc
         atoms_b.calc = calc
 
-        atoms.info["model_int_energy"] = (
-            atoms.get_potential_energy()
-            - atoms_a.get_potential_energy()
-            - atoms_b.get_potential_energy()
-        )
+        try:
+            atoms.info["model_int_energy"] = (
+                atoms.get_potential_energy()
+                - atoms_a.get_potential_energy()
+                - atoms_b.get_potential_energy()
+            )
+        except Exception as exc:
+            warn(f"Error calculating energy for {label}: {exc}", stacklevel=2)
+            atoms.info["model_int_energy"] = np.nan
         atoms.info["ref_int_energy"] = ref_energy
         atoms.calc = None
 

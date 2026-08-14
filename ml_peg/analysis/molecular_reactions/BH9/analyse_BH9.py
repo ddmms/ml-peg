@@ -14,14 +14,19 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "BH9" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH9"
@@ -31,24 +36,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+# Extract system metadata from mock calculation
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
+
 EV_TO_KCAL = units.mol / units.kcal
-
-
-def get_system_names() -> list[str]:
-    """
-    Get list of reaction system names from the first available model.
-
-    Returns
-    -------
-    list[str]
-        List of system names (reaction identifiers).
-    """
-    for model_name in sorted(CALC_PATH.glob("*")):
-        if model_name.is_dir():
-            # Note: sorting different to rxn_count order in calc
-            xyz_paths = sorted((CALC_PATH / model_name).glob("*.xyz"))
-            return [path.stem for path in xyz_paths]
-    return []
 
 
 def get_reaction_numbers() -> list[int]:
@@ -60,7 +58,7 @@ def get_reaction_numbers() -> list[int]:
     list[int]
         List of reaction numbers (e.g., [1, 2, 3, ...]).
     """
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     reaction_nums = []
     for name in system_names:
         # Extract reaction number from format like "01_1" -> 1
@@ -79,7 +77,7 @@ def get_structure_numbers() -> list[int]:
     list[int]
         List of structure numbers for each reaction.
     """
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     struct_nums = []
     for name in system_names:
         # Extract structure number from format like "01_1" -> 1
@@ -98,7 +96,7 @@ def get_structure_numbers() -> list[int]:
     hoverdata={
         "Reaction": get_reaction_numbers(),
         "Structure": get_structure_numbers(),
-        "System ID": get_system_names(),
+        "System ID": SYSTEM_INFO["filenames"],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -113,7 +111,7 @@ def barrier_heights() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
 
-    system_names = get_system_names()
+    system_names = SYSTEM_INFO["filenames"]
     for model_name in MODELS:
         model_barriers = []
         ref_barriers = []
@@ -174,7 +172,7 @@ def get_mae(barrier_heights: dict[str, list]) -> dict[str, float]:
     filename=OUT_PATH / "bh9_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
@@ -195,6 +193,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_bh9_barriers(metrics: dict[str, dict]) -> None:
     """
     Run BH9 test.

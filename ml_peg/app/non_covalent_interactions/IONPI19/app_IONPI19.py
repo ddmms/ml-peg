@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -12,13 +11,14 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "IONPI19"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#ionpi19"
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "IONPI19"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class IONPI19App(BaseApp):
@@ -37,11 +37,15 @@ class IONPI19App(BaseApp):
         for i in range(1, 18):
             # Systems 1-17: show the complex (AB)
             structs.append(
-                f"assets/non_covalent_interactions/IONPI19/{MODELS[0]}/{i}_AB.xyz"
+                f"/assets/non_covalent_interactions/IONPI19/{MODELS[0]}/{i}_AB.xyz"
             )
         # Systems 18-19: show fragment A (no complex available)
-        structs.append(f"assets/non_covalent_interactions/IONPI19/{MODELS[0]}/18_A.xyz")
-        structs.append(f"assets/non_covalent_interactions/IONPI19/{MODELS[0]}/19_A.xyz")
+        structs.append(
+            f"/assets/non_covalent_interactions/IONPI19/{MODELS[0]}/18_A.xyz"
+        )
+        structs.append(
+            f"/assets/non_covalent_interactions/IONPI19/{MODELS[0]}/19_A.xyz"
+        )
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -78,14 +82,6 @@ def get_app() -> IONPI19App:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    ionpi19_app = get_app()
-    full_app.layout = ionpi19_app.layout
-    ionpi19_app.register_callbacks()
-
-    full_app.run(port=8054, debug=True)

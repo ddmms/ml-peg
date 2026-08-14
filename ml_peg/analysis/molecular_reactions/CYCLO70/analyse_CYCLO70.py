@@ -17,14 +17,19 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "CYCLO70" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "CYCLO70"
@@ -37,24 +42,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_KCAL = units.mol / units.kcal
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    model_name="mock",
+    glob_pattern="*_forward.xyz",
+    include_filenames=True,
+    write_info=True,
+    write_structs=True,
+    out_path=OUT_PATH,
+)
 
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            return [
-                path.stem.split("_")[0]
-                for path in sorted(model_dir.glob("*_forward.xyz"))
-            ]
-    return []
+LABELS = [filename.removesuffix("_forward") for filename in INFO["filenames"]]
 
 
 @pytest.fixture
@@ -65,7 +63,9 @@ def labels() -> list:
     y_label="Reference barrier / kcal/mol",
     hoverdata={
         "Labels": [
-            f"{label}_{dir}" for label in labels() for dir in ("forward", "reverse")
+            f"{label}_{direction}"
+            for label in LABELS
+            for direction in ("forward", "reverse")
         ],
     },
 )
@@ -85,20 +85,25 @@ def barrier_heights() -> dict[str, list]:
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
-        for label in labels():
-            for dir in ("forward", "reverse"):
-                atoms = read(CALC_PATH / model_name / f"{label}_{dir}.xyz", index=":")
+        for label in LABELS:
+            for direction in ("forward", "reverse"):
+                atoms = read(
+                    CALC_PATH / model_name / f"{label}_{direction}.xyz",
+                    index=":",
+                )
 
                 # Atoms includes reactants/products and TS
                 results[model_name].append(
-                    atoms[-1].info[f"model_{dir}_bh"] * EV_TO_KCAL
+                    atoms[-1].info[f"model_{direction}_bh"] * EV_TO_KCAL
                 )
 
                 if not ref_stored:
-                    results["ref"].append(atoms[-1].info[f"ref_{dir}_bh"] * EV_TO_KCAL)
+                    results["ref"].append(
+                        atoms[-1].info[f"ref_{direction}_bh"] * EV_TO_KCAL
+                    )
 
                 # Write structures for app
-                write(structs_dir / f"{label}_{dir}.xyz", atoms)
+                write(structs_dir / f"{label}_{direction}.xyz", atoms)
 
         ref_stored = True
     return results
@@ -130,7 +135,7 @@ def get_mae(barrier_heights) -> dict[str, float]:
     filename=OUT_PATH / "cyclo70_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
@@ -149,6 +154,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": get_mae}
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_cyclo70_barriers(metrics: dict[str, dict]) -> None:
     """
     Run CYCLO70 barriers test.

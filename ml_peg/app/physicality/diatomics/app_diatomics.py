@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from dash import Dash, dcc
+from dash import dcc
 from dash.dcc import Loading
 from dash.html import Div, Label
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import register_image_gallery_callbacks
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -20,6 +20,7 @@ CURVE_PATH = DATA_PATH / "curves"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#diatomics"
 )
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class DiatomicsApp(BaseApp):
@@ -83,6 +84,7 @@ def get_app() -> DiatomicsApp:
 
     return DiatomicsApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-multihead",
         description=(
             "Diatomics explorer with periodic-table views. Metrics are averaged "
             "across all diatomic pairs (both homonuclear and heteronuclear)."
@@ -90,12 +92,5 @@ def get_app() -> DiatomicsApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "diatomics_metrics_table.json",
         extra_components=extra_components,
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    dash_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    diatomics_app = get_app()
-    dash_app.layout = diatomics_app.layout
-    diatomics_app.register_callbacks()
-    dash_app.run(port=8055, debug=True)

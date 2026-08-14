@@ -13,14 +13,19 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import current_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "Criegee22" / "outputs"
@@ -31,22 +36,13 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-
-def labels() -> list:
-    """
-    Get list of system names.
-
-    Returns
-    -------
-    list
-        List of all system names.
-    """
-    for model_name in MODELS:
-        labels_list = [
-            path.stem for path in sorted((CALC_PATH / model_name).glob("*.xyz"))
-        ]
-        break
-    return labels_list
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
 
 @pytest.fixture
@@ -56,7 +52,7 @@ def labels() -> list:
     x_label="Predicted barrier / kcal/mol",
     y_label="Reference barrier / kcal/mol",
     hoverdata={
-        "Labels": labels(),
+        "Labels": INFO["filenames"],
     },
 )
 def barrier_heights() -> dict[str, list]:
@@ -72,7 +68,7 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in labels():
+        for label in INFO["filenames"]:
             structs = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
 
             results[model_name].append(
@@ -119,7 +115,7 @@ def get_mae(barrier_heights) -> dict[str, float]:
     filename=OUT_PATH / "criegee22_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     """
@@ -138,6 +134,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": get_mae}
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_criegee22_barriers(metrics: dict[str, dict]) -> None:
     """
     Run Criegee22 barriers test.

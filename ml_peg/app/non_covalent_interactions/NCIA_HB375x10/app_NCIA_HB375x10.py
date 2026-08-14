@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
-from ml_peg.app.utils.load import read_density_plot_for_model
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
+from ml_peg.app.utils.load import collect_traj_assets, read_density_plot_for_model
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "NCIA HB375x10"
@@ -19,6 +18,7 @@ DOCS_URL = (
     "non_covalent_interactions.html#ncia-hb375x10"
 )
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NCIA_HB375x10"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class NCIANHB375x10App(BaseApp):
@@ -42,6 +42,21 @@ class NCIANHB375x10App(BaseApp):
             cell_to_plot=density_plots,
         )
 
+        struct_trajs = collect_traj_assets(
+            data_path=DATA_PATH,
+            assets_prefix="/assets/non_covalent_interactions/NCIA_HB375x10",
+            models=MODELS,
+            traj_dirname="density_traj",
+            suffix=".extxyz",
+        )
+        for model in struct_trajs:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-density",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=struct_trajs[model],
+                mode="traj",
+            )
+
 
 def get_app() -> NCIANHB375x10App:
     """
@@ -63,13 +78,8 @@ def get_app() -> NCIANHB375x10App:
         table_path=DATA_PATH / "ncia_hb375x10_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
+        framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    benchmark_app = get_app()
-    full_app.layout = benchmark_app.layout
-    benchmark_app.register_callbacks()
-    full_app.run(port=8058, debug=True)

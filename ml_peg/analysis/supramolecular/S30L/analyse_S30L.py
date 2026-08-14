@@ -9,14 +9,19 @@ from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_d3_name_map, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    get_struct_info,
+    load_metrics_config,
+    mae,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_d3_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 CALC_PATH = CALCS_ROOT / "supramolecular" / "S30L" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "supramolecular" / "S30L"
@@ -29,35 +34,19 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Constants
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
-
-def get_info() -> dict[str, list[int]]:
-    """
-    Get dictionary of S30L info.
-
-    Returns
-    -------
-    dict[str, list[int]]
-        Dictionary of system indices, complex atom counts, and complex charges.
-    """
-    info = {"indices": [], "counts": [], "charges": []}
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
-            # S30L has 30 systems indexed 0-29 in files, 1-30 in original data
-            info["indices"] = list(range(1, len(xyz_files) + 1))
-
-            for xyz_file in xyz_files:
-                atoms = read(xyz_file)
-                info["counts"].append(len(atoms))
-                info["charges"].append(atoms.info.get("complex_charge", 0))
-            break
-
-    return info
-
-
-INFO = get_info()
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    info_keys=["complex_charge"],
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    per_file_info={
+        "counts": lambda structs: len(structs[0]),
+    },
+)
+# S30L systems indexed 0-29 in files, 1-30 in original data
+INDICES = list(range(1, len(INFO["complex_charge"]) + 1))
 
 
 @pytest.fixture
@@ -67,9 +56,9 @@ INFO = get_info()
     x_label="Predicted interaction energy / kcal/mol",
     y_label="Reference interaction energy / kcal/mol",
     hoverdata={
-        "System": INFO["indices"],
+        "System": INDICES,
         "Complex Atoms": INFO["counts"],
-        "Charge": INFO["charges"],
+        "Charge": INFO["complex_charge"],
     },
 )
 def interaction_energies() -> dict[str, list]:
@@ -166,9 +155,9 @@ def s30l_charged_mae(interaction_energies) -> dict[str, float]:
     dict[str, float]
         Dictionary of predicted interaction energy errors for charged systems.
     """
-    # Get charges for filtering
-    charges = INFO["charges"]
-    charged_indices = [i for i, charge in enumerate(charges) if charge != 0]
+    charged_indices = [
+        i for i, charge in enumerate(INFO["complex_charge"]) if charge != 0
+    ]
 
     results = {}
     for model_name in MODELS:
@@ -198,9 +187,9 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
     dict[str, float]
         Dictionary of predicted interaction energy errors for neutral systems.
     """
-    # Get charges for filtering
-    charges = INFO["charges"]
-    neutral_indices = [i for i, charge in enumerate(charges) if charge == 0]
+    neutral_indices = [
+        i for i, charge in enumerate(INFO["complex_charge"]) if charge == 0
+    ]
 
     results = {}
     for model_name in MODELS:
@@ -221,7 +210,7 @@ def s30l_neutral_mae(interaction_energies) -> dict[str, float]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     s30l_mae: dict[str, float],
@@ -252,6 +241,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_s30l(metrics: dict[str, dict]) -> None:
     """
     Run S30L test.

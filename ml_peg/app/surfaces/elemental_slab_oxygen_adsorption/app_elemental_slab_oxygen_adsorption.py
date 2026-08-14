@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -12,14 +11,15 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.models.models import current_models
 
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Elemental Slab Oxygen Adsorption"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#elemental-slab-oxygen-adsorption"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class ElementalSlabOxygenAdsorptionApp(BaseApp):
@@ -36,7 +36,7 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
 
         # Assets dir will be parent directory
         structs = [
-            f"assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -75,17 +75,5 @@ def get_app() -> ElementalSlabOxygenAdsorptionApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
+        info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    elemental_slab_oxygen_adsorption_app = get_app()
-    full_app.layout = elemental_slab_oxygen_adsorption_app.layout
-    elemental_slab_oxygen_adsorption_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8052, debug=True)

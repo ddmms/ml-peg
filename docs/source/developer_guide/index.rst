@@ -7,9 +7,13 @@ Developer guide
 
     get_started
     llm_agent_integration
+    vibecoding
+    cli
     add_benchmarks
     add_category
     running
     data
     add_models
+    levels_of_theory
     scoring_and_normalisation
+    filter
