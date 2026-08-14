@@ -257,6 +257,86 @@ class OrbCalc(SumCalc):
     default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
+    @property
+    def _use_alchemi_d3(self) -> bool:
+        """
+        Whether to use Orb's compiled AlchemiDFTD3 correction, not TorchDFTD3.
+
+        Opt in per model with ``use_alchemi_d3: true`` under ``dispersion_kwargs``.
+        TorchDFTD3 remains the default for every model.
+
+        Returns
+        -------
+        bool
+            Whether the AlchemiDFTD3 correction is selected.
+        """
+        return bool(self.dispersion_kwargs.get("use_alchemi_d3", False))
+
+    def add_d3_calculator(self, calcs) -> Calculator | SumCalculator:
+        """
+        Add dispersion corrections to calculator(s).
+
+        Orb's own D3 correction wraps the model rather than the calculator, so it
+        is applied in `get_calculator`. Adding a TorchDFTD3 calculator on top
+        would double count dispersion.
+
+        Parameters
+        ----------
+        calcs
+            Calculator, or list of calculators, to add dispersion corrections to.
+
+        Returns
+        -------
+        SumCalculator | Calculator
+            The original calculator(s) when Orb's D3 correction is in use,
+            otherwise calculator(s) with a TorchDFTD3 correction added.
+        """
+        if self._use_alchemi_d3:
+            return calcs
+        return super().add_d3_calculator(calcs)
+
+    def _add_d3_model(self, orbff):
+        """
+        Wrap an Orb forcefield with Orb's D3 dispersion correction.
+
+        Parameters
+        ----------
+        orbff
+            Loaded Orb forcefield.
+
+        Returns
+        -------
+        D3SumModel
+            Forcefield summed with the dispersion correction, or the original
+            forcefield when Orb's D3 correction is not in use.
+        """
+        if not self._use_alchemi_d3 or self.trained_on_dispersion:
+            return orbff
+
+        from orb_models.forcefield.inference.d3_model import AlchemiDFTD3, D3SumModel
+
+        # `xc` matches the key the TorchDFTD3 path uses; `functional` matches
+        # Orb's own naming. Both are accepted.
+        functional = self.dispersion_kwargs.get(
+            "functional", self.dispersion_kwargs.get("xc", "PBE")
+        )
+        d3_kwargs = {
+            key: value
+            for key, value in self.dispersion_kwargs.items()
+            if key in ("cutoff", "k1", "k3", "has_stress", "compile")
+        }
+        # Compiling the D3 kernel is what makes this correction fast.
+        d3_kwargs.setdefault("compile", True)
+
+        return D3SumModel(
+            orbff,
+            AlchemiDFTD3(
+                functional=functional.upper(),
+                damping=self.dispersion_kwargs.get("damping", "BJ").upper(),
+                **d3_kwargs,
+            ),
+        )
+
     def get_calculator(self, precision="high", **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
@@ -293,6 +373,7 @@ class OrbCalc(SumCalc):
 
         if self.device is None:
             orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
+            orbff = self._add_d3_model(orbff)
             calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
         elif self.device == Device.AUTO:
             orbff = method(
@@ -305,6 +386,7 @@ class OrbCalc(SumCalc):
             orbff, atoms_adapter = method(
                 device=self.device, precision=dtype, **self.kwargs
             )
+            orbff = self._add_d3_model(orbff)
             calc = ORBCalculator(
                 orbff, atoms_adapter=atoms_adapter, device=self.device, **self.kwargs
             )
