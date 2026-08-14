@@ -37,7 +37,7 @@ class OC157App(BaseApp):
         structs = list(
             np.repeat(
                 [
-                   f"/assets/surfaces/OC157/mock/{struct_file.stem}.xyz"
+                    f"/assets/surfaces/OC157/mock/{struct_file.stem}.xyz"
                     for struct_file in sorted(structs_dir.glob("*.xyz"))
                 ],
                 3,
