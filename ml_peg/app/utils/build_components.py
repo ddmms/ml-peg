@@ -897,6 +897,134 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+def _plot_setting_id(control: str, graph_id: str) -> dict[str, str]:
+    """
+    Build a pattern-matching ID for one graph's plot setting control.
+
+    Parameters
+    ----------
+    control
+        Name of the plot setting control.
+    graph_id
+        String ID of the graph controlled by the menu.
+
+    Returns
+    -------
+    dict[str, str]
+        Dash pattern-matching component ID.
+    """
+    return {"type": f"plot-settings-{control}", "index": graph_id}
+
+
+def build_plot_settings_controls(graph_id: str) -> Details:
+    """
+    Build minimal axis controls for a Plotly graph.
+
+    Parameters
+    ----------
+    graph_id
+        String ID of the graph controlled by the menu.
+
+    Returns
+    -------
+    Details
+        Collapsible X/Y scale and range controls.
+    """
+
+    def axis_controls(axis: str) -> Div:
+        """
+        Build the scale and range inputs for one axis.
+
+        Parameters
+        ----------
+        axis
+            Axis identifier, either ``"x"`` or ``"y"``.
+
+        Returns
+        -------
+        Div
+            Row containing the axis label, scale selector, and range inputs.
+        """
+        label = axis.upper()
+        return Div(
+            [
+                Label(f"{label} axis", className="plot-settings-axis-label"),
+                Dropdown(
+                    id=_plot_setting_id(f"{axis}-scale", graph_id),
+                    options=[
+                        {"label": "Linear", "value": "linear"},
+                        {"label": "Log", "value": "log"},
+                    ],
+                    value="linear",
+                    clearable=False,
+                    searchable=False,
+                    className="plot-settings-scale",
+                ),
+                DCC_Input(
+                    id=_plot_setting_id(f"{axis}-min", graph_id),
+                    type="number",
+                    placeholder="Min",
+                    debounce=True,
+                    className="plot-settings-number",
+                ),
+                DCC_Input(
+                    id=_plot_setting_id(f"{axis}-max", graph_id),
+                    type="number",
+                    placeholder="Max",
+                    debounce=True,
+                    className="plot-settings-number",
+                ),
+            ],
+            className="plot-settings-axis-row",
+        )
+
+    return Details(
+        [
+            Summary("Plot settings", className="plot-settings-summary"),
+            Div(
+                [
+                    axis_controls("x"),
+                    axis_controls("y"),
+                    Div(
+                        "For explicit limits, enter both minimum and maximum. "
+                        "Log axes hide non-positive values.",
+                        className="plot-settings-help",
+                    ),
+                    Div(
+                        [
+                            Button(
+                                "Apply",
+                                id=_plot_setting_id("apply", graph_id),
+                                n_clicks=0,
+                                className="plot-settings-apply",
+                            ),
+                            Button(
+                                "Reset axes",
+                                id=_plot_setting_id("reset", graph_id),
+                                n_clicks=0,
+                                className="plot-settings-reset",
+                            ),
+                        ],
+                        className="plot-settings-actions",
+                    ),
+                    Div(
+                        id=_plot_setting_id("message", graph_id),
+                        className="plot-settings-message",
+                        role="alert",
+                    ),
+                    Store(id=_plot_setting_id("result", graph_id)),
+                    Store(
+                        id=_plot_setting_id("graph-id", graph_id),
+                        data=graph_id,
+                    ),
+                ],
+                className="plot-settings-body",
+            ),
+        ],
+        className="plot-settings",
+    )
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.

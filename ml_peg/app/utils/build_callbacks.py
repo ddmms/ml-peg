@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Literal
 
 from dash import (
+    MATCH,
+    ClientsideFunction,
     Input,
     Output,
     State,
@@ -31,10 +33,45 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
-from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.build_components import (
+    build_plot_download_controls,
+    build_plot_settings_controls,
+)
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
+
+plot_settings_callbacks_registered = False
+
+
+def register_plot_settings_callbacks() -> None:
+    """Register the shared client-side plot-axis callback once."""
+    global plot_settings_callbacks_registered
+    if plot_settings_callbacks_registered:
+        return
+    plot_settings_callbacks_registered = True
+
+    clientside_callback(
+        ClientsideFunction(namespace="plot_settings", function_name="applyAxes"),
+        Output({"type": "plot-settings-result", "index": MATCH}, "data"),
+        Output({"type": "plot-settings-message", "index": MATCH}, "children"),
+        Output({"type": "plot-settings-x-scale", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-scale", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-min", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-max", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-min", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-max", "index": MATCH}, "value"),
+        Input({"type": "plot-settings-apply", "index": MATCH}, "n_clicks"),
+        Input({"type": "plot-settings-reset", "index": MATCH}, "n_clicks"),
+        State({"type": "plot-settings-x-scale", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-scale", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-min", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-max", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-min", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-max", "index": MATCH}, "value"),
+        State({"type": "plot-settings-graph-id", "index": MATCH}, "data"),
+        prevent_initial_call=True,
+    )
 
 
 def plot_with_download_controls(graph: Graph) -> Div:
@@ -57,6 +94,7 @@ def plot_with_download_controls(graph: Graph) -> Div:
     return Div(
         [
             build_plot_download_controls(graph_id),
+            build_plot_settings_controls(graph_id),
             Div(POINT_HINT, style=INSTRUCTION_STYLE),
             graph,
         ]
@@ -79,6 +117,7 @@ def plot_from_table_column(
         Dictionary relating table headers (keys) and plot to show (values).
     """
     register_plot_download_callbacks()
+    register_plot_settings_callbacks()
 
     @callback(
         Output(plot_id, "children"),
@@ -131,6 +170,7 @@ def plot_from_table_cell(
         cells with None values will show "No data available" message.
     """
     register_plot_download_callbacks()
+    register_plot_settings_callbacks()
 
     @callback(
         Output(plot_id, "children"),
@@ -261,10 +301,18 @@ def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> No
                 const flx = plot._fullLayout[xa], fly = plot._fullLayout[ya];
                 if (flx && fly) {
                     out.layout[xa] = Object.assign(
-                        {}, out.layout[xa], {range: flx.range.slice(), autorange: false}
+                        {}, out.layout[xa], {
+                            type: flx.type,
+                            range: flx.range.slice(),
+                            autorange: false,
+                        }
                     );
                     out.layout[ya] = Object.assign(
-                        {}, out.layout[ya], {range: fly.range.slice(), autorange: false}
+                        {}, out.layout[ya], {
+                            type: fly.type,
+                            range: fly.range.slice(),
+                            autorange: false,
+                        }
                     );
                 }
             }
@@ -298,6 +346,7 @@ def plot_from_scatter(
         List of plots to show, in same order as scatter data.
     """
     register_plot_download_callbacks()
+    register_plot_settings_callbacks()
     _register_point_highlight(scatter_id)
 
     @callback(
@@ -946,6 +995,7 @@ def scatter_and_assets_from_table(
         Key in ``table_data`` used to look up the model display name.
     """
     register_plot_download_callbacks()
+    register_plot_settings_callbacks()
 
     @callback(
         Output(plot_container_id, "children"),
@@ -1013,7 +1063,13 @@ def scatter_and_assets_from_table(
             raise PreventUpdate
         content, metadata = result
 
-        content = Div([build_plot_download_controls(scatter_id), content])
+        content = Div(
+            [
+                build_plot_download_controls(scatter_id),
+                build_plot_settings_controls(scatter_id),
+                content,
+            ]
+        )
 
         return content, metadata, active_cell, None
 
