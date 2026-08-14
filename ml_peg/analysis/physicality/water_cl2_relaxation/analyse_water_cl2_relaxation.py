@@ -81,7 +81,8 @@ def plot_relaxation(model_name: str):
         lines = f.readlines()
         try:
             fmax = float(lines[-1].split()[4])
-            if fmax > 0.01:
+            steps = float(lines[-1].split()[1])
+            if fmax > 0.01 and steps < 2000:
                 return None
         except (IndexError, ValueError):
             return None
