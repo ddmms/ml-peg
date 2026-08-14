@@ -187,6 +187,23 @@ def rmse(ref: list, prediction: list) -> float:
     return np.sqrt(mean_squared_error(ref, prediction))
 
 
+def count_valid(values: Iterable[float | None]) -> int:
+    """
+    Count values from successful calculations, ignoring `None` and NaN.
+
+    Parameters
+    ----------
+    values
+        Values to count, typically predictions for a single model.
+
+    Returns
+    -------
+    int
+        Number of valid values.
+    """
+    return sum(1 for value in values if value is not None and np.isfinite(value))
+
+
 DENSITY_GRID_SIZE = 80
 DENSITY_MAX_POINTS_PER_CELL = 5
 DENSITY_SAMPLE_SEED = 0
@@ -233,6 +250,15 @@ def sample_density_grid(
     if ref_arr.size == 0 or pred_arr.size == 0:
         return [], [], []
 
+    # Drop missing data, so a single NaN cannot make all bins NaN
+    valid = np.isfinite(ref_arr) & np.isfinite(pred_arr)
+    orig_indices = np.flatnonzero(valid)
+    ref_arr = ref_arr[valid]
+    pred_arr = pred_arr[valid]
+
+    if ref_arr.size == 0:
+        return [], [], []
+
     delta_x = ref_arr.max() - ref_arr.min()
     delta_y = pred_arr.max() - pred_arr.min()
     eps = 1e-9
@@ -244,7 +270,7 @@ def sample_density_grid(
 
     cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
     for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
-        cell_points[(int(cx), int(cy))].append(idx)
+        cell_points[(int(cx), int(cy))].append(int(orig_indices[idx]))
 
     rng = np.random.default_rng(seed)
     sampled_indices: list[int] = []
@@ -367,8 +393,13 @@ def write_density_trajectories(
         for source_idx in source_indices:
             label = labels_list[source_idx]
             struct_path = struct_dir / struct_filename_builder(label)
+            if not struct_path.exists():
+                continue
             frames.append(read(struct_path))
-        write(traj_dir / f"{point_idx}.extxyz", frames)
+
+        # Skipped points keep their index, so remaining files match plotted points
+        if frames:
+            write(traj_dir / f"{point_idx}.extxyz", frames)
 
 
 def calc_metric_scores(
