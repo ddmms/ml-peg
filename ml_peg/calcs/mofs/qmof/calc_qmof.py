@@ -48,7 +48,7 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
         / "qmof"
     )
     input_file = "qmof_valid_structures.traj"
-    mofs = read(qmof_energy_dir / input_file, index=":100")
+    mofs = read(qmof_energy_dir / input_file, index=":")
     for mof in tqdm(mofs, desc=model_name):
         mof.calc = copy(calc)
         sp = SinglePoint(struct=mof)
