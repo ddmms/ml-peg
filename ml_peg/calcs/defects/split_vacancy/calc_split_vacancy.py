@@ -22,7 +22,7 @@ MODELS = load_models(current_models)
 DATA_PATH = (
     download_s3_data(
         key="inputs/defects/split_vacancy/split_vacancy.zip",
-        filename="split_vacancy_data.zip",
+        filename="split_vacancy.zip",
     )
     / "split_vacancy"
 )
