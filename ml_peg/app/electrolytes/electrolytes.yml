@@ -1,0 +1,5 @@
+title: Electrolytes
+description: Structural, thermodynamic and transport properties of liquid and solid-state electrolytes
+weight: 0
+benchmark_weights:
+  WiSE LiTFSI/H2O 21 m: 1.0

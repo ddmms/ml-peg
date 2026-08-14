@@ -8,6 +8,7 @@ Benchmarks
     bulk_crystal
     conformers
     defect
+    electrolytes
     f_block
     molecular
     molecular_crystal
