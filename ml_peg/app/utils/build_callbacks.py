@@ -33,11 +33,9 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
-from ml_peg.app.utils.build_components import (
-    build_plot_download_controls,
-    build_plot_settings_controls,
-)
+from ml_peg.app.utils.build_components import build_plot_download_controls
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
+from ml_peg.app.utils.plot_settings import build_plot_settings_controls
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
 
@@ -61,14 +59,38 @@ def register_plot_settings_callbacks() -> None:
         Output({"type": "plot-settings-x-max", "index": MATCH}, "value"),
         Output({"type": "plot-settings-y-min", "index": MATCH}, "value"),
         Output({"type": "plot-settings-y-max", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-size-preset", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-width", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-height", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-reverse", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-reverse", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-tick-format", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-tick-precision", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-x-tick-spacing", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-tick-format", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-tick-precision", "index": MATCH}, "value"),
+        Output({"type": "plot-settings-y-tick-spacing", "index": MATCH}, "value"),
         Input({"type": "plot-settings-apply", "index": MATCH}, "n_clicks"),
         Input({"type": "plot-settings-reset", "index": MATCH}, "n_clicks"),
+        Input({"type": "plot-settings-x-autoscale", "index": MATCH}, "n_clicks"),
+        Input({"type": "plot-settings-y-autoscale", "index": MATCH}, "n_clicks"),
         State({"type": "plot-settings-x-scale", "index": MATCH}, "value"),
         State({"type": "plot-settings-y-scale", "index": MATCH}, "value"),
         State({"type": "plot-settings-x-min", "index": MATCH}, "value"),
         State({"type": "plot-settings-x-max", "index": MATCH}, "value"),
         State({"type": "plot-settings-y-min", "index": MATCH}, "value"),
         State({"type": "plot-settings-y-max", "index": MATCH}, "value"),
+        State({"type": "plot-settings-size-preset", "index": MATCH}, "value"),
+        State({"type": "plot-settings-width", "index": MATCH}, "value"),
+        State({"type": "plot-settings-height", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-reverse", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-reverse", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-tick-format", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-tick-precision", "index": MATCH}, "value"),
+        State({"type": "plot-settings-x-tick-spacing", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-tick-format", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-tick-precision", "index": MATCH}, "value"),
+        State({"type": "plot-settings-y-tick-spacing", "index": MATCH}, "value"),
         State({"type": "plot-settings-graph-id", "index": MATCH}, "data"),
         prevent_initial_call=True,
     )
@@ -303,6 +325,10 @@ def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> No
                     out.layout[xa] = Object.assign(
                         {}, out.layout[xa], {
                             type: flx.type,
+                            title: Object.assign(
+                                {}, out.layout[xa] && out.layout[xa].title,
+                                {text: flx.title.text}
+                            ),
                             range: flx.range.slice(),
                             autorange: false,
                         }
@@ -310,6 +336,10 @@ def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> No
                     out.layout[ya] = Object.assign(
                         {}, out.layout[ya], {
                             type: fly.type,
+                            title: Object.assign(
+                                {}, out.layout[ya] && out.layout[ya].title,
+                                {text: fly.title.text}
+                            ),
                             range: fly.range.slice(),
                             autorange: false,
                         }
@@ -1062,7 +1092,6 @@ def scatter_and_assets_from_table(
         if not result:
             raise PreventUpdate
         content, metadata = result
-
         content = Div(
             [
                 build_plot_download_controls(scatter_id),
