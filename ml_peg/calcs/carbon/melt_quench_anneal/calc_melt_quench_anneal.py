@@ -812,30 +812,45 @@ def run_clean_and_relax(
                 )
 
 
-def select_runs(run_id: int) -> tuple[Run, ...]:
+def select_runs(run_id: int, composition: str = "") -> tuple[Run, ...]:
     """
-    Select the trajectories to run from a run index.
+    Select the trajectories to run.
+
+    Restricting to one composition and one index per job lets a scheduler array
+    run a single MD per GPU.
 
     Parameters
     ----------
     run_id
-        Index into `RUNS`, or -1 to select every trajectory. One index per job
-        lets a scheduler array run each trajectory independently.
+        Index into the selected trajectories, or -1 to select all of them. The
+        index counts within `composition` when one is given.
+    composition
+        Key in ``COMPOSITIONS`` to restrict to. Default is every composition.
 
     Returns
     -------
     tuple[Run, ...]
         Selected trajectories.
     """
-    assert run_id in range(-1, len(RUNS)), (
-        f"run_id out of range. Please use -1 for all runs, or 0 to {len(RUNS) - 1}"
+    runs = RUNS
+    if composition:
+        assert composition in COMPOSITIONS, (
+            f"Unknown composition: {composition}. "
+            f"Please use one of {', '.join(COMPOSITIONS)}"
+        )
+        runs = tuple(run for run in runs if run.composition == composition)
+
+    assert run_id in range(-1, len(runs)), (
+        f"run_id out of range. Please use -1 for all runs, or 0 to {len(runs) - 1}"
     )
-    return RUNS if run_id < 0 else (RUNS[run_id],)
+    return runs if run_id < 0 else (runs[run_id],)
 
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_melt_quench_anneal(mlip: tuple[str, Any], run_id: int) -> None:
+def test_melt_quench_anneal(
+    mlip: tuple[str, Any], run_id: int, composition: str
+) -> None:
     """
     Run the carbon melt-quench-anneal MD benchmark.
 
@@ -845,13 +860,17 @@ def test_melt_quench_anneal(mlip: tuple[str, Any], run_id: int) -> None:
         Tuple of model name and model wrapper.
     run_id
         Index of the trajectory to run, or -1 for all of them.
+    composition
+        Composition to restrict to, or empty for every composition.
     """
-    run_benchmark(*mlip, runs=select_runs(run_id))
+    run_benchmark(*mlip, runs=select_runs(run_id, composition))
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_melt_quench_anneal_relax(mlip: tuple[str, Any], run_id: int) -> None:
+def test_melt_quench_anneal_relax(
+    mlip: tuple[str, Any], run_id: int, composition: str
+) -> None:
     """
     Clean and relax the annealed and cooled structures.
 
@@ -863,5 +882,7 @@ def test_melt_quench_anneal_relax(mlip: tuple[str, Any], run_id: int) -> None:
         Tuple of model name and model wrapper.
     run_id
         Index of the trajectory to relax, or -1 for all of them.
+    composition
+        Composition to restrict to, or empty for every composition.
     """
-    run_clean_and_relax(*mlip, runs=select_runs(run_id))
+    run_clean_and_relax(*mlip, runs=select_runs(run_id, composition))
