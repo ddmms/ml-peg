@@ -67,7 +67,9 @@ def structures(nn: float) -> dict[str, Atoms]:
     dimer.center(vacuum=VACUUM)
 
     graph = graphene(formula="C2", a=math.sqrt(3.0) * nn, size=(1, 1, 1), vacuum=VACUUM)
-    graph.pbc = (True, True, False)
+    # ORB and UMA require periodicity to be enabled on either every axis or none.
+    # The 30 Angstrom cell height keeps periodic graphene images separated.
+    graph.pbc = True
 
     return {
         "dimer": dimer,
