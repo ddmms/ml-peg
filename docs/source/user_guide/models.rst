@@ -402,18 +402,31 @@ mattersim-1M
 GRACE
 =====
 
-GRACE-2L-OAM
-------------
+GRACE-2L-OMAT
+-------------
 
 .. code-block:: yaml
 
-   GRACE-2L-OAM:
-     module: tensorpotential.calculator
-     class_name: TPCalculator
-     device: "cpu"
-     trained_on_dispersion: false
-     kwargs:
-       model: "<local path to the GRACE-2L-OAM model>"
+  grace-2l-omat:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-OMAT
+
+
+GRACE-2L-SMAX-OMAT-medium
+-------------------------
+.. code-block:: yaml
+
+  grace-2l-smax-omat-medium:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-SMAX-OMAT-medium
 
 
 SevenNet
