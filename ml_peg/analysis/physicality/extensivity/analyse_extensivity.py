@@ -8,7 +8,7 @@ from ase.io import read, write
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -37,7 +37,11 @@ def energy_difference() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        slab_1, slab_2, combined = read(CALC_PATH / model_name / "slabs.xyz", index=":")
+        struct_path = CALC_PATH / model_name / "slabs.xyz"
+        if not struct_path.exists():
+            results[model_name] = None
+            continue
+        slab_1, slab_2, combined = read(struct_path, index=":")
 
         energy_1 = slab_1.get_potential_energy()
         energy_2 = slab_2.get_potential_energy()
@@ -88,8 +92,11 @@ def test_extensivity(metrics: dict[str, dict]) -> None:
     metrics
         All extensivity atoms metrics.
     """
-    write_struct_info(
-        data_path=CALC_PATH / "mock" / "slabs.xyz",
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="slabs.xyz",
+        write_info=False,
+        write_structs=True,
         out_path=OUT_PATH,
         index=0,
     )
