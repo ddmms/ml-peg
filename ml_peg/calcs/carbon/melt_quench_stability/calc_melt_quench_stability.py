@@ -24,24 +24,25 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 CELL_REPETITIONS = 6
 N_ATOMS = CELL_REPETITIONS**3
-DENSITIES = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5)
+# DENSITIES = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5)
+DENSITIES = (0.5, 3.5)
 
 # Integer counts nearest to the target C, C85H15, C75H15N10 and C75H15O10 ratios.
 COMPOSITIONS = {
     "C": {"C": 216},
-    "CH": {"C": 184, "H": 32},
-    "CHN": {"C": 162, "H": 32, "N": 22},
+    # "CH": {"C": 184, "H": 32},
+    # "CHN": {"C": 162, "H": 32, "N": 22},
     "CHO": {"C": 162, "H": 32, "O": 22},
 }
 
-BASE_SEED = 10
+BASE_SEED = 10001
 FS_PER_PS = 1000.0
 INITIAL_TEMPERATURE_K = 100.0
 MELT_TEMPERATURE_K = 8000.0
-FINAL_TEMPERATURE_K = 300.0
+FINAL_TEMPERATURE_K = 8000.0
 TIMESTEP_PS = 0.0005
 MELT_TIME_PS = 5.0
-QUENCH_TIME_PS = 8.0
+QUENCH_TIME_PS = 0
 MELT_STEPS = round(MELT_TIME_PS / TIMESTEP_PS)
 QUENCH_STEPS = round(QUENCH_TIME_PS / TIMESTEP_PS)
 TOTAL_STEPS = MELT_STEPS + QUENCH_STEPS
