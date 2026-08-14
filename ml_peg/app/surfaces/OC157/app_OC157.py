@@ -32,14 +32,13 @@ class OC157App(BaseApp):
             DATA_PATH / "figure_rel_energies.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
-        structs_dir = DATA_PATH / MODELS[0]
-
         # Assets dir will be parent directory
+        structs_dir = DATA_PATH / "mock"
         structs = list(
             np.repeat(
                 [
-                    f"/assets/surfaces/OC157/{MODELS[0]}/{i}.xyz"
-                    for i in range(len(list(structs_dir.glob("*.xyz"))))
+                   f"/assets/surfaces/OC157/mock/{struct_file.stem}.xyz"
+                    for struct_file in sorted(structs_dir.glob("*.xyz"))
                 ],
                 3,
             )
