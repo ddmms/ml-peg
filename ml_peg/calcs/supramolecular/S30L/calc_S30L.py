@@ -287,6 +287,7 @@ def build_project(repro: bool = False) -> None:
 
 
 @pytest.mark.framework("mace-multihead", "mace-polar-1")
+@pytest.mark.fast
 def test_s30l():
     """Run S30L benchmark via pytest."""
     build_project(repro=True)

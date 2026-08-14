@@ -56,6 +56,7 @@ def get_ref_energy(poscar_path: Path) -> float:
     )
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_defectstab(mlip: tuple[str, Any]) -> None:
     """

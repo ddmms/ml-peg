@@ -226,6 +226,7 @@ def rebuild_table(
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
     table.column_widths = column_widths
+    table.speed = table_json.get("speed")
 
     return table
 

@@ -1,0 +1,116 @@
+# Maintainer reference runtimes per benchmark and model, in minutes.
+# Blank entries are ignored.
+# Keys match directory names under ml_peg/calcs/.
+
+measured_with:
+  model: mace-mp-0a
+  device: NVIDIA A100 40 GB
+
+benchmarks:
+  bulk_crystal:
+    elasticity: 1200
+    elemental_tm_vacancies: 1
+    energy_volume_curves_metals: 1
+    high_pressure_relaxation: 1232
+    iron_properties: 46
+    lattice_constants: 1
+    low_dimensional_relaxation: 673
+    phonons: 420
+
+  conformers:
+    37Conf8: 1
+    ACONFL: 1
+    DipCONFS: 1
+    Folmsbee:
+    Glucose205: 1
+    MPCONF196: 1
+    Maltose222: 1
+    OpenFF_Tors: 1
+    UpU46: 1
+    solvMPCONF196: 1
+
+  defect:
+    Defectstab: 1
+    Relastab: 1
+
+  electric_field:
+    GSCDB138_field: 1.5
+
+  f_block:
+    isomer_complexes: 1
+    plutonium_dioxide:
+
+  isomers:
+    GSCDB138_isomers: 1
+
+  molecular:
+    BMIMCl_RDF: 11
+    GMTKN55: 2.3
+    Wiggle150: 1
+
+  molecular_crystal:
+    CPOSS209: 2.6
+    DMC_ICE13: 1
+    X23: 1
+
+  molecular_dynamics:
+    ethanol_water_density: 17000
+    liquid_densities: 170000
+    water_density: 12000
+
+  molecular_reactions:
+    BH2O_36: 1
+    BH9: 1.7
+    CRBH20: 1
+    CYCLO70: 1
+    Criegee22: 1
+    GSCDB138_barriers: 1.8
+    RDB7: 22
+    tautomers:
+
+  nebs:
+    O_diffusion_2D_TMDs: 1
+    li_diffusion: 1
+    si_defects: 1
+
+  non_covalent_interactions:
+    GSCDB138_NCIs: 5.7
+    IONPI19: 1.0
+    NCIA_D1200: 2.5
+    NCIA_D442x10: 4.9
+    NCIA_HB300SPXx10: 5.8
+    NCIA_HB375x10: 6.4
+    NCIA_IHB100x10: 1.5
+    NCIA_R739x5: 4.5
+    NCIA_SH250x10: 5.0
+    QUID: 1
+
+  physicality:
+    diatomics:
+    extensivity: 1
+    locality: 1
+    oxidation_states:
+    water_cl2_relaxation: 2.2
+    water_slab_dipoles:
+
+  supramolecular:
+    LNCI16: 1
+    PLA15: 1
+    PLF547: 1.3
+    S30L: 1
+
+  surfaces:
+    CMRAds200: 1
+    OC157: 2.9
+    S24: 1
+    SBH17: 1.0
+    cleavage_energy: 39
+    elemental_slab_oxygen_adsorption: 1
+    graphene_wetting_under_strain: 1
+
+  thermochemistry:
+    GSCDB138_thermochemistry: 4.1
+
+  tm_complexes:
+    3dTMV: 1.0
+    GSCDB138_tm_complexes: 1

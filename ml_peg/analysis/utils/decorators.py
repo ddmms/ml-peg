@@ -20,6 +20,7 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
+from ml_peg.analysis.utils.speed import speed_for_table_path
 from ml_peg.analysis.utils.utils import (
     DENSITY_GRID_SIZE,
     DENSITY_MAX_POINTS_PER_CELL,
@@ -1797,6 +1798,7 @@ def build_table(
                         "metric_levels_of_theory": metric_levels,
                         "model_configs": model_configs,
                         "model_name_map": model_name_map,
+                        "speed": speed_for_table_path(filename),
                     },
                     fp,
                 )

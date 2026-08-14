@@ -106,7 +106,7 @@ Symmetry checks are applied to components on the diagonal with a relative tolera
 Computational cost
 ------------------
 
-High: tests are likely to take hours-days to run on GPU.
+Slow: around 10 hours per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -459,8 +459,8 @@ Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
 Computational cost
 ------------------
 
-Medium: tests are likely to take minutes to run on GPU, or hours on CPU for each model.
-The benchmark is marked as slow and excluded from default test runs.
+Medium: tests are likely to take tens of minutes to run on GPU, or hours on CPU
+for each model. The benchmark is marked ``medium`` and runs by default.
 
 
 Data availability
@@ -557,11 +557,11 @@ Computational cost
 The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
 30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
 constants from the Alexandria database to generate band structures for later
-comparison. This part of the test is marked ``slow``.
+comparison. This part of the test is marked ``medium``.
 
 The MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower. This part of the test is marked ``very_slow``.
+models will be slower. This part of the test is marked ``slow``.
 
 
 Data availability

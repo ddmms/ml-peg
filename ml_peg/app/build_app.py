@@ -32,6 +32,7 @@ from ml_peg.app.utils.build_components import (
     build_footer,
     build_loading_summary_table,
     build_page_loading_spinner,
+    build_speed_panel,
     build_summary_table,
     build_weight_components,
 )
@@ -379,6 +380,7 @@ def get_all_tests(
             )
             test_app = test_module.get_app()
             apps[test_name] = test_app
+            test_app.table.benchmark_key = f"{category_name}/{test_name}"
 
             # Get layouts and tables for each category/test
             if category_name not in layouts:
@@ -410,6 +412,29 @@ def get_all_tests(
             continue
 
     return apps, layouts, tables, frameworks
+
+
+def _collect_benchmark_speeds(
+    all_tables: dict[str, dict[str, DataTable]],
+) -> dict[str, str | None]:
+    """
+    Collect speeds by stable, directory-based benchmark identifier.
+
+    Parameters
+    ----------
+    all_tables
+        Tables grouped by category and benchmark.
+
+    Returns
+    -------
+    dict[str, str | None]
+        Speed level for each ``<category>/<benchmark>`` identifier.
+    """
+    return {
+        table.benchmark_key: getattr(table, "speed", None)
+        for tests in all_tables.values()
+        for table in tests.values()
+    }
 
 
 def build_category(
@@ -490,11 +515,14 @@ def build_category(
         for test_name in sorted(all_layouts[category]):
             test_framework_ids = all_frameworks[category][test_name]
             framework_ids.update(test_framework_ids)
+            table = all_tables[category][test_name]
             test_entries.append(
                 {
                     "name": test_name,
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
+                    "key": table.benchmark_key,
+                    "speed": getattr(table, "speed", None),
                 }
             )
 
@@ -578,6 +606,7 @@ def build_nav(
     summary_table: DataTable,
     weight_components: Div,
     all_apps: dict[str, Dash],
+    benchmark_speeds: dict[str, str | None],
     combined_framework_table: DataTable | None = None,
     framework_weight_components: Div | None = None,
 ) -> None:
@@ -598,6 +627,8 @@ def build_nav(
         Weight sliders, text boxes and reset button.
     all_apps
         Dictionary of all test apps.
+    benchmark_speeds
+        Speed level of each benchmark, used for the summary cost panel.
     combined_framework_table
         Frameworks summary table shown on the home page, or None when there are
         no external frameworks.
@@ -1140,6 +1171,7 @@ def build_nav(
                         if combined_framework_table is not None
                         else []
                     ),
+                    build_speed_panel(benchmark_speeds, title_font_size="32px"),
                     build_faqs(),
                 ]
             ), sidebar_children
@@ -1231,6 +1263,8 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation
+    benchmark_speeds = _collect_benchmark_speeds(all_tables)
+
     build_nav(
         full_app,
         cat_views,
@@ -1238,6 +1272,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         summary_table,
         weight_components,
         all_apps,
+        benchmark_speeds,
         combined_framework_table,
         framework_weight_components,
     )
