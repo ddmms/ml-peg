@@ -27,6 +27,7 @@ metrics:
     good: 6.0
     bad: 12.0
     unit: meV
+    weight: 0
     tooltip: "Mean absolute error of opt-in solute-solute binding energies by neighbor shell for Al-matrix and Cu-matrix pairs compared to DFT"
     level_of_theory: PBE
   Bulk Modulus MAE:
