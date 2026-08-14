@@ -84,8 +84,8 @@ and cell) with fmax=1×10⁻⁶ eV/Å.
    and Al solutes in a Cu-FCC matrix (3×4 in-plane, 4 z-planes).
 
 
-Elastic constants (slow)
-^^^^^^^^^^^^^^^^^^^^^^^^
+Elastic constants
+^^^^^^^^^^^^^^^^^
 
 Calculated for all 8 bulk structures after full cell relaxation.
 Elastic constants are derived from a stress-strain approach using strain
@@ -105,8 +105,8 @@ magnitude ±0.5%.
     components of the 6×6 Voigt elastic tensor.
 
 
-Solute-solute binding (slow)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Solute-solute binding
+^^^^^^^^^^^^^^^^^^^^^
 
 Binding energy curves as a function of solute-solute separation distance.
 Pure-element FCC supercells are constructed and fully relaxed, then pairs of
