@@ -20,6 +20,7 @@ from tqdm import tqdm
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    count_valid,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -121,7 +122,7 @@ def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
         density_inputs[model_name] = {
             "ref": ref_vals,
             "pred": preds,
-            "meta": {"system_count": len([val for val in preds if val is not None])},
+            "meta": {"system_count": count_valid(preds)},
         }
         write_density_trajectories(
             labels_list=label_list,
