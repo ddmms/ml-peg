@@ -315,7 +315,7 @@ class OrbCalc(SumCalc):
 
         from orb_models.forcefield.inference.d3_model import AlchemiDFTD3, D3SumModel
 
-        # `xc` matches the key the TorchDFTD3 path uses; `functional` matches
+        # `xc` matches the key the TorchDFTD3 path uses, and `functional` matches
         # Orb's own naming. Both are accepted.
         functional = self.dispersion_kwargs.get(
             "functional", self.dispersion_kwargs.get("xc", "PBE")
