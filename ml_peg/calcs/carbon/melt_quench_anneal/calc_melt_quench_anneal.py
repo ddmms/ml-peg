@@ -32,15 +32,18 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 # Side length of the simple-cubic starting structure, in unit cells.
-N_CELL_SIZE = 12
+N_CELL_SIZE = 6
 N_ATOMS = N_CELL_SIZE**3
-DENSITIES = (1.0,)
+DENSITIES = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5)
 
 # Atomic percentages of the non-carbon species in each target material, matching
 # the reference C and C75H15O10 material configs. Carbon takes the remainder.
+# Compositions are the outermost loop of `RUNS`, so new ones must be appended to
+# keep the scheduler array indices of existing compositions stable.
 COMPOSITION_PERCENTAGES = {
     "C": {},
     "CHO": {"H": 15.0, "O": 10.0},
+    "CH": {"H": 15.0},
 }
 
 # Independent repeats per composition-density pair, each from its own random
@@ -148,8 +151,10 @@ class Run:
 
 
 # Flat list of every trajectory, ordered composition-major so that a scheduler
-# array index maps to a fixed run. Appending compositions, densities or runs
-# keeps existing indices stable; reordering them does not.
+# array index maps to a fixed run. Only appending a composition keeps existing
+# indices stable: densities and run numbers are inner loops, so adding either
+# renumbers every run of every later composition. Output directories are keyed
+# by name rather than index, so they are unaffected either way.
 #
 # Run n uses the same seed in every composition, so runs are paired across
 # compositions: C run 1 and CHO run 1 start from the same random draws for their
@@ -709,7 +714,7 @@ def run_benchmark(model_name: str, model: Any, runs: Sequence[Run] = RUNS) -> No
             print(f"Skipping {label}: outputs found")
         else:
             if calc is None:
-                calc = model.get_calculator(precision="low")
+                calc = model.get_calculator(precision="high")
                 calc = model.add_d3_calculator(calc)
             atoms = build_structure(run.composition, run.density, run.seed)
             atoms.calc = calc
@@ -812,7 +817,9 @@ def run_clean_and_relax(
                 )
 
 
-def select_runs(run_id: int, composition: str = "") -> tuple[Run, ...]:
+def select_runs(
+    run_id: int, composition: str = "", density: float = 0.0
+) -> tuple[Run, ...]:
     """
     Select the trajectories to run.
 
@@ -826,6 +833,8 @@ def select_runs(run_id: int, composition: str = "") -> tuple[Run, ...]:
         index counts within `composition` when one is given.
     composition
         Key in ``COMPOSITIONS`` to restrict to. Default is every composition.
+    density
+        Density in ``DENSITIES`` to restrict to. Default, 0, is every density.
 
     Returns
     -------
@@ -840,6 +849,13 @@ def select_runs(run_id: int, composition: str = "") -> tuple[Run, ...]:
         )
         runs = tuple(run for run in runs if run.composition == composition)
 
+    if density > 0:
+        assert density in DENSITIES, (
+            f"Unknown density: {density:g}. "
+            f"Please use one of {', '.join(f'{d:g}' for d in DENSITIES)}"
+        )
+        runs = tuple(run for run in runs if run.density == density)
+
     assert run_id in range(-1, len(runs)), (
         f"run_id out of range. Please use -1 for all runs, or 0 to {len(runs) - 1}"
     )
@@ -849,7 +865,7 @@ def select_runs(run_id: int, composition: str = "") -> tuple[Run, ...]:
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_melt_quench_anneal(
-    mlip: tuple[str, Any], run_id: int, composition: str
+    mlip: tuple[str, Any], run_id: int, composition: str, density: float
 ) -> None:
     """
     Run the carbon melt-quench-anneal MD benchmark.
@@ -862,14 +878,16 @@ def test_melt_quench_anneal(
         Index of the trajectory to run, or -1 for all of them.
     composition
         Composition to restrict to, or empty for every composition.
+    density
+        Density to restrict to, or 0 for every density.
     """
-    run_benchmark(*mlip, runs=select_runs(run_id, composition))
+    run_benchmark(*mlip, runs=select_runs(run_id, composition, density))
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_melt_quench_anneal_relax(
-    mlip: tuple[str, Any], run_id: int, composition: str
+    mlip: tuple[str, Any], run_id: int, composition: str, density: float
 ) -> None:
     """
     Clean and relax the annealed and cooled structures.
@@ -884,5 +902,7 @@ def test_melt_quench_anneal_relax(
         Index of the trajectory to relax, or -1 for all of them.
     composition
         Composition to restrict to, or empty for every composition.
+    density
+        Density to restrict to, or 0 for every density.
     """
-    run_clean_and_relax(*mlip, runs=select_runs(run_id, composition))
+    run_clean_and_relax(*mlip, runs=select_runs(run_id, composition, density))
