@@ -10,14 +10,13 @@ from dash import (
     Input,
     Output,
     callback,
-    clientside_callback,
     ctx,
     no_update,
 )
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
+from dash.dcc import Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, A, Br, Button, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.app import APP_ROOT
@@ -49,13 +48,17 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.settings import register_settings_callbacks
+from ml_peg.app.utils.shell import STARTUP_MASK_POLL_MS, register_shell_callbacks
 from ml_peg.app.utils.storage import (
     build_header_controls,
     register_storage_callbacks,
 )
 from ml_peg.app.utils.utils import (
+    DEFAULT_COLORMAP,
     framework_sort_key,
     get_framework_config,
+    get_mlip_column_width,
 )
 from ml_peg.app.utils.weight_presets import (
     build_weight_preset_selector,
@@ -82,15 +85,19 @@ def _nav_link_style(is_active: bool) -> dict[str, str]:
     dict[str, str]
         Style dictionary for the link.
     """
+    # Airbnb-style pill: the active item is a fully-rounded soft-blue pill;
+    # inactive items are transparent and round on hover (see theme.css
+    # .mlpeg-nav-link:hover). No left rule — the pill carries the state.
     return {
         "display": "block",
-        "padding": "6px 10px",
-        "borderRadius": "4px",
+        "padding": "9px 14px",
+        "marginBottom": "2px",
+        "borderRadius": "999px",
+        "fontSize": "13.5px",
         "textDecoration": "none",
-        "color": "#119DFF" if is_active else "#495057",
-        "fontWeight": "600" if is_active else "normal",
-        "backgroundColor": "#e8f4ff" if is_active else "transparent",
-        "borderLeft": ("3px solid #119DFF" if is_active else "3px solid transparent"),
+        "color": "var(--mlpeg-nav-active-fg)" if is_active else "var(--mlpeg-nav-fg)",
+        "fontWeight": "600" if is_active else "500",
+        "backgroundColor": "var(--mlpeg-nav-active-bg)" if is_active else "transparent",
     }
 
 
@@ -253,7 +260,7 @@ def build_sidebar(
                         "fontSize": "11px",
                         "textTransform": "uppercase",
                         "letterSpacing": "0.07em",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "cursor": "pointer",
                     },
                 ),
@@ -264,7 +271,7 @@ def build_sidebar(
                             href="/",
                             style=_nav_link_style(summary_active),
                             className="sidebar-link",
-                        )
+                        ),
                     ]
                 ),
             ],
@@ -279,7 +286,7 @@ def build_sidebar(
                         "fontSize": "11px",
                         "textTransform": "uppercase",
                         "letterSpacing": "0.07em",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "cursor": "pointer",
                     },
                 ),
@@ -310,7 +317,7 @@ def build_sidebar(
                             "fontSize": "11px",
                             "textTransform": "uppercase",
                             "letterSpacing": "0.07em",
-                            "color": "#6c757d",
+                            "color": "var(--mlpeg-muted)",
                             "cursor": "pointer",
                         },
                     ),
@@ -536,9 +543,13 @@ def build_category_page_layout(
     summary_table = category_view["summary_table"]
     weight_components = category_view["weight_components"]
     tests = category_view["tests"]
+    # className, not an inline grid: .mlpeg-benchmark-grid sets
+    # grid-template-columns: minmax(0, 1fr). An implicit `auto` track sizes to
+    # max-content, so a wide benchmark table would stretch the track and the
+    # .mlpeg-table-scroll wrapper below would have nothing to scroll against.
     benchmark_section = Div(
         [test["layout"] for test in tests],
-        style={"display": "grid", "gap": "24px"},
+        className="mlpeg-benchmark-grid",
     )
 
     return Div(
@@ -546,13 +557,16 @@ def build_category_page_layout(
             H1(category_title),
             H3(category_description),
             Div(
-                [
-                    build_download_controls(summary_table.id, row=True),
-                    build_loading_summary_table(summary_table),
-                    Br(),
-                    weight_components,
-                ],
-                style={"width": "fit-content"},
+                Div(
+                    [
+                        build_download_controls(summary_table.id, row=True),
+                        build_loading_summary_table(summary_table),
+                        Br(),
+                        weight_components,
+                    ],
+                    style={"width": "fit-content"},
+                ),
+                className="mlpeg-table-scroll",
             ),
             Div(
                 [
@@ -560,7 +574,7 @@ def build_category_page_layout(
                         style={
                             "width": "100%",
                             "height": "1px",
-                            "backgroundColor": "#a7adb3",
+                            "backgroundColor": "var(--mlpeg-border-strong)",
                         }
                     ),
                 ],
@@ -625,49 +639,18 @@ def build_nav(
         "fontSize": "11px",
         "textTransform": "uppercase",
         "letterSpacing": "0.07em",
-        "color": "#6c757d",
+        "color": "var(--mlpeg-muted)",
         "padding": "5px",
     }
-    cmap_selector = Details(
-        [
-            Summary("Colour scheme", style=_summary_label_style),
-            Div(
-                Dropdown(
-                    id="cmap-dropdown",
-                    options=[
-                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
-                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
-                        {
-                            "label": "Green-Red",
-                            "value": "RdYlGn_r",
-                        },
-                    ],
-                    value="viridis_r",
-                    clearable=False,
-                    persistence=True,
-                    persistence_type="local",
-                    persisted_props=["value"],
-                    style={"fontSize": "13px"},
-                ),
-                style={"padding": "8px 12px"},
-            ),
-        ],
-        style={"marginBottom": "8px", "fontSize": "13px"},
-    )
-
+    # The colour-scheme dropdown lives in the header settings panel now (see
+    # ml_peg.app.utils.settings); its sync callback below is unchanged.
     weight_preset_selector = build_weight_preset_selector(_summary_label_style)
 
     sidebar = Div(
         id="sidebar-nav",
+        className="mlpeg-sidebar",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
-        style={
-            "width": "220px",
-            "overflowY": "auto",
-            "borderRight": "1px solid #dee2e6",
-            "padding": "12px",
-            "flexShrink": "0",
-            "backgroundColor": "#f8f9fa",
-        },
+        **{"role": "navigation", "aria-label": "Benchmark navigation"},
     )
 
     path_to_category = {path: category for category, path in category_paths.items()}
@@ -723,7 +706,14 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
-        Store(id="cmap-store", storage_type="local", data="viridis_r"),
+        Store(id="cmap-store", storage_type="local", data=DEFAULT_COLORMAP),
+        # Theme + table-zoom preferences (persisted locally; the no-flash script
+        # in run_app.py reads them before first paint). bench-expand-store backs
+        # the settings "expand all benchmarks" preference.
+        Store(id="theme-store", storage_type="local"),
+        Store(id="zoom-store", storage_type="local"),
+        Store(id="font-store", storage_type="local"),
+        Store(id="bench-expand-store", storage_type="local"),
         *category_state_stores,
         *framework_state_stores,
         *test_state_stores,
@@ -744,60 +734,32 @@ def build_nav(
         Div(
             [
                 Div(
-                    style={
-                        "width": "52px",
-                        "height": "52px",
-                        "border": "5px solid #d0ebff",
-                        "borderTopColor": "#119DFF",
-                        "borderRadius": "50%",
-                        "animation": "ml-peg-spin 0.8s linear infinite",
-                        "boxSizing": "border-box",
-                    },
+                    [
+                        Div(className="mlpeg-progress-arc"),
+                        Span(className="mlpeg-progress-num"),
+                    ],
+                    className="mlpeg-progress-ring",
                 ),
-                Div(
-                    "Loading ML-PEG…",
-                    style={
-                        "fontSize": "16px",
-                        "fontWeight": "600",
-                        "color": "#212529",
-                    },
-                ),
-                # Time-based progress bar: fills continuously over ~10s, easing
-                # toward ~95% (keyframe in loading.css; same single-element bar
-                # as the pre-hydration loader in dash_loading.css). It vanishes
-                # with the mask when ready, so it never reaches a fake 100%.
-                Div(
-                    style={
-                        "width": "200px",
-                        "height": "6px",
-                        "borderRadius": "3px",
-                        "background": (
-                            "linear-gradient(#119DFF, #119DFF) left center "
-                            "/ 5% 100% no-repeat, #d0ebff"
-                        ),
-                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
-                    },
-                ),
+                Span("ML-PEG", className="mlpeg-loader-word"),
+                Div("Loading benchmarks…", className="mlpeg-loader-text"),
             ],
             id="startup-mask",
-            style={
-                "position": "fixed",
-                "top": "0",
-                "right": "0",
-                "bottom": "0",
-                "left": "0",
-                "display": "flex",
-                "flexDirection": "column",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "gap": "14px",
-                "backgroundColor": "#ffffff",
-                "zIndex": "2100",  # Above the onboarding modal (2000).
-            },
+            className="mlpeg-loader",
         ),
-        Interval(id="startup-mask-poll", interval=250, n_intervals=0),
+        Interval(id="startup-mask-poll", interval=STARTUP_MASK_POLL_MS, n_intervals=0),
         build_onboarding_modal(),
-        build_header_controls(),
+        # Mobile navigation: a fixed hamburger toggles the off-canvas sidebar
+        # (styling + breakpoints in theme.css; toggle is the clientside callback
+        # below). Hidden on desktop via CSS.
+        Button(
+            "☰",
+            id="mobile-nav-toggle",
+            className="mlpeg-hamburger",
+            n_clicks=0,
+            **{"aria-label": "Toggle navigation menu"},
+        ),
+        Div(id="sidebar-scrim", n_clicks=0),
+        Store(id="mobile-nav-state", storage_type="memory"),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -811,60 +773,67 @@ def build_nav(
         Div(global_state_stores, style={"display": "none"}),
         Div(
             [
-                H1(
+                Div(
                     [
-                        Span(
-                            "ML-PEG",
-                            style={
-                                "display": "block",
-                                "fontSize": "1.0em",
-                                "fontWeight": "700",
-                                "letterSpacing": "-0.03em",
-                            },
+                        H1(
+                            [
+                                Span(
+                                    "ML-PEG",
+                                    style={
+                                        "display": "block",
+                                        "fontSize": "1.0em",
+                                        "fontWeight": "700",
+                                        "letterSpacing": "-0.03em",
+                                    },
+                                ),
+                                Span(
+                                    "Machine Learning Performance and "
+                                    "Extrapolation Guide",
+                                    className="mlpeg-subtitle",
+                                    style={
+                                        "display": "block",
+                                        "marginTop": "6px",
+                                        "fontSize": "0.54em",
+                                        "fontWeight": "500",
+                                        "letterSpacing": "0.01em",
+                                        "color": "var(--mlpeg-muted)",
+                                    },
+                                ),
+                                A(
+                                    "Read the documentation →",
+                                    href="https://ddmms.github.io/ml-peg/",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    className="mlpeg-doclink",
+                                    style={
+                                        "display": "block",
+                                        "marginTop": "10px",
+                                        "fontSize": "0.5em",
+                                        "fontWeight": "600",
+                                        "color": "var(--mlpeg-accent)",
+                                        "textDecoration": "none",
+                                    },
+                                ),
+                            ],
+                            className="mlpeg-header",
                         ),
-                        Span(
-                            "Machine Learning Performance and Extrapolation Guide",
-                            style={
-                                "display": "block",
-                                "marginTop": "4px",
-                                "fontSize": "0.54em",
-                                "fontWeight": "500",
-                                "letterSpacing": "0.01em",
-                                "color": "#6c757d",
-                            },
-                        ),
-                        A(
-                            "📖 Read the documentation →",
-                            href="https://ddmms.github.io/ml-peg/",
-                            target="_blank",
-                            rel="noopener noreferrer",
-                            style={
-                                "display": "block",
-                                "marginTop": "6px",
-                                "fontSize": "0.5em",
-                                "fontWeight": "600",
-                                "color": "#119DFF",
-                                "textDecoration": "none",
-                            },
-                        ),
+                        build_header_controls(),
                     ],
-                    style={
-                        "padding": "12px 16px 16px",
-                        "margin": "0",
-                        "borderBottom": "1px solid #dee2e6",
-                        "color": "#212529",
-                        "lineHeight": "1.05",
-                    },
+                    className="mlpeg-topbar",
                 ),
                 Div(
                     [
                         sidebar,
                         Div(
                             [
-                                get_model_filter(MODELS),
-                                cmap_selector,
-                                weight_preset_selector,
-                                get_element_filter(),
+                                Div(
+                                    [
+                                        get_model_filter(MODELS),
+                                        weight_preset_selector,
+                                        get_element_filter(),
+                                    ],
+                                    className="mlpeg-controls-toolbar",
+                                ),
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -896,6 +865,7 @@ def build_nav(
                                     custom_spinner=build_page_loading_spinner(),
                                     target_components={"page-content": "children"},
                                     show_initially=False,
+                                    delay_show=150,
                                     delay_hide=300,
                                     overlay_style={
                                         "visibility": "visible",
@@ -907,10 +877,11 @@ def build_nav(
                                     },
                                 ),
                             ],
-                            style={"flex": "1", "padding": "16px 16px"},
+                            className="mlpeg-content",
+                            **{"role": "main"},
                         ),
                     ],
-                    style={"display": "flex", "minHeight": "0", "flex": "1"},
+                    className="mlpeg-body",
                 ),
             ],
             style={
@@ -925,29 +896,22 @@ def build_nav(
 
     full_app.layout = Div(
         full_layout,
-        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "minHeight": "100vh",
+            # Shared MLIP column width (same for every table) → drives the sticky
+            # "link" column's left offset in theme.css, which otherwise falls back
+            # to 0px and stacks the link column under MLIP once a table scrolls.
+            "--mlip-col-w": f"{get_mlip_column_width()}px",
+        },
     )
 
-    # Hide the start-up mask once the page has rendered, or after a timeout as
-    # a safety net, then stop polling. Clientside, so it adds no server load.
-    # (The progress bar fills via a CSS animation, not this callback.)
-    clientside_callback(
-        """
-        function(n) {
-            var nu = window.dash_clientside.no_update;
-            var ready = document.querySelector('#page-content table tbody tr');
-            if (ready || n > 40) {
-                return [{'display': 'none'}, true];
-            }
-            return [nu, nu];
-        }
-        """,
-        Output("startup-mask", "style"),
-        Output("startup-mask-poll", "disabled"),
-        Input("startup-mask-poll", "n_intervals"),
-    )
-
+    # Shell clientside callbacks (start-up mask + mobile nav) live in shell.py to
+    # keep this module short; see register_shell_callbacks for details.
+    register_shell_callbacks()
     register_storage_callbacks()
+    register_settings_callbacks()
 
     @callback(
         Output("model-filter-checklist", "value"),
@@ -1085,9 +1049,9 @@ def build_nav(
                         style={
                             "fontSize": "14px",
                             "fontWeight": "600",
-                            "color": "#212529",
-                            "backgroundColor": "#f1f3f5",
-                            "border": "1px solid #dee2e6",
+                            "color": "var(--mlpeg-heading)",
+                            "backgroundColor": "var(--mlpeg-surface-2)",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderRadius": "6px",
                             "padding": "8px 14px",
                             "marginBottom": "12px",
@@ -1099,9 +1063,9 @@ def build_nav(
                         style={
                             "fontSize": "14px",
                             "fontWeight": "600",
-                            "color": "#212529",
-                            "backgroundColor": "#e8f4fd",
-                            "border": "1px solid #bee3f8",
+                            "color": "var(--mlpeg-heading)",
+                            "backgroundColor": "var(--mlpeg-accent-soft)",
+                            "border": "1px solid var(--mlpeg-accent-soft-border)",
                             "borderRadius": "6px",
                             "padding": "8px 14px",
                             "marginBottom": "16px",
@@ -1109,13 +1073,16 @@ def build_nav(
                         },
                     ),
                     Div(
-                        [
-                            build_download_controls(summary_table.id, row=True),
-                            build_loading_summary_table(summary_table),
-                            Br(),
-                            weight_components,
-                        ],
-                        style={"width": "fit-content"},
+                        Div(
+                            [
+                                build_download_controls(summary_table.id, row=True),
+                                build_loading_summary_table(summary_table),
+                                Br(),
+                                weight_components,
+                            ],
+                            style={"width": "fit-content"},
+                        ),
+                        className="mlpeg-table-scroll",
                     ),
                     *(
                         [
@@ -1124,17 +1091,20 @@ def build_nav(
                                 style={"marginTop": "32px"},
                             ),
                             Div(
-                                [
-                                    build_download_controls(
-                                        combined_framework_table.id, row=True
-                                    ),
-                                    build_loading_summary_table(
-                                        combined_framework_table
-                                    ),
-                                    Br(),
-                                    framework_weight_components,
-                                ],
-                                style={"width": "fit-content"},
+                                Div(
+                                    [
+                                        build_download_controls(
+                                            combined_framework_table.id, row=True
+                                        ),
+                                        build_loading_summary_table(
+                                            combined_framework_table
+                                        ),
+                                        Br(),
+                                        framework_weight_components,
+                                    ],
+                                    style={"width": "fit-content"},
+                                ),
+                                className="mlpeg-table-scroll",
                             ),
                         ]
                         if combined_framework_table is not None

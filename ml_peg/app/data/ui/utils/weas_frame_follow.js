@@ -1,4 +1,11 @@
 (function () {
+    // The data tarball ships an older flat copy of this asset, so Dash can
+    // register the file twice; a second listener would handle each frame twice.
+    if (window.__mlpegWeasFrameFollow) {
+        return;
+    }
+    window.__mlpegWeasFrameFollow = true;
+
     window.addEventListener("message", function (e) {
         var msg = e.data;
         if (!msg || msg.type !== "ml-peg-weas-frame") {

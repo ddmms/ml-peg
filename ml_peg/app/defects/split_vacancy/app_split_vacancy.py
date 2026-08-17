@@ -45,7 +45,7 @@ VACANCY_LABELS = {"NV": "normal vacancy", "SV": "split vacancy"}
 IFRAME_STYLE = {
     "height": "550px",
     "width": "100%",
-    "border": "1px solid #ddd",
+    "border": "1px solid var(--mlpeg-border)",
     "borderRadius": "5px",
 }
 GRID_STYLE = {
