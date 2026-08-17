@@ -130,6 +130,8 @@ class BaseApp(ABC):
         """
         if not info_path.exists():
             warnings.warn(f"{info_path} does not exist, skipping.", stacklevel=2)
+            self.info = None
+            return
         with open(info_path) as f:
             self.info = json.load(f)
 

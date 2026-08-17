@@ -185,7 +185,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         "padding": "6px 12px",
         "borderRadius": "8px",
         "backgroundColor": "#ffffff",
-        "border": "1px solid #e2e8f0",
+        "border": "1px solid var(--mlpeg-border)",
         "color": "#334155",
         "fontSize": "13px",
         "fontWeight": "500",
@@ -237,7 +237,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 description_box_children,
                 style={
                     "backgroundColor": "#f8fafc",
-                    "border": "1px solid #e2e8f0",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "12px",
                     "padding": "16px 20px",
                     "marginTop": "10px",
@@ -251,19 +251,27 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     sections = []
     for category_name, tests in benchmarks_by_category.items():
         sections.append(H3(category_name, style={"marginTop": "26px"}))
-        sections.append(Div(tests, style={"display": "grid", "gap": "24px"}))
+        # Same grid as category pages: an implicit `auto` track sizes to
+        # max-content, which would let a wide benchmark table stretch the page.
+        sections.append(Div(tests, className="mlpeg-benchmark-grid"))
 
     summary_block = []
     if summary_table is not None:
+        # Wrap in the same scroll-card as category pages so a wide framework
+        # summary (e.g. MACE-POLAR-1's many benchmark columns) scrolls inside
+        # its card instead of spanning the whole page.
         summary_block = [
             Div(
-                [
-                    build_download_controls(summary_table.id, row=True),
-                    build_loading_summary_table(summary_table),
-                    Br(),
-                    weight_components,
-                ],
-                style={"width": "fit-content"},
+                Div(
+                    [
+                        build_download_controls(summary_table.id, row=True),
+                        build_loading_summary_table(summary_table),
+                        Br(),
+                        weight_components,
+                    ],
+                    style={"width": "fit-content"},
+                ),
+                className="mlpeg-table-scroll",
             ),
         ]
 
