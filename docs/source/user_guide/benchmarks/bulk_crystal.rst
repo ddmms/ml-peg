@@ -291,9 +291,6 @@ in the benchmark driver.
 Data availability
 -----------------
 
-Input structures and reference data
-(https://github.com/7radians/ml-peg-data/tree/main/diamond_data):
-
 * ``diamond.xyz``: conventional cubic cell (8 atoms, a = 3.56 Å), the
   CASTEP/RSCAN-relaxed geometry used for the DFT reference calculations; each MLIP
   re-relaxes atomic positions (fixed cell and symmetry) and computes force constants
@@ -431,9 +428,6 @@ Full details on the data and benchmark:
        with frozen transfer learning.
        npj Comput Mater 11, 237 (2025).
        https://doi.org/10.1038/s41524-025-01727-x
-
-Input structures and reference data
-(https://github.com/7radians/ml-peg-data/tree/main/ti64_data):
 
 * Per-case structures, phonon dispersions, DOS, and (subset) harmonic Helmholtz free
   energies for 10 Ti–Al–V alloy cases, pre-converted from CASTEP (PBE) outputs to the

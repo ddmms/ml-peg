@@ -8,7 +8,7 @@ from functools import lru_cache
 import json
 from numbers import Number
 from pathlib import Path
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
 
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps

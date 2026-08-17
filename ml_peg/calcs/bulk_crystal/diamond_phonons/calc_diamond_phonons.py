@@ -19,11 +19,9 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     init_phonopy_from_ref,
 )
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import compute_thermal_properties
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-
-GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 
 OUT_PATH = Path(__file__).parent / "outputs"
 DFT_REF_PATH = OUT_PATH / "DFT"
@@ -61,10 +59,13 @@ def diamond_data() -> Path:
     Path
         Directory containing the pre-converted CASTEP/RSCAN reference data.
     """
-    extracted = Path(
-        download_github_data(filename="diamond_data/data.zip", github_uri=GITHUB_BASE)
+    return (
+        download_s3_data(
+            key="inputs/bulk_crystal/diamond_phonons/diamond_phonons.zip",
+            filename="diamond_phonons.zip",
+        )
+        / "diamond_phonons"
     )
-    return extracted / "data"
 
 
 def test_diamond_phonons_ref(diamond_data: Path) -> None:

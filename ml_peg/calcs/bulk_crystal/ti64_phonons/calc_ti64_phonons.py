@@ -30,11 +30,9 @@ from ml_peg.calcs.bulk_crystal.phonons.phonons_utils import (
     get_fc2_and_freqs,
     init_phonopy_from_ref,
 )
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-
-GITHUB_BASE = "https://raw.githubusercontent.com/7radians/ml-peg-data/main"
 
 OUT_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
 DFT_REF_PATH = OUT_PATH / "DFT"
@@ -78,10 +76,13 @@ def ti64_data() -> Path:
         Directory containing the pre-converted CASTEP reference data
         (band structures, DOS, free energies, and structures per case).
     """
-    extracted = Path(
-        download_github_data(filename="ti64_data/data.zip", github_uri=GITHUB_BASE)
+    return (
+        download_s3_data(
+            key="inputs/bulk_crystal/ti64_phonons/ti64_phonons.zip",
+            filename="ti64_phonons.zip",
+        )
+        / "ti64_phonons"
     )
-    return extracted / "data"
 
 
 def _hex_path() -> tuple[list[list[float]], list[str]]:
