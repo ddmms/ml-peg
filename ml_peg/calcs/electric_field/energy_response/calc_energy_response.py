@@ -39,13 +39,13 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     clean_calc = model.get_calculator(precision="high")
 
     data_path = download_github_data(
-        filename="LINEAR_CARBON_wB97M-V.zip",
+        filename="energy_response.zip",
         github_uri="https://github.com/viktorsvahn/teoroo_ML-PEG/raw/refs/heads/main/data/source",
     )
-    datasets = sorted(f.name for f in (data_path / "data").glob("*.xyz"))
+    datasets = sorted(f.name for f in (data_path / "energy_response").glob("*.xyz"))
 
     for dataset in datasets:
-        mols = read(data_path / "data" / dataset, ":")
+        mols = read(data_path / "energy_response" / dataset, ":")
 
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
