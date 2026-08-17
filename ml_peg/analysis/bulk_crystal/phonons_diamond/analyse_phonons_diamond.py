@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -20,17 +20,18 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "diamond_phonons" / "outputs"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "phonons_diamond" / "outputs"
 REF_PATH = CALC_PATH / "DFT"
-OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "diamond_phonons"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons_diamond"
 
-SCATTER_FILENAME = OUT_PATH / "diamond_phonons_bands_interactive.json"
+SCATTER_FILENAME = OUT_PATH / "phonons_diamond_bands_interactive.json"
 
 METRIC_KEY_MAE = "band_mae"
-METRIC_KEY_RMSE = "band_rmse"
+METRIC_KEY_GAMMA = "gamma"
+METRIC_KEY_THETA_D = "theta_d"
+METRIC_KEY_KAPPA = "kappa"
 
 METRIC_LABEL_MAE = "Band MAE"
-METRIC_LABEL_RMSE = "Band RMSE"
 METRIC_LABEL_GAMMA = "Δγ"
 METRIC_LABEL_THETA_D = "Δθ_D (K)"
 METRIC_LABEL_KAPPA = "Δκ_L (W/m/K)"
@@ -104,7 +105,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
     Returns
     -------
     dict[str, dict[str, Any]]
-        Mapping of model name to band errors, parity points, data paths, and
+        Mapping of model name to band MAE, parity points, data paths, and
         thermal property errors.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -144,71 +145,88 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
             "pred_dos": str(pred_dos_path.relative_to(CALC_PATH.parent)),
         }
         pred_band = _load_pickle(pred_band_path)
-        pred_freqs = (
-            np.vstack([np.asarray(seg) for seg in pred_band["frequencies"]])
+        pred_segments = (
+            [np.asarray(seg) for seg in pred_band["frequencies"]]
             if pred_band is not None
             else None
         )
+        pred_freqs = np.vstack(pred_segments) if pred_segments is not None else None
 
-        band_errors: dict[str, float | None] = {"mae": None, "rmse": None}
+        band_mae: float | None = None
         points: list[dict[str, Any]] = []
         structure_paths = None
 
         if pred_freqs is not None and pred_freqs.shape == ref_freqs.shape:
             pred_flat = pred_freqs.reshape(-1)
             if np.isfinite(pred_flat).all():
-                band_errors["mae"] = mae(ref_flat, pred_flat)
-                band_errors["rmse"] = rmse(ref_flat, pred_flat)
+                band_mae = mae(ref_flat, pred_flat)
 
                 pred_struct_src = model_dir / "diamond.xyz"
                 if pred_struct_src.exists() and ref_struct_src.exists():
                     (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
                     shutil.copy2(pred_struct_src, OUT_PATH / model_name / "diamond.xyz")
                     structure_paths = {
-                        "ref": "/assets/bulk_crystal/diamond_phonons/DFT/diamond.xyz",
+                        "ref": "/assets/bulk_crystal/phonons_diamond/DFT/diamond.xyz",
                         "pred": (
-                            "/assets/bulk_crystal/diamond_phonons/"
+                            "/assets/bulk_crystal/phonons_diamond/"
                             f"{model_name}/diamond.xyz"
                         ),
                     }
-                points = [
-                    {
-                        "id": f"diamond-{i}",
-                        "label": "diamond",
-                        "ref": float(ref_val),
-                        "pred": float(pred_val),
-                    }
-                    for i, (pred_val, ref_val) in enumerate(
-                        zip(pred_flat, ref_flat, strict=True)
-                    )
+                path_labels = [
+                    str(label).replace("$", "").replace("\\Gamma", "Γ")
+                    for label in ref_band.get("labels", [])
                 ]
+                for segment_idx, (ref_segment, pred_segment) in enumerate(
+                    zip(ref_band["frequencies"], pred_segments, strict=True)
+                ):
+                    segment_name = (
+                        f"{path_labels[segment_idx]} → {path_labels[segment_idx + 1]}"
+                        if segment_idx + 1 < len(path_labels)
+                        else f"Segment {segment_idx + 1}"
+                    )
+                    for q_idx, (ref_modes, pred_modes) in enumerate(
+                        zip(ref_segment, pred_segment, strict=True)
+                    ):
+                        for branch_idx, (ref_val, pred_val) in enumerate(
+                            zip(ref_modes, pred_modes, strict=True)
+                        ):
+                            points.append(
+                                {
+                                    "id": (
+                                        f"{segment_name}, q-point {q_idx + 1}/"
+                                        f"{len(ref_segment)}, branch {branch_idx + 1}"
+                                    ),
+                                    "ref": float(ref_val),
+                                    "pred": float(pred_val),
+                                }
+                            )
         elif pred_freqs is not None:
             print(
                 f"{model_name}: band shape mismatch "
                 f"{pred_freqs.shape} vs {ref_freqs.shape}, skipping."
             )
 
-        thermal_errors: dict[str, float | None] = {
-            "gamma": None,
-            "theta_d": None,
-            "kappa": None,
-        }
+        thermal_comparisons: dict[str, dict[str, float]] = {}
         pred_thermal = _load_json(model_dir / "diamond_thermal.json")
         if ref_thermal is not None and pred_thermal is not None:
-            thermal_errors = {
-                "gamma": abs(pred_thermal["mean_gamma"] - ref_thermal["mean_gamma"]),
-                "theta_d": abs(
-                    pred_thermal["debye_temperature_K"]
-                    - ref_thermal["debye_temperature_K"]
-                ),
-                "kappa": abs(
-                    pred_thermal["kappa_W_per_mK"] - ref_thermal["kappa_W_per_mK"]
-                ),
+            thermal_fields = {
+                METRIC_KEY_GAMMA: "mean_gamma",
+                METRIC_KEY_THETA_D: "debye_temperature_K",
+                METRIC_KEY_KAPPA: "kappa_W_per_mK",
             }
+            for metric_key, field in thermal_fields.items():
+                ref_value = float(ref_thermal[field])
+                pred_value = float(pred_thermal[field])
+                if np.isfinite([ref_value, pred_value]).all():
+                    thermal_comparisons[metric_key] = {
+                        "ref": ref_value,
+                        "pred": pred_value,
+                        "error": abs(pred_value - ref_value),
+                    }
 
         stats[model_name] = {
-            "band_errors": band_errors,
-            "thermal_errors": thermal_errors,
+            "band_mae": band_mae,
+            "thermal_comparisons": thermal_comparisons,
             "points": points,
             "data_paths": data_paths,
             "structure_paths": structure_paths,
@@ -219,7 +237,7 @@ def diamond_stats() -> dict[str, dict[str, Any]]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "diamond_phonons_bands_table.json",
+    filename=OUT_PATH / "phonons_diamond_bands_table.json",
     thresholds=THRESHOLDS,
     metric_tooltips=METRIC_TOOLTIPS,
     weights=WEIGHTS,
@@ -241,7 +259,7 @@ def metrics(
         Mapping from visible metric label to per-model values.
     """
 
-    def _value(model: str, group: str, key: str) -> float | None:
+    def _thermal_value(model: str, key: str) -> float | None:
         """
         Return one error value for a model, or None when unavailable.
 
@@ -249,10 +267,8 @@ def metrics(
         ----------
         model
             Model name.
-        group
-            Error group key (``"band_errors"`` or ``"thermal_errors"``).
         key
-            Error key within the group.
+            Thermal error key.
 
         Returns
         -------
@@ -262,16 +278,14 @@ def metrics(
         model_data = diamond_stats.get(model)
         if not model_data:
             return None
-        return model_data[group].get(key)
+        comparison = model_data["thermal_comparisons"].get(key)
+        return comparison["error"] if comparison else None
 
     return {
-        METRIC_LABEL_MAE: {m: _value(m, "band_errors", "mae") for m in MODELS},
-        METRIC_LABEL_RMSE: {m: _value(m, "band_errors", "rmse") for m in MODELS},
-        METRIC_LABEL_GAMMA: {m: _value(m, "thermal_errors", "gamma") for m in MODELS},
-        METRIC_LABEL_THETA_D: {
-            m: _value(m, "thermal_errors", "theta_d") for m in MODELS
-        },
-        METRIC_LABEL_KAPPA: {m: _value(m, "thermal_errors", "kappa") for m in MODELS},
+        METRIC_LABEL_MAE: {m: diamond_stats.get(m, {}).get("band_mae") for m in MODELS},
+        METRIC_LABEL_GAMMA: {m: _thermal_value(m, "gamma") for m in MODELS},
+        METRIC_LABEL_THETA_D: {m: _thermal_value(m, "theta_d") for m in MODELS},
+        METRIC_LABEL_KAPPA: {m: _thermal_value(m, "kappa") for m in MODELS},
     }
 
 
@@ -279,7 +293,7 @@ def metrics(
 @cell_to_scatter(
     filename=SCATTER_FILENAME,
     x_label="Predicted frequency (THz)",
-    y_label="DFT frequency (THz)",
+    y_label="RSCAN frequency (THz)",
 )
 def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
@@ -298,25 +312,26 @@ def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, A
     dataset: dict[str, Any] = {
         "metrics": {
             METRIC_KEY_MAE: METRIC_LABEL_MAE,
-            METRIC_KEY_RMSE: METRIC_LABEL_RMSE,
+            METRIC_KEY_GAMMA: METRIC_LABEL_GAMMA,
+            METRIC_KEY_THETA_D: METRIC_LABEL_THETA_D,
+            METRIC_KEY_KAPPA: METRIC_LABEL_KAPPA,
         },
         "models": {},
     }
 
     for model_name, model_data in diamond_stats.items():
-        if not model_data["points"]:
+        metrics_data: dict[str, Any] = {}
+        if model_data["points"]:
+            metrics_data[METRIC_KEY_MAE] = {
+                "points": model_data["points"],
+                "mae": model_data["band_mae"],
+            }
+        scalar_metrics = model_data["thermal_comparisons"]
+        if not metrics_data and not scalar_metrics:
             continue
         dataset["models"][model_name] = {
-            "metrics": {
-                METRIC_KEY_MAE: {
-                    "points": model_data["points"],
-                    "mae": model_data["band_errors"]["mae"],
-                },
-                METRIC_KEY_RMSE: {
-                    "points": model_data["points"],
-                    "rmse": model_data["band_errors"]["rmse"],
-                },
-            },
+            "metrics": metrics_data,
+            "scalar_metrics": scalar_metrics,
             "data_paths": model_data["data_paths"],
             "structure_paths": model_data["structure_paths"],
         }
@@ -324,7 +339,7 @@ def interactive_dataset(diamond_stats: dict[str, dict[str, Any]]) -> dict[str, A
     return dataset
 
 
-def test_diamond_phonons_analysis(
+def test_phonons_diamond_analysis(
     metrics: dict[str, Any],
     interactive_dataset: dict[str, Any],
 ) -> None:
@@ -341,6 +356,14 @@ def test_diamond_phonons_analysis(
     assert isinstance(metrics, dict)
     assert isinstance(interactive_dataset, dict)
 
-    table_path = OUT_PATH / "diamond_phonons_bands_table.json"
+    for model_data in interactive_dataset["models"].values():
+        assert set(model_data["figures"]) <= {METRIC_KEY_MAE}
+        assert set(model_data["scalar_metrics"]) <= {
+            METRIC_KEY_GAMMA,
+            METRIC_KEY_THETA_D,
+            METRIC_KEY_KAPPA,
+        }
+
+    table_path = OUT_PATH / "phonons_diamond_bands_table.json"
     assert table_path.exists()
     assert SCATTER_FILENAME.exists()

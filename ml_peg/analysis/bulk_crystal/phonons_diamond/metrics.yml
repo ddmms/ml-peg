@@ -7,14 +7,6 @@ metrics:
     weight: 2.0
     level_of_theory: RSCAN
 
-  Band RMSE:
-    good: 0.0
-    bad: 2.0
-    unit: THz
-    tooltip: "Root mean squared error of phonon frequencies for diamond over all sampled q-points and phonon branches along the chosen band path."
-    weight: 1.0
-    level_of_theory: RSCAN
-
   Δγ:
     good: 0.0
     bad: 0.2

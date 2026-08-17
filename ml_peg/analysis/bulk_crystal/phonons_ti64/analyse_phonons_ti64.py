@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, cell_to_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.bulk_crystal.phonons.thermal_utils import EV_TO_KJMOL
@@ -21,22 +21,24 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-CALC_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
+CALC_PATH = CALCS_ROOT / "bulk_crystal" / "phonons_ti64" / "outputs"
 REF_PATH = CALC_PATH / "DFT"
-OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "ti64_phonons"
+OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "phonons_ti64"
 
-SCATTER_FILENAME = OUT_PATH / "ti64_phonons_interactive.json"
+SCATTER_FILENAME = OUT_PATH / "phonons_ti64_interactive.json"
 
 METRICS_YML = Path(__file__).with_name("metrics.yml")
 THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-OMEGA_METRIC_ID = "omega_avg_thz_mae"
+OMEGA_AVG_METRIC_ID = "omega_avg_thz_mae"
+OMEGA_MAX_METRIC_ID = "omega_max_thz_mae"
+FREE_ENERGY_0K_METRIC_ID = "deltaF_0K_eV_per_atom_avg"
+FREE_ENERGY_2000K_METRIC_ID = "deltaF_2000K_eV_per_atom_avg"
 METRIC_ID_TO_LABEL: dict[str, str] = {
-    "dispersion_rmse_thz_avg": "Dispersion RMSE (mean)",
-    "dispersion_rmse_thz_max": "Dispersion RMSE (max)",
-    "deltaF_0K_eV_per_atom_avg": "ΔF (0 K) mean",
-    "deltaF_2000K_eV_per_atom_avg": "ΔF (2000 K) mean",
-    OMEGA_METRIC_ID: "ω_avg MAE",
+    OMEGA_AVG_METRIC_ID: "ω_avg MAE",
+    OMEGA_MAX_METRIC_ID: "ω_max MAE",
+    FREE_ENERGY_0K_METRIC_ID: "ΔF (0 K) mean",
+    FREE_ENERGY_2000K_METRIC_ID: "ΔF (2000 K) mean",
 }
 
 INFO = get_struct_info(
@@ -142,7 +144,7 @@ def _interp_ref_bands(
         Reference frequencies on the model grid, shape ``(n_pred, n_bands)``.
     """
     # Bands are computed along the same fractional k-path but the distance
-    # scales can differ slightly; map the reference distances onto the model
+    # scales can differ slightly. Map the reference distances onto the model
     # span before interpolating.
     ref_x = ref_dist * (pred_dist[-1] / ref_dist[-1]) if ref_dist[-1] else ref_dist
     out = np.empty((len(pred_dist), ref_freqs.shape[1]), dtype=float)
@@ -151,11 +153,11 @@ def _interp_ref_bands(
     return out
 
 
-def _free_energy_errors(
+def _free_energy_comparisons(
     ref_thermal: dict[str, Any], pred_thermal: dict[str, Any]
-) -> tuple[float, float] | None:
+) -> dict[str, dict[str, float]] | None:
     """
-    Absolute free-energy errors at the first and last temperature (eV/atom).
+    Compare free energies at the first and last temperature (eV/atom).
 
     Parameters
     ----------
@@ -166,8 +168,9 @@ def _free_energy_errors(
 
     Returns
     -------
-    tuple[float, float] | None
-        ``(ΔF_first, ΔF_last)`` in eV/atom, or ``None`` when data is invalid.
+    dict[str, dict[str, float]] | None
+        Reference, prediction, and absolute error for the 0 K and 2000 K
+        metrics, or ``None`` when data is invalid.
     """
     n_atoms = ref_thermal.get("n_atoms") or pred_thermal.get("n_atoms")
     if not n_atoms:
@@ -182,8 +185,20 @@ def _free_energy_errors(
         return None
 
     ref_on_pred = np.interp(pred_temps, ref_temps, ref_f)
-    delta_ev_per_atom = np.abs(ref_on_pred - pred_f) / EV_TO_KJMOL / n_atoms
-    return float(delta_ev_per_atom[0]), float(delta_ev_per_atom[-1])
+    ref_ev_per_atom = ref_on_pred / EV_TO_KJMOL / n_atoms
+    pred_ev_per_atom = pred_f / EV_TO_KJMOL / n_atoms
+    return {
+        FREE_ENERGY_0K_METRIC_ID: {
+            "ref": float(ref_ev_per_atom[0]),
+            "pred": float(pred_ev_per_atom[0]),
+            "error": float(abs(pred_ev_per_atom[0] - ref_ev_per_atom[0])),
+        },
+        FREE_ENERGY_2000K_METRIC_ID: {
+            "ref": float(ref_ev_per_atom[-1]),
+            "pred": float(pred_ev_per_atom[-1]),
+            "error": float(abs(pred_ev_per_atom[-1] - ref_ev_per_atom[-1])),
+        },
+    }
 
 
 @pytest.fixture
@@ -231,10 +246,14 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
             print(f"Model directory not found: {model_dir}")
             continue
 
-        rmse_by_case: dict[str, float] = {}
-        df0_by_case: dict[str, float] = {}
-        df2000_by_case: dict[str, float] = {}
-        points: list[dict[str, Any]] = []
+        frequency_points: dict[str, list[dict[str, Any]]] = {
+            OMEGA_AVG_METRIC_ID: [],
+            OMEGA_MAX_METRIC_ID: [],
+        }
+        free_energy_points: dict[str, list[dict[str, Any]]] = {
+            FREE_ENERGY_0K_METRIC_ID: [],
+            FREE_ENERGY_2000K_METRIC_ID: [],
+        }
 
         for case, ref_data in ref_cache.items():
             pred_band_path = model_dir / f"{case}_band_structure.npz"
@@ -252,7 +271,6 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
                 continue
 
             ref_on_pred = _interp_ref_bands(ref_dist, ref_freqs, pred_dist)
-            rmse_by_case[case] = float(rmse(ref_on_pred.ravel(), pred_freqs.ravel()))
 
             data_paths = {
                 "ref_band": str(
@@ -274,50 +292,77 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
                 (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
                 shutil.copy2(pred_struct_src, OUT_PATH / model_name / f"{case}.xyz")
                 structure_paths = {
-                    "ref": f"/assets/bulk_crystal/ti64_phonons/DFT/{case}.xyz",
+                    "ref": f"/assets/bulk_crystal/phonons_ti64/DFT/{case}.xyz",
                     "pred": (
-                        f"/assets/bulk_crystal/ti64_phonons/{model_name}/{case}.xyz"
+                        f"/assets/bulk_crystal/phonons_ti64/{model_name}/{case}.xyz"
                     ),
                 }
-            points.append(
-                {
-                    "id": case,
-                    "label": case,
+            point_metadata = {
+                "id": case,
+                "label": case,
+                "data_paths": data_paths,
+                "structure_paths": structure_paths,
+            }
+            frequency_points[OMEGA_AVG_METRIC_ID].append(
+                point_metadata
+                | {
                     "ref": float(np.mean(ref_on_pred)),
                     "pred": float(np.mean(pred_freqs)),
-                    "data_paths": data_paths,
-                    "structure_paths": structure_paths,
+                }
+            )
+            frequency_points[OMEGA_MAX_METRIC_ID].append(
+                point_metadata
+                | {
+                    "ref": float(np.max(ref_on_pred)),
+                    "pred": float(np.max(pred_freqs)),
                 }
             )
 
             if ref_data["thermal"] is not None:
                 pred_thermal = _load_json(model_dir / f"{case}_thermal_properties.json")
                 if pred_thermal is not None:
-                    errors = _free_energy_errors(ref_data["thermal"], pred_thermal)
-                    if errors is not None:
-                        df0_by_case[case], df2000_by_case[case] = errors
+                    comparisons = _free_energy_comparisons(
+                        ref_data["thermal"], pred_thermal
+                    )
+                    if comparisons is not None:
+                        for metric_id, comparison in comparisons.items():
+                            free_energy_points[metric_id].append(
+                                point_metadata
+                                | {
+                                    "ref": comparison["ref"],
+                                    "pred": comparison["pred"],
+                                }
+                            )
 
-        rmse_vals = list(rmse_by_case.values())
-        omega_errors = [abs(p["ref"] - p["pred"]) for p in points]
         stats[model_name] = {
             "metrics": {
-                "dispersion_rmse_thz_avg": float(np.mean(rmse_vals))
-                if rmse_vals
-                else None,
-                "dispersion_rmse_thz_max": float(np.max(rmse_vals))
-                if rmse_vals
-                else None,
-                "deltaF_0K_eV_per_atom_avg": float(np.mean(list(df0_by_case.values())))
-                if df0_by_case
-                else None,
-                "deltaF_2000K_eV_per_atom_avg": float(
-                    np.mean(list(df2000_by_case.values()))
-                )
-                if df2000_by_case
-                else None,
-                OMEGA_METRIC_ID: float(np.mean(omega_errors)) if omega_errors else None,
+                **{
+                    metric_id: (
+                        float(
+                            np.mean(
+                                [abs(point["pred"] - point["ref"]) for point in values]
+                            )
+                        )
+                        if values
+                        else None
+                    )
+                    for metric_id, values in frequency_points.items()
+                },
+                **{
+                    metric_id: (
+                        float(
+                            np.mean(
+                                [abs(point["pred"] - point["ref"]) for point in values]
+                            )
+                        )
+                        if values
+                        else None
+                    )
+                    for metric_id, values in free_energy_points.items()
+                },
             },
-            "points": points,
+            "frequency_points": frequency_points,
+            "free_energy_points": free_energy_points,
         }
 
     return stats
@@ -325,7 +370,7 @@ def ti64_stats() -> dict[str, dict[str, Any]]:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "ti64_phonons_metrics_table.json",
+    filename=OUT_PATH / "phonons_ti64_metrics_table.json",
     thresholds=THRESHOLDS,
     metric_tooltips=METRIC_TOOLTIPS,
     weights=WEIGHTS,
@@ -359,7 +404,21 @@ def metrics(
 @cell_to_scatter(
     filename=SCATTER_FILENAME,
     x_label="Predicted ω_avg (THz)",
-    y_label="Reference ω_avg (THz)",
+    y_label="PBE ω_avg (THz)",
+    metric_axis_labels={
+        OMEGA_MAX_METRIC_ID: (
+            "Predicted ω_max (THz)",
+            "PBE ω_max (THz)",
+        ),
+        FREE_ENERGY_0K_METRIC_ID: (
+            "Predicted F at 0 K (eV/atom)",
+            "PBE F at 0 K (eV/atom)",
+        ),
+        FREE_ENERGY_2000K_METRIC_ID: (
+            "Predicted F at 2000 K (eV/atom)",
+            "PBE F at 2000 K (eV/atom)",
+        ),
+    },
 )
 def interactive_dataset(ti64_stats: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """
@@ -375,27 +434,32 @@ def interactive_dataset(ti64_stats: dict[str, dict[str, Any]]) -> dict[str, Any]
     dict[str, Any]
         Interactive dataset written to JSON by the decorator.
     """
-    dataset: dict[str, Any] = {
-        "metrics": {OMEGA_METRIC_ID: METRIC_ID_TO_LABEL[OMEGA_METRIC_ID]},
-        "models": {},
-    }
+    dataset: dict[str, Any] = {"metrics": METRIC_ID_TO_LABEL, "models": {}}
 
     for model_name, model_data in ti64_stats.items():
-        if not model_data["points"]:
+        metrics_data: dict[str, Any] = {}
+        for metric_id, points_for_metric in model_data["frequency_points"].items():
+            if points_for_metric:
+                metrics_data[metric_id] = {
+                    "points": points_for_metric,
+                    "mae": model_data["metrics"][metric_id],
+                }
+        for metric_id, points_for_metric in model_data["free_energy_points"].items():
+            if points_for_metric:
+                metrics_data[metric_id] = {
+                    "points": points_for_metric,
+                    "mae": model_data["metrics"][metric_id],
+                }
+        if not metrics_data:
             continue
         dataset["models"][model_name] = {
-            "metrics": {
-                OMEGA_METRIC_ID: {
-                    "points": model_data["points"],
-                    "mae": model_data["metrics"][OMEGA_METRIC_ID],
-                }
-            },
+            "metrics": metrics_data,
         }
 
     return dataset
 
 
-def test_ti64_phonons_analysis(
+def test_phonons_ti64_analysis(
     metrics: dict[str, Any],
     interactive_dataset: dict[str, Any],
 ) -> None:
@@ -411,7 +475,10 @@ def test_ti64_phonons_analysis(
     """
     assert isinstance(metrics, dict)
     assert isinstance(interactive_dataset, dict)
+    for model_data in interactive_dataset["models"].values():
+        assert OMEGA_AVG_METRIC_ID in model_data["figures"]
+        assert OMEGA_MAX_METRIC_ID in model_data["figures"]
 
-    table_path = OUT_PATH / "ti64_phonons_metrics_table.json"
+    table_path = OUT_PATH / "phonons_ti64_metrics_table.json"
     assert table_path.exists()
     assert SCATTER_FILENAME.exists()

@@ -123,8 +123,8 @@ Reference data:
 * PBE
 
 
-Diamond phonons
-===============
+Phonons: Diamond
+================
 
 Summary
 -------
@@ -150,24 +150,19 @@ Mean absolute error (MAE) between predicted and reference phonon frequencies.
 It is evaluated over all q-points and all phonon branches.
 
 
-2. Band RMSE
-
-Root mean squared error (RMSE) between predicted and reference phonon frequencies.
-It is evaluated over all q-points and all phonon branches.
-
-3. Δγ
+2. Δγ
 
 Absolute error in the mean Grüneisen parameter relative to the DFT reference.
 The mean Grüneisen parameter is computed on a 20×20×20 q-mesh by finite differences
 between force constants at volumes V\ :sub:`0` ± 1% (see the Method section below).
 
-4. Δθ\ :sub:`D` (K)
+3. Δθ\ :sub:`D` (K)
 
 Absolute error in the Debye temperature relative to the DFT reference. The Debye
 temperature is estimated from the maximum phonon frequency on a 20×20×20 mesh:
 θ\ :sub:`D` = ℏω\ :sub:`max` / k\ :sub:`B`.
 
-5. Δκ\ :sub:`L` (W/m·K)
+4. Δκ\ :sub:`L` (W/m·K)
 
 Absolute error in the Slack-formula lattice thermal conductivity at 300 K relative
 to the DFT reference. Both prediction and reference use the identical Slack formula,
@@ -176,14 +171,14 @@ approximation error.
 
 **Score thresholds**
 
-The ``bad`` thresholds in ``metrics.yml`` are set as follows. The band MAE (1 THz)
-and RMSE (2 THz) bars correspond to 2.5% and 5% of diamond's 40 THz spectrum — a
-deliberately strict choice, so that only quantitatively accurate force constants
-score. Δγ = 0.2 corresponds to a 20% error in the predicted thermal expansion
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The band MAE bar
+(1 THz) corresponds to 2.5% of diamond's 40 THz spectrum — a deliberately strict
+choice, so that only quantitatively accurate force constants score. Δγ = 0.2
+corresponds to a 20% error in the predicted thermal expansion
 (α ∝ γ) and to the spread among experimental determinations of diamond's Grüneisen
 parameter. Δθ\ :sub:`D` = 90 K corresponds to a ~1.9 THz error in the highest phonon
 frequency (θ\ :sub:`D` = ħω\ :sub:`max`/k\ :sub:`B` ≈ 48 K per THz), consistent with
-the band-structure bars. Δκ\ :sub:`L` = 400 W/m/K (≈50% of the reference κ)
+the band-structure threshold. Δκ\ :sub:`L` = 400 W/m/K (≈50% of the reference κ)
 approximately equals the κ error obtained by propagating the Δγ and Δθ\ :sub:`D`
 bars through the Slack formula (κ ∝ θ\ :sub:`D`\ ³/γ²), keeping the three thermal
 thresholds mutually consistent.
@@ -319,8 +314,8 @@ The reference data is independent of public DFT databases, though diamond chemis
 should be in-domain for models trained on bulk-materials datasets such as OMat24.
 
 
-Ti64 phonons
-============
+Phonons: Ti64
+=============
 
 Summary
 -------
@@ -336,28 +331,7 @@ Helmholtz free-energy errors per atom are additionally reported.
 Metrics
 -------
 
-1. Dispersion RMSE (mean)
-
-   Mean root mean squared error (RMSE) between predicted and reference phonon frequencies,
-   averaged over 10 Ti64 cases.
-
-   For each case, reference phonon frequencies are provided along a fixed high-symmetry
-   q-path, pre-converted from CASTEP outputs. Atomic positions are then relaxed for each model
-   using the FIRE optimiser with symmetry fixed (``fmax=0.001``, up to 1000 steps).
-   The cell is kept fixed at the reference geometry. Phonon
-   frequencies are computed using finite displacements in a 2×2×2 supercell with a
-   displacement magnitude of 0.02 Å and ``plusminus=True``, and the resulting force
-   constants are symmetrised. The reference dispersion is linearly interpolated onto the
-   ML band-path grid, and the RMSE is evaluated over all q-points and all phonon
-   branches.
-
-2. Dispersion RMSE (max)
-
-   Maximum per-case dispersion RMSE (in THz) over the 10 Ti64 cases.
-
-   Computed as in (1), but taking the maximum RMSE value across cases.
-
-3. ω_avg MAE
+1. ω_avg MAE
 
    Mean absolute error (MAE) in the average phonon frequency ω_avg over the 10 Ti64 cases.
 
@@ -366,7 +340,15 @@ Metrics
    error is then averaged across cases. Frequencies are averaged as stored; if imaginary modes
    are present as negative values, they contribute directly.
 
-4. ΔF (0 K) mean
+2. ω_max MAE
+
+   Mean absolute error in the maximum phonon frequency ω_max over the 10 Ti64 cases.
+
+   For each case, ω_max is the largest frequency after interpolating the reference
+   dispersion onto the ML band-path grid. The per-case absolute error is then
+   averaged across cases.
+
+3. ΔF (0 K) mean
 
    Mean absolute error in Helmholtz free energy at 0 K, reported as eV/atom, over the
    subset of cases where thermodynamic outputs are available.
@@ -379,26 +361,18 @@ Metrics
    0 K is divided by the number of atoms and averaged across thermodynamics-enabled cases.
    Weights are taken directly from CASTEP; no explicit renormalisation is applied.
 
-5. ΔF (2000 K) mean
+4. ΔF (2000 K) mean
 
    Mean absolute error in Helmholtz free energy at 2000 K, reported as eV/atom, over the
    subset of cases where thermodynamic outputs are available.
 
-   Computed as in (4), but using the final temperature point (2000 K).
+   Computed as in (3), but using the final temperature point (2000 K).
 
 **Score thresholds**
 
-The ``bad`` thresholds in ``metrics.yml`` are set as follows. The dispersion RMSE bar
-(2 THz) is 20% of the ~10 THz Ti64 spectrum and comparable to half the depth of the
-imaginary modes of the bcc phases in the reference (3–4.5 THz): frequency errors of
-this magnitude are sufficient to create or remove a dynamical instability, and bound
-the vibrational free-energy error at up to ~3 k\ :sub:`B`\ T·(δω/ω) ≈ 0.1 eV/atom at
-2000 K, well above the free-energy differences that decide phase competition in Ti
-alloys. Since the RMSE averages over the Brillouin zone, this marks the scale at
-which stability conclusions can no longer be guaranteed, rather than a point of
-certain failure. The same 2 THz bar is applied to the worst case (RMSE max) so that
-no single phase may be far wrong, and the ω_avg MAE bar (1 THz, 10% of the spectrum)
-bounds systematic softening or stiffening of the lattice. The Helmholtz free-energy
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The ω_avg and ω_max
+MAE bars (1 THz, 10% of the spectrum) bound systematic softening or stiffening
+of the lattice and errors at the top of the phonon spectrum. The Helmholtz free-energy
 bars (7 meV/atom at 0 K, ≈20% of the ~35 meV/atom zero-point energy; 30 meV/atom at
 2000 K) are set so that errors beyond them are comparable to the phase free-energy
 differences (tens of meV/atom) that such calculations are used to resolve.

@@ -61,14 +61,14 @@ def diamond_data() -> Path:
     """
     return (
         download_s3_data(
-            key="inputs/bulk_crystal/diamond_phonons/diamond_phonons.zip",
-            filename="diamond_phonons.zip",
+            key="inputs/bulk_crystal/phonons_diamond/phonons_diamond.zip",
+            filename="phonons_diamond.zip",
         )
-        / "diamond_phonons"
+        / "phonons_diamond"
     )
 
 
-def test_diamond_phonons_ref(diamond_data: Path) -> None:
+def test_phonons_diamond_ref(diamond_data: Path) -> None:
     """
     Copy the pre-converted DFT reference data to ``outputs/DFT/``.
 
@@ -83,7 +83,7 @@ def test_diamond_phonons_ref(diamond_data: Path) -> None:
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_diamond_phonons(mlip: tuple[str, Any], diamond_data: Path) -> None:
+def test_phonons_diamond(mlip: tuple[str, Any], diamond_data: Path) -> None:
     """
     Compute phonon band structure and thermal properties for diamond with one MLIP.
 

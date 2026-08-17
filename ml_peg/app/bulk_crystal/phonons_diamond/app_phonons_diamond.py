@@ -18,32 +18,36 @@ from ml_peg.app.utils.build_callbacks import (
     model_asset_from_scatter,
     scatter_and_assets_from_table,
 )
-from ml_peg.app.utils.plot_helpers import build_serialized_scatter_content
+from ml_peg.app.utils.plot_helpers import (
+    build_scalar_metric_bar_content,
+    build_serialized_scatter_content,
+)
 from ml_peg.calcs import CALCS_ROOT
 
-BENCHMARK_NAME = "diamond_phonons"
+BENCHMARK_NAME = "Phonons: Diamond"
+BENCHMARK_ID = "phonons_diamond"
 
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
-TABLE_PATH = DATA_PATH / "diamond_phonons_bands_table.json"
-SCATTER_PATH = DATA_PATH / "diamond_phonons_bands_interactive.json"
+DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_ID
+TABLE_PATH = DATA_PATH / "phonons_diamond_bands_table.json"
+SCATTER_PATH = DATA_PATH / "phonons_diamond_bands_interactive.json"
 INFO_PATH = DATA_PATH / "info.json"
 
-# Sphinx generates hyphenated anchors from section titles ("Diamond phonons").
+# Sphinx generates hyphenated anchors from section titles ("Phonons: Diamond").
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
-    "#diamond-phonons"
+    "#phonons-diamond"
 )
 
-CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
+CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_ID
 
-PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
-DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
-LAST_CELL_STORE_ID = f"{BENCHMARK_NAME}-last-cell"
-SCATTER_METADATA_STORE_ID = f"{BENCHMARK_NAME}-scatter-meta"
-SCATTER_GRAPH_ID = f"{BENCHMARK_NAME}-scatter"
+PLOT_CONTAINER_ID = f"{BENCHMARK_ID}-plot-container"
+DISPERSION_CONTAINER_ID = f"{BENCHMARK_ID}-dispersion-container"
+LAST_CELL_STORE_ID = f"{BENCHMARK_ID}-last-cell"
+SCATTER_METADATA_STORE_ID = f"{BENCHMARK_ID}-scatter-meta"
+SCATTER_GRAPH_ID = f"{BENCHMARK_ID}-scatter"
 
 
-class DiamondPhononApp(BaseApp):
+class PhononsDiamondApp(BaseApp):
     """Diamond phonon benchmark app wiring callbacks and layout."""
 
     def register_callbacks(self) -> None:
@@ -54,10 +58,6 @@ class DiamondPhononApp(BaseApp):
         models_data = interactive_data.get("models", {})
         metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
-        # Thermal metric columns have no per-point scatter data; fall back to
-        # the band frequency parity plot so any cell click produces a response.
-        for label in self.metrics:
-            label_to_key.setdefault(label, "band_mae")
 
         metric_handler = partial(
             build_serialized_scatter_content,
@@ -65,9 +65,32 @@ class DiamondPhononApp(BaseApp):
             label_map=label_to_key,
             scatter_id=SCATTER_GRAPH_ID,
             instructions=(
-                "Click on a metric to view DFT vs predicted frequency scatter plots."
+                "Hover for point details. Click a point to view the model's "
+                "dispersion and DOS."
             ),
         )
+        model_order = [row["MLIP"] for row in self.table.data]
+        scalar_metric_handler = partial(
+            build_scalar_metric_bar_content,
+            models_data=models_data,
+            label_map=label_to_key,
+            model_order=model_order,
+            yaxis_titles={
+                "gamma": "Absolute error in mean γ",
+                "theta_d": "Absolute error in θ_D (K)",
+                "kappa": "Absolute error in κ_L (W/m/K)",
+            },
+            scatter_id=SCATTER_GRAPH_ID,
+            instructions=(
+                "Each bar is one MLIP. Hover for reference and predicted values. "
+                "The model selected in the table is highlighted. Click a bar to "
+                "view that model's dispersion and DOS."
+            ),
+        )
+        column_handlers = {
+            metric_labels[key]: scalar_metric_handler
+            for key in ("gamma", "theta_d", "kappa")
+        }
 
         scatter_and_assets_from_table(
             table_id=self.table_id,
@@ -75,7 +98,7 @@ class DiamondPhononApp(BaseApp):
             plot_container_id=PLOT_CONTAINER_ID,
             scatter_metadata_store_id=SCATTER_METADATA_STORE_ID,
             last_cell_store_id=LAST_CELL_STORE_ID,
-            column_handlers={},
+            column_handlers=column_handlers,
             default_handler=metric_handler,
             scatter_id=SCATTER_GRAPH_ID,
         )
@@ -87,25 +110,29 @@ class DiamondPhononApp(BaseApp):
             """
             Build a selection context for the dispersion preview.
 
-            For this benchmark all scatter points belong to the same system,
-            so any click shows the model's band + DOS comparison.
+            For this benchmark all plotted data belong to the same system. A bar
+            can select another model while a band point retains the table model.
 
             Parameters
             ----------
             click_data
-                Dash click payload from the scatter plot. Unused.
+                Data for the clicked point or bar.
             metadata
-                Metadata payload from the scatter callback; contains ``model``.
+                Metadata payload from the scatter callback containing ``model``.
 
             Returns
             -------
             dict[str, Any]
                 Selection context consumed by ``render_dispersion_component``.
             """
-            _ = click_data
-            entry = models_data.get(str(metadata["model"]), {})
+            model_name = str(metadata["model"])
+            customdata = (click_data or {}).get("customdata", [])
+            clicked_model = customdata[0] if customdata else None
+            if clicked_model in models_data:
+                model_name = str(clicked_model)
+            entry = models_data.get(model_name, {})
             return {
-                "model": str(metadata["model"]),
+                "model": model_name,
                 "selection": {
                     "id": "diamond",
                     "label": "Carbon diamond",
@@ -128,21 +155,21 @@ class DiamondPhononApp(BaseApp):
             asset_container_id=DISPERSION_CONTAINER_ID,
             data_lookup=model_only_lookup,
             asset_renderer=dispersion_renderer,
-            empty_message="Click on a scatter point to view the dispersion plot.",
+            empty_message="Click on a point or bar to view the dispersion plot.",
             missing_message="No dispersion plot available for this point.",
         )
 
 
-def get_app() -> DiamondPhononApp:
+def get_app() -> PhononsDiamondApp:
     """
-    Construct the DiamondPhononApp instance.
+    Construct the PhononsDiamondApp instance.
 
     Returns
     -------
-    DiamondPhononApp
+    PhononsDiamondApp
         Configured application with table + scatter/dispersion panels.
     """
-    return DiamondPhononApp(
+    return PhononsDiamondApp(
         name=BENCHMARK_NAME,
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions and thermal "
@@ -156,13 +183,13 @@ def get_app() -> DiamondPhononApp:
             html.Div(
                 [
                     html.Div(
-                        "Click on a metric to view DFT vs predicted frequency scatter "
-                        "plots.",
+                        "Click Band MAE for frequency parity, or a thermal metric "
+                        "to compare all MLIPs.",
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
                     html.Div(
-                        "Click on a scatter point to view the dispersion plot.",
+                        "Click on a point or bar to view the dispersion plot.",
                         id=DISPERSION_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
@@ -181,7 +208,7 @@ def get_app() -> DiamondPhononApp:
 
 if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    diamond_phonon_app = get_app()
-    full_app.layout = diamond_phonon_app.layout
-    diamond_phonon_app.register_callbacks()
+    phonons_diamond_app = get_app()
+    full_app.layout = phonons_diamond_app.layout
+    phonons_diamond_app.register_callbacks()
     full_app.run(port=8060, debug=True)

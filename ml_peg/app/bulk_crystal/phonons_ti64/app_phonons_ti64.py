@@ -23,29 +23,30 @@ from ml_peg.app.utils.plot_helpers import (
 )
 from ml_peg.calcs import CALCS_ROOT
 
-BENCHMARK_NAME = "ti64_phonons"
+BENCHMARK_NAME = "Phonons: Ti64"
+BENCHMARK_ID = "phonons_ti64"
 
-DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_NAME
-TABLE_PATH = DATA_PATH / "ti64_phonons_metrics_table.json"
-SCATTER_PATH = DATA_PATH / "ti64_phonons_interactive.json"
+DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / BENCHMARK_ID
+TABLE_PATH = DATA_PATH / "phonons_ti64_metrics_table.json"
+SCATTER_PATH = DATA_PATH / "phonons_ti64_interactive.json"
 INFO_PATH = DATA_PATH / "info.json"
 
-# Sphinx generates hyphenated anchors from section titles ("Ti64 phonons").
+# Sphinx generates hyphenated anchors from section titles ("Phonons: Ti64").
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html"
-    "#ti64-phonons"
+    "#phonons-ti64"
 )
 
-CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_NAME
+CALC_BASE = CALCS_ROOT / "bulk_crystal" / BENCHMARK_ID
 
-PLOT_CONTAINER_ID = f"{BENCHMARK_NAME}-plot-container"
-DISPERSION_CONTAINER_ID = f"{BENCHMARK_NAME}-dispersion-container"
-LAST_CELL_STORE_ID = f"{BENCHMARK_NAME}-last-cell"
-SCATTER_METADATA_STORE_ID = f"{BENCHMARK_NAME}-scatter-meta"
-SCATTER_GRAPH_ID = f"{BENCHMARK_NAME}-scatter"
+PLOT_CONTAINER_ID = f"{BENCHMARK_ID}-plot-container"
+DISPERSION_CONTAINER_ID = f"{BENCHMARK_ID}-dispersion-container"
+LAST_CELL_STORE_ID = f"{BENCHMARK_ID}-last-cell"
+SCATTER_METADATA_STORE_ID = f"{BENCHMARK_ID}-scatter-meta"
+SCATTER_GRAPH_ID = f"{BENCHMARK_ID}-scatter"
 
 
-class Ti64PhononsApp(BaseApp):
+class PhononsTi64App(BaseApp):
     """Ti64 phonons benchmark app wiring callbacks and layout."""
 
     def register_callbacks(self) -> None:
@@ -56,17 +57,16 @@ class Ti64PhononsApp(BaseApp):
         models_data = interactive_data.get("models", {})
         metric_labels = interactive_data.get("metrics", {})
         label_to_key = {label: key for key, label in metric_labels.items()}
-        # All table columns fall back to the per-case ω_avg scatter, which
-        # links through to the dispersion + DOS preview for each case.
-        for label in self.metrics:
-            label_to_key.setdefault(label, "omega_avg_thz_mae")
 
         metric_handler = partial(
             build_serialized_scatter_content,
             models_data=models_data,
             label_map=label_to_key,
             scatter_id=SCATTER_GRAPH_ID,
-            instructions="Click any cell to view ω_avg (ref vs pred) scatter.",
+            instructions=(
+                "Each point is one Ti64 case. Hover for values. Click a point "
+                "to view its dispersion and DOS."
+            ),
         )
 
         scatter_and_assets_from_table(
@@ -104,16 +104,16 @@ class Ti64PhononsApp(BaseApp):
         )
 
 
-def get_app() -> Ti64PhononsApp:
+def get_app() -> PhononsTi64App:
     """
-    Construct the Ti64PhononsApp instance.
+    Construct the PhononsTi64App instance.
 
     Returns
     -------
-    Ti64PhononsApp
+    PhononsTi64App
         Configured application with table + scatter/dispersion panels.
     """
-    return Ti64PhononsApp(
+    return PhononsTi64App(
         name=BENCHMARK_NAME,
         description=(
             "Accuracy of MLIPs in predicting phonon dispersions and vibrational "
@@ -127,7 +127,7 @@ def get_app() -> Ti64PhononsApp:
             html.Div(
                 [
                     html.Div(
-                        "Click any cell to view ω_avg (ref vs pred) scatter.",
+                        "Click a metric to compare its per-case predictions with PBE.",
                         id=PLOT_CONTAINER_ID,
                         style={"flex": "1", "minWidth": 0},
                     ),
@@ -151,7 +151,7 @@ def get_app() -> Ti64PhononsApp:
 
 if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    ti64_app = get_app()
-    full_app.layout = ti64_app.layout
-    ti64_app.register_callbacks()
+    phonons_ti64_app = get_app()
+    full_app.layout = phonons_ti64_app.layout
+    phonons_ti64_app.register_callbacks()
     full_app.run(port=8060, debug=True)

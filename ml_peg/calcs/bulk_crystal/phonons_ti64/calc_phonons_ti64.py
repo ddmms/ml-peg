@@ -34,7 +34,7 @@ from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-OUT_PATH = CALCS_ROOT / "bulk_crystal" / "ti64_phonons" / "outputs"
+OUT_PATH = CALCS_ROOT / "bulk_crystal" / "phonons_ti64" / "outputs"
 DFT_REF_PATH = OUT_PATH / "DFT"
 
 # Relaxation settings: FIRE with fixed symmetry, as in the general phonon
@@ -46,7 +46,7 @@ Q_MESH_THERMAL = [20, 20, 20]
 KPOINTS = 100
 T_MIN, T_MAX, T_STEP = 0, 2000, 10
 DISPLACEMENT = 0.02
-# Per-case DOS displacement overrides; all other settings are shared.
+# Per-case DOS displacement overrides. All other settings are shared.
 DISP_DOS = {"hex_Ti8AlV": 0.01}
 
 CASES = [
@@ -78,10 +78,10 @@ def ti64_data() -> Path:
     """
     return (
         download_s3_data(
-            key="inputs/bulk_crystal/ti64_phonons/ti64_phonons.zip",
-            filename="ti64_phonons.zip",
+            key="inputs/bulk_crystal/phonons_ti64/phonons_ti64.zip",
+            filename="phonons_ti64.zip",
         )
-        / "ti64_phonons"
+        / "phonons_ti64"
     )
 
 
@@ -144,7 +144,7 @@ def _case_path(case_name: str) -> tuple[list[list[float]], list[str]]:
     return HEX_KPATH, HEX_LABELS
 
 
-def test_ti64_phonons_ref(ti64_data: Path) -> None:
+def test_phonons_ti64_ref(ti64_data: Path) -> None:
     """
     Copy the pre-converted CASTEP reference data to ``outputs/DFT/``.
 
@@ -203,7 +203,7 @@ def _calc_case(case: str, calc: Any, data_dir: Path, out_dir: Path) -> None:
     kpath, labels = _case_path(case)
     disp_dos = DISP_DOS.get(case, DISPLACEMENT)
 
-    # Relax with fixed symmetry (positions only; the cell is kept fixed so
+    # Relax with fixed symmetry. The cell is kept fixed so
     # band distances remain comparable to the reference).
     atoms = ase.io.read(data_dir / f"{case}.xyz")
     atoms.info.setdefault("charge", 0)
@@ -262,7 +262,7 @@ def _calc_case(case: str, calc: Any, data_dir: Path, out_dir: Path) -> None:
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_ti64_phonons(mlip: tuple[str, Any], ti64_data: Path) -> None:
+def test_phonons_ti64(mlip: tuple[str, Any], ti64_data: Path) -> None:
     """
     Run the full Ti64 phonon suite for one model and write outputs.
 
