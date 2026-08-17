@@ -9,7 +9,7 @@ from warnings import warn
 
 from dash.dash_table import DataTable
 from dash.dcc import Graph
-from plotly.io import read_json
+import orjson
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.utils import (
@@ -24,6 +24,32 @@ from ml_peg.app.utils.utils import (
     sig_fig_format,
 )
 from ml_peg.models.get_models import load_model_configs
+
+
+def read_json(path: str | Path) -> object:
+    """
+    Read a JSON file quickly via orjson, falling back to the stdlib parser.
+
+    orjson is faster but rejects the bare ``NaN``/``Infinity`` tokens the analysis
+    stage sometimes writes; the stdlib ``json`` parser accepts them, so retry with
+    it when orjson raises.
+
+    Parameters
+    ----------
+    path
+        Path to the JSON file.
+
+    Returns
+    -------
+    object
+        Parsed JSON content.
+    """
+    with open(path, "rb") as file:
+        data = file.read()
+    try:
+        return orjson.loads(data)
+    except orjson.JSONDecodeError:
+        return json.loads(data)
 
 
 def rebuild_table(
@@ -52,8 +78,7 @@ def rebuild_table(
         If the table JSON omits required ``thresholds`` metadata.
     """
     # Load JSON file
-    with open(filename) as f:
-        table_json = json.load(f)
+    table_json = read_json(filename)
 
     data = table_json["data"]
     columns = table_json["columns"]
@@ -142,18 +167,23 @@ def rebuild_table(
     )
     style_with_warnings = style + warning_styles
 
+    # Proportional widths (percent of total) with a pixel minWidth floor, matching
+    # the summary tables: the table fills its container up to the wrapper's cap and
+    # scrolls below the floor. The weight/threshold grids use matching minmax(px,fr)
+    # tracks so they stay aligned with the columns.
+    # ``or 1`` guards the ``width / total_column_width`` division below against a
+    # degenerate table whose column widths are all falsy (None/0).
+    total_column_width = sum(w for w in column_widths.values() if w) or 1
     style_cell_conditional: list[dict[str, object]] = []
     for column_id, width in column_widths.items():
         if width is None:
             continue
-        col_width = f"{width}px"
-        alignment = "left" if column_id == "MLIP" else "center"
+        alignment = "left" if column_id == "MLIP" else "right"
         style_cell_conditional.append(
             {
                 "if": {"column_id": column_id},
-                "width": col_width,
-                "minWidth": col_width,
-                "maxWidth": col_width,
+                "width": f"{width / total_column_width * 100:.4f}%",
+                "minWidth": f"{width}px",
                 "textAlign": alignment,
             }
         )
@@ -172,8 +202,8 @@ def rebuild_table(
             "whiteSpace": "normal",
             "height": "auto",
             "minHeight": "70px",
-            "textAlign": "center",
-            "verticalAlign": "middle",
+            "textAlign": "right",
+            "verticalAlign": "bottom",
             "lineHeight": "1.4",
             "padding": "8px",
         },
@@ -185,7 +215,7 @@ def rebuild_table(
         ],
         sort_action="native",
         sort_as_null=["NaN"],
-        fill_width=False,
+        fill_width=True,
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -202,6 +232,7 @@ def rebuild_table(
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
     table.column_widths = column_widths
+    table.total_column_width = total_column_width
 
     return table
 
@@ -222,8 +253,43 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
     Graph
         Loaded plotly Graph.
     """
-    figure = read_json(filename) if Path(filename).exists() else None
-    return Graph(id=id, figure=figure)
+    # Pass the saved figure through to dcc.Graph as a plain dict rather than
+    # rebuilding a validated plotly ``Figure``. Plotly re-validates every property
+    # when reconstructing a ``Figure``, which dominates app start-up; the browser's
+    # plotly.js renders the dict identically, so the Figure round-trip is redundant.
+    if Path(filename).exists():
+        figure = read_json(filename)
+    else:
+        figure = None
+    return Graph(
+        id=id,
+        figure=figure,
+        responsive=_responsive_mode(figure),
+        config={"displaylogo": False},
+    )
+
+
+def _responsive_mode(figure: dict | None) -> bool | str:
+    """
+    Choose the ``dcc.Graph`` responsive mode for a saved figure.
+
+    ``responsive=True`` makes a figure fill its container, but Dash implements
+    that by unsetting ``layout.height``/``layout.width`` -- which would discard
+    the authored size of the few figures that set one (e.g. the 1500x1500
+    graphene-wetting panels). Those keep Dash's default ``"auto"``.
+
+    Parameters
+    ----------
+    figure
+        Saved figure dict, or None when the file is missing.
+
+    Returns
+    -------
+    bool or str
+        ``True`` to stretch to the container, ``"auto"`` to respect the figure.
+    """
+    layout = (figure or {}).get("layout") or {}
+    return "auto" if layout.get("height") or layout.get("width") else True
 
 
 def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
@@ -304,8 +370,7 @@ def read_density_plot_for_model(
         Dash Graph displaying only the requested model (plus reference line).
         Returns None if the model has no data in the plot.
     """
-    with open(filename) as f:
-        fig_dict = json.load(f)
+    fig_dict = read_json(filename)
 
     filtered_fig = _filter_density_figure_for_model(fig_dict, model)
 
@@ -315,7 +380,12 @@ def read_density_plot_for_model(
         warn(f"No model data found for {model}", stacklevel=2)
         return None
 
-    return Graph(id=id, figure=filtered_fig)
+    return Graph(
+        id=id,
+        figure=filtered_fig,
+        responsive=_responsive_mode(filtered_fig),
+        config={"displaylogo": False},
+    )
 
 
 def collect_traj_assets(
