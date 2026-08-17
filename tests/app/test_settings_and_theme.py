@@ -19,6 +19,12 @@ def _open_settings(page: Page) -> None:
     expect(page.locator(".mlpeg-settings-panel")).to_be_visible(timeout=TIMEOUT)
 
 
+def _goto_category(page: Page) -> None:
+    """Open the test category page and wait for the benchmark table."""
+    page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
+
+
 def test_settings_panel_contents(ready_page: Page) -> None:
     """The popover holds theme, font, colour scheme, zoom and cache controls."""
     _open_settings(ready_page)
@@ -86,6 +92,44 @@ def test_settings_popover_closes_on_outside_click(ready_page: Page) -> None:
     # left sidebar, so nothing else is activated.
     ready_page.mouse.click(640, 680)
     expect(ready_page.locator(".mlpeg-settings-panel")).to_be_hidden(timeout=TIMEOUT)
+
+
+def test_expand_and_collapse_all(ready_page: Page) -> None:
+    """Collapse all unmounts every card body; expand all remounts them."""
+    _goto_category(ready_page)
+
+    ready_page.locator("#collapse-all-benchmarks").click()
+    expect(ready_page.locator("#IONPI19-table")).to_have_count(0, timeout=TIMEOUT)
+
+    ready_page.locator("#expand-all-benchmarks").click()
+    expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
+
+
+def test_expand_preference_applies_on_navigation(ready_page: Page) -> None:
+    """The expand-all preference is persisted and applied on navigation."""
+    _open_settings(ready_page)
+    ready_page.locator("#expand-pref-checklist label").click()
+    ready_page.wait_for_function(
+        "window.localStorage.getItem('bench-expand-store') !== null",
+        timeout=TIMEOUT,
+    )
+    ready_page.locator(".mlpeg-settings-summary").click()
+
+    _goto_category(ready_page)
+    expect(ready_page.locator(".mlpeg-bench-header--open")).to_have_count(
+        ready_page.locator(".mlpeg-bench-header").count(), timeout=TIMEOUT
+    )
+
+
+def test_summary_card_on_home_and_category(ready_page: Page) -> None:
+    """The summary table sits in an accent card on home and category pages."""
+    expect(ready_page.locator(".mlpeg-summary-card").first).to_be_visible(
+        timeout=TIMEOUT
+    )
+    _goto_category(ready_page)
+    expect(ready_page.locator(".mlpeg-summary-card").first).to_be_visible(
+        timeout=TIMEOUT
+    )
 
 
 def test_settings_panel_has_font_option(ready_page: Page) -> None:
@@ -193,6 +237,37 @@ def test_clear_cache_preserves_theme(ready_page: Page) -> None:
     ), "theme-store was wiped by Hard Reset instead of being preserved"
     assert ready_page.locator("html").get_attribute("data-theme") == "dark", (
         "theme preference lost after clearing the cache"
+    )
+
+
+def _mae_cell_colours(page: Page) -> list[str]:
+    """Return the background colours of the benchmark table's MAE cells."""
+    cells = page.locator('#IONPI19-table td[data-dash-column="MAE"]')
+    expect(cells.first).to_be_visible(timeout=TIMEOUT)
+    return cells.evaluate_all(
+        "els => els.map((el) => getComputedStyle(el).backgroundColor)"
+    )
+
+
+def test_persisted_colour_scheme_applies_to_table_on_reload(
+    ready_page: Page,
+) -> None:
+    """A persisted colour scheme recolours benchmark tables after reload."""
+    _goto_category(ready_page)
+    before = _mae_cell_colours(ready_page)
+    assert before, "expected coloured MAE cells under the default colour scheme"
+
+    ready_page.evaluate(
+        "window.localStorage.setItem('cmap-store', JSON.stringify('RdYlGn_r'))"
+    )
+    ready_page.reload()
+    wait_for_app_ready(ready_page)
+    expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
+
+    after = _mae_cell_colours(ready_page)
+    assert after != before, (
+        "benchmark table kept the default colormap after reload; the persisted "
+        "colour scheme was not applied"
     )
 
 

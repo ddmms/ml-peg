@@ -656,6 +656,53 @@ a:hover {
   margin-bottom: 0;
 }
 
+/* ---- Collapsible "Adjust scoring" panel below each table ---------------- */
+.mlpeg-controls-details {
+  margin-top: var(--sp-3);
+}
+.mlpeg-controls-summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mlpeg-ink-2);
+  padding: 8px 16px;
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--mlpeg-surface);
+  list-style: none;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.mlpeg-controls-summary:hover {
+  background: var(--mlpeg-surface-2);
+}
+.mlpeg-controls-summary::-webkit-details-marker {
+  display: none;
+}
+.mlpeg-controls-summary::before {
+  content: "\25B8"; /* ▸ */
+  color: var(--mlpeg-ink-3);
+  transition: transform 0.15s ease;
+}
+.mlpeg-controls-details[open] .mlpeg-controls-summary::before {
+  transform: rotate(90deg);
+}
+
+/* No border here: the panel sits inside an already-bordered card, so a second
+   border reads as a redundant box-in-a-box. The tinted surface + radius alone
+   group the controls. */
+.mlpeg-controls-panel {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--mlpeg-surface-2);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  margin-top: var(--sp-2);
+}
+
 /* ---- Scoring grids: column separators + ghost reset ------------------- */
 /* The Good/Bad/Weight grids butt columns together with a 0 gap; a right border
    on each cell gives the "lines" that make the grid readable and line the
