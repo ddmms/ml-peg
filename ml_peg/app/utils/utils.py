@@ -23,6 +23,11 @@ from ml_peg.models.get_models import get_model_names
 # fallback so the shown scheme and the cell colouring can never disagree.
 DEFAULT_COLORMAP = "viridis_r"
 
+# The overall summary table's component id, shared by the builders and the
+# callback registrations that special-case it (link column, header padding,
+# score-store prefix).
+SUMMARY_TABLE_ID = "summary-table"
+
 
 class ThresholdEntry(TypedDict):
     """Structure describing the normalization thresholds for a metric."""
@@ -101,16 +106,16 @@ def colour_from_cmap(cmap_name: str | None, position: float) -> str:
         CSS ``rgb(...)`` colour string.
     """
     try:
-        cmap = colormaps[cmap_name or "viridis_r"]
+        cmap = colormaps[cmap_name or DEFAULT_COLORMAP]
     except KeyError:
-        cmap = colormaps["viridis_r"]
+        cmap = colormaps[DEFAULT_COLORMAP]
 
     clamped = min(max(position, 0.0), 1.0)
     rgb = tuple(int(255 * channel) for channel in cmap(clamped)[:3])
     return f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
 
 
-def get_threshold_colours(cmap_name: str | None = "viridis_r") -> dict[str, str]:
+def get_threshold_colours(cmap_name: str | None = DEFAULT_COLORMAP) -> dict[str, str]:
     """
     Get good/bad threshold colours for the active table colormap.
 
