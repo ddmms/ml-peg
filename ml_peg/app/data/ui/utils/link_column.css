@@ -1,0 +1,34 @@
+/* Compact model docs-link column on the summary table. The markdown cell emits
+   a link with empty text (build_components.py) because a colour-emoji glyph
+   ignores CSS `color` and cannot follow the theme; the icon is drawn here with
+   the same masked-SVG pattern as the gear/sun/moon, painted with currentColor
+   so the anchor's normal colour rules (and states) drive it. */
+td[data-dash-column="link"] {
+    padding: 0;
+}
+td[data-dash-column="link"] .dash-cell-value p {
+    margin: 0;
+}
+td[data-dash-column="link"] a {
+    text-decoration: none;
+    display: inline-block;
+    padding: 5px 8px;
+    line-height: 0;
+}
+td[data-dash-column="link"] a::after {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background-color: currentColor;
+    -webkit-mask: url("../icons/link.svg") center / contain no-repeat;
+    mask: url("../icons/link.svg") center / contain no-repeat;
+}
+/* Separate rules: an engine that cannot parse :focus-visible drops the whole
+   selector list, which would take the hover state with it. */
+td[data-dash-column="link"] a:hover {
+    color: var(--mlpeg-accent-strong);
+}
+td[data-dash-column="link"] a:focus-visible {
+    color: var(--mlpeg-accent-strong);
+}

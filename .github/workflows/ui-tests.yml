@@ -1,0 +1,72 @@
+name: ui-tests
+
+# Browser-driven tests for the Dash app (tests/app). These boot the real app on
+# an ephemeral port and drive it with Playwright, so they need a headless
+# Chromium. The benchmark data is a committed fixture (tests/data/app, ~2.4 MB)
+# that conftest puts in place, so there is nothing to download.
+
+# Chromium plus a full app build is still slower than the unit suite, so only run
+# when something that can affect the app or its tests changes.
+on:
+  push:
+    paths:
+      - "ml_peg/app/**"
+      # The app renders through these, so a change here can break every table.
+      - "ml_peg/analysis/**"
+      - "ml_peg/models/**"
+      - "tests/app/**"
+      - "tests/data/app/**"
+      - ".github/workflows/ui-tests.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    paths:
+      - "ml_peg/app/**"
+      # The app renders through these, so a change here can break every table.
+      - "ml_peg/analysis/**"
+      - "ml_peg/models/**"
+      - "tests/app/**"
+      - "tests/data/app/**"
+      - ".github/workflows/ui-tests.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+
+# One run per ref: push and pull_request both fire, and successive pushes would
+# otherwise stack jobs on top of each other.
+concurrency:
+  group: ui-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install Playwright browser
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run UI tests
+        # ci.yml skips tests/app, so this job is the only coverage of ml_peg/app.
+        run: uv run pytest tests/app -q --cov ml_peg --cov-report xml
+
+      - name: Report coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          # Not `parallel: true`: ci.yml closes its parallel build when its own
+          # matrix finishes, which is always before this job, so a parallel
+          # report would land on a closed build and be dropped.
+          fail-on-error: false
+          flag-name: run-ui
+          file: coverage.xml
+          base-path: ml_peg

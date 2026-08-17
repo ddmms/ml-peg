@@ -230,13 +230,20 @@ def build_summary_table(
 
     # Per-model docs link, on the overall summary table only, rendered as an
     # icon just after the model name. Its styling lives in
-    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
+    # ml_peg/app/data/ui/utils/link_column.css (auto-loaded as a Dash asset);
     # NaN/level-of-theory greying is kept off for the link column.
     if table_id == "summary-table":
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
         for row in data:
             anchor = row.get("MLIP")
-            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
+            row["link"] = (
+                # Empty link text: the cell's icon is drawn by CSS
+                # (link_column.css), because a colour-emoji glyph ignores
+                # CSS color and cannot follow the theme. The title supplies
+                # the accessible name, per-model so the rows are
+                # distinguishable to assistive tech.
+                f'[]({models_url}#{anchor} "{anchor} documentation")' if anchor else ""
+            )
         columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
         style_cell_conditional.append(
             {
@@ -255,7 +262,10 @@ def build_summary_table(
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                "backgroundColor": "white",
+                # Theme-aware token (mirrors the sync_summary_table callback) so
+                # the link cell doesn't flash white against a dark table on
+                # first paint.
+                "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
         ]
@@ -374,7 +384,7 @@ def build_weight_input(
                 "Weight:",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 38px)",
@@ -481,7 +491,7 @@ def build_weight_components(
                             "fontWeight": "bold",
                             "fontSize": "13px",
                             "padding": "2px 4px",
-                            "color": "#212529",
+                            "color": "var(--mlpeg-heading)",
                             "whiteSpace": "nowrap",
                             "boxSizing": "border-box",
                             "border": "1px solid transparent",
@@ -491,15 +501,16 @@ def build_weight_components(
                         "Reset",
                         id=f"{table.id}-reset-button",
                         n_clicks=0,
+                        className="mlpeg-scoring-reset",
                         style={
                             "fontSize": "11px",
-                            "padding": "4px 8px",
+                            "padding": "4px 10px",
                             "marginTop": "0px",
                             "marginLeft": "4px",
-                            "backgroundColor": "#6c757d",
-                            "color": "white",
-                            "border": "none",
-                            "borderRadius": "3px",
+                            "backgroundColor": "transparent",
+                            "color": "var(--mlpeg-accent)",
+                            "border": "1px solid var(--mlpeg-accent-soft-border)",
+                            "borderRadius": "6px",
                             "width": "fit-content",
                             "cursor": "pointer",
                         },
@@ -508,8 +519,8 @@ def build_weight_components(
                         "Press Enter or click away to apply new weights or thresholds",
                         style={
                             "fontSize": "11px",
-                            "color": "#6c757d",
-                            "fontStyle": "italic",
+                            "color": "var(--mlpeg-muted)",
+                            "fontStyle": "normal",
                             "marginTop": "2px",
                         },
                     ),
@@ -523,7 +534,9 @@ def build_weight_components(
                     "width": "100%",
                     "minWidth": "0",
                     "maxWidth": "100%",
-                    "border": "1px solid transparent",  # #dee2e6 or transparent
+                    # Transparent, but kept so this cell's box matches the sized
+                    # grid cells beside it (.mlpeg-scoring-grid draws the rules).
+                    "border": "1px solid transparent",
                 },
             ),
             *link_spacer,
@@ -541,6 +554,7 @@ def build_weight_components(
             ),
             *weight_inputs,
         ],
+        className="mlpeg-scoring-grid",
         style={
             "display": "grid",
             "gridTemplateColumns": grid_template,
@@ -549,11 +563,10 @@ def build_weight_components(
             "rowGap": "4px",
             "marginTop": "-5px",
             "padding": "2px 0px",
-            "backgroundColor": "#f8f9fa",
-            "border": "1px solid transparent"
-            if header == "Weights"
-            else "1px solid #dee2e6",
-            "borderRadius": "6px",
+            # Flat on the controls panel — no own background/border/radius so it
+            # doesn't read as a box nested inside the panel's box.
+            "backgroundColor": "transparent",
+            "border": "1px solid transparent",
             "width": "100%",
             "minWidth": "0",
             "boxSizing": "border-box",
@@ -713,7 +726,7 @@ def build_page_loading_spinner() -> Div:
                 style={
                     "fontSize": "16px",
                     "fontWeight": "600",
-                    "color": "#212529",
+                    "color": "var(--mlpeg-heading)",
                 },
             ),
         ],
@@ -947,7 +960,7 @@ def build_faqs() -> Div:
                         href=docs_url,
                         target="_blank",
                         style={
-                            "color": "#0d6efd",
+                            "color": "var(--mlpeg-accent)",
                             "textDecoration": "none",
                             "fontWeight": "600",
                             "fontSize": "13px",
@@ -966,8 +979,8 @@ def build_faqs() -> Div:
                             "cursor": "pointer",
                             "fontWeight": "bold",
                             "padding": "10px",
-                            "backgroundColor": "#f8f9fa",
-                            "border": "1px solid #dee2e6",
+                            "backgroundColor": "var(--mlpeg-surface-2)",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderRadius": "4px",
                             "marginBottom": "8px",
                         },
@@ -976,8 +989,8 @@ def build_faqs() -> Div:
                         answer_content,
                         style={
                             "padding": "10px 15px",
-                            "backgroundColor": "#ffffff",
-                            "border": "1px solid #dee2e6",
+                            "backgroundColor": "var(--mlpeg-surface)",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderTop": "none",
                             "borderRadius": "0 0 4px 4px",
                             "marginTop": "-8px",
@@ -995,7 +1008,7 @@ def build_faqs() -> Div:
         [
             H2(
                 "Frequently Asked Questions",
-                style={"color": "black", "marginTop": "30px"},
+                style={"marginTop": "30px"},
             ),
             Div(faq_components),
         ]
@@ -1067,7 +1080,7 @@ def build_footer() -> html.Footer:
                     href="https://github.com/ddmms/ml-peg",
                     target="_blank",
                     style={
-                        "color": "#0d6efd",
+                        "color": "var(--mlpeg-accent)",
                         "textDecoration": "none",
                         "fontWeight": "800",
                         "display": "inline-flex",
@@ -1080,11 +1093,11 @@ def build_footer() -> html.Footer:
         style={
             "marginTop": "24px",
             "padding": "14px 12px",
-            "color": "#343a40",
+            "color": "var(--mlpeg-heading)",
             "fontSize": "12px",
             "textAlign": "center",
-            "borderTop": "1px solid #dee2e6",
-            "background": "#f8f9fa",
+            "borderTop": "1px solid var(--mlpeg-border)",
+            "background": "var(--mlpeg-surface-2)",
             "borderRadius": "6px",
         },
     )
@@ -1207,7 +1220,7 @@ def build_test_layout(
     layout_contents = [
         Div(
             [
-                H2(name, style={"color": "black", "margin": "0"}),
+                H2(name, style={"margin": "0"}),
                 *[
                     build_framework_badge(framework_id)
                     for framework_id in framework_ids
@@ -1288,8 +1301,8 @@ def build_test_layout(
             Div(metric_weights, style={"marginTop": "0"}),
         ],
         style={
-            "backgroundColor": "#f8f9fa",
-            "border": "1px solid #dee2e6",
+            "backgroundColor": "var(--mlpeg-surface-2)",
+            "border": "1px solid var(--mlpeg-border)",
             "borderRadius": "6px",
             "padding": "0px 0px 0px 0px",  # top right bottom left
             "marginTop": "-5px",
@@ -1304,7 +1317,16 @@ def build_test_layout(
         Br(),
         controls_visual,
     ]
-    layout_contents.append(Div(table_section, style={"width": "fit-content"}))
+    # .mlpeg-table-scroll keeps a wide table scrolling inside its own card rather
+    # than widening the page (which would leave the sticky top bar behind). The
+    # inner div stays fit-content so the width:100% weight/threshold grid below
+    # inherits the table's exact width and its columns stay aligned.
+    layout_contents.append(
+        Div(
+            Div(table_section, style={"width": "fit-content"}),
+            className="mlpeg-table-scroll",
+        )
+    )
 
     if extra_components:
         layout_contents.append(
@@ -1351,9 +1373,10 @@ def build_threshold_inputs(
         "rowGap": "0px",
         "marginTop": "0px",
         "padding": "2px 0px",
-        "backgroundColor": "#f8f9fa",
+        # Flat on the controls panel — no own background/border/radius (avoids a
+        # box nested inside the panel's box).
+        "backgroundColor": "transparent",
         "border": "1px solid transparent",
-        "borderRadius": "5px",
         "width": "100%",
         "minWidth": "0",
         "boxSizing": "border-box",
@@ -1374,7 +1397,7 @@ def build_threshold_inputs(
                         "padding": "2px 4px",
                         "whiteSpace": "nowrap",
                         "boxSizing": "border-box",
-                        "color": "#212529",
+                        "color": "var(--mlpeg-heading)",
                         "border": "1px solid transparent",
                     },
                 ),
@@ -1382,15 +1405,16 @@ def build_threshold_inputs(
                     "Reset",
                     id=f"{table_id}-reset-thresholds-button",
                     n_clicks=0,
+                    className="mlpeg-scoring-reset",
                     style={
                         "fontSize": "11px",
-                        "padding": "4px 8px",
+                        "padding": "4px 10px",
                         "marginTop": "0px",
                         "marginLeft": "4px",
-                        "backgroundColor": "#6c757d",
-                        "color": "white",
-                        "border": "none",
-                        "borderRadius": "3px",
+                        "backgroundColor": "transparent",
+                        "color": "var(--mlpeg-accent)",
+                        "border": "1px solid var(--mlpeg-accent-soft-border)",
+                        "borderRadius": "6px",
                         "width": "fit-content",
                         "cursor": "pointer",
                     },
@@ -1449,7 +1473,7 @@ def build_threshold_inputs(
                 "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1470,7 +1494,7 @@ def build_threshold_inputs(
                     f"[{unit_label}]",
                     style={
                         "fontSize": "12px",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "position": "absolute",
                         "left": "calc(50% + 34px)",
                         "top": "50%",
@@ -1485,7 +1509,7 @@ def build_threshold_inputs(
                 "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1509,7 +1533,7 @@ def build_threshold_inputs(
                     f"[{unit_label}]",
                     style={
                         "fontSize": "12px",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "position": "absolute",
                         "left": "calc(50% + 34px)",
                         "top": "50%",
@@ -1572,4 +1596,13 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    return Div([Div(cells, id=f"{table_id}-threshold-grid", style=container_style)])
+    return Div(
+        [
+            Div(
+                cells,
+                id=f"{table_id}-threshold-grid",
+                className="mlpeg-scoring-grid",
+                style=container_style,
+            )
+        ]
+    )

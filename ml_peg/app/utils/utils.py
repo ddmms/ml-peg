@@ -18,6 +18,11 @@ import yaml
 from ml_peg.models import MODELS_ROOT
 from ml_peg.models.get_models import get_model_names
 
+# Single source of truth for the default table colour scheme. Referenced by the
+# colour-scheme dropdown, its backing store, and every ``cmap_name or ...``
+# fallback so the shown scheme and the cell colouring can never disagree.
+DEFAULT_COLORMAP = "viridis_r"
+
 
 class ThresholdEntry(TypedDict):
     """Structure describing the normalization thresholds for a metric."""
@@ -142,15 +147,17 @@ def build_threshold_input_style(border_colour: str) -> dict[str, str]:
     dict[str, str]
         Inline Dash style dictionary.
     """
+    # The good/bad colour is dynamic (follows the colormap), so pass it to the
+    # inner <input>'s border via an inherited CSS variable rather than drawing a
+    # second box on the .dash-input-container wrapper (see theme.css).
     return {
         "width": "60px",
         "fontSize": "12px",
         "padding": "2px 4px",
-        "border": f"2px solid {border_colour}",
-        "borderRadius": "3px",
         "boxSizing": "border-box",
         "margin": "0 auto",
         "display": "block",
+        "--mlpeg-input-border": border_colour,
     }
 
 
@@ -163,12 +170,13 @@ def weight_input_style() -> dict[str, str]:
     dict[str, str]
         Inline Dash style dictionary.
     """
+    # No border/radius here: dcc.Input wraps the <input> in a
+    # .dash-input-container, and the inner <input> already draws the box (see
+    # theme.css). Styling this wrapper too gave a redundant box-in-a-box.
     return {
         "width": "60px",
         "fontSize": "12px",
         "padding": "2px 4px",
-        "border": "1px solid #6c757d",
-        "borderRadius": "3px",
         "textAlign": "center",
     }
 

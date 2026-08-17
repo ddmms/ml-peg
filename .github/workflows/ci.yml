@@ -26,7 +26,10 @@ jobs:
         env:
           # show timings of tests
           PYTEST_ADDOPTS: "--durations=0"
-        run: uv run pytest --cov ml_peg --cov-append . --cov-report xml
+        # tests/app is the browser suite, run separately by ui-tests.yml (which
+        # installs Chromium and puts the committed data fixture in place); skip
+        # it here.
+        run: uv run pytest --cov ml_peg --cov-append . --cov-report xml --ignore=tests/app
 
       - name: Report coverage to Coveralls
         uses: coverallsapp/github-action@v2

@@ -396,7 +396,7 @@ def struct_from_scatter(
                 style={
                     "height": "550px",
                     "width": "100%",
-                    "border": "1px solid #ddd",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "5px",
                 },
             )
@@ -485,7 +485,7 @@ def struct_from_multi_scatters(
                 style={
                     "height": "550px",
                     "width": "100%",
-                    "border": "1px solid #ddd",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "5px",
                 },
             )
@@ -551,7 +551,7 @@ def struct_from_table(
                         style={
                             "height": "550px",
                             "width": "100%",
-                            "border": "1px solid #ddd",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderRadius": "5px",
                         },
                     )
