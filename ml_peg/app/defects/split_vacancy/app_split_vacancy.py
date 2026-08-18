@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dash import Dash, Input, Output, callback
+from dash import Input, Output, callback
 from dash.html import B, Div, Iframe, P
 
 from ml_peg.app import APP_ROOT
@@ -198,11 +198,3 @@ def get_app() -> SplitVacancyApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    split_vacancy_app = get_app()
-    full_app.layout = split_vacancy_app.layout
-    split_vacancy_app.register_callbacks()
-    full_app.run(port=8054, debug=True)
