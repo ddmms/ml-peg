@@ -240,6 +240,7 @@ vacancy reconstructs into two vacancies and an interstitial
 Data from Seán Kavanagh, *Identifying split vacancy defects with machine-learned foundation models and electrostatics*,
 `https://doi.org/10.1088/2515-7655/ade916 <https://doi.org/10.1088/2515-7655/ade916>`_
 
+**Note that oxide calculations were performed with PBEsol, whilst nitride calculations were performed with PBE.**
 
 Metrics
 -------
