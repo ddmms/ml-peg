@@ -3156,6 +3156,19 @@ wheels = [
 ]
 
 [[package]]
+name = "graph-longrange"
+version = "0.4.0"
+source = { git = "https://github.com/WillBaldwin0/graph_electrostatics.git#0e21d5546c482d08388a08eb4d948e833227ce47" }
+dependencies = [
+    { name = "ase" },
+    { name = "e3nn", version = "0.4.4", source = { registry = "https://pypi.org/simple" } },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version >= '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.13' and extra == 'extra-6-ml-peg-mace') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.11' and extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mattersim') or (python_full_version < '3.13' and extra == 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-uma') or (python_full_version >= '3.11' and extra != 'extra-6-ml-peg-grace' and extra == 'extra-6-ml-peg-mace') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-grace' and extra != 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma')" },
+    { name = "torch" },
+]
+
+[[package]]
 name = "greenlet"
 version = "3.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -4708,7 +4721,7 @@ wheels = [
 
 [[package]]
 name = "mace-torch"
-version = "0.3.15"
+version = "0.3.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ase" },
@@ -4735,9 +4748,9 @@ dependencies = [
     { name = "torchmetrics" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/a7/2a60120b15eca67d153e6b5a40cb4b70e4bbe00b9504df2c82a6cf38fda3/mace_torch-0.3.15.tar.gz", hash = "sha256:23f9bd7521db56ce91586c110089bdbd79ffd2475fec8fea2cae4780be495049", size = 230748, upload-time = "2026-02-22T23:35:03.411Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/ab/8867aa6400aa332688151cad2c00ad9173d9ac7f3e83bc4bf4f4726c596f/mace_torch-0.3.16.tar.gz", hash = "sha256:5fbc84d319a92ab15e3e686533547a0afd2632261132e31cb0705a4347508935", size = 275501, upload-time = "2026-05-10T18:27:50.937Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/6d/d5b578dce5c995ce8c9cbeb53871331e575a09bf11ca4739fac770665b6e/mace_torch-0.3.15-py3-none-any.whl", hash = "sha256:9e38df131667f4abdb3c0ab7b77927f217886cbca68c417dcc985465c4b9a53c", size = 264276, upload-time = "2026-02-22T23:35:01.73Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/4d/07293363e4abe6484c9ee4d705e5953421a6b6e2a74e4d7fb58abea729cf/mace_torch-0.3.16-py3-none-any.whl", hash = "sha256:b80407edf6b2a1ec8523668c2a36852d20927ce1c3c56b70983a9f2dc53233ad", size = 316021, upload-time = "2026-05-10T18:27:48.959Z" },
 ]
 
 [[package]]
@@ -5686,6 +5699,7 @@ grace = [
     { name = "tensorpotential", marker = "python_full_version < '3.13'" },
 ]
 mace = [
+    { name = "graph-longrange" },
     { name = "mace-torch" },
 ]
 mattersim = [
@@ -5740,9 +5754,10 @@ requires-dist = [
     { name = "dash", specifier = ">=4.0.0,<5" },
     { name = "deepmd-kit", marker = "extra == 'dpa3'", specifier = "==3.1.0" },
     { name = "fairchem-core", marker = "python_full_version >= '3.11' and extra == 'uma'", specifier = "==2.19.0" },
+    { name = "graph-longrange", marker = "extra == 'mace'", git = "https://github.com/WillBaldwin0/graph_electrostatics.git" },
     { name = "janus-core", specifier = ">=0.8.6,<1.0.0" },
     { name = "kaleido", specifier = ">=1.0.0,<2" },
-    { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.15" },
+    { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.16" },
     { name = "matcalc", marker = "python_full_version >= '3.11'", specifier = ">=0.4.7,<0.5" },
     { name = "matminer", specifier = ">=0.9.3,<0.10" },
     { name = "mattersim", marker = "extra == 'mattersim'", specifier = "==1.2.2" },

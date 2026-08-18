@@ -1,0 +1,55 @@
+Task: 101 | Test: 2-albite-orb-v3-consv-inf-omat | Nodo: lrdn3131.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Fri Jul 24 09:11:11 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-albite-orb-v3-consv-inf-omat] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: orb-v3-consv-inf-omat
+  density: 2.1743 g/cm3 | vol: 5427.84 A3
+  density: 2.1708 g/cm3 | vol: 5436.45 A3
+  density: 2.1785 g/cm3 | vol: 5417.26 A3
+  density: 2.1705 g/cm3 | vol: 5437.31 A3
+  density: 2.1801 g/cm3 | vol: 5413.45 A3
+  density: 2.1724 g/cm3 | vol: 5432.58 A3
+  density: 2.1627 g/cm3 | vol: 5456.85 A3
+  density: 2.1695 g/cm3 | vol: 5439.85 A3
+  density: 2.1690 g/cm3 | vol: 5441.18 A3
+  density: 2.1867 g/cm3 | vol: 5396.92 A3
+  density: 2.1795 g/cm3 | vol: 5414.93 A3
+  density: 2.1635 g/cm3 | vol: 5454.89 A3
+  density: 2.1754 g/cm3 | vol: 5425.11 A3
+  density: 2.1633 g/cm3 | vol: 5455.52 A3
+  density: 2.1758 g/cm3 | vol: 5424.17 A3
+  density: 2.1915 g/cm3 | vol: 5385.21 A3
+  density: 2.1678 g/cm3 | vol: 5444.09 A3
+  density: 2.1669 g/cm3 | vol: 5446.44 A3
+  density: 2.1717 g/cm3 | vol: 5434.27 A3
+  density: 2.1834 g/cm3 | vol: 5405.11 A3
+  density: 2.1839 g/cm3 | vol: 5404.04 A3
+Final density (orb-v3-consv-inf-omat, albite): 2.1741 +/- 0.0078 g/cm3
+PASSED
+
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-albite-orb-v3-consv-inf-omat]
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-albite-orb-v3-consv-inf-omat]
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-albite-orb-v3-consv-inf-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/orb_models/common/training/util.py:20: UserWarning: Setting global torch default dtype to torch.float64.
+    warnings.warn(f"Setting global torch default dtype to {torch_dtype}.")
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-albite-orb-v3-consv-inf-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/orb_models/common/training/util.py:22: UserWarning: Consider passing 'precision=float32-high' for significantly higher (>2x) model throughput if high precision is not required.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====== 1 passed, 134 deselected, 4 warnings in 95880.49s (1 day, 2:38:00) ======
+Task 101 completato.
+Sat Jul 25 11:49:17 CEST 2026

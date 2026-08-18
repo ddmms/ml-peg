@@ -1,0 +1,330 @@
+Task: 113 | Test: 2-anorthite-pet-mad | Nodo: lrdn0222.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Wed Jul 29 14:21:45 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: pet-mad
+  density: 2.6268 g/cm3 | vol: 4747.49 A3
+  density: 2.6368 g/cm3 | vol: 4729.49 A3
+  density: 2.6375 g/cm3 | vol: 4728.23 A3
+  density: 2.6474 g/cm3 | vol: 4710.49 A3
+  density: 2.6437 g/cm3 | vol: 4717.10 A3
+  density: 2.6403 g/cm3 | vol: 4723.21 A3
+  density: 2.6349 g/cm3 | vol: 4732.84 A3
+  density: 2.6317 g/cm3 | vol: 4738.67 A3
+  density: 2.6294 g/cm3 | vol: 4742.82 A3
+  density: 2.6268 g/cm3 | vol: 4747.51 A3
+  density: 2.6403 g/cm3 | vol: 4723.30 A3
+  density: 2.6421 g/cm3 | vol: 4719.93 A3
+  density: 2.6493 g/cm3 | vol: 4707.20 A3
+  density: 2.6479 g/cm3 | vol: 4709.72 A3
+  density: 2.6350 g/cm3 | vol: 4732.80 A3
+  density: 2.6417 g/cm3 | vol: 4720.77 A3
+  density: 2.6528 g/cm3 | vol: 4701.03 A3
+  density: 2.6441 g/cm3 | vol: 4716.50 A3
+  density: 2.6376 g/cm3 | vol: 4728.04 A3
+  density: 2.6298 g/cm3 | vol: 4742.07 A3
+  density: 2.6458 g/cm3 | vol: 4713.35 A3
+Final density (pet-mad, anorthite): 2.6391 +/- 0.0073 g/cm3
+PASSED
+
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/metatomic/torch/ase_calculator.py:37: DeprecationWarning: The 'nvalchemiops.neighborlist' module has been renamed to 'nvalchemiops.neighbors'. Please update your imports from 'nvalchemiops.neighborlist' to 'nvalchemiops.neighbors'. This backwards-compatible alias will be removed in a future version.
+    from nvalchemiops.neighborlist import neighbor_list as nvalchemi_neighbor_list
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/metatomic/torch/ase_calculator.py:37: DeprecationWarning: From version 0.3.0 onwards, PyTorch is now an optional dependency and the `nvalchemiops.neighborlist` namespace is reserved for `warp` kernels directly. For end-users, import from `nvalchemiops.torch.neighbors` instead.
+    from nvalchemiops.neighborlist import neighbor_list as nvalchemi_neighbor_list
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/warp/_src/torch.py:271: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the .grad field to be populated for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations. (Triggered internally at /pytorch/build/aten/src/ATen/core/TensorBody.h:489.)
+    if t.grad is not None:
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/metatomic/torch/ase_calculator.py:1482: UserWarning: `compute_requested_neighbors_from_options` is deprecated and will be removed in a future version. Please use `neighbor_lists_for_model` to get the calculators and call them directly.
+    vesin.metatomic.compute_requested_neighbors_from_options(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  0   1   3   4   6   8   9  10  11  12  13  16  18  19  20  53  61 104
+   111 115 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  0   1   3   4   6   8  10  11  12  13  16  18  19  20  53  61  90 104
+   111 115 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  0   1   2   3   4   6   8  10  11  12  13  16  18  19  53  61  90 104
+   111 115 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  0   1   3   4   6   8  10  11  12  13  16  18  19  53  61  90 104 111
+   115 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   3   4   6   8  10  11  12  13  16  18  19  53  90 104 111 115 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   3   4   6   8  10  11  12  13  16  18  19  53  85  90 104 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  10  11  12  13  16  18  19  53  85 104 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  13  16  18  19  53  85 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  13  18  19  53  85 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  18  19  53  77  85 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  18  19  47  53  77 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  18  19  47  53  77 104 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  18  19  47  53  77 104 111 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   4   6   8  11  12  18  19  47  53  56  63  77 104 111 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  12  18  19  47  53  56  63  77 104 111 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  47  53  56  63  66  77 104 111 118 133].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  25  47  53  56  63  66  77 104 111 118].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  25  47  53  56  63  66  77 104 111 118 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  25  47  53  56  63  66 104 111 118 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  25  47  53  56  63  66 104 111 117 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  19  25  47  53  57  63  66 104 111 117 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  1   6   8  11  18  25  47  53  57  63  66 104 111 117 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  6   8  11  18  25  47  53  57  63  66 104 111 117 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  6   8  11  18  25  47  53  57  63  66  80 104 111 117 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  8  11  18  25  47  53  57  63  66  80 104 111 117 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  8  11  18  25  53  57  63  66  80 104 111 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  25  53  57  63  66  80 104 111 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  25  53  57  63  80 104 111 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  53  63  80 104 111 120 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  53  63  80 104 111 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  53  63  80 111 124 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  53  80 111 124 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  80 111 124 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  11  18  80 111 127].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8  18  80 111].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [ 4  8 80].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [4 8].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  4   8 112].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  8 112].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [  8  73 112].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [ 73 112].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [73].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [102].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [57].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [ 11 103].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [15].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [6].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [13].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [0].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [11].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [2].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [17].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [1].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [100].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [3].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [8].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [16].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [19].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [14].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [9].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [4].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [12].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [1 6].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [18].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [7].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [98].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-anorthite-pet-mad]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/pet_mad/calculator.py:200: UserWarning: Some of the atomic energy uncertainties are larger than the threshold of 0.1 eV. The prediction is above the threshold for atoms [5].
+    self.calculator.calculate(atoms, properties, system_changes)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========= 1 passed, 134 deselected, 72 warnings in 35061.92s (9:44:21) =========
+Task 113 completato.
+Thu Jul 30 00:06:13 CEST 2026

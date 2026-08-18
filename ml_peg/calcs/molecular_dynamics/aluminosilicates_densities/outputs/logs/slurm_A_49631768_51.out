@@ -1,0 +1,52 @@
+Task: 51 | Test: 0-sanidine-mace-mh-1-omat | Nodo: lrdn1428.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Thu Jul 23 17:41:42 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-mace-mh-1-omat] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: mace-mh-1-omat
+cuequivariance or cuequivariance_torch is not available. Cuequivariance acceleration will be disabled.
+Using Materials Project MACE for MACECalculator with /leonardo/home/userexternal/mbenass1/.cache/mace/macemh1model
+Using float32 for MACECalculator, which is faster but less accurate. Recommended for MD. Use float64 for geometry optimization.
+  density: 2.2150 g/cm3 | vol: 5795.15 A3
+  density: 2.2068 g/cm3 | vol: 5816.71 A3
+  density: 2.1973 g/cm3 | vol: 5841.72 A3
+  density: 2.2225 g/cm3 | vol: 5775.42 A3
+  density: 2.2085 g/cm3 | vol: 5812.09 A3
+  density: 2.2003 g/cm3 | vol: 5833.85 A3
+  density: 2.2042 g/cm3 | vol: 5823.35 A3
+  density: 2.2035 g/cm3 | vol: 5825.20 A3
+  density: 2.2190 g/cm3 | vol: 5784.66 A3
+  density: 2.2109 g/cm3 | vol: 5805.81 A3
+  density: 2.1992 g/cm3 | vol: 5836.68 A3
+  density: 2.2094 g/cm3 | vol: 5809.85 A3
+  density: 2.2038 g/cm3 | vol: 5824.59 A3
+  density: 2.2138 g/cm3 | vol: 5798.25 A3
+  density: 2.2086 g/cm3 | vol: 5811.93 A3
+  density: 2.2058 g/cm3 | vol: 5819.32 A3
+  density: 2.2088 g/cm3 | vol: 5811.42 A3
+  density: 2.1987 g/cm3 | vol: 5837.98 A3
+  density: 2.2132 g/cm3 | vol: 5799.87 A3
+  density: 2.2101 g/cm3 | vol: 5807.80 A3
+  density: 2.2085 g/cm3 | vol: 5812.14 A3
+Final density (mace-mh-1-omat, sanidine): 2.2080 +/- 0.0064 g/cm3
+PASSED
+
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-mace-mh-1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-mace-mh-1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/mace/calculators/mace.py:226: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    torch.load(f=model_path, map_location=device)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+===== 1 passed, 134 deselected, 2 warnings in 122006.65s (1 day, 9:53:26) ======
+Task 51 completato.
+Sat Jul 25 03:35:12 CEST 2026

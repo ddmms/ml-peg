@@ -1,0 +1,112 @@
+Task: 6 | Test: 0-sanidine-uma-s-1p1-omat | Nodo: lrdn0372.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Sun Jul 19 11:33:52 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/bin/python3
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: uma-s-1p1-omat
+  density: 2.1240 g/cm3 | vol: 6043.39 A3
+  density: 2.1200 g/cm3 | vol: 6054.77 A3
+  density: 2.1263 g/cm3 | vol: 6036.90 A3
+  density: 2.1152 g/cm3 | vol: 6068.35 A3
+  density: 2.1051 g/cm3 | vol: 6097.46 A3
+  density: 2.1013 g/cm3 | vol: 6108.67 A3
+  density: 2.1127 g/cm3 | vol: 6075.72 A3
+  density: 2.1289 g/cm3 | vol: 6029.38 A3
+  density: 2.1023 g/cm3 | vol: 6105.58 A3
+  density: 2.1053 g/cm3 | vol: 6097.10 A3
+  density: 2.1160 g/cm3 | vol: 6066.21 A3
+  density: 2.1151 g/cm3 | vol: 6068.90 A3
+  density: 2.1004 g/cm3 | vol: 6111.33 A3
+  density: 2.1167 g/cm3 | vol: 6064.29 A3
+  density: 2.1057 g/cm3 | vol: 6095.96 A3
+  density: 2.1086 g/cm3 | vol: 6087.62 A3
+  density: 2.1200 g/cm3 | vol: 6054.73 A3
+  density: 2.1089 g/cm3 | vol: 6086.52 A3
+  density: 2.1086 g/cm3 | vol: 6087.55 A3
+  density: 2.1124 g/cm3 | vol: 6076.67 A3
+  density: 2.1165 g/cm3 | vol: 6064.82 A3
+Final density (uma-s-1p1-omat, sanidine): 2.1128 +/- 0.0080 g/cm3
+PASSED
+
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/pkg_resources/__init__.py:3148: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('sphinxcontrib')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:148: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    num_replicas: Optional[NonNegativeInt] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:151: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    max_ongoing_requests: PositiveInt = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:155: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    max_queued_requests: int = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:159: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    user_config: Any = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:163: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    graceful_shutdown_timeout_s: NonNegativeFloat = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:167: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    graceful_shutdown_wait_loop_s: NonNegativeFloat = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:172: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    health_check_period_s: PositiveFloat = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:176: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    health_check_timeout_s: PositiveFloat = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:181: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    autoscaling_config: Optional[AutoscalingConfig] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:185: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    request_router_config: RequestRouterConfig = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:198: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    version: Optional[str] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:203: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    logging_config: Optional[dict] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:208: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    max_constructor_retry_count: PositiveInt = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:212: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    gang_scheduling_config: Optional[GangSchedulingConfig] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/ray/serve/_private/config.py:217: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'update_type'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    deployment_actors: Optional[List[DeploymentActorConfig]] = Field(
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-sanidine-uma-s-1p1-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv_uma/lib/python3.12/site-packages/fairchem/core/models/uma/escn_md.py:384: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    Jd_list = torch.load(os.path.join(os.path.dirname(__file__), "Jd.pt"))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+===== 1 passed, 134 deselected, 19 warnings in 118351.32s (1 day, 8:52:31) =====
+Task 6 completato.
+Mon Jul 20 20:26:30 CEST 2026

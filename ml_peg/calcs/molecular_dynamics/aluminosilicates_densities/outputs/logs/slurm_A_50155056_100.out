@@ -1,0 +1,106 @@
+Task: 100 | Test: 1-albite-orb-v3-consv-inf-omat | Nodo: lrdn3129.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Fri Jul 24 09:11:11 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: orb-v3-consv-inf-omat
+FAILED
+
+=================================== FAILURES ===================================
+_______ test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat] ________
+
+mlip_name = 'orb-v3-consv-inf-omat', composition = 'albite', replica = 1
+
+    @pytest.mark.parametrize("mlip_name", ALL_MODELS, ids=ALL_MODELS)
+    @pytest.mark.parametrize("composition", COMPOSITIONS)
+    @pytest.mark.parametrize("replica", range(N_REPLICAS))
+    def test_aluminosilicates_densities(mlip_name, composition, replica) -> None:
+        """Run melt-quench for one model/composition/replica combination.
+        Skipped if output file already exists (restart-friendly).
+        """
+        models = load_models([mlip_name])
+        model = models[mlip_name]
+
+        write_dir = OUT_PATH / mlip_name / composition
+        write_dir.mkdir(parents=True, exist_ok=True)
+
+        struct_path = write_dir / f"replica{replica}_quenched.xyz"
+        if struct_path.exists():
+            return
+
+        atoms = read(DATA_PATH / f"{composition}_start_seed{replica}.xyz")
+>       atoms = run_melt_quench(atoms, mlip_name, model, write_dir / f"replica{replica}")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py:224:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py:169: in run_melt_quench
+    dyn = NPTBerendsen(
+.venv/lib/python3.12/site-packages/ase/md/nptberendsen.py:100: in __init__
+    NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+.venv/lib/python3.12/site-packages/ase/md/nvtberendsen.py:65: in __init__
+    MolecularDynamics.__init__(self, atoms, timestep, **kwargs)
+.venv/lib/python3.12/site-packages/ase/md/md.py:135: in __init__
+    MDLogger(dyn=self, atoms=atoms, logfile=logfile,
+.venv/lib/python3.12/site-packages/ase/md/logger.py:47: in __init__
+    self.logfile = self.openfile(file=logfile, mode=mode, comm=comm)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ase.md.logger.MDLogger object at 0x14e3804ac320>
+file = '/leonardo_work/IscrC_MLP-NPSS/ml-peg-outputs/aluminosilicates_densities/orb-v3-consv-inf-omat/albite/replica1_02_cool_450K.log'
+comm = <ase.parallel.MPI object at 0x14e501cd2ab0>, mode = 'a'
+
+    def openfile(self, file, comm, mode='w'):
+        if hasattr(file, 'close'):
+            return file  # File already opened, not for us to close.
+
+        encoding = None if mode.endswith('b') else 'utf-8'
+
+        if file is None or comm.rank != 0:
+            return self.closelater(
+                open(os.devnull, mode=mode, encoding=encoding)
+            )
+
+        if file == '-':
+            return sys.stdout
+
+>       return self.closelater(open(file, mode=mode, encoding=encoding))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       PermissionError: [Errno 13] Permission denied: '/leonardo_work/IscrC_MLP-NPSS/ml-peg-outputs/aluminosilicates_densities/orb-v3-consv-inf-omat/albite/replica1_02_cool_450K.log'
+
+.venv/lib/python3.12/site-packages/ase/utils/__init__.py:788: PermissionError
+------------------------------ Captured log call -------------------------------
+WARNING  urllib3.connectionpool:connectionpool.py:869 Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='orbitalmaterials-public-models.s3.us-west-1.amazonaws.com', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable")': /forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt
+WARNING  urllib3.connectionpool:connectionpool.py:869 Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='orbitalmaterials-public-models.s3.us-west-1.amazonaws.com', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable")': /forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt
+WARNING  urllib3.connectionpool:connectionpool.py:869 Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='orbitalmaterials-public-models.s3.us-west-1.amazonaws.com', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable")': /forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt
+WARNING  urllib3.connectionpool:connectionpool.py:869 Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='orbitalmaterials-public-models.s3.us-west-1.amazonaws.com', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable")': /forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt
+WARNING  urllib3.connectionpool:connectionpool.py:869 Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPSConnection(host='orbitalmaterials-public-models.s3.us-west-1.amazonaws.com', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable")': /forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt
+WARNING  cached_path:_cached_path.py:333 Connection error occurred while trying to fetch ETag for https://orbitalmaterials-public-models.s3.us-west-1.amazonaws.com/forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt. Will attempt to use latest cached version of resource
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat]
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat]
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/orb_models/common/training/util.py:20: UserWarning: Setting global torch default dtype to torch.float64.
+    warnings.warn(f"Setting global torch default dtype to {torch_dtype}.")
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/orb_models/common/training/util.py:22: UserWarning: Consider passing 'precision=float32-high' for significantly higher (>2x) model throughput if high precision is not required.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[1-albite-orb-v3-consv-inf-omat]
+========= 1 failed, 134 deselected, 4 warnings in 82958.22s (23:02:38) =========
+Task 100 completato.
+Sat Jul 25 08:13:56 CEST 2026

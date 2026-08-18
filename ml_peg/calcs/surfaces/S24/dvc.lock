@@ -1,0 +1,18 @@
+schema: '2.0'
+stages:
+  mock_S24Benchmark:
+    cmd: zntrack run calc_S24.S24Benchmark --name mock_S24Benchmark
+    params:
+      params.yaml:
+        mock_S24Benchmark:
+          model:
+            _cls: ml_peg.models.models.MockCalc
+            dispersion_kwargs: {}
+            model_name: mock
+            trained_on_dispersion: true
+          model_name: mock
+    outs:
+    - path: nodes/mock/S24Benchmark/node-meta.json
+      hash: md5
+      md5: 5510aedaa1adf3dd79dc914d798e4397
+      size: 544

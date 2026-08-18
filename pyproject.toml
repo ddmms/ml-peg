@@ -58,7 +58,7 @@ grace = [
     "tensorpotential == 0.5.1; python_version < '3.13'",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch==0.3.16","graph-longrange @ git+https://github.com/WillBaldwin0/graph_electrostatics.git",
 ]
 
 mattersim = [

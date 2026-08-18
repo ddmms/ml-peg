@@ -1,0 +1,8 @@
+stages:
+  mock_S24Benchmark:
+    cmd: zntrack run calc_S24.S24Benchmark --name mock_S24Benchmark
+    metrics:
+    - nodes/mock/S24Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mock_S24Benchmark

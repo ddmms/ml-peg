@@ -1,0 +1,18 @@
+schema: '2.0'
+stages:
+  mock_LNCI16Benchmark:
+    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name mock_LNCI16Benchmark
+    params:
+      params.yaml:
+        mock_LNCI16Benchmark:
+          model:
+            _cls: ml_peg.models.models.MockCalc
+            dispersion_kwargs: {}
+            model_name: mock
+            trained_on_dispersion: true
+          model_name: mock
+    outs:
+    - path: nodes/mock/LNCI16Benchmark/node-meta.json
+      hash: md5
+      md5: 81d91712c6eb771ee33b554284f0f591
+      size: 556

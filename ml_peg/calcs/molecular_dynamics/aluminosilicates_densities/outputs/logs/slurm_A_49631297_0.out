@@ -1,0 +1,52 @@
+Task: 0 | Test: 0-albite-mace-mp-0a | Nodo: lrdn0215.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Fri Jul 17 18:04:33 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-albite-mace-mp-0a] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: mace-mp-0a
+cuequivariance or cuequivariance_torch is not available. Cuequivariance acceleration will be disabled.
+Using Materials Project MACE for MACECalculator with /leonardo/home/userexternal/mbenass1/.cache/mace/20231203mace128L1_epoch199model
+Using float32 for MACECalculator, which is faster but less accurate. Recommended for MD. Use float64 for geometry optimization.
+  density: 2.2434 g/cm3 | vol: 5260.51 A3
+  density: 2.2477 g/cm3 | vol: 5250.65 A3
+  density: 2.2415 g/cm3 | vol: 5265.09 A3
+  density: 2.2277 g/cm3 | vol: 5297.73 A3
+  density: 2.2505 g/cm3 | vol: 5243.92 A3
+  density: 2.2369 g/cm3 | vol: 5275.94 A3
+  density: 2.2330 g/cm3 | vol: 5285.14 A3
+  density: 2.2510 g/cm3 | vol: 5242.88 A3
+  density: 2.2256 g/cm3 | vol: 5302.64 A3
+  density: 2.2430 g/cm3 | vol: 5261.66 A3
+  density: 2.2347 g/cm3 | vol: 5281.16 A3
+  density: 2.2386 g/cm3 | vol: 5271.85 A3
+  density: 2.2303 g/cm3 | vol: 5291.50 A3
+  density: 2.2374 g/cm3 | vol: 5274.82 A3
+  density: 2.2292 g/cm3 | vol: 5294.10 A3
+  density: 2.2474 g/cm3 | vol: 5251.18 A3
+  density: 2.2142 g/cm3 | vol: 5329.91 A3
+  density: 2.2162 g/cm3 | vol: 5325.20 A3
+  density: 2.2237 g/cm3 | vol: 5307.17 A3
+  density: 2.2438 g/cm3 | vol: 5259.76 A3
+  density: 2.2281 g/cm3 | vol: 5296.71 A3
+Final density (mace-mp-0a, albite): 2.2354 +/- 0.0103 g/cm3
+PASSED
+
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-albite-mace-mp-0a]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[0-albite-mace-mp-0a]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/mace/calculators/mace.py:226: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    torch.load(f=model_path, map_location=device)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+===== 1 passed, 134 deselected, 2 warnings in 100419.81s (1 day, 3:53:39) ======
+Task 0 completato.
+Sat Jul 18 21:58:18 CEST 2026

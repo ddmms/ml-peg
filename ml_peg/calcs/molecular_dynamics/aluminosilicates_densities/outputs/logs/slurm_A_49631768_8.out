@@ -1,0 +1,98 @@
+Task: 8 | Test: 2-sanidine-mace-mp-0a | Nodo: lrdn0197.leonardo.local
+GPU: NVIDIA A100-SXM-64GB
+Sat Jul 18 21:58:28 CEST 2026
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /leonardo/home/userexternal/mbenass1/ml-peg/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /leonardo/home/userexternal/mbenass1/ml-peg
+configfile: pyproject.toml
+plugins: anyio-4.14.0, typeguard-4.5.2, cov-4.1.0, dash-4.2.0, hydra-core-1.3.3
+collecting ... collected 135 items / 134 deselected / 1 selected
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-sanidine-mace-mp-0a] Loading model from /leonardo/home/userexternal/mbenass1/ml-peg/ml_peg/models/models.yml: mace-mp-0a
+cuequivariance or cuequivariance_torch is not available. Cuequivariance acceleration will be disabled.
+Using Materials Project MACE for MACECalculator with /leonardo/home/userexternal/mbenass1/.cache/mace/20231203mace128L1_epoch199model
+Using float32 for MACECalculator, which is faster but less accurate. Recommended for MD. Use float64 for geometry optimization.
+FAILED
+
+=================================== FAILURES ===================================
+____________ test_aluminosilicates_densities[2-sanidine-mace-mp-0a] ____________
+
+mlip_name = 'mace-mp-0a', composition = 'sanidine', replica = 2
+
+    @pytest.mark.parametrize("mlip_name", ALL_MODELS, ids=ALL_MODELS)
+    @pytest.mark.parametrize("composition", COMPOSITIONS)
+    @pytest.mark.parametrize("replica", range(N_REPLICAS))
+    def test_aluminosilicates_densities(mlip_name, composition, replica) -> None:
+        """Run melt-quench for one model/composition/replica combination.
+        Skipped if output file already exists (restart-friendly).
+        """
+        models = load_models([mlip_name])
+        model = models[mlip_name]
+
+        write_dir = OUT_PATH / mlip_name / composition
+        write_dir.mkdir(parents=True, exist_ok=True)
+
+        struct_path = write_dir / f"replica{replica}_quenched.xyz"
+        if struct_path.exists():
+            return
+
+        atoms = read(DATA_PATH / f"{composition}_start_seed{replica}.xyz")
+>       atoms = run_melt_quench(atoms, mlip_name, model, write_dir / f"replica{replica}")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py:224:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py:188: in run_melt_quench
+    dyn = NPTBerendsen(
+.venv/lib/python3.12/site-packages/ase/md/nptberendsen.py:100: in __init__
+    NVTBerendsen.__init__(self, atoms, timestep, temperature=temperature,
+.venv/lib/python3.12/site-packages/ase/md/nvtberendsen.py:65: in __init__
+    MolecularDynamics.__init__(self, atoms, timestep, **kwargs)
+.venv/lib/python3.12/site-packages/ase/md/md.py:135: in __init__
+    MDLogger(dyn=self, atoms=atoms, logfile=logfile,
+.venv/lib/python3.12/site-packages/ase/md/logger.py:47: in __init__
+    self.logfile = self.openfile(file=logfile, mode=mode, comm=comm)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ase.md.logger.MDLogger object at 0x14c7979170e0>
+file = '/leonardo_work/IscrC_MLP-NPSS/ml-peg-outputs/aluminosilicates_densities/mace-mp-0a/sanidine/replica2_03_hold_cold.log'
+comm = <ase.parallel.MPI object at 0x14c8e723ec00>, mode = 'a'
+
+    def openfile(self, file, comm, mode='w'):
+        if hasattr(file, 'close'):
+            return file  # File already opened, not for us to close.
+
+        encoding = None if mode.endswith('b') else 'utf-8'
+
+        if file is None or comm.rank != 0:
+            return self.closelater(
+                open(os.devnull, mode=mode, encoding=encoding)
+            )
+
+        if file == '-':
+            return sys.stdout
+
+>       return self.closelater(open(file, mode=mode, encoding=encoding))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       PermissionError: [Errno 13] Permission denied: '/leonardo_work/IscrC_MLP-NPSS/ml-peg-outputs/aluminosilicates_densities/mace-mp-0a/sanidine/replica2_03_hold_cold.log'
+
+.venv/lib/python3.12/site-packages/ase/utils/__init__.py:788: PermissionError
+------------------------------ Captured log call -------------------------------
+WARNING  root:mace.py:313 Default dtype float32 does not match model dtype float64, converting models to float32.
+=============================== warnings summary ===============================
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-sanidine-mace-mp-0a]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+
+ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-sanidine-mace-mp-0a]
+  /leonardo/home/userexternal/mbenass1/ml-peg/.venv/lib/python3.12/site-packages/mace/calculators/mace.py:226: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    torch.load(f=model_path, map_location=device)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED ml_peg/calcs/molecular_dynamics/aluminosilicates_densities/calc_aluminosilicates_densities.py::test_aluminosilicates_densities[2-sanidine-mace-mp-0a]
+====== 1 failed, 134 deselected, 2 warnings in 88160.97s (1 day, 0:29:20) ======
+Task 8 completato.
+Sun Jul 19 22:27:55 CEST 2026

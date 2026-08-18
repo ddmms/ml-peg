@@ -174,12 +174,15 @@ class OrbCalc(SumCalc):
             orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
             calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
         elif self.device == Device.AUTO:
-            orbff = method(
+            orbff, atoms_adapter = method(
+                precision=dtype, device=Device.resolve_auto(), **self.kwargs
+            )
+            calc = ORBCalculator(
+                orbff,
+                atoms_adapter=atoms_adapter,
                 device=Device.resolve_auto(),
-                precision=dtype,
                 **self.kwargs,
             )
-            calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
         else:
             orbff, atoms_adapter = method(
                 device=self.device, precision=dtype, **self.kwargs

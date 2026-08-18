@@ -1,0 +1,8 @@
+stages:
+  mock_LNCI16Benchmark:
+    cmd: zntrack run calc_LNCI16.LNCI16Benchmark --name mock_LNCI16Benchmark
+    metrics:
+    - nodes/mock/LNCI16Benchmark/node-meta.json:
+        cache: true
+    params:
+    - mock_LNCI16Benchmark
