@@ -126,16 +126,20 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
     """
     ref_energies = adsorption_energies["ref"]
 
+    model_errors = {
+        model_name: {
+            element: pred - ref
+            for element, pred, ref in zip(
+                ELEMENTS, pred_energies, ref_energies, strict=True
+            )
+        }
+        for model_name in MODELS
+        if (pred_energies := adsorption_energies[model_name])
+    }
+
     # Share one colour scale across models, wide enough that no error is clipped
     limit = max(
-        (
-            abs(pred - ref)
-            for model_name in MODELS
-            if adsorption_energies[model_name]
-            for pred, ref in zip(
-                adsorption_energies[model_name], ref_energies, strict=True
-            )
-        ),
+        (abs(error) for errors in model_errors.values() for error in errors.values()),
         default=DEFAULT_THRESHOLDS["MAE"]["bad"],
     )
 
@@ -144,25 +148,22 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
         for element, energy in zip(ELEMENTS, ref_energies, strict=True)
     }
 
-    for model_name in MODELS:
-        pred_energies = adsorption_energies[model_name]
-        if not pred_energies:
-            continue
+    scale_note = (
+        "<br><sub>Symmetric log colour scale, near-linear within "
+        f"\u00b1{DEFAULT_THRESHOLDS['MAE']['good']:g} eV</sub>"
+    )
 
-        errors = {
-            element: pred - ref
-            for element, pred, ref in zip(
-                ELEMENTS, pred_energies, ref_energies, strict=True
-            )
-        }
+    for model_name, errors in model_errors.items():
         plot_periodic_table(
-            title=f"Adsorption energy error - {model_name}",
+            title=f"Adsorption energy error - {model_name}{scale_note}",
             colorbar_title="Error / eV",
             hoverdata={
                 "Reference / eV": ref_hover,
                 "Predicted / eV": {
                     element: f"{energy:.3f}"
-                    for element, energy in zip(ELEMENTS, pred_energies, strict=True)
+                    for element, energy in zip(
+                        ELEMENTS, adsorption_energies[model_name], strict=True
+                    )
                 },
             },
             filename=str(
