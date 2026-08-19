@@ -5,3 +5,22 @@ metrics:
     unit: eV
     tooltip: Mean Absolute Error
     level_of_theory: PBE
+  U MAE:
+    good: 0.1
+    bad: 2.0
+    unit: eV
+    weight: 0
+    tooltip: >-
+      Mean Absolute Error for elements commonly given a Hubbard U correction in
+      GGA+U training data, such as the Materials Project (Co, Cr, Fe, Mn, Mo, Ni,
+      V and W). The reference calculations are PBE, without a Hubbard U correction
+    level_of_theory: PBE
+  non-U MAE:
+    good: 0.1
+    bad: 2.0
+    unit: eV
+    weight: 0
+    tooltip: >-
+      Mean Absolute Error for the remaining elements, which are not commonly given
+      a Hubbard U correction in GGA+U training data
+    level_of_theory: PBE
