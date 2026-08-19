@@ -152,7 +152,27 @@ Performance in predicting adsorption energies for oxygen on elemental slabs.
 Metrics
 -------
 
-Adsorption energy error
+1. MAE
+
+Mean absolute error of the adsorption energy, over all elements.
+
+2. U MAE
+
+Mean absolute error of the adsorption energy, over elements commonly given a Hubbard U
+correction in GGA+U training data, such as the Materials Project (Co, Cr, Fe, Mn, Mo,
+Ni, V and W). The reference calculations are PBE throughout, without a Hubbard U
+correction, so this metric isolates the error for elements where models trained on
+GGA+U data are expected to carry a systematic offset. Excluded from the benchmark
+score, since these systems are also included in the MAE.
+
+3. non-U MAE
+
+Mean absolute error of the adsorption energy, over the remaining elements. Excluded
+from the benchmark score, since these systems are also included in the MAE.
+
+Selecting a model shows a periodic table of its signed adsorption energy error
+(predicted - reference) for each element, and selecting an element visualises the
+corresponding slab with the adsorbed oxygen.
 
 For each slab, two single points are performed.
 The first is for the isolated slab and the second is the slab with
