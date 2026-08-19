@@ -199,6 +199,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_oc157(metrics: dict[str, dict]) -> None:
     """
     Run OC157 test.

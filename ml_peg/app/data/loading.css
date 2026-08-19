@@ -3,3 +3,14 @@
     transform: rotate(360deg);
   }
 }
+
+/* Start-up progress bar: fill continuously, easing toward ~95% (it vanishes
+   with the start-up mask when content is ready, so it never reaches 100%). */
+@keyframes ml-peg-bar-fill {
+  from {
+    background-size: 5% 100%;
+  }
+  to {
+    background-size: 95% 100%;
+  }
+}

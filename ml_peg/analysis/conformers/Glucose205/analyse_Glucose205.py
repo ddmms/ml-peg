@@ -135,6 +135,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_glucose205(metrics: dict[str, dict]) -> None:
     """
     Run Glucose205 test.

@@ -269,6 +269,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_pla15(metrics: dict[str, dict]) -> None:
     """
     Run PLA15 test.
