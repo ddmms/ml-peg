@@ -1092,6 +1092,59 @@ def plot_violin(
     return plot_violin_decorator
 
 
+def symlog_transform(values: np.ndarray, scale: float) -> np.ndarray:
+    """
+    Apply a symmetric logarithmic transform, preserving sign.
+
+    Values well within ``scale`` are mapped near-linearly, while larger magnitudes
+    are compressed logarithmically. This keeps small and large errors legible on a
+    single colour scale, rather than saturating the scale with outliers.
+
+    Parameters
+    ----------
+    values
+        Values to transform.
+    scale
+        Magnitude below which the transform is approximately linear. Typically the
+        "good" threshold for the metric, so values scoring as good stay near zero.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed values.
+    """
+    return np.sign(values) * np.log10(1 + np.abs(values) / scale)
+
+
+def symlog_ticks(scale: float, limit: float) -> list[float]:
+    """
+    Get symmetric tick values for a symlog colour bar, in untransformed units.
+
+    Ticks follow a 1-3-10 progression from `scale` up to `limit`, mirrored about
+    zero, so each decade of the colour bar is labelled.
+
+    Parameters
+    ----------
+    scale
+        Magnitude below which the symlog transform is approximately linear.
+    limit
+        Largest magnitude to label.
+
+    Returns
+    -------
+    list[float]
+        Tick values, in ascending order.
+    """
+    ticks = []
+    step = scale
+    while step <= limit:
+        ticks.extend((step, 3 * step))
+        step *= 10
+
+    ticks = [tick for tick in ticks if tick <= limit]
+    return sorted({-tick for tick in ticks} | {0.0} | set(ticks))
+
+
 def plot_periodic_table(
     title: str | None = None,
     colorbar_title: str | None = None,
@@ -1100,6 +1153,7 @@ def plot_periodic_table(
     colorscale: str = "Viridis",
     zmin: float | None = None,
     zmax: float | None = None,
+    symlog_scale: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -1118,6 +1172,13 @@ def plot_periodic_table(
         Plotly colourscale name. Default is ``"Viridis"``.
     zmin, zmax
         Optional colour scale limits. If not provided, they are inferred from the data.
+    symlog_scale
+        If set, colours are mapped symmetrically logarithmically, with this magnitude
+        setting the width of the near-linear region about zero. Typically the "good"
+        threshold for the metric, so values scoring as good stay near the midpoint,
+        while outliers remain distinguishable instead of saturating the scale.
+        The colour bar is labelled in the original units. Default is `None`,
+        corresponding to a linear scale.
 
     Returns
     -------
@@ -1184,6 +1245,41 @@ def plot_periodic_table(
                 hover_grid[row, col] = "<br>".join(hover_parts)
                 text_grid[row, col] = element
 
+            colorbar = {"title": colorbar_title}
+            plot_min, plot_max = zmin, zmax
+            heading = title
+            if symlog_scale is not None:
+                if symlog_scale <= 0:
+                    raise ValueError("`symlog_scale` must be positive")
+
+                limit = max(
+                    abs(value)
+                    for value in (zmin, zmax, np.nanmin(grid), np.nanmax(grid))
+                    if value is not None
+                )
+                ticks = symlog_ticks(symlog_scale, limit)
+                colorbar |= {
+                    "tickvals": symlog_transform(np.array(ticks), symlog_scale),
+                    "ticktext": [f"{tick:g}" for tick in ticks],
+                }
+
+                if heading:
+                    heading += (
+                        "<br><sub>Symmetric log colour scale, near-linear within "
+                        f"\u00b1{symlog_scale:g}</sub>"
+                    )
+
+                grid = symlog_transform(grid, symlog_scale)
+                plot_min, plot_max = symlog_transform(
+                    np.array(
+                        [
+                            -limit if zmin is None else zmin,
+                            limit if zmax is None else zmax,
+                        ]
+                    ),
+                    symlog_scale,
+                )
+
             fig = go.Figure(
                 data=go.Heatmap(
                     z=grid,
@@ -1192,10 +1288,10 @@ def plot_periodic_table(
                     text=hover_grid,
                     hovertemplate="%{text}<extra></extra>",
                     colorscale=colorscale,
-                    colorbar={"title": colorbar_title},
+                    colorbar=colorbar,
                     showscale=True,
-                    zmin=zmin,
-                    zmax=zmax,
+                    zmin=plot_min,
+                    zmax=plot_max,
                 )
             )
 
@@ -1218,7 +1314,7 @@ def plot_periodic_table(
             )
 
             fig.update_layout(
-                title={"text": title},
+                title={"text": heading},
                 xaxis={
                     "visible": False,
                     "range": [-0.5, PERIODIC_TABLE_COLS - 0.5],
