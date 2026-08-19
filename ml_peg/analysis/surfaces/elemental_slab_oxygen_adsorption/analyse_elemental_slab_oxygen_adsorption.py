@@ -125,6 +125,20 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
         Dictionary of reference and predicted adsorption energies.
     """
     ref_energies = adsorption_energies["ref"]
+
+    # Share one colour scale across models, wide enough that no error is clipped
+    limit = max(
+        (
+            abs(pred - ref)
+            for model_name in MODELS
+            if adsorption_energies[model_name]
+            for pred, ref in zip(
+                adsorption_energies[model_name], ref_energies, strict=True
+            )
+        ),
+        default=DEFAULT_THRESHOLDS["MAE"]["bad"],
+    )
+
     ref_hover = {
         element: f"{energy:.3f}"
         for element, energy in zip(ELEMENTS, ref_energies, strict=True)
@@ -155,8 +169,11 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
                 OUT_PATH / model_name / "adsorption_error_periodic_table.json"
             ),
             colorscale="RdBu",
-            zmin=-DEFAULT_THRESHOLDS["MAE"]["bad"],
-            zmax=DEFAULT_THRESHOLDS["MAE"]["bad"],
+            zmin=-limit,
+            zmax=limit,
+            # Errors within the "good" threshold stay near the midpoint colour,
+            # so outliers remain distinguishable rather than saturating the scale
+            symlog_scale=DEFAULT_THRESHOLDS["MAE"]["good"],
         )(lambda values=errors: values)()
 
 
