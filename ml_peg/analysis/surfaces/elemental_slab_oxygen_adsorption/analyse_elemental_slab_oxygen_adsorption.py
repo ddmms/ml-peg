@@ -1,4 +1,10 @@
-"""Analyse elemental slab oxygen adsorption benchmark."""
+"""
+Analyse elemental slab oxygen adsorption benchmark.
+
+[1] Warford, Thomas, Fabian L. Thiemann, and Gábor Csányi. "Better without U: impact
+of selective Hubbard U correction on foundational MLIPs." Machine Learning: Science
+and Technology 7.3 (2026): 035033 (https://doi.org/10.1088/2632-2153/ae6be5).
+"""
 
 from __future__ import annotations
 
@@ -40,7 +46,8 @@ SYSTEM_INFO = get_struct_info(
 # Each slab is elemental, so frame 0 of each file has a single element
 ELEMENTS = [elements[0] for elements in SYSTEM_INFO["elements"]]
 
-# Transition metals commonly given a Hubbard U correction in GGA+U training data
+# Transition metals commonly given a Hubbard U correction in GGA+U training data,
+# as analysed in Warford et al. (https://doi.org/10.1088/2632-2153/ae6be5)
 U_ELEMENTS = frozenset({"Co", "Cr", "Fe", "Mn", "Mo", "Ni", "V", "W"})
 
 

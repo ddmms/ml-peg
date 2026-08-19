@@ -13,7 +13,8 @@ metrics:
     tooltip: >-
       Mean Absolute Error for elements commonly given a Hubbard U correction in
       GGA+U training data, such as the Materials Project (Co, Cr, Fe, Mn, Mo, Ni,
-      V and W). The reference calculations are PBE, without a Hubbard U correction
+      V and W). The reference calculations are PBE, without a Hubbard U correction.
+      See Warford et al. (https://doi.org/10.1088/2632-2153/ae6be5)
     level_of_theory: PBE
   non-U MAE:
     good: 0.1
