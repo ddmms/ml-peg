@@ -1,8 +1,0 @@
-stages:
-  mock_OC157Benchmark:
-    cmd: zntrack run calc_OC157.OC157Benchmark --name mock_OC157Benchmark
-    metrics:
-    - nodes/mock/OC157Benchmark/node-meta.json:
-        cache: true
-    params:
-    - mock_OC157Benchmark

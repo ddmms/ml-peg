@@ -1,8 +1,0 @@
-stages:
-  mock_PLA15Benchmark:
-    cmd: zntrack run calc_PLA15.PLA15Benchmark --name mock_PLA15Benchmark
-    metrics:
-    - nodes/mock/PLA15Benchmark/node-meta.json:
-        cache: true
-    params:
-    - mock_PLA15Benchmark

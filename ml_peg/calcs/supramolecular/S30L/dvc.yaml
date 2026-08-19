@@ -1,8 +1,0 @@
-stages:
-  mock_S30LBenchmark:
-    cmd: zntrack run calc_S30L.S30LBenchmark --name mock_S30LBenchmark
-    metrics:
-    - nodes/mock/S30LBenchmark/node-meta.json:
-        cache: true
-    params:
-    - mock_S30LBenchmark

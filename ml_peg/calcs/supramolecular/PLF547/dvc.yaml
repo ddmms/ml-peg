@@ -1,8 +1,0 @@
-stages:
-  mock_PLF547Benchmark:
-    cmd: zntrack run calc_PLF547.PLF547Benchmark --name mock_PLF547Benchmark
-    metrics:
-    - nodes/mock/PLF547Benchmark/node-meta.json:
-        cache: true
-    params:
-    - mock_PLF547Benchmark

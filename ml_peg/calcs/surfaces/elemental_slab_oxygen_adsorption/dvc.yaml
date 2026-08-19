@@ -1,9 +1,0 @@
-stages:
-  mock_ElementalSlabOxygenAdsorptionBenchmark:
-    cmd: zntrack run calc_elemental_slab_oxygen_adsorption.ElementalSlabOxygenAdsorptionBenchmark
-      --name mock_ElementalSlabOxygenAdsorptionBenchmark
-    metrics:
-    - nodes/mock/ElementalSlabOxygenAdsorptionBenchmark/node-meta.json:
-        cache: true
-    params:
-    - mock_ElementalSlabOxygenAdsorptionBenchmark
