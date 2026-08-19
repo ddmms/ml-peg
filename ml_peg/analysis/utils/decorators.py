@@ -1177,8 +1177,8 @@ def plot_periodic_table(
         setting the width of the near-linear region about zero. Typically the "good"
         threshold for the metric, so values scoring as good stay near the midpoint,
         while outliers remain distinguishable instead of saturating the scale.
-        The colour bar is labelled in the original units. Default is `None`,
-        corresponding to a linear scale.
+        The colour bar is labelled in the original units, and the scale is noted
+        beneath the title. Default is `None`, corresponding to a linear scale.
 
     Returns
     -------
