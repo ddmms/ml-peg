@@ -172,7 +172,7 @@ from the benchmark score, since these systems are also included in the MAE.
 
 Selecting a model shows a periodic table of its signed adsorption energy error
 (predicted - reference) for each element, and selecting an element visualises the
-corresponding slab with the adsorbed oxygen.
+corresponding slab with the adsorbed oxygen. The table uses a symlog colormap.
 
 For each slab, two single points are performed.
 The first is for the isolated slab and the second is the slab with
