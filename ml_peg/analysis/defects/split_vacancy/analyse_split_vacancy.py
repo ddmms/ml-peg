@@ -580,9 +580,11 @@ def match_pbe_rate(build_results_pbe) -> dict[str, float]:
 @pytest.fixture
 @plot_violin(
     title="Max Distance Distribution (Oxides, PBEsol)",
-    y_label="Max Distance / Å",
+    y_label="Normalised Max Distance",
     hoverdata=MAX_DIST_HOVERDATA_PBESOL,
     filename=OUT_PATH / "figure_max_dist_pbesol.json",
+    threshold=STOL,
+    threshold_label=f"match threshold = {STOL}",
 )
 def max_dist_pbesol_dist(build_results_pbesol) -> dict[str, list]:
     """
@@ -626,9 +628,11 @@ def max_dist_pbesol_mean(max_dist_pbesol_dist) -> dict[str, float]:
 @pytest.fixture
 @plot_violin(
     title="Max Distance Distribution (Nitrides, PBE(+U))",
-    y_label="Max Distance / Å",
+    y_label="Normalised Max Distance",
     hoverdata=MAX_DIST_HOVERDATA_PBE,
     filename=OUT_PATH / "figure_max_dist_pbe.json",
+    threshold=STOL,
+    threshold_label=f"match threshold = {STOL}",
 )
 def max_dist_pbe_dist(build_results_pbe) -> dict[str, list]:
     """

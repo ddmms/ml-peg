@@ -962,6 +962,8 @@ def plot_violin(
     y_label: str | None = None,
     hoverdata: dict[str, list] | None = None,
     filename: str = "violin.json",
+    threshold: float | None = None,
+    threshold_label: str | None = None,
 ) -> Callable:
     """
     Plot overlapping violin distributions of per-model value lists.
@@ -981,6 +983,12 @@ def plot_violin(
         with the value lists. Default is None.
     filename
         Filename to save plot as JSON. Default is "violin.json".
+    threshold
+        Value at which to draw a dashed line across the distributions, for metrics
+        with a pass/fail criterion. Default is None, drawing no line.
+    threshold_label
+        Label annotating the threshold line. Default is None, labelling it with
+        `threshold`.
 
     Returns
     -------
@@ -1064,6 +1072,15 @@ def plot_violin(
                 title={"text": title},
                 yaxis={"title": {"text": y_label}},
             )
+
+            if threshold is not None:
+                fig.add_hline(
+                    y=threshold,
+                    line_dash="dash",
+                    line_color="#d62728",
+                    annotation_text=threshold_label or f"threshold = {threshold}",
+                    annotation_position="top right",
+                )
 
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             fig.write_json(filename)
