@@ -270,16 +270,16 @@ material-cation pairs is reported.
 Fraction of MLIP-relaxed structures that converge to the same geometry as the
 DFT-relaxed reference, determined using the pymatgen
 `StructureMatcher <https://pymatgen.org/pymatgen.analysis.html#module-pymatgen.analysis.structure_matcher>`_.
-The match criterion is a normalised maximum atomic displacement below 0.3 (see
+The match criterion is a normalised maximum atomic displacement below 0.25 (see
 metric 4).
 
 4. Max Dist
 
 Maximum atomic displacement between the MLIP-relaxed and DFT-relaxed matched
-structures, normalised by :math:`(V/N)^{1/3}` (wher :math:`V` is the cell volume and
+structures, normalised by :math:`(V/N)^{1/3}` (where :math:`V` is the cell volume and
 :math:`N` the number of atoms) to give a unitless quantity comparable across
 different crystal structures. Only computed for structure pairs that pass the
-StructureMatcher test. The match criterion itself is a normalised max dist below 0.3.
+StructureMatcher test. The match criterion itself is a normalised max dist below 0.25.
 
 
 Computational cost
