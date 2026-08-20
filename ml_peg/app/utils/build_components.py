@@ -266,6 +266,7 @@ def build_summary_table(
         id=table_id,
         markdown_options={"link_target": "_blank"},
         sort_action="native",
+        sort_as_null=["NaN"],
         style_data_conditional=style_with_warnings,
         style_cell_conditional=style_cell_conditional,
         style_header={
