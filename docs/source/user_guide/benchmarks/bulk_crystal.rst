@@ -619,3 +619,56 @@ Reference data:
 
 * Same as input data
 * PBE
+
+YBCO lattice parameters vs oxygen content
+=========================================
+
+Summary
+-------
+
+Lattice parameters a, b, c of YBa\ :sub:`2`\ Cu\ :sub:`3`\ O\ :sub:`(6+x)` as a function
+of oxygen content, for x from 0.0 to 1.0 (YBCO6.00-7.00). Predictions are compared to
+CP2K PBE DFT from Di Eugenio et al., arXiv:2511.22592.
+This captures the orthorhombic-to-tetragonal transition: at high oxygen
+content a < b (orthorhombic), and as oxygen is removed a and b converge (tetragonal,
+orthorhombicity b - a -> 0).
+
+A 4x4x2 supercell is relaxed (cell + positions) at each oxygen content; the
+per-unit-cell parameters are the relaxed supercell lengths divided by the supercell
+repetitions.
+
+Metrics
+-------
+
+1. MAE (per parameter)
+
+   Mean absolute error of a, b, c vs CP2K PBE, over all oxygen contents, reported per
+   parameter in angstrom.
+
+Good and bad thresholds
+-----------------------
+
+Considering purpose-trained YBCO potentials, which reproduce the DFT lattice parameters
+to within about 2.5 % at worst (arXiv:2511.22592), the good thresholds are the level a
+system-specific potential typically reaches (0.02 Angstrom for a and b, 0.05 for c) and
+the bad thresholds mark the worst case (0.1 Angstrom for a and b, 0.3 for c).
+
+Models trained to a different level of theory carry a red ``level_of_theory`` flag.
+
+Computational cost
+------------------
+
+Medium: 11 cell + position relaxations of a 4x4x2 supercell (~380-420 atoms) per model;
+of order an hour on CPU per model.
+
+Data availability
+-----------------
+
+Input structures:
+
+* YBCO6.00-7.00 supercells, found in
+  ``inputs/bulk_crystal/YBCO_lattice_vs_O/YBCO_lattice_vs_O.zip``.
+
+Reference data:
+
+* CP2K PBE lattice parameters, Di Eugenio et al., arXiv:2511.22592.
