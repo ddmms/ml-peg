@@ -10,7 +10,7 @@ from ase.io import read, write
 from ase.optimize import LBFGS
 import numpy as np
 from pymatgen.core import Structure
-from pymatgen.core.structure_matcher import StructureMatcher
+from pymatgen.core.structure_matcher import ElementComparator, StructureMatcher
 import pytest
 from tqdm.auto import tqdm
 
@@ -30,7 +30,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # based on MatBench settings, see https://github.com/janosh/matbench-discovery/issues/230
 # note we choose theshold stol for match in analysis
-STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False)
+STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False, comparator=ElementComparator())
 
 
 def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
@@ -82,20 +82,22 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                 p for p in material_dir.iterdir() if p.is_dir()
             ]  # skip pristine supercell.xyz files (not used)
             for cation_dir in tqdm(cation_dirs, leave=False):
-                nv_xyz_path = cation_dir / "normal_vacancy.xyz"
-                sv_xyz_path = cation_dir / "split_vacancy.xyz"
+                # "_initial" is the MLIP relaxation starting point (from doped)
+                #  "_ref" is the DFT-relaxed
+                atoms_paths = [
+                    (cation_dir / "normal_vacancy_initial.xyz", cation_dir / "normal_vacancy_ref.xyz", "normal_vacancy"),
+                    (cation_dir / "split_vacancy_initial.xyz", cation_dir / "split_vacancy_ref.xyz", "split_vacancy"),
+                ]
 
-                # many materials only have one of the two
-                # we could relax the one that exists and get max_dist
-                if not (nv_xyz_path.exists() and sv_xyz_path.exists()):
+                # many materials only have one of split and normal vacancy; skip if either is missing
+                if not all(p.exists() and r.exists() for p, r, _ in atoms_paths):
                     continue
 
-                atoms_paths = [nv_xyz_path, sv_xyz_path]
-
                 try:
-                    for atoms_path in atoms_paths:
+                    for atoms_path, ref_path, output_stem in atoms_paths:
                         relaxed_atoms = []
                         atoms_list = read(atoms_path, ":")
+                        ref_atoms_list = read(ref_path, ":")
 
                         ref_atoms_out_path = (
                             OUT_PATH
@@ -103,22 +105,37 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                             / "ref"
                             / material_dir.stem
                             / cation_dir.stem
-                            / f"{atoms_path.stem}.xyz"
+                            / f"{output_stem}.xyz"
                         )
                         # Copy ref structures once; later runs skip if present.
                         if not ref_atoms_out_path.exists():
                             ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
-                            write(ref_atoms_out_path, atoms_list)
+                            write(ref_atoms_out_path, ref_atoms_list)
 
-                        for initial_atoms in atoms_list:
+                        for initial_atoms, ref_atoms in zip(atoms_list, ref_atoms_list):
                             atoms = deepcopy(initial_atoms)
-                            atoms.info["charge"] = initial_atoms.info[
-                                "ref_total_charge"
-                            ]
+                            # some calculators (e.g. UMA) reject non-integer charge.
+                            atoms.info["charge"] = int(
+                                initial_atoms.info["ref_total_charge"]
+                            )
                             atoms.info["spin"] = 1
 
                             atoms.calc = deepcopy(calc)
                             atoms.info["initial_energy"] = atoms.get_potential_energy()
+
+                            # single-point MLIP energy at the (fixed) DFT-relaxed
+                            # geometry -- isolates energy-ranking (spearmans) agreement
+                            # from whether the MLIP's own relaxation finds a
+                            # good structure
+                            ref_eval_atoms = deepcopy(ref_atoms)
+                            ref_eval_atoms.info["charge"] = int(
+                                ref_atoms.info["ref_total_charge"]
+                            )
+                            ref_eval_atoms.info["spin"] = 1
+                            ref_eval_atoms.calc = deepcopy(calc)
+                            atoms.info["ref_structure_mlip_energy"] = (
+                                ref_eval_atoms.get_potential_energy()
+                            )
 
                             opt = LBFGS(atoms, logfile=None)
                             opt.run(fmax=fmax, steps=steps)
@@ -126,7 +143,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
                             atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
-                            rmsd, max_dist = get_rms_dist(atoms, initial_atoms)
+                            rmsd, max_dist = get_rms_dist(atoms, ref_atoms)
                             atoms.info["ref_rmsd"] = rmsd
                             atoms.info["ref_max_distance"] = max_dist
                             atoms.info["relaxation_converged"] = converged
@@ -144,7 +161,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                             / model_name
                             / material_dir.stem
                             / cation_dir.stem
-                            / f"{atoms_path.stem}.xyz"
+                            / f"{output_stem}.xyz"
                         )
                         atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
                         write(atoms_out_path, relaxed_atoms)
