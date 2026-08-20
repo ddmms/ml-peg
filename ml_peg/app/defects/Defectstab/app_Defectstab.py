@@ -18,8 +18,10 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Defectstab Formation Energies"
 # Update this URL when documentation is added
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defect.html#defectstab"
-DATA_PATH = APP_ROOT / "data" / "defect" / "Defectstab"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defects.html#defectstab"
+)
+DATA_PATH = APP_ROOT / "data" / "defects" / "Defectstab"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -38,7 +40,7 @@ class DefectstabApp(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
         # Sort files to match the order in the scatter plot
         structs = [
-            f"/assets/defect/Defectstab/{MODELS[0]}/{struct_file.name}"
+            f"/assets/defects/Defectstab/{MODELS[0]}/{struct_file.name}"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

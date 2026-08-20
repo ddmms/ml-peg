@@ -956,6 +956,142 @@ def plot_density_scatter(
     return plot_density_decorator
 
 
+def plot_violin(
+    *,
+    title: str | None = None,
+    y_label: str | None = None,
+    hoverdata: dict[str, list] | None = None,
+    filename: str = "violin.json",
+    threshold: float | None = None,
+    threshold_label: str | None = None,
+) -> Callable:
+    """
+    Plot overlapping violin distributions of per-model value lists.
+
+    The decorated function must return a mapping of model name to a list of
+    numeric values (NaNs are silently ignored).
+
+    Parameters
+    ----------
+    title
+        Graph title. Default is None.
+    y_label
+        Label for y-axis. Default is None.
+    hoverdata
+        Hover data dictionary mapping field names to lists of values, aligned
+        with the per-structure value lists. NaN entries are filtered in sync
+        with the value lists. Default is None.
+    filename
+        Filename to save plot as JSON. Default is "violin.json".
+    threshold
+        Value at which to draw a dashed line across the distributions, for metrics
+        with a pass/fail criterion. Default is None, drawing no line.
+    threshold_label
+        Label annotating the threshold line. Default is None, labelling it with
+        `threshold`.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_violin_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot violin.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_violin_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot violin.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            hovertemplate = None
+            if hoverdata:
+                hovertemplate = f"<b>{y_label or 'Value'}:</b> %{{y:.4f}}<br>"
+                for i, key in enumerate(hoverdata):
+                    hovertemplate += f"<b>{key}:</b> %{{customdata[{i}]}}<br>"
+                hovertemplate += "<extra></extra>"
+
+            fig = go.Figure()
+            for model_name, values in results.items():
+                mask = [v is not None and not np.isnan(v) for v in values]
+                filtered = [v for v, m in zip(values, mask, strict=True) if m]
+
+                customdata = None
+                if hoverdata:
+                    filtered_cols = [
+                        [v for v, m in zip(col, mask, strict=True) if m]
+                        for col in hoverdata.values()
+                    ]
+                    customdata = (
+                        list(zip(*filtered_cols, strict=True))
+                        if filtered_cols
+                        else None
+                    )
+
+                fig.add_trace(
+                    go.Violin(
+                        y=filtered,
+                        name=model_name,
+                        points="all",
+                        jitter=0.05,
+                        box_visible=True,
+                        meanline_visible=True,
+                        opacity=0.6,
+                        customdata=customdata,
+                        hovertemplate=hovertemplate,
+                    )
+                )
+
+            fig.update_layout(
+                title={"text": title},
+                yaxis={"title": {"text": y_label}},
+            )
+
+            if threshold is not None:
+                fig.add_hline(
+                    y=threshold,
+                    line_dash="dash",
+                    line_color="#d62728",
+                    annotation_text=threshold_label or f"threshold = {threshold}",
+                    annotation_position="top right",
+                )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_violin_wrapper
+
+    return plot_violin_decorator
+
+
 def plot_periodic_table(
     title: str | None = None,
     colorbar_title: str | None = None,
