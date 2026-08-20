@@ -230,8 +230,8 @@ Summary
 -------
 
 Performance predicting split vacancy formation energies and relaxed structures for
-metal oxides (PBEsol, 531 host compounds, 722 material-cation pairs, 2154 structures)
-and stable nitrides (PBE, 144 host compounds, 149 material-cation pairs, 285 structures).
+metal oxides (PBEsol, 344 host compounds, 420 material-cation pairs, 1514 structures)
+and stable nitrides (PBE, 57 host compounds, 58 material-cation pairs, 144 structures).
 
 A split vacancy is a stoichiometry-conserving defect complex in which an isolated atomic
 vacancy reconstructs into two vacancies and an interstitial
@@ -241,6 +241,9 @@ Data from Seán Kavanagh, *Identifying split vacancy defects with machine-learne
 `https://doi.org/10.1088/2515-7655/ade916 <https://doi.org/10.1088/2515-7655/ade916>`_
 
 **Note that oxide calculations were performed with PBEsol, whilst nitride calculations were performed with PBE.**
+
+MLIP relaxations start from the *initial*, unrelaxed point-vacancy/split-vacancy
+structure (regenerated directly from the bulk supercell).
 
 Metrics
 -------
@@ -255,7 +258,7 @@ structures:
 
    E_\text{form} = \min_i E^\text{SV}_i - \min_j E^\text{NV}_j
 
-where the minima are taken over all initial structures that match the DFT reference
+where the minima are taken over all MLIP-relaxed structures that match the DFT reference
 (see metric 3) for a given material-cation pair.
 
 2. Spearman's rank correlation
@@ -286,7 +289,9 @@ Computational cost
 ------------------
 
 Relatively slow: relaxations involve large defect supercells (50–500 atoms) and
-multiple initial structures per material-cation pair.
+multiple initial structures per material-cation pair. On a single NVIDIA A100
+GPU, a full run (both PBE and PBEsol subsets) takes roughly 2-2.5 hours per
+MACE model.
 
 
 Data availability
@@ -296,8 +301,11 @@ Input structures:
 
 * Generated using the `doped <https://github.com/SMTG-Bham/doped>`_ supercell
   algorithm. For oxides, supercell parameters are consistent with those of
-  Kumagai et al. (using the ``vise`` package). Supercells satisfy a minimum image
-  distance of 10 Å and a minimum of 50 atoms.
+  Kumagai et al. (using the ``vise`` package): Y. Kumagai, N. Tsunoda, A. Takahashi,
+  F. Oba, *Insights into Oxygen Vacancies from High-Throughput First-Principles
+  Calculations*, Phys. Rev. Materials 5, 123803 (2021),
+  `https://doi.org/10.1103/PhysRevMaterials.5.123803 <https://doi.org/10.1103/PhysRevMaterials.5.123803>`_.
+  Supercells satisfy a minimum image distance of 10 Å and a minimum of 50 atoms.
 
 Reference data:
 
