@@ -17,7 +17,7 @@ metrics:
         good: 0.1
         bad: 0.8
         unit: eV
-        tooltip: "RMSD of YBCO oxygen-interstitial formation energies vs CP2K PBE (bad loosened from the 0.5*mean|E_ref| rule: all share a mu_O offset, a known O2-reference struggle, so absolute RMSD over-penalises)"
+        tooltip: "RMSD of YBCO oxygen-interstitial formation energies vs CP2K PBE (bad loosened)"
         level_of_theory: PBE
         weight: 1
     RMSD reactions:

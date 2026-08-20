@@ -231,13 +231,11 @@ YBCO point-defect formation energies
 Summary
 -------
 
-Formation energies of the 23 intrinsic point defects in the high-temperature
+Formation energies of 23 point defects in the high-temperature
 superconductor YBa\ :sub:`2`\ Cu\ :sub:`3`\ O\ :sub:`7` (YBCO): oxygen vacancies on the
 four inequivalent oxygen sites (O1-O4), Cu(1,2), Ba and Y vacancies (8), eight cation
 antisites, and seven oxygen interstitials (Oint1-Oint7). Predictions are compared to
-CP2K PBE DFT. Oint4 relaxes into the Oint2 configuration in DFT and so shares Oint2's
-reference formation energy; it is retained to test whether a model reproduces that
-collapse.
+CP2K PBE DFT.
 
 A 6x6x2 supercell (936 atoms) is used. Defect formation energies are computed at the
 fixed relaxed host-cell volume; only atomic positions are relaxed for the defected
@@ -264,10 +262,7 @@ Metrics
    RMSD of the five mu-independent antisite exchange-reaction energies (e.g. the Y-Ba
    cation exchange), E_react = E(A_B) + E(B_A) - 2 E_perf. Because the chemical
    potentials cancel, this isolates the intrinsic antisite energetics from the
-   chemical-potential (in particular O2-reference) uncertainty, and lets models trained
-   at a different level of theory be compared more directly: e.g. the r2SCAN model,
-   which is off on the absolute antisite energies, reproduces these reaction energies
-   well.
+   chemical-potential uncertainty.
 
 The overall Score is the unweighted average of the normalised per-metric scores.
 
@@ -280,28 +275,21 @@ energies to about this level, which is also the scale of the DFT finite-size err
 vacancies and antisites the bad threshold is 0.6 eV: because defect concentrations depend
 exponentially on the formation energy, an absolute error beyond a few tenths of an eV
 makes them unreliable, so an absolute threshold is used rather than the Defectstab
-scale-aware rule (which, being dominated by the large Y and Ba vacancy energies, would be
-much more lenient). For interstitials the bad threshold is loosened to 0.8 eV: all
-interstitial formation energies share the same -mu_O term, so an inaccurate oxygen
-chemical potential (the known O2-reference difficulty) shifts them all by one constant
-that inflates the absolute RMSD without affecting the energetic ordering.
+scale-aware rule. For interstitials the bad threshold is loosened to 0.8 eV: all
+interstitial formation energies share the same -mu_O term.
 
 Level of theory
 ---------------
 
-The reference is CP2K PBE. Models trained to a different level of theory (r2SCAN,
-PBEsol, molecular :math:`\omega`\ B97M-V "omol", and the polarizable
-``mace-polar-1`` models) carry a red level-of-theory flag; their offset is expected.
-Note that the molecular-only models (``mace-omol``, ``mace-polar-1-{s,m,l}``) are
-out-of-domain for a dense periodic oxide and can produce non-physical formation
-energies here, consistent with their behaviour on other periodic subsets.
+The reference is CP2K PBE. Models trained to a different level of theory carry a red
+level-of-theory flag; their offset is expected.
 
 Computational cost
 ------------------
 
-Long: 28 geometry optimisations of a 936-atom supercell per model (1 perfect cell,
-4 elemental references, 23 defects). A few hours on CPU per PBE-family model; the
-molecular models are considerably slower on the defect cells.
+Medium/Long: 28 geometry optimisations of a 936-atom supercell per model (1 perfect
+cell, 4 elemental references, 23 defects). A few hours on CPU per PBE-family model;
+the molecular models are considerably slower on the defect cells.
 
 Data availability
 -----------------
