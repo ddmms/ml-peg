@@ -30,7 +30,9 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 # based on MatBench settings, see https://github.com/janosh/matbench-discovery/issues/230
 # note we choose theshold stol for match in analysis
-STRUCTURE_MATCHER = StructureMatcher(stol=1.0, scale=False, comparator=ElementComparator())
+STRUCTURE_MATCHER = StructureMatcher(
+    stol=1.0, scale=False, comparator=ElementComparator()
+)
 
 
 def get_rms_dist(atoms_1, atoms_2) -> tuple[float, float] | None:
@@ -85,11 +87,19 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                 # "_initial" is the MLIP relaxation starting point (from doped)
                 #  "_ref" is the DFT-relaxed
                 atoms_paths = [
-                    (cation_dir / "normal_vacancy_initial.xyz", cation_dir / "normal_vacancy_ref.xyz", "normal_vacancy"),
-                    (cation_dir / "split_vacancy_initial.xyz", cation_dir / "split_vacancy_ref.xyz", "split_vacancy"),
+                    (
+                        cation_dir / "normal_vacancy_initial.xyz",
+                        cation_dir / "normal_vacancy_ref.xyz",
+                        "normal_vacancy",
+                    ),
+                    (
+                        cation_dir / "split_vacancy_initial.xyz",
+                        cation_dir / "split_vacancy_ref.xyz",
+                        "split_vacancy",
+                    ),
                 ]
 
-                # many materials only have one of split and normal vacancy; skip if either is missing
+                #  skip if either split or normal vacancy is missing
                 if not all(p.exists() and r.exists() for p, r, _ in atoms_paths):
                     continue
 
@@ -112,7 +122,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                             ref_atoms_out_path.parent.mkdir(exist_ok=True, parents=True)
                             write(ref_atoms_out_path, ref_atoms_list)
 
-                        for initial_atoms, ref_atoms in zip(atoms_list, ref_atoms_list):
+                        for initial_atoms, ref_atoms in zip(
+                            atoms_list, ref_atoms_list, strict=True
+                        ):
                             atoms = deepcopy(initial_atoms)
                             # some calculators (e.g. UMA) reject non-integer charge.
                             atoms.info["charge"] = int(
