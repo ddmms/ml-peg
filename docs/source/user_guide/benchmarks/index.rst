@@ -6,6 +6,7 @@ Benchmarks
     :maxdepth: 3
 
     bulk_crystal
+    porous materials
     conformers
     defects
     f_block

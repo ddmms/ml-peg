@@ -1,0 +1,7 @@
+metrics:
+    MAE:
+        good: 0.005
+        bad: 0.1
+        unit: eV/atom
+        tooltip: "Mean Absolute Error of energy per atom for all systems"
+        level_of_theory: PBE+D3
