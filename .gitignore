@@ -42,3 +42,6 @@ ml_peg/app/data/*
 !ml_peg/app/data/onboarding/
 !ml_peg/app/data/table_download/
 certs/
+*.out
+*.err
+outputs/logs/
