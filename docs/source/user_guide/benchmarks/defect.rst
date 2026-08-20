@@ -231,16 +231,10 @@ YBCO point-defect formation energies
 Summary
 -------
 
-Formation energies of 23 point defects in the high-temperature
-superconductor YBa\ :sub:`2`\ Cu\ :sub:`3`\ O\ :sub:`7` (YBCO): oxygen vacancies on the
-four inequivalent oxygen sites (O1-O4), Cu(1,2), Ba and Y vacancies (8), eight cation
-antisites, and seven oxygen interstitials (Oint1-Oint7). Predictions are compared to
-CP2K PBE DFT.
+Formation energies of 23 point defects in the high-temperature superconductor YBa\ :sub:`2`\ Cu\ :sub:`3`\ O\ :sub:`7` (YBCO): oxygen vacancies on the four inequivalent oxygen sites (O1-O4), Cu(1,2), Ba and Y vacancies (8), eight cation
+antisites, and seven oxygen interstitials (Oint1-Oint7). Predictions are compared to CP2K PBE DFT from Di Eugenio et al., arXiv:2511.22592.
 
-A 6x6x2 supercell (936 atoms) is used. Defect formation energies are computed at the
-fixed relaxed host-cell volume; only atomic positions are relaxed for the defected
-cells. Elemental chemical potentials are used: :math:`\mu_\text{O}` from the O\ :sub:`2`
-dimer and :math:`\mu_\text{Ba,Cu,Y}` from the bulk metals.
+A 6x6x2 supercell (936 atoms) is used. Defect formation energies are computed at the fixed relaxed host-cell volume; only atomic positions are relaxed for the defected cells. Elemental chemical potentials are used: :math:`\mu_\text{O}` from the O\ :sub:`2` dimer and :math:`\mu_\text{Ba,Cu,Y}` from the bulk metals.
 
 .. math::
 
@@ -255,12 +249,12 @@ Metrics
 
    Root-mean-square deviation of the predicted formation energies from CP2K PBE,
    computed independently for each defect class (vacancy, antisite, O interstitial),
-   in eV. This matches the RMSD metric of the Defectstab benchmark.
+   in eV.
 
 2. RMSD reactions
 
-   RMSD of the five mu-independent antisite exchange-reaction energies (e.g. the Y-Ba
-   cation exchange), E_react = E(A_B) + E(B_A) - 2 E_perf. Because the chemical
+   RMSD of the five mu-independent antisite exchange-reaction energies (e.g.
+   cation exchanges), E_react = E(A_B) + E(B_A) - 2 E_perf. Because the chemical
    potentials cancel, this isolates the intrinsic antisite energetics from the
    chemical-potential uncertainty.
 
@@ -274,15 +268,11 @@ energies to about this level, which is also the scale of the DFT finite-size err
 (arXiv:2511.22592), so differences below it are within the reference uncertainty. For
 vacancies and antisites the bad threshold is 0.6 eV: because defect concentrations depend
 exponentially on the formation energy, an absolute error beyond a few tenths of an eV
-makes them unreliable, so an absolute threshold is used rather than the Defectstab
-scale-aware rule. For interstitials the bad threshold is loosened to 0.8 eV: all
-interstitial formation energies share the same -mu_O term.
-
-Level of theory
+makes them unreliable, so an absolute threshold is used. For interstitials the bad threshold is loosened to 0.8 eV.
 ---------------
 
 The reference is CP2K PBE. Models trained to a different level of theory carry a red
-level-of-theory flag; their offset is expected.
+level-of-theory flag.
 
 Computational cost
 ------------------
@@ -301,4 +291,4 @@ Input structures:
 
 Reference data:
 
-* CP2K PBE defect formation energies, di Eugenio et al., arXiv:2511.22592.
+* CP2K PBE defect formation energies, Di Eugenio et al., arXiv:2511.22592.
