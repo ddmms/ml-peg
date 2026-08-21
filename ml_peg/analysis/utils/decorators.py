@@ -426,58 +426,53 @@ def plot_hist(
             results = func(*args, **kwargs)
 
             fig = go.Figure()
-            data_all = []
+
             for model_name, hist_data in results.items():
-                # Create figure
-                for point in hist_data:
-                    data_all.append(point)
-                if bins is None or isinstance(bins, int) or isinstance(bins, float):
-                    fig.add_trace(
-                        go.Histogram(
-                            x=hist_data,
-                            histnorm="probability density",
-                            nbinsx=bins,
-                            name=model_name,
-                        )
+                # Construct bin edges
+                if isinstance(bins, dict):
+                    edges = np.arange(
+                        bins["start"],
+                        bins["end"] + bins["size"],
+                        bins["size"],
                     )
                 else:
-                    fig.add_trace(
-                        go.Histogram(
-                            x=hist_data,
-                            histnorm="probability density",
-                            xbins=bins,
-                            autobinx=False,
-                            name=model_name,
-                        )
-                    )
+                    edges = np.histogram_bin_edges(hist_data, bins=bins)
 
-            if good is not None and bad is not None and isinstance(bins, dict):
-                actual_bins = [min(data_all)]
-                point = actual_bins[0]
-                while point < max(data_all):
-                    point += bins["size"]
-                    actual_bins.append(point)
-                colors = np.zeros_like(actual_bins)
-                bad_exists = False
-                for i, point in enumerate(actual_bins):
-                    if point < good or point > bad:
-                        bad_exists = True
-                        colors[i] = bins["start"]
-                    else:
-                        colors[i] = bins["end"]
-                if not bad_exists:
-                    colors = "#276419"
-                fig.update_traces(marker_color=colors)
-            # Update layout
+                # Compute probability density histogram
+                counts, edges = np.histogram(hist_data, bins=edges, density=True)
+
+                centres = 0.5 * (edges[:-1] + edges[1:])
+                widths = np.diff(edges)
+
+                # Decide colour of each bar
+                colours = []
+                if good is None or bad is None:
+                    colours = ["#276419"] * len(centres)
+                else:
+                    colours = [
+                        "#276419" if good <= c <= bad else "#D73027" for c in centres
+                    ]
+
+                fig.add_trace(
+                    go.Bar(
+                        x=centres,
+                        y=counts,
+                        width=widths,
+                        marker_color=colours,
+                        name=model_name,
+                    )
+                )
+
             fig.update_layout(
-                title={"text": title},
-                xaxis={"title": {"text": x_label}},
-                yaxis={"title": {"text": y_label}},
+                barmode="overlay",
+                title=title,
+                xaxis_title=x_label,
+                yaxis_title=y_label,
             )
 
-            fig.update_traces()
+            if isinstance(bins, dict):
+                fig.update_xaxes(range=[bins["start"], bins["end"]])
 
-            # Write to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             fig.write_json(filename)
 
@@ -495,6 +490,7 @@ def plot_scatter(
     show_line: bool = False,
     show_markers: bool = True,
     hoverdata: dict | None = None,
+    horizontal_lines: list[float | dict[str, Any]] | None = None,
     filename: str = "scatter.json",
     highlight_range: dict = None,
 ) -> Callable:
@@ -515,6 +511,10 @@ def plot_scatter(
         Whether to show markers on the plot. Default is True.
     hoverdata
         Hover data dictionary. Default is `{}`.
+    horizontal_lines
+        Optional horizontal reference lines. Each entry can be either a float ``y``
+        value or a dict with keys ``y`` (required), ``name``, ``color``, ``dash``,
+        and ``width``. Default is ``None``.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
     highlight_range
@@ -559,6 +559,11 @@ def plot_scatter(
                 Results dictionary.
             """
             results = func(*args, **kwargs)
+            dynamic_horizontal_lines: list[float | dict[str, Any]] = []
+            if isinstance(results, dict) and "horizontal_lines" in results:
+                dynamic = results.pop("horizontal_lines")
+                if isinstance(dynamic, list):
+                    dynamic_horizontal_lines = dynamic
 
             hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
             customdata = []
@@ -608,6 +613,86 @@ def plot_scatter(
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
             )
+
+            all_horizontal_lines = (
+                list(horizontal_lines or []) + dynamic_horizontal_lines
+            )
+            for i, line in enumerate(all_horizontal_lines):
+                if isinstance(line, dict):
+                    if "y" not in line:
+                        continue
+                    y_val = line["y"]
+                    name = line.get("name", "Reference line")
+                    color = line.get("color", "red")
+                    dash = line.get("dash", "dash")
+                    width = line.get("width", 1)
+                else:
+                    y_val = line
+                    name = f"Reference line {i + 1}"
+                    color = "red"
+                    dash = "dash"
+                    width = 1
+
+                fig.add_shape(
+                    type="line",
+                    xref="paper",
+                    yref="y",
+                    x0=0,
+                    x1=1,
+                    y0=y_val,
+                    y1=y_val,
+                    line={"color": color, "width": width, "dash": dash},
+                )
+                # Dummy trace to expose the horizontal line in the legend.
+                fig.add_trace(
+                    go.Scatter(
+                        x=[None],
+                        y=[None],
+                        mode="lines",
+                        name=name,
+                        line={"color": color, "width": width, "dash": dash},
+                        hoverinfo="skip",
+                        showlegend=True,
+                    )
+                )
+
+            # When horizontal reference lines are present, expand y-limits with
+            # padding so an extreme reference line does not sit on the boundary.
+            if all_horizontal_lines:
+
+                def _as_finite_float(v: Any) -> float | None:
+                    try:
+                        out = float(v)
+                    except (TypeError, ValueError):
+                        return None
+                    return out if np.isfinite(out) else None
+
+                y_values = [
+                    y_float
+                    for value in results.values()
+                    if isinstance(value, tuple | list)
+                    and len(value) >= 2
+                    and isinstance(value[1], list | tuple | np.ndarray)
+                    for y in value[1]
+                    for y_float in [_as_finite_float(y)]
+                    if y_float is not None
+                ]
+                y_values.extend(
+                    y_float
+                    for line in all_horizontal_lines
+                    for y_float in [
+                        _as_finite_float(
+                            line.get("y") if isinstance(line, dict) else line
+                        )
+                    ]
+                    if y_float is not None
+                )
+
+                if y_values:
+                    y_min, y_max = min(y_values), max(y_values)
+                    span = y_max - y_min
+                    pad = 0.05 * (span if span > 0 else max(abs(y_min), 1.0))
+                    fig.update_yaxes(range=[y_min - pad, y_max + pad])
 
             fig.update_traces()
 
@@ -869,6 +954,142 @@ def plot_density_scatter(
         return plot_density_wrapper
 
     return plot_density_decorator
+
+
+def plot_violin(
+    *,
+    title: str | None = None,
+    y_label: str | None = None,
+    hoverdata: dict[str, list] | None = None,
+    filename: str = "violin.json",
+    threshold: float | None = None,
+    threshold_label: str | None = None,
+) -> Callable:
+    """
+    Plot overlapping violin distributions of per-model value lists.
+
+    The decorated function must return a mapping of model name to a list of
+    numeric values (NaNs are silently ignored).
+
+    Parameters
+    ----------
+    title
+        Graph title. Default is None.
+    y_label
+        Label for y-axis. Default is None.
+    hoverdata
+        Hover data dictionary mapping field names to lists of values, aligned
+        with the per-structure value lists. NaN entries are filtered in sync
+        with the value lists. Default is None.
+    filename
+        Filename to save plot as JSON. Default is "violin.json".
+    threshold
+        Value at which to draw a dashed line across the distributions, for metrics
+        with a pass/fail criterion. Default is None, drawing no line.
+    threshold_label
+        Label annotating the threshold line. Default is None, labelling it with
+        `threshold`.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_violin_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot violin.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_violin_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot violin.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            hovertemplate = None
+            if hoverdata:
+                hovertemplate = f"<b>{y_label or 'Value'}:</b> %{{y:.4f}}<br>"
+                for i, key in enumerate(hoverdata):
+                    hovertemplate += f"<b>{key}:</b> %{{customdata[{i}]}}<br>"
+                hovertemplate += "<extra></extra>"
+
+            fig = go.Figure()
+            for model_name, values in results.items():
+                mask = [v is not None and not np.isnan(v) for v in values]
+                filtered = [v for v, m in zip(values, mask, strict=True) if m]
+
+                customdata = None
+                if hoverdata:
+                    filtered_cols = [
+                        [v for v, m in zip(col, mask, strict=True) if m]
+                        for col in hoverdata.values()
+                    ]
+                    customdata = (
+                        list(zip(*filtered_cols, strict=True))
+                        if filtered_cols
+                        else None
+                    )
+
+                fig.add_trace(
+                    go.Violin(
+                        y=filtered,
+                        name=model_name,
+                        points="all",
+                        jitter=0.05,
+                        box_visible=True,
+                        meanline_visible=True,
+                        opacity=0.6,
+                        customdata=customdata,
+                        hovertemplate=hovertemplate,
+                    )
+                )
+
+            fig.update_layout(
+                title={"text": title},
+                yaxis={"title": {"text": y_label}},
+            )
+
+            if threshold is not None:
+                fig.add_hline(
+                    y=threshold,
+                    line_dash="dash",
+                    line_color="#d62728",
+                    annotation_text=threshold_label or f"threshold = {threshold}",
+                    annotation_position="top right",
+                )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_violin_wrapper
+
+    return plot_violin_decorator
 
 
 def plot_periodic_table(

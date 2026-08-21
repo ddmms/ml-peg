@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from dash import Dash, Input, Output, callback, dcc
+from dash import Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
 from dash.html import Div, Label
@@ -164,11 +164,3 @@ def get_app() -> IronPropertiesApp:
         extra_components=extra_components,
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    dash_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    iron_properties_app = get_app()
-    dash_app.layout = iron_properties_app.layout
-    iron_properties_app.register_callbacks()
-    dash_app.run(port=8060, debug=True)

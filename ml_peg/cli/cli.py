@@ -134,7 +134,9 @@ def complete_models(ctx: Context, incomplete: str) -> list[str]:
 
     prefix, sep, last = incomplete.rpartition(",")
     head = f"{prefix}{sep}" if sep else ""
-    return [f"{head}{name}" for name in names if name.startswith(last)]
+    return [
+        f"{head}{name}" for name in names if name.startswith(last) and name not in head
+    ]
 
 
 def get_frameworks() -> tuple[str, ...]:
@@ -337,7 +339,7 @@ def run_calcs(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if run_slow:
         options.extend(["--run-slow"])
@@ -442,7 +444,7 @@ def run_analysis(
         )
 
     if verbose:
-        options.extend(["-s", "-vvv"])
+        options.extend(["-s", "-vvv", "-rs"])
 
     if models:
         options.extend(["--models", models])
