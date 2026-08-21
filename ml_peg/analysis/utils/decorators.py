@@ -39,6 +39,7 @@ def plot_parity(
     filename: str = "parity.json",
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
+    use_plotly_autorange: bool = True,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -62,6 +63,9 @@ def plot_parity(
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
+    use_plotly_autorange
+        Whether to use Plotly's rendered autorange calculation. If ``False``,
+        axis limits are determined directly from the plotted data.
 
     Returns
     -------
@@ -154,15 +158,29 @@ def plot_parity(
                             showlegend=True,
                         )
                     )
+            if use_plotly_autorange:
+                full_fig = fig.full_figure_for_development()
+                x_range = full_fig.layout.xaxis.range
+                y_range = full_fig.layout.yaxis.range
 
-            full_fig = fig.full_figure_for_development()
-            x_range = full_fig.layout.xaxis.range
-            y_range = full_fig.layout.yaxis.range
+                lims = [
+                    np.min([x_range, y_range]),  # min of both axes
+                    np.max([x_range, y_range]),  # max of both axes
+                ]
+            else:  # avoid the Plotly->Kaleido->Chrome dependency
+                x_values = np.concatenate(
+                    [
+                        np.asarray(value, dtype=float)
+                        for mlip, value in results.items()
+                        if mlip != "ref"
+                    ]
+                )
+                y_values = np.asarray(ref, dtype=float)
 
-            lims = [
-                np.min([x_range, y_range]),  # min of both axes
-                np.max([x_range, y_range]),  # max of both axes
-            ]
+                lims = [
+                    np.nanmin([np.nanmin(x_values), np.nanmin(y_values)]),
+                    np.nanmax([np.nanmax(x_values), np.nanmax(y_values)]),
+                ]
 
             fig.add_trace(
                 go.Scatter(
