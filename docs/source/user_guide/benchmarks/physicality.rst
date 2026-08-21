@@ -230,8 +230,8 @@ Metrics
 
 1. Mean lambda
 
-For ten diverse structures (eight molecules and two periodic systems: a metal and a 2D
-sheet), the Jacobian of predicted forces with respect to atomic positions is built by
+For ten diverse structures (eight molecules and two periodic carbon systems: diamond
+and a 2D sheet), the Jacobian of predicted forces with respect to atomic positions is built by
 central finite differences, perturbing each degree of freedom by :math:`\pm 10^{-3}` Å.
 For a conservative force field, where forces are the gradient of an energy, this
 Jacobian must be symmetric. Lambda is the fraction of the Jacobian's Frobenius norm that

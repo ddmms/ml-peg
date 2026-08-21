@@ -26,6 +26,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 EPS = 1e-3  # must match calc_jacobian_symmetry.EPS
+N_STRUCTURES = 10  # must match len(calc_jacobian_symmetry.STRUCTURES)
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
@@ -113,6 +114,10 @@ def plot_lambda_by_structure(model_name: str, per_struct: dict[str, float]) -> N
         xaxis_title="Structure",
         yaxis_title="lambda",
     )
+    # Lambda is dimensionless and ~1e-6 to 1e-5; Plotly's default tick style
+    # abbreviates such values with SI prefixes (e.g. 2e-6 as "2μ"), which reads
+    # as a spurious unit. Use scientific notation instead.
+    fig.update_yaxes(exponentformat="power")
 
     # Mark structures the model could not evaluate (e.g. unsupported element),
     # so an empty bar is not mistaken for a perfect (zero) score.
@@ -172,6 +177,9 @@ def plot_janti_heatmap(
             zmid=0,
             zmin=-vmax,
             zmax=vmax,
+            # Scientific notation on the colorbar: the default SI-prefix style
+            # renders small values like 6e-5 as "60μ", which reads as a unit.
+            colorbar={"exponentformat": "power"},
         )
     )
     fig.update_layout(
@@ -246,12 +254,18 @@ def mean_lambda(
     Returns
     -------
     dict[str, float | None]
-        Mean lambda for all models.
+        Mean lambda for all models, or None for models that failed to
+        evaluate every structure.
     """
     results = {}
     for model_name, per_struct in lambda_by_structure.items():
-        values = [v for v in per_struct.values() if not np.isnan(v)]
-        results[model_name] = float(np.mean(values)) if values else None
+        values = list(per_struct.values())
+        # A model that failed any structure gets no score: a mean over the
+        # surviving subset would not be comparable across models.
+        if len(values) < N_STRUCTURES or np.isnan(values).any():
+            results[model_name] = None
+        else:
+            results[model_name] = float(np.mean(values))
     return results
 
 
@@ -270,12 +284,18 @@ def max_lambda(
     Returns
     -------
     dict[str, float | None]
-        Max lambda for all models.
+        Max lambda for all models, or None for models that failed to
+        evaluate every structure.
     """
     results = {}
     for model_name, per_struct in lambda_by_structure.items():
-        values = [v for v in per_struct.values() if not np.isnan(v)]
-        results[model_name] = float(np.max(values)) if values else None
+        values = list(per_struct.values())
+        # A model that failed any structure gets no score: a max over the
+        # surviving subset would not be comparable across models.
+        if len(values) < N_STRUCTURES or np.isnan(values).any():
+            results[model_name] = None
+        else:
+            results[model_name] = float(np.max(values))
     return results
 
 

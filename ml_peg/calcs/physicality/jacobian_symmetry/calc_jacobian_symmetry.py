@@ -11,6 +11,7 @@ from ase.build import bulk, graphene, molecule
 from ase.io import write
 import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -22,8 +23,10 @@ OUT_PATH = Path(__file__).parent / "outputs"
 EPS = 1e-3  # finite-difference step size, Angstrom
 
 # Ten diverse, low-cost structures: varied bond orders, elements and
-# geometries, plus two periodic systems (an fcc metal and a 2D sheet) to check
-# the metric generalises beyond isolated molecules.
+# geometries, plus two periodic systems (a 3D diamond crystal and a 2D sheet)
+# to check the metric generalises beyond isolated molecules. Both periodic
+# systems are carbon, keeping every structure within the element coverage of
+# molecule-only models, so all models can be scored on the full set.
 #
 # Graphene is made fully periodic (pbc=True, with vacuum in z) rather than a 2D
 # slab: the ORB and UMA calculators reject periodicity along a subset of axes,
@@ -41,7 +44,7 @@ STRUCTURES = {
     "SO2": molecule("SO2"),
     "CH3OH": molecule("CH3OH"),
     "C6H6": molecule("C6H6"),
-    "Al_fcc": bulk("Al", "fcc", a=4.05, cubic=True),
+    "C_diamond": bulk("C", "diamond", a=3.567, cubic=True),
     "graphene": _graphene,
 }
 
@@ -114,7 +117,7 @@ def test_jacobian_symmetry(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    for struct_name, struct in STRUCTURES.items():
+    for struct_name, struct in tqdm(STRUCTURES.items(), desc=model_name):
         struct = struct.copy()
         struct.info["charge"] = 0
         struct.info["spin"] = 1
