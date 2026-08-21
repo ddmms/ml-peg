@@ -71,7 +71,7 @@ def test_defectstab(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator(precision="high")
 
     data_path = download_s3_data(
-        key="inputs/defect/Defectstab/Defectstab.zip",
+        key="inputs/defects/Defectstab/Defectstab.zip",
         filename="Defectstab.zip",
     )
     formation_energy_dir = data_path / "Defectstab"

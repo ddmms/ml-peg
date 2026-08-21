@@ -117,6 +117,21 @@ MACE-OFF23(L)
      kwargs:
        name: large
 
+
+MACE-OFF24(M)
+-------------
+
+.. code-block:: yaml
+
+   MACE-OFF24(M):
+     module: mace.calculators
+     class_name: mace_off
+     device: "auto"
+     trained_on_dispersion: true
+     kwargs:
+       model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
+
+
 mace-omol
 ---------
 
@@ -402,18 +417,31 @@ mattersim-1M
 GRACE
 =====
 
-GRACE-2L-OAM
-------------
+GRACE-2L-OMAT
+-------------
 
 .. code-block:: yaml
 
-   GRACE-2L-OAM:
-     module: tensorpotential.calculator
-     class_name: TPCalculator
-     device: "cpu"
-     trained_on_dispersion: false
-     kwargs:
-       model: "<local path to the GRACE-2L-OAM model>"
+  grace-2l-omat:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-OMAT
+
+
+GRACE-2L-SMAX-OMAT-medium
+-------------------------
+.. code-block:: yaml
+
+  grace-2l-smax-omat-medium:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-SMAX-OMAT-medium
 
 
 SevenNet

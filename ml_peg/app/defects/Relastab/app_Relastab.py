@@ -17,8 +17,8 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Relastab Relative Stability"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defect.html#relastab"
-DATA_PATH = APP_ROOT / "data" / "defect" / "Relastab"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/defects.html#relastab"
+DATA_PATH = APP_ROOT / "data" / "defects" / "Relastab"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -36,7 +36,7 @@ class RelastabApp(BaseApp):
         structs_dir = DATA_PATH / MODELS[0]
         # Sort glob to match analysis order
         structs = [
-            f"/assets/defect/Relastab/{MODELS[0]}/{struct_path.name}"
+            f"/assets/defects/Relastab/{MODELS[0]}/{struct_path.name}"
             for struct_path in sorted(structs_dir.glob("*.xyz"))
         ]
 

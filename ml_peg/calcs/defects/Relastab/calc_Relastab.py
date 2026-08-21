@@ -35,7 +35,7 @@ def test_relastab(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator(precision="high")
 
     data_path = download_s3_data(
-        key="inputs/defect/Relastab/Relastab.zip",
+        key="inputs/defects/Relastab/Relastab.zip",
         filename="Relastab.zip",
     )
     relative_stability_dir = data_path / "Relastab"
