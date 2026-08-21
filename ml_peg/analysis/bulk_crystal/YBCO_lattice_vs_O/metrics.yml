@@ -1,0 +1,22 @@
+metrics:
+  MAE a (PBE):
+    good: 0.02
+    bad: 0.1
+    unit: Å
+    tooltip: "MAE of lattice parameter a across oxygen content vs CP2K PBE (good = purpose-trained MLP level; bad ~ 2.5%)"
+    level_of_theory: PBE
+    weight: 1
+  MAE b (PBE):
+    good: 0.02
+    bad: 0.1
+    unit: Å
+    tooltip: "MAE of lattice parameter b across oxygen content vs CP2K PBE (good = purpose-trained MLP level; bad ~ 2.5%)"
+    level_of_theory: PBE
+    weight: 1
+  MAE c (PBE):
+    good: 0.05
+    bad: 0.3
+    unit: Å
+    tooltip: "MAE of lattice parameter c across oxygen content vs CP2K PBE (good = purpose-trained MLP level; bad ~ 2.5%)"
+    level_of_theory: PBE
+    weight: 1
