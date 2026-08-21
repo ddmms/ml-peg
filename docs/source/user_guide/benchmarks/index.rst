@@ -19,3 +19,7 @@ Benchmarks
     supramolecular
     surfaces
     tm_complexes
+    conformers
+    molecular_dynamics
+    defect
+    superacids
