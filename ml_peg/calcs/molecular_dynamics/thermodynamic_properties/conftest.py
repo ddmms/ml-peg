@@ -18,6 +18,8 @@ def pytest_addoption(parser):
     parser.addoption("--total-md-steps", action="store", default=2_000_000, type=int)
     parser.addoption("--traj-interval", action="store", default=1000, type=int)
     parser.addoption("--log-interval", action="store", default=1, type=int)
+    parser.addoption("--precomputed", action="store_true", default=False)
+    parser.addoption("--list-cas", action="store_true", default=False)
 
 
 @pytest.fixture
@@ -90,3 +92,39 @@ def log_interval(request):
         Requested command line argument.
     """
     return request.config.getoption("--log-interval")
+
+
+@pytest.fixture
+def precomputed(request) -> bool:
+    """
+    Get precomputed flag.
+
+    Parameters
+    ----------
+    request
+        Request.
+
+    Returns
+    -------
+    option
+        Requested command line argument.
+    """
+    return request.config.getoption("--precomputed")
+
+
+@pytest.fixture
+def list_cas(request) -> bool:
+    """
+    Get the list-cas flag.
+
+    Parameters
+    ----------
+    request
+        Request.
+
+    Returns
+    -------
+    option
+        Requested command line argument.
+    """
+    return request.config.getoption("--list-cas")

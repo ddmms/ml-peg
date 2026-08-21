@@ -1,4 +1,4 @@
-"""Analyse the organic liquid thermodynamic properties benchmark."""
+"""Analyse the organic liquid thermodynamic precomputed properties benchmark."""
 
 from __future__ import annotations
 
@@ -15,7 +15,10 @@ from ml_peg.analysis.molecular_dynamics.thermodynamic_properties.utils import (
     property_fixture_factory,
     thermodynamic_properties_factory,
 )
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -27,9 +30,16 @@ D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 # Let's distinguish the output artefacts based on wether we
 # are using the precomputed logs or not.
 
-CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "thermodynamic_properties" / "outputs"
+CALC_PATH = (
+    CALCS_ROOT
+    / "molecular_dynamics"
+    / "thermodynamic_properties_precomputed"
+    / "outputs"
+)
 
-OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "thermodynamic_properties"
+OUT_PATH = (
+    APP_ROOT / "data" / "molecular_dynamics" / "thermodynamic_properties_precomputed"
+)
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -66,7 +76,7 @@ detailed_results_output = detailed_results_factory(MODELS, OUT_PATH)
 
 
 @pytest.mark.framework("mace-off-24")
-def test_thermodynamic_properties(
+def test_thermodynamic_properties_precomputed(
     metrics: dict[str, dict[str, float]],
     density_results,
     cp_results,
@@ -76,7 +86,7 @@ def test_thermodynamic_properties(
     detailed_results_output,
 ) -> None:
     """
-    Run the organic liquids thermodynamic properties benchmark.
+    Run the organic liquids thermodynamic precomputed properties benchmark.
 
     Parameters
     ----------
