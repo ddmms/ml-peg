@@ -4,20 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from ml_peg.analysis.molecular_dynamics import thermodynamic_properties
-
-
-def pytest_configure(config):
-    """
-    Configure pytest to custom CLI inputs.
-
-    Parameters
-    ----------
-    config
-        Pytest configuration object.
-    """
-    thermodynamic_properties._precomputed = config.getoption("--precomputed")
-
 
 def pytest_addoption(parser):
     """
@@ -30,7 +16,6 @@ def pytest_addoption(parser):
     """
     parser.addoption("--block-size", action="store", default=100, type=int)
     parser.addoption("--skip-time-ps", action="store", default=0.0, type=float)
-    parser.addoption("--precomputed", action="store_true", default=False)
     parser.addoption("--detailed-results", action="store_true", default=False)
 
 
@@ -65,27 +50,9 @@ def skip_time_ps(request) -> float:
     Returns
     -------
     float
-        The skipped time in ps.
+        The equilibration time in ps.
     """
     return request.config.getoption("--skip-time-ps")
-
-
-@pytest.fixture
-def precomputed(request) -> bool:
-    """
-    Return the precomputed flag.
-
-    Parameters
-    ----------
-    request
-        The request.
-
-    Returns
-    -------
-    bool
-        The precomputed flag.
-    """
-    return request.config.getoption("--precomputed")
 
 
 @pytest.fixture
@@ -100,7 +67,7 @@ def detailed_results(request) -> bool:
 
     Returns
     -------
-    bool
-        The detailed_results flag.
+    float
+        The equilibration time in ps.
     """
     return request.config.getoption("--detailed-results")

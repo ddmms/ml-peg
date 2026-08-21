@@ -19,9 +19,11 @@ from ase.md.nose_hoover_chain import IsotropicMTKNPT, NoseHooverChainNVT
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.utils import BENCHMARK_DATA_DIR, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
+
+OUT_PATH = Path(__file__).parent / "outputs"
 
 try:
     from tqdm.auto import tqdm as tqdm
@@ -32,8 +34,6 @@ except ModuleNotFoundError:
 MODELS = load_models(current_models)
 
 KCAL_TO_EV = units.kcal / units.mol
-
-OUT_PATH = Path(__file__).parent / "outputs"
 
 AU_TO_G_L = 1e27 / units.mol
 TIMESTEP = 1 * units.fs
@@ -105,6 +105,39 @@ def truncate_log_to_step(log_file, time_ps):
 
     with open(log_file, "w") as f:
         f.writelines(kept)
+
+
+def get_config_path(model_name: str) -> Path:
+    """
+    Get the path to thermodynamic property configurations.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the directory containing the model configurations.
+    """
+    extracted_path = BENCHMARK_DATA_DIR / "thermodynamic_properties"
+
+    if extracted_path.exists():
+        return extracted_path
+
+    # Download config for this model
+    return (
+        download_s3_data(
+            filename="thermodynamic_properties.zip",
+            key=(
+                "inputs/molecular_dynamics/"
+                "thermodynamic_properties/"
+                f"thermodynamic_properties_{model_name}.zip"
+            ),
+        )
+        / f"thermodynamic_properties_{model_name}"
+    )
 
 
 def log_md(dyn, start_time):
@@ -319,6 +352,7 @@ def test_thermodynamic_properties(
     )
 
     model_name, model = mlip
+
     calc = model.get_calculator(precision="low")
     # Add D3 calculator for this test
     calc = model.add_d3_calculator(calc)

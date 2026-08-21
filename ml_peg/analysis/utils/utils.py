@@ -215,7 +215,7 @@ def block_estimate(
     estimator=np.mean,
 ) -> tuple[float, float]:
     """
-    Compute mean and standard error using block averaging.
+    Compute an observable and its standard error using block averaging.
 
     Parameters
     ----------
@@ -224,34 +224,38 @@ def block_estimate(
     block_size
         Number of samples in each block.
     estimator
-        Function used to compute the observable within each block.
+        Function used to compute the observable.
 
     Returns
     -------
-    mean
-        Mean of the block estimates.
+    value
+        Observable computed over the full dataset.
     stderr
-        Standard error of the block estimates.
+        Standard error estimated from the block values.
     """
     arrays = [np.asarray(value) for value in values]
+    value = estimator(*arrays)
 
     if not np.all([array.size == arrays[0].size for array in arrays]):
         raise ValueError("Input data series must have the same length.")
 
     nblocks = len(arrays[0]) // block_size
+
     if nblocks < 2:
         return np.nan, np.nan
 
-    arrays = [
-        array[: nblocks * block_size].reshape(nblocks, block_size) for array in arrays
-    ]
+    # Use the same samples for the central estimate and the block analysis.
+    nsamples = nblocks * block_size
+    arrays = [array[:nsamples] for array in arrays]
+
+    blocked_arrays = [array.reshape(nblocks, block_size) for array in arrays]
 
     block_values = np.asarray(
-        [estimator(*(array[i] for array in arrays)) for i in range(nblocks)]
+        [estimator(*(array[i] for array in blocked_arrays)) for i in range(nblocks)]
     )
 
     return (
-        np.mean(block_values),
+        value,
         np.std(block_values, ddof=1) / np.sqrt(nblocks),
     )
 
