@@ -129,7 +129,7 @@ def conformer_energies() -> dict[str, list]:
                 results["ref"].append(ref_int_energy * EV_TO_KCAL)
 
         if not ref_stored:
-            if len(results["ref"]) == 20:
+            if len(results["ref"]) == 19:
                 ref_stored = True
             else:
                 results["ref"] = []
