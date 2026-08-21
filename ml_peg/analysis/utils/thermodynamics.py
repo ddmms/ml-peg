@@ -14,16 +14,22 @@ ANG3_PER_EV_TO_GPA_INV = 0.006241509074
 MILLI = 1.0e-3
 
 
-def density(values, block_size: int) -> tuple[float, float]:
+def density(
+    values,
+    block_size: int,
+    teq: int,
+) -> tuple[float, float]:
     """
     Compute density and its standard error.
 
     Parameters
     ----------
     values
-        Density time series in g/cm3.
+        Density time series in g/L.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -32,10 +38,16 @@ def density(values, block_size: int) -> tuple[float, float]:
     stderr
         Standard error in g/L.
     """
+    if teq > 0:
+        values = values[teq:]
     return block_estimate(values, block_size=block_size)
 
 
-def volume(values, block_size: int) -> tuple[float, float]:
+def volume(
+    values,
+    block_size: int,
+    teq: int,
+) -> tuple[float, float]:
     """
     Compute volume and its standard error.
 
@@ -45,6 +57,8 @@ def volume(values, block_size: int) -> tuple[float, float]:
         Volume time series in A^3.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -53,6 +67,8 @@ def volume(values, block_size: int) -> tuple[float, float]:
     stderr
         Standard error in A^3.
     """
+    if teq > 0:
+        values = values[teq:]
     return block_estimate(values, block_size=block_size)
 
 
@@ -64,6 +80,7 @@ def heat_capacity_cp(
     temperature: float,
     n_molecules: int,
     block_size: int,
+    teq: int,
 ) -> tuple[float, float]:
     """
     Compute constant-pressure heat capacity and its standard error.
@@ -84,6 +101,8 @@ def heat_capacity_cp(
         Number of molecules in the simulation box.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -92,6 +111,10 @@ def heat_capacity_cp(
     stderr
         Standard error in J/mol/K.
     """
+    if teq > 0:
+        pot_energy = pot_energy[teq:]
+        kin_energy = kin_energy[teq:]
+        volume = volume[teq:]
     enthalpy = (
         np.asarray(pot_energy)
         + np.asarray(kin_energy)
@@ -108,7 +131,10 @@ def heat_capacity_cp(
 
 
 def isothermal_compressibility(
-    volume, temperature: float, block_size: int
+    volume,
+    temperature: float,
+    block_size: int,
+    teq: int,
 ) -> tuple[float, float]:
     """
     Compute isothermal compressibility and its standard error.
@@ -121,6 +147,8 @@ def isothermal_compressibility(
         Temperature in K.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -129,6 +157,8 @@ def isothermal_compressibility(
     stderr
         Standard error in GPa^-1.
     """
+    if teq > 0:
+        volume = volume[teq:]
     return block_estimate(
         volume,
         block_size=block_size,
@@ -141,7 +171,13 @@ def isothermal_compressibility(
 
 
 def thermal_expansion(
-    pot_energy, kin_energy, volume, temperature: float, pressure: float, block_size: int
+    pot_energy,
+    kin_energy,
+    volume,
+    temperature: float,
+    pressure: float,
+    block_size: int,
+    teq: int,
 ) -> tuple[float, float]:
     """
     Compute thermal expansion coefficient and its standard error.
@@ -160,6 +196,8 @@ def thermal_expansion(
         Pressure in bar.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -168,12 +206,15 @@ def thermal_expansion(
     stderr
         Standard error in 1e-3 K^-1.
     """
+    if teq > 0:
+        pot_energy = pot_energy[teq:]
+        kin_energy = kin_energy[teq:]
+        volume = volume[teq:]
     enthalpy = (
         np.asarray(pot_energy)
         + np.asarray(kin_energy)
         + pressure * units.bar * np.asarray(volume)
     )
-
     return block_estimate(
         volume,
         enthalpy,
@@ -192,6 +233,7 @@ def evaporation_enthalpy(
     temperature: float,
     n_molecules: int,
     block_size: int,
+    teq: int,
 ) -> tuple[float, float]:
     """
     Compute evaporation enthalpy and its standard error.
@@ -217,6 +259,8 @@ def evaporation_enthalpy(
         Number of molecules in the liquid simulation box.
     block_size
         Number of samples in each block.
+    teq
+        Equilibration frame.
 
     Returns
     -------
@@ -225,6 +269,11 @@ def evaporation_enthalpy(
     stderr
         Standard error in kJ/mol.
     """
+    if teq > 0:
+        liquid_pot_energy = liquid_pot_energy[teq:]
+        gas_pot_energy = gas_pot_energy[teq:]
+        liquid_volume = liquid_volume[teq:]
+
     liquid_mean, liquid_stderr = block_estimate(
         liquid_pot_energy,
         block_size=block_size,

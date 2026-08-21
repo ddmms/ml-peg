@@ -1,5 +1,7 @@
 """Run thermodynamic properties app."""
 
+# ml_peg/app/molecular_dynamics/thermodynamic_properties/
+# app_thermodynamic_properties.py
 from __future__ import annotations
 
 from ml_peg.app import APP_ROOT
@@ -7,7 +9,7 @@ from ml_peg.app.molecular_dynamics.thermodynamic_properties.utils import (
     thermodynamic_properties_app_factory,
 )
 
-BENCHMARK_NAME = "Thermodynamic Properties"
+BENCHMARK_NAME = "Precomputed Thermodynamic Properties"
 
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "thermodynamic_properties"
 
@@ -19,7 +21,7 @@ DOCS_URL = (
 
 def get_app():
     """
-    Get the thermodynamic properties benchmark app.
+    Return the app via the factory.
 
     Returns
     -------
