@@ -8,10 +8,13 @@ from dash.dash_table import DataTable
 from dash.html import H1, H3, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
+    build_benchmark_card,
     build_download_controls,
+    build_expand_controls,
     build_loading_summary_table,
     build_summary_table,
     build_weight_components,
+    table_wrapper_style,
 )
 from ml_peg.app.utils.utils import get_framework_config
 
@@ -43,7 +46,9 @@ class _FrameworkViewRequired(TypedDict):
 
     framework_id: str
     label: str
-    benchmarks_by_category: dict[str, list[Div]]
+    # Each benchmark is kept as a (name, layout) pair so the framework page can
+    # wrap it in a lazy-mounted collapsible card (see build_framework_page_layout).
+    benchmarks_by_category: dict[str, list[tuple[str, Div]]]
 
 
 class FrameworkView(_FrameworkViewRequired, total=False):
@@ -82,10 +87,10 @@ def build_framework_views(
         if framework_id == "ml_peg":
             continue
 
-        benchmarks_by_category: dict[str, list[Div]] = {}
+        benchmarks_by_category: dict[str, list[tuple[str, Div]]] = {}
         for category_name, category_view in category_views.items():
             tests = [
-                test["layout"]
+                (test["name"], test["layout"])
                 for test in category_view["tests"]
                 if framework_id in test["framework_ids"]
             ]
@@ -158,7 +163,10 @@ def build_framework_summary_tables(
     return framework_tables, framework_grouping
 
 
-def build_framework_page_layout(framework_view: FrameworkView) -> Div:
+def build_framework_page_layout(
+    framework_view: FrameworkView,
+    expand_all: bool = False,
+) -> Div:
     """
     Build a framework-focused page with its summary table and benchmark sections.
 
@@ -166,6 +174,9 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     ----------
     framework_view
         Framework page metadata with grouped benchmark layouts by category.
+    expand_all
+        Whether every benchmark card starts expanded (the persisted preference);
+        by default only the first card on the page opens.
 
     Returns
     -------
@@ -184,9 +195,9 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         "gap": "6px",
         "padding": "6px 12px",
         "borderRadius": "8px",
-        "backgroundColor": "#ffffff",
-        "border": "1px solid #e2e8f0",
-        "color": "#334155",
+        "backgroundColor": "var(--mlpeg-surface)",
+        "border": "1px solid var(--mlpeg-border)",
+        "color": "var(--mlpeg-ink)",
         "fontSize": "13px",
         "fontWeight": "500",
         "textDecoration": "none",
@@ -212,7 +223,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 style={
                     "fontSize": "15px",
                     "lineHeight": "1.6",
-                    "color": "#475569",
+                    "color": "var(--mlpeg-ink-2)",
                     "maxWidth": "760px",
                 },
             )
@@ -236,8 +247,8 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
             Div(
                 description_box_children,
                 style={
-                    "backgroundColor": "#f8fafc",
-                    "border": "1px solid #e2e8f0",
+                    "backgroundColor": "var(--mlpeg-surface-2)",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "12px",
                     "padding": "16px 20px",
                     "marginTop": "10px",
@@ -248,22 +259,48 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
             )
         )
 
+    # Wrap each benchmark in a lazy-mounted collapsible card so heavy framework
+    # pages (e.g. MACE-POLAR-1 with many benchmarks) hydrate instantly instead of
+    # rendering every benchmark up front. Only the first card on the page opens by
+    # default, unless the user's "expand all" preference is set.
     sections = []
+    card_index = 0
     for category_name, tests in benchmarks_by_category.items():
         sections.append(H3(category_name, style={"marginTop": "26px"}))
-        sections.append(Div(tests, style={"display": "grid", "gap": "24px"}))
+        cards = []
+        for name, layout in tests:
+            cards.append(
+                build_benchmark_card(
+                    name, layout, open_default=expand_all or card_index == 0
+                )
+            )
+            card_index += 1
+        # Same grid class as category pages: an implicit `auto` track sizes to
+        # max-content, so a wide benchmark table would stretch the track and the
+        # .mlpeg-table-scroll wrapper inside it would have nothing to scroll
+        # against — the framework pages kept the inline grid and missed that.
+        sections.append(Div(cards, className="mlpeg-benchmark-grid"))
 
     summary_block = []
     if summary_table is not None:
+        # Wrap in the same scroll-card as category pages so a wide framework
+        # summary (e.g. MACE-POLAR-1's many benchmark columns) scrolls inside
+        # its card instead of spanning the whole page.
         summary_block = [
             Div(
-                [
-                    build_download_controls(summary_table.id, row=True),
-                    build_loading_summary_table(summary_table),
-                    Br(),
-                    weight_components,
-                ],
-                style={"width": "fit-content"},
+                Div(
+                    Div(
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            build_loading_summary_table(summary_table),
+                            Br(),
+                            weight_components,
+                        ],
+                        style=table_wrapper_style(summary_table),
+                    ),
+                    className="mlpeg-table-scroll",
+                ),
+                className="mlpeg-summary-card",
             ),
         ]
 
@@ -280,12 +317,13 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 style={
                     "fontSize": "13px",
                     "fontStyle": "italic",
-                    "color": "#64748b",
+                    "color": "var(--mlpeg-ink-3)",
                     "marginTop": "8px",
                     "marginBottom": "8px",
                 },
             ),
             *summary_block,
+            build_expand_controls(),
             *sections,
         ]
     )

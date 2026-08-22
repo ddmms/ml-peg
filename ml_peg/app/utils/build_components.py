@@ -12,7 +12,7 @@ from dash.dash_table import DataTable
 from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
-from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
+from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
@@ -24,6 +24,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_weight_callbacks,
 )
 from ml_peg.app.utils.utils import (
+    SUMMARY_TABLE_ID,
     build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
@@ -42,11 +43,102 @@ from ml_peg.models.get_models import get_model_names
 LINK_COLUMN_WIDTH = 36
 
 # Max width of the interactive zone below a table (plots, structure viewers, ...).
-# Bounds it so it does not stretch to the largest table width by default.
-INTERACTIVE_ZONE_MAX_WIDTH = "1500px"
+# Bounds it so it does not stretch to the largest table width by default, while
+# still growing with the wider content area on large monitors (kept below full
+# table width so plots/WEAS viewers don't dominate).
+# Coupled: --content-max in theme.css caps the whole content column at
+# clamp(1400px, 92vw, 2560px) — retune the two together.
+INTERACTIVE_ZONE_MAX_WIDTH = "1900px"
 
 # Models to include as summary-table rows
 MODELS = get_model_names(current_models)
+
+
+def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
+    """
+    Build a collapsible benchmark card that lazy-mounts its body.
+
+    The heavy benchmark body (table + plot + scoring controls) is mounted only
+    when the card is expanded (injected by the ``toggle_benchmark`` callback), so
+    category and framework pages hydrate instantly instead of rendering every
+    benchmark up front. Per-benchmark ``dcc.Store``s stay globally mounted, so
+    the summary table and cross-benchmark callbacks keep working regardless.
+
+    Kept here (rather than in ``build_app``) so both category and framework pages
+    can build lazy-mounted cards without a circular import.
+
+    Parameters
+    ----------
+    name
+        Benchmark display name; also the card's pattern-matching index.
+    layout
+        Precomputed benchmark layout, pre-mounted only when ``open_default``.
+    open_default
+        Whether the card starts expanded (used for the first card on a page).
+
+    Returns
+    -------
+    Div
+        Collapsible benchmark card.
+    """
+    header_class = "mlpeg-bench-header"
+    if open_default:
+        header_class += " mlpeg-bench-header--open"
+    return Div(
+        [
+            Button(
+                [
+                    Span(name, className="mlpeg-bench-title"),
+                    Span(
+                        "▸",
+                        className="mlpeg-bench-chevron",
+                        **{"aria-hidden": "true"},
+                    ),
+                ],
+                id={"type": "bench-toggle", "index": name},
+                n_clicks=0,
+                className=header_class,
+                **{"aria-expanded": "true" if open_default else "false"},
+            ),
+            Div(
+                layout if open_default else None,
+                id={"type": "bench-body", "index": name},
+                className="mlpeg-bench-body",
+            ),
+        ],
+        className="mlpeg-bench-card",
+    )
+
+
+def build_expand_controls() -> Div:
+    """
+    Build the "Expand all" / "Collapse all" buttons shown above benchmark cards.
+
+    Shared by category and framework pages (only one page is mounted at a time via
+    the router, so the fixed button ids never collide).
+
+    Returns
+    -------
+    Div
+        Right-aligned row of expansion controls.
+    """
+    return Div(
+        [
+            Button(
+                "Expand all",
+                id="expand-all-benchmarks",
+                n_clicks=0,
+                className="mlpeg-expand-btn",
+            ),
+            Button(
+                "Collapse all",
+                id="collapse-all-benchmarks",
+                n_clicks=0,
+                className="mlpeg-expand-btn",
+            ),
+        ],
+        className="mlpeg-expand-controls",
+    )
 
 
 def _format_summary_column_header(column_id: str) -> str:
@@ -87,7 +179,7 @@ def _format_summary_column_header(column_id: str) -> str:
 
 def build_summary_table(
     tables: dict[str, DataTable],
-    table_id: str = "summary-table",
+    table_id: str = SUMMARY_TABLE_ID,
     description: str | None = None,
     weights: dict[str, float] | None = None,
     header_labels: dict[str, str] | None = None,
@@ -158,7 +250,7 @@ def build_summary_table(
             key = header.removesuffix(" Score")
             if key in header_labels:
                 header = header_labels[key] + " Score"
-        if table_id != "summary-table":
+        if table_id != SUMMARY_TABLE_ID:
             display_headers[column_id] = _format_summary_column_header(header)
         elif header in {"MLIP", "Score"} or not header.endswith(" Score"):
             display_headers[column_id] = header
@@ -199,8 +291,8 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
-    summary_header_padding = 12 if table_id == "summary-table" else 24
-    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
+    summary_header_padding = 12 if table_id == SUMMARY_TABLE_ID else 24
+    header_cell_padding = "4px" if table_id == SUMMARY_TABLE_ID else "8px"
     column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
     for column_id in columns_headers:
         if column_id in {"MLIP", "Score"}:
@@ -232,11 +324,18 @@ def build_summary_table(
     # icon just after the model name. Its styling lives in
     # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
     # NaN/level-of-theory greying is kept off for the link column.
-    if table_id == "summary-table":
+    if table_id == SUMMARY_TABLE_ID:
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
         for row in data:
             anchor = row.get("MLIP")
-            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
+            row["link"] = (
+                # Empty link text: the cell's icon is drawn by CSS
+                # (link_column.css), because a colour-emoji glyph ignores
+                # CSS color and cannot follow the theme. The title supplies
+                # the accessible name, per-model so the rows are
+                # distinguishable to assistive tech.
+                f'[]({models_url}#{anchor} "{anchor} documentation")' if anchor else ""
+            )
         columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
         style_cell_conditional.append(
             {
@@ -255,7 +354,9 @@ def build_summary_table(
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                "backgroundColor": "white",
+                # Theme-aware token (mirrors the sync_summary_table callback) so the
+                # link cell doesn't flash white against a dark table on first paint.
+                "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
         ]
@@ -292,12 +393,62 @@ def build_summary_table(
         fill_width=False,
     )
     table.column_widths = column_widths
+    # Natural total width so table_wrapper_style can cap the shared wrapper to the
+    # (non-stretching) table's own width — otherwise the width:100% weight grid
+    # stretches past the fixed table and the boxes drift out of alignment. The
+    # 36px link track exists only on the global summary-table (see the link column
+    # inserted above and the grid's link spacer in build_weight_components).
+    link_width = LINK_COLUMN_WIDTH if table_id == SUMMARY_TABLE_ID else 0
+    table.total_column_width = sum(w for w in column_widths.values() if w) + link_width
     table.description = description
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
     table.weights = weights
     return table
+
+
+# How far a table may stretch past its natural column widths before it stops
+# filling and instead centres in the remaining space. Keeps a few-column table
+# from ballooning one column ("last column too long") while still using the width.
+STRETCH_CAP_FACTOR = 1.4
+
+
+def table_wrapper_style(table: object) -> dict[str, str]:
+    """
+    Style for the div wrapping a table (+ its controls) inside .mlpeg-table-scroll.
+
+    Caps the wrapper width and centres it, so many-column tables fill the page
+    while few-column tables stay tidy and centred instead of stretching a single
+    column too wide. Stretching tables (``fill_width=True``) may grow to
+    ``STRETCH_CAP_FACTOR`` × natural width; fixed-width tables (``fill_width=False``,
+    e.g. the summary tables) are capped at their natural width so the width:100%
+    weight/threshold grid can't stretch past them. The cap lives on the shared
+    wrapper so the table and its weight/threshold grids stay aligned.
+
+    Parameters
+    ----------
+    table
+        A DataTable carrying ``total_column_width`` (natural sum of column widths).
+
+    Returns
+    -------
+    dict[str, str]
+        Inline style for the wrapper div.
+    """
+    style = {"width": "100%"}
+    total = getattr(table, "total_column_width", None)
+    if total:
+        # fill_width tables stretch to fill the wrapper, so let the cap exceed
+        # their natural width; fixed-width (fill_width=False) tables do not
+        # stretch, so cap the wrapper at their natural width or the width:100%
+        # weight grid stretches past the table and misaligns (few-column
+        # category pages, e.g. Molecular Crystals).
+        stretches = getattr(table, "fill_width", True)
+        factor = STRETCH_CAP_FACTOR if stretches else 1.0
+        style["maxWidth"] = f"{int(factor * total)}px"
+        style["margin"] = "0 auto"
+    return style
 
 
 def grid_template_from_widths(
@@ -317,7 +468,10 @@ def grid_template_from_widths(
     Returns
     -------
     str
-        CSS grid template definition using fixed pixel tracks.
+        CSS grid template using ``minmax(px, fr)`` tracks: each column stretches
+        proportionally to fill the container (matching the table's proportional
+        columns) but never shrinks below its pixel floor, so on narrow screens the
+        grid and table scroll together in lockstep.
     """
     tracks: list[tuple[str, int]] = [
         ("MLIP", widths["MLIP"]),
@@ -325,7 +479,10 @@ def grid_template_from_widths(
     ]
     tracks.extend((col, widths[col]) for col in column_order)
 
-    return " ".join(f"{max(width, 40)}px" for _, width in tracks)
+    # No space inside minmax() so callers can still split the template on " ".
+    return " ".join(
+        f"minmax({max(width, 40)}px,{max(width, 40)}fr)" for _, width in tracks
+    )
 
 
 def build_weight_input(
@@ -374,7 +531,7 @@ def build_weight_input(
                 "Weight:",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 38px)",
@@ -458,7 +615,7 @@ def build_weight_components(
     link_spacer: list[Div] = []
     if has_link_column:
         tracks = grid_template.split(" ")
-        tracks.insert(1, f"{LINK_COLUMN_WIDTH}px")
+        tracks.insert(1, f"minmax({LINK_COLUMN_WIDTH}px,{LINK_COLUMN_WIDTH}fr)")
         grid_template = " ".join(tracks)
         link_spacer = [Div(style={"border": "1px solid transparent"})]
 
@@ -481,7 +638,7 @@ def build_weight_components(
                             "fontWeight": "bold",
                             "fontSize": "13px",
                             "padding": "2px 4px",
-                            "color": "#212529",
+                            "color": "var(--mlpeg-heading)",
                             "whiteSpace": "nowrap",
                             "boxSizing": "border-box",
                             "border": "1px solid transparent",
@@ -491,15 +648,16 @@ def build_weight_components(
                         "Reset",
                         id=f"{table.id}-reset-button",
                         n_clicks=0,
+                        className="mlpeg-scoring-reset",
                         style={
                             "fontSize": "11px",
-                            "padding": "4px 8px",
+                            "padding": "4px 10px",
                             "marginTop": "0px",
                             "marginLeft": "4px",
-                            "backgroundColor": "#6c757d",
-                            "color": "white",
-                            "border": "none",
-                            "borderRadius": "3px",
+                            "backgroundColor": "transparent",
+                            "color": "var(--mlpeg-accent)",
+                            "border": "1px solid var(--mlpeg-accent-soft-border)",
+                            "borderRadius": "6px",
                             "width": "fit-content",
                             "cursor": "pointer",
                         },
@@ -508,8 +666,8 @@ def build_weight_components(
                         "Press Enter or click away to apply new weights or thresholds",
                         style={
                             "fontSize": "11px",
-                            "color": "#6c757d",
-                            "fontStyle": "italic",
+                            "color": "var(--mlpeg-muted)",
+                            "fontStyle": "normal",
                             "marginTop": "2px",
                         },
                     ),
@@ -541,6 +699,7 @@ def build_weight_components(
             ),
             *weight_inputs,
         ],
+        className="mlpeg-scoring-grid",
         style={
             "display": "grid",
             "gridTemplateColumns": grid_template,
@@ -549,11 +708,10 @@ def build_weight_components(
             "rowGap": "4px",
             "marginTop": "-5px",
             "padding": "2px 0px",
-            "backgroundColor": "#f8f9fa",
-            "border": "1px solid transparent"
-            if header == "Weights"
-            else "1px solid #dee2e6",
-            "borderRadius": "6px",
+            # Flat on the controls panel — no own background/border/radius so it
+            # doesn't read as a box nested inside the panel's box.
+            "backgroundColor": "transparent",
+            "border": "1px solid transparent",
             "width": "100%",
             "minWidth": "0",
             "boxSizing": "border-box",
@@ -567,13 +725,13 @@ def build_weight_components(
     model_configs = getattr(table, "model_configs", None)
 
     # Callbacks to update table scores when table weight dicts change
-    if table.id == "summary-table":
+    if table.id == SUMMARY_TABLE_ID:
         register_summary_table_callbacks(
             initial_rows=table.data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
-            prefix="summary-table",
+            prefix=SUMMARY_TABLE_ID,
         )
     elif table.id == "framework-summary-table":
         register_summary_table_callbacks(
@@ -686,6 +844,35 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
     )
 
 
+def _progress_ring(size_class: str = "") -> Div:
+    """
+    Build the determinate progress ring (climbs 0→~92%, shows a live percentage).
+
+    Reuses the startup loader's CSS ring (.mlpeg-progress-ring / -arc / -num in
+    loading.css). The climb is time-based, not real backend progress — combined
+    with the loaders' ``delay_show`` it only appears when an operation actually
+    takes a while, giving a reassuring "percent loading" cue for slow updates.
+
+    Parameters
+    ----------
+    size_class
+        Extra class for sizing (e.g. ``"mlpeg-progress-ring--sm"``); empty = default.
+
+    Returns
+    -------
+    Div
+        The ring element (arc + centre percentage).
+    """
+    classes = "mlpeg-progress-ring" + (f" {size_class}" if size_class else "")
+    return Div(
+        [
+            Div(className="mlpeg-progress-arc"),
+            html.Span(className="mlpeg-progress-num"),
+        ],
+        className=classes,
+    )
+
+
 def build_page_loading_spinner() -> Div:
     """
     Build the initial page-load spinner overlay.
@@ -693,29 +880,12 @@ def build_page_loading_spinner() -> Div:
     Returns
     -------
     Div
-        Page-wide loading overlay with spinner and status text.
+        Page-wide loading overlay with a determinate percentage ring and status text.
     """
     return Div(
         [
-            Div(
-                style={
-                    "width": "52px",
-                    "height": "52px",
-                    "border": "5px solid #d0ebff",
-                    "borderTopColor": "#119DFF",
-                    "borderRadius": "50%",
-                    "animation": "ml-peg-spin 0.8s linear infinite",
-                    "boxSizing": "border-box",
-                },
-            ),
-            Div(
-                "Loading page...",
-                style={
-                    "fontSize": "16px",
-                    "fontWeight": "600",
-                    "color": "#212529",
-                },
-            ),
+            _progress_ring(),
+            Div("Loading…", className="mlpeg-loader-text"),
         ],
         style={
             "position": "absolute",
@@ -731,7 +901,7 @@ def build_page_loading_spinner() -> Div:
             "gap": "14px",
             "paddingTop": "96px",
             "boxSizing": "border-box",
-            "backgroundColor": "rgba(255, 255, 255, 0.78)",
+            "backgroundColor": "var(--mlpeg-overlay)",
             "zIndex": "1400",
             "pointerEvents": "auto",
         },
@@ -745,20 +915,10 @@ def build_table_loading_spinner() -> Div:
     Returns
     -------
     Div
-        Table-sized loading overlay with the same ring style as page loading.
+        Table-sized loading overlay with a determinate percentage ring.
     """
     return Div(
-        Div(
-            style={
-                "width": "34px",
-                "height": "34px",
-                "border": "4px solid #d0ebff",
-                "borderTopColor": "#119DFF",
-                "borderRadius": "50%",
-                "animation": "ml-peg-spin 0.8s linear infinite",
-                "boxSizing": "border-box",
-            },
-        ),
+        _progress_ring("mlpeg-progress-ring--sm"),
         style={
             "position": "absolute",
             "top": "0",
@@ -768,7 +928,7 @@ def build_table_loading_spinner() -> Div:
             "display": "flex",
             "alignItems": "center",
             "justifyContent": "center",
-            "backgroundColor": "rgba(255, 255, 255, 0.65)",
+            "backgroundColor": "var(--mlpeg-overlay-soft)",
             "zIndex": "1200",
             "pointerEvents": "auto",
         },
@@ -809,9 +969,14 @@ def build_filter_overlay(table_id: str, child, delay_hide: int = 250) -> Loading
         custom_spinner=build_table_loading_spinner(),
         target_components={table_id: ["data", "style_data_conditional"]},
         show_initially=False,
+        # Hold off ~150ms before showing the spinner: fast re-styles (weights,
+        # colours, model filter — often <150ms) then finish without ever
+        # flashing a spinner, so quick edits feel instant. delay_hide bridges
+        # the several quick updates a table gets as scores propagate.
+        delay_show=150,
         delay_hide=delay_hide,
         overlay_style={"visibility": "visible", "opacity": 1},
-        parent_style={"position": "relative", "width": "fit-content"},
+        parent_style={"position": "relative", "width": "100%"},
     )
 
 
@@ -917,7 +1082,7 @@ def build_faqs() -> Div:
         return Div(
             "FAQs file not found",
             style={
-                "color": "#dc3545",
+                "color": "var(--mlpeg-bad)",
                 "padding": "10px",
                 "fontStyle": "italic",
             },
@@ -947,7 +1112,7 @@ def build_faqs() -> Div:
                         href=docs_url,
                         target="_blank",
                         style={
-                            "color": "#0d6efd",
+                            "color": "var(--mlpeg-accent)",
                             "textDecoration": "none",
                             "fontWeight": "600",
                             "fontSize": "13px",
@@ -966,8 +1131,8 @@ def build_faqs() -> Div:
                             "cursor": "pointer",
                             "fontWeight": "bold",
                             "padding": "10px",
-                            "backgroundColor": "#f8f9fa",
-                            "border": "1px solid #dee2e6",
+                            "backgroundColor": "var(--mlpeg-surface-2)",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderRadius": "4px",
                             "marginBottom": "8px",
                         },
@@ -976,8 +1141,8 @@ def build_faqs() -> Div:
                         answer_content,
                         style={
                             "padding": "10px 15px",
-                            "backgroundColor": "#ffffff",
-                            "border": "1px solid #dee2e6",
+                            "backgroundColor": "var(--mlpeg-surface)",
+                            "border": "1px solid var(--mlpeg-border)",
                             "borderTop": "none",
                             "borderRadius": "0 0 4px 4px",
                             "marginTop": "-8px",
@@ -995,7 +1160,7 @@ def build_faqs() -> Div:
         [
             H2(
                 "Frequently Asked Questions",
-                style={"color": "black", "marginTop": "30px"},
+                style={"marginTop": "30px"},
             ),
             Div(faq_components),
         ]
@@ -1067,7 +1232,7 @@ def build_footer() -> html.Footer:
                     href="https://github.com/ddmms/ml-peg",
                     target="_blank",
                     style={
-                        "color": "#0d6efd",
+                        "color": "var(--mlpeg-accent)",
                         "textDecoration": "none",
                         "fontWeight": "800",
                         "display": "inline-flex",
@@ -1080,11 +1245,11 @@ def build_footer() -> html.Footer:
         style={
             "marginTop": "24px",
             "padding": "14px 12px",
-            "color": "#343a40",
+            "color": "var(--mlpeg-heading)",
             "fontSize": "12px",
             "textAlign": "center",
-            "borderTop": "1px solid #dee2e6",
-            "background": "#f8f9fa",
+            "borderTop": "1px solid var(--mlpeg-border)",
+            "background": "var(--mlpeg-surface-2)",
             "borderRadius": "6px",
         },
     )
@@ -1207,7 +1372,7 @@ def build_test_layout(
     layout_contents = [
         Div(
             [
-                H2(name, style={"color": "black", "margin": "0"}),
+                H2(name, style={"margin": "0"}),
                 *[
                     build_framework_badge(framework_id)
                     for framework_id in framework_ids
@@ -1223,31 +1388,19 @@ def build_test_layout(
         H3(description),
     ]
 
-    layout_contents.extend(
-        [
-            Details(
-                [
-                    Summary(
-                        "Click for more information",
-                        style={
-                            "cursor": "pointer",
-                            "fontWeight": "bold",
-                            "padding": "5px",
-                        },
-                    ),
-                    Label(
-                        [html.A("Online documentation", href=docs_url, target="_blank")]
-                    ),
-                ],
-                style={
-                    # "border": "1px solid #ddd",
-                    "padding": "10px",
-                    # "borderRadius": "5px",
-                },
-            ),
-            Div(style={"height": "4px"}),
-        ]
-    )
+    # A single docs link reads cleaner than a disclosure widget with an arrow.
+    if docs_url:
+        layout_contents.extend(
+            [
+                html.A(
+                    "Read the online documentation →",
+                    href=docs_url,
+                    target="_blank",
+                    className="mlpeg-doc-link",
+                ),
+                Div(style={"height": "4px"}),
+            ]
+        )
 
     reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [
@@ -1282,20 +1435,25 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    controls_visual = Div(
+    # Open by default (review feedback: weights & thresholds should be visible at a
+    # glance, not hidden behind a click). The cost is bounded because the controls
+    # live inside a benchmark card body, mounted only when that card is expanded.
+    controls_visual = Details(
         [
-            Div(threshold_controls, style={"marginBottom": "0px"}),
-            Div(metric_weights, style={"marginTop": "0"}),
+            Summary(
+                "Adjust scoring — weights & thresholds",
+                className="mlpeg-controls-summary",
+            ),
+            Div(
+                [
+                    Div(threshold_controls, style={"marginBottom": "0px"}),
+                    Div(metric_weights, style={"marginTop": "0"}),
+                ],
+                className="mlpeg-controls-panel",
+            ),
         ],
-        style={
-            "backgroundColor": "#f8f9fa",
-            "border": "1px solid #dee2e6",
-            "borderRadius": "6px",
-            "padding": "0px 0px 0px 0px",  # top right bottom left
-            "marginTop": "-5px",
-            "boxSizing": "border-box",
-            "width": "100%",
-        },
+        open=True,
+        className="mlpeg-controls-details",
     )
 
     table_section = [
@@ -1304,9 +1462,19 @@ def build_test_layout(
         Br(),
         controls_visual,
     ]
-    layout_contents.append(Div(table_section, style={"width": "fit-content"}))
+    layout_contents.append(
+        Div(
+            Div(table_section, style=table_wrapper_style(table)),
+            className="mlpeg-table-scroll",
+        )
+    )
 
     if extra_components:
+        # Plot + structure-viewer placeholders, stacked (figure above structure) in
+        # the interactive-zone max-width (#720). Rendered raw: wrapping each in its
+        # own loading overlay made the structure viewer REPLACE the plot on a point
+        # click instead of appearing below it (review: struct-replaces-plot). The
+        # buffer-spinner-on-slow-render polish is dropped in favour of correctness.
         layout_contents.append(
             Div(extra_components, style={"maxWidth": INTERACTIVE_ZONE_MAX_WIDTH})
         )
@@ -1351,9 +1519,10 @@ def build_threshold_inputs(
         "rowGap": "0px",
         "marginTop": "0px",
         "padding": "2px 0px",
-        "backgroundColor": "#f8f9fa",
+        # Flat on the controls panel — no own background/border/radius (avoids a
+        # box nested inside the panel's box).
+        "backgroundColor": "transparent",
         "border": "1px solid transparent",
-        "borderRadius": "5px",
         "width": "100%",
         "minWidth": "0",
         "boxSizing": "border-box",
@@ -1374,7 +1543,7 @@ def build_threshold_inputs(
                         "padding": "2px 4px",
                         "whiteSpace": "nowrap",
                         "boxSizing": "border-box",
-                        "color": "#212529",
+                        "color": "var(--mlpeg-heading)",
                         "border": "1px solid transparent",
                     },
                 ),
@@ -1382,15 +1551,16 @@ def build_threshold_inputs(
                     "Reset",
                     id=f"{table_id}-reset-thresholds-button",
                     n_clicks=0,
+                    className="mlpeg-scoring-reset",
                     style={
                         "fontSize": "11px",
-                        "padding": "4px 8px",
+                        "padding": "4px 10px",
                         "marginTop": "0px",
                         "marginLeft": "4px",
-                        "backgroundColor": "#6c757d",
-                        "color": "white",
-                        "border": "none",
-                        "borderRadius": "3px",
+                        "backgroundColor": "transparent",
+                        "color": "var(--mlpeg-accent)",
+                        "border": "1px solid var(--mlpeg-accent-soft-border)",
+                        "borderRadius": "6px",
                         "width": "fit-content",
                         "cursor": "pointer",
                     },
@@ -1449,7 +1619,7 @@ def build_threshold_inputs(
                 "Good:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1470,7 +1640,7 @@ def build_threshold_inputs(
                     f"[{unit_label}]",
                     style={
                         "fontSize": "12px",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "position": "absolute",
                         "left": "calc(50% + 34px)",
                         "top": "50%",
@@ -1485,7 +1655,7 @@ def build_threshold_inputs(
                 "Bad:" if first_metric else "",
                 style={
                     "fontSize": "13px",
-                    "color": "#6c757d",
+                    "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
                     "right": "calc(50% + 34px)",
@@ -1509,7 +1679,7 @@ def build_threshold_inputs(
                     f"[{unit_label}]",
                     style={
                         "fontSize": "12px",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "position": "absolute",
                         "left": "calc(50% + 34px)",
                         "top": "50%",
@@ -1572,4 +1742,13 @@ def build_threshold_inputs(
         register_toggle=False,
     )
 
-    return Div([Div(cells, id=f"{table_id}-threshold-grid", style=container_style)])
+    return Div(
+        [
+            Div(
+                cells,
+                id=f"{table_id}-threshold-grid",
+                className="mlpeg-scoring-grid",
+                style=container_style,
+            )
+        ]
+    )
