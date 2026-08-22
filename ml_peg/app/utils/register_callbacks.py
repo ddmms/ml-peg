@@ -269,7 +269,7 @@ def register_summary_table_callbacks(
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                "backgroundColor": "white",
+                "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
         ]
