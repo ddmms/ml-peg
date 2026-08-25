@@ -11,6 +11,7 @@ from ase.build import bulk, graphene, molecule
 from ase.io import write
 import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -115,7 +116,7 @@ def test_translational_symmetry(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    for struct_name, struct in STRUCTURES.items():
+    for struct_name, struct in tqdm(STRUCTURES.items(), desc=model_name):
         original = struct.copy()
         original.info["charge"] = 0
         original.info["spin"] = 1
