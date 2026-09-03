@@ -12,6 +12,7 @@ from dash.dcc import Graph
 from plotly.io import read_json
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
@@ -277,9 +278,9 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
     fig_data = []
     for trace in data:
         name = trace.get("name")
-        if name is None or name == model:
-            # ``name`` is ``None`` for the y=x reference line; keep that and the
-            # requested model trace visible while hiding their legend entries.
+        if name in {None, PARITY_LINE_NAME, model}:
+            # Older figures left the y=x guide unnamed. Keep both forms plus the
+            # requested model trace while hiding their legend entries.
             trace_copy = deepcopy(trace)
             trace_copy["visible"] = True
             trace_copy["showlegend"] = False
