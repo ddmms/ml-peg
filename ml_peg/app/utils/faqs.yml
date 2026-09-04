@@ -84,3 +84,15 @@
     The speed ranges are rough estimates based on running MACE-MP-0a on a 40 GB
     NVIDIA A100 GPU. This is only meant to be ballpark speed and other potentials may be faster or slower.
   docs_url: null
+
+- question: "What should I cite when using ML-PEG?"
+  answer: >
+    Please cite ML-PEG, the original papers and data sources listed on each benchmark,
+    and the papers for the MLIP models you used. Benchmark implementation contributors
+    are shown separately so that porting or implementing a test receives credit
+    without incorrectly making the implementer an author of the original work. Where a
+    benchmark was devised for ML-PEG, citing ML-PEG is enough. Running ml_peg calc or
+    ml_peg analyse prints the citations for the benchmarks and models of that run
+    when it finishes, and ml_peg cite prints the same guidance without running
+    anything. Both list any citation placeholders that still need to be completed.
+  docs_url: null
