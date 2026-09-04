@@ -47,7 +47,9 @@ Input data:
   * R. Tran, J. Lan, M. Shuaibi, B. M. Wood, S. Goyal, A. Das, J. Heras-Domingo, A. Kolluru, A. Rizvi, N. Shoghi, A. Sriram, F. Therrien, J. Abed, O. Voznyy, E. H. Sargent, Z. Ulissi, and C. L. Zitnick, “The Open Catalyst 2022 (OC22) data set and challenges for oxide electro catalysts,” ACS Catal., vol.13, pp. 3066–3084, Mar. 2023.
 
 * Structures containing oxygen (O) and several transition metals (Co, Cr, Fe, Mn, Mo,
-  Ni, V and W) were exlcuded due to Hubbard U correction
+  Ni, V and W) were excluded due to Hubbard U correction, as analysed in:
+
+  * T. Warford, F. L. Thiemann, G. Csányi, "Better without U: impact of selective Hubbard U correction on foundational MLIPs," Machine Learning: Science and Technology, 2026, 7:035033. https://doi.org/10.1088/2632-2153/ae6be5
 
 Reference data:
 
@@ -152,7 +154,31 @@ Performance in predicting adsorption energies for oxygen on elemental slabs.
 Metrics
 -------
 
-Adsorption energy error
+1. MAE
+
+Mean absolute error of the adsorption energy, over all elements.
+
+2. U MAE
+
+Mean absolute error of the adsorption energy, over elements commonly given a Hubbard U
+correction in GGA+U training data, such as the Materials Project (Co, Cr, Fe, Mn, Mo,
+Ni, V and W). The reference calculations are PBE throughout, without a Hubbard U
+correction, so this metric isolates the error for elements where models trained on
+GGA+U data are expected to carry a systematic offset. Excluded from the benchmark
+score, since these systems are also included in the MAE.
+
+The choice of elements, and the systematic offset this metric isolates, follow Warford et al. (see Data availability).
+
+3. non-U MAE
+
+Mean absolute error of the adsorption energy, over the remaining elements. Excluded
+from the benchmark score, since these systems are also included in the MAE.
+
+Selecting a model shows a periodic table of its signed adsorption energy error
+(predicted - reference) for each element, and selecting an element visualises the
+corresponding slab with the adsorbed oxygen. The periodic table uses a symlog
+colormap, so elements predicted well stay near the midpoint colour while the
+worst elements remain distinguishable from one another.
 
 For each slab, two single points are performed.
 The first is for the isolated slab and the second is the slab with
@@ -168,6 +194,10 @@ Very low: tests are likely to take less than a minute to run on CPU.
 Data availability
 -----------------
 
+The benchmark data is from:
+
+* T. Warford, F. L. Thiemann, G. Csányi, "Better without U: impact of selective Hubbard U correction on foundational MLIPs," Machine Learning: Science and Technology, 2026, 7:035033. https://doi.org/10.1088/2632-2153/ae6be5
+
 Input data:
 
 * Elemental slabs were obtained using the Materials Project API. The lowest-surface-energy slab
@@ -178,12 +208,10 @@ Input data:
 
 Reference data:
 
-* PBE single points are performed with the MatPESStatic set, with a cutoff energy of 520 eV.
+* PBE single points are performed with the MatPESStatic set, with a cutoff energy of 520 eV, using:
 
   * A. D. Kaplan, R. Liu, J. Qi, T. W. Ko, B. Deng, J. Riebesell, G. Ceder, K. A. Persson, S. P. Ong, "A Foundational Potential Energy Surface Dataset for Materials," arXiv preprint arXiv:2503.04070, 2025. https://doi.org/10.48550/arXiv.2503.04070
   * S. P. Ong, W. D. Richards, A. Jain, G. Hautier, M. Kocher, S. Cholia, D. Gunter, V. Chevrier, K. A. Persson, G. Ceder, "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis," Comput. Mater. Sci., 2013, 68, 314–319. https://doi.org/10.1016/j.commatsci.2012.10.028
-
-* Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
 
 
 SBH17

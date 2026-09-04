@@ -192,6 +192,30 @@ DENSITY_MAX_POINTS_PER_CELL = 5
 DENSITY_SAMPLE_SEED = 0
 
 
+def symlog_transform(values: np.ndarray, scale: float) -> np.ndarray:
+    """
+    Apply a symmetric logarithmic transform, preserving sign.
+
+    Values well within ``scale`` are mapped near-linearly, while larger magnitudes
+    are compressed logarithmically. This keeps small and large values legible on a
+    single colour scale, rather than saturating the scale with outliers.
+
+    Parameters
+    ----------
+    values
+        Values to transform.
+    scale
+        Magnitude below which the transform is approximately linear. Typically the
+        "good" threshold for the metric, so values scoring as good stay near zero.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed values.
+    """
+    return np.sign(values) * np.log10(1 + np.abs(values) / scale)
+
+
 def sample_density_grid(
     ref_vals: list[float] | np.ndarray,
     pred_vals: list[float] | np.ndarray,
