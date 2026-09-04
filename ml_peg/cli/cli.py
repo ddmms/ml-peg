@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Literal, get_args
 
-from typer import Context, Exit, Option, Typer
+from typer import Context, Exit, Option, Typer, echo
 from yaml import safe_load
 
 from ml_peg import __version__
@@ -332,11 +332,12 @@ def run_calcs(
 
     from ml_peg.calcs import CALCS_ROOT
 
-    options = list(CALCS_ROOT.glob(f"{category}/{test}/calc_*.py"))
-    if not options:
+    scripts = list(CALCS_ROOT.glob(f"{category}/{test}/calc_*.py"))
+    if not scripts:
         raise ValueError(
             f"No tests were found matching {category}/{test}/calc_*.py in {CALCS_ROOT}"
         )
+    options = list(scripts)
 
     if verbose:
         options.extend(["-s", "-vvv", "-rs"])
@@ -436,12 +437,13 @@ def run_analysis(
 
     from ml_peg.analysis import ANALYSIS_ROOT
 
-    options = list(ANALYSIS_ROOT.glob(f"{category}/{test}/analyse_*.py"))
-    if not options:
+    scripts = list(ANALYSIS_ROOT.glob(f"{category}/{test}/analyse_*.py"))
+    if not scripts:
         raise ValueError(
             f"No tests were found matching {category}/{test}/analyse_*.py in "
             f"{ANALYSIS_ROOT}"
         )
+    options = list(scripts)
 
     if verbose:
         options.extend(["-s", "-vvv", "-rs"])
@@ -456,6 +458,71 @@ def run_analysis(
         options.extend(["--framework", framework])
 
     pytest.main(options)
+
+
+@app.command(name="cite", help="Write citation guidance without running benchmarks")
+def cite(
+    models: Annotated[
+        str | None,
+        Option(
+            help="Comma-separated models to cite. Default is all models.",
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
+    category: Annotated[
+        AnalysisCategories,
+        Option(
+            help="Category to cite benchmarks for. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to cite. Default is all tests.",
+            autocompletion=complete_test,
+        ),
+    ] = "*",
+) -> None:
+    """
+    Write citation guidance for benchmarks and models without running them.
+
+    Parameters
+    ----------
+    models
+        Models to cite, in comma-separated list. Default is `None`, corresponding to
+        all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
+    category
+        Category to cite benchmarks for. Default is `*`, corresponding to all
+        categories.
+    test
+        Test to cite. Default is `*`, corresponding to all tests in the category.
+    """
+    from ml_peg.citations import build_run_citations
+    from ml_peg.models.get_models import get_model_names
+
+    scripts = list(ANALYSIS_ROOT.glob(f"{category}/{test}/analyse_*.py"))
+    if not scripts:
+        raise ValueError(
+            f"No tests were found matching {category}/{test}/analyse_*.py in "
+            f"{ANALYSIS_ROOT}"
+        )
+
+    summary = build_run_citations(
+        scripts, get_model_names(models, models_file), models_file
+    )
+    echo(f"\n{summary}")
 
 
 list_app = Typer(

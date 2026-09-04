@@ -1,0 +1,17 @@
+contributors:
+  - name: Domantas Kuryla
+    github: null
+    orcid: null
+
+citations:
+  - key: ehlert-2022-aconfl
+    role: benchmark_method
+    title: Conformational Energy Benchmark for Longer n-Alkane Chains
+    authors:
+      - Sebastian Ehlert
+      - Stefan Grimme
+      - Andreas Hansen
+    year: 2022
+    doi: null
+    url: null
+    bibtex: null

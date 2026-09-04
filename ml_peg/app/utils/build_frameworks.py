@@ -9,6 +9,7 @@ from dash.html import H1, H3, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
     build_download_controls,
+    build_framework_citation,
     build_loading_summary_table,
     build_summary_table,
     build_weight_components,
@@ -270,6 +271,21 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     return Div(
         [
             H1(f"{framework_label} Benchmarks"),
+            Div(
+                [
+                    H3("Framework citation", style={"margin": "0 0 8px"}),
+                    build_framework_citation(framework_view["framework_id"]),
+                ],
+                style={
+                    "backgroundColor": "#eff6ff",
+                    "border": "2px solid #2563eb",
+                    "borderRadius": "12px",
+                    "marginTop": "10px",
+                    "maxWidth": "820px",
+                    "padding": "14px 18px",
+                    "width": "fit-content",
+                },
+            ),
             *description_box_block,
             Div(
                 (

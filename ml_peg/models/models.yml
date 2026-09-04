@@ -7,6 +7,10 @@ mace-mp-0a:
   level_of_theory: PBE
   kwargs:
     model: "medium"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-mp-0b3:
   module: mace.calculators
@@ -17,6 +21,10 @@ mace-mp-0b3:
   level_of_theory: PBE
   kwargs:
     model: "medium-0b3"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-mpa-0:
   module: mace.calculators
@@ -27,6 +35,10 @@ mace-mpa-0:
   level_of_theory: PBE
   kwargs:
     model: "medium-mpa-0"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-omat-0:
   module: mace.calculators
@@ -37,6 +49,10 @@ mace-omat-0:
   level_of_theory: PBE
   kwargs:
     model: "medium-omat-0"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-matpes-r2scan:
   module: mace.calculators
@@ -51,6 +67,10 @@ mace-matpes-r2scan:
   dispersion_kwargs:
     xc: r2scan
     label: D4
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-mh-1-omat:
   module: mace.calculators
@@ -62,6 +82,10 @@ mace-mh-1-omat:
   kwargs:
     model: "mh-1"
     head: omat_pbe
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 orb-v3-consv-inf-omat:
   module: orb_models.inference.calculator
@@ -73,6 +97,10 @@ orb-v3-consv-inf-omat:
   level_of_theory: PBE
   kwargs:
     name: "orb_v3_conservative_inf_omat"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 orb-v3-direct-inf-omat:
   module: orb_models.inference.calculator
@@ -82,6 +110,10 @@ orb-v3-direct-inf-omat:
   level_of_theory: PBE
   kwargs:
     name: "orb_v3_direct_inf_omat"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 orb-v3-consv-omol:
   module: orb_models.forcefield.inference.calculator
@@ -93,6 +125,10 @@ orb-v3-consv-omol:
   level_of_theory: PBE
   kwargs:
     name: "orb_v3_conservative_omol"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mattersim-5M:
   module: mattersim.forcefield
@@ -104,6 +140,10 @@ mattersim-5M:
   level_of_theory: PBE
   kwargs:
     load_path: "mattersim-v1.0.0-5m"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 # mattersim-1M:
 #   module: mattersim.forcefield
@@ -127,6 +167,10 @@ uma-s-1p1-omat:
   kwargs:
     model_name: "uma-s-1p1"
     task_name: "omat"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 uma-m-1p1-omat:
   module: fairchem.core
@@ -139,6 +183,10 @@ uma-m-1p1-omat:
   kwargs:
     model_name: "uma-m-1p1"
     task_name: "omat"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 grace-2l-omat:
   module: tensorpotential.calculator
@@ -147,6 +195,10 @@ grace-2l-omat:
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-OMAT
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 grace-2l-smax-omat-medium:
   module: tensorpotential.calculator
@@ -155,6 +207,10 @@ grace-2l-smax-omat-medium:
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-SMAX-OMAT-medium
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 MACE-OFF23(L):
   module: mace.calculators
@@ -164,6 +220,10 @@ MACE-OFF23(L):
   trained_on_dispersion: true
   kwargs:
     name: large
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 MACE-OFF24(M):
   module: mace.calculators
@@ -173,6 +233,10 @@ MACE-OFF24(M):
   trained_on_dispersion: true
   kwargs:
     model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-omol:
   module: mace.calculators
@@ -183,6 +247,10 @@ mace-omol:
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
     model: "extra_large"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-mh-1-omol:
   module: mace.calculators
@@ -194,6 +262,10 @@ mace-mh-1-omol:
   kwargs:
     model: "mh-1"
     head: omol
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 uma-s-1p1-omol:
   module: fairchem.core
@@ -206,6 +278,10 @@ uma-s-1p1-omol:
   kwargs:
     model_name: "uma-s-1p1"
     task_name: "omol"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 uma-s-1p2-omol:
   module: fairchem.core
@@ -218,6 +294,10 @@ uma-s-1p2-omol:
   kwargs:
     model_name: "uma-s-1p2"
     task_name: "omol"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 uma-m-1p1-omol:
   module: fairchem.core
@@ -230,6 +310,10 @@ uma-m-1p1-omol:
   kwargs:
     model_name: "uma-m-1p1"
     task_name: "omol"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 pet-mad:
   module: upet.calculator
@@ -243,6 +327,10 @@ pet-mad:
     version: "1.0.2"
   dispersion_kwargs:
     xc: pbesol
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 pet-mad-s-1p5:
   module: upet.calculator
@@ -256,6 +344,10 @@ pet-mad-s-1p5:
     version: "1.5.0"
   dispersion_kwargs:
     xc: r2scan
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 pet-oam-xl:
   module: upet.calculator
@@ -268,6 +360,10 @@ pet-oam-xl:
   kwargs:
     model: "pet-oam-xl"
     version: "1.0.0"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 sevennet-omni-mpa:
   module: sevenn.sevennet_calculator
@@ -280,6 +376,10 @@ sevennet-omni-mpa:
   kwargs:
     model: "7net-omni"
     modal: "mpa"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 Vivace:
   module: simpoly.vivace.calculator
@@ -290,6 +390,10 @@ Vivace:
   level_of_theory: r2SCAN+D3
   kwargs:
     model_path: /Users/joehart/Desktop/0_Cambridge/0_MPhil_Scientific_Computing/MPhil_project/mlipx_testing/new_format/mlip-testing/ml_peg/models/vivace_v0.1.pt
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-polar-1-s:
   module: mace.calculators
@@ -300,6 +404,10 @@ mace-polar-1-s:
   level_of_theory: ωB97M-V
   kwargs:
     model: "polar-1-s"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-polar-1-m:
   module: mace.calculators
@@ -310,6 +418,10 @@ mace-polar-1-m:
   level_of_theory: ωB97M-V
   kwargs:
     model: "polar-1-m"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null
 
 mace-polar-1-l:
   module: mace.calculators
@@ -320,3 +432,7 @@ mace-polar-1-l:
   level_of_theory: ωB97M-V
   kwargs:
     model: "polar-1-l"
+  citation:  # TODO: complete with the model paper, or delete if not applicable
+    title: null
+    authors: []
+    year: null

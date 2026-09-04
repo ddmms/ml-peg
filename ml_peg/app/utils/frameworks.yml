@@ -18,6 +18,10 @@ mlip_arena:
   project_url: "https://huggingface.co/spaces/atomind/mlip-arena"
   paper_url: "https://proceedings.neurips.cc/paper_files/paper/2025/hash/bfa45223cc236855dbaa5c468c809896-Abstract-Datasets_and_Benchmarks_Track.html"
   github: "https://github.com/atomind-ai/mlip-arena"
+  citation:
+    title: null  # TODO: add manually
+    authors: []  # TODO: add manually
+    year: null  # TODO: add manually
 
 mlip_audit:
   label: MLIP Audit
@@ -30,6 +34,17 @@ mlip_audit:
   project_url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
+  citation:
+    title: "MLIPAudit: A benchmarking tool for Machine Learned Interatomic Potentials"
+    authors:
+      - Leon Wehrhan
+      - Lucien Walewski
+      - Marie Bluntzer
+      - Heloise Chomet
+      - Jules Tilly
+      - Christoph Brunken
+      - Silvia Acosta-Gutiérrez
+    year: 2025
 
 mace-multihead:
   label: Multihead Cross Learning
