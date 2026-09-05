@@ -141,6 +141,80 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+def _patch_mattersim_graph_dtype() -> None:
+    """Rebuild GraphConverter.convert's lossy float32 fields at the requested dtype."""
+    from mattersim.datasets.utils.converter import GraphConverter
+    from mattersim.forcefield.potential import MatterSimCalculator
+    import numpy as np
+    import torch
+
+    original_convert = GraphConverter.convert
+    original_calculate = MatterSimCalculator.calculate
+    _target_dtype = {"dtype": torch.float32}
+
+    def convert(self, atoms, *args, **kwargs):
+        """
+        Delegate to the original convert, then rebuild lossy fields.
+
+        Parameters
+        ----------
+        self
+            The ``GraphConverter`` instance.
+        atoms
+            Structure to convert.
+        *args
+            Positional arguments forwarded to the original ``convert``.
+        **kwargs
+            Keyword arguments forwarded to the original ``convert``.
+
+        Returns
+        -------
+        Data
+            Graph data, with ``atom_pos``/``cell`` rebuilt at the
+            calculator's requested dtype instead of hardcoded float32.
+            ``pbc_offsets`` is left untouched: it holds small integer
+            periodic-image counts, exactly representable in float32, so
+            it loses no precision and needs no rebuilding.
+        """
+        data = original_convert(self, atoms, *args, **kwargs)
+        dtype = _target_dtype["dtype"]
+        if dtype != torch.float32:
+            data.atom_pos = torch.tensor(atoms.get_positions(), dtype=dtype)
+            data.cell = torch.tensor(np.array(atoms.cell), dtype=dtype).unsqueeze(0)
+        return data
+
+    def calculate(self, atoms=None, properties=None, system_changes=None):
+        """
+        Record the calculator's dtype, then delegate to the original calculate.
+
+        Parameters
+        ----------
+        self
+            The ``MatterSimCalculator`` instance.
+        atoms
+            Structure to evaluate.
+        properties
+            Properties to compute.
+        system_changes
+            Changes since the last calculation.
+
+        Returns
+        -------
+        None
+            Results are stored on ``self.results``, as in the original.
+        """
+        _target_dtype["dtype"] = self.dtype
+        try:
+            return original_calculate(
+                self, atoms=atoms, properties=properties, system_changes=system_changes
+            )
+        finally:
+            _target_dtype["dtype"] = torch.float32
+
+    GraphConverter.convert = convert
+    MatterSimCalculator.calculate = calculate
+
+
 @dataclasses.dataclass(kw_only=True)
 class MatterSimCalc(GenericASECalc):
     """Dataclass for MatterSim calculator."""
@@ -205,6 +279,7 @@ class MatterSimCalc(GenericASECalc):
             kwargs["dtype"] = self.default_dtype
 
         self._patch_mattersim_setstate()
+        _patch_mattersim_graph_dtype()
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
