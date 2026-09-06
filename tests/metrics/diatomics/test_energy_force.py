@@ -96,7 +96,8 @@ def test_source_keyword_argument_names_are_supported() -> None:
     assert calc_force_mae(**force_kwargs) == 0
 
 
-def test_pbe_reference_energy_formulas() -> None:
+@pytest.mark.parametrize("reverse", [False, True])
+def test_pbe_reference_energy_formulas(reverse: bool) -> None:
     """PBE-relative metrics match analytic parabolic-well expectations."""
     reference_equilibrium = 1.5
     predicted_equilibrium = 1.6
@@ -111,6 +112,8 @@ def test_pbe_reference_energy_formulas() -> None:
         - 1.7
     )
     curve_args = (separations_ref, energy_ref, separations_pred, energy_pred)
+    if reverse:
+        curve_args = tuple(values[::-1] for values in curve_args)
     expected_depth_error = abs(
         predicted_curvature_factor * (predicted_max - predicted_equilibrium) ** 2
         - (reference_max - reference_equilibrium) ** 2
@@ -172,6 +175,18 @@ def test_energy_and_force_interpolation_use_shared_range() -> None:
             np.array([1.0, np.nan, 3.0]),
             np.arange(3.0),
             "Input contains NaN",
+        ),
+        (
+            calc_energy_jump,
+            np.array([3.0, 1.0, 1.0]),
+            np.arange(3.0),
+            "contains 1 duplicates",
+        ),
+        (
+            calc_energy_jump,
+            np.arange(3.0),
+            np.array([0.0, np.inf, 1.0]),
+            "infinite values",
         ),
         (calc_energy_jump, np.arange(2.0), np.arange(3.0), _LENGTH_ERROR),
         (calc_energy_jump, np.arange(3.0), np.zeros((3, 1)), _ENERGY_SHAPE_ERROR),
@@ -238,3 +253,35 @@ def test_interpolation_requires_at_least_two_points(
             predicted_values,
             interpolate=1,
         )
+
+
+@pytest.mark.parametrize(
+    ("prediction", "thresholds", "expected"),
+    [
+        ([4.0, 1.0, 0.0, 1.0], (1.0, 4.0, 9.0), 0.0),
+        ([1.0, 0.25, 0.0, 0.25], (1.0, 4.0, 9.0), 1.0),
+        ([4.0, 1.0, 0.0, 1.0], (9.0,), np.nan),
+        ([4.0, 1.0, 0.0, 1.0], (), np.nan),
+    ],
+    ids=[
+        "identical",
+        "missing-predicted-crossing",
+        "unreached-reference",
+        "no-thresholds",
+    ],
+)
+def test_wall_distance_thresholds(
+    prediction: list[float],
+    thresholds: tuple[float, ...],
+    expected: float,
+) -> None:
+    """Use reachable reference thresholds and penalize missing predicted crossings."""
+    result = calc_pbe_wall_dist_mae(
+        [1.0, 2.0, 3.0, 4.0],
+        [4.0, 1.0, 0.0, 1.0],
+        [1.0, 2.0, 3.0, 4.0],
+        prediction,
+        thresholds_ev=thresholds,
+    )
+    # These piecewise-linear curves have exactly representable crossings.
+    np.testing.assert_allclose(result, expected, rtol=0, atol=0, equal_nan=True)

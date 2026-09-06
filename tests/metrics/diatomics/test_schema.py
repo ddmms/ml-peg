@@ -12,9 +12,7 @@ import pytest
 
 from ml_peg.analysis.physicality.diatomics.metrics import (
     DiatomicCurve,
-    DiatomicCurves,
     load_dft_reference_curves,
-    load_mbd_json,
     load_ml_peg_curves,
 )
 
@@ -53,16 +51,6 @@ def test_diatomic_classes_parse_arrays() -> None:
         type(curve.forces),
     } == {np.ndarray}
 
-    payload = {
-        "distances": distances,
-        "homo-nuclear": {"H-H": _curve_payload()},
-        "hetero-nuclear": {"H-He": _curve_payload()},
-    }
-    curves = DiatomicCurves.from_dict(payload)
-    assert list(curves.homo_nuclear) == ["H"]
-    assert list(curves.hetero_nuclear) == ["H-He"]
-    np.testing.assert_array_equal(curves.homo_nuclear["H"].distances, distances)
-
 
 @pytest.mark.parametrize(
     ("override", "error_match"),
@@ -88,41 +76,12 @@ def test_diatomic_curve_rejects_invalid_shapes_and_counts(
         DiatomicCurve(**(arguments | override))
 
 
-@pytest.mark.parametrize(
-    "bad_distances",
-    [[0.5, 1.5], [1.0, 1.0], [2.0, 1.0]],
-    ids=["off-grid", "duplicate", "reordered"],
-)
-def test_mbd_schema_rejects_invalid_curve_grids(
-    bad_distances: list[float],
-) -> None:
-    """MBD curves must use ordered subsets of the top-level grid."""
-    curve_payload = _curve_payload() | {"distances": bad_distances}
-    payload = {
-        "distances": [1.0, 2.0],
-        "homo-nuclear": {"H-H": curve_payload},
-    }
-    with pytest.raises(ValueError, match="must be an ordered subset"):
-        DiatomicCurves.from_dict(payload)
-
-
-def test_json_and_gzip_loaders(tmp_path: Path) -> None:
-    """MBD JSON and gzipped DFT references load into the typed schema."""
-    prediction_path = tmp_path / "predictions.json"
-    prediction_path.write_text(
-        json.dumps(
-            {
-                "distances": [0.7, 1.0],
-                "homo-nuclear": {"H-H": _curve_payload()},
-            }
-        ),
-        encoding="utf-8",
-    )
-    prediction_curves = load_mbd_json(prediction_path)
-    assert list(prediction_curves.homo_nuclear) == ["H"]
-
-    reference_path = tmp_path / "reference.json.gz"
-    with gzip.open(reference_path, mode="wt", encoding="utf-8") as file:
+@pytest.mark.parametrize("suffix", [".json", ".json.gz"])
+def test_dft_reference_loaders(tmp_path: Path, suffix: str) -> None:
+    """Load plain and compressed DFT reference curves with their own grids."""
+    reference_path = tmp_path / f"reference{suffix}"
+    open_function = gzip.open if suffix.endswith(".gz") else open
+    with open_function(reference_path, mode="wt", encoding="utf-8") as file:
         json.dump({"PBE": {"H-H": _curve_payload() | {"distances": [0.7, 1.0]}}}, file)
     reference_curves = load_dft_reference_curves(ref_path=reference_path)
     np.testing.assert_array_equal(
@@ -182,20 +141,15 @@ def test_ml_peg_adapter_rejects_schema_errors(
 
 
 @pytest.mark.parametrize(
-    ("energies", "error_match"),
-    [
-        ([0.0, 0.0], "duplicate distance values"),
-        ([0.0, 1.0], "conflicting samples"),
-    ],
+    "energies",
+    [[0.0, 0.0], [0.0, 1.0]],
     ids=["identical", "conflicting"],
 )
-def test_ml_peg_adapter_rejects_duplicate_distances(
-    energies: list[float], error_match: str
-) -> None:
+def test_ml_peg_adapter_rejects_duplicate_distances(energies: list[float]) -> None:
     """Reject duplicate distances instead of retaining an arbitrary sample."""
     dataframe = _ml_peg_dataframe(
         ("H-H", 1, energies[0], 0),
         ("H-H", 1, energies[1], 0),
     )
-    with pytest.raises(ValueError, match=error_match):
+    with pytest.raises(ValueError, match="duplicate distance values"):
         load_ml_peg_curves(dataframe)

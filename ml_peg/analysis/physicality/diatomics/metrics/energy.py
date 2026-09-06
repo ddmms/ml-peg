@@ -15,11 +15,10 @@ def _validate_diatomic_curve(
     separations: ArrayLike,
     values: ArrayLike,
     *,
-    normalize_energy: bool = False,
     value_kind: Literal["energy", "force"] = "energy",
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Validate, sort, and optionally far-field-normalize a sampled curve.
+    Validate and sort a sampled energy or force curve.
 
     Parameters
     ----------
@@ -27,8 +26,6 @@ def _validate_diatomic_curve(
         Sample separations.
     values
         Sampled energy or force values.
-    normalize_energy
-        Whether to shift the last energy sample to zero.
     value_kind
         Kind of sampled values, used for shape validation.
 
@@ -44,13 +41,15 @@ def _validate_diatomic_curve(
         raise ValueError(
             f"separations must have shape (n,), got {separation_array.shape}"
         )
-    if value_kind == "energy" and value_array.ndim != 1:
-        raise ValueError(f"energy values must have shape (n,), got {value_array.shape}")
-    if value_kind == "force" and (
-        value_array.ndim != 3 or value_array.shape[1:] != (2, 3)
+    expected_shape = () if value_kind == "energy" else (2, 3)
+    if (
+        value_array.ndim != len(expected_shape) + 1
+        or value_array.shape[1:] != expected_shape
     ):
+        shape_label = "(n,)" if value_kind == "energy" else "(n, 2, 3)"
         raise ValueError(
-            f"force values must have shape (n, 2, 3), got {value_array.shape}"
+            f"{value_kind} values must have shape {shape_label}, "
+            f"got {value_array.shape}"
         )
 
     if len(separation_array) != len(value_array):
@@ -77,42 +76,12 @@ def _validate_diatomic_curve(
             "Input contains infinite values: "
             f"n_separation_inf={n_separation_inf}, n_value_inf={n_value_inf}"
         )
-    n_unique = len(np.unique(separation_array))
-    if n_unique != len(separation_array):
-        raise ValueError(
-            f"separations contains {len(separation_array) - n_unique} duplicates"
-        )
-
     sort_indices = np.argsort(separation_array)
     separation_array = separation_array[sort_indices]
-    value_array = value_array[sort_indices]
-
-    # Normalize energy curves to zero at the largest separation.
-    if normalize_energy and value_array.ndim == 1:
-        # The ascending sort places that sample last.
-        value_array = value_array - value_array[-1]
-
-    return separation_array, value_array
-
-
-def _interpolation_point_count(interpolate: bool | int) -> int:
-    """
-    Return the requested interpolation size, validating a two-point minimum.
-
-    Parameters
-    ----------
-    interpolate
-        Whether or how many interpolation points to use.
-
-    Returns
-    -------
-    int
-        Number of interpolation points.
-    """
-    n_points = 100 if interpolate is True else int(interpolate)
-    if n_points < 2:
-        raise ValueError("interpolate must request at least 2 points")
-    return n_points
+    n_duplicates = np.count_nonzero(separation_array[1:] == separation_array[:-1])
+    if n_duplicates:
+        raise ValueError(f"separations contains {n_duplicates} duplicates")
+    return separation_array, value_array[sort_indices]
 
 
 def _common_grid_curve_pair(
@@ -171,9 +140,10 @@ def _common_grid_curve_pair(
             f"Cannot interpolate {curve_label} with no overlap: "
             f"data_min={data_min}, data_max={data_max}"
         )
-    common_grid = np.linspace(
-        data_min, data_max, _interpolation_point_count(interpolate)
-    )
+    n_points = 100 if interpolate is True else int(interpolate)
+    if n_points < 2:
+        raise ValueError("interpolate must request at least 2 points")
+    common_grid = np.linspace(data_min, data_max, n_points)
 
     def interpolate_values(separations: np.ndarray, values: np.ndarray) -> np.ndarray:
         """
@@ -194,12 +164,8 @@ def _common_grid_curve_pair(
         flattened_values = values.reshape(len(values), -1)
         interpolated = np.column_stack(
             [
-                np.interp(
-                    common_grid,
-                    separations,
-                    flattened_values[:, component_index],
-                )
-                for component_index in range(flattened_values.shape[1])
+                np.interp(common_grid, separations, component)
+                for component in flattened_values.T
             ]
         )
         return interpolated.reshape(len(common_grid), *values.shape[1:])
@@ -259,35 +225,28 @@ def _validated_energy_pair(
 
 
 def _quadratic_well_fit(
-    separations: ArrayLike,
-    energies: ArrayLike,
-    n_fit_points: int = 5,
+    separations: np.ndarray,
+    energies: np.ndarray,
 ) -> tuple[float, float]:
     """
-    Estimate equilibrium separation and curvature by local quadratic fit.
+    Fit equilibrium separation and curvature from a validated, sorted energy curve.
 
     Parameters
     ----------
     separations
-        Sample separations.
+        Validated, sorted separations.
     energies
-        Sample energies.
-    n_fit_points
-        Maximum number of local points to fit.
+        Validated energies ordered by separation.
 
     Returns
     -------
     tuple[float, float]
         Equilibrium separation and fitted curvature.
     """
-    separations, energies = _validate_diatomic_curve(separations, energies)
     minimum_index = int(np.argmin(energies))
-    if len(separations) < 3:
-        return float(separations[minimum_index]), np.nan
-
-    start_index = min(
-        max(0, minimum_index - n_fit_points // 2),
-        max(0, len(separations) - n_fit_points),
+    n_fit_points = 5
+    start_index = max(
+        0, min(minimum_index - n_fit_points // 2, len(separations) - n_fit_points)
     )
     fit_separations = separations[start_index : start_index + n_fit_points]
     fit_energies = energies[start_index : start_index + n_fit_points]
@@ -307,13 +266,13 @@ def _quadratic_well_fit(
     return float(separations[minimum_index]), float(curvature)
 
 
-def _repulsive_radius_at_threshold(
+def _repulsive_radii_at_thresholds(
     separations: ArrayLike,
     energies: ArrayLike,
-    threshold_ev: float,
-) -> float:
+    thresholds_ev: np.ndarray,
+) -> np.ndarray:
     """
-    Return the repulsive radius at an energy threshold, or NaN if unreached.
+    Interpolate the repulsive radii at all thresholds, with NaN for unreached ones.
 
     Parameters
     ----------
@@ -321,26 +280,28 @@ def _repulsive_radius_at_threshold(
         Sample separations.
     energies
         Sample energies.
-    threshold_ev
-        Energy above the curve minimum.
+    thresholds_ev
+        Energies above the curve minimum.
 
     Returns
     -------
-    float
-        Interpolated repulsive radius or NaN.
+    np.ndarray
+        Interpolated repulsive radii or NaN.
     """
     separations, energies = _validate_diatomic_curve(separations, energies)
     minimum_index = int(np.argmin(energies))
     if minimum_index == 0:
-        return np.nan
+        return np.full(len(thresholds_ev), np.nan)
 
     radii_inward = separations[minimum_index::-1]
     energy_above_minimum = energies[minimum_index::-1] - energies[minimum_index]
     monotonic_energy = np.maximum.accumulate(energy_above_minimum)
     unique_energy, unique_indices = np.unique(monotonic_energy, return_index=True)
-    if len(unique_energy) < 2 or threshold_ev > unique_energy[-1]:
-        return np.nan
-    return float(np.interp(threshold_ev, unique_energy, radii_inward[unique_indices]))
+    if len(unique_energy) < 2:
+        return np.full(len(thresholds_ev), np.nan)
+    return np.interp(
+        thresholds_ev, unique_energy, radii_inward[unique_indices], right=np.nan
+    )
 
 
 def calc_pbe_wall_dist_mae(
@@ -374,18 +335,21 @@ def calc_pbe_wall_dist_mae(
     float
         Mean absolute wall-radius error.
     """
-    errors: list[float] = []
-    for threshold_ev in thresholds_ev:
-        radius_ref = _repulsive_radius_at_threshold(seps_ref, energy_ref, threshold_ev)
-        if not np.isfinite(radius_ref):
-            continue
-        radius_pred = _repulsive_radius_at_threshold(
-            seps_pred, energy_pred, threshold_ev
-        )
-        errors.append(
-            abs(radius_pred - radius_ref) if np.isfinite(radius_pred) else radius_ref
-        )
-    return float(np.mean(errors)) if errors else np.nan
+    if not thresholds_ev:
+        return np.nan
+    thresholds = np.asarray(thresholds_ev)
+    radii_ref = _repulsive_radii_at_thresholds(seps_ref, energy_ref, thresholds)
+    reachable = np.isfinite(radii_ref)
+    if not reachable.any():
+        return np.nan
+    radii_ref = radii_ref[reachable]
+    radii_pred = _repulsive_radii_at_thresholds(
+        seps_pred, energy_pred, thresholds[reachable]
+    )
+    errors = np.where(
+        np.isfinite(radii_pred), np.abs(radii_pred - radii_ref), radii_ref
+    )
+    return float(errors.mean())
 
 
 def calc_pbe_energy_mae(
@@ -612,9 +576,9 @@ def calc_tortuosity(seps: ArrayLike, energies: ArrayLike) -> float:
 def _threshold_diff_signs(
     values: np.ndarray,
     threshold: float = 1e-3,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Return nonzero thresholded differences, their signs, and flip mask.
+    Return nonzero thresholded differences and their sign-flip mask.
 
     Parameters
     ----------
@@ -625,8 +589,8 @@ def _threshold_diff_signs(
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-        Nonzero differences, their signs, and adjacent sign-flip mask.
+    tuple[np.ndarray, np.ndarray]
+        Nonzero differences and adjacent sign-flip mask.
     """
     differences = np.diff(values)
     differences[np.abs(differences) < threshold] = 0
@@ -634,7 +598,7 @@ def _threshold_diff_signs(
     nonzero_mask = signs != 0
     differences, signs = differences[nonzero_mask], signs[nonzero_mask]
     flips = np.diff(signs) != 0
-    return differences, signs, flips
+    return differences, flips
 
 
 def _jump_magnitude(values: np.ndarray, threshold: float = 1e-3) -> float:
@@ -653,7 +617,7 @@ def _jump_magnitude(values: np.ndarray, threshold: float = 1e-3) -> float:
     float
         Total adjacent jump magnitude.
     """
-    differences, _, flips = _threshold_diff_signs(values, threshold)
+    differences, flips = _threshold_diff_signs(values, threshold)
     return float(
         np.abs(differences[:-1][flips]).sum() + np.abs(differences[1:][flips]).sum()
     )
@@ -679,7 +643,7 @@ def calc_energy_diff_flips(
         Number of energy-difference sign flips.
     """
     _, energies = _validate_diatomic_curve(seps, energies)
-    _, _, flips = _threshold_diff_signs(energies)
+    _, flips = _threshold_diff_signs(energies)
     return float(np.sum(flips))
 
 

@@ -150,6 +150,8 @@ versions. To write strict JSON:
 
    write_mbd_diatomic_metrics("mbd_diatomics_metrics.json")
 
+This explicit call reads existing ML-PEG diatomic CSV outputs. The normal diatomics analysis still emits only the original five metrics; it does not invoke this evaluator or display the new metrics in the app. An analysis fixture and app table for the new family can be added separately.
+
 Computational cost
 ------------------
 

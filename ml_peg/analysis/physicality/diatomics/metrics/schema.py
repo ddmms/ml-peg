@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 import gzip
 import json
 import os
-from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -103,136 +102,10 @@ class DiatomicCurve:
 
 @dataclass
 class DiatomicCurves:
-    """Store homo- and heteronuclear curves with their shared or union grid."""
+    """Store homo- and heteronuclear curves, each with its own distance grid."""
 
-    distances: np.ndarray
     homo_nuclear: dict[str, DiatomicCurve]
     hetero_nuclear: dict[str, DiatomicCurve] = field(default_factory=dict)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> DiatomicCurves:
-        """
-        Parse MBD JSON curves, requiring per-curve grids to be ordered subsets.
-
-        Parameters
-        ----------
-        data
-            Decoded MBD curve payload.
-
-        Returns
-        -------
-        DiatomicCurves
-            Validated homo- and heteronuclear curves.
-        """
-        distances = np.asarray(data["distances"])
-        grid_position_by_distance = {
-            float(distance): index for index, distance in enumerate(distances)
-        }
-
-        def make_curves(section: str) -> dict[str, DiatomicCurve]:
-            """
-            Convert one MBD JSON section to typed curves.
-
-            Parameters
-            ----------
-            section
-                MBD JSON section name.
-
-            Returns
-            -------
-            dict[str, DiatomicCurve]
-                Typed curves keyed by normalized formula.
-            """
-            raw_curves = data.get(section, {})
-            key_function = homo_key if section.startswith("homo") else str
-
-            def curve_distances(
-                formula: str,
-                curve: dict[str, Any],
-            ) -> np.ndarray:
-                """
-                Return an ordered per-curve subset of the top-level grid.
-
-                Parameters
-                ----------
-                formula
-                    Curve formula used in validation errors.
-                curve
-                    Raw curve payload.
-
-                Returns
-                -------
-                np.ndarray
-                    Ordered curve-specific distance grid.
-                """
-                curve_distance_array = np.asarray(curve.get("distances", distances))
-                # off-grid points map to -1; valid subsets have strictly
-                # increasing grid positions
-                grid_positions = np.array(
-                    [
-                        grid_position_by_distance.get(float(distance), -1)
-                        for distance in curve_distance_array
-                    ]
-                )
-                if (grid_positions < 0).any() or (np.diff(grid_positions) <= 0).any():
-                    raise ValueError(
-                        f"{formula} curve distances must be an ordered subset "
-                        "of top-level distances"
-                    )
-                return curve_distance_array
-
-            return {
-                key_function(formula): DiatomicCurve(
-                    distances=curve_distances(formula, curve),
-                    energies=curve["energies"],
-                    forces=curve.get("forces", []),
-                )
-                for formula, curve in raw_curves.items()
-                if len(curve["energies"]) > 0
-            }
-
-        return cls(
-            distances=distances,
-            homo_nuclear=make_curves("homo-nuclear"),
-            hetero_nuclear=make_curves("hetero-nuclear"),
-        )
-
-
-def _load_json(path: StrPath) -> dict[str, Any]:
-    """
-    Load a JSON or gzipped JSON object.
-
-    Parameters
-    ----------
-    path
-        JSON or gzipped JSON path.
-
-    Returns
-    -------
-    dict[str, Any]
-        Decoded JSON object.
-    """
-    string_path = os.fspath(path)
-    open_function = gzip.open if string_path.endswith(".gz") else open
-    with open_function(string_path, mode="rt", encoding="utf-8") as file:
-        return json.load(file)
-
-
-def load_mbd_json(path: StrPath) -> DiatomicCurves:
-    """
-    Load MBD-format predicted curves from JSON or gzipped JSON.
-
-    Parameters
-    ----------
-    path
-        JSON or gzipped JSON path.
-
-    Returns
-    -------
-    DiatomicCurves
-        Validated predicted curves.
-    """
-    return DiatomicCurves.from_dict(_load_json(path))
 
 
 def load_dft_reference_curves(
@@ -254,10 +127,11 @@ def load_dft_reference_curves(
     DiatomicCurves
         DFT reference curves.
     """
-    reference_path = ref_path or DEFAULT_DFT_REFERENCE_PATH
-    references = _load_json(reference_path)[functional]
+    reference_path = os.fspath(ref_path or DEFAULT_DFT_REFERENCE_PATH)
+    open_function = gzip.open if reference_path.endswith(".gz") else open
+    with open_function(reference_path, mode="rt", encoding="utf-8") as file:
+        references = json.load(file)[functional]
     return DiatomicCurves(
-        distances=np.array([]),
         homo_nuclear={
             homo_key(formula): DiatomicCurve(
                 distances=curve["distances"],
@@ -269,40 +143,18 @@ def load_dft_reference_curves(
     )
 
 
-def _parse_pair_label(pair_label: str) -> tuple[str, str]:
-    """
-    Parse an ``Element-Element`` pair label.
-
-    Parameters
-    ----------
-    pair_label
-        Pair label to parse.
-
-    Returns
-    -------
-    tuple[str, str]
-        First and second element symbols.
-    """
-    elements = pair_label.split("-")
-    if len(elements) != 2 or not all(elements):
-        raise ValueError(
-            f"pair labels must have form 'Element-Element', got {pair_label!r}"
-        )
-    return elements[0], elements[1]
-
-
-def curves_from_ml_peg_dataframe(
-    dataframe: pd.DataFrame,
+def load_ml_peg_curves(
+    source: pd.DataFrame | StrPath,
     *,
     include_heteronuclear: bool = True,
 ) -> DiatomicCurves:
     """
-    Convert an ml-peg dataframe to x-aligned two-atom force curves.
+    Load ML-PEG CSV samples as x-aligned two-atom energy and force curves.
 
     Parameters
     ----------
-    dataframe
-        Diatomic samples with pair, distance, energy, and projected force columns.
+    source
+        Dataframe or CSV path with pair, distance, energy, and projected force columns.
     include_heteronuclear
         Whether to include heteronuclear pairs.
 
@@ -311,6 +163,7 @@ def curves_from_ml_peg_dataframe(
     DiatomicCurves
         Converted homo- and heteronuclear curves.
     """
+    dataframe = source if isinstance(source, pd.DataFrame) else pd.read_csv(source)
     required_columns = {"pair", "distance", "energy", "force_parallel"}
     missing_columns = required_columns - set(dataframe.columns)
     if missing_columns:
@@ -322,22 +175,19 @@ def curves_from_ml_peg_dataframe(
         "pair", sort=False, dropna=False
     ):
         string_pair_label = str(pair_label)
-        element_1, element_2 = _parse_pair_label(string_pair_label)
+        elements = string_pair_label.split("-")
+        if len(elements) != 2 or not all(elements):
+            raise ValueError(
+                "pair labels must have form 'Element-Element', "
+                f"got {string_pair_label!r}"
+            )
+        element_1, element_2 = elements
         if element_1 != element_2 and not include_heteronuclear:
             continue
         sorted_dataframe = pair_dataframe.sort_values("distance")
         duplicate_rows = sorted_dataframe[
             sorted_dataframe.duplicated("distance", keep=False)
         ]
-        for distance, duplicate_samples in duplicate_rows.groupby("distance"):
-            unique_values = duplicate_samples[
-                ["energy", "force_parallel"]
-            ].drop_duplicates()
-            if len(unique_values) > 1:
-                raise ValueError(
-                    f"{string_pair_label} has conflicting samples at "
-                    f"distance={distance}"
-                )
         if not duplicate_rows.empty:
             duplicate_distances = duplicate_rows["distance"].unique().tolist()
             raise ValueError(
@@ -356,42 +206,7 @@ def curves_from_ml_peg_dataframe(
         else:
             hetero_nuclear[string_pair_label] = curve
 
-    included_curves = [*homo_nuclear.values(), *hetero_nuclear.values()]
-    all_distances = (
-        np.concatenate([curve.distances for curve in included_curves])
-        if included_curves
-        else np.array([], dtype=float)
-    )
     return DiatomicCurves(
-        distances=np.sort(np.unique(all_distances)),
         homo_nuclear=homo_nuclear,
         hetero_nuclear=hetero_nuclear,
-    )
-
-
-def load_ml_peg_curves(
-    source: pd.DataFrame | StrPath,
-    *,
-    include_heteronuclear: bool = True,
-) -> DiatomicCurves:
-    """
-    Load current ml-peg diatomic curves from a dataframe or CSV.
-
-    Parameters
-    ----------
-    source
-        Diatomic dataframe or CSV path.
-    include_heteronuclear
-        Whether to include heteronuclear pairs.
-
-    Returns
-    -------
-    DiatomicCurves
-        Converted homo- and heteronuclear curves.
-    """
-    dataframe = (
-        source if isinstance(source, pd.DataFrame) else pd.read_csv(os.fspath(source))
-    )
-    return curves_from_ml_peg_dataframe(
-        dataframe, include_heteronuclear=include_heteronuclear
     )

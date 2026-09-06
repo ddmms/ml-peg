@@ -94,7 +94,7 @@ def calc_force_flips(
     float
         Number of radial-force direction changes.
     """
-    radial_forces = _radial_forces(seps, forces).copy()
+    radial_forces = _radial_forces(seps, forces)
     radial_forces[np.abs(radial_forces) < threshold] = 0
     force_signs = np.sign(radial_forces[radial_forces != 0])
     return float(np.sum(np.diff(force_signs) != 0))

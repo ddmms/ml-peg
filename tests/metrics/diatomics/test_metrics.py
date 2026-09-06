@@ -44,7 +44,6 @@ def _make_curves(
 ) -> DiatomicCurves:
     """Wrap element energy arrays as homonuclear curves."""
     return DiatomicCurves(
-        distances=distances,
         homo_nuclear={
             element_symbol: DiatomicCurve(
                 distances, energies, _forces_from_energy(distances, energies)
