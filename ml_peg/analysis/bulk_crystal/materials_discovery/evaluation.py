@@ -22,8 +22,7 @@ from ml_peg.analysis.bulk_crystal.materials_discovery.schema import (
     MATERIAL_ID,
     REFERENCE_FORMATION_ENERGY,
     DiscoverySubset,
-    _validated_reference_frame,
-    prediction_series,
+    validate_reference_frame,
 )
 from ml_peg.data.artifacts import (
     MATBENCH_DISCOVERY_ID,
@@ -92,25 +91,18 @@ def prepare_discovery_inputs(
     if decimals < 0:
         raise ValueError("decimals must be non-negative")
 
-    indexed_reference = _validated_reference_frame(reference)
-    model_predictions = (
-        predictions.copy()
-        if isinstance(predictions, pd.Series)
-        else prediction_series(predictions)
-    )
-    aligned_predictions = _align_predictions_prepared(
-        indexed_reference, model_predictions
-    )
+    prepared_reference = validate_reference_frame(reference)
+    aligned_predictions = _align_predictions_prepared(prepared_reference, predictions)
     energy_columns = [E_ABOVE_HULL, REFERENCE_FORMATION_ENERGY]
-    numeric_energies = indexed_reference[energy_columns].apply(pd.to_numeric)
-    prepared_reference = indexed_reference.copy()
-    prepared_reference[energy_columns] = numeric_energies.round(decimals)
     if max_error_threshold is not None:
         outlier_mask = (
-            aligned_predictions - numeric_energies[REFERENCE_FORMATION_ENERGY]
+            aligned_predictions - prepared_reference[REFERENCE_FORMATION_ENERGY]
         ).abs() > max_error_threshold
         aligned_predictions = aligned_predictions.mask(outlier_mask)
 
+    prepared_reference[energy_columns] = prepared_reference[energy_columns].round(
+        decimals
+    )
     return prepared_reference, aligned_predictions.round(decimals)
 
 
@@ -141,7 +133,6 @@ def discovery_subset_indices(
         reference,
         predictions,
         max_error_threshold=max_error_threshold,
-        decimals=EVALUATION_DECIMALS,
     )
     _, each_pred = _hull_distances(prepared_reference, prepared_predictions)
     return _discovery_subset_indices_prepared(prepared_reference, each_pred)
@@ -183,7 +174,6 @@ def calc_discovery_metrics(
         reference,
         predictions,
         max_error_threshold=max_error_threshold,
-        decimals=EVALUATION_DECIMALS,
     )
     metrics_by_subset, _ = _calc_discovery_metrics_prepared(
         prepared_reference,
@@ -255,7 +245,6 @@ def evaluate_discovery(
         reference,
         predictions,
         max_error_threshold=max_error_threshold,
-        decimals=EVALUATION_DECIMALS,
     )
     raw_metrics, subset_indices = _calc_discovery_metrics_prepared(
         prepared_reference,
