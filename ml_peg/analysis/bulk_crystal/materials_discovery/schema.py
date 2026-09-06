@@ -74,38 +74,12 @@ def index_by_material_id(
             f"{artifact_name} contains duplicate {MATERIAL_ID!r} values after "
             f"string conversion: {duplicate_ids!r}"
         )
-    indexed_dataframe = dataframe.drop(columns=MATERIAL_ID, errors="ignore").copy()
+    indexed_dataframe = dataframe.drop(columns=MATERIAL_ID, errors="ignore")
     indexed_dataframe.index = identifiers
     return indexed_dataframe
 
 
-def _validated_frame(
-    dataframe: pd.DataFrame,
-    required_columns: tuple[str, ...],
-    artifact_name: str,
-) -> pd.DataFrame:
-    """
-    Validate required columns and IDs, returning an indexed copy.
-
-    Parameters
-    ----------
-    dataframe
-        Artifact data to validate.
-    required_columns
-        Column names that must be present.
-    artifact_name
-        Artifact label used in error messages.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Validated copy indexed by material ID.
-    """
-    validate_required_columns(dataframe, required_columns, artifact_name=artifact_name)
-    return index_by_material_id(dataframe, artifact_name=artifact_name)
-
-
-def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
+def validate_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
     Validate a discovery reference and return its indexed copy.
 
@@ -119,8 +93,11 @@ def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
     pandas.DataFrame
         Validated copy indexed by material ID.
     """
-    indexed_dataframe = _validated_frame(
-        dataframe, REFERENCE_COLUMNS, "discovery reference"
+    validate_required_columns(
+        dataframe, REFERENCE_COLUMNS, artifact_name="discovery reference"
+    )
+    indexed_dataframe = index_by_material_id(
+        dataframe, artifact_name="discovery reference"
     )
     for energy_column in (E_ABOVE_HULL, REFERENCE_FORMATION_ENERGY):
         numeric_values = pd.to_numeric(
@@ -132,6 +109,7 @@ def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
             raise ValueError(
                 f"{energy_column!r} values must be finite, got {invalid_values!r}"
             )
+        indexed_dataframe[energy_column] = numeric_values
     unique_prototype_flags = indexed_dataframe[UNIQUE_PROTOTYPE]
     invalid_flags = ~unique_prototype_flags.map(
         lambda value: (
@@ -147,45 +125,25 @@ def _validated_reference_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
     return indexed_dataframe
 
 
-def validate_reference_frame(dataframe: pd.DataFrame) -> None:
-    """
-    Validate discovery reference columns, IDs, energies, and flags.
-
-    Parameters
-    ----------
-    dataframe
-        Discovery reference data.
-    """
-    _validated_reference_frame(dataframe)
-
-
-def validate_prediction_frame(dataframe: pd.DataFrame) -> None:
+def validate_prediction_frame(dataframe: pd.DataFrame | pd.Series) -> pd.DataFrame:
     """
     Validate discovery prediction columns and material IDs.
 
     Parameters
     ----------
     dataframe
-        Discovery prediction data.
-    """
-    _validated_frame(dataframe, PREDICTION_COLUMNS, "discovery predictions")
-
-
-def prediction_series(dataframe: pd.DataFrame) -> pd.Series:
-    """
-    Return validated formation-energy predictions indexed by material ID.
-
-    Parameters
-    ----------
-    dataframe
-        Discovery prediction data.
+        Prediction dataframe or formation-energy Series indexed by material ID.
 
     Returns
     -------
-    pandas.Series
-        Formation-energy predictions indexed by material ID.
+    pandas.DataFrame
+        Validated copy indexed by material ID.
     """
-    indexed_dataframe = _validated_frame(
-        dataframe, PREDICTION_COLUMNS, "discovery predictions"
+    if isinstance(dataframe, pd.Series):
+        dataframe = dataframe.to_frame(PREDICTED_FORMATION_ENERGY).rename_axis(
+            MATERIAL_ID
+        )
+    validate_required_columns(
+        dataframe, PREDICTION_COLUMNS, artifact_name="discovery predictions"
     )
-    return indexed_dataframe[PREDICTED_FORMATION_ENERGY]
+    return index_by_material_id(dataframe, artifact_name="discovery predictions")

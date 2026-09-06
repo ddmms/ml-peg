@@ -13,10 +13,12 @@ from sklearn.metrics import r2_score
 from ml_peg.analysis.bulk_crystal.materials_discovery.schema import (
     E_ABOVE_HULL,
     MATERIAL_ID,
+    PREDICTED_FORMATION_ENERGY,
     REFERENCE_FORMATION_ENERGY,
     UNIQUE_PROTOTYPE,
     DiscoverySubset,
-    _validated_reference_frame,
+    validate_prediction_frame,
+    validate_reference_frame,
 )
 
 STABILITY_THRESHOLD: Final = 0.0
@@ -189,29 +191,9 @@ def stable_metrics(
     predicted_positive_count = true_positive_count + false_positive_count
     precision = _safe_ratio(true_positive_count, predicted_positive_count)
     recall = _safe_ratio(true_positive_count, total_positive_count)
-    true_positive_rate = recall
     false_positive_rate = _safe_ratio(false_positive_count, total_negative_count)
     true_negative_rate = _safe_ratio(true_negative_count, total_negative_count)
     false_negative_rate = _safe_ratio(false_negative_count, total_positive_count)
-
-    # False positives plus true negatives must account for all actual negatives.
-    if (
-        false_positive_rate > 0
-        and true_negative_rate > 0
-        and not np.isclose(false_positive_rate + true_negative_rate, 1)
-    ):
-        raise ValueError(
-            f"FPR={false_positive_rate} and TNR={true_negative_rate} do not add up to 1"
-        )
-    # True positives plus false negatives must account for all actual positives.
-    if (
-        true_positive_rate > 0
-        and false_negative_rate > 0
-        and not np.isclose(true_positive_rate + false_negative_rate, 1)
-    ):
-        raise ValueError(
-            f"TPR={true_positive_rate} and FNR={false_negative_rate} do not add up to 1"
-        )
 
     missing_pair_mask = each_true_array.isna() | each_pred_array.isna()
     valid_true = each_true_array[~missing_pair_mask].to_numpy()
@@ -236,7 +218,7 @@ def stable_metrics(
         "Accuracy": _safe_ratio(
             true_positive_count + true_negative_count, classified_count
         ),
-        "TPR": true_positive_rate,
+        "TPR": recall,
         "FPR": false_positive_rate,
         "TNR": true_negative_rate,
         "FNR": false_negative_rate,
@@ -255,37 +237,28 @@ def stable_metrics(
 
 
 def _align_predictions_prepared(
-    indexed_reference: pd.DataFrame, model_predictions: pd.Series
+    indexed_reference: pd.DataFrame, predictions: pd.DataFrame | pd.Series
 ) -> pd.Series:
     """
-    Align predictions to an already-validated reference index.
+    Validate predictions and align them to an already-validated reference index.
 
     Parameters
     ----------
     indexed_reference
         Validated reference data indexed by material ID.
-    model_predictions
-        Predictions indexed by material ID.
+    predictions
+        Prediction dataframe or formation-energy Series indexed by material ID.
 
     Returns
     -------
     pandas.Series
         Numeric predictions aligned to the reference.
     """
-    if model_predictions.index.hasnans:
-        raise ValueError("discovery predictions contain missing material_id values")
-    model_predictions = model_predictions.copy()
-    model_predictions.index = model_predictions.index.astype(str)
-    if model_predictions.index.has_duplicates:
-        duplicate_ids = (
-            model_predictions.index[model_predictions.index.duplicated()]
-            .unique()
-            .tolist()
-        )
-        raise ValueError(
-            "discovery predictions contain duplicate material_id values: "
-            f"{duplicate_ids!r}"
-        )
+    model_predictions = validate_prediction_frame(predictions)[
+        PREDICTED_FORMATION_ENERGY
+    ]
+    if isinstance(predictions, pd.Series):
+        model_predictions.name = predictions.name
     unknown_ids = model_predictions.index.difference(indexed_reference.index)
     if len(unknown_ids) > 0:
         rendered_ids = sorted(map(str, unknown_ids))
@@ -318,7 +291,7 @@ def align_predictions(
         Numeric predictions aligned to the reference.
     """
     return _align_predictions_prepared(
-        _validated_reference_frame(reference), model_predictions
+        validate_reference_frame(reference), model_predictions
     )
 
 
@@ -340,10 +313,8 @@ def _hull_distances(
     tuple[pandas.Series, pandas.Series]
         True and predicted hull distances.
     """
-    each_true = pd.to_numeric(indexed_reference[E_ABOVE_HULL], errors="coerce")
-    reference_formation_energy = pd.to_numeric(
-        indexed_reference[REFERENCE_FORMATION_ENERGY], errors="coerce"
-    )
+    each_true = indexed_reference[E_ABOVE_HULL]
+    reference_formation_energy = indexed_reference[REFERENCE_FORMATION_ENERGY]
     return (
         each_true,
         each_true + aligned_predictions - reference_formation_energy,
@@ -373,10 +344,7 @@ def _discovery_subset_indices_prepared(
         indexed_reference[UNIQUE_PROTOTYPE].astype(bool)
     ]
     most_stable_index = (
-        each_pred.loc[unique_prototype_index]
-        .sort_values(na_position="last", kind="stable")
-        .head(MOST_STABLE_COUNT)
-        .index
+        each_pred.loc[unique_prototype_index].nsmallest(MOST_STABLE_COUNT).index
     )
     return {
         DiscoverySubset.full_test_set: indexed_reference.index,
@@ -461,6 +429,17 @@ def _calc_discovery_metrics_prepared(
     tuple
         Metrics and material identifiers grouped by discovery subset.
     """
+    if canonical and uniq_proto_prevalence is None:
+        raise ValueError(
+            "leaderboard evaluation requires explicit unrounded "
+            "unique-prototype prevalence"
+        )
+    if uniq_proto_prevalence is not None and (
+        not np.isfinite(uniq_proto_prevalence) or not 0 <= uniq_proto_prevalence <= 1
+    ):
+        raise ValueError(
+            "uniq_proto_prevalence must be a finite fraction between 0 and 1"
+        )
     each_true, each_pred = _hull_distances(indexed_reference, aligned_predictions)
     canonical_indices = (
         _discovery_subset_indices_prepared(indexed_reference, each_pred)
@@ -476,31 +455,17 @@ def _calc_discovery_metrics_prepared(
         for subset, subset_index in canonical_indices.items()
     }
 
-    if canonical and uniq_proto_prevalence is None:
-        raise ValueError(
-            "leaderboard evaluation requires explicit unrounded "
-            "unique-prototype prevalence"
-        )
     if uniq_proto_prevalence is None:
         unique_each_true = each_true.loc[
             canonical_indices[DiscoverySubset.unique_prototypes]
         ]
         uniq_proto_prevalence = float((unique_each_true <= STABILITY_THRESHOLD).mean())
-    elif not np.isfinite(uniq_proto_prevalence) or not (
-        0 <= uniq_proto_prevalence <= 1
-    ):
-        raise ValueError(
-            "uniq_proto_prevalence must be a finite fraction between 0 and 1"
-        )
 
-    daf_denominator = (
-        uniq_proto_prevalence if uniq_proto_prevalence > 0 else float("nan")
-    )
     for subset in (
         DiscoverySubset.unique_prototypes,
         DiscoverySubset.most_stable_10k,
     ):
-        metrics_by_subset[subset]["DAF"] = (
-            metrics_by_subset[subset]["Precision"] / daf_denominator
+        metrics_by_subset[subset]["DAF"] = _safe_ratio(
+            metrics_by_subset[subset]["Precision"], uniq_proto_prevalence
         )
     return metrics_by_subset, canonical_indices

@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ml_peg.analysis.bulk_crystal.geo_opt.analyse_geo_opt import (
-    _json_safe_mapping,
-    _json_safe_records,
-)
 from ml_peg.analysis.bulk_crystal.geo_opt.io import (
     read_analysis_csv,
     read_geo_opt_records,
@@ -94,28 +89,6 @@ def _analysis_dataframe() -> pd.DataFrame:
             MAX_PAIR_DIST: [0.0],
         }
     )
-
-
-@pytest.mark.parametrize(
-    "non_finite_value",
-    [np.float32(np.nan), np.float64(np.inf), np.float32(-np.inf)],
-    ids=["float32-nan", "float64-positive-inf", "float32-negative-inf"],
-)
-def test_json_safe_mapping_sanitizes_numpy_non_finite_scalars(
-    non_finite_value: np.floating,
-) -> None:
-    """Convert non-finite NumPy floating scalars to JSON nulls."""
-    result = _json_safe_mapping({"metric": non_finite_value})
-
-    assert result == {"metric": None}
-    assert json.dumps(result, allow_nan=False) == '{"metric": null}'
-
-
-def test_json_safe_records_preserves_float_precision() -> None:
-    """Preserve benchmark-scale float precision in JSON result records."""
-    value = 1.2345678901234
-
-    assert _json_safe_records(pd.DataFrame({"value": [value]}))[0]["value"] == value
 
 
 @pytest.mark.parametrize(

@@ -29,6 +29,7 @@ from ml_peg.analysis.bulk_crystal.geo_opt.schema import (
 )
 
 ProgressConfig = bool | dict[str, Any]
+DISTANCE_FIELDS = (STRUCTURE_RMSD_VS_DFT, MAX_PAIR_DIST)
 
 
 def _validate_symmetry_parameters(
@@ -255,6 +256,129 @@ def _matching_structure_ids(
     return structure_ids
 
 
+def _structure_distances(
+    pred_structs: Mapping[str, object],
+    ref_structs: Mapping[str, object],
+    material_ids: pd.Index,
+    *,
+    pbar: ProgressConfig,
+) -> pd.DataFrame:
+    """
+    Match each structure pair once, independently of symmetry tolerances.
+
+    Parameters
+    ----------
+    pred_structs
+        Predicted structures keyed by material ID.
+    ref_structs
+        Reference structures keyed by material ID.
+    material_ids
+        Shared material IDs in output order.
+    pbar
+        Whether and how to display progress.
+
+    Returns
+    -------
+    pandas.DataFrame
+        RMSD and maximum pair distance indexed by material ID.
+    """
+    try:
+        from ase import Atoms
+        from pymatgen.analysis.structure_matcher import StructureMatcher
+        from pymatgen.core import Structure
+        from pymatgen.io.ase import AseAtomsAdaptor
+    except ImportError as exc:
+        raise ImportError("Structure comparison requires ASE and pymatgen") from exc
+
+    def as_pymatgen(
+        structure: object, *, material_id: str, source_name: str
+    ) -> Structure:
+        """
+        Convert an ASE structure for ``StructureMatcher`` when needed.
+
+        Parameters
+        ----------
+        structure
+            Pymatgen or ASE structure.
+        material_id
+            Material identifier used in error messages.
+        source_name
+            Source label used in error messages.
+
+        Returns
+        -------
+        Structure
+            Pymatgen structure suitable for comparison.
+        """
+        if isinstance(structure, Structure):
+            return structure
+        if isinstance(structure, Atoms):
+            return AseAtomsAdaptor.get_structure(structure)
+        raise TypeError(
+            f"{source_name}[{material_id!r}] must be pymatgen Structure or ASE Atoms, "
+            f"got {type(structure).__name__}"
+        )
+
+    structure_matcher = StructureMatcher(stol=1.0, scale=False)
+    material_ids = _progress_iterator(
+        material_ids,
+        total=len(material_ids),
+        pbar=pbar,
+        default_description="Calculating RMSD",
+        leave=False,
+    )
+    distances_by_id: dict[str, tuple[float, float]] = {}
+    for material_id in material_ids:
+        predicted_structure = as_pymatgen(
+            pred_structs[material_id],
+            material_id=material_id,
+            source_name="pred_structs",
+        )
+        reference_structure = as_pymatgen(
+            ref_structs[material_id],
+            material_id=material_id,
+            source_name="ref_structs",
+        )
+        distances_by_id[material_id] = structure_matcher.get_rms_dist(
+            predicted_structure, reference_structure
+        ) or (
+            float("nan"),
+            float("nan"),
+        )
+    return pd.DataFrame.from_dict(
+        distances_by_id, orient="index", columns=DISTANCE_FIELDS
+    ).rename_axis(MATERIAL_ID)
+
+
+def _symmetry_comparison(
+    df_sym_pred: pd.DataFrame,
+    df_sym_ref: pd.DataFrame,
+    distances: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Add symmetry differences and precomputed distances to predicted symmetry rows.
+
+    Parameters
+    ----------
+    df_sym_pred
+        Validated predicted-structure symmetry information.
+    df_sym_ref
+        Validated reference-structure symmetry information.
+    distances
+        RMSD and maximum pair distance for shared material IDs.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Comparison in prediction order, with NaN for missing reference IDs.
+    """
+    result = df_sym_pred.copy()
+    result[SPG_NUM_DIFF] = df_sym_pred[SPG_NUM] - df_sym_ref[SPG_NUM]
+    result[N_SYM_OPS_DIFF] = df_sym_pred[N_SYM_OPS] - df_sym_ref[N_SYM_OPS]
+    result[list(DISTANCE_FIELDS)] = distances.reindex(result.index)
+    return result
+
+
 def pred_vs_ref_struct_symmetry(
     df_sym_pred: pd.DataFrame,
     df_sym_ref: pd.DataFrame,
@@ -294,43 +418,6 @@ def pred_vs_ref_struct_symmetry(
     if not isinstance(pred_structs, Mapping) or not isinstance(ref_structs, Mapping):
         raise TypeError("pred_structs and ref_structs must both be mappings")
 
-    try:
-        from ase import Atoms
-        from pymatgen.analysis.structure_matcher import StructureMatcher
-        from pymatgen.core import Structure
-        from pymatgen.io.ase import AseAtomsAdaptor
-    except ImportError as exc:
-        raise ImportError("Structure comparison requires ASE and pymatgen") from exc
-
-    def as_pymatgen(
-        structure: object, *, material_id: str, source_name: str
-    ) -> Structure:
-        """
-        Convert an ASE structure for ``StructureMatcher`` when needed.
-
-        Parameters
-        ----------
-        structure
-            Pymatgen or ASE structure.
-        material_id
-            Material identifier used in error messages.
-        source_name
-            Source label used in error messages.
-
-        Returns
-        -------
-        Structure
-            Pymatgen structure suitable for comparison.
-        """
-        if isinstance(structure, Structure):
-            return structure
-        if isinstance(structure, Atoms):
-            return AseAtomsAdaptor.get_structure(structure)
-        raise TypeError(
-            f"{source_name}[{material_id!r}] must be pymatgen Structure or ASE Atoms, "
-            f"got {type(structure).__name__}"
-        )
-
     predicted_ids = _matching_structure_ids(
         df_sym_pred, pred_structs, source_name="Predicted"
     )
@@ -346,39 +433,8 @@ def pred_vs_ref_struct_symmetry(
         )
 
     shared_index = df_sym_pred.index[df_sym_pred.index.isin(shared_ids)]
-    dataframe_result = df_sym_pred.copy()
-    dataframe_result[SPG_NUM_DIFF] = df_sym_pred[SPG_NUM] - df_sym_ref[SPG_NUM]
-    dataframe_result[N_SYM_OPS_DIFF] = df_sym_pred[N_SYM_OPS] - df_sym_ref[N_SYM_OPS]
-    dataframe_result[[STRUCTURE_RMSD_VS_DFT, MAX_PAIR_DIST]] = float("nan")
-
-    structure_matcher = StructureMatcher(stol=1.0, scale=False)
-    material_ids = _progress_iterator(
-        shared_index,
-        total=len(shared_index),
-        pbar=pbar,
-        default_description="Calculating RMSD",
-        leave=False,
+    return _symmetry_comparison(
+        df_sym_pred,
+        df_sym_ref,
+        _structure_distances(pred_structs, ref_structs, shared_index, pbar=pbar),
     )
-    distances_by_id: dict[str, tuple[float, float]] = {}
-    for material_id in material_ids:
-        predicted_structure = as_pymatgen(
-            pred_structs[material_id],
-            material_id=material_id,
-            source_name="pred_structs",
-        )
-        reference_structure = as_pymatgen(
-            ref_structs[material_id],
-            material_id=material_id,
-            source_name="ref_structs",
-        )
-        distances_by_id[material_id] = structure_matcher.get_rms_dist(
-            predicted_structure, reference_structure
-        ) or (
-            float("nan"),
-            float("nan"),
-        )
-    dataframe_result.loc[
-        list(distances_by_id), [STRUCTURE_RMSD_VS_DFT, MAX_PAIR_DIST]
-    ] = list(distances_by_id.values())
-
-    return dataframe_result

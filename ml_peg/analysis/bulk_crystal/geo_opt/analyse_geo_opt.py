@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
+from decimal import Decimal
 from importlib.metadata import PackageNotFoundError, version
 import json
 import math
-import os
 import platform
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from ml_peg.analysis.bulk_crystal.geo_opt.io import (
-    PathLike,
-    read_geo_opt_jsonl,
-    read_reference_jsonl,
-)
 from ml_peg.analysis.bulk_crystal.geo_opt.metrics import calc_geo_opt_metrics
 from ml_peg.analysis.bulk_crystal.geo_opt.schema import (
     MATERIAL_ID,
@@ -26,14 +21,20 @@ from ml_peg.analysis.bulk_crystal.geo_opt.schema import (
 )
 from ml_peg.analysis.bulk_crystal.geo_opt.symmetry import (
     ProgressConfig,
+    _structure_distances,
+    _symmetry_comparison,
+    _validate_symmetry_parameters,
     get_sym_info_from_structs,
-    pred_vs_ref_struct_symmetry,
 )
 from ml_peg.data.artifacts import (
     MATBENCH_DISCOVERY_ID,
     MATBENCH_DISCOVERY_VERSION,
-    canonical_scientific_notation,
+    PathLike,
+    read_jsonl_artifact,
 )
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 CANONICAL_SYMPRECS = (1e-2, 1e-5)
 RESULT_SCHEMA_VERSION = 1
@@ -109,7 +110,7 @@ def _validate_symprecs(symprecs: Sequence[float]) -> tuple[float, ...]:
 
 def _structures_from_dataframe(
     dataframe: pd.DataFrame, *, source_name: str
-) -> dict[str, object]:
+) -> dict[str, Structure]:
     """
     Build pymatgen structures from serialized dictionaries.
 
@@ -122,7 +123,7 @@ def _structures_from_dataframe(
 
     Returns
     -------
-    dict[str, object]
+    dict[str, Structure]
         Pymatgen structures keyed by material ID.
     """
     try:
@@ -130,7 +131,7 @@ def _structures_from_dataframe(
     except ImportError as exc:
         raise ImportError("Geo-opt analysis requires pymatgen") from exc
 
-    structures: dict[str, object] = {}
+    structures: dict[str, Structure] = {}
     for material_id, structure_dict in dataframe[STRUCTURE].items():
         try:
             structures[str(material_id)] = Structure.from_dict(structure_dict)
@@ -142,52 +143,9 @@ def _structures_from_dataframe(
     return structures
 
 
-def _json_safe_records(dataframe: pd.DataFrame) -> list[dict[str, Any]]:
-    """
-    Convert a DataFrame to JSON-compatible records.
-
-    Parameters
-    ----------
-    dataframe
-        Table to serialize.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        JSON-compatible records.
-    """
-    serialized = dataframe.reset_index().to_json(orient="records", double_precision=15)
-    return cast(list[dict[str, Any]], json.loads(serialized))
-
-
-def _json_safe_mapping(value: Mapping[str, object]) -> dict[str, Any]:
-    """
-    Convert NumPy scalars and non-finite floats to JSON-compatible values.
-
-    Parameters
-    ----------
-    value
-        Mapping to normalize.
-
-    Returns
-    -------
-    dict[str, Any]
-        JSON-compatible mapping.
-    """
-    json_safe: dict[str, Any] = {}
-    for key, nested_value in value.items():
-        item_method = getattr(nested_value, "item", None)
-        scalar_value = item_method() if callable(item_method) else nested_value
-        if isinstance(scalar_value, float) and not math.isfinite(scalar_value):
-            json_safe[key] = None
-        else:
-            json_safe[key] = scalar_value
-    return json_safe
-
-
-def analyze_geo_opt_dataframes(
-    predictions: pd.DataFrame,
-    references: pd.DataFrame,
+def analyze_geo_opt(
+    predictions: pd.DataFrame | PathLike,
+    references: pd.DataFrame | PathLike,
     *,
     symprecs: Sequence[float] = CANONICAL_SYMPRECS,
     angle_tolerance: float | None = None,
@@ -195,7 +153,7 @@ def analyze_geo_opt_dataframes(
     pbar: ProgressConfig = False,
 ) -> dict[str, Any]:
     """
-    Analyze predicted structures against references.
+    Analyze predicted structures against references from tables or local JSONL.
 
     ``angle_tolerance`` is in radians. Per-structure records are omitted unless
     requested to avoid duplicating WBM-scale analysis tables in memory.
@@ -203,9 +161,9 @@ def analyze_geo_opt_dataframes(
     Parameters
     ----------
     predictions
-        Predicted geometry-optimization structures.
+        Prediction table or local JSONL path.
     references
-        Reference structures.
+        Reference table or local JSONL path.
     symprecs
         Symmetry tolerances to analyze.
     angle_tolerance
@@ -220,10 +178,23 @@ def analyze_geo_opt_dataframes(
     dict[str, Any]
         Versioned metrics and optional per-structure analysis.
     """
+    if isinstance(predictions, pd.DataFrame) != isinstance(references, pd.DataFrame):
+        raise TypeError(
+            "predictions and references must both be DataFrames or both be paths"
+        )
+    if not isinstance(predictions, pd.DataFrame):
+        predictions = read_jsonl_artifact(
+            predictions, dtype={MATERIAL_ID: "string"}, precise_float=True
+        )
+    if not isinstance(references, pd.DataFrame):
+        references = read_jsonl_artifact(
+            references, dtype={MATERIAL_ID: "string"}, precise_float=True
+        )
     normalized_symprecs = _validate_symprecs(symprecs)
     normalized_angle_tolerance = (
         float(angle_tolerance) if angle_tolerance is not None else None
     )
+    _validate_symmetry_parameters(normalized_symprecs[0], normalized_angle_tolerance)
     validated_predictions = validate_geo_opt_dataframe(predictions).set_index(
         MATERIAL_ID
     )
@@ -248,6 +219,12 @@ def analyze_geo_opt_dataframes(
         aligned_references, source_name="references"
     )
 
+    distances = _structure_distances(
+        predicted_structures,
+        reference_structures,
+        validated_predictions.index,
+        pbar=pbar,
+    )
     analyses: dict[str, dict[str, Any]] = {}
     for symprec in normalized_symprecs:
         predicted_symmetry = get_sym_info_from_structs(
@@ -262,21 +239,23 @@ def analyze_geo_opt_dataframes(
             symprec=symprec,
             angle_tolerance=normalized_angle_tolerance,
         )
-        comparison = pred_vs_ref_struct_symmetry(
-            predicted_symmetry,
-            reference_symmetry,
-            predicted_structures,
-            reference_structures,
-            pbar=pbar,
+        comparison = _symmetry_comparison(
+            predicted_symmetry, reference_symmetry, distances
         )
-        symprec_key = f"symprec={canonical_scientific_notation(symprec)}"
+        mantissa, exponent = f"{Decimal(str(symprec)).normalize():e}".split("e")
+        symprec_key = f"symprec={mantissa}e{int(exponent)}"
         symprec_result: dict[str, Any] = {
             "symprec": symprec,
             "angle_tolerance": normalized_angle_tolerance,
-            "metrics": _json_safe_mapping(calc_geo_opt_metrics(comparison)),
+            "metrics": {
+                name: value if math.isfinite(value) else None
+                for name, value in calc_geo_opt_metrics(comparison).items()
+            },
         }
         if include_analysis:
-            symprec_result["analysis"] = _json_safe_records(comparison)
+            symprec_result["analysis"] = json.loads(
+                comparison.reset_index().to_json(orient="records", double_precision=15)
+            )
         analyses[symprec_key] = symprec_result
 
     return {
@@ -290,104 +269,3 @@ def analyze_geo_opt_dataframes(
         "n_references": len(aligned_references),
         "symprecs": analyses,
     }
-
-
-def analyze_geo_opt_paths(
-    predictions_path: PathLike,
-    references_path: PathLike,
-    *,
-    symprecs: Sequence[float] = CANONICAL_SYMPRECS,
-    angle_tolerance: float | None = None,
-    include_analysis: bool = False,
-    pbar: ProgressConfig = False,
-) -> dict[str, Any]:
-    """
-    Analyze prediction and reference JSONL artifacts from local paths.
-
-    Parameters
-    ----------
-    predictions_path
-        Path to predicted geometry-optimization structures.
-    references_path
-        Path to reference structures.
-    symprecs
-        Symmetry tolerances to analyze.
-    angle_tolerance
-        Optional angular tolerance in radians.
-    include_analysis
-        Whether to include per-structure analysis records.
-    pbar
-        Whether and how to display progress.
-
-    Returns
-    -------
-    dict[str, Any]
-        Versioned metrics and optional per-structure analysis.
-    """
-    predictions = read_geo_opt_jsonl(predictions_path)
-    references = read_reference_jsonl(references_path)
-    return analyze_geo_opt_dataframes(
-        predictions,
-        references,
-        symprecs=symprecs,
-        angle_tolerance=angle_tolerance,
-        include_analysis=include_analysis,
-        pbar=pbar,
-    )
-
-
-def analyze_geo_opt(
-    predictions: pd.DataFrame | PathLike,
-    references: pd.DataFrame | PathLike,
-    *,
-    symprecs: Sequence[float] = CANONICAL_SYMPRECS,
-    angle_tolerance: float | None = None,
-    include_analysis: bool = False,
-    pbar: ProgressConfig = False,
-) -> dict[str, Any]:
-    """
-    Analyze geo-opt structures supplied as two DataFrames or two local paths.
-
-    Parameters
-    ----------
-    predictions
-        Prediction table or local JSONL path.
-    references
-        Reference table or local JSONL path.
-    symprecs
-        Symmetry tolerances to analyze.
-    angle_tolerance
-        Optional angular tolerance in radians.
-    include_analysis
-        Whether to include per-structure analysis records.
-    pbar
-        Whether and how to display progress.
-
-    Returns
-    -------
-    dict[str, Any]
-        Versioned metrics and optional per-structure analysis.
-    """
-    if isinstance(predictions, pd.DataFrame) and isinstance(references, pd.DataFrame):
-        return analyze_geo_opt_dataframes(
-            predictions,
-            references,
-            symprecs=symprecs,
-            angle_tolerance=angle_tolerance,
-            include_analysis=include_analysis,
-            pbar=pbar,
-        )
-    if not isinstance(predictions, pd.DataFrame) and not isinstance(
-        references, pd.DataFrame
-    ):
-        return analyze_geo_opt_paths(
-            os.fspath(predictions),
-            os.fspath(references),
-            symprecs=symprecs,
-            angle_tolerance=angle_tolerance,
-            include_analysis=include_analysis,
-            pbar=pbar,
-        )
-    raise TypeError(
-        "predictions and references must both be DataFrames or both be paths"
-    )

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,10 +17,11 @@ pytest.importorskip("ase")
 pytest.importorskip("moyopy")
 pytest.importorskip("pymatgen")
 
+from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core import Lattice, Structure
 
 from ml_peg.analysis.bulk_crystal.geo_opt.analyse_geo_opt import (
-    analyze_geo_opt_dataframes,
+    analyze_geo_opt,
 )
 from ml_peg.analysis.bulk_crystal.geo_opt.metrics import (
     N_STRUCTURES,
@@ -257,34 +259,85 @@ def test_pred_vs_ref_struct_symmetry_retains_predicted_ids_without_references(
     assert calc_geo_opt_metrics(compared)[STRUCTURE_RMSD_VS_DFT] == pytest.approx(0.5)
 
 
-def test_analyze_geo_opt_dataframes_returns_json_safe_results(
+@pytest.mark.parametrize("input_kind", ["dataframe", "jsonl", "jsonl.gz"])
+@pytest.mark.parametrize("comparison_kind", ["perfect", "distorted", "unmatched"])
+def test_analyze_geo_opt_returns_json_safe_results(
     geo_opt_dataframes: tuple[pd.DataFrame, pd.DataFrame],
+    tmp_path: Path,
+    input_kind: str,
+    comparison_kind: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Analyze both default symprecs and return JSON-serializable output."""
+    """Match pairs once across tolerances and preserve JSON precision and nulls."""
     predictions, references = geo_opt_dataframes
-    extra_reference = references.copy()
+    predicted_structure = Structure.from_dict(predictions.loc[0, STRUCTURE])
+    if comparison_kind == "distorted":
+        predicted_structure.translate_sites([1], [0.012345678901234, 0.0, 0.0])
+    elif comparison_kind == "unmatched":
+        predicted_structure.remove_sites([1])
+    predictions.at[0, STRUCTURE] = predicted_structure.as_dict()
+    predictions = pd.concat(
+        [predictions, predictions.assign(material_id="second")], ignore_index=True
+    )
+    references = pd.concat(
+        [references.assign(material_id="second"), references], ignore_index=True
+    )
+    matches: list[tuple[float, float] | None] = []
+    original_match = StructureMatcher.get_rms_dist
+
+    def record_match(
+        matcher: StructureMatcher,
+        predicted: Structure,
+        reference: Structure,
+    ) -> tuple[float, float] | None:
+        """Record actual matching results to check reuse and JSON precision."""
+        result = original_match(matcher, predicted, reference)
+        matches.append(result)
+        return result
+
+    monkeypatch.setattr(StructureMatcher, "get_rms_dist", record_match)
+    extra_reference = references.iloc[:1].copy()
     extra_reference[MATERIAL_ID] = "unused-reference"
     references = pd.concat([references, extra_reference], ignore_index=True)
 
-    result = analyze_geo_opt_dataframes(
+    if input_kind != "dataframe":
+        prediction_path = tmp_path / f"predictions.{input_kind}"
+        reference_path = tmp_path / f"references.{input_kind}"
+        predictions.to_json(prediction_path, orient="records", lines=True)
+        references.to_json(reference_path, orient="records", lines=True)
+        predictions, references = prediction_path, reference_path
+
+    result = analyze_geo_opt(
         predictions,
         references,
         angle_tolerance=np.float32(0.05),
         include_analysis=True,
     )
 
+    assert len(matches) == 2
     assert set(result["symprecs"]) == {"symprec=1e-2", "symprec=1e-5"}
     for symprec_result in result["symprecs"].values():
         metrics = symprec_result["metrics"]
-        assert (
-            metrics[STRUCTURE_RMSD_VS_DFT],
-            metrics[SYMMETRY_MATCH],
-            metrics[N_STRUCTURES],
-        ) == pytest.approx(
-            (0.0, 1.0, 1),
-            abs=1e-12,
-        )
-        assert symprec_result["analysis"][0][MATERIAL_ID] == "sample"
+        assert metrics[N_STRUCTURES] == 2
+        assert type(metrics[N_STRUCTURES]) is int
+        if comparison_kind == "perfect":
+            assert metrics[STRUCTURE_RMSD_VS_DFT] == 0
+            assert metrics[SYMMETRY_MATCH] == 1
+        elif comparison_kind == "unmatched":
+            assert metrics[STRUCTURE_RMSD_VS_DFT] == 1
+        else:
+            assert metrics[STRUCTURE_RMSD_VS_DFT] > 0
+        assert [row[MATERIAL_ID] for row in symprec_result["analysis"]] == [
+            "sample",
+            "second",
+        ]
+        for record, matched in zip(symprec_result["analysis"], matches, strict=True):
+            distances = [record[STRUCTURE_RMSD_VS_DFT], record[MAX_PAIR_DIST]]
+            if matched is None:
+                assert distances == [None, None]
+            else:
+                # pandas JSON keeps 15 decimal places, so allow half a final decimal.
+                np.testing.assert_allclose(distances, matched, rtol=0, atol=5e-16)
         assert isinstance(symprec_result["angle_tolerance"], float)
     assert result["versions"]["moyopy"]
     assert result["schema_version"] == 1
@@ -292,19 +345,37 @@ def test_analyze_geo_opt_dataframes_returns_json_safe_results(
         "framework": "matbench-discovery",
         "version": "1.3.1",
     }
-    assert result["n_references"] == 1
+    assert result["n_references"] == 2
     json.dumps(result, allow_nan=False)
 
-    metrics_only = analyze_geo_opt_dataframes(predictions, references, symprecs=(1e-2,))
-    assert "analysis" not in metrics_only["symprecs"]["symprec=1e-2"]
+    metrics_only = analyze_geo_opt(predictions, references, symprecs=(0.025,))
+    assert set(metrics_only["symprecs"]) == {"symprec=2.5e-2"}
+    assert "analysis" not in metrics_only["symprecs"]["symprec=2.5e-2"]
 
 
-def test_analyze_geo_opt_dataframes_rejects_missing_references(
+@pytest.mark.parametrize(
+    "input_kind", ["missing-reference", "mixed-inputs", "invalid-angle"]
+)
+def test_analyze_geo_opt_rejects_invalid_inputs(
     geo_opt_dataframes: tuple[pd.DataFrame, pd.DataFrame],
+    input_kind: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every predicted material must have a supplied reference structure."""
-    predictions, references = geo_opt_dataframes
-    references[MATERIAL_ID] = "other"
+    """Reject invalid inputs before matching structures."""
 
-    with pytest.raises(ValueError, match="missing predicted material IDs"):
-        analyze_geo_opt_dataframes(predictions, references)
+    def unexpected_match(*args: object, **kwargs: object) -> None:
+        """Fail if invalid inputs reach structure matching."""
+        pytest.fail("Invalid inputs must be rejected before structure matching")
+
+    monkeypatch.setattr(StructureMatcher, "get_rms_dist", unexpected_match)
+    predictions, references = geo_opt_dataframes
+    if input_kind == "mixed-inputs":
+        with pytest.raises(TypeError, match="both be DataFrames or both be paths"):
+            analyze_geo_opt(predictions, "references.jsonl")
+    elif input_kind == "invalid-angle":
+        with pytest.raises(ValueError, match="angle_tolerance must be"):
+            analyze_geo_opt(predictions, references, angle_tolerance=-0.1)
+    else:
+        references[MATERIAL_ID] = "other"
+        with pytest.raises(ValueError, match="missing predicted material IDs"):
+            analyze_geo_opt(predictions, references)

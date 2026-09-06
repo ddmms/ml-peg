@@ -25,16 +25,13 @@ from ml_peg.analysis.bulk_crystal.materials_discovery import (
     discovery_subset_indices,
     evaluate_discovery,
     evaluate_discovery_paths,
+    prepare_discovery_inputs,
     stable_metrics,
     validate_prediction_frame,
     validate_reference_frame,
     write_discovery_metrics_json,
 )
 from ml_peg.data.artifacts import (
-    ArtifactRole,
-    artifact_filename,
-    canonical_scientific_notation,
-    parse_artifact_filename,
     read_csv_artifact,
     read_jsonl_artifact,
 )
@@ -237,7 +234,7 @@ def test_classify_stable_rejects_nonfinite_thresholds(
     ids=["reference", "predictions"],
 )
 def test_discovery_schema_validation(
-    validator: Callable[[pd.DataFrame], None],
+    validator: Callable[[pd.DataFrame], pd.DataFrame],
     missing_column: str,
 ) -> None:
     """Schema validators accept indexed IDs and reject missing columns."""
@@ -246,7 +243,11 @@ def test_discovery_schema_validation(
         reference.index.tolist(), [0.0] * len(reference)
     ).set_index(MATERIAL_ID)
     dataframe = reference if validator is validate_reference_frame else predictions
-    validator(dataframe)
+    original = dataframe.copy(deep=True)
+    validated = validator(dataframe)
+    pd.testing.assert_frame_equal(validated, original)
+    validated.iloc[0, 0] = 123
+    pd.testing.assert_frame_equal(dataframe, original)
 
     with pytest.raises(ValueError, match="missing required columns"):
         validator(dataframe.drop(columns=missing_column))
@@ -338,48 +339,17 @@ def test_artifact_readers_support_gzip_csv_and_jsonl(tmp_path: Path) -> None:
     pd.testing.assert_frame_equal(read_jsonl_artifact(jsonl_path), dataframe)
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"), [(1e-5, "1e-5"), ("0.0100", "1e-2"), (2.5, "2.5e0")]
-)
-def test_canonical_scientific_notation(value: float | str, expected: str) -> None:
-    """Scientific notation is normalized for artifact names."""
-    assert canonical_scientific_notation(value) == expected
-
-
-@pytest.mark.parametrize(
-    ("role", "expected"),
-    [
-        (ArtifactRole.discovery, "2026-07-18-discovery.csv.gz"),
-        (ArtifactRole.geo_opt, "2026-07-18-geo-opt.jsonl.gz"),
-        (
-            ArtifactRole.geo_opt_analysis,
-            "2026-07-18-geo-opt-symprec=1e-5-moyo=0.12.0.csv.gz",
-        ),
-    ],
-)
-def test_artifact_names_round_trip(role: ArtifactRole, expected: str) -> None:
-    """Dated artifact names round-trip for every role."""
-    filename = (
-        artifact_filename("2026-07-18", role, symprec=1e-5, moyo_version="0.12.0")
-        if role is ArtifactRole.geo_opt_analysis
-        else artifact_filename("2026-07-18", role)
-    )
-    assert filename == expected
-    assert parse_artifact_filename(f"/tmp/{filename}") is role
-
-
-@pytest.mark.parametrize("invalid_date", ["2026-02-30", "2026/07/18"])
-def test_artifact_filename_rejects_invalid_dates(invalid_date: str) -> None:
-    """Artifact names require real ISO calendar dates."""
-    with pytest.raises(ValueError, match="date"):
-        artifact_filename(invalid_date, ArtifactRole.discovery)
-
-
-def test_prediction_alignment_rejects_unknown_ids_and_fills_missing() -> None:
+@pytest.mark.parametrize("prediction_name", [None, "model-energy"])
+def test_prediction_alignment_rejects_unknown_ids_and_fills_missing(
+    prediction_name: str | None,
+) -> None:
     """Alignment rejects extraneous IDs and inserts NaN for omitted references."""
     reference = _reference_frame()
     reference_ids = reference[MATERIAL_ID].tolist()
-    aligned = align_predictions(reference, pd.Series([0.2], index=[reference_ids[1]]))
+    predictions = pd.Series([0.2], index=[reference_ids[1]], name=prediction_name)
+    aligned = align_predictions(reference, predictions)
+    assert aligned.name == prediction_name
+    assert prepare_discovery_inputs(reference, predictions)[1].name == prediction_name
     assert aligned.index.tolist() == reference_ids
     assert aligned.iloc[1] == pytest.approx(0.2)
     assert aligned.isna().sum() == 3
@@ -388,18 +358,28 @@ def test_prediction_alignment_rejects_unknown_ids_and_fills_missing() -> None:
         align_predictions(reference, pd.Series([0.2], index=["unknown"]))
 
 
-def test_dataframe_evaluation_normalizes_material_ids_to_strings() -> None:
+@pytest.mark.parametrize("as_series", [False, True])
+def test_dataframe_evaluation_normalizes_material_ids_to_strings(
+    as_series: bool,
+) -> None:
     """Match numeric reference IDs with string prediction IDs."""
     reference = _reference_frame()
     reference[MATERIAL_ID] = [1, 2, 3, 4]
     predictions = _prediction_frame(["1", "2", "3", "4"], [-0.8, 0.2, -0.1, 0.9])
 
+    if as_series:
+        predictions = predictions.set_index(MATERIAL_ID)[PREDICTED_FORMATION_ENERGY]
+    original_predictions = predictions.copy(deep=True)
     results = evaluate_discovery(reference, predictions)
+    if as_series:
+        pd.testing.assert_series_equal(predictions, original_predictions)
+    else:
+        pd.testing.assert_frame_equal(predictions, original_predictions)
 
     assert results["subsets"][str(DiscoverySubset.full_test_set)]["missing_preds"] == 0
 
 
-@pytest.mark.parametrize("ranking_case", ["ties", "missing"])
+@pytest.mark.parametrize("ranking_case", ["ties", "missing", "mixed"])
 def test_most_stable_10k_ranking(ranking_case: str) -> None:
     """Stable sorting preserves ties and places missing predictions last."""
     material_ids = [f"wbm-{idx}" for idx in range(10_001)]
@@ -411,18 +391,28 @@ def test_most_stable_10k_ranking(ranking_case: str) -> None:
     )
     if ranking_case == "ties":
         prediction_values = [0.0] * len(material_ids)
-    else:
+    elif ranking_case == "missing":
         prediction_values = [
             *map(float, range(9_999)),
             np.nan,
             np.nan,
         ]
+    else:
+        prediction_values = (
+            np.random.default_rng(seed=0).integers(0, 10, len(material_ids)) / 10
+        )
+        prediction_values[::7] = np.nan
     predictions = pd.Series(prediction_values, index=material_ids)
 
     ranked_index = discovery_subset_indices(reference, predictions)[
         DiscoverySubset.most_stable_10k
     ]
-    assert ranked_index.tolist() == material_ids[:10_000]
+    expected = (
+        predictions.sort_values(kind="stable").head(10_000).index.tolist()
+        if ranking_case == "mixed"
+        else material_ids[:10_000]
+    )
+    assert ranked_index.tolist() == expected
     if ranking_case == "missing":
         assert pd.isna(predictions.loc[ranked_index[-1]])
 
@@ -643,3 +633,19 @@ def test_evaluators_treat_infinite_predictions_as_missing() -> None:
 
     metrics = calc_discovery_metrics(reference, predictions)
     assert metrics[DiscoverySubset.full_test_set]["FN"] == 2
+
+
+@pytest.mark.parametrize("as_series", [False, True])
+@pytest.mark.parametrize("identifiers", [["wbm-0", "wbm-0"], [1, "1"], [None, "wbm-0"]])
+def test_prediction_id_validation_is_shared(
+    as_series: bool,
+    identifiers: list[str | int | None],
+) -> None:
+    """Reject duplicate, colliding, and missing IDs through either input route."""
+    predictions = pd.DataFrame(
+        {MATERIAL_ID: identifiers, PREDICTED_FORMATION_ENERGY: [0.0, 0.1]}
+    )
+    if as_series:
+        predictions = predictions.set_index(MATERIAL_ID)[PREDICTED_FORMATION_ENERGY]
+    with pytest.raises(ValueError, match="(duplicate|missing).*material_id"):
+        evaluate_discovery(_reference_frame(), predictions)

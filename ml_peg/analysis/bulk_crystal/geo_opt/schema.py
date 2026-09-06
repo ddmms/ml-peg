@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import math
 from numbers import Integral, Real
 from typing import Any, TypedDict
 
 import numpy as np
 import pandas as pd
+
+from ml_peg.data.artifacts import validate_required_columns
 
 MATERIAL_ID = "material_id"
 STRUCTURE = "structure"
@@ -94,27 +96,6 @@ class GeoOptRecord(TypedDict):
     energy: float
     converged: bool
     n_steps: int
-
-
-def _missing_columns(
-    dataframe: pd.DataFrame, required_columns: Sequence[str]
-) -> list[str]:
-    """
-    Return absent required columns in their requested order.
-
-    Parameters
-    ----------
-    dataframe
-        Table whose columns are inspected.
-    required_columns
-        Column names that must be present.
-
-    Returns
-    -------
-    list[str]
-        Missing column names in requested order.
-    """
-    return [column for column in required_columns if column not in dataframe.columns]
 
 
 def _validate_material_id_values(material_ids: pd.Series) -> None:
@@ -251,8 +232,7 @@ def validate_geo_opt_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
     pandas.DataFrame
         Validated records with normalized values.
     """
-    if missing_columns := _missing_columns(dataframe, GEO_OPT_FIELDS):
-        raise ValueError(f"Missing geo-opt columns: {missing_columns!r}")
+    validate_required_columns(dataframe, GEO_OPT_FIELDS, artifact_name="geo-opt")
 
     normalized_records = [
         validate_geo_opt_record(record, record_number=record_number)
@@ -315,13 +295,13 @@ def validate_analysis_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
         Validated analysis indexed by material ID.
     """
     normalized = _with_material_id_index(dataframe)
-    required_fields = (*SYMMETRY_FIELDS, *COMPARISON_FIELDS)
-    if missing_columns := _missing_columns(normalized, required_fields):
-        raise ValueError(f"Missing geo-opt analysis columns: {missing_columns!r}")
+    validate_required_columns(
+        normalized,
+        (*SYMMETRY_FIELDS, *COMPARISON_FIELDS),
+        artifact_name="geo-opt analysis",
+    )
 
     for field in _NUMERIC_ANALYSIS_FIELDS:
-        if field not in normalized:
-            continue
         original = normalized[field]
         numeric = pd.to_numeric(original, errors="coerce")
         invalid_mask = original.notna() & ~np.isfinite(numeric)

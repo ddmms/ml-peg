@@ -22,9 +22,21 @@ from changing DAF. Pass this value with ``canonical=True`` and
 reference values. ``calc_discovery_metrics`` and ``discovery_subset_indices`` apply
 the same masking and rounding as ``evaluate_discovery``.
 
-See ``ml_peg.analysis.bulk_crystal.materials_discovery``. WBM reference and
-prediction artifacts are not included. JSON results include schema and source
-framework versions.
+This is an evaluation library for existing predictions. It does not run MLIPs, download WBM data, or register an ML-PEG analysis command or app page. Those integration steps can be added separately. The ``framework`` marks in its unit tests only support test filtering.
+
+For local evaluation (the reference and prediction files are supplied by the caller):
+
+.. code-block:: python
+
+   from ml_peg.analysis.bulk_crystal.materials_discovery import (
+       evaluate_discovery_paths,
+       write_discovery_metrics_json,
+   )
+
+   results = evaluate_discovery_paths("reference.csv.gz", "predictions.csv.gz")
+   write_discovery_metrics_json(results, "discovery-metrics.json")
+
+JSON results include schema and source-framework versions. Canonical leaderboard comparisons additionally require the full benchmark reference and its unrounded unique-prototype prevalence, as described above; the example uses synthetic mode.
 
 
 Geometry-optimization evaluation
@@ -46,6 +58,16 @@ Scalar aggregation is available in the core installation. Structure analysis
 requires ``ml-peg[geo-opt]``. No WBM structures, reference analyses, or model
 predictions are bundled. Results record schema, source-framework, and runtime
 dependency versions.
+
+``analyze_geo_opt`` accepts either two dataframes or two local JSONL paths:
+
+.. code-block:: python
+
+   from ml_peg.analysis.bulk_crystal.geo_opt import analyze_geo_opt
+
+   results = analyze_geo_opt("predictions.jsonl.gz", "references.jsonl.gz")
+
+Despite its ``analyse_geo_opt.py`` filename, this module is a callable evaluator, not a pytest analysis entry point. Running relaxations, producing app tables, and registering an ``app_*`` page remain separate integration work. Only the supplied predictions are scored; ``converged`` and ``n_steps`` are artifact metadata, not filters.
 
 
 Lattice constants
