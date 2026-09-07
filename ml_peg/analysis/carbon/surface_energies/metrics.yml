@@ -1,0 +1,30 @@
+# Thresholds are provisional, pending review against real model results.
+metrics:
+  As-cut surface energy MAE (D3):
+    good: 0.0
+    bad: 0.5
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in as-cut surface energy across diamond {100}, graphite (0001) and amorphous carbon, with a D3 dispersion correction added for models not trained on dispersion"
+    level_of_theory: null
+    weight: 1
+  As-cut surface energy MAE:
+    good: 0.0
+    bad: 0.5
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in as-cut surface energy across diamond {100}, graphite (0001) and amorphous carbon, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
+    level_of_theory: null
+    weight: 0
+  Relaxed surface energy MAE (D3):
+    good: 0.0
+    bad: 0.5
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in relaxed surface energy across diamond {100} and graphite (0001); amorphous carbon has no relaxed reference and is excluded from this metric. D3 dispersion correction added for models not trained on dispersion"
+    level_of_theory: null
+    weight: 1
+  Relaxed surface energy MAE:
+    good: 0.0
+    bad: 0.5
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in relaxed surface energy across diamond {100} and graphite (0001); amorphous carbon has no relaxed reference and is excluded from this metric. Without an added D3 correction; identical to the D3 column for models already trained on dispersion"
+    level_of_theory: null
+    weight: 0
