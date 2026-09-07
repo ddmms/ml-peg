@@ -100,3 +100,105 @@ Corrections to the original GAP-20 test suite:
   other non-cubic system here reports ``c``; omitting it for lonsdaleite alone
   would be an inconsistency. Deliberate, one-line-reversible departure from the
   source.
+
+Surface energies
+================
+
+Summary
+-------
+
+Performance in predicting as-cut and relaxed surface energies for three carbon
+surfaces: diamond {100}, graphite (0001), and amorphous carbon. Every value is a
+single-point evaluation of the model's calculator at a shipped DFT reference
+geometry; the benchmark performs no geometry optimisation. Each model not already
+trained with dispersion corrections is run twice, once with its plain calculator and
+once with a D3 dispersion correction added; models trained on dispersion run once,
+since D3 would be a no-op. The D3-corrected metrics carry the benchmark score, the
+uncorrected metrics are reported alongside for comparison (and are identical to the
+D3 metrics for dispersion-trained models).
+
+Graphite (0001) is a cleave between basal planes held together only by dispersion.
+Without a dispersion correction its surface energy is close to zero; the
+uncorrected column is expected to look poor for that surface specifically.
+
+Metrics
+-------
+
+1. As-cut surface energy MAE
+
+For diamond {100} and graphite (0001), the shipped as-cut and relaxed reference
+geometries each add 15 Å of vacuum along the cell's third vector to the shipped bulk
+cell (equivalent to the cell's z-component for these references, since the two
+coincide here); the model evaluates a single point at each of the three shipped
+geometries, unmodified:
+
+``surface_energy_j_m2 = 0.5 * (E_slab - E_bulk) / |a1 x a2| * 16.0218``
+
+where ``a1`` and ``a2`` are the first two vectors of the shipped reference bulk
+cell, and 16.0218 converts eV/Å² to J/m².
+
+Amorphous carbon has no unique cleavage plane, so its reference is an ensemble of
+ten independently generated bulk configurations, each cut along four or five
+different planes (49 cuts total). Every (bulk, slab) pair uses the formula above at
+the shipped, unrelaxed atomic positions; the as-cut surface energy is the mean over
+all 49 pairs. This port reports every surface energy, including the amorphous
+ensemble average, as a positive number via ``0.5 * (E_slab - E_bulk) / area``; the
+2021 amorphous script applied the same subtraction with the operands reversed and
+plotted the absolute value of both quantities, which is a display convention that
+cancels exactly in the relative error it reported and changes no result.
+
+The reported error is the mean absolute error across all three surfaces:
+
+``As-cut surface energy MAE = mean(|ref_surface_energy_j_m2 - surface_energy_j_m2|)``
+
+The original test suite reports the signed fractional error
+``(ref - model) / ref``; this benchmark uses the absolute error in J/m² instead (see
+Metric 2 in the lattice parameters section above for why a relative error is not
+used here), so the sign convention does not carry over.
+
+2. Relaxed surface energy MAE
+
+For diamond {100} and graphite (0001), the model evaluates a single point at the
+shipped relaxed reference geometry. The two provenances differ. Every diamond INCAR
+under ``Surfaces/DFT_Reference/Diamond/`` has ``NSW = 0`` and takes its geometry
+from a GAP-20 POSCAR, so DFT never performed its own ionic relaxation for diamond;
+its "relaxed" reference is a single-point at a distinct GAP-20 geometry, evaluated
+the same way as its as-cut reference. Graphite's relaxed reference is a genuine DFT
+ionic relaxation:
+``Graphite/0001/actual_relaxed/INCAR`` has ``NSW = 1000``, and its geometry moves up
+to 0.104 Å (mean 0.050 Å over 48 of 60 atoms) between the as-cut and relaxed frames.
+Either way, this benchmark takes no relaxation action itself — only a single point
+at whichever geometry is shipped. Amorphous carbon is excluded from this metric: its
+DFT reference used only unrelaxed cuts (``surfaces_unrelaxed``), so no relaxed
+reference geometry exists for it at all.
+
+Computational cost
+------------------
+
+Small: single-point evaluations only, no geometry optimisation. Three per model
+variant for each of diamond {100} and graphite (0001) (bulk, as-cut, relaxed) — six
+combined — plus up to 59 for the amorphous ensemble (10 bulk, 49 slab, up to 216
+atoms each): 65 per variant, 130 total for models run both plain and D3-corrected.
+
+Data availability
+-----------------
+
+Input and reference structures:
+
+* Rowe, P. et al. An accurate and transferable machine learning potential for carbon.
+  *J. Chem. Phys.* **153**, 034702 (2020). https://doi.org/10.1063/5.0005084
+* optB88-vdW exchange-correlation functional, PAW pseudopotentials, 500 eV plane-wave
+  cutoff, 0.125 Å⁻¹ k-point spacing (VASP).
+* Data repository: https://github.com/patrickwrowe/Carbon_GAP
+
+Corrections to the original GAP-20 test suite:
+
+* Diamond {111} is omitted. Its as-cut and relaxed DFT reference calculations were
+  truncated mid-SCF (no closing ``</calculation>`` or ``</modeling>`` tag, no final
+  structure, no forces); the scheduler log shows the VASP job never ran. Only the
+  bulk survived, which alone cannot give a surface energy. This exclusion is
+  permanent: ``Diamond_Reconstructed`` exists in the source data but has different
+  physics and no relaxed counterpart, and is not substituted in.
+* Diamond {110} is also omitted. Its reference slab is not a clean cleave:
+  expanding the bulk cell along c splits a (110) layer that straddles the cell
+  boundary, leaving a coordination-1 adatom on each face.
