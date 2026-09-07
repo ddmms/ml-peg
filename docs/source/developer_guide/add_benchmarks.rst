@@ -83,8 +83,7 @@ This metadata supplies the citation and implementer labels in the interactive ap
 Running a benchmark also reports what to cite. At the end of any calculation or
 analysis session, whether started with ``ml_peg calc``, ``ml_peg analyse``, or
 ``pytest`` directly, the citations and implementers of the benchmarks that actually
-ran are printed to the terminal. ``ml_peg cite`` prints the same guidance without
-running any benchmarks. Both flag any citation placeholders that are still
+ran are printed to the terminal, along with any citation placeholders that are still
 incomplete.
 
 For benchmarks imported from another framework or leaderboard, register that source

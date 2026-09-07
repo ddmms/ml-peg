@@ -1184,7 +1184,8 @@ def _citation_reference(citation: Citation) -> Component:
     Returns
     -------
     Component
-        One citation line, with the title hyperlinked if a DOI or URL is set.
+        One citation line, with the title hyperlinked if a DOI or URL is set, followed
+        by the DOI itself where there is one.
     """
     authors = ", ".join(citation.authors)
     year = f" ({citation.year})" if citation.year is not None else ""
@@ -1197,6 +1198,21 @@ def _citation_reference(citation: Citation) -> Component:
     # label above it
     if citation.role_label and citation.role != "benchmark_method":
         contents.append(html.Span(f" ({citation.role_label})", style=CREDIT_NOTE_STYLE))
+    if citation.doi:
+        # Shown in full so the DOI can be read and copied, not just followed
+        contents.append(
+            html.Div(
+                [
+                    html.Span("doi: ", style=CREDIT_NOTE_STYLE),
+                    html.A(
+                        citation.doi,
+                        href=citation.link,
+                        target="_blank",
+                        style=CREDIT_NOTE_STYLE,
+                    ),
+                ]
+            )
+        )
     return html.Div(contents, style={"marginTop": "2px"})
 
 
@@ -1430,7 +1446,8 @@ def build_test_layout(
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
-        URL to online documentation. Default is None.
+        URL to online documentation, linked below the benchmark credits. Default is
+        None, which omits the link.
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
@@ -1465,31 +1482,28 @@ def build_test_layout(
         build_benchmark_credit_components(credits),
     ]
 
-    layout_contents.extend(
-        [
-            Details(
-                [
-                    Summary(
-                        "Click for more information",
-                        style={
-                            "cursor": "pointer",
-                            "fontWeight": "bold",
-                            "padding": "5px",
-                        },
-                    ),
-                    Label(
-                        [html.A("Online documentation", href=docs_url, target="_blank")]
-                    ),
-                ],
+    if docs_url:
+        layout_contents.append(
+            html.A(
+                "View documentation \u2192",
+                href=docs_url,
+                target="_blank",
                 style={
-                    # "border": "1px solid #ddd",
-                    "padding": "10px",
-                    # "borderRadius": "5px",
+                    "alignItems": "center",
+                    "backgroundColor": "#f8fafc",
+                    "border": "1px solid #cbd5e1",
+                    "borderRadius": "6px",
+                    "color": "#0d6efd",
+                    "display": "inline-flex",
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "margin": "0 0 12px",
+                    "padding": "6px 12px",
+                    "textDecoration": "none",
+                    "width": "fit-content",
                 },
-            ),
-            Div(style={"height": "4px"}),
-        ]
-    )
+            )
+        )
 
     reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [
