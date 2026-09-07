@@ -126,14 +126,11 @@ def _read_params(model_name: str) -> dict[float, tuple[float, float, float]]:
     return out
 
 
+# per-oxygen-content labels for the per-parameter parity plots
+CONC_LABELS = [f"YBCO{c:.2f}" for c in CONC]
+
+
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_ybco_lattice.json",
-    title="YBCO lattice parameters vs oxygen content",
-    x_label="Predicted lattice parameter / Å",
-    y_label="CP2K PBE lattice parameter / Å",
-    hoverdata={"Point": POINT_LABELS},
-)
 def ybco_lattice() -> dict[str, list]:
     """
     Get DFT and predicted lattice parameters (a, b, c across oxygen content).
@@ -162,38 +159,59 @@ def ybco_lattice() -> dict[str, list]:
     return results
 
 
-def _param_errors(ybco_lattice: dict[str, list], param: str | None) -> dict[str, float]:
+def _param_points(ybco_lattice: dict[str, list], param: str) -> dict[str, list]:
     """
-    Mean absolute error vs DFT, optionally restricted to one lattice parameter.
+    Restrict the flattened lattice results to a single parameter (a, b or c).
 
     Parameters
     ----------
     ybco_lattice
-        Reference and predicted lattice parameters.
+        Reference and predicted lattice parameters, flattened over (a, b, c) x content.
     param
-        One of "a", "b", "c" to restrict to, or None for all parameters.
+        One of "a", "b", "c".
+
+    Returns
+    -------
+    dict[str, list]
+        Reference and predicted values of that parameter, one per oxygen content.
+    """
+    mask = [lbl.startswith(f"{param} ") for lbl in POINT_LABELS]
+    out = {"ref": [v for v, m in zip(ybco_lattice["ref"], mask, strict=True) if m]}
+    for model_name in MODELS:
+        out[model_name] = [
+            v for v, m in zip(ybco_lattice[model_name], mask, strict=True) if m
+        ]
+    return out
+
+
+def _mae(points: dict[str, list]) -> dict[str, float]:
+    """
+    Mean absolute error per model from a single-parameter point set.
+
+    Parameters
+    ----------
+    points
+        Reference and predicted values of one lattice parameter.
 
     Returns
     -------
     dict[str, float]
         Mean absolute error per model, in Angstrom.
     """
-    if param is None:
-        mask = [True] * len(POINT_LABELS)
-    else:
-        mask = [lbl.startswith(f"{param} ") for lbl in POINT_LABELS]
-    ref = [v for v, m in zip(ybco_lattice["ref"], mask, strict=True) if m]
-    results = {}
-    for model_name in MODELS:
-        pred = [v for v, m in zip(ybco_lattice[model_name], mask, strict=True) if m]
-        results[model_name] = mae(ref, pred)
-    return results
+    return {model_name: mae(points["ref"], points[model_name]) for model_name in MODELS}
 
 
 @pytest.fixture
-def ybco_lattice_errors(ybco_lattice) -> dict[str, float]:
+@plot_parity(
+    filename=OUT_PATH / "figure_ybco_lattice_a.json",
+    title="YBCO lattice parameter a vs oxygen content",
+    x_label="Predicted a / Å",
+    y_label="CP2K PBE a / Å",
+    hoverdata={"O content": CONC_LABELS},
+)
+def ybco_lattice_a(ybco_lattice) -> dict[str, list]:
     """
-    MAE calculated over all lattice parameters. See :func:`_param_errors`.
+    Get DFT and predicted values of lattice parameter a.
 
     Parameters
     ----------
@@ -202,16 +220,23 @@ def ybco_lattice_errors(ybco_lattice) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        MAE per model, in Angstrom.
+    dict[str, list]
+        Reference and predicted a, one per oxygen content.
     """
-    return _param_errors(ybco_lattice, None)
+    return _param_points(ybco_lattice, "a")
 
 
 @pytest.fixture
-def ybco_a_errors(ybco_lattice) -> dict[str, float]:
+@plot_parity(
+    filename=OUT_PATH / "figure_ybco_lattice_b.json",
+    title="YBCO lattice parameter b vs oxygen content",
+    x_label="Predicted b / Å",
+    y_label="CP2K PBE b / Å",
+    hoverdata={"O content": CONC_LABELS},
+)
+def ybco_lattice_b(ybco_lattice) -> dict[str, list]:
     """
-    MAE for parameter a. See :func:`_param_errors`.
+    Get DFT and predicted values of lattice parameter b.
 
     Parameters
     ----------
@@ -220,16 +245,23 @@ def ybco_a_errors(ybco_lattice) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        MAE per model, in Angstrom.
+    dict[str, list]
+        Reference and predicted b, one per oxygen content.
     """
-    return _param_errors(ybco_lattice, "a")
+    return _param_points(ybco_lattice, "b")
 
 
 @pytest.fixture
-def ybco_b_errors(ybco_lattice) -> dict[str, float]:
+@plot_parity(
+    filename=OUT_PATH / "figure_ybco_lattice_c.json",
+    title="YBCO lattice parameter c vs oxygen content",
+    x_label="Predicted c / Å",
+    y_label="CP2K PBE c / Å",
+    hoverdata={"O content": CONC_LABELS},
+)
+def ybco_lattice_c(ybco_lattice) -> dict[str, list]:
     """
-    MAE for parameter b. See :func:`_param_errors`.
+    Get DFT and predicted values of lattice parameter c.
 
     Parameters
     ----------
@@ -238,28 +270,64 @@ def ybco_b_errors(ybco_lattice) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        MAE per model, in Angstrom.
+    dict[str, list]
+        Reference and predicted c, one per oxygen content.
     """
-    return _param_errors(ybco_lattice, "b")
+    return _param_points(ybco_lattice, "c")
 
 
 @pytest.fixture
-def ybco_c_errors(ybco_lattice) -> dict[str, float]:
+def ybco_a_errors(ybco_lattice_a) -> dict[str, float]:
     """
-    MAE for parameter c. See :func:`_param_errors`.
+    MAE for parameter a.
 
     Parameters
     ----------
-    ybco_lattice
-        Reference and predicted lattice parameters.
+    ybco_lattice_a
+        Reference and predicted a.
 
     Returns
     -------
     dict[str, float]
         MAE per model, in Angstrom.
     """
-    return _param_errors(ybco_lattice, "c")
+    return _mae(ybco_lattice_a)
+
+
+@pytest.fixture
+def ybco_b_errors(ybco_lattice_b) -> dict[str, float]:
+    """
+    MAE for parameter b.
+
+    Parameters
+    ----------
+    ybco_lattice_b
+        Reference and predicted b.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE per model, in Angstrom.
+    """
+    return _mae(ybco_lattice_b)
+
+
+@pytest.fixture
+def ybco_c_errors(ybco_lattice_c) -> dict[str, float]:
+    """
+    MAE for parameter c.
+
+    Parameters
+    ----------
+    ybco_lattice_c
+        Reference and predicted c.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE per model, in Angstrom.
+    """
+    return _mae(ybco_lattice_c)
 
 
 @pytest.fixture

@@ -27,25 +27,30 @@ class YBCOLatticeApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_ybco_lattice.json", id=f"{BENCHMARK_NAME}-figure"
+        scatter_a = read_plot(
+            DATA_PATH / "figure_ybco_lattice_a.json", id=f"{BENCHMARK_NAME}-figure"
+        )
+        scatter_b = read_plot(
+            DATA_PATH / "figure_ybco_lattice_b.json", id=f"{BENCHMARK_NAME}-figure"
+        )
+        scatter_c = read_plot(
+            DATA_PATH / "figure_ybco_lattice_c.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
-        # one structure per oxygen content, repeated for its a/b/c scatter points
+        # one structure per oxygen content, matching the per-parameter scatter points
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
             f"/assets/bulk_crystal/YBCO_lattice_vs_O/{MODELS[0]}/{f.stem}.xyz"
             for f in sorted(structs_dir.glob("*.xyz"))
-            for _ in range(3)
         ]
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "MAE a (PBE)": scatter,
-                "MAE b (PBE)": scatter,
-                "MAE c (PBE)": scatter,
+                "MAE a (PBE)": scatter_a,
+                "MAE b (PBE)": scatter_b,
+                "MAE c (PBE)": scatter_c,
             },
         )
 

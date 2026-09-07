@@ -6,7 +6,7 @@ from ase import Atoms
 import pytest
 
 from ml_peg.analysis.bulk_crystal.YBCO_lattice_vs_O import (
-    analyse_ybco_lattice_vs_O as A,  # noqa: N812
+    analyse_YBCO_lattice_vs_O as A,  # noqa: N812
 )
 from ml_peg.models.mock import MockCalculator
 

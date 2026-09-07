@@ -653,13 +653,12 @@ to within about 2.5 % at worst (arXiv:2511.22592), the good thresholds are the l
 system-specific potential typically reaches (0.02 Angstrom for a and b, 0.05 for c) and
 the bad thresholds mark the worst case (0.1 Angstrom for a and b, 0.3 for c).
 
-Models trained to a different level of theory carry a red ``level_of_theory`` flag.
-
 Computational cost
 ------------------
 
-Medium: 11 cell + position relaxations of a 4x4x2 supercell (~380-420 atoms) per model;
-of order an hour on CPU per model.
+Medium: 11 cell + position relaxations of a 4x4x2 supercell (~380-420 atoms) per model.
+Of order an hour per model on a 48-core CPU node (~5 min per relaxation), and minutes
+per model on GPU.
 
 Data availability
 -----------------

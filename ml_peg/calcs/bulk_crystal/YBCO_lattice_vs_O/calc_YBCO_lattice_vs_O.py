@@ -16,6 +16,7 @@ from warnings import warn
 from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -55,7 +56,7 @@ def test_ybco_lattice_vs_O(mlip: tuple[str, Any]) -> None:  # noqa: N802
         / "YBCO_lattice_vs_O"
     )
 
-    for conc in CONCENTRATIONS:
+    for conc in tqdm(CONCENTRATIONS, desc=f"YBCO lattice {model_name}"):
         struct_file = data_dir / f"YBCO{conc:.2f}.data"
         if not struct_file.is_file():
             warn(f"Missing input structure {struct_file}", stacklevel=2)
