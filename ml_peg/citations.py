@@ -735,6 +735,46 @@ def _wrap(text: str, indent: str, continuation: str | None = None) -> list[str]:
     )
 
 
+def _section(title: str) -> list[str]:
+    """
+    Build a blank-separated section heading with an underline rule.
+
+    Parameters
+    ----------
+    title
+        Section heading text.
+
+    Returns
+    -------
+    list[str]
+        Blank line, heading, and rule.
+    """
+    return ["", f"  {title}", "  " + "-" * (SUMMARY_WIDTH - 4)]
+
+
+def _citation_lines(citation: Citation, indent: str) -> list[str]:
+    """
+    Build the wrapped reference and link lines for one citation.
+
+    Parameters
+    ----------
+    citation
+        Citation to render.
+    indent
+        Indent applied to the first line of the reference.
+
+    Returns
+    -------
+    list[str]
+        Wrapped reference, ending in the DOI or URL when one is set. Links are never
+        broken across lines, so that they stay selectable in the terminal.
+    """
+    text = citation.reference
+    if citation.link:
+        text = f"{text} {citation.link}"
+    return _wrap(text, indent)
+
+
 def format_citation_summary(
     benchmarks: Mapping[str, BenchmarkCredits],
     missing_benchmarks: Iterable[str] = (),
@@ -772,60 +812,67 @@ def format_citation_summary(
         rule,
         "",
         *_wrap(
-            "Please cite ML-PEG, the benchmarks below, and the models you ran. "
-            "Benchmark implementers are credited separately, and are not authors "
-            "of the work being cited.",
+            "Please cite the benchmarks below and the models you ran. Benchmark "
+            "implementers are credited separately, and are not authors of the work "
+            "being cited.",
             "  ",
             "  ",
         ),
     ]
 
-    ml_peg = ml_peg_citation()
-    if ml_peg:
-        lines.extend(["", "  ML-PEG", *_wrap(ml_peg.reference, "    ")])
-        if ml_peg.doi:
-            lines.append(f"    doi:{ml_peg.doi}")
-
     if benchmarks or missing:
-        count = len(benchmarks) + len(missing)
-        lines.extend(["", f"  BENCHMARKS ({count})"])
-        for benchmark in sorted(set(benchmarks) | set(missing)):
+        lines.extend(_section(f"BENCHMARKS ({len(benchmarks) + len(missing)})"))
+        for index, benchmark in enumerate(sorted(set(benchmarks) | set(missing))):
+            if index:
+                lines.append("")
             lines.append(f"    {benchmark}")
             credits = benchmarks.get(benchmark)
             if credits is None:
-                lines.extend(_wrap("[citation to be added]", "      "))
-                lines.extend(_wrap("implemented by [to be added]", "      "))
-                continue
-            if credits.citations:
-                for citation in credits.citations:
-                    lines.extend(_wrap(citation.reference, "      "))
-            else:
                 lines.extend(
-                    _wrap("Devised for ML-PEG, no further citation needed.", "      ")
+                    [
+                        "      benchmark citation:",
+                        "        ! to be added",
+                        "      implemented in ML-PEG by:",
+                        "        ! to be added",
+                    ]
+                )
+                continue
+            plural = "s" if len(credits.citations) > 1 else ""
+            lines.append(f"      benchmark citation{plural}:")
+            for citation in credits.citations:
+                lines.extend(_citation_lines(citation, "        "))
+            if not credits.citations:
+                lines.extend(
+                    _wrap("Devised for ML-PEG, no further citation needed.", "        ")
                 )
             names = ", ".join(item.name for item in credits.contributors)
-            lines.extend(_wrap(f"implemented by {names or '[to be added]'}", "      "))
+            lines.append("      implemented in ML-PEG by:")
+            lines.extend(
+                _wrap(names, "        ") if names else ["        ! to be added"]
+            )
 
     if frameworks:
-        lines.extend(["", f"  SOURCE FRAMEWORKS ({len(frameworks)})"])
-        for label, citation in frameworks.items():
+        lines.extend(_section(f"SOURCE FRAMEWORKS ({len(frameworks)})"))
+        for index, (label, citation) in enumerate(frameworks.items()):
+            if index:
+                lines.append("")
             lines.append(f"    {label}")
             lines.extend(
-                _wrap(
-                    citation.reference if citation else "[citation to be added]",
-                    "      ",
-                )
+                _citation_lines(citation, "      ")
+                if citation
+                else ["      ! citation to be added"]
             )
 
     if models:
-        lines.extend(["", f"  MODELS ({len(models)})"])
-        for name, citation in models.items():
+        lines.extend(_section(f"MODELS ({len(models)})"))
+        for index, (name, citation) in enumerate(models.items()):
+            if index:
+                lines.append("")
             lines.append(f"    {name}")
             lines.extend(
-                _wrap(
-                    citation.reference if citation else "[citation to be added]",
-                    "      ",
-                )
+                _citation_lines(citation, "      ")
+                if citation
+                else ["      ! citation to be added"]
             )
 
     unfilled_frameworks = sum(1 for c in frameworks.values() if not c)
@@ -842,10 +889,10 @@ def format_citation_summary(
             [
                 "",
                 *_wrap(
-                    f"!! Citation metadata is incomplete for {', '.join(incomplete)}. "
+                    f"! Citation metadata is incomplete for {', '.join(incomplete)}. "
                     "Please help by adding it.",
                     "  ",
-                    "  ",
+                    "    ",
                 ),
             ]
         )

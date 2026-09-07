@@ -286,10 +286,59 @@ def test_terminal_summary_prints_citations_and_implementers() -> None:
     )
 
     assert "First Author, Second Author (2026). Test source." in summary
-    assert "implemented by Test Implementer" in summary
+    assert "implemented" in summary
+    assert "Test Implementer" in summary
     assert "BENCHMARKS (2)" in summary
     assert "category/other" in summary
     assert "MODELS (1)" in summary
+
+
+def test_implementer_is_separated_from_the_citation() -> None:
+    """The implementer sits under its own heading, not trailing the reference."""
+    summary = format_citation_summary({"category/test": _credits(TEST_CITATION)})
+    lines = summary.splitlines()
+
+    citation_label = lines.index("      benchmark citation:")
+    implementer_label = lines.index("      implemented in ML-PEG by:")
+
+    assert "First Author" in lines[citation_label + 1]
+    assert "Test Implementer" in lines[implementer_label + 1]
+    # The implementer never shares a line with the work being cited
+    assert "Test Implementer" not in lines[citation_label + 1]
+    assert citation_label < implementer_label
+
+
+def test_citation_label_is_pluralised_in_the_summary() -> None:
+    """The heading matches the number of sources listed for the benchmark."""
+    second = Citation(
+        key="second",
+        title="Second source",
+        authors=("Third Author",),
+        role="reference_data",
+    )
+
+    one = format_citation_summary({"category/test": _credits(TEST_CITATION)})
+    two = format_citation_summary({"category/test": _credits(TEST_CITATION, second)})
+
+    assert "benchmark citation:" in one
+    assert "benchmark citations:" in two
+
+
+def test_doi_is_part_of_the_citation_in_the_summary() -> None:
+    """The DOI reads as part of the reference, not as a detached trailing line."""
+    cited = Citation(
+        key="doi-source",
+        title="Short title",
+        authors=("A. Author",),
+        year=2026,
+        role="benchmark_method",
+        doi="10.1234/example",
+    )
+
+    summary = format_citation_summary({"category/test": _credits(cited)})
+    reference = next(line for line in summary.splitlines() if "Short title" in line)
+
+    assert reference.endswith("https://doi.org/10.1234/example")
 
 
 def test_terminal_summary_is_a_bounded_block() -> None:
@@ -304,6 +353,48 @@ def test_terminal_summary_is_a_bounded_block() -> None:
     assert "CITATION GUIDANCE" in lines[1]
     assert all(len(line) <= SUMMARY_WIDTH for line in lines)
     assert all(line == line.rstrip() for line in lines)
+
+
+def test_terminal_summary_shows_dois() -> None:
+    """Every source with a DOI prints it as a resolvable link."""
+    cited = Citation(
+        key="doi-source",
+        title="Source with a DOI",
+        authors=("First Author",),
+        year=2026,
+        role="benchmark_method",
+        doi="10.1234/example",
+    )
+
+    summary = format_citation_summary(
+        {"category/test": _credits(cited)},
+        models={
+            "cited-model": Citation(
+                key="m", title="Model", authors=("M. Author",), doi="10.5678/model"
+            )
+        },
+    )
+
+    assert "https://doi.org/10.1234/example" in summary
+    assert "https://doi.org/10.5678/model" in summary
+
+
+def test_terminal_summary_never_wraps_a_link() -> None:
+    """Links stay on one line so they remain selectable, even past the block width."""
+    long_url = "https://proceedings.example.com/" + "path/" * 30
+    cited = Citation(
+        key="url-source",
+        title="Source with a long URL",
+        authors=("First Author",),
+        role="benchmark_method",
+        url=long_url,
+    )
+
+    summary = format_citation_summary({"category/test": _credits(cited)})
+    prose = [line for line in summary.splitlines() if "http" not in line]
+
+    assert any(line.strip() == long_url for line in summary.splitlines())
+    assert all(len(line) <= SUMMARY_WIDTH for line in prose)
 
 
 def test_terminal_summary_flags_incomplete_metadata() -> None:
@@ -403,8 +494,38 @@ def test_benchmark_credit_is_not_hidden_in_a_details_element() -> None:
     assert "Test Implementer" not in collapsed_text
 
 
-def test_citation_links_only_the_title() -> None:
-    """Only the title is a hyperlink, so author text is not styled as a link."""
+def test_documentation_is_a_direct_link() -> None:
+    """The docs link is shown outright, not hidden behind a collapsible summary."""
+    table = DataTable(
+        id="docs-test-table",
+        columns=[{"id": "MLIP", "name": "MLIP"}],
+        data=[],
+        tooltip_header={},
+    )
+    table.weights = {}
+
+    def _layout(docs_url: str | None) -> str:
+        return str(
+            build_test_layout(
+                name="Docs test",
+                description="Docs layout test",
+                framework_ids=[],
+                table=table,
+                thresholds={},
+                docs_url=docs_url,
+            )
+        )
+
+    linked = _layout("https://example.com/docs")
+
+    assert "Click for more information" not in linked
+    assert "https://example.com/docs" in linked
+    assert "View documentation" in linked
+    assert "View documentation" not in _layout(None)
+
+
+def test_citation_links_the_title_and_doi_only() -> None:
+    """The title and DOI are hyperlinks, so author text is not styled as a link."""
     citation = Citation(
         key="linked",
         title="Linked source",
@@ -421,9 +542,30 @@ def test_citation_links_only_the_title() -> None:
         if type(component).__name__ == "A"
     ]
 
-    assert len(links) == 1
-    assert links[0].href == "https://doi.org/10.1234/example"
-    assert "First Author" not in str(links[0])
+    assert [link.href for link in links] == ["https://doi.org/10.1234/example"] * 2
+    assert all("First Author" not in str(link) for link in links)
+    assert "Linked source" in str(links[0])
+    assert str(links[1].children) == "10.1234/example"
+
+
+def test_doi_is_shown_in_full() -> None:
+    """The DOI is readable in the credit box, not hidden behind the title link."""
+    with_doi = Citation(
+        key="linked",
+        title="Linked source",
+        authors=("First Author",),
+        role="benchmark_method",
+        doi="10.1234/example",
+    )
+    without_doi = Citation(
+        key="unlinked",
+        title="Unlinked source",
+        authors=("First Author",),
+        role="benchmark_method",
+    )
+
+    assert "doi: " in str(build_benchmark_credit_components(_credits(with_doi)))
+    assert "doi: " not in str(build_benchmark_credit_components(_credits(without_doi)))
 
 
 def test_missing_credit_renders_placeholders() -> None:
