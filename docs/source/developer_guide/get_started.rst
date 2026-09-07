@@ -79,6 +79,12 @@ Packages in the ``dev`` dependency group allow tests to be run locally using ``p
 
     pytest -v
 
+.. note::
+
+    The browser tests in ``tests/app`` fetch a small (~800 KB) data fixture from the
+    ML-PEG S3 bucket the first time they run, and cache it under ``~/.cache/ml_peg``,
+    so later runs work offline. See :doc:`data` for how the fixture is published.
+
 
 Automatic coding style check
 ----------------------------
