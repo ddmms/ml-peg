@@ -13,12 +13,12 @@ from dash.dcc import Store
 from dash.development.base_component import Component
 from dash.html import Div
 
-from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
 from ml_peg.app.utils.utils import normalize_framework_id
-from ml_peg.citations import load_optional_benchmark_credits
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.citations import app_citation_metadata_path, load_optional_benchmark_credits
 
 
 class BaseApp(ABC):
@@ -111,7 +111,9 @@ class BaseApp(ABC):
             self.credits = None
         else:
             self.credits = load_optional_benchmark_credits(
-                ANALYSIS_ROOT / benchmark_path / "citations.yml"
+                app_citation_metadata_path(
+                    benchmark_path.parent.name, benchmark_path.name, CALCS_ROOT
+                )
             )
         self.metrics = [
             col["id"]

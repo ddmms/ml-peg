@@ -1,0 +1,16 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+    orcid: null
+
+citations:
+  - key: "kriz-2022-ncia-sigma-hole"
+    role: benchmark_method
+    title: "Non-covalent interactions atlas benchmark data sets 4: sigma-hole interactions"
+    authors:
+      - "K. Kříž"
+      - "J. Řezáč"
+    year: 2022
+    doi: null
+    url: null
+    bibtex: null

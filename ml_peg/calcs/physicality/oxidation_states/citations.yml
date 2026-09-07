@@ -1,0 +1,16 @@
+contributors:
+  - name: "PKourtis"
+    github: "PKourtis"
+    orcid: null
+
+citations:
+  - key: "kocer-2024-redox"
+    role: reference_data
+    title: "Machine learning potentials for redox chemistry in solution"
+    authors:
+      - "Emir Kocer"
+      - "et al."
+    year: 2024
+    doi: null
+    url: "https://arxiv.org/abs/2410.03299"
+    bibtex: null

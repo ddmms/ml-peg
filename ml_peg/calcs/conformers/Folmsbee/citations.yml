@@ -1,0 +1,16 @@
+contributors:
+  - name: "Leon Wehrhan"
+    github: null
+    orcid: null
+
+citations:
+  - key: "folmsbee-2020-conformers"
+    role: benchmark_method
+    title: "Assessing conformer energies using electronic structure and machine learning methods"
+    authors:
+      - "Dakota Folmsbee"
+      - "Geoffrey Hutchison"
+    year: 2020
+    doi: "10.1002/qua.26381"
+    url: null
+    bibtex: null

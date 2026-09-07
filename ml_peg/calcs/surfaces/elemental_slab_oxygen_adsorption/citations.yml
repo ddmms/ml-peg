@@ -1,0 +1,56 @@
+contributors:
+  - name: "ThomasWarford"
+    github: "ThomasWarford"
+    orcid: null
+
+citations:
+  - key: "tran-2016-surface-energies"
+    role: benchmark_method
+    title: "Surface Energies of Elemental Crystals"
+    authors:
+      - "R. Tran"
+      - "Z. Xu"
+      - "B. Radhakrishnan"
+      - "D. Winston"
+      - "W. Sun"
+      - "K. A. Persson"
+      - "S. P. Ong"
+    year: 2016
+    doi: "10.1038/sdata.2016.80"
+    url: null
+    bibtex: null
+  - key: "kaplan-2025-matpes"
+    role: reference_data
+    title: "A Foundational Potential Energy Surface Dataset for Materials"
+    authors:
+      - "A. D. Kaplan"
+      - "R. Liu"
+      - "J. Qi"
+      - "T. W. Ko"
+      - "B. Deng"
+      - "J. Riebesell"
+      - "G. Ceder"
+      - "K. A. Persson"
+      - "S. P. Ong"
+    year: 2025
+    doi: "10.48550/arXiv.2503.04070"
+    url: null
+    bibtex: null
+  - key: "ong-2013-pymatgen"
+    role: reference_method
+    title: "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis"
+    authors:
+      - "S. P. Ong"
+      - "W. D. Richards"
+      - "A. Jain"
+      - "G. Hautier"
+      - "M. Kocher"
+      - "S. Cholia"
+      - "D. Gunter"
+      - "V. Chevrier"
+      - "K. A. Persson"
+      - "G. Ceder"
+    year: 2013
+    doi: "10.1016/j.commatsci.2012.10.028"
+    url: null
+    bibtex: null

@@ -1,0 +1,18 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "dellapia-2022-dmc-ice13"
+    role: benchmark_method
+    title: "DMC-ICE13: Ambient and high pressure polymorphs of ice from diffusion Monte Carlo and density functional theory"
+    authors:
+      - "F. Della Pia"
+      - "A. Zen"
+      - "D. Alfè"
+      - "A. Michaelides"
+    year: 2022
+    doi: null
+    url: null
+    bibtex: null

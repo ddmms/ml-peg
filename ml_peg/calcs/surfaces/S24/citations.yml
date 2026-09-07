@@ -1,0 +1,160 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "alhamdani-2017-bn-water"
+    role: benchmark_method
+    title: "Properties of the water to boron nitride interaction: From zero to two dimensions with benchmark accuracy"
+    authors:
+      - "Y. S. Al-Hamdani"
+      - "M. Rossi"
+      - "D. Alfè"
+      - "T. Tsatsoulis"
+      - "B. Ramberger"
+      - "J. G. Brandenburg"
+      - "A. Zen"
+      - "G. Kresse"
+      - "A. Grüneis"
+      - "A. Tkatchenko"
+      - "A. Michaelides"
+    year: 2017
+    doi: null
+    url: null
+    bibtex: null
+  - key: "brandenburg-2019-water-graphene"
+    role: benchmark_method
+    title: "Physisorption of water on graphene: Subchemical accuracy from many-body electronic structure methods"
+    authors:
+      - "J. G. Brandenburg"
+      - "A. Zen"
+      - "M. Fitzner"
+      - "B. Ramberger"
+      - "G. Kresse"
+      - "T. Tsatsoulis"
+      - "A. Grüneis"
+      - "A. Michaelides"
+      - "D. Alfè"
+    year: 2019
+    doi: null
+    url: null
+    bibtex: null
+  - key: "ehlert-2023-co2-graphene"
+    role: benchmark_method
+    title: "CO2 on graphene: Benchmarking computational approaches to noncovalent interactions"
+    authors:
+      - "C. Ehlert"
+      - "A. Piras"
+      - "G. Gryn'ova"
+    year: 2023
+    doi: null
+    url: null
+    bibtex: null
+  - key: "tsatsoulis-2018-h-si100"
+    role: benchmark_method
+    title: "Reaction energetics of hydrogen on Si(100) surface: A periodic many-electron theory study"
+    authors:
+      - "T. Tsatsoulis"
+      - "S. Sakong"
+      - "A. Groß"
+      - "A. Grüneis"
+    year: 2018
+    doi: null
+    url: null
+    bibtex: null
+  - key: "tsatsoulis-2017-water-lih"
+    role: benchmark_method
+    title: "A comparison between quantum chemistry and quantum Monte Carlo techniques for the adsorption of water on the (001) LiH surface"
+    authors:
+      - "T. Tsatsoulis"
+      - "F. Hummel"
+      - "D. Usvyat"
+      - "M. Schütz"
+      - "G. H. Booth"
+      - "S. S. Binnie"
+      - "M. J. Gillan"
+      - "D. Alfè"
+      - "A. Michaelides"
+      - "A. Grüneis"
+    year: 2017
+    doi: null
+    url: null
+    bibtex: null
+  - key: "ye-2023-surface-chemistry"
+    role: benchmark_method
+    title: "Ab initio surface chemistry with chemical accuracy"
+    authors:
+      - "H.-Z. Ye"
+      - "T. C. Berkelbach"
+    year: 2023
+    doi: null
+    url: "https://arxiv.org/abs/2309.14640"
+    bibtex: null
+  - key: "lustemberg-2020-ceria-co"
+    role: benchmark_method
+    title: "Vibrational frequencies of cerium-oxide-bound CO: A challenge for conventional DFT methods"
+    authors:
+      - "P. G. Lustemberg"
+      - "P. N. Plessow"
+      - "Y. Wang"
+      - "C. Yang"
+      - "A. Nefedov"
+      - "F. Studt"
+      - "C. Wöll"
+      - "M. V. Ganduglia-Pirovano"
+    year: 2020
+    doi: null
+    url: null
+    bibtex: null
+  - key: "shi-2023-many-body-surface"
+    role: benchmark_method
+    title: "Many-body methods for surface chemistry come of age: Achieving consensus with experiments"
+    authors:
+      - "B. X. Shi"
+      - "A. Zen"
+      - "V. Kapil"
+      - "P. R. Nagy"
+      - "A. Grüneis"
+      - "A. Michaelides"
+    year: 2023
+    doi: null
+    url: null
+    bibtex: null
+  - key: "hanikel-2021-mof-water"
+    role: benchmark_method
+    title: "Evolution of water structures in metal-organic frameworks for improved atmospheric water harvesting"
+    authors:
+      - "N. Hanikel"
+      - "X. Pei"
+      - "S. Chheda"
+      - "H. Lyu"
+      - "W. Jeong"
+      - "J. Sauer"
+      - "L. Gagliardi"
+      - "O. M. Yaghi"
+    year: 2021
+    doi: null
+    url: null
+    bibtex: null
+  - key: "berger-2023-alkane-zeolite"
+    role: benchmark_method
+    title: "Molecular dynamics with chemical accuracy: Alkane adsorption in acidic zeolites"
+    authors:
+      - "F. Berger"
+      - "M. Rybicki"
+      - "J. Sauer"
+    year: 2023
+    doi: null
+    url: null
+    bibtex: null
+  - key: "berger-2021-butene-zeolite"
+    role: benchmark_method
+    title: "Dimerization of linear butenes and pentenes in an acidic zeolite (H-MFI)"
+    authors:
+      - "F. Berger"
+      - "J. Sauer"
+    year: 2021
+    doi: null
+    url: null
+    bibtex: null

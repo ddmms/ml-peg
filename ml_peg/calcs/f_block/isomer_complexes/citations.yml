@@ -1,0 +1,18 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "rose-2024-gfn-ff"
+    role: benchmark_method
+    title: "Fast and Robust Modeling of Lanthanide and Actinide Complexes, Biomolecules, and Molecular Crystals with the Extended GFN-FF Model"
+    authors:
+      - "T. Rose"
+      - "M. Bursch"
+      - "J.-M. Mewes"
+      - "S. Grimme"
+    year: 2024
+    doi: null
+    url: null
+    bibtex: null

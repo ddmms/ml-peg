@@ -1,0 +1,20 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "goerigk-2017-gmtkn55"
+    role: benchmark_method
+    title: "A look at the density functional theory zoo with the advanced GMTKN55 database for general main group thermochemistry, kinetics and noncovalent interactions"
+    authors:
+      - "L. Goerigk"
+      - "A. Hansen"
+      - "C. Bauer"
+      - "S. Ehrlich"
+      - "A. Najibi"
+      - "S. Grimme"
+    year: 2017
+    doi: null
+    url: null
+    bibtex: null

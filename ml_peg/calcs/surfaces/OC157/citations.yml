@@ -1,0 +1,56 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "chanussot-2021-oc20"
+    role: benchmark_method
+    title: "Open Catalyst 2020 (OC20) dataset and community challenges"
+    authors:
+      - "L. Chanussot"
+      - "A. Das"
+      - "S. Goyal"
+      - "T. Lavril"
+      - "M. Shuaibi"
+      - "M. Riviere"
+      - "K. Tran"
+      - "J. Heras-Domingo"
+      - "C. Ho"
+      - "W. Hu"
+      - "A. Palizhati"
+      - "A. Sriram"
+      - "B. Wood"
+      - "J. Yoon"
+      - "D. Parikh"
+      - "C. L. Zitnick"
+      - "Z. Ulissi"
+    year: 2021
+    doi: null
+    url: null
+    bibtex: null
+  - key: "tran-2023-oc22"
+    role: benchmark_method
+    title: "The Open Catalyst 2022 (OC22) data set and challenges for oxide electrocatalysts"
+    authors:
+      - "R. Tran"
+      - "J. Lan"
+      - "M. Shuaibi"
+      - "B. M. Wood"
+      - "S. Goyal"
+      - "A. Das"
+      - "J. Heras-Domingo"
+      - "A. Kolluru"
+      - "A. Rizvi"
+      - "N. Shoghi"
+      - "A. Sriram"
+      - "F. Therrien"
+      - "J. Abed"
+      - "O. Voznyy"
+      - "E. H. Sargent"
+      - "Z. Ulissi"
+      - "C. L. Zitnick"
+    year: 2023
+    doi: null
+    url: null
+    bibtex: null
