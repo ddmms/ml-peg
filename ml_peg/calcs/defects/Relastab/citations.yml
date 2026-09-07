@@ -1,0 +1,57 @@
+contributors:
+  - name: "ThomasWarford"
+    github: "ThomasWarford"
+    orcid: null
+
+citations:
+  - key: "allera-2025-activation-entropy"
+    role: benchmark_method
+    title: "Activation entropy of dislocation glide in body-centered cubic metals from atomistic simulations"
+    authors:
+      - "A. Allera"
+      - "T. D. Swinburne"
+      - "A. M. Goryaeva"
+      - "B. Bienvenu"
+      - "F. Ribeiro"
+      - "M. Perez"
+      - "M.-C. Marinica"
+      - "D. Rodney"
+    year: 2025
+    doi: null
+    url: null
+    bibtex: null
+  - key: "goryaeva-2020-distortion-scores"
+    role: benchmark_method
+    title: "Reinforcing materials modelling by encoding the structures of defects in crystalline solids into distortion scores"
+    authors:
+      - "A. M. Goryaeva"
+      - "C. Lapointe"
+      - "C. Dai"
+      - "J. Dérès"
+      - "J.-B. Maillet"
+      - "M.-C. Marinica"
+    year: 2020
+    doi: null
+    url: null
+    bibtex: null
+  - key: "soum-sidikov-2025-cawo4"
+    role: benchmark_method
+    title: "Calculation of crystal defects induced in CaWO4 cryogenic detector by 100 eV displacement cascades using a data driven force field"
+    authors:
+      - "G. Soum-Sidikov"
+      - "A. Boisard"
+      - "M. Loidl"
+      - "O. Stézowski"
+      - "A. Music"
+      - "G. Music"
+      - "Y. Zeng"
+      - "R. Cong"
+      - "T. Yang"
+      - "A. Echeverria"
+      - "L. Music"
+      - "D. Music"
+      - "V. Music"
+    year: 2025
+    doi: null
+    url: null
+    bibtex: null

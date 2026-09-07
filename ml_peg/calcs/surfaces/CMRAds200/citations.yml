@@ -1,0 +1,16 @@
+contributors:
+  - name: "Benjamin X. Shi"
+    github: null
+    orcid: null
+
+citations:
+  - key: "schmidt-2018-cmr"
+    role: benchmark_method
+    title: "Benchmark Database of Transition Metal Surface and Adsorption Energies from Many-Body Perturbation Theory"
+    authors:
+      - "P. S. Schmidt"
+      - "K. S. Thygesen"
+    year: 2018
+    doi: "10.1021/acs.jpcc.7b12258"
+    url: null
+    bibtex: null

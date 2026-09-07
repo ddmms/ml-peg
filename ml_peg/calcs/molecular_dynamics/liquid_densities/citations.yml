@@ -1,0 +1,16 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+    orcid: null
+
+citations:
+  - key: "weber-2025-longrange"
+    role: benchmark_method
+    title: "Efficient Long-Range Machine Learning Force Fields for Liquid and Materials Properties"
+    authors:
+      - "Weber"
+      - "et al."
+    year: 2025
+    doi: null
+    url: "https://arxiv.org/abs/2505.06462"
+    bibtex: null

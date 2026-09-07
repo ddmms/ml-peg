@@ -1,0 +1,18 @@
+contributors:
+  - name: "Giaan Kler-Young"
+    github: "gkleryoung"
+    orcid: null
+
+citations:
+  - key: "tchakoua-2022-sbh17"
+    role: benchmark_method
+    title: "SBH17: Benchmark database of barrier heights for dissociative chemisorption on transition metal surfaces"
+    authors:
+      - "T. Tchakoua"
+      - "N. Gerrits"
+      - "E. W. F. Smeets"
+      - "G. J. Kroes"
+    year: 2022
+    doi: null
+    url: null
+    bibtex: null

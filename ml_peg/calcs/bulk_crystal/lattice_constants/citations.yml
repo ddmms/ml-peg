@@ -1,0 +1,25 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "batatia-2025-mace-mp"
+    role: reference_data
+    title: "A foundation model for atomistic materials chemistry"
+    authors:
+      - "I. Batatia"
+      - "P. Benner"
+      - "Y. Chiang"
+      - "A. M. Elena"
+      - "D. P. Kovács"
+      - "J. Riebesell"
+      - "X. R. Advincula"
+      - "M. Asta"
+      - "M. Avaylon"
+      - "W. J. Baldwin"
+      - "F. Berger"
+    year: 2025
+    doi: null
+    url: null
+    bibtex: null

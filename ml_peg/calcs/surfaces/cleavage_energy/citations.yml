@@ -1,0 +1,16 @@
+contributors:
+  - name: "EszterVU"
+    github: "vue1999"
+    orcid: null
+
+citations:
+  - key: "mehdizadeh-2025-cleavage"
+    role: benchmark_method
+    title: "Surface stability modeling with universal machine learning interatomic potentials: a comprehensive cleavage energy benchmarking study"
+    authors:
+      - "A. Mehdizadeh"
+      - "P. Schindler"
+    year: 2025
+    doi: null
+    url: "https://iopscience.iop.org/article/10.1088/3050-287X/ae1408"
+    bibtex: null

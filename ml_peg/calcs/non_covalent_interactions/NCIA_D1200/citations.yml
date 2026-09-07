@@ -1,0 +1,15 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+    orcid: null
+
+citations:
+  - key: "rezac-2022-ncia-dispersion"
+    role: benchmark_method
+    title: "Non-Covalent Interactions Atlas benchmark data sets 5: London dispersion in an extended chemical space"
+    authors:
+      - "J. Řezáč"
+    year: 2022
+    doi: null
+    url: null
+    bibtex: null

@@ -34,7 +34,7 @@ from ml_peg.app.utils.utils import (
     sig_fig_format,
     weight_input_style,
 )
-from ml_peg.citations import BenchmarkCredits, Citation, ml_peg_citation
+from ml_peg.citations import BenchmarkCredits, Citation
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -1091,7 +1091,7 @@ def build_footer() -> html.Footer:
     )
 
 
-def build_framework_badge(framework_id: str, prominent: bool = False) -> Component:
+def build_framework_badge(framework_id: str) -> Component:
     """
     Build a visual framework attribution badge.
 
@@ -1099,9 +1099,6 @@ def build_framework_badge(framework_id: str, prominent: bool = False) -> Compone
     ----------
     framework_id
         Framework identifier for the benchmark.
-    prominent
-        Whether to render a larger badge for primary source attribution. Default is
-        False.
 
     Returns
     -------
@@ -1120,9 +1117,9 @@ def build_framework_badge(framework_id: str, prominent: bool = False) -> Compone
     badge_style = {
         "display": "inline-flex",
         "alignItems": "center",
-        "padding": "5px 12px" if prominent else "2px 8px",
+        "padding": "2px 8px",
         "borderRadius": "999px",
-        "fontSize": "13px" if prominent else "11px",
+        "fontSize": "11px",
         "fontWeight": "600",
         "letterSpacing": "0.02em",
         "textTransform": "uppercase",
@@ -1138,8 +1135,8 @@ def build_framework_badge(framework_id: str, prominent: bool = False) -> Compone
                 src=logo,
                 alt=f"{label} logo",
                 style={
-                    "width": "18px" if prominent else "14px",
-                    "height": "18px" if prominent else "14px",
+                    "width": "14px",
+                    "height": "14px",
                     "borderRadius": "50%",
                     "objectFit": "cover",
                 },
@@ -1265,25 +1262,24 @@ def build_benchmark_credit_components(
             "Original benchmark paper: ", html.Span("To be added"), "0"
         )
     elif not credits.citations:
-        # Devised for ML-PEG, so ML-PEG itself is the paper to cite
-        ml_peg = ml_peg_citation()
+        # No source to name, so the statement stands on its own without a label
         citation_line = html.Div(
-            [
-                html.Strong("Original benchmark paper:", style=CREDIT_LABEL_STYLE),
-                _citation_reference(ml_peg)
-                if ml_peg
-                else html.Div("ML-PEG", style={"marginTop": "2px"}),
-            ]
+            html.Strong("Devised for ML-PEG", style=CREDIT_LABEL_STYLE)
         )
     else:
+        # A benchmark built on earlier work rather than taken from it has no
+        # benchmark paper of its own to name
+        if not any(
+            citation.role == "benchmark_method" for citation in credits.citations
+        ):
+            label = "Built on:"
+        elif len(credits.citations) > 1:
+            label = "Original benchmark papers:"
+        else:
+            label = "Original benchmark paper:"
         citation_line = html.Div(
             [
-                html.Strong(
-                    "Original benchmark papers:"
-                    if len(credits.citations) > 1
-                    else "Original benchmark paper:",
-                    style=CREDIT_LABEL_STYLE,
-                ),
+                html.Strong(label, style=CREDIT_LABEL_STYLE),
                 *[_citation_reference(citation) for citation in credits.citations],
             ]
         )
@@ -1354,67 +1350,6 @@ def build_framework_citation(framework_id: str) -> Component:
     return Div(contents, style={"fontSize": "0.95rem", "lineHeight": "1.4"})
 
 
-def build_framework_attribution(framework_ids: Sequence[str]) -> list[Component]:
-    """
-    Build prominent attribution for benchmarks ported from other frameworks.
-
-    Parameters
-    ----------
-    framework_ids
-        Framework identifiers used to render attribution badges.
-
-    Returns
-    -------
-    list[Component]
-        Attribution banner, or an empty list for benchmarks native to ML-PEG.
-    """
-    source_frameworks = [
-        framework_id
-        for framework_id in framework_ids
-        if framework_id != "ml_peg"
-        and get_framework_config(framework_id).get("type") == "framework"
-    ]
-    if not source_frameworks:
-        return []
-    return [
-        Div(
-            [
-                html.Strong(
-                    "BENCHMARK ADAPTED FROM",
-                    style={"fontSize": "0.78rem", "letterSpacing": "0.08em"},
-                ),
-                *[
-                    Div(
-                        [
-                            build_framework_badge(framework_id, prominent=True),
-                            build_framework_citation(framework_id),
-                        ],
-                        style={
-                            "alignItems": "center",
-                            "display": "flex",
-                            "flexWrap": "wrap",
-                            "gap": "10px",
-                        },
-                    )
-                    for framework_id in source_frameworks
-                ],
-            ],
-            style={
-                "alignItems": "center",
-                "background": "#eff6ff",
-                "border": "2px solid #2563eb",
-                "borderRadius": "8px",
-                "display": "flex",
-                "flexWrap": "wrap",
-                "gap": "10px",
-                "margin": "8px 0 12px",
-                "padding": "10px 12px",
-                "width": "fit-content",
-            },
-        )
-    ]
-
-
 def build_test_layout(
     name: str,
     description: str,
@@ -1466,8 +1401,6 @@ def build_test_layout(
                 *[
                     build_framework_badge(framework_id)
                     for framework_id in framework_ids
-                    if framework_id == "ml_peg"
-                    or get_framework_config(framework_id).get("type") != "framework"
                 ],
             ],
             style={
@@ -1478,7 +1411,6 @@ def build_test_layout(
             },
         ),
         H3(description),
-        *build_framework_attribution(framework_ids),
         build_benchmark_credit_components(credits),
     ]
 

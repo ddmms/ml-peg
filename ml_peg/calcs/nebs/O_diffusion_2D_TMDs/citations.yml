@@ -1,0 +1,16 @@
+contributors:
+  - name: "Jad Jaafar"
+    github: "Jad-J3far"
+    orcid: null
+
+citations:
+  - key: "liu-2015-o-diffusion-tmd"
+    role: reference_data
+    title: "Oxygen adatom diffusion barriers on 2D transition metal dichalcogenides"
+    authors:
+      - "Liu"
+      - "et al."
+    year: null
+    doi: "10.1039/C4RA17320A"
+    url: null
+    bibtex: null

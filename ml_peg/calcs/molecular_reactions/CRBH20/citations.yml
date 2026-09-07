@@ -1,0 +1,16 @@
+contributors:
+  - name: "William Deng"
+    github: "Quantumplations"
+    orcid: null
+
+citations:
+  - key: "batatia-2024-mace-mp"
+    role: benchmark_method
+    title: "A foundation model for atomistic materials chemistry"
+    authors:
+      - "I. Batatia"
+      - "et al."
+    year: 2024
+    doi: "10.48550/arXiv.2401.00096"
+    url: null
+    bibtex: null

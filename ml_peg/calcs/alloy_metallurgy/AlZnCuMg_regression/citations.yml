@@ -1,0 +1,33 @@
+contributors:
+  []
+
+citations:
+  - key: "saal-2013-oqmd"
+    role: reference_data
+    title: "Materials Design and Discovery with High-Throughput Density Functional Theory: The Open Quantum Materials Database (OQMD)"
+    authors:
+      - "J. E. Saal"
+      - "S. Kirklin"
+      - "M. Aykol"
+      - "B. Meredig"
+      - "C. Wolverton"
+    year: 2013
+    doi: "10.1007/s11837-013-0755-4"
+    url: null
+    bibtex: null
+  - key: "kirklin-2015-oqmd"
+    role: reference_data
+    title: "The Open Quantum Materials Database (OQMD): assessing the accuracy of DFT formation energies"
+    authors:
+      - "S. Kirklin"
+      - "J. E. Saal"
+      - "B. Meredig"
+      - "A. Thompson"
+      - "J. W. Doak"
+      - "M. Aykol"
+      - "S. Rühl"
+      - "C. Wolverton"
+    year: 2015
+    doi: "10.1038/npjcompumats.2015.10"
+    url: null
+    bibtex: null

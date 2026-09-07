@@ -12,34 +12,31 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
-from conftest import CitationReporter
-from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app.utils import build_components
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
-    build_framework_attribution,
     build_framework_citation,
     build_test_layout,
 )
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.citations import (
-    CITATION_FILE,
     FRAMEWORKS_FILE,
     SUMMARY_WIDTH,
     BenchmarkCredits,
     Citation,
     CitationMetadataError,
     Contributor,
+    app_citation_metadata_path,
     build_run_citations,
+    citation_metadata_path,
     collect_benchmark_credits,
     format_citation_summary,
     load_benchmark_credits,
     load_framework_citations,
     load_model_citations,
-    ml_peg_citation,
-    write_citation_bundle,
 )
 from ml_peg.models import models_file
+from ml_peg.pytest_plugin import CitationReporter
 
 
 def _walk_components(component: Component) -> Iterator[Component]:
@@ -131,67 +128,29 @@ def test_empty_citations_is_distinct_from_missing_metadata(tmp_path: Path) -> No
 
 def test_collect_benchmark_credits_reports_missing(tmp_path: Path) -> None:
     """Collection distinguishes populated metadata from missing placeholders."""
-    analysis_root = tmp_path / "analysis"
     first_script = tmp_path / "calcs" / "category" / "first" / "calc_first.py"
     second_script = tmp_path / "calcs" / "category" / "second" / "calc_second.py"
-    _write_credits(analysis_root / "category" / "first" / "citations.yml")
+    _write_credits(first_script.parent / "citations.yml")
 
-    credits, missing = collect_benchmark_credits(
-        [first_script, second_script], analysis_root
-    )
+    credits, missing = collect_benchmark_credits([first_script, second_script])
 
     assert tuple(credits) == ("category/first",)
     assert missing == ("category/second",)
 
 
-def test_write_citation_bundle_deduplicates_sources(tmp_path: Path) -> None:
-    """Repeated sources produce one BibTeX entry but retain per-benchmark credit."""
-    first = BenchmarkCredits(
-        contributors=(Contributor("First Implementer"),), citations=(TEST_CITATION,)
+def test_citation_metadata_is_owned_by_calculations() -> None:
+    """Calc runs and app layouts resolve the same benchmark-owned metadata."""
+    aconfl_script = CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"
+
+    assert (
+        citation_metadata_path(aconfl_script) == aconfl_script.parent / "citations.yml"
     )
-    second = BenchmarkCredits(
-        contributors=(Contributor("Second Implementer"),), citations=(TEST_CITATION,)
+    assert app_citation_metadata_path("conformers", "ACONFL", CALCS_ROOT) == (
+        aconfl_script.parent / "citations.yml"
     )
-
-    markdown_path, bibtex_path = write_citation_bundle(
-        {"category/first": first, "category/second": second},
-        tmp_path,
-        missing_benchmarks=("category/third",),
+    assert app_citation_metadata_path("carbon", "CHO_GAP", CALCS_ROOT) == (
+        CALCS_ROOT / "carbon" / "CHO-GAP" / "citations.yml"
     )
-
-    markdown = markdown_path.read_text()
-    assert "First Implementer" in markdown
-    assert "Second Implementer" in markdown
-    assert "category/third" in markdown
-    assert bibtex_path.read_text().count("@misc{test-source") == 1
-
-
-def test_bundle_marks_ml_peg_only_benchmarks(tmp_path: Path) -> None:
-    """A benchmark with no external source is not reported as incomplete."""
-    markdown_path, _ = write_citation_bundle({"category/own": _credits()}, tmp_path)
-
-    markdown = markdown_path.read_text()
-    assert "Devised for ML-PEG" in markdown
-    assert "Incomplete metadata" not in markdown
-
-
-def test_bundle_reports_models_and_missing_model_citations(tmp_path: Path) -> None:
-    """Models of the run are listed, and uncited models are flagged as incomplete."""
-    model_citation = Citation(
-        key="cited-model", title="Model paper", authors=("M. Author",), year=2026
-    )
-
-    markdown_path, bibtex_path = write_citation_bundle(
-        {},
-        tmp_path,
-        models={"cited-model": model_citation, "uncited-model": None},
-    )
-
-    markdown = markdown_path.read_text()
-    assert "M. Author (2026). Model paper." in markdown
-    assert "- `uncited-model`: To be added" in markdown
-    assert "Model citations have not yet been supplied for:" in markdown
-    assert "@misc{cited-model" in bibtex_path.read_text()
 
 
 def test_framework_citations_cover_only_source_frameworks() -> None:
@@ -220,45 +179,6 @@ def test_repository_framework_citations_are_valid() -> None:
             assert citation.title, label
 
 
-def test_bundle_reports_source_frameworks(tmp_path: Path) -> None:
-    """Framework citations appear once per run, and unfilled ones are flagged."""
-    filled = Citation(
-        key="mlip_audit",
-        title="MLIPAudit",
-        authors=("A. Author",),
-        year=2025,
-        role="upstream_framework",
-    )
-
-    markdown_path, bibtex_path = write_citation_bundle(
-        {},
-        tmp_path,
-        frameworks={"MLIP Audit": filled, "MLIP Arena": None},
-    )
-
-    markdown = markdown_path.read_text()
-    assert "## Source frameworks" in markdown
-    assert "- `MLIP Audit`: A. Author (2025). MLIPAudit." in markdown
-    assert "Source framework citations have not yet been supplied for:" in markdown
-    assert "- `MLIP Arena`" in markdown
-    assert "@misc{mlip_audit" in bibtex_path.read_text()
-
-
-def test_ml_peg_citation_matches_citation_cff(tmp_path: Path) -> None:
-    """The repository citation is generated from CITATION.cff, not duplicated."""
-    document = safe_load(CITATION_FILE.read_text())
-    citation = ml_peg_citation()
-
-    assert citation is not None
-    assert citation.doi == "10.5281/zenodo.16904444"
-    assert len(citation.authors) == len(document["authors"])
-    for author in document["authors"]:
-        assert f"{author['given-names']} {author['family-names']}" in citation.authors
-
-    bibtex = write_citation_bundle({}, tmp_path)[1].read_text()
-    assert bibtex.startswith("@software{ml_peg,")
-
-
 def test_benchmark_runs_print_guidance_without_writing_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -266,7 +186,7 @@ def test_benchmark_runs_print_guidance_without_writing_files(
     monkeypatch.chdir(tmp_path)
 
     summary = build_run_citations(
-        [ANALYSIS_ROOT / "conformers" / "ACONFL" / "analyse_ACONFL.py"],
+        [CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"],
         model_names=["mace-mp-0a"],
     )
 
@@ -524,6 +444,35 @@ def test_documentation_is_a_direct_link() -> None:
     assert "View documentation" not in _layout(None)
 
 
+INSPIRED_CITATION = Citation(
+    key="inspiration",
+    title="Prior platform this benchmark builds on",
+    authors=("Prior Author",),
+    year=2025,
+    role="inspired_by",
+)
+
+
+def test_inspired_benchmark_is_not_called_an_original_paper() -> None:
+    """A benchmark built on earlier work has no benchmark paper to name."""
+    rendered = str(build_benchmark_credit_components(_credits(INSPIRED_CITATION)))
+    summary = format_citation_summary({"category/test": _credits(INSPIRED_CITATION)})
+
+    assert "Built on:" in rendered
+    assert "Original benchmark paper" not in rendered
+    assert "(inspired by)" in rendered
+    assert "built on:" in summary
+    assert "benchmark citation" not in summary
+
+
+def test_a_benchmark_paper_still_wins_the_heading() -> None:
+    """Mixing in an inspiration does not demote a real benchmark paper."""
+    both = _credits(TEST_CITATION, INSPIRED_CITATION)
+
+    assert "Original benchmark papers:" in str(build_benchmark_credit_components(both))
+    assert "benchmark citations:" in format_citation_summary({"category/test": both})
+
+
 def test_citation_links_the_title_and_doi_only() -> None:
     """The title and DOI are hyperlinks, so author text is not styled as a link."""
     citation = Citation(
@@ -576,15 +525,18 @@ def test_missing_credit_renders_placeholders() -> None:
     assert rendered.count("To be added") == 2
 
 
-def test_ml_peg_only_benchmark_cites_ml_peg() -> None:
-    """A benchmark devised for ML-PEG shows the ML-PEG citation in the paper slot."""
-    ml_peg = ml_peg_citation()
+def test_ml_peg_only_benchmark_says_so_plainly() -> None:
+    """A benchmark devised for ML-PEG says just that, with no source to name."""
     rendered = str(build_benchmark_credit_components(_credits()))
+    summary = format_citation_summary({"category/test": _credits()})
 
-    assert ml_peg is not None
-    for author in ml_peg.authors:
-        assert author in rendered
-    assert ml_peg.link in rendered
+    assert "Devised for ML-PEG" in rendered
+    assert "Devised for ML-PEG" in summary
+    # No heading introducing a paper, and no ML-PEG citation standing in for one
+    assert "Original benchmark paper" not in rendered
+    assert "Built on" not in rendered
+    assert "built on" not in summary
+    assert "benchmark citation" not in summary
     assert "To be added" not in rendered.split("Implemented in ML-PEG by")[0]
 
 
@@ -629,14 +581,6 @@ def test_role_tag_shown_only_where_it_adds_meaning() -> None:
 
     assert "(benchmark paper)" not in rendered
     assert "(reference data)" in rendered
-
-
-def test_external_framework_attribution_is_prominent() -> None:
-    """Framework ports receive a dedicated, always-visible attribution banner."""
-    rendered = str(build_framework_attribution(["ml_peg", "mlip_audit"])[0])
-
-    assert "BENCHMARK ADAPTED FROM" in rendered
-    assert "MLIP Audit" in rendered
 
 
 def test_framework_citation_falls_back_to_the_paper_link(
@@ -726,10 +670,7 @@ def test_citation_reporter_records_only_executed_benchmarks(tmp_path: Path) -> N
         _Report("call", False, "ml_peg/analysis/conformers/ran/analyse_ran.py")
     )
 
-    assert reporter.script_paths == {
-        CALCS_ROOT / "conformers" / "ran" / "calc_ran.py",
-        ANALYSIS_ROOT / "conformers" / "ran" / "analyse_ran.py",
-    }
+    assert reporter.script_paths == {CALCS_ROOT / "conformers" / "ran" / "calc_ran.py"}
 
 
 class _Item:
@@ -764,13 +705,15 @@ def test_citation_reporter_records_framework_markers(tmp_path: Path) -> None:
 
     reporter.pytest_collection_modifyitems(
         [
-            _Item("ml_peg/analysis/conformers/ported/analyse_ported.py", "mlip_audit"),
-            _Item("ml_peg/analysis/conformers/own/analyse_own.py"),
+            _Item("ml_peg/calcs/conformers/ported/calc_ported.py", "mlip_audit"),
+            _Item(
+                "ml_peg/analysis/conformers/ignored/analyse_ignored.py", "mlip_audit"
+            ),
         ]
     )
 
     assert reporter.framework_ids == {
-        ANALYSIS_ROOT / "conformers" / "ported" / "analyse_ported.py": {"mlip_audit"}
+        CALCS_ROOT / "conformers" / "ported" / "calc_ported.py": {"mlip_audit"}
     }
 
 
@@ -790,5 +733,5 @@ def test_citation_reporter_ignores_non_benchmark_tests(tmp_path: Path) -> None:
 
 def test_repository_citation_metadata_is_valid() -> None:
     """Validate every populated benchmark citation file in the repository."""
-    for path in ANALYSIS_ROOT.glob("*/*/citations.yml"):
+    for path in CALCS_ROOT.glob("*/*/citations.yml"):
         load_benchmark_credits(path)

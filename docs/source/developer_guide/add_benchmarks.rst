@@ -60,14 +60,17 @@ Recording citations and implementation credit
 ----------------------------------------------
 
 Every benchmark should include
-``ml_peg/analysis/[category]/[benchmark_name]/citations.yml``. Copy
-``ml_peg/analysis/citations.example.yml`` and replace its placeholders. Keep the
+``ml_peg/calcs/[category]/[benchmark_name]/citations.yml``. Copy
+``ml_peg/calcs/citations.example.yml`` and replace its placeholders. Keep the
 people who implemented the ML-PEG benchmark under ``contributors`` and the authors of
 the original methods and data under ``citations``; these are deliberately separate
 forms of credit.
 
-Use one of ``benchmark_method``, ``reference_data``, ``reference_method``, or
-``upstream_framework`` for each citation's ``role``. DOI, URL, ORCID, GitHub, and
+Use one of ``benchmark_method``, ``inspired_by``, ``reference_data``,
+``reference_method``, or ``upstream_framework`` for each citation's ``role``. Use
+``inspired_by`` where a benchmark was built on earlier work rather than taken from
+it: such a benchmark has no original paper of its own, so the app and the run
+summary label its sources "built on" instead of naming a benchmark paper. DOI, URL, ORCID, GitHub, and
 BibTeX fields may remain ``null`` until a maintainer adds them manually.
 
 If the benchmark was devised for ML-PEG and has no separate source publication, keep
@@ -80,19 +83,22 @@ New MLIP models take their citation from an optional ``citation`` block in
 ``year``.
 
 This metadata supplies the citation and implementer labels in the interactive app.
-Running a benchmark also reports what to cite. At the end of any calculation or
-analysis session, whether started with ``ml_peg calc``, ``ml_peg analyse``, or
-``pytest`` directly, the citations and implementers of the benchmarks that actually
-ran are printed to the terminal, along with any citation placeholders that are still
-incomplete.
+Running a calculation also reports what to cite. At the end of a calculation session,
+whether started with ``ml_peg calc`` or ``pytest`` directly, the citations and
+implementers of the benchmarks that actually ran are printed to the terminal, along
+with any citation placeholders that are still incomplete. Analysis sessions do not
+repeat this guidance.
 
 For benchmarks imported from another framework or leaderboard, register that source
 in ``ml_peg/app/utils/frameworks.yml`` and fill its framework-level ``citation``
 block. That is the only place the framework paper needs recording: benchmarks tagged
 with a ``type: framework`` source show its citation in a prominent banner, and the
-generated citation files pick it up from the benchmark's
-``@pytest.mark.framework(...)`` marker. Do not repeat the framework paper in each
-benchmark's ``citations.yml``.
+terminal citation guidance picks it up from the benchmark's
+``@pytest.mark.framework(...)`` marker on the calculation test, matching the app's
+``framework_ids``. Use the same marker on the analysis test when framework filtering
+should apply there. Only frameworks belonging to calculations that actually ran
+appear in the guidance. Do not repeat the framework paper in each benchmark's
+``citations.yml``.
 
 Sources registered as ``type: paper`` rather than ``type: framework`` are shown as a
 small badge only, and contribute no derived citation. If such a paper should be cited

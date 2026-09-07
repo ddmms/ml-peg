@@ -85,8 +85,7 @@
     and the papers for the MLIP models you used. Benchmark implementation contributors
     are shown separately so that porting or implementing a test receives credit
     without incorrectly making the implementer an author of the original work. Where a
-    benchmark was devised for ML-PEG, citing ML-PEG is enough. Running ml_peg calc or
-    ml_peg analyse prints the citations and DOIs for the benchmarks and models of
-    that run when it finishes, along with any citation placeholders that still need
-    to be completed.
+    benchmark was devised for ML-PEG, citing ML-PEG is enough. Running ml_peg calc
+    prints the citations and DOIs for the benchmarks and models of that run when it
+    finishes, along with any citation placeholders that still need to be completed.
   docs_url: null

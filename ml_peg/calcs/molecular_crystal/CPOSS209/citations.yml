@@ -1,0 +1,18 @@
+contributors:
+  - name: "Mikołaj Gawkowski"
+    github: null
+    orcid: null
+
+citations:
+  - key: "price-2025-cposs209"
+    role: benchmark_method
+    title: "CPOSS209 crystal structure set"
+    authors:
+      - "Louise S. Price"
+      - "Matteo Paloni"
+      - "Matteo Salvalaglio"
+      - "Sarah L. Price"
+    year: 2025
+    doi: "10.1021/acs.cgd.5c00255"
+    url: null
+    bibtex: null

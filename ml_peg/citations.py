@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 import textwrap
 from typing import TYPE_CHECKING, Any
@@ -14,7 +13,6 @@ from yaml import safe_load
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-CITATION_FILE = Path(__file__).parent.parent / "CITATION.cff"
 FRAMEWORKS_FILE = Path(__file__).parent / "app" / "utils" / "frameworks.yml"
 
 # Width of the citation guidance printed after a benchmark run
@@ -22,12 +20,14 @@ SUMMARY_WIDTH = 79
 
 CITATION_ROLES = {
     "benchmark_method",
+    "inspired_by",
     "reference_data",
     "reference_method",
     "upstream_framework",
 }
 CITATION_ROLE_LABELS = {
     "benchmark_method": "benchmark paper",
+    "inspired_by": "inspired by",
     "reference_data": "reference data",
     "reference_method": "reference method",
     "upstream_framework": "source framework",
@@ -338,74 +338,54 @@ def load_optional_benchmark_credits(path: str | Path) -> BenchmarkCredits | None
     return load_benchmark_credits(path) if path.is_file() else None
 
 
-def citation_metadata_path(script_path: str | Path, analysis_root: str | Path) -> Path:
+def citation_metadata_path(script_path: str | Path) -> Path:
     """
     Return the citation metadata path corresponding to a benchmark script.
 
     Parameters
     ----------
     script_path
-        Path to a ``calc_*.py`` or ``analyse_*.py`` benchmark script.
-    analysis_root
-        Root of the analysis tree holding the metadata files.
+        Path to a ``calc_*.py`` benchmark script.
 
     Returns
     -------
     Path
         Path to the benchmark's ``citations.yml``, which may not exist.
     """
-    script_path = Path(script_path)
-    return (
-        Path(analysis_root)
-        / script_path.parent.parent.name
-        / script_path.parent.name
-        / "citations.yml"
-    )
+    return Path(script_path).parent / "citations.yml"
 
 
-@lru_cache(maxsize=1)
-def ml_peg_citation() -> Citation | None:
+def app_citation_metadata_path(
+    category: str, benchmark: str, calcs_root: str | Path
+) -> Path:
     """
-    Build the ML-PEG software citation from ``CITATION.cff``.
+    Return calc-owned citation metadata for an app benchmark.
+
+    The app and calc trees normally use identical directory names. The fallback
+    handles the existing ``CHO_GAP`` app directory whose calc directory is
+    ``CHO-GAP``.
+
+    Parameters
+    ----------
+    category
+        Benchmark category, as named in the app tree.
+    benchmark
+        Benchmark name, as named in the app tree.
+    calcs_root
+        Root of the calculation tree holding the metadata files.
 
     Returns
     -------
-    Citation | None
-        Repository citation, or None if ``CITATION.cff`` is not distributed alongside
-        the installed package.
+    Path
+        Path to the benchmark's ``citations.yml``, which may not exist.
     """
-    if not CITATION_FILE.is_file():
-        return None
-
-    document = safe_load(CITATION_FILE.read_text())
-    authors = tuple(
-        " ".join(
-            part
-            for part in (author.get("given-names"), author.get("family-names"))
-            if part
-        )
-        for author in document.get("authors", [])
-    )
-    doi = next(
-        (
-            identifier["value"]
-            for identifier in document.get("identifiers", [])
-            if identifier.get("type") == "doi"
-        ),
-        None,
-    )
-    title = document["title"]
-    if document.get("abstract"):
-        title = f"{title}: {document['abstract']}"
-
-    return Citation(
-        key="ml_peg",
-        title=title,
-        authors=authors,
-        doi=doi,
-        url=document.get("repository-code"),
-        entry_type="software",
-    )
+    category_path = Path(calcs_root) / category
+    benchmark_path = category_path / benchmark
+    if not benchmark_path.is_dir():
+        hyphenated_path = category_path / benchmark.replace("_", "-")
+        if hyphenated_path.is_dir():
+            benchmark_path = hyphenated_path
+    return benchmark_path / "citations.yml"
 
 
 def load_model_citations(
@@ -458,11 +438,10 @@ def load_framework_citations(
     framework_ids: Iterable[str],
 ) -> dict[str, Citation | None]:
     """
-    Load citations for the frameworks a set of benchmarks was adapted from.
+    Load citations for the frameworks a set of benchmarks was taken from.
 
     Only entries registered as ``type: framework`` in ``frameworks.yml`` are
-    included, matching the benchmarks that receive a prominent source-framework
-    banner in the app. ML-PEG itself is never a source framework.
+    included. ML-PEG itself is never a source framework.
 
     Parameters
     ----------
@@ -496,213 +475,6 @@ def load_framework_citations(
             url=entry.get("paper_url"),
         )
     return citations
-
-
-def _deduplicate_citations(citations: Iterable[Citation]) -> tuple[Citation, ...]:
-    """
-    Deduplicate sources by DOI, then by citation key.
-
-    Parameters
-    ----------
-    citations
-        Citations to deduplicate, possibly repeated across benchmarks.
-
-    Returns
-    -------
-    tuple[Citation, ...]
-        One citation per distinct source, keeping first occurrences.
-    """
-    unique: dict[str, Citation] = {}
-    for citation in citations:
-        identifier = (
-            f"doi:{citation.doi.lower()}"
-            if citation.doi
-            else f"key:{citation.key.lower()}"
-        )
-        unique.setdefault(identifier, citation)
-    return tuple(unique.values())
-
-
-def _citation_bibtex(citation: Citation) -> str:
-    """
-    Return supplied BibTeX or a minimal generated entry.
-
-    Parameters
-    ----------
-    citation
-        Citation to render.
-
-    Returns
-    -------
-    str
-        BibTeX entry for `citation`.
-    """
-    if citation.bibtex:
-        return citation.bibtex.strip()
-
-    fields = [
-        f"  title = {{{citation.title}}}",
-        f"  author = {{{' and '.join(citation.authors)}}}",
-    ]
-    if citation.year is not None:
-        fields.append(f"  year = {{{citation.year}}}")
-    if citation.doi:
-        fields.append(f"  doi = {{{citation.doi}}}")
-    if citation.url:
-        fields.append(f"  url = {{{citation.url}}}")
-    return f"@{citation.entry_type}{{{citation.key},\n" + ",\n".join(fields) + "\n}"
-
-
-def _benchmark_citation_lines(credits: BenchmarkCredits) -> list[str]:
-    """
-    Return Markdown bullets describing one benchmark's sources.
-
-    Parameters
-    ----------
-    credits
-        Credits for one benchmark.
-
-    Returns
-    -------
-    list[str]
-        Markdown bullets, noting where ML-PEG itself is the only citation.
-    """
-    if not credits.citations:
-        return [
-            "- Devised for ML-PEG. No source beyond ML-PEG itself needs to be cited."
-        ]
-    return [
-        f"- {citation.reference}"
-        + (f" [{citation.role_label}]" if citation.role_label else "")
-        for citation in credits.citations
-    ]
-
-
-# Not currently wired into any command: runs print guidance rather than writing files
-def write_citation_bundle(
-    benchmarks: Mapping[str, BenchmarkCredits],
-    output_dir: str | Path,
-    missing_benchmarks: Iterable[str] = (),
-    models: Mapping[str, Citation | None] | None = None,
-    frameworks: Mapping[str, Citation | None] | None = None,
-) -> tuple[Path, Path]:
-    """
-    Write human-readable and BibTeX citation guidance for a benchmark run.
-
-    Parameters
-    ----------
-    benchmarks
-        Mapping of benchmark identifiers to their citation metadata.
-    output_dir
-        Directory in which to write ``CITATIONS.md`` and ``CITATIONS.bib``.
-    missing_benchmarks
-        Benchmarks which ran but do not yet provide citation metadata.
-    models
-        Mapping of MLIP model name to its citation, or None where not yet supplied.
-    frameworks
-        Mapping of source-framework label to its citation, or None where not yet
-        supplied.
-
-    Returns
-    -------
-    tuple[Path, Path]
-        Paths to the Markdown and BibTeX files.
-    """
-    models = models or {}
-    frameworks = frameworks or {}
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    markdown_path = output_dir / "CITATIONS.md"
-    bibtex_path = output_dir / "CITATIONS.bib"
-
-    ml_peg = ml_peg_citation()
-    lines = [
-        "# Citation guidance",
-        "",
-        "This file covers the benchmarks and models of this run only.",
-        "Benchmark implementers are credited separately from publication authors, and",
-        "are not authors of the work you cite.",
-        "",
-        "## ML-PEG",
-        "",
-        f"- {ml_peg.reference}" if ml_peg else "- See CITATION.cff in the repository.",
-    ]
-
-    if benchmarks:
-        lines.extend(["", "## Benchmark sources"])
-        for benchmark, credits in benchmarks.items():
-            lines.extend(
-                ["", f"### `{benchmark}`", "", *_benchmark_citation_lines(credits)]
-            )
-
-        lines.extend(["", "## Benchmark implementation", ""])
-        for benchmark, credits in benchmarks.items():
-            names = ", ".join(item.name for item in credits.contributors)
-            lines.append(f"- `{benchmark}`: {names or 'Not yet supplied'}")
-
-    if frameworks:
-        lines.extend(["", "## Source frameworks", ""])
-        for label, citation in frameworks.items():
-            lines.append(
-                f"- `{label}`: {citation.reference if citation else 'To be added'}"
-            )
-
-    if models:
-        lines.extend(["", "## Models", ""])
-        for name, citation in models.items():
-            lines.append(
-                f"- `{name}`: {citation.reference if citation else 'To be added'}"
-            )
-
-    missing_models = sorted(name for name, citation in models.items() if not citation)
-    missing_frameworks = sorted(
-        label for label, citation in frameworks.items() if not citation
-    )
-    missing = sorted(set(missing_benchmarks))
-    if missing or missing_models or missing_frameworks:
-        lines.extend(["", "## Incomplete metadata", ""])
-        if missing:
-            lines.extend(
-                [
-                    "Benchmark citation metadata has not yet been supplied for:",
-                    "",
-                    *(f"- `{benchmark}`" for benchmark in missing),
-                    "",
-                ]
-            )
-        if missing_frameworks:
-            lines.extend(
-                [
-                    "Source framework citations have not yet been supplied for:",
-                    "",
-                    *(f"- `{label}`" for label in missing_frameworks),
-                    "",
-                ]
-            )
-        if missing_models:
-            lines.extend(
-                [
-                    "Model citations have not yet been supplied for:",
-                    "",
-                    *(f"- `{name}`" for name in missing_models),
-                ]
-            )
-
-    markdown_path.write_text("\n".join(lines).rstrip() + "\n")
-
-    sources = [citation for citation in (ml_peg,) if citation]
-    sources.extend(
-        citation for credits in benchmarks.values() for citation in credits.citations
-    )
-    sources.extend(citation for citation in frameworks.values() if citation)
-    sources.extend(citation for citation in models.values() if citation)
-    bibtex_path.write_text(
-        "\n\n".join(
-            _citation_bibtex(citation) for citation in _deduplicate_citations(sources)
-        )
-        + "\n"
-    )
-    return markdown_path, bibtex_path
 
 
 def _wrap(text: str, indent: str, continuation: str | None = None) -> list[str]:
@@ -750,6 +522,26 @@ def _section(title: str) -> list[str]:
         Blank line, heading, and rule.
     """
     return ["", f"  {title}", "  " + "-" * (SUMMARY_WIDTH - 4)]
+
+
+def _citation_heading(citations: Sequence[Citation]) -> str:
+    """
+    Return the heading introducing a benchmark's sources.
+
+    Parameters
+    ----------
+    citations
+        Sources listed for one benchmark.
+
+    Returns
+    -------
+    str
+        Heading matching what the sources are. A benchmark built on earlier work
+        rather than taken from it has no benchmark paper to name.
+    """
+    if not any(citation.role == "benchmark_method" for citation in citations):
+        return "built on"
+    return f"benchmark citation{'s' if len(citations) > 1 else ''}"
 
 
 def _citation_lines(citation: Citation, indent: str) -> list[str]:
@@ -837,14 +629,12 @@ def format_citation_summary(
                     ]
                 )
                 continue
-            plural = "s" if len(credits.citations) > 1 else ""
-            lines.append(f"      benchmark citation{plural}:")
-            for citation in credits.citations:
-                lines.extend(_citation_lines(citation, "        "))
-            if not credits.citations:
-                lines.extend(
-                    _wrap("Devised for ML-PEG, no further citation needed.", "        ")
-                )
+            if credits.citations:
+                lines.append(f"      {_citation_heading(credits.citations)}:")
+                for citation in credits.citations:
+                    lines.extend(_citation_lines(citation, "        "))
+            else:
+                lines.append("      Devised for ML-PEG")
             names = ", ".join(item.name for item in credits.contributors)
             lines.append("      implemented in ML-PEG by:")
             lines.extend(
@@ -927,9 +717,7 @@ def build_run_citations(
     str
         Citation guidance for printing to the terminal.
     """
-    from ml_peg.analysis import ANALYSIS_ROOT
-
-    benchmarks, missing = collect_benchmark_credits(sorted(script_paths), ANALYSIS_ROOT)
+    benchmarks, missing = collect_benchmark_credits(sorted(script_paths))
     return format_citation_summary(
         benchmarks,
         missing,
@@ -939,7 +727,7 @@ def build_run_citations(
 
 
 def collect_benchmark_credits(
-    script_paths: Sequence[str | Path], analysis_root: str | Path
+    script_paths: Sequence[str | Path],
 ) -> tuple[dict[str, BenchmarkCredits], tuple[str, ...]]:
     """
     Collect available credits and missing identifiers for benchmark scripts.
@@ -948,8 +736,6 @@ def collect_benchmark_credits(
     ----------
     script_paths
         Benchmark scripts to collect credits for.
-    analysis_root
-        Root of the analysis tree holding the metadata files.
 
     Returns
     -------
@@ -962,7 +748,7 @@ def collect_benchmark_credits(
     for script_path in script_paths:
         script_path = Path(script_path)
         benchmark = f"{script_path.parent.parent.name}/{script_path.parent.name}"
-        metadata_path = citation_metadata_path(script_path, analysis_root)
+        metadata_path = citation_metadata_path(script_path)
         credits = load_optional_benchmark_credits(metadata_path)
         if credits is None:
             missing.add(benchmark)

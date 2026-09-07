@@ -1,0 +1,15 @@
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    orcid: null
+
+citations:
+  - key: "mp-19017"
+    role: reference_data
+    title: "Li diffusion barrier reference data"
+    authors:
+      - "Materials Project"
+    year: null
+    doi: "10.1149/1.1633511"
+    url: null
+    bibtex: null

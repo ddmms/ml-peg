@@ -1,0 +1,16 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    orcid: null
+
+citations:
+  - key: "brew-2025-wiggle150"
+    role: benchmark_method
+    title: "Wiggle150: Benchmarking Density Functionals and Neural Network Potentials on Highly Strained Conformers"
+    authors:
+      - "R. R. Brew"
+      - "et al."
+    year: 2025
+    doi: null
+    url: null
+    bibtex: null

@@ -1,0 +1,18 @@
+contributors:
+  - name: "ttompa"
+    github: "ttompa"
+    orcid: null
+
+citations:
+  - key: "zhang-2023-iron"
+    role: reference_data
+    title: "Efficiency, Accuracy, and Transferability of Machine Learning Potentials: Application to Dislocations and Cracks in Iron"
+    authors:
+      - "L. Zhang"
+      - "G. Csányi"
+      - "E. van der Giessen"
+      - "F. Maresca"
+    year: 2023
+    doi: null
+    url: "https://arxiv.org/abs/2307.10072"
+    bibtex: null

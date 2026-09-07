@@ -1,0 +1,16 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    orcid: null
+
+citations:
+  - key: "dejong-2015-elasticity"
+    role: benchmark_method
+    title: "Charting the complete elastic properties of inorganic crystalline compounds"
+    authors:
+      - "M. de Jong"
+      - "et al."
+    year: 2015
+    doi: null
+    url: null
+    bibtex: null
