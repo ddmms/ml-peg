@@ -31,6 +31,18 @@ mlip_audit:
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
 
+matbench-discovery:
+  label: Matbench Discovery
+  color: "#061e25"
+  text_color: "#ffffff"
+  url: "https://matbench-discovery.materialsproject.org"
+  logo: "https://matbench-discovery.materialsproject.org/favicon.svg"
+  tooltip: "Benchmarks adapted from Matbench Discovery"
+  description: "Matbench Discovery evaluates machine-learned interatomic potentials for materials discovery, relaxed crystal structures, and diatomic interactions. ML-PEG runs the contributed benchmarks on its own model selection."
+  project_url: "https://matbench-discovery.materialsproject.org"
+  paper_url: "https://doi.org/10.1038/s42256-025-01055-1"
+  github: "https://github.com/janosh/matbench-discovery"
+
 mace-multihead:
   label: Multihead Cross Learning
   type: paper
