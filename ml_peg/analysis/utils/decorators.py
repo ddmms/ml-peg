@@ -27,6 +27,7 @@ from ml_peg.analysis.utils.utils import (
     calc_table_scores,
     sample_density_grid,
 )
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -169,7 +170,9 @@ def plot_parity(
                     x=lims,
                     y=lims,
                     mode="lines",
+                    name=PARITY_LINE_NAME,
                     showlegend=False,
+                    hoverinfo="skip",
                 )
             )
 
@@ -324,7 +327,9 @@ def cell_to_scatter(
                             x=lims,
                             y=lims,
                             mode="lines",
+                            name=PARITY_LINE_NAME,
                             showlegend=False,
+                            hoverinfo="skip",
                         )
                     )
 
@@ -924,7 +929,9 @@ def plot_density_scatter(
                     x=[line_start, line_end],
                     y=[line_start, line_end],
                     mode="lines",
+                    name=PARITY_LINE_NAME,
                     showlegend=False,
+                    hoverinfo="skip",
                     line={"color": "black", "dash": "dash"},
                     visible=True,
                 )
