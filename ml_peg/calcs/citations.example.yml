@@ -1,0 +1,26 @@
+# Copy this file into <category>/<benchmark>/citations.yml and replace every TODO.
+#
+# contributors: whoever implemented this benchmark in ML-PEG. They are credited as
+# implementers, not as authors of the work cited below.
+#
+# citations: the original papers and datasets a user of this benchmark must cite.
+# Leave the list empty if the benchmark was devised for ML-PEG and has no separate
+# source publication. That is different from deleting this file, which marks the
+# metadata as missing.
+contributors:
+  - name: TODO
+    github: null  # TODO: add manually if wanted
+
+citations:
+  # role: benchmark_method, inspired_by, reference_data, reference_method, or
+  # upstream_framework. Use inspired_by for work a benchmark builds on rather
+  # than is taken from.
+  - key: TODO
+    role: benchmark_method
+    title: TODO
+    authors:
+      - TODO
+    year: null  # TODO
+    doi: null  # TODO: add manually if wanted
+    url: null  # TODO: add manually if wanted
+    bibtex: null  # TODO: add manually if wanted

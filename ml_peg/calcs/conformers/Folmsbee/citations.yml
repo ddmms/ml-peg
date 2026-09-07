@@ -1,7 +1,6 @@
 contributors:
   - name: "Leon Wehrhan"
-    github: null
-    orcid: null
+    github: "lwehrhan"
 
 citations:
   - key: "folmsbee-2020-conformers"

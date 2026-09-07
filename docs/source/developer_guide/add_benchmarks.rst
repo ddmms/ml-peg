@@ -70,7 +70,7 @@ Use one of ``benchmark_method``, ``inspired_by``, ``reference_data``,
 ``reference_method``, or ``upstream_framework`` for each citation's ``role``. Use
 ``inspired_by`` where a benchmark was built on earlier work rather than taken from
 it: such a benchmark has no original paper of its own, so the app and the run
-summary label its sources "built on" instead of naming a benchmark paper. DOI, URL, ORCID, GitHub, and
+summary label its sources "built on" instead of naming a benchmark paper. DOI, URL, GitHub, and
 BibTeX fields may remain ``null`` until a maintainer adds them manually.
 
 If the benchmark was devised for ML-PEG and has no separate source publication, keep

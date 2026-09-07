@@ -1,7 +1,6 @@
 contributors:
   - name: "Leon Wehrhan"
-    github: null
-    orcid: null
+    github: "lwehrhan"
 
 citations:
   - key: "wahl-2020-tautobase"

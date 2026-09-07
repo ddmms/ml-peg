@@ -18,6 +18,30 @@ FRAMEWORKS_FILE = Path(__file__).parent / "app" / "utils" / "frameworks.yml"
 # Width of the citation guidance printed after a benchmark run
 SUMMARY_WIDTH = 79
 
+# Author lists longer than this are shortened to "First Author et al."
+MAX_AUTHORS = 5
+
+
+def format_authors(authors: Sequence[str]) -> str:
+    """
+    Join author names, shortening long lists.
+
+    Parameters
+    ----------
+    authors
+        Author names, in order.
+
+    Returns
+    -------
+    str
+        All names, or the first name followed by "et al." when there are more than
+        `MAX_AUTHORS`.
+    """
+    if len(authors) > MAX_AUTHORS:
+        return f"{authors[0]} et al."
+    return ", ".join(authors)
+
+
 CITATION_ROLES = {
     "benchmark_method",
     "inspired_by",
@@ -44,7 +68,6 @@ class Contributor:
 
     name: str
     github: str | None = None
-    orcid: str | None = None
 
 
 @dataclass(frozen=True)
@@ -85,9 +108,8 @@ class Citation:
         str
             Authors, year, and title, formatted for display.
         """
-        authors = ", ".join(self.authors)
         year = f" ({self.year})" if self.year is not None else ""
-        return f"{authors}{year}. {self.title}."
+        return f"{format_authors(self.authors)}{year}. {self.title}."
 
     @property
     def role_label(self) -> str | None:
@@ -244,7 +266,6 @@ def _parse_contributor(value: Any, location: str) -> Contributor:
     return Contributor(
         name=_non_empty_string(item.get("name"), f"{location}.name"),
         github=_optional_string(item.get("github"), f"{location}.github"),
-        orcid=_optional_string(item.get("orcid"), f"{location}.orcid"),
     )
 
 

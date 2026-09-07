@@ -34,7 +34,12 @@ from ml_peg.app.utils.utils import (
     sig_fig_format,
     weight_input_style,
 )
-from ml_peg.citations import BenchmarkCredits, Citation
+from ml_peg.citations import (
+    BenchmarkCredits,
+    Citation,
+    Contributor,
+    format_authors,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -1184,7 +1189,7 @@ def _citation_reference(citation: Citation) -> Component:
         One citation line, with the title hyperlinked if a DOI or URL is set, followed
         by the DOI itself where there is one.
     """
-    authors = ", ".join(citation.authors)
+    authors = format_authors(citation.authors)
     year = f" ({citation.year})" if citation.year is not None else ""
     title = html.Strong(citation.title)
     contents = [
@@ -1237,6 +1242,53 @@ def _credit_line(label: str, value: Component | str, top_margin: str) -> Compone
     )
 
 
+# GitHub mark, inlined so the credit box needs no external request
+GITHUB_ICON = (
+    "data:image/svg+xml;charset=utf-8,"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23334155'"
+    "%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17."
+    "55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13"
+    "-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52."
+    "28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02."
+    "08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82"
+    " 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95."
+    "29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8"
+    "c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E"
+)
+
+
+def _contributor(contributor: Contributor) -> list[Component]:
+    """
+    Build one implementer's name, linked to their GitHub account where known.
+
+    Parameters
+    ----------
+    contributor
+        Person who implemented the benchmark in ML-PEG.
+
+    Returns
+    -------
+    list[Component]
+        Name, followed by a GitHub icon link when a handle is recorded.
+    """
+    if not contributor.github:
+        return [html.Span(contributor.name)]
+    return [
+        html.Span(contributor.name),
+        html.A(
+            html.Img(
+                src=GITHUB_ICON,
+                alt=f"{contributor.name} on GitHub",
+                style={"height": "14px", "width": "14px", "verticalAlign": "-2px"},
+            ),
+            href=f"https://github.com/{contributor.github}",
+            target="_blank",
+            title=f"@{contributor.github}",
+            style={"marginLeft": "4px"},
+        ),
+    ]
+
+
 def build_benchmark_credit_components(
     credits: BenchmarkCredits | None,
 ) -> Component:
@@ -1285,13 +1337,17 @@ def build_benchmark_credit_components(
         )
 
     contributors = credits.contributors if credits else ()
-    names = ", ".join(contributor.name for contributor in contributors)
+    people: list[Component] = []
+    for contributor in contributors:
+        if people:
+            people.append(html.Span(", "))
+        people.extend(_contributor(contributor))
     return Div(
         [
             citation_line,
             _credit_line(
                 "Implemented in ML-PEG by: ",
-                html.Span(names or "To be added"),
+                html.Span(people or "To be added"),
                 "8px",
             ),
         ],
@@ -1306,48 +1362,6 @@ def build_benchmark_credit_components(
             "width": "fit-content",
         },
     )
-
-
-def build_framework_citation(framework_id: str) -> Component:
-    """
-    Build an always-visible citation for a source framework.
-
-    Falls back to a link to the framework's paper when author details have not yet
-    been added to ``frameworks.yml``, so the citation is never empty.
-
-    Parameters
-    ----------
-    framework_id
-        Framework identifier for the benchmark.
-
-    Returns
-    -------
-    Component
-        Framework citation text.
-    """
-    config = get_framework_config(framework_id)
-    citation = config.get("citation") or {}
-    title = citation.get("title")
-    authors = citation.get("authors") or []
-    if title and authors:
-        year = f" ({citation['year']})" if citation.get("year") else ""
-        contents: list[Component] = [
-            html.Strong(title),
-            html.Span(f", {', '.join(authors)}{year}"),
-        ]
-    elif config.get("paper_url"):
-        contents = [
-            html.Span("Please cite the "),
-            html.A(
-                f"{config['label']} paper",
-                href=config["paper_url"],
-                target="_blank",
-            ),
-            html.Span(". Full author list to be added."),
-        ]
-    else:
-        contents = [html.Strong("Citation to be added")]
-    return Div(contents, style={"fontSize": "0.95rem", "lineHeight": "1.4"})
 
 
 def build_test_layout(
