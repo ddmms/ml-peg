@@ -1,7 +1,6 @@
 contributors:
-  - name: "ThomasWarford"
-    github: "ThomasWarford"
-    orcid: null
+  - name: "Anruo Zhong"
+    github: "zhonganr"
 
 citations:
   - key: "allera-2025-activation-entropy"

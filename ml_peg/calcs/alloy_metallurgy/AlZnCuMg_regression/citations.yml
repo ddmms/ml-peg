@@ -1,5 +1,6 @@
 contributors:
-  []
+  - name: "Daniel Marchand"
+    github: "daniel-sintef"
 
 citations:
   - key: "saal-2013-oqmd"

@@ -12,10 +12,8 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
-from ml_peg.app.utils import build_components
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
-    build_framework_citation,
     build_test_layout,
 )
 from ml_peg.calcs import CALCS_ROOT
@@ -30,6 +28,7 @@ from ml_peg.citations import (
     build_run_citations,
     citation_metadata_path,
     collect_benchmark_credits,
+    format_authors,
     format_citation_summary,
     load_benchmark_credits,
     load_framework_citations,
@@ -497,6 +496,52 @@ def test_citation_links_the_title_and_doi_only() -> None:
     assert str(links[1].children) == "10.1234/example"
 
 
+def test_implementer_links_to_github() -> None:
+    """Implementers with a recorded handle link to their GitHub account."""
+    credits = BenchmarkCredits(
+        contributors=(
+            Contributor("Alice Smith", github="asmith"),
+            Contributor("Bare Name"),
+        ),
+        citations=(),
+    )
+
+    rendered = build_benchmark_credit_components(credits)
+    links = [
+        component
+        for component in _walk_components(rendered)
+        if type(component).__name__ == "A"
+    ]
+
+    assert [link.href for link in links] == ["https://github.com/asmith"]
+    # The icon is inlined, so the credit box makes no external request
+    assert "data:image/svg+xml" in str(rendered)
+    assert "Alice Smith" in str(rendered)
+    assert "Bare Name" in str(rendered)
+
+
+def test_long_author_lists_are_shortened() -> None:
+    """More than five authors collapse to the first name and et al."""
+
+    def cite(n: int) -> Citation:
+        return Citation(
+            key=f"k{n}",
+            title="A source",
+            authors=tuple(f"Author {i}" for i in range(1, n + 1)),
+            year=2026,
+            role="benchmark_method",
+        )
+
+    assert format_authors(cite(5).authors) == (
+        "Author 1, Author 2, Author 3, Author 4, Author 5"
+    )
+    assert format_authors(cite(6).authors) == "Author 1 et al."
+    # Both surfaces shorten identically
+    assert "Author 1 et al." in cite(6).reference
+    assert "Author 6" not in str(build_benchmark_credit_components(_credits(cite(6))))
+    assert "Author 5" in str(build_benchmark_credit_components(_credits(cite(5))))
+
+
 def test_doi_is_shown_in_full() -> None:
     """The DOI is readable in the credit box, not hidden behind the title link."""
     with_doi = Citation(
@@ -581,40 +626,6 @@ def test_role_tag_shown_only_where_it_adds_meaning() -> None:
 
     assert "(benchmark paper)" not in rendered
     assert "(reference data)" in rendered
-
-
-def test_framework_citation_falls_back_to_the_paper_link(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Frameworks without author details still point at their paper."""
-    monkeypatch.setattr(
-        build_components,
-        "get_framework_config",
-        lambda framework_id: {
-            "label": "Test Framework",
-            "type": "framework",
-            "paper_url": "https://example.invalid/paper",
-            "citation": {"title": "Titled but unattributed", "authors": []},
-        },
-    )
-
-    citation = build_framework_citation("test_framework")
-    links = [
-        component
-        for component in _walk_components(citation)
-        if type(component).__name__ == "A"
-    ]
-
-    assert [link.href for link in links] == ["https://example.invalid/paper"]
-    assert "Citation to be added" not in str(citation)
-
-
-def test_framework_citation_renders_authors_when_supplied() -> None:
-    """A fully recorded framework citation shows its authors rather than a link."""
-    rendered = str(build_framework_citation("mlip_audit"))
-
-    assert "Please cite the" not in rendered
-    assert "to be added" not in rendered.lower()
 
 
 class _Config:

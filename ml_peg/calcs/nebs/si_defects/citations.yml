@@ -1,7 +1,6 @@
 contributors:
-  - name: "zwei-beiner"
+  - name: "Namu Kroupa"
     github: "zwei-beiner"
-    orcid: null
 
 # TODO: no paper is named in this benchmark's docs. Add its source here, or
 # confirm it was devised for ML-PEG.
