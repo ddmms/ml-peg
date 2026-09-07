@@ -11,7 +11,6 @@ citations:
     year: null
     doi: "10.1088/2515-7655/ade916"
     url: null
-    bibtex: null
   - key: "kumagai-2021-oxygen-vacancies"
     role: benchmark_method
     title: "Insights into Oxygen Vacancies from High-Throughput First-Principles Calculations"
@@ -23,4 +22,3 @@ citations:
     year: 2021
     doi: "10.1103/PhysRevMaterials.5.123803"
     url: null
-    bibtex: null

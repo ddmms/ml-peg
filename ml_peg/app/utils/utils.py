@@ -182,14 +182,6 @@ class _FrameworkEntryRequired(TypedDict):
     text_color: str
 
 
-class FrameworkCitation(TypedDict, total=False):
-    """Visible citation metadata for a benchmark source framework."""
-
-    title: str
-    authors: list[str]
-    year: int
-
-
 class FrameworkEntry(_FrameworkEntryRequired, total=False):
     """
     Style and link metadata for benchmark framework attribution badges.
@@ -206,7 +198,6 @@ class FrameworkEntry(_FrameworkEntryRequired, total=False):
     project_url: str
     paper_url: str
     github: str
-    citation: FrameworkCitation
 
 
 def get_mlip_column_width(
@@ -1203,37 +1194,6 @@ def load_framework_registry() -> dict[str, FrameworkEntry]:
             value = raw_entry.get(key)
             if isinstance(value, str) and value.strip():
                 registry_entry[key] = value.strip()
-
-        raw_citation = raw_entry.get("citation")
-        if raw_citation is not None:
-            if not isinstance(raw_citation, dict):
-                raise ValueError(
-                    f"frameworks.yml citation for '{normalized_id}' must be a "
-                    "dictionary."
-                )
-            citation: FrameworkCitation = {}
-            title = raw_citation.get("title")
-            if isinstance(title, str) and title.strip():
-                citation["title"] = title.strip()
-            authors = raw_citation.get("authors")
-            if authors is not None:
-                if not isinstance(authors, list) or not all(
-                    isinstance(author, str) and author.strip() for author in authors
-                ):
-                    raise ValueError(
-                        f"frameworks.yml citation authors for '{normalized_id}' "
-                        "must be a list of non-empty strings."
-                    )
-                citation["authors"] = [author.strip() for author in authors]
-            year = raw_citation.get("year")
-            if year is not None:
-                if not isinstance(year, int) or isinstance(year, bool):
-                    raise ValueError(
-                        f"frameworks.yml citation year for '{normalized_id}' must "
-                        "be an integer or null."
-                    )
-                citation["year"] = year
-            registry_entry["citation"] = citation
 
         registry[normalized_id] = registry_entry
 

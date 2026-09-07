@@ -15,7 +15,6 @@ citations:
     year: 2013
     doi: "10.1007/s11837-013-0755-4"
     url: null
-    bibtex: null
   - key: "kirklin-2015-oqmd"
     role: reference_data
     title: "The Open Quantum Materials Database (OQMD): assessing the accuracy of DFT formation energies"
@@ -31,4 +30,3 @@ citations:
     year: 2015
     doi: "10.1038/npjcompumats.2015.10"
     url: null
-    bibtex: null

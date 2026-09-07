@@ -27,7 +27,6 @@ citations:
     year: 2021
     doi: null
     url: null
-    bibtex: null
   - key: "tran-2023-oc22"
     role: benchmark_method
     title: "The Open Catalyst 2022 (OC22) data set and challenges for oxide electrocatalysts"
@@ -52,4 +51,3 @@ citations:
     year: 2023
     doi: null
     url: null
-    bibtex: null

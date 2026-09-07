@@ -9,6 +9,12 @@
     chemistry and physics
   docs_url: "https://github.com/ddmms/ml-peg"
 
+- question: "What should I cite when using ML-PEG?"
+  answer: >
+    Please cite ML-PEG, the original papers and data sources listed on each benchmark,
+    and the papers for the MLIP models you used.
+  docs_url: null
+
 - question: "Why are some boxes greyed out?"
   answer: >
     A greyed-out box with a red tint means that the MLIP was not able to perform one
@@ -78,14 +84,3 @@
     our documentation and our notebook tutorial. You'll need to provide details about
     the benchmark's reference data, and performance metrics
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/add_benchmarks.html"
-
-- question: "What should I cite when using ML-PEG?"
-  answer: >
-    Please cite ML-PEG, the original papers and data sources listed on each benchmark,
-    and the papers for the MLIP models you used. Benchmark implementation contributors
-    are shown separately so that porting or implementing a test receives credit
-    without incorrectly making the implementer an author of the original work. Where a
-    benchmark was devised for ML-PEG, citing ML-PEG is enough. Running ml_peg calc
-    prints the citations and DOIs for the benchmarks and models of that run when it
-    finishes, along with any citation placeholders that still need to be completed.
-  docs_url: null

@@ -17,7 +17,6 @@ citations:
     year: 2025
     doi: "10.1021/acs.jpcc.5c03416"
     url: null
-    bibtex: null
   - key: "vinogradova-2023-pdau"
     role: benchmark_method
     title: "Trends of Pd3Au(111) alloy surface segregation in oxygen, carbon, and nitrogen environments"
@@ -28,4 +27,3 @@ citations:
     year: 2023
     doi: "10.1021/acs.jpcc.3c05640"
     url: null
-    bibtex: null

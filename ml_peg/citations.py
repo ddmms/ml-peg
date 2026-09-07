@@ -81,8 +81,6 @@ class Citation:
     role: str | None = None
     doi: str | None = None
     url: str | None = None
-    bibtex: str | None = None
-    entry_type: str = "misc"
 
     @property
     def link(self) -> str | None:
@@ -300,7 +298,6 @@ def _parse_citation(value: Any, location: str) -> Citation:
         role=role,
         doi=_optional_string(item.get("doi"), f"{location}.doi"),
         url=_optional_string(item.get("url"), f"{location}.url"),
-        bibtex=_optional_string(item.get("bibtex"), f"{location}.bibtex"),
     )
 
 

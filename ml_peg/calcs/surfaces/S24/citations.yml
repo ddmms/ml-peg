@@ -21,7 +21,6 @@ citations:
     year: 2017
     doi: null
     url: null
-    bibtex: null
   - key: "brandenburg-2019-water-graphene"
     role: benchmark_method
     title: "Physisorption of water on graphene: Subchemical accuracy from many-body electronic structure methods"
@@ -38,7 +37,6 @@ citations:
     year: 2019
     doi: null
     url: null
-    bibtex: null
   - key: "ehlert-2023-co2-graphene"
     role: benchmark_method
     title: "CO2 on graphene: Benchmarking computational approaches to noncovalent interactions"
@@ -49,7 +47,6 @@ citations:
     year: 2023
     doi: null
     url: null
-    bibtex: null
   - key: "tsatsoulis-2018-h-si100"
     role: benchmark_method
     title: "Reaction energetics of hydrogen on Si(100) surface: A periodic many-electron theory study"
@@ -61,7 +58,6 @@ citations:
     year: 2018
     doi: null
     url: null
-    bibtex: null
   - key: "tsatsoulis-2017-water-lih"
     role: benchmark_method
     title: "A comparison between quantum chemistry and quantum Monte Carlo techniques for the adsorption of water on the (001) LiH surface"
@@ -79,7 +75,6 @@ citations:
     year: 2017
     doi: null
     url: null
-    bibtex: null
   - key: "ye-2023-surface-chemistry"
     role: benchmark_method
     title: "Ab initio surface chemistry with chemical accuracy"
@@ -89,7 +84,6 @@ citations:
     year: 2023
     doi: null
     url: "https://arxiv.org/abs/2309.14640"
-    bibtex: null
   - key: "lustemberg-2020-ceria-co"
     role: benchmark_method
     title: "Vibrational frequencies of cerium-oxide-bound CO: A challenge for conventional DFT methods"
@@ -105,7 +99,6 @@ citations:
     year: 2020
     doi: null
     url: null
-    bibtex: null
   - key: "shi-2023-many-body-surface"
     role: benchmark_method
     title: "Many-body methods for surface chemistry come of age: Achieving consensus with experiments"
@@ -119,7 +112,6 @@ citations:
     year: 2023
     doi: null
     url: null
-    bibtex: null
   - key: "hanikel-2021-mof-water"
     role: benchmark_method
     title: "Evolution of water structures in metal-organic frameworks for improved atmospheric water harvesting"
@@ -135,7 +127,6 @@ citations:
     year: 2021
     doi: null
     url: null
-    bibtex: null
   - key: "berger-2023-alkane-zeolite"
     role: benchmark_method
     title: "Molecular dynamics with chemical accuracy: Alkane adsorption in acidic zeolites"
@@ -146,7 +137,6 @@ citations:
     year: 2023
     doi: null
     url: null
-    bibtex: null
   - key: "berger-2021-butene-zeolite"
     role: benchmark_method
     title: "Dimerization of linear butenes and pentenes in an acidic zeolite (H-MFI)"
@@ -156,4 +146,3 @@ citations:
     year: 2021
     doi: null
     url: null
-    bibtex: null

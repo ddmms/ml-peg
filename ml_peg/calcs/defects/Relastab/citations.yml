@@ -18,7 +18,6 @@ citations:
     year: 2025
     doi: null
     url: null
-    bibtex: null
   - key: "goryaeva-2020-distortion-scores"
     role: benchmark_method
     title: "Reinforcing materials modelling by encoding the structures of defects in crystalline solids into distortion scores"
@@ -32,7 +31,6 @@ citations:
     year: 2020
     doi: null
     url: null
-    bibtex: null
   - key: "soum-sidikov-2025-cawo4"
     role: benchmark_method
     title: "Calculation of crystal defects induced in CaWO4 cryogenic detector by 100 eV displacement cascades using a data driven force field"
@@ -53,4 +51,3 @@ citations:
     year: 2025
     doi: null
     url: null
-    bibtex: null
