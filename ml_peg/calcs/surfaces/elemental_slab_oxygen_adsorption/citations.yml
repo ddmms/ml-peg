@@ -17,7 +17,6 @@ citations:
     year: 2016
     doi: "10.1038/sdata.2016.80"
     url: null
-    bibtex: null
   - key: "kaplan-2025-matpes"
     role: reference_data
     title: "A Foundational Potential Energy Surface Dataset for Materials"
@@ -34,7 +33,6 @@ citations:
     year: 2025
     doi: "10.48550/arXiv.2503.04070"
     url: null
-    bibtex: null
   - key: "ong-2013-pymatgen"
     role: reference_method
     title: "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis"
@@ -52,4 +50,3 @@ citations:
     year: 2013
     doi: "10.1016/j.commatsci.2012.10.028"
     url: null
-    bibtex: null

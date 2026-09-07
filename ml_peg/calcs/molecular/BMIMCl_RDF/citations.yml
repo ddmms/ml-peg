@@ -11,7 +11,6 @@ citations:
     year: 2025
     doi: "10.21105/joss.08829"
     url: null
-    bibtex: null
   - key: "yang-2017-volumetric"
     role: reference_data
     title: "Volumetric Properties of Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol, N,N-Dimethylformamide, and Water at Several Temperatures"
@@ -23,4 +22,3 @@ citations:
     year: 2017
     doi: "10.1021/acs.jced.7b00654"
     url: null
-    bibtex: null
