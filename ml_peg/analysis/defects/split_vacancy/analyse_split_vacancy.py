@@ -249,6 +249,7 @@ def build_results(
 
             nv_initial_energies = []
             nv_relaxed_energies = []
+            nv_ref_structure_mlip_energies = []
             for nv_atoms in nv_atoms_list:
                 match = nv_atoms.info["ref_max_distance"] < STOL
                 match_list.append(match)
@@ -258,9 +259,13 @@ def build_results(
                 rmsd_list.append(nv_atoms.info["ref_rmsd"])
                 max_dist_list.append(nv_atoms.info["ref_max_distance"])
                 nv_initial_energies.append(nv_atoms.info["initial_energy"])
+                nv_ref_structure_mlip_energies.append(
+                    nv_atoms.info["ref_structure_mlip_energy"]
+                )
 
             sv_initial_energies = []
             sv_relaxed_energies = []
+            sv_ref_structure_mlip_energies = []
             for sv_atoms in sv_atoms_list:
                 match = sv_atoms.info["ref_max_distance"] < STOL
                 match_list.append(match)
@@ -270,12 +275,18 @@ def build_results(
                 rmsd_list.append(sv_atoms.info["ref_rmsd"])
                 max_dist_list.append(sv_atoms.info["ref_max_distance"])
                 sv_initial_energies.append(sv_atoms.info["initial_energy"])
+                sv_ref_structure_mlip_energies.append(
+                    sv_atoms.info["ref_structure_mlip_energy"]
+                )
 
             sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
                 nv_relaxed_energies, default=np.nan
             )
+            # ranking agreement with DFT, isolated from relaxation/geometry
+            # quality: MLIP single-point energy AT the DFT-relaxed structure,
+            # not the MLIP's own (possibly differently-converged) relaxed energy.
             spearmans_coefficient = spearmanr(
-                nv_initial_energies + sv_initial_energies,
+                nv_ref_structure_mlip_energies + sv_ref_structure_mlip_energies,
                 ref_nv_energies + ref_sv_energies,
             ).statistic
 
