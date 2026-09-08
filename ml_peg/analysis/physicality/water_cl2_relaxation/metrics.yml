@@ -1,0 +1,7 @@
+metrics:
+  Cl2_stability:
+    good: True
+    bad: False
+    unit: null
+    tooltip: "Whether Cl2 is stable (non-dissociated) or dissociated after relaxation"
+    level_of_theory: null
