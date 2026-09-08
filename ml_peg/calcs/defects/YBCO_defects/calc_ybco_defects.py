@@ -98,7 +98,7 @@ def test_ybco_defects(mlip: tuple[str, Any]) -> None:
 
     data_dir = (
         download_s3_data(
-            key="inputs/defect/YBCO_defects/YBCO_defects.zip",
+            key="inputs/defects/YBCO_defects/YBCO_defects.zip",
             filename="YBCO_defects.zip",
         )
         / "YBCO_defects"

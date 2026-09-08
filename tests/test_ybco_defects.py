@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ml_peg.analysis.defect.YBCO_defects import analyse_ybco_defects as A  # noqa: N812
+from ml_peg.analysis.defects.YBCO_defects import analyse_ybco_defects as A  # noqa: N812
 
 
 def test_element():

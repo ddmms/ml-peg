@@ -370,7 +370,7 @@ Data availability
 Input structures:
 
 * Perfect, defected and elemental-reference supercells, distributed as
-  ``inputs/defect/YBCO_defects/YBCO_defects.zip``.
+  ``inputs/defects/YBCO_defects/YBCO_defects.zip``.
 
 Reference data:
 

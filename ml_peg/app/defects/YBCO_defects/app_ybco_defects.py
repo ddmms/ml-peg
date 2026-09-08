@@ -19,9 +19,9 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "YBCO defects"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
-    "defect.html#ybco-point-defect-formation-energies"
+    "defects.html#ybco-point-defect-formation-energies"
 )
-DATA_PATH = APP_ROOT / "data" / "defect" / "YBCO_defects"
+DATA_PATH = APP_ROOT / "data" / "defects" / "YBCO_defects"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -40,7 +40,7 @@ class YBCODefectsApp(BaseApp):
         # one structure per scatter point, from the first model
         structs_dir = DATA_PATH / MODELS[0]
         structs = [
-            f"/assets/defect/YBCO_defects/{MODELS[0]}/{f.stem}.xyz"
+            f"/assets/defects/YBCO_defects/{MODELS[0]}/{f.stem}.xyz"
             for f in sorted(structs_dir.glob("*.xyz"))
         ]
 
