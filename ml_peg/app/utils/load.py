@@ -18,6 +18,7 @@ from ml_peg.app.utils.utils import (
     clean_table_data,
     clean_thresholds,
     clean_weights,
+    drop_empty_model_rows,
     is_numeric_column,
     none_to_nan,
     sig_fig_format,
@@ -56,22 +57,13 @@ def rebuild_table(
 
     data = table_json["data"]
     columns = table_json["columns"]
-    metric_columns = [
-        column["id"]
-        for column in columns
-        if column.get("id") not in {"MLIP", "Score", "id", "link"}
-    ]
-    # A row containing only null metrics was never computed. Keep explicit NaNs,
-    # which record a calculation that was attempted but failed.
-    data = [
-        row
-        for row in data
-        if any(row.get(metric) not in {None, ""} for metric in metric_columns)
-    ]
     # Remove values greater than int64 limits
     clean_table_data(data)
     # Replace None scores with NaN
     none_to_nan(data)
+    # Hide models with no result in any metric column for this benchmark
+    # An empty row cannot currenrly gain data
+    data = drop_empty_model_rows(data)
 
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -119,7 +111,7 @@ def rebuild_table(
     tooltip_header = table_json["tooltip_header"]
 
     scored_data = calc_metric_scores(data, thresholds)
-    style = get_table_style(data, scored_data=scored_data) if data else []
+    style = get_table_style(data, scored_data=scored_data)
     column_widths = calculate_column_widths(width_labels, min_metric_width=170)
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}

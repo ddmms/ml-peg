@@ -873,14 +873,14 @@ def build_nav(
                                 Store(
                                     id="summary-table-computed-store",
                                     storage_type="session",
-                                    data=summary_table.unfiltered_data,
+                                    data=summary_table.data,
                                 ),
                                 *(
                                     [
                                         Store(
                                             id="framework-summary-table-computed-store",
                                             storage_type="session",
-                                            data=combined_framework_table.unfiltered_data,
+                                            data=combined_framework_table.data,
                                         )
                                     ]
                                     if combined_framework_table is not None

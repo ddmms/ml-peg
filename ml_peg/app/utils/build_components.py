@@ -27,7 +27,6 @@ from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
-    drop_empty_model_rows,
     get_framework_config,
     get_mlip_column_width,
     get_threshold_colours,
@@ -143,10 +142,7 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
-    all_rows = calc_table_scores(data, weights=weights)
-
-    # Hide models with no score in any category column of this summary table.
-    data = drop_empty_model_rows(all_rows)
+    data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
 
@@ -184,13 +180,10 @@ def build_summary_table(
             column["type"] = "numeric"
             column["format"] = sig_fig_format()
 
-    style = get_table_style(data) if data else []
+    style = get_table_style(data)
     registry_configs = load_model_registry_configs()
-    retained_rows = (
-        all_rows if table_id in {"summary-table", "framework-summary-table"} else data
-    )
     row_models: list[str] = []
-    for row in retained_rows:
+    for row in data:
         mlip = row.get("MLIP")
         if isinstance(mlip, str) and mlip not in row_models:
             row_models.append(mlip)
@@ -241,7 +234,7 @@ def build_summary_table(
     # NaN/level-of-theory greying is kept off for the link column.
     if table_id == "summary-table":
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
-        for row in all_rows:
+        for row in data:
             anchor = row.get("MLIP")
             row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
         columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
@@ -304,7 +297,6 @@ def build_summary_table(
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
     table.weights = weights
-    table.unfiltered_data = retained_rows
     return table
 
 
@@ -577,7 +569,7 @@ def build_weight_components(
     # Callbacks to update table scores when table weight dicts change
     if table.id == "summary-table":
         register_summary_table_callbacks(
-            initial_rows=table.unfiltered_data,
+            initial_rows=table.data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
@@ -585,7 +577,7 @@ def build_weight_components(
         )
     elif table.id == "framework-summary-table":
         register_summary_table_callbacks(
-            initial_rows=table.unfiltered_data,
+            initial_rows=table.data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
