@@ -406,52 +406,6 @@ def app_citation_metadata_path(
     return benchmark_path / "citations.yml"
 
 
-def load_model_citations(
-    model_names: Iterable[str], filepath: str | Path | None = None
-) -> dict[str, Citation | None]:
-    """
-    Load citations for MLIP models from ``models.yml``.
-
-    Parameters
-    ----------
-    model_names
-        Model identifiers to look up.
-    filepath
-        Path to model definitions YAML file. Default is models.yml in the models
-        directory.
-
-    Returns
-    -------
-    dict[str, Citation | None]
-        Mapping of model name to its citation, or None when not yet supplied.
-    """
-    from ml_peg.models.get_models import load_model_configs
-
-    model_names = list(model_names)
-    configs, _ = load_model_configs(model_names, filepath)
-
-    citations: dict[str, Citation | None] = {}
-    for name in model_names:
-        location = f"models.yml: {name}.citation"
-        raw = configs[name].get("citation")
-        if not raw:
-            citations[name] = None
-            continue
-        raw = _mapping(raw, location)
-        if not raw.get("title") or not raw.get("authors"):
-            citations[name] = None
-            continue
-        citations[name] = Citation(
-            key=name,
-            title=_non_empty_string(raw.get("title"), f"{location}.title"),
-            authors=_authors(raw.get("authors"), f"{location}.authors"),
-            year=_year(raw.get("year"), f"{location}.year"),
-            doi=_optional_string(raw.get("doi"), f"{location}.doi"),
-            url=_optional_string(raw.get("url"), f"{location}.url"),
-        )
-    return citations
-
-
 def load_framework_citations(
     framework_ids: Iterable[str],
 ) -> dict[str, Citation | None]:
@@ -588,7 +542,6 @@ def _citation_lines(citation: Citation, indent: str) -> list[str]:
 def format_citation_summary(
     benchmarks: Mapping[str, BenchmarkCredits],
     missing_benchmarks: Iterable[str] = (),
-    models: Mapping[str, Citation | None] | None = None,
     frameworks: Mapping[str, Citation | None] | None = None,
 ) -> str:
     """
@@ -600,8 +553,6 @@ def format_citation_summary(
         Mapping of benchmark identifiers to their citation metadata.
     missing_benchmarks
         Benchmarks which ran but do not yet provide citation metadata.
-    models
-        Mapping of MLIP model name to its citation, or None where not yet supplied.
     frameworks
         Mapping of source-framework label to its citation, or None where not yet
         supplied.
@@ -611,7 +562,6 @@ def format_citation_summary(
     str
         Citation guidance for printing to the terminal.
     """
-    models = models or {}
     frameworks = frameworks or {}
     missing = sorted(set(missing_benchmarks))
 
@@ -622,9 +572,8 @@ def format_citation_summary(
         rule,
         "",
         *_wrap(
-            "Please cite the benchmarks below and the models you ran. Benchmark "
-            "implementers are credited separately, and are not authors of the work "
-            "being cited.",
+            "Please cite the benchmarks below. Benchmark implementers are credited "
+            "separately, and are not authors of the work being cited.",
             "  ",
             "  ",
         ),
@@ -671,27 +620,12 @@ def format_citation_summary(
                 else ["      ! citation to be added"]
             )
 
-    if models:
-        lines.extend(_section(f"MODELS ({len(models)})"))
-        for index, (name, citation) in enumerate(models.items()):
-            if index:
-                lines.append("")
-            lines.append(f"    {name}")
-            lines.extend(
-                _citation_lines(citation, "      ")
-                if citation
-                else ["      ! citation to be added"]
-            )
-
     unfilled_frameworks = sum(1 for c in frameworks.values() if not c)
-    unfilled_models = sum(1 for c in models.values() if not c)
     incomplete = []
     if missing:
         incomplete.append(f"{len(missing)} benchmark(s)")
     if unfilled_frameworks:
         incomplete.append(f"{unfilled_frameworks} framework(s)")
-    if unfilled_models:
-        incomplete.append(f"{unfilled_models} model(s)")
     if incomplete:
         lines.extend(
             [
@@ -711,22 +645,15 @@ def format_citation_summary(
 
 def build_run_citations(
     script_paths: Iterable[str | Path],
-    model_names: Iterable[str] = (),
-    models_file: str | Path | None = None,
     framework_ids: Iterable[str] = (),
 ) -> str:
     """
-    Build citation guidance for the benchmarks and models of a run.
+    Build citation guidance for the benchmarks of a run.
 
     Parameters
     ----------
     script_paths
         Benchmark scripts to report citations for.
-    model_names
-        MLIP models used by the run. Default is no models.
-    models_file
-        Path to model definitions YAML file. Default is models.yml in the models
-        directory.
     framework_ids
         Framework identifiers attached to the benchmarks of the run. Default is none.
 
@@ -739,7 +666,6 @@ def build_run_citations(
     return format_citation_summary(
         benchmarks,
         missing,
-        load_model_citations(model_names, models_file),
         load_framework_citations(framework_ids),
     )
 
