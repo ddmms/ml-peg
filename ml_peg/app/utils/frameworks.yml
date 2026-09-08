@@ -11,6 +11,13 @@ mlip_arena:
   url: "https://huggingface.co/spaces/atomind/mlip-arena"
   logo: "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
 
+matbench-discovery:
+  label: Matbench Discovery
+  color: "#2563eb"
+  text_color: "#ffffff"
+  url: "https://matbench-discovery.materialsproject.org"
+  tooltip: "Evaluation framework for machine-learning materials discovery"
+
 mace-multihead:
   label: Multihead Cross Learning
   color: "#7c3aed"
