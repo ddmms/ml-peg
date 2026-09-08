@@ -72,8 +72,11 @@ Input and reference structures:
 * Rowe, P. et al. An accurate and transferable machine learning potential for carbon.
   *J. Chem. Phys.* **153**, 034702 (2020). https://doi.org/10.1063/5.0005084
 * optB88-vdW exchange-correlation functional, PAW pseudopotentials, 500 eV plane-wave
-  cutoff, 0.125 Å⁻¹ k-point spacing (VASP). ``ISIF = 2`` for every system except
-  Lonsdaleite (``ISIF = 3``); ``ISPIN = 1`` throughout.
+  cutoff (VASP). Monkhorst-Pack k-point grids: graphite and diamond 2×2×2; graphene
+  and lonsdaleite 3×3×3; NT(9,0) 1×1×2; NT(9,9) 1×1×8, from the replacement cell
+  described below (the working copy it replaces used 1×1×2); C60 and C100 1×1×1.
+  ``ISIF = 2`` for every system except Lonsdaleite (``ISIF = 3``); ``ISPIN = 1``
+  throughout.
 * Data repository: https://github.com/patrickwrowe/Carbon_GAP
 
 Corrections to the original GAP-20 test suite:
@@ -188,7 +191,9 @@ Input and reference structures:
 * Rowe, P. et al. An accurate and transferable machine learning potential for carbon.
   *J. Chem. Phys.* **153**, 034702 (2020). https://doi.org/10.1063/5.0005084
 * optB88-vdW exchange-correlation functional, PAW pseudopotentials, 500 eV plane-wave
-  cutoff, 0.125 Å⁻¹ k-point spacing (VASP).
+  cutoff (VASP). Monkhorst-Pack k-point grids: diamond {100} 15×15×2 (bulk),
+  15×15×1 (as-cut and relaxed); graphite (0001) 7×7×1 throughout; amorphous carbon
+  2×2×2 (bulk), 2×2×1 (slab).
 * Data repository: https://github.com/patrickwrowe/Carbon_GAP
 
 Corrections to the original GAP-20 test suite:
@@ -202,3 +207,93 @@ Corrections to the original GAP-20 test suite:
 * Diamond {110} is also omitted. Its reference slab is not a clean cleave:
   expanding the bulk cell along c splits a (110) layer that straddles the cell
   boundary, leaving a coordination-1 adatom on each face.
+
+Nanotube formation energies
+===========================
+
+Summary
+-------
+
+Performance in predicting strain energy relative to graphene for ten armchair
+(n, n) and ten zigzag (n, 0) carbon nanotubes, n = 5..14. Every value is a
+single-point evaluation of the model's calculator at a shipped DFT reference
+geometry; the benchmark performs no geometry optimisation. Each model not
+already trained with dispersion corrections is run twice, once with its plain
+calculator and once with a D3 dispersion correction added; models trained on
+dispersion run once, since D3 would be a no-op. The D3-corrected metrics carry
+the benchmark score, the uncorrected metrics are reported alongside for
+comparison (and are identical to the D3 metrics for dispersion-trained
+models).
+
+Metrics
+-------
+
+1. Armchair strain energy MAE
+2. Zigzag strain energy MAE
+
+For each tube, the model and the reference are each a single-point evaluation
+at the shipped reference geometry:
+
+``strain_energy_ev_per_atom = E_tube / n_tube - E_graphene / n_graphene``
+
+Each side uses its own graphene energy — the model's own graphene single-point
+energy for the model series, the DFT ``REF_energy`` for the reference series —
+so that the isolated-atom term cancels within each side rather than being
+carried across the comparison. Graphene is a fixed reference value, not a
+benchmarked system, and is excluded from both metrics and from the parity plot.
+
+Reference strain energies span roughly 20-530 meV/atom, small enough that a
+percentage error would be dominated by the thinnest, most strained tubes, so
+the reported error is a mean absolute error in meV/atom rather than a MAPE,
+split by chirality so a model weak on one series stays visible instead of
+being averaged away:
+
+``<Chirality> strain energy MAE = mean(|ref_strain_energy_ev_per_atom -
+strain_energy_ev_per_atom|)``
+
+mace-mp-0b3 underestimates strain energy across all 20 tubes, more so at
+small diameter. This is model behaviour, not a benchmark artefact: the
+model's own strain energy still scales as 1/d² (strain × d² is
+near-constant at 5.20-5.45 across both families), fitting strain = A/d² + B
+to each family separately gives intercept differences of opposite sign
+between families (+3.1 armchair, -8.9 zigzag) which a constant pipeline
+offset could not produce, and two other models run through the same path
+do not share the direction of the discrepancy (mace-mpa-0 straddles zero,
+mace-omat-0 overestimates by 25-46%).
+
+Computational cost
+------------------
+
+Small: single-point evaluations only, no geometry optimisation. 20 tubes plus
+one graphene reference, 21 single points per model variant, run twice per
+model (plain and D3-corrected) except for models already trained with
+dispersion corrections, which run once.
+
+Data availability
+-----------------
+
+Input and reference structures:
+
+* Rowe, P. et al. An accurate and transferable machine learning potential for carbon.
+  *J. Chem. Phys.* **153**, 034702 (2020). https://doi.org/10.1063/5.0005084
+* optB88-vdW exchange-correlation functional, PAW pseudopotentials, 500 eV plane-wave
+  cutoff (VASP). Monkhorst-Pack k-point grid: 1×1×8 for all 20 nanotubes, 3×3×3 for
+  the graphene reference. Every nanotube reference INCAR uses ``NSW = 1`` (single
+  point).
+* Data repository: https://github.com/patrickwrowe/Carbon_GAP
+
+Differences from the original GAP-20 test suite:
+
+* The original ``nanotubes_formation_energy/test.py`` scores each tube
+  against a hardcoded isolated-atom reference: the spin-unpolarised DFT
+  carbon atom (``single_atom_energy = 0.94664775`` eV) for the reference
+  series, and the model's own isolated-atom energy, computed at runtime by
+  ``get_model_single_atom_energy()``, for the model series. That convention
+  was self-consistent for GAP-20, the model it was built around, but does
+  not generalise: an arbitrary model's own isolated-atom energy carries
+  whatever spin convention that model was trained on, not the reference's
+  spin-unpolarised one. This benchmark instead reports strain energy
+  relative to graphene, with each side using its own graphene energy, so
+  the isolated-atom convention never enters either series; see Metrics
+  above. The published archive also no longer ships an isolated atom to
+  compute either side from.
