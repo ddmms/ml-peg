@@ -1,4 +1,4 @@
-"""Analyse qmof benchmark."""
+"""Analyse QMOF benchmark."""
 
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "porous_materials" / "mofs" / "qmof" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "porous_materials" / "mofs" / "qmof"
+CALC_PATH = CALCS_ROOT / "porous_materials" / "QMOF" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "porous_materials" / "QMOF"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -66,7 +66,7 @@ def write_density_trajs(
 @pytest.fixture
 def qmof_energies() -> dict[str, list]:
     """
-    Get energies per atom for all qmof systems.
+    Get energies per atom for all QMOF systems.
 
     Returns
     -------
@@ -116,7 +116,7 @@ def qmof_energies() -> dict[str, list]:
 )
 def qmof_density(qmof_energies: dict[str, list]) -> dict[str, dict]:
     """
-    Build density scatter inputs for qmof energies.
+    Build density scatter inputs for QMOF energies.
 
     Parameters
     ----------
@@ -171,7 +171,7 @@ def qmof_errors(qmof_energies) -> dict[str, float]:
 )
 def metrics(qmof_errors: dict[str, float]) -> dict[str, dict]:
     """
-    Get all qmof metrics.
+    Get all QMOF metrics.
 
     Parameters
     ----------
@@ -190,13 +190,13 @@ def metrics(qmof_errors: dict[str, float]) -> dict[str, dict]:
 
 def test_qmof(metrics: dict[str, dict], qmof_density: dict[str, dict]) -> None:
     """
-    Run qmof test.
+    Run QMOF test.
 
     Parameters
     ----------
     metrics
-        All qmof metrics.
+        All QMOF metrics.
     qmof_density
-        Density scatter data for qmof energies.
+        Density scatter data for QMOF energies.
     """
     return
