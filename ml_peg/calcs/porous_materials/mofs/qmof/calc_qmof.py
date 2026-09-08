@@ -42,7 +42,7 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
 
     qmof_energy_dir = (
         download_s3_data(
-            key="inputs/mofs/qmof/qmof.zip",
+            key="inputs/porous_materials/mofs/qmof/qmof.zip",
             filename="qmof.zip",
         )
         / "qmof"

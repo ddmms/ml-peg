@@ -13,8 +13,8 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "QMOF"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/mofs.html#qmof"
-DATA_PATH = APP_ROOT / "data" / "mofs" / "qmof"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/porous_materials.html#qmof"
+DATA_PATH = APP_ROOT / "data" / "porous_materials" / "mofs" / "qmof"
 INFO_PATH = DATA_PATH / "info.json"
 
 
