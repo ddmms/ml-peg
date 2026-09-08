@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -76,7 +75,7 @@ def get_app() -> LiDiffusionApp:
     """
     return LiDiffusionApp(
         name=BENCHMARK_NAME,
-        description=("Performance in predicting energy barriers for Li diffision."),
+        description="Performance in predicting energy barriers for Li diffusion.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "li_diffusion_metrics_table.json",
         extra_components=[
@@ -85,16 +84,3 @@ def get_app() -> LiDiffusionApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    # Construct layout and register callbacks
-    li_diffusion_app = get_app()
-    full_app.layout = li_diffusion_app.layout
-    li_diffusion_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8051, debug=True)

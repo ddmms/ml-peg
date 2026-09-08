@@ -209,6 +209,7 @@ def rebuild_table(
             }
         ],
         sort_action="native",
+        sort_as_null=["NaN"],
         fill_width=False,
     )
 

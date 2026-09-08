@@ -6,6 +6,8 @@ services:
     working_dir: /app
     volumes:
       - ../ml_peg/app/data:/app/ml_peg/app/data
+    environment:
+      ML_PEG_ANALYTICS_ID: ${ML_PEG_ANALYTICS_ID}
 
   nginx:
     image: nginx:latest

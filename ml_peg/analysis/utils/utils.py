@@ -27,6 +27,9 @@ from ml_peg.models.get_models import load_model_configs
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
 
+# Opacity applied to a column whose weight is zero (excluded from the score)
+ZERO_WEIGHT_OPACITY = 0.4
+
 
 def build_dispersion_name_map(
     models: Iterable[str],
@@ -512,6 +515,7 @@ def get_table_style(
     all_cols: bool = True,
     col_names: list[str] | str | None = None,
     cmap_name: str = "viridis_r",
+    weights: dict[str, float] | None = None,
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -531,6 +535,10 @@ def get_table_style(
         Column name or list of names to be coloured.
     cmap_name
         Matplotlib colormap name. Default is ``"viridis_r"``.
+    weights
+        Current weight per column id. Columns with a weight of ``0`` are excluded
+        from the score, so their cells are dimmed to signal they are switched off.
+        Default is None.
 
     Returns
     -------
@@ -716,6 +724,13 @@ def get_table_style(
                     "backgroundColor": background_color,
                     "color": text_colour_for_background(background_rgb),
                 }
+            )
+
+    # Dim any column switched off with a zero weight
+    for column, weight in (weights or {}).items():
+        if weight == 0:
+            style_data_conditional.append(
+                {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
             )
 
     return style_data_conditional

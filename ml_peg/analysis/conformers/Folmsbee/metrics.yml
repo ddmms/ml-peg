@@ -1,0 +1,15 @@
+metrics:
+  MAE:
+    good: 0.0
+    bad: 2.0
+    unit: kcal/mol
+    weight: 0
+    tooltip: Mean Absolute Error for all systems of the relative energy to the lowest energy conformer.
+    level_of_theory: DLPNO-CCSD(T)
+  Conformer Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: mlipaudit per-molecule soft-threshold score (MAE and RMSE, failed molecules score 0).
+    level_of_theory: DLPNO-CCSD(T)
