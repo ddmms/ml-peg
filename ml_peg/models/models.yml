@@ -289,7 +289,7 @@ Vivace:
   trained_on_dispersion: true
   level_of_theory: r2SCAN+D3
   kwargs:
-    model_path: /Users/joehart/Desktop/0_Cambridge/0_MPhil_Scientific_Computing/MPhil_project/mlipx_testing/new_format/mlip-testing/ml_peg/models/vivace_v0.1.pt
+    model_path: null
 
 mace-polar-1-s:
   module: mace.calculators
