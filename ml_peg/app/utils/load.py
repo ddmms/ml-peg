@@ -18,6 +18,7 @@ from ml_peg.app.utils.utils import (
     clean_table_data,
     clean_thresholds,
     clean_weights,
+    drop_empty_model_rows,
     is_numeric_column,
     none_to_nan,
     sig_fig_format,
@@ -101,6 +102,9 @@ def rebuild_table(
             # Update model_name_map if this is a new model not in original JSON
             if original_model not in model_name_map.values():
                 model_name_map[display_name] = original_model
+
+    # Hide models with no results in any metric column for this benchmark
+    data = drop_empty_model_rows(data)
 
     width_labels: list[str] = []
 

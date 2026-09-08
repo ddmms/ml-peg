@@ -27,6 +27,7 @@ from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
+    drop_empty_model_rows,
     get_framework_config,
     get_mlip_column_width,
     get_threshold_colours,
@@ -141,6 +142,9 @@ def build_summary_table(
         for category_col in category_columns:
             row[category_col] = summary_data[mlip].get(category_col, None)
         data.append(row)
+
+    # Hide models with no score in any category column of this summary table.
+    data = drop_empty_model_rows(data)
 
     data = calc_table_scores(data, weights=weights)
 
