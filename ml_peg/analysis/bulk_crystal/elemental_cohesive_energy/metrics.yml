@@ -1,0 +1,13 @@
+metrics:
+  MAE (PBE):
+    good: 0.0
+    bad: 1.0
+    unit: eV/atom
+    tooltip: "Mean Absolute Error of cohesive energies compared to PBE"
+    level_of_theory: PBE
+  MAE (Experimental):
+    good: 0.0
+    bad: 1.0
+    unit: eV/atom
+    tooltip: "Mean Absolute Error of cohesive energies compared to experiment"
+    level_of_theory: Experimental
