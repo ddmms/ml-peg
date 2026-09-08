@@ -13,8 +13,10 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "QMOF"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/porous_materials.html#qmof"
-DATA_PATH = APP_ROOT / "data" / "porous_materials" / "mofs" / "qmof"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/porous_materials.html#qmof"
+)
+DATA_PATH = APP_ROOT / "data" / "porous_materials" / "QMOF"
 INFO_PATH = DATA_PATH / "info.json"
 
 
@@ -41,7 +43,7 @@ class QMOFApp(BaseApp):
 
         struct_trajs = collect_traj_assets(
             data_path=DATA_PATH,
-            assets_prefix="/assets/mofs/qmof",
+            assets_prefix="/assets/porous_materials/QMOF",
             models=MODELS,
             traj_dirname="density_traj",
             suffix=".extxyz",
