@@ -135,12 +135,12 @@ def build_summary_table(
             if original_name in summary_data:
                 summary_data[original_name][category_col] = row["Score"]
 
-    # Ensure all models have entries for all category columns (None if missing)
+    # Preserve absent benchmark results as NaN so aggregate scores remain missing.
     data = []
     for mlip in summary_data:
         row = {"MLIP": mlip}
         for category_col in category_columns:
-            row[category_col] = summary_data[mlip].get(category_col, None)
+            row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
     # Hide models with no score in any category column of this summary table.
@@ -184,7 +184,7 @@ def build_summary_table(
             column["type"] = "numeric"
             column["format"] = sig_fig_format()
 
-    style = get_table_style(data)
+    style = get_table_style(data) if data else []
     registry_configs = load_model_registry_configs()
     row_models: list[str] = []
     for row in data:

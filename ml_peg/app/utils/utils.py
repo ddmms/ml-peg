@@ -470,7 +470,6 @@ def filter_rows_by_models(
     ]
 
 
-
 def row_has_no_results(row: dict[str, str | float | None]) -> bool:
     """
     Check whether a table row has no result in any metric column.
@@ -496,8 +495,9 @@ def row_has_no_results(row: dict[str, str | float | None]) -> bool:
     return True
 
 
-
-def drop_empty_model_rows(rows: list[dict[str, str | float | None]] | None) -> list[dict[str, str | float | None]]:
+def drop_empty_model_rows(
+    rows: list[dict[str, str | float | None]] | None,
+) -> list[dict[str, str | float | None]]:
     """
     Drop model rows if no metric column has a value.
 

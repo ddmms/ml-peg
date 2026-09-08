@@ -18,12 +18,11 @@ from ml_peg.app.utils.utils import (
     clean_table_data,
     clean_thresholds,
     clean_weights,
-    drop_empty_model_rows,
     is_numeric_column,
     none_to_nan,
     sig_fig_format,
 )
-from ml_peg.models.get_models import get_model_names, load_model_configs
+from ml_peg.models.get_models import load_model_configs
 
 
 def rebuild_table(
@@ -56,21 +55,28 @@ def rebuild_table(
         table_json = json.load(f)
 
     data = table_json["data"]
+    columns = table_json["columns"]
+    metric_columns = [
+        column["id"]
+        for column in columns
+        if column.get("id") not in {"MLIP", "Score", "id", "link"}
+    ]
+    # A row containing only null metrics was never computed. Keep explicit NaNs,
+    # which record a calculation that was attempted but failed.
+    data = [
+        row
+        for row in data
+        if any(row.get(metric) not in {None, ""} for metric in metric_columns)
+    ]
     # Remove values greater than int64 limits
     clean_table_data(data)
     # Replace None scores with NaN
     none_to_nan(data)
 
-    columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
-
-    # Pad table with all models from registry (models without data will be
-    # grayed/hashed out)
-    all_registry_models = get_model_names()
-    existing_display_names = {row.get("MLIP") for row in data}
 
     # Model names come in two forms:
     # - Original model name: Base name from models.yml (e.g., "mace-mp-0a")
@@ -79,32 +85,6 @@ def rebuild_table(
     # model_name_map stores: display_name -> original model name
     # We need the inverse for lookups: original name -> display name
     original_to_display = {v: k for k, v in model_name_map.items()}
-
-    # Determine which metrics exist (excluding MLIP, Score, id)
-    metric_columns = [
-        col["id"] for col in columns if col.get("id") not in {"MLIP", "Score", "id"}
-    ]
-
-    # Add missing models with NaN for all metrics
-    for original_model in all_registry_models:
-        # Convert original model name (from registry) to display name (for table)
-        display_name = original_to_display.get(original_model, original_model)
-        if display_name not in existing_display_names:
-            # Create row with NaN for all metrics (will appear hashed out) while
-            # storing the original model name in ``id`` so callbacks have a stable key
-            new_row = {"MLIP": display_name, "id": original_model}
-            for metric in metric_columns:
-                new_row[metric] = "NaN"
-            # Score will be NaN (calculated later by calc_table_scores)
-            new_row["Score"] = "NaN"
-            data.append(new_row)
-
-            # Update model_name_map if this is a new model not in original JSON
-            if original_model not in model_name_map.values():
-                model_name_map[display_name] = original_model
-
-    # Hide models with no results in any metric column for this benchmark
-    data = drop_empty_model_rows(data)
 
     width_labels: list[str] = []
 
@@ -139,14 +119,13 @@ def rebuild_table(
     tooltip_header = table_json["tooltip_header"]
 
     scored_data = calc_metric_scores(data, thresholds)
-    style = get_table_style(data, scored_data=scored_data)
+    style = get_table_style(data, scored_data=scored_data) if data else []
     column_widths = calculate_column_widths(width_labels, min_metric_width=170)
     model_levels = table_json.get("model_levels_of_theory") or {}
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
 
-    # Add model configs and levels for newly added models
-    # (models that were padded but not in original JSON)
+    # Add model configs and levels missing from older table metadata
     all_display_names = {row.get("MLIP") for row in data}
     missing_models = []
     for display_name in all_display_names:
