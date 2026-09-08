@@ -39,6 +39,7 @@ dependencies = [
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",
     "typer<1.0.0,>=0.19.1",
+    "typing-extensions>=4.0",
 ]
 
 [project.optional-dependencies]
