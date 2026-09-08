@@ -37,6 +37,7 @@ from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
     clean_thresholds,
+    drop_empty_model_rows,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
@@ -248,7 +249,8 @@ def register_summary_table_callbacks(
         if not computed_store:
             raise PreventUpdate
 
-        filtered_rows = filter_rows_by_models(computed_store, selected_models)
+        visible_rows = drop_empty_model_rows(computed_store)
+        filtered_rows = filter_rows_by_models(visible_rows, selected_models)
         base_style = (
             get_table_style(
                 filtered_rows,

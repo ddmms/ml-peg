@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from importlib import metadata
 from pathlib import Path
 import time
@@ -143,10 +144,11 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
+    data = calc_table_scores(data, weights=weights)
+    unfiltered_data = deepcopy(data)
+
     # Hide models with no score in any category column of this summary table.
     data = drop_empty_model_rows(data)
-
-    data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
 
@@ -187,7 +189,7 @@ def build_summary_table(
     style = get_table_style(data) if data else []
     registry_configs = load_model_registry_configs()
     row_models: list[str] = []
-    for row in data:
+    for row in unfiltered_data:
         mlip = row.get("MLIP")
         if isinstance(mlip, str) and mlip not in row_models:
             row_models.append(mlip)
@@ -239,6 +241,9 @@ def build_summary_table(
     if table_id == "summary-table":
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
         for row in data:
+            anchor = row.get("MLIP")
+            row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
+        for row in unfiltered_data:
             anchor = row.get("MLIP")
             row["link"] = f"[🔗]({models_url}#{anchor})" if anchor else ""
         columns.insert(1, {"id": "link", "name": "", "presentation": "markdown"})
@@ -301,6 +306,7 @@ def build_summary_table(
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
     table.weights = weights
+    table.unfiltered_data = unfiltered_data
     return table
 
 
@@ -573,7 +579,7 @@ def build_weight_components(
     # Callbacks to update table scores when table weight dicts change
     if table.id == "summary-table":
         register_summary_table_callbacks(
-            initial_rows=table.data,
+            initial_rows=table.unfiltered_data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
@@ -581,7 +587,7 @@ def build_weight_components(
         )
     elif table.id == "framework-summary-table":
         register_summary_table_callbacks(
-            initial_rows=table.data,
+            initial_rows=table.unfiltered_data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
