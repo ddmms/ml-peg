@@ -78,6 +78,10 @@ orb = [
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
 ]
+geo-opt = [
+    "moyopy[interface]>=0.12",
+    "pymatgen",
+]
 upet = [
     "upet==0.2.4; python_version >= '3.11'",
 ]
