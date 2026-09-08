@@ -123,9 +123,6 @@ class CitationReporter:
             Pytest configuration object.
         """
         self.rootpath = Path(config.rootpath)
-        self.models = config.getoption("--models")
-        self.models_file = config.getoption("--models-file")
-        self.mock_only = config.getoption("--mock-only", default=False)
         self.script_paths: set[Path] = set()
         self.framework_ids: dict[Path, set[str]] = {}
 
@@ -178,19 +175,13 @@ class CitationReporter:
             return
 
         from ml_peg.citations import build_run_citations
-        from ml_peg.models.get_models import get_model_names
 
-        model_names = (
-            () if self.mock_only else get_model_names(self.models, self.models_file)
-        )
         framework_ids = {
             framework_id
             for path in self.script_paths
             for framework_id in self.framework_ids.get(path, ())
         }
-        summary = build_run_citations(
-            self.script_paths, model_names, self.models_file, framework_ids
-        )
+        summary = build_run_citations(self.script_paths, framework_ids=framework_ids)
         terminalreporter.write_line("")
         terminalreporter.write_line(summary)
 

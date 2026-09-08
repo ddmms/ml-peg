@@ -11,8 +11,8 @@
 
 - question: "What should I cite when using ML-PEG?"
   answer: >
-    Please cite ML-PEG, the original papers and data sources listed on each benchmark,
-    and the papers for the MLIP models you used.
+    Please cite ML-PEG and the original papers and data sources listed on each
+    benchmark.
   docs_url: null
 
 - question: "Why are some boxes greyed out?"

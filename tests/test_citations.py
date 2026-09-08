@@ -33,9 +33,7 @@ from ml_peg.citations import (
     format_citation_summary,
     load_benchmark_credits,
     load_framework_citations,
-    load_model_citations,
 )
-from ml_peg.models import models_file
 
 
 def _walk_components(component: Component) -> Iterator[Component]:
@@ -185,23 +183,21 @@ def test_benchmark_runs_print_guidance_without_writing_files(
     monkeypatch.chdir(tmp_path)
 
     summary = build_run_citations(
-        [CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"],
-        model_names=["mace-mp-0a"],
+        [CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"]
     )
 
     assert "CITATION GUIDANCE" in summary
     assert "conformers/ACONFL" in summary
-    assert "MODELS (1)" in summary
+    assert "MODELS (" not in summary
     # Nothing is written, so a run leaves the working directory untouched
     assert list(tmp_path.rglob("*")) == []
 
 
 def test_terminal_summary_prints_citations_and_implementers() -> None:
-    """Terminal guidance includes paper authors, implementers, and models."""
+    """Terminal guidance includes paper authors and implementers."""
     summary = format_citation_summary(
         {"category/test": _credits(TEST_CITATION)},
         missing_benchmarks=("category/other",),
-        models={"uncited-model": None},
     )
 
     assert "First Author, Second Author (2026). Test source." in summary
@@ -209,7 +205,6 @@ def test_terminal_summary_prints_citations_and_implementers() -> None:
     assert "Test Implementer" in summary
     assert "BENCHMARKS (2)" in summary
     assert "category/other" in summary
-    assert "MODELS (1)" in summary
 
 
 def test_implementer_is_separated_from_the_citation() -> None:
@@ -262,10 +257,7 @@ def test_doi_is_part_of_the_citation_in_the_summary() -> None:
 
 def test_terminal_summary_is_a_bounded_block() -> None:
     """Guidance is framed and stays within the summary width for terminal output."""
-    summary = format_citation_summary(
-        {"category/test": _credits(TEST_CITATION)},
-        models={"uncited-model": None},
-    )
+    summary = format_citation_summary({"category/test": _credits(TEST_CITATION)})
     lines = summary.splitlines()
 
     assert lines[0] == lines[-1] == "=" * SUMMARY_WIDTH
@@ -285,17 +277,9 @@ def test_terminal_summary_shows_dois() -> None:
         doi="10.1234/example",
     )
 
-    summary = format_citation_summary(
-        {"category/test": _credits(cited)},
-        models={
-            "cited-model": Citation(
-                key="m", title="Model", authors=("M. Author",), doi="10.5678/model"
-            )
-        },
-    )
+    summary = format_citation_summary({"category/test": _credits(cited)})
 
     assert "https://doi.org/10.1234/example" in summary
-    assert "https://doi.org/10.5678/model" in summary
 
 
 def test_terminal_summary_never_wraps_a_link() -> None:
@@ -321,13 +305,12 @@ def test_terminal_summary_flags_incomplete_metadata() -> None:
     summary = format_citation_summary(
         {},
         missing_benchmarks=("category/other",),
-        models={"uncited-model": None},
         frameworks={"MLIP Arena": None},
     )
 
     # The warning wraps, so compare against whitespace-normalised text
     flat = " ".join(summary.split())
-    assert "incomplete for 1 benchmark(s), 1 framework(s), 1 model(s)" in flat
+    assert "incomplete for 1 benchmark(s), 1 framework(s)" in flat
 
 
 def test_terminal_summary_does_not_split_names_at_hyphens() -> None:
@@ -344,41 +327,6 @@ def test_terminal_summary_does_not_split_names_at_hyphens() -> None:
 
     assert "mace-mp-0a" in summary
     assert "mace-\n" not in summary
-
-
-def test_load_model_citations_reads_models_file(tmp_path: Path) -> None:
-    """Model citations are read from the supplied model definitions file."""
-    path = tmp_path / "models.yml"
-    path.write_text(
-        """cited-model:
-  class_name: mace
-  citation:
-    title: Model paper
-    authors:
-      - M. Author
-    year: 2026
-placeholder-model:
-  class_name: mace
-  citation:
-    title: null
-    authors: []
-    year: null
-"""
-    )
-
-    citations = load_model_citations(["cited-model", "placeholder-model"], path)
-
-    assert citations["cited-model"].reference == "M. Author (2026). Model paper."
-    assert citations["placeholder-model"] is None
-
-
-def test_repository_model_citations_are_valid() -> None:
-    """Every models.yml entry has a citation block that parses."""
-    model_names = list(safe_load(models_file.read_text()))
-
-    citations = load_model_citations(model_names)
-
-    assert set(citations) == set(model_names)
 
 
 def test_benchmark_credit_is_not_hidden_in_a_details_element() -> None:
