@@ -1,0 +1,14 @@
+contributors:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+citations:
+  - key: "wahl-2020-tautobase"
+    role: benchmark_method
+    title: "Tautobase: an open tautomer database"
+    authors:
+      - "O. Wahl"
+      - "T. Sander"
+    year: 2020
+    doi: "10.1021/acs.jcim.0c00035"
+    url: null

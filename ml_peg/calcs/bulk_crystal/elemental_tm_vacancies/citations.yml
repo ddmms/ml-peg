@@ -1,0 +1,14 @@
+contributors:
+  - name: "Alexandre Peuch"
+    github: "alxdr-peuch"
+
+citations:
+  - key: "angsten-2014-vacancy"
+    role: benchmark_method
+    title: "Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures"
+    authors:
+      - "T. Angsten"
+      - "et al."
+    year: 2014
+    doi: null
+    url: null

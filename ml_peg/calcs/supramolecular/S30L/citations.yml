@@ -1,0 +1,14 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - key: "sure-2015-s30l"
+    role: benchmark_method
+    title: "S30L - Comprehensive Benchmark of Association (Free) Energies of Realistic Host-Guest Complexes"
+    authors:
+      - "R. Sure"
+      - "S. Grimme"
+    year: 2015
+    doi: "10.1021/acs.jctc.5b00296"
+    url: null

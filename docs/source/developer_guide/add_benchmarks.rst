@@ -5,9 +5,10 @@ Adding benchmarks
 This guide will break down the process of adding a new benchmark into several steps:
 
 1. :ref:`metrics`
-2. :ref:`calculations`
-3. :ref:`analysis`
-4. :ref:`dash`
+2. :ref:`benchmark-credits`
+3. :ref:`calculations`
+4. :ref:`analysis`
+5. :ref:`dash`
 
 Please ensure you use the appropriate issue and pull request templates when
 contributing a new benchmark. Full examples can be found by filtering by the
@@ -51,6 +52,37 @@ MLIP, flagging mismatches using the traffic light system. An exact string match 
 In some cases, metrics may also encode correct behaviour without a specific reference,
 such as by quantifying features of a known distribution (curvature, minima, etc.),
 or quantifying the stability of a simulation.
+
+
+.. _benchmark-credits:
+
+Recording citations and implementation credit
+----------------------------------------------
+
+Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
+
+.. code-block:: yaml
+
+    contributors:          # who implemented this benchmark in ML-PEG
+      - name: A. Contributor
+        github: acontributor
+
+    citations:             # what a user of this benchmark must cite
+      - key: author-2025-benchmark
+        role: benchmark_method
+        title: The benchmark paper
+        authors:
+          - A. Author
+          - B. Author
+        year: 2025
+        doi: 10.1234/example
+
+``role`` is ``benchmark_method``, ``inspired_by`` (work the benchmark builds on
+rather than is taken from), ``reference_data``, ``reference_method``, or
+``upstream_framework``. ``year``, ``doi``, and ``url`` may be ``null``.
+
+``ml_peg calc`` prints what to cite for the benchmarks that ran, just like in
+your favourite DFT code.
 
 
 .. _calculations:

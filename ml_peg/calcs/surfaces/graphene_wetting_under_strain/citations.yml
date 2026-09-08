@@ -1,0 +1,17 @@
+contributors:
+  - name: "Darren Lim"
+    github: "dwl38"
+
+citations:
+  - key: "lim-2026-graphene-wetting"
+    role: benchmark_method
+    title: "Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential"
+    authors:
+      - "D. W. Lim"
+      - "X. R. Advincula"
+      - "W. C. Witt"
+      - "F. L. Thiemann"
+      - "C. Schran"
+    year: null
+    doi: null
+    url: "https://arxiv.org/abs/2601.20134"

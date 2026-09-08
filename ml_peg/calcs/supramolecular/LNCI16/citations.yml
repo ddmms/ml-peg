@@ -1,0 +1,16 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - key: "gorges-2023-lnci16"
+    role: benchmark_method
+    title: "LNCI16 - Efficient Computation of the Interaction Energies of Very Large Non-covalently Bound Complexes"
+    authors:
+      - "J. Gorges"
+      - "B. Bädorf"
+      - "A. Hansen"
+      - "S. Grimme"
+    year: 2023
+    doi: "10.1055/s-0042-1753141"
+    url: null

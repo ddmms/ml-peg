@@ -1,0 +1,71 @@
+contributors:
+  - name: "Petr Grigorev"
+    github: "pgrigorev"
+
+citations:
+  - key: "cak-2014-bop"
+    role: reference_data
+    title: "Analytic bond-order potentials for the bcc refractory metals Nb, Ta, Mo and W"
+    authors:
+      - "M. Čák"
+      - "T. Hammerschmidt"
+      - "J. Rogal"
+      - "V. Vitek"
+      - "R. Drautz"
+    year: 2014
+    doi: "10.1088/0953-8984/26/19/195501"
+    url: null
+  - key: "nitol-2022-ti-zr"
+    role: reference_data
+    title: "Machine learning models for predictive materials science from fundamental physics: An application to titanium and zirconium"
+    authors:
+      - "M. S. Nitol"
+      - "D. E. Dickel"
+      - "C. D. Barrett"
+    year: 2022
+    doi: "10.1016/j.actamat.2021.117347"
+    url: null
+  - key: "soulairol-2010-fe-cr"
+    role: reference_data
+    title: "Structure and magnetism of bulk Fe and Cr: From plane waves to LCAO methods"
+    authors:
+      - "R. Soulairol"
+      - "C. C. Fu"
+      - "C. Barreteau"
+    year: 2010
+    doi: "10.1088/0953-8984/22/29/295502"
+    url: null
+  - key: "he-2005-ni"
+    role: reference_data
+    title: "Calculation of ferromagnetic states in metastable bcc and hcp Ni by projector-augmented wave method"
+    authors:
+      - "X. He"
+      - "L. T. Kong"
+      - "B. X. Liu"
+    year: 2005
+    doi: "10.1063/1.1903104"
+    url: null
+  - key: "dezerald-2014-fe"
+    role: reference_data
+    title: "Stability of self-interstitial clusters with C15 Laves phase structure in iron"
+    authors:
+      - "L. Dézerald"
+      - "M. C. Marinica"
+      - "L. Ventelon"
+      - "D. Rodney"
+      - "F. Willaime"
+    year: 2014
+    doi: "10.1016/j.jnucmat.2014.02.012"
+    url: null
+  - key: "wang-2018-fe-bain"
+    role: reference_data
+    title: "Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study"
+    authors:
+      - "K. Wang"
+      - "S. L. Shang"
+      - "Y. Wang"
+      - "Z. K. Liu"
+      - "F. Liu"
+    year: 2018
+    doi: "10.1016/j.actamat.2018.01.013"
+    url: null

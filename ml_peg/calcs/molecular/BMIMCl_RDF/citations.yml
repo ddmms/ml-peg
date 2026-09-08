@@ -1,0 +1,24 @@
+contributors:
+  - name: "Fabian Zills"
+    github: "PythonFZ"
+
+citations:
+  - key: "zills-2025-molify"
+    role: benchmark_method
+    title: "molify: Molecular Structure Interface"
+    authors:
+      - "F. Zills"
+    year: 2025
+    doi: "10.21105/joss.08829"
+    url: null
+  - key: "yang-2017-volumetric"
+    role: reference_data
+    title: "Volumetric Properties of Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol, N,N-Dimethylformamide, and Water at Several Temperatures"
+    authors:
+      - "F. Yang"
+      - "D. Wang"
+      - "X. Wang"
+      - "Z. Liu"
+    year: 2017
+    doi: "10.1021/acs.jced.7b00654"
+    url: null

@@ -1,0 +1,14 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - key: "reilly-2013-x23"
+    role: benchmark_method
+    title: "Understanding the role of vibrations, exact exchange, and many-body van der Waals interactions in the cohesive properties of molecular crystals"
+    authors:
+      - "A. M. Reilly"
+      - "A. Tkatchenko"
+    year: 2013
+    doi: null
+    url: null

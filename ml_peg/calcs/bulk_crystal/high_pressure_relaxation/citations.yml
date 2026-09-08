@@ -1,0 +1,14 @@
+contributors:
+  - name: "Jonathan Schmidt"
+    github: "JonathanSchmidt1"
+
+citations:
+  - key: "loew-2026-pressure"
+    role: reference_data
+    title: "Alexandria database pressure benchmark reference data"
+    authors:
+      - "A. Loew"
+      - "et al."
+    year: 2026
+    doi: null
+    url: "https://iopscience.iop.org/article/10.1088/2515-7639/ae2ba8"

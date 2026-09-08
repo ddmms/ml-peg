@@ -1,0 +1,14 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - key: "kriz-2020-pl-benchmark"
+    role: benchmark_method
+    title: "Benchmarking of Semiempirical Quantum-Mechanical Methods on Systems Relevant to Computer-Aided Drug Design"
+    authors:
+      - "K. Kříž"
+      - "J. Řezáč"
+    year: 2020
+    doi: "10.1021/acs.jcim.9b01171"
+    url: null

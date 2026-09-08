@@ -1,0 +1,13 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+citations:
+  - key: "rezac-2020-ncia-hb"
+    role: benchmark_method
+    title: "Non-covalent interactions atlas benchmark data sets: Hydrogen bonding"
+    authors:
+      - "J. Řezáč"
+    year: 2020
+    doi: null
+    url: null

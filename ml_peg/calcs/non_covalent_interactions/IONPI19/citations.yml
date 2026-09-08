@@ -1,0 +1,16 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+citations:
+  - key: "spicher-2021-ionpi19"
+    role: benchmark_method
+    title: "Benchmarking London dispersion corrected density functional theory for noncovalent ion-pi interactions"
+    authors:
+      - "S. Spicher"
+      - "E. Caldeweyher"
+      - "A. Hansen"
+      - "S. Grimme"
+    year: 2021
+    doi: null
+    url: null

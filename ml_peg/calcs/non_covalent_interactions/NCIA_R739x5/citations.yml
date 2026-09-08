@@ -1,0 +1,15 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+citations:
+  - key: "kriz-2021-ncia-repulsive"
+    role: benchmark_method
+    title: "Non-covalent interactions atlas benchmark data sets 3: Repulsive contacts"
+    authors:
+      - "K. Kriz"
+      - "M. Novacek"
+      - "J. Rezac"
+    year: 2021
+    doi: null
+    url: null

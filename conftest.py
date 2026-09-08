@@ -6,9 +6,12 @@ Based on https://docs.pytest.org/en/latest/example/simple.html.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ml_peg import models
+from ml_peg.calcs import CALCS_ROOT
 
 
 def pytest_addoption(parser):
@@ -48,6 +51,63 @@ def pytest_addoption(parser):
     )
 
 
+def _is_calculation(path: Path) -> bool:
+    """Return whether a path is an ML-PEG calculation benchmark script."""
+    return (
+        path.is_relative_to(CALCS_ROOT)
+        and len(path.relative_to(CALCS_ROOT).parts) == 3
+        and path.name.startswith("calc_")
+        and path.suffix == ".py"
+    )
+
+
+class CitationReporter:
+    """Report citations for the calculation benchmarks that actually ran."""
+
+    def __init__(self, config) -> None:
+        self.rootpath = Path(config.rootpath)
+        self.script_paths: set[Path] = set()
+        self.framework_ids: dict[Path, set[str]] = {}
+
+    def pytest_collection_modifyitems(self, items) -> None:
+        """Record the source frameworks attached to calculation tests."""
+        for item in items:
+            path = self.rootpath / Path(item.fspath)
+            if not _is_calculation(path):
+                continue
+            ids = {
+                framework_id
+                for marker in item.iter_markers(name="framework")
+                for framework_id in marker.args
+            }
+            if ids:
+                self.framework_ids.setdefault(path, set()).update(ids)
+
+    def pytest_runtest_logreport(self, report) -> None:
+        """Record calculation tests that reached their call phase."""
+        if report.when != "call" or report.skipped:
+            return
+        path = self.rootpath / Path(report.fspath)
+        if _is_calculation(path):
+            self.script_paths.add(path)
+
+    def pytest_terminal_summary(self, terminalreporter) -> None:
+        """Print citation guidance for the calculations that ran."""
+        if not self.script_paths:
+            return
+
+        from ml_peg.citations import build_run_citations
+
+        framework_ids = {
+            framework_id
+            for path in self.script_paths
+            for framework_id in self.framework_ids.get(path, ())
+        }
+        summary = build_run_citations(self.script_paths, framework_ids=framework_ids)
+        terminalreporter.write_line("")
+        terminalreporter.write_line(summary)
+
+
 def pytest_configure(config):
     """Configure pytest to custom markers and CLI inputs."""
     # Create custom marker for slow tests
@@ -63,6 +123,8 @@ def pytest_configure(config):
     model_file = config.getoption("--models-file")
     if model_file:
         models.models_file = model_file
+
+    config.pluginmanager.register(CitationReporter(config))
 
 
 def pytest_collection_modifyitems(config, items):

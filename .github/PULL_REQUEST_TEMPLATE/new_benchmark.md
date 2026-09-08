@@ -14,6 +14,7 @@ PR author **must** check the checkboxes below when creating the PR.
 - [ ] I have [reviewed and understand](https://ddmms.github.io/ml-peg/developer_guide/vibecoding.html#contributing-with-ai-the-vibe-coding-guide) all AI-generated code in this PR.
 - [ ] I have added human-written tests for the new logic.
 - [ ] I have properly cited any upstream algorithms or libraries the AI utilized.
+- [ ] I have added `citations.yml` crediting the original authors and the benchmark implementer, or left `citations` empty for a benchmark devised for ML-PEG.
 - [ ] I have disclosed significant AI tool usage in the PR description.
 
 ## Summary

@@ -1,0 +1,26 @@
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - key: "chiang-2025-mlip-arena"
+    role: inspired_by
+    title: "MLIP Arena: Advancing Fairness and Transparency in Machine Learning Interatomic Potentials via an Open, Accessible Benchmark Platform"
+    authors:
+      - "Yuan Chiang"
+      - "Tobias Kreiman"
+      - "Christine Zhang"
+      - "Matthew C. Kuner"
+      - "Elizabeth Weaver"
+      - "Ishan Amin"
+      - "Hyunsoo Park"
+      - "Yunsung Lim"
+      - "Jihan Kim"
+      - "Daryl Chrzan"
+      - "Aron Walsh"
+      - "Samuel M. Blau"
+      - "Mark Asta"
+      - "Aditi S. Krishnapriyan"
+    year: 2025
+    doi: "10.48550/arXiv.2509.20630"
+    url: null

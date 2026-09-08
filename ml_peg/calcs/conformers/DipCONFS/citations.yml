@@ -1,0 +1,7 @@
+contributors:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+# TODO: no paper is named in this benchmark's docs. Add its source here, or
+# confirm it was devised for ML-PEG.
+citations: []
