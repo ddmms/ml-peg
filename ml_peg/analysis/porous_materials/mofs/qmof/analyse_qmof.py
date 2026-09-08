@@ -22,8 +22,8 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "mofs" / "qmof" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "mofs" / "qmof"
+CALC_PATH = CALCS_ROOT / "porous_materials" / "mofs" / "qmof" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "porous_materials" / "mofs" / "qmof"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(

@@ -1,0 +1,4 @@
+    title: Metal Organic Frameworks from QMOF database
+    description: simple energy prediction across the qmof dataset.
+    At the moment the test includes all the mofs from MACE_MP paper, which are a subset of the original QMOF.
+
