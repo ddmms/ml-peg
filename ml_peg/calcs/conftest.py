@@ -39,5 +39,6 @@ def pytest_configure(config: Config) -> None:
     config
         Pytest configuration object.
     """
+    # Set current models from CLI input
     models.run_mock = config.getoption("--run-mock")
     models.mock_only = config.getoption("--mock-only")
