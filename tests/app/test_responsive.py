@@ -289,3 +289,63 @@ def test_multiple_categories_render(page: Page, app_url: str) -> None:
     assert header_count >= count + 2, (
         f"summary table has {header_count} headers for {count} categories"
     )
+
+
+def test_table_survives_resize_after_hscroll(page: Page, app_url: str) -> None:
+    """A horizontally scrolled table must survive a window resize.
+
+    Regression guard: DataTable re-measures on every window ``resize`` and
+    offsets its header/body fragments by (first cell's left - fragment's left),
+    which it assumes is zero. The sticky MLIP column makes that difference equal
+    the wrapper's ``scrollLeft``, so a scrolled table was pulled that far left
+    (out of the scroll window entirely) the moment the window was resized.
+    The weight/threshold grid sits outside the DataTable, so it stayed put and
+    the table alone appeared to vanish.
+    """
+    # Both widths are above the breakpoint: the column is deliberately un-pinned
+    # at <=768px, so the bug this guards only exists at desktop widths.
+    _load(page, app_url, (900, 900))
+    expect(page.locator("#summary-table")).to_be_visible(timeout=TIMEOUT)
+
+    probe = """() => {
+        const table = document.querySelector('#summary-table');
+        const scroll = table.closest('.mlpeg-table-scroll');
+        const cell = table.querySelector('td[data-dash-column="MLIP"]');
+        const t = table.getBoundingClientRect();
+        const s = scroll.getBoundingClientRect();
+        const c = cell.getBoundingClientRect();
+        return {
+            width: t.width,
+            scrollLeft: scroll.scrollLeft,
+            overflow: scroll.scrollWidth - scroll.clientWidth,
+            // How far the pinned cell sits inside the visible scroll window.
+            cellInView: Math.min(c.right, s.right) - Math.max(c.left, s.left),
+        };
+    }"""
+
+    before = page.evaluate(probe)
+    assert before["overflow"] > 8, (
+        f"summary table does not overflow at 900px ({before}); this test needs a "
+        "table wider than its card to have anything to scroll"
+    )
+    page.evaluate(
+        "() => { const s = document.querySelector('#summary-table')"
+        ".closest('.mlpeg-table-scroll');"
+        " s.scrollLeft = Math.round((s.scrollWidth - s.clientWidth) / 2); }"
+    )
+    page.wait_for_timeout(200)
+    scrolled = page.evaluate(probe)
+    assert scrolled["scrollLeft"] > 8, f"table did not scroll: {scrolled}"
+
+    page.set_viewport_size({"width": 800, "height": 900})
+    page.wait_for_timeout(500)
+    after = page.evaluate(probe)
+
+    assert abs(after["width"] - before["width"]) <= 2, (
+        f"table collapsed on resize: {before['width']:.0f}px -> "
+        f"{after['width']:.0f}px (scrollLeft was {scrolled['scrollLeft']})"
+    )
+    assert after["cellInView"] > 8, (
+        f"table scrolled out of its own window on resize (pinned cell shows "
+        f"{after['cellInView']:.0f}px): {after}"
+    )

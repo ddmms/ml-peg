@@ -867,6 +867,22 @@ input[type="number"] {
 .dash-table-container th[data-dash-column="link"] {
   z-index: 4;
 }
+/* Undo DataTable's own scroll compensation, which the pin above corrupts.
+   On every window `resize` DataTable re-measures itself and offsets its header
+   (.cell-0-1) and body (.cell-1-1) fragments by inline
+   `margin-left: -(first cell's left - fragment's left)`. That difference is
+   zero for an ordinary table, but a pinned cell's rect tracks the scrollport
+   (.mlpeg-table-scroll), not the fragment, so it comes out as exactly the
+   wrapper's scrollLeft. A scrolled table was therefore yanked that far left on
+   the next resize (also shrinking the fit-content ancestors), leaving the card
+   blank while the weight/threshold grid outside the table stayed put. These
+   margins only ever carry a real value for `fixed_columns`/`fixed_rows`, which
+   no table here uses, so pinning them to 0 is safe. It also settles
+   DataTable's post-resize width check, which would otherwise re-enter. */
+.dash-table-container .cell-0-1,
+.dash-table-container .cell-1-1 {
+  margin-left: 0 !important;
+}
 /* Soft right edge so the pinned column reads as pinned once content scrolls under
    it. Applied to both pinned columns; on the summary table MLIP's edge sits under
    the opaque link column, so the link column shows the separator instead. */
