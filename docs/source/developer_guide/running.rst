@@ -5,14 +5,6 @@ Running tests
 This guide will break down how to run calculations, analysis, and the interactive
 application.
 
-ML-PEG installs the ``ml_peg.pytest_plugin`` pytest plugin, which provides benchmark
-options, model configuration, filtering, and terminal citation guidance. Pytest
-loads it automatically for installed packages; the repository's root ``conftest.py``
-also loads it for source checkouts. Filtering applies only to ML-PEG benchmark
-scripts, so unrelated tests in the same environment are unaffected. If you disable
-pytest plugin autoload, explicitly load it with ``pytest -p ml_peg.pytest_plugin``.
-
-
 Calculations
 ------------
 

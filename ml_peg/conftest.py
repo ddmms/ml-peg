@@ -52,14 +52,62 @@ def pytest_addoption(parser: Parser) -> None:
     )
 
 
+def _is_benchmark(path: Path) -> bool:
+    """
+    Identify calculation and analysis scripts belonging to this checkout.
+
+    Parameters
+    ----------
+    path
+        Absolute path to a collected test module.
+
+    Returns
+    -------
+    bool
+        Whether the path follows the ML-PEG benchmark layout.
+    """
+    return any(
+        path.is_relative_to(root)
+        and len(path.relative_to(root).parts) == 3
+        and path.name.startswith(prefix)
+        and path.suffix == ".py"
+        for root, prefix in ((CALCS_ROOT, "calc_"), (ANALYSIS_ROOT, "analyse_"))
+    )
+
+
+def _is_calculation(path: Path) -> bool:
+    """
+    Identify calculation scripts belonging to this checkout.
+
+    Parameters
+    ----------
+    path
+        Absolute path to a collected test module.
+
+    Returns
+    -------
+    bool
+        Whether the path is an ML-PEG calculation benchmark script.
+    """
+    return (
+        path.is_relative_to(CALCS_ROOT)
+        and len(path.relative_to(CALCS_ROOT).parts) == 3
+        and path.name.startswith("calc_")
+        and path.suffix == ".py"
+    )
+
+
 class CitationReporter:
     """
-    Report what to cite for the benchmarks a pytest session actually ran.
+    Report what to cite for the calculations a pytest session actually ran.
 
-    Records the benchmark scripts that execute, then prints the citations and
-    implementation credits at the end of the session. Tests outside the calculation
-    and analysis trees are ignored, so running the package's own test suite produces
-    no citation output.
+    Tests outside the calculation tree are ignored, so analysis and package tests
+    produce no citation output.
+
+    Parameters
+    ----------
+    config
+        Pytest configuration object.
     """
 
     def __init__(self, config: Config) -> None:
@@ -80,7 +128,7 @@ class CitationReporter:
 
     def pytest_collection_modifyitems(self, items: list[Item]) -> None:
         """
-        Record the source frameworks each benchmark script is tagged with.
+        Record the source frameworks each calculation script is tagged with.
 
         Parameters
         ----------
@@ -88,18 +136,20 @@ class CitationReporter:
             Collected test items.
         """
         for item in items:
+            path = self.rootpath / Path(item.fspath)
+            if not _is_calculation(path):
+                continue
             ids = {
                 framework_id
                 for marker in item.iter_markers(name="framework")
                 for framework_id in marker.args
             }
             if ids:
-                path = self.rootpath / Path(item.fspath)
                 self.framework_ids.setdefault(path, set()).update(ids)
 
     def pytest_runtest_logreport(self, report: TestReport) -> None:
         """
-        Record the benchmark script of any test that was not skipped or deselected.
+        Record a calculation script when its test was not skipped or deselected.
 
         Parameters
         ----------
@@ -108,19 +158,13 @@ class CitationReporter:
         """
         if report.when != "call" or report.skipped:
             return
-        # fspath is relative to the pytest rootdir
         path = self.rootpath / Path(report.fspath)
-        if not path.name.startswith(("calc_", "analyse_")):
-            return
-        for root in (CALCS_ROOT, ANALYSIS_ROOT):
-            # Benchmark scripts live at <root>/<category>/<benchmark>/<script>.py
-            if path.is_relative_to(root) and len(path.relative_to(root).parts) == 3:
-                self.script_paths.add(path)
-                return
+        if _is_calculation(path):
+            self.script_paths.add(path)
 
     def pytest_terminal_summary(self, terminalreporter: TerminalReporter) -> None:
         """
-        Print citation guidance for the benchmarks that ran.
+        Print citation guidance for the calculations that ran.
 
         Parameters
         ----------

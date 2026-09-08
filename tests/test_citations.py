@@ -12,6 +12,7 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
+from conftest import CitationReporter
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
     build_test_layout,
@@ -35,7 +36,6 @@ from ml_peg.citations import (
     load_model_citations,
 )
 from ml_peg.models import models_file
-from ml_peg.pytest_plugin import CitationReporter
 
 
 def _walk_components(component: Component) -> Iterator[Component]:
