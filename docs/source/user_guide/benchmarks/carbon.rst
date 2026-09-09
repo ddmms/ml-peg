@@ -9,8 +9,8 @@ Summary
 -------
 
 Performance in predicting lattice parameters, neighbour bond lengths, and energy
-above graphite for eight carbon allotropes: graphite, graphene, diamond,
-lonsdaleite, (9,0) and (9,9) carbon nanotubes, C60, and C100. Each model not
+above graphite for seven carbon allotropes: graphite, graphene, diamond,
+lonsdaleite, the (9,0) carbon nanotube, C60, and C100. Each model not
 already trained with dispersion corrections is run twice, once with its plain
 calculator and once with a D3 dispersion correction added; models trained on
 dispersion run once, since D3 would be a no-op. The D3-corrected metrics carry the
@@ -22,15 +22,17 @@ Metrics
 
 1. Lattice parameter MAPE
 
-For the six periodic systems, the DFT reference structure is relaxed (cell and
+For the five periodic systems, the DFT reference structure is relaxed (cell and
 positions, ``fmax`` 1e-4 eV/Å for graphite, 1e-3 eV/Å otherwise). The relaxed and
 reference lattice parameters are each divided by the system's supercell repeat factor
 (graphite a/6 and c/2; diamond a/3; graphene a/5; lonsdaleite a/2 and c/2; NT(9,0)
-c/5; NT(9,9) c/1) before the mean absolute percentage error is taken across all
+c/5) before the mean absolute percentage error is taken across all
 resulting values. Reference cells were relaxed at ``ISIF = 2`` (ions only, fixed
 cell) for every system except Lonsdaleite (``ISIF = 3``, cell and ions); this
 benchmark relaxes the model's cell fully in every case, so the model is not
-constrained the same way DFT was for those six systems.
+constrained the same way DFT was. Graphite, graphene and lonsdaleite sit within
+0.25 GPa of their optB88-vdW minima; diamond's fixed cell carries -2.4 GPa, worth
+about 0.2% in ``a``, and NT(9,0)'s axial repeat is an idealised 3 × 1.42 Å build.
 
 2. Bond length MAPE
 
@@ -51,9 +53,9 @@ isolated-atom reference cancels:
 
 computed identically for model and reference (reference energies come from each
 system's shipped ``REF_energy``). This is positive for every system less bound than
-graphite (all seven here), following the standard "energy above hull" sign
+graphite (all six here), following the standard "energy above hull" sign
 convention. Graphite is 0 by construction and is excluded from the metric; the other
-seven systems contribute. Reference values span 72-450 meV/atom, small enough that a
+six systems contribute. Reference values span 72-450 meV/atom, small enough that a
 percentage error is dominated by whichever system happens to have the smallest
 denominator, so this metric is reported as a mean absolute error in meV/atom rather
 than as a MAPE.
@@ -73,16 +75,13 @@ Input and reference structures:
   *J. Chem. Phys.* **153**, 034702 (2020). https://doi.org/10.1063/5.0005084
 * optB88-vdW exchange-correlation functional, PAW pseudopotentials, 500 eV plane-wave
   cutoff (VASP). Monkhorst-Pack k-point grids: graphite and diamond 2×2×2; graphene
-  and lonsdaleite 3×3×3; NT(9,0) 1×1×2; NT(9,9) 1×1×8, from the replacement cell
-  described below (the working copy it replaces used 1×1×2); C60 and C100 1×1×1.
+  and lonsdaleite 3×3×3; NT(9,0) 1×1×2; C60 and C100 1×1×1.
   ``ISIF = 2`` for every system except Lonsdaleite (``ISIF = 3``); ``ISPIN = 1``
   throughout.
 * Data repository: https://github.com/patrickwrowe/Carbon_GAP
 
-Corrections to the original GAP-20 test suite:
+Differences from the original GAP-20 test suite:
 
-* The (9,0) and (9,9) nanotube results were transposed in the original results
-  dictionary; each nanotube now reports its own values.
 * The original C100 bond-length comparison used the unrelaxed structure's distances
   instead of the relaxed structure's; the relaxed structure is now used, consistent
   with C60.
@@ -90,10 +89,12 @@ Corrections to the original GAP-20 test suite:
   (``Graphite_Unit_Unopt.POSCAR``) while still applying the a/6, c/2 divisors; the
   port uses the 288-atom ``Bulk_Structures/Graphite`` DFT-relaxed cell, for which
   those divisors are correct.
-* The original (9,9) nanotube reference was a 174-atom defect-generation working
-  copy with six two-coordinated (under-relaxed) sites, contracted by 2.8% on
-  relaxation. It has been replaced with an intact 36-atom unit cell (all sites
-  3-coordinated) at the same level of theory; its supercell divisor is 1, not 5.
+* The (9,9) nanotube is not included. Its reference cell is a 174-atom
+  defect-generation working copy carrying six two-coordinated sites, and the intact
+  cell available at the same level of theory is an idealised build with neither its
+  positions nor its cell relaxed. Neither yields a lattice parameter. The tube is
+  covered by the nanotube formation energies benchmark, where model and reference
+  share that geometry.
 * Energy above graphite is measured relative to graphite rather than to the
   original hardcoded per-system literals, which were built on the spin-unpolarised
   (``ISPIN = 1``) isolated-atom convention above and scored every correct model as
@@ -196,7 +197,7 @@ Input and reference structures:
   2×2×2 (bulk), 2×2×1 (slab).
 * Data repository: https://github.com/patrickwrowe/Carbon_GAP
 
-Corrections to the original GAP-20 test suite:
+Differences from the original GAP-20 test suite:
 
 * Diamond {111} is omitted. Its as-cut and relaxed DFT reference calculations were
   truncated mid-SCF (no closing ``</calculation>`` or ``</modeling>`` tag, no final

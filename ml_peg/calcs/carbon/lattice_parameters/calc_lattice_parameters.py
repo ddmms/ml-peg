@@ -29,7 +29,6 @@ REPEAT_FACTORS = {
     "Diamond": {"a": 3},
     "Lonsdaleite": {"a": 2, "c": 2},
     "Nanotube-(9,0)": {"c": 5},
-    "Nanotube-(9,9)": {"c": 1},
 }
 
 MOLECULES = ("C60", "C100")
