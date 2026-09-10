@@ -47,6 +47,7 @@ SPEED_LEVELS: dict[str, dict[str, str]] = {
 }
 
 SPEED_ORDER: tuple[str, ...] = tuple(SPEED_LEVELS)
+_SPEED_MARKERS = frozenset(SPEED_ORDER)
 
 
 def _marker_names(tree: ast.Module) -> set[str]:
@@ -62,17 +63,33 @@ def _marker_names(tree: ast.Module) -> set[str]:
     -------
     set[str]
         Marker names applied to functions in the module.
+
+    Raises
+    ------
+    ValueError
+        If one function has more than one speed marker.
     """
     names: set[str] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
+        function_names: set[str] = set()
         for decorator in node.decorator_list:
             # Strip the call form, so @pytest.mark.framework("x") is handled
             # alongside the bare @pytest.mark.slow form.
             target = decorator.func if isinstance(decorator, ast.Call) else decorator
             if isinstance(target, ast.Attribute):
-                names.add(target.attr)
+                function_names.add(target.attr)
+        speed_markers = function_names & _SPEED_MARKERS
+        if len(speed_markers) > 1:
+            ordered_markers = [
+                marker for marker in SPEED_ORDER if marker in speed_markers
+            ]
+            raise ValueError(
+                f"{node.name} has conflicting speed markers: "
+                f"{', '.join(ordered_markers)}"
+            )
+        names.update(function_names)
     return names
 
 
@@ -96,7 +113,7 @@ def get_benchmark_speed(calc_dir: Path) -> str | None:
             tree = ast.parse(calc_file.read_text(encoding="utf8"))
         except (OSError, SyntaxError):
             continue
-        found |= _marker_names(tree) & set(SPEED_ORDER)
+        found |= _marker_names(tree) & _SPEED_MARKERS
 
     for level in reversed(SPEED_ORDER):
         if level in found:

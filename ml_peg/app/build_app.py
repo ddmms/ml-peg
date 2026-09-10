@@ -380,7 +380,6 @@ def get_all_tests(
             )
             test_app = test_module.get_app()
             apps[test_name] = test_app
-            test_app.table.benchmark_key = f"{category_name}/{test_name}"
 
             # Get layouts and tables for each category/test
             if category_name not in layouts:
@@ -418,7 +417,7 @@ def _collect_benchmark_speeds(
     all_tables: dict[str, dict[str, DataTable]],
 ) -> dict[str, str | None]:
     """
-    Collect speeds by stable, directory-based benchmark identifier.
+    Collect speeds by unique benchmark name.
 
     Parameters
     ----------
@@ -428,12 +427,12 @@ def _collect_benchmark_speeds(
     Returns
     -------
     dict[str, str | None]
-        Speed level for each ``<category>/<benchmark>`` identifier.
+        Speed level for each benchmark name.
     """
     return {
-        table.benchmark_key: getattr(table, "speed", None)
+        test_name: getattr(table, "speed", None)
         for tests in all_tables.values()
-        for table in tests.values()
+        for test_name, table in tests.items()
     }
 
 
@@ -521,7 +520,7 @@ def build_category(
                     "name": test_name,
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
-                    "key": table.benchmark_key,
+                    "key": test_name,
                     "speed": getattr(table, "speed", None),
                 }
             )

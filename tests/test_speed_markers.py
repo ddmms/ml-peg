@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from itertools import combinations
 from pathlib import Path
 
 import pytest
@@ -13,7 +15,7 @@ from ml_peg.app.utils.speed import (
 )
 
 
-def write_calc(tmp_path: Path, body: str) -> Path:
+def write_calc(tmp_path: Path, marker_groups: Sequence[Sequence[str]]) -> Path:
     """
     Write a fake calc file into a temporary benchmark directory.
 
@@ -21,8 +23,8 @@ def write_calc(tmp_path: Path, body: str) -> Path:
     ----------
     tmp_path
         Temporary directory provided by pytest.
-    body
-        Python source to write into the calc file.
+    marker_groups
+        Marker expressions for each generated test function.
 
     Returns
     -------
@@ -31,7 +33,16 @@ def write_calc(tmp_path: Path, body: str) -> Path:
     """
     calc_dir = tmp_path / "mycat" / "mybench"
     calc_dir.mkdir(parents=True)
-    (calc_dir / "calc_mybench.py").write_text(body)
+    tests = []
+    for index, markers in enumerate(marker_groups):
+        decorators = "\n".join(f"@pytest.mark.{marker}" for marker in markers)
+        tests.append(
+            f"""{decorators}
+def test_{index}():
+    pass
+"""
+        )
+    (calc_dir / "calc_mybench.py").write_text("import pytest\n\n" + "\n".join(tests))
     return calc_dir
 
 
@@ -57,28 +68,33 @@ def test_single_marker_is_returned(tmp_path):
     """A benchmark with one speed marker reports that marker."""
     calc_dir = write_calc(
         tmp_path,
-        "import pytest\n\n@pytest.mark.slow\ndef test_a():\n    pass\n",
+        [["slow"]],
     )
     assert get_benchmark_speed(calc_dir) == "slow"
 
 
-def test_multiple_markers_return_the_slowest(tmp_path):
-    """A benchmark with several speed markers reports the slowest."""
+def test_different_test_markers_return_the_slowest(tmp_path):
+    """A benchmark with tests in several tiers reports the slowest."""
     calc_dir = write_calc(
         tmp_path,
-        "import pytest\n\n"
-        "@pytest.mark.slow\ndef test_a():\n    pass\n\n"
-        "@pytest.mark.very_slow\ndef test_b():\n    pass\n\n"
-        "@pytest.mark.multi_day\ndef test_c():\n    pass\n",
+        [["slow"], ["very_slow"], ["multi_day"]],
     )
     assert get_benchmark_speed(calc_dir) == "multi_day"
+
+
+@pytest.mark.parametrize("markers", tuple(combinations(SPEED_ORDER, 2)))
+def test_conflicting_markers_on_one_test_raise(tmp_path, markers):
+    """Any pair of speed markers on one test is rejected."""
+    calc_dir = write_calc(tmp_path, [markers])
+    with pytest.raises(ValueError, match="conflicting speed markers"):
+        get_benchmark_speed(calc_dir)
 
 
 def test_very_slow_is_not_matched_as_slow(tmp_path):
     """very_slow is matched exactly, not as a substring of slow."""
     calc_dir = write_calc(
         tmp_path,
-        "import pytest\n\n@pytest.mark.very_slow\ndef test_a():\n    pass\n",
+        [["very_slow"]],
     )
     assert get_benchmark_speed(calc_dir) == "very_slow"
 
@@ -87,8 +103,7 @@ def test_unmarked_benchmark_returns_none(tmp_path):
     """A benchmark with no speed marker reports None."""
     calc_dir = write_calc(
         tmp_path,
-        "import pytest\n\n@pytest.mark.parametrize('x', [1])\n"
-        "def test_a(x):\n    pass\n",
+        [["parametrize('x', [1])"]],
     )
     assert get_benchmark_speed(calc_dir) is None
 
@@ -162,8 +177,7 @@ def test_other_markers_are_ignored(tmp_path):
     """Non-speed markers do not interfere with detection."""
     calc_dir = write_calc(
         tmp_path,
-        "import pytest\n\n@pytest.mark.framework('mace-multihead')\n"
-        "@pytest.mark.medium\ndef test_a():\n    pass\n",
+        [["framework('mace-multihead')", "medium"]],
     )
     assert get_benchmark_speed(calc_dir) == "medium"
 
@@ -237,23 +251,14 @@ def test_speed_panel_reports_counts():
     assert "Timings are for" not in text
 
 
-def test_app_speed_keys_use_directory_identifiers():
-    """Speed keys do not depend on human-facing benchmark names."""
+def test_app_speed_keys_use_unique_test_names():
+    """Speed summaries use the existing unique benchmark names."""
     from types import SimpleNamespace
 
     from ml_peg.app.build_app import _collect_benchmark_speeds
 
-    tables = {
-        "bulk_crystal": {
-            "Iron Properties": SimpleNamespace(
-                benchmark_key="bulk_crystal/iron_properties",
-                speed="medium",
-            )
-        }
-    }
-    assert _collect_benchmark_speeds(tables) == {
-        "bulk_crystal/iron_properties": "medium"
-    }
+    tables = {"bulk_crystal": {"Iron Properties": SimpleNamespace(speed="medium")}}
+    assert _collect_benchmark_speeds(tables) == {"Iron Properties": "medium"}
 
 
 def test_speed_badge_is_below_the_framework_row(tmp_path):
