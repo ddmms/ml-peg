@@ -43,7 +43,7 @@ def test_ring_planarity(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
