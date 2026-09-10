@@ -7,6 +7,9 @@ measured_with:
   device: NVIDIA A100 40 GB
 
 benchmarks:
+  alloy_metallurgy:
+    AlZnCuMg_regression:
+
   bulk_crystal:
     elasticity: 1200
     elemental_tm_vacancies: 1
@@ -29,9 +32,10 @@ benchmarks:
     UpU46: 1
     solvMPCONF196: 1
 
-  defect:
+  defects:
     Defectstab: 1
     Relastab: 1
+    split_vacancy:
 
   electric_field:
     GSCDB138_field: 1.5
@@ -107,6 +111,7 @@ benchmarks:
     cleavage_energy: 39
     elemental_slab_oxygen_adsorption: 1
     graphene_wetting_under_strain: 1
+    metal_surface_reconstructions:
 
   thermochemistry:
     GSCDB138_thermochemistry: 4.1
