@@ -29,7 +29,6 @@ Help for this command can be found by running ``ml_peg calc --help``:
     │                                                [default: no-run-very-slow]                                                │
     │ --run-multi-day    --no-run-multi-day          Whether to run calculations labelled multi-day.                            │
     │                                                [default: no-run-multi-day]                                                │
-    │ --timings-out                            PATH  Write benchmark runtimes for one model to this YAML file.                   │
     │ --verbose          --no-verbose                Whether to run pytest with verbose and stdout printed. [default: verbose]  │
     │ --help                                         Show this message and exit.                                                │
     ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -83,20 +82,18 @@ By default only ``fast`` and ``medium`` benchmarks run. Add ``--run-slow`` to
 include ``slow`` ones, ``--run-very-slow`` to include ``very_slow`` ones, and
 ``--run-multi-day`` to include ``multi_day`` ones.
 
-To run a single tier rather than adding to the default selection, use
-``--fast-only`` or ``--medium-only``.
+To run a single tier rather than adding to the default selection, use pytest's
+marker expression option, for example ``-m fast`` or ``-m medium``.
 
 The markers are also the source of the speed badge shown next to each benchmark
 in the app. Where a benchmark has tests at more than one level, the badge shows
 the slowest, since that reflects the cost of running the whole benchmark.
 
 
-Recording reference runtimes (optional)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Inspecting runtimes
+~~~~~~~~~~~~~~~~~~~
 
-Maintainers can optionally record runtimes to help review speed-marker
-assignments. These measurements are not shown in the app and are not required
-when running benchmarks. To record one:
+Use pytest's built-in ``--durations`` option to inspect benchmark runtimes:
 
 .. code-block:: bash
 
@@ -104,12 +101,9 @@ when running benchmarks. To record one:
         --category <category> \
         --test <benchmark> \
         --models mace-mp-0a \
-        --timings-out /tmp/ml-peg-mace-mp-0a-runtimes.yml
+        --durations=0
 
-The reference timings use ``mace-mp-0a``. Another model can be timed by
-selecting it with ``--models`` and writing to a separate file. Add
-``--run-slow``, ``--run-very-slow`` or ``--run-multi-day`` when needed. After a
-successful reference run, copy the result and GPU name into
+Maintainer reference measurements are recorded manually in
 ``ml_peg/analysis/utils/runtimes.yml``.
 
 
