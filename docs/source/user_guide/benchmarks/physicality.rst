@@ -240,3 +240,67 @@ Data availability
 -----------------
 
 The initial structures were generated for MACE-POLAR-1 https://arxiv.org/abs/2602.19411
+
+
+Translational Symmetry
+======================
+
+Summary
+-------
+
+Performance in respecting translational invariance. Energy and forces depend only on the
+relative positions of atoms, so rigidly translating every atom in a structure must leave
+both unchanged, and any deviation reflects the model's implementation rather than
+physics.
+
+Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
+CH3OH and C6H6) and two periodic systems (diamond and graphene). Each is evaluated
+before and after a rigid translation along a fixed, non-axis-aligned direction, at
+magnitudes of 1, 40 and 1000 Å. The direction is deliberately not axis-aligned: for a
+shift along a single axis the rounding error can be identical for every atom, cancelling
+out of the relative geometry and hiding the effect entirely.
+
+Testing more than one magnitude distinguishes a model that breaks under any shift at all
+from one that degrades as atoms move further from the origin, which is the signature of
+finite precision coordinates.
+
+.. note::
+
+    For periodic structures the effective displacement is bounded by the cell, since a
+    rigid translation is wrapped back into it. The larger translations therefore probe
+    diamond (a 3.567 Å cell) no more strongly than the 1 Å translation does.
+    Graphene is built with 20 Å of vacuum, giving a 40 Å cell, so that the 40 Å
+    translation is not wrapped away to under 1 Å.
+
+Metrics
+-------
+
+Each metric is reported separately for each translation magnitude (1, 40 and 1000 Å).
+A model only receives scores for a magnitude if it evaluated all ten structures
+successfully at it; any failed evaluation leaves that magnitude's metrics blank.
+
+1. Mean ΔE
+
+Mean absolute change in energy per atom, across the ten structures.
+
+2. Max ΔE
+
+Worst-case absolute change in energy per atom, across the ten structures.
+
+3. Mean ΔF
+
+Mean of the largest absolute force component change, across the ten structures.
+
+4. Max ΔF
+
+Worst-case largest absolute force component change, across the ten structures.
+
+Computational cost
+------------------
+
+Low: tests are likely to take less than a minute to run on CPU.
+
+Data availability
+-----------------
+
+None required; all structures are generated in ASE.
