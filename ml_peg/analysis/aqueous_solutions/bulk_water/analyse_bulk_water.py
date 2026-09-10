@@ -236,7 +236,6 @@ def build_vdos_interactive_data(
         errors_fn=aml.compute_all_errors,
         ref_key=lambda m: "ref",
         xlim=[0, 4000],
-        ylog=True,
     )
 
 
