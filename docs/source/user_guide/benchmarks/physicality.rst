@@ -317,9 +317,9 @@ preprint arXiv:2509.20630 (2025).
 Computational cost
 ------------------
 
-Medium: single-point evaluations only (10 structures evaluated in 115
-orientations each), taking minutes per model on CPU for most models, up to tens
-of minutes for the slowest.
+Low: single-point evaluations only (10 structures evaluated in 115
+orientations each), likely to take seconds to minutes per model on GPU, or
+minutes to tens of minutes on CPU.
 
 Data availability
 -----------------
