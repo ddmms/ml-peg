@@ -21,7 +21,7 @@ For each system, the density is calculated by taking the average density of an N
 dynamics run. The initial part of the simulation, here 500 ps, is omitted from the density
 calculation. This is compared to the reference density, obtained from experiment.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Multi-day: tests take several days to run on GPU.
@@ -59,7 +59,7 @@ For each system, the density is calculated by taking the average density of an N
 dynamics run. The initial part of the simulation, here 500 ps, is omitted from the density
 calculation. This is compared to the reference density, obtained from experiment.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Multi-day: tests take several days to run on GPU.
@@ -102,7 +102,7 @@ calculation. This is compared to the reference density, obtained from experiment
 The excess volume is computed as the difference between the actual molar volume of the mixture and the ideal molar volume obtained by linear combination of the pure-component molar volumes.
 The concentration of the minimal excess volume is estimated by fitting a quadratic to the three grid points surrounding the minimum and taking the vertex of the parabola.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Multi-day: tests take several days to run on GPU.

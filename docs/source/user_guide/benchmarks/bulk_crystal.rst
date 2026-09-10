@@ -34,10 +34,10 @@ Mean lattice constant error compared to PBE data
 Same as (1), but optimised lattice constants are compared to reference PBE data.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -103,10 +103,10 @@ Symmetry-independent elastic constants are extracted based on crystal system:
 triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
 Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Slow: around 10 hours per model on an A100 GPU.
+Very slow: around 20 hours per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -167,10 +167,10 @@ Metrics
    Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
    volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low. Every eos curve requires 50 calls on unit cells.
+Fast. Every EOS curve requires 50 calls on unit cells.
 
 Data availability
 -----------------
@@ -225,11 +225,11 @@ below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation 
 repeated up from the last structure of the previous relaxation up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures and pressure conditions tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures and pressure conditions tested.
 
 
 Data availability
@@ -302,11 +302,11 @@ Relaxation continues until the maximum force component is below 0.0002 eV/Å or 
 500 steps are reached. If not converged, relaxation is repeated up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures tested.
 
 
 Data availability
@@ -456,7 +456,7 @@ to the DFT reference (35.0 GPa) is reported.
 Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
 Medium: tests are likely to take tens of minutes to run on GPU.
@@ -550,17 +550,17 @@ stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
 classified as true positive, false positive, true negative, or false negative.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+Medium: the DFT reference preprocessing (``test_phonons_ref``) runs once and takes
 30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
 constants from the Alexandria database to generate band structures for later
-comparison. This part of the test is marked ``medium``.
+comparison.
 
-The MLIP evaluation (``test_phonons``) requires computing forces for all
+Slow: the MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower. This part of the test is marked ``slow``.
+models will be slower.
 
 
 Data availability
@@ -601,10 +601,10 @@ From the reference paper providing the structures, the elemental transition meta
     * For magnetic structures, the reference spin-polarized calculations only is used.
     * Unstable element-structure combinations are not included.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 
 Data availability
