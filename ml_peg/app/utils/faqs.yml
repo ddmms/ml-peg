@@ -37,12 +37,6 @@
     and weightings to reflect what is important for their specific use case
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
 
-- question: "How are test speeds estimated?"
-  answer: >
-    The speed ranges are rough estimates based on running MACE-MP-0a on a 40 GB
-    NVIDIA A100 GPU. Other potentials may be faster or slower
-  docs_url: null
-
 - question: "How do the thresholds work?"
   answer: >
     For benchmark tables, you can adjust the 'Good' and 'Bad' thresholds, where 'Good'
@@ -84,3 +78,9 @@
     our documentation and our notebook tutorial. You'll need to provide details about
     the benchmark's reference data, and performance metrics
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/add_benchmarks.html"
+
+- question: "How are test speeds estimated?"
+  answer: >
+    The speed ranges are rough estimates based on running MACE-MP-0a on a 40 GB
+    NVIDIA A100 GPU. Other potentials may be faster or slower
+  docs_url: null
