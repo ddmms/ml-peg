@@ -15,11 +15,6 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 import yaml
 
-from ml_peg.analysis.utils.speed import (
-    SPEED_LEVELS,
-    SPEED_ORDER,
-    summarise_speeds,
-)
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
@@ -27,6 +22,11 @@ from ml_peg.app.utils.register_callbacks import (
     register_normalization_callbacks,
     register_summary_table_callbacks,
     register_weight_callbacks,
+)
+from ml_peg.app.utils.speed import (
+    SPEED_LEVELS,
+    SPEED_ORDER,
+    summarise_speeds,
 )
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
@@ -1282,7 +1282,7 @@ def build_speed_panel(
                     ]
                 ),
                 html.Tr(
-                    [html.Th("Typical runtime per test", style=row_heading_style)]
+                    [html.Th("Typical GPU runtime per test", style=row_heading_style)]
                     + [
                         html.Td(
                             SPEED_LEVELS[level]["runtime"],
