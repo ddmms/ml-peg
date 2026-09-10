@@ -240,3 +240,88 @@ Data availability
 -----------------
 
 The initial structures were generated for MACE-POLAR-1 https://arxiv.org/abs/2602.19411
+
+
+Rotational Symmetry
+===================
+
+Summary
+-------
+
+Performance in respecting rotational symmetry. Under a rigid rotation of a structure the
+energy is invariant and the forces are equivariant (they rotate with the structure), so
+any deviation reflects the model's implementation rather than physics. Architectures
+that predict forces directly, rather than as the gradient of the energy, are not
+equivariant by construction, and this test measures how far they deviate.
+
+Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
+CH3OH and C6H6) and two periodic systems (diamond and graphene), matching the
+translational symmetry test. Diamond is rattled with a fixed seed so that the atoms
+carry nonzero forces: a perfect crystal's forces vanish by symmetry, which would leave
+it probing energies only. Each structure is evaluated before and after each of 114
+rigid rotations about the origin, forming a single cumulative walk through
+orientation space: 14 steps increasing from 1 to 40°, followed by 100 uniformly random
+steps, all generated with a fixed seed so that every model sees the identical walk. For the periodic structures the cell is rotated together with
+the positions, preserving fractional coordinates: a rotation of the positions alone is
+not a symmetry of a periodic crystal.
+Random rotations sample orientation space rather than trusting one hand-picked axis
+and angle, and generically avoid the special rotations (90 or 180° about a coordinate
+axis) that permute or negate coordinates exactly in floating point and can cancel real
+violations out of the comparison. Two uniformly random orientations are almost never
+within 40° of each other, so the first 14 steps supply successive pairs at small and
+intermediate relative angles: a smooth model must fail gently at small relative
+angles, and an abrupt small-angle violation signals an implementation artifact rather
+than learned approximate symmetry.
+
+.. note::
+
+    Forces are compared after rotating those of each orientation back into a common
+    frame, where a perfect model gives identical forces for every orientation. The
+    back-rotated forces are computed and stored during the calculation, so that the
+    comparison is unaffected by the precision the output files are written at.
+
+Metrics
+-------
+
+Successive orientations (the unrotated structure, then each rotation in turn) are
+compared pairwise, giving 114 orientation pairs per structure; each metric is computed
+over all pairs of all ten structures. Comparing each orientation with the next, rather
+than every orientation with a fixed reference, means no single orientation is
+privileged. A model that fails to complete the calculation for any structure is not
+scored on the remainder: the metrics are left blank. Per-model plots resolve the
+individual pairs, showing each structure's violation against the relative rotation
+angle within the pair.
+
+1. Mean ΔE
+
+Mean absolute change in energy per atom between successive orientations.
+
+2. Max ΔE
+
+Worst-case absolute change in energy per atom between successive orientations.
+
+3. Mean ΔF
+
+Mean of the per-pair force MAE: the mean absolute difference between the two
+orientations' force predictions, compared component-wise in a common frame, adapted
+from the force rotational equivariance metric of MLIP Arena [1].
+
+4. Max ΔF
+
+Worst-case per-pair force MAE, as above.
+
+[1] Chiang, Y., et al. "MLIP Arena: Advancing Fairness and Transparency in Machine
+Learning Interatomic Potentials via an Open, Accessible Benchmark Platform." arXiv
+preprint arXiv:2509.20630 (2025).
+
+Computational cost
+------------------
+
+Medium: single-point evaluations only (10 structures evaluated in 115
+orientations each), taking minutes per model on CPU for most models, up to tens
+of minutes for the slowest.
+
+Data availability
+-----------------
+
+None required; all structures are generated in ASE.
