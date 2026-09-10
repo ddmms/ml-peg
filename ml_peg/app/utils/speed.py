@@ -1,12 +1,10 @@
-"""Speed levels for benchmarks, and reading them from calc files."""
+"""Benchmark speed classification and display metadata."""
 
 from __future__ import annotations
 
 import ast
 from collections.abc import Iterable
 from pathlib import Path
-
-import yaml
 
 # Ordered cheapest to most expensive. The ordering is what resolves benchmarks
 # carrying more than one marker, since the badge shows the slowest one present.
@@ -53,7 +51,7 @@ SPEED_ORDER: tuple[str, ...] = tuple(SPEED_LEVELS)
 
 def _marker_names(tree: ast.Module) -> set[str]:
     """
-    Collect ``pytest.mark.<name>`` decorator names used in a parsed module.
+    Collect ``pytest.mark.<name>`` decorator names from a parsed module.
 
     Parameters
     ----------
@@ -63,7 +61,7 @@ def _marker_names(tree: ast.Module) -> set[str]:
     Returns
     -------
     set[str]
-        Marker names applied to any function definition in the module.
+        Marker names applied to functions in the module.
     """
     names: set[str] = set()
     for node in ast.walk(tree):
@@ -80,10 +78,7 @@ def _marker_names(tree: ast.Module) -> set[str]:
 
 def get_benchmark_speed(calc_dir: Path) -> str | None:
     """
-    Return the slowest pytest speed marker found in a benchmark's calc file.
-
-    The calc file is parsed rather than imported, because importing pulls in
-    torch and the model registry, which is far too heavy for a metadata lookup.
+    Return the slowest pytest speed marker in a benchmark's calc file.
 
     Parameters
     ----------
@@ -93,8 +88,7 @@ def get_benchmark_speed(calc_dir: Path) -> str | None:
     Returns
     -------
     str | None
-        Slowest speed level present, or None when the benchmark carries no
-        speed marker or has no readable calc file.
+        Slowest speed level present, or None when no speed marker is found.
     """
     found: set[str] = set()
     for calc_file in sorted(Path(calc_dir).glob("calc_*.py")):
@@ -112,7 +106,7 @@ def get_benchmark_speed(calc_dir: Path) -> str | None:
 
 def summarise_speeds(speeds: Iterable[str | None]) -> dict[str, int]:
     """
-    Count benchmarks per speed level.
+    Count benchmarks per speed level, including unclassified benchmarks.
 
     Parameters
     ----------
@@ -122,8 +116,7 @@ def summarise_speeds(speeds: Iterable[str | None]) -> dict[str, int]:
     Returns
     -------
     dict[str, int]
-        Count for each level, plus an ``unclassified`` count for benchmarks
-        with no recognised speed marker.
+        Count for each speed level and for unclassified benchmarks.
     """
     counts = dict.fromkeys(SPEED_ORDER, 0)
     counts["unclassified"] = 0
@@ -134,53 +127,19 @@ def summarise_speeds(speeds: Iterable[str | None]) -> dict[str, int]:
 
 def speed_for_table_path(table_path: Path | str) -> str | None:
     """
-    Resolve a benchmark's speed level from the path its table is written to.
+    Resolve a benchmark's speed from the path of its app table JSON.
 
     Parameters
     ----------
     table_path
-        Full path of the table JSON, of the form
-        ``<APP_ROOT>/data/<category>/<benchmark>/<name>.json``.
+        Full path to the benchmark's table JSON.
 
     Returns
     -------
     str | None
-        Slowest speed marker for the matching benchmark, or None when it has no
-        marker or no matching calc directory.
+        Speed marker for the matching benchmark, or None when none is found.
     """
     from ml_peg.calcs import CALCS_ROOT
 
     table_dir = Path(table_path).parent
     return get_benchmark_speed(CALCS_ROOT / table_dir.parent.name / table_dir.name)
-
-
-RUNTIMES_FILE = Path(__file__).with_name("runtimes.yml")
-
-
-def load_runtimes() -> tuple[dict[str, str], dict[str, float]]:
-    """
-    Load maintainer reference runtimes from ``runtimes.yml``.
-
-    Benchmarks left blank in the file are ignored.
-
-    Returns
-    -------
-    tuple[dict[str, str], dict[str, float]]
-        Provenance of the measurements (the model and device they were taken
-        on), and a mapping of ``<category>/<benchmark>`` to minutes per model.
-    """
-    data = yaml.safe_load(RUNTIMES_FILE.read_text(encoding="utf8")) or {}
-
-    measured_with = data.get("measured_with") or {}
-    if not isinstance(measured_with, dict):
-        raise ValueError(
-            f"measured_with in {RUNTIMES_FILE} must contain model/device metadata"
-        )
-    provenance = {key: value for key, value in measured_with.items() if value}
-    measured = {
-        f"{category}/{benchmark}": float(minutes)
-        for category, benchmarks in (data.get("benchmarks") or {}).items()
-        for benchmark, minutes in (benchmarks or {}).items()
-        if minutes is not None
-    }
-    return provenance, measured
