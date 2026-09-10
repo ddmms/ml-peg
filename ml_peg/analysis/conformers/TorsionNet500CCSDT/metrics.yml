@@ -1,0 +1,13 @@
+metrics:
+  RMSE:
+    good: 0.0
+    bad: 0.2
+    unit: eV
+    tooltip: "Mean RMSE of relative torsional energy profiles"
+    level_of_theory: CCSD(T)/CBS
+  MAE:
+    good: 0.0
+    bad: 0.2
+    unit: eV
+    tooltip: "Mean MAE of relative torsional energy profiles"
+    level_of_theory: CCSD(T)/CBS
