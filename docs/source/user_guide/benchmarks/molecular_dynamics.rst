@@ -143,8 +143,11 @@ A histogram shows the distribution of the sampled planarity deviations for each 
 Computational cost
 ------------------
 
-High: one MD simulation per molecule, each 1,000,000 steps. Faster inference can be achieved
-using the jax-accelerated simulations in MLIP Audit directly.
+High: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
+overhead rather than by system size, and tests are likely to take a couple of hours per
+model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
+MLIP Audit directly.
 
 Data availability
 -----------------
