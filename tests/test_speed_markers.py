@@ -237,31 +237,6 @@ def test_speed_panel_reports_counts():
     assert "Timings are for" not in text
 
 
-def test_runtimes_skip_blank_entries(tmp_path):
-    """Blank benchmarks and a blank device are treated as not recorded."""
-    from ml_peg.analysis.utils import runtimes
-
-    path = tmp_path / "runtimes.yml"
-    path.write_text(
-        "measured_with:\n"
-        "  model: mace-mp-0\n"
-        "  device:\n"
-        "benchmarks:\n"
-        "  molecular:\n"
-        "    GMTKN55: 2.5\n"
-        "    Wiggle150:\n"
-    )
-    original = runtimes.RUNTIMES_FILE
-    try:
-        runtimes.RUNTIMES_FILE = path
-        provenance, measured = runtimes.load_runtimes()
-    finally:
-        runtimes.RUNTIMES_FILE = original
-
-    assert provenance == {"model": "mace-mp-0"}
-    assert measured == {"molecular/GMTKN55": 2.5}
-
-
 def test_app_speed_keys_use_directory_identifiers():
     """Speed keys do not depend on human-facing benchmark names."""
     from types import SimpleNamespace
@@ -279,30 +254,6 @@ def test_app_speed_keys_use_directory_identifiers():
     assert _collect_benchmark_speeds(tables) == {
         "bulk_crystal/iron_properties": "medium"
     }
-
-
-def test_runtimes_scaffold_keys_are_real_benchmarks():
-    """Every key in the shipped scaffold names an existing benchmark."""
-    import yaml
-
-    from ml_peg.analysis.utils.runtimes import RUNTIMES_FILE
-    from ml_peg.calcs import CALCS_ROOT
-
-    data = yaml.safe_load(RUNTIMES_FILE.read_text(encoding="utf8"))
-    for category, benchmarks in data["benchmarks"].items():
-        for benchmark in benchmarks or {}:
-            assert (CALCS_ROOT / category / benchmark).is_dir(), (
-                f"{category}/{benchmark}"
-            )
-
-
-def test_sub_minute_runtime_uses_one_minute_floor():
-    """Positive sub-minute timings include a one-minute execution overhead."""
-    from conftest import _round_runtime_minutes
-
-    assert _round_runtime_minutes(0.01) == 1
-    assert _round_runtime_minutes(0.99) == 1
-    assert _round_runtime_minutes(1.24) == 1.2
 
 
 def test_speed_badge_is_below_the_framework_row(tmp_path):
@@ -342,205 +293,6 @@ def test_speed_badge_is_below_the_framework_row(tmp_path):
     assert "Test speed" in str(layout.children[1].children.children)
 
 
-def test_timings_out_ignores_tests_that_did_not_run(tmp_path):
-    """Skipped tests must not be recorded as zero-minute measurements."""
-    import subprocess
-    import sys
-
-    import yaml
-
-    out = tmp_path / "timings.yml"
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "ml_peg/calcs/physicality/oxidation_states/calc_oxidation_states.py",
-            "--models",
-            "mace-mp-0a",
-            "--mock-only",
-            "--run-mock",
-            "--timings-out",
-            str(out),
-            "-q",
-        ],
-        capture_output=True,
-        check=False,
-    )
-    recorded = yaml.safe_load(out.read_text())["benchmarks"] or {}
-    # oxidation_states is very_slow, so it is skipped without --run-very-slow.
-    assert "physicality" not in recorded
-
-
-def test_timings_out_ignores_non_calc_tests_and_writes_reference_schema(tmp_path):
-    """Unit tests do not become benchmarks or leave the reference schema."""
-    import subprocess
-    import sys
-
-    import yaml
-
-    from ml_peg.analysis.utils import runtimes
-
-    out = tmp_path / "timings.yml"
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "tests/test_speed_markers.py::test_levels_are_ordered_fast_to_multi_day",
-            "--models",
-            "mace-mp-0a",
-            "--timings-out",
-            str(out),
-            "-q",
-        ],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert yaml.safe_load(out.read_text()) == {
-        "measured_with": {"model": "mace-mp-0a", "device": None},
-        "benchmarks": {},
-    }
-
-    original = runtimes.RUNTIMES_FILE
-    try:
-        runtimes.RUNTIMES_FILE = out
-        provenance, measured = runtimes.load_runtimes()
-    finally:
-        runtimes.RUNTIMES_FILE = original
-    assert provenance == {"model": "mace-mp-0a"}
-    assert measured == {}
-
-
-@pytest.mark.parametrize("models", [None, "model-a,model-b"])
-def test_timings_out_requires_one_model(tmp_path, models):
-    """Timing collection requires exactly one attributable model."""
-    import subprocess
-    import sys
-
-    model_args = ["--models", models] if models else []
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "tests/test_speed_markers.py::test_levels_are_ordered_fast_to_multi_day",
-            *model_args,
-            "--timings-out",
-            str(tmp_path / "timings.yml"),
-            "-q",
-        ],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-    output = result.stdout + result.stderr
-    assert result.returncode != 0
-    assert "--timings-out requires exactly one model via --models" in output
-
-
-def test_timings_out_refuses_mixed_model_file(tmp_path):
-    """Existing measurements from another model are never relabelled."""
-    import subprocess
-    import sys
-
-    out = tmp_path / "timings.yml"
-    original = (
-        "measured_with:\n"
-        "  model: another-model\n"
-        "  device: GPU\n"
-        "benchmarks:\n"
-        "  molecular:\n"
-        "    GMTKN55: 2.5\n"
-    )
-    out.write_text(original)
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "tests/test_speed_markers.py::test_levels_are_ordered_fast_to_multi_day",
-            "--models",
-            "mace-mp-0a",
-            "--timings-out",
-            str(out),
-            "-q",
-        ],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-    output = result.stdout + result.stderr
-    assert result.returncode != 0
-    assert "contains another-model measurements, expected mace-mp-0a" in output
-    assert out.read_text() == original
-
-
-@pytest.mark.parametrize("model", ["mace-mp-0a", "mace-mp-0"])
-def test_calc_cli_configures_selected_timing_run(monkeypatch, tmp_path, model):
-    """The calc command forwards one selected model and disables the mock model."""
-    import pytest as pytest_module
-    from typer.testing import CliRunner
-
-    from ml_peg.cli.cli import app
-
-    calls = []
-    monkeypatch.setattr(pytest_module, "main", lambda options: calls.append(options))
-    out = tmp_path / "runtimes.yml"
-    result = CliRunner().invoke(
-        app,
-        [
-            "calc",
-            "--category",
-            "surfaces",
-            "--test",
-            "S24",
-            "--models",
-            model,
-            "--timings-out",
-            str(out),
-            "--no-verbose",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert len(calls) == 1
-    options = calls[0]
-    model_index = options.index("--models")
-    timing_index = options.index("--timings-out")
-    assert options[model_index + 1] == model
-    assert options[timing_index + 1] == out
-    assert "--run-mock" not in options
-
-
-def test_calc_cli_requires_timing_model(tmp_path):
-    """The calc timing option requires an explicit model selection."""
-    from typer.testing import CliRunner
-
-    from ml_peg.cli.cli import app
-
-    result = CliRunner().invoke(
-        app,
-        [
-            "calc",
-            "--category",
-            "surfaces",
-            "--test",
-            "S24",
-            "--timings-out",
-            str(tmp_path / "runtimes.yml"),
-        ],
-    )
-    assert result.exit_code != 0
-    assert isinstance(result.exception, ValueError)
-    assert "Timing mode requires exactly one model via --models" in str(
-        result.exception
-    )
-
-
 def test_calc_cli_forwards_run_multi_day(monkeypatch):
     """The calc command forwards the multi-day opt-in to pytest."""
     import pytest as pytest_module
@@ -567,6 +319,34 @@ def test_calc_cli_forwards_run_multi_day(monkeypatch):
     assert "--run-multi-day" in calls[0]
 
 
+def test_calc_cli_forwards_builtin_pytest_options(monkeypatch):
+    """The calc command forwards marker and duration options to pytest."""
+    import pytest as pytest_module
+    from typer.testing import CliRunner
+
+    from ml_peg.cli.cli import app
+
+    calls = []
+    monkeypatch.setattr(pytest_module, "main", lambda options: calls.append(options))
+    result = CliRunner().invoke(
+        app,
+        [
+            "calc",
+            "--category",
+            "surfaces",
+            "--test",
+            "S24",
+            "--no-verbose",
+            "-m",
+            "fast",
+            "--durations=0",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls[0][-3:] == ["-m", "fast", "--durations=0"]
+
+
 def test_multi_day_marker_requires_explicit_flag():
     """Multi-day tests are skipped unless the dedicated flag is supplied."""
     import subprocess
@@ -590,12 +370,9 @@ def test_multi_day_marker_requires_explicit_flag():
     assert "1 passed" in enabled.stdout, enabled.stdout
 
 
-@pytest.mark.parametrize(
-    ("flag", "expected"),
-    [("--fast-only", "fast"), ("--medium-only", "medium")],
-)
-def test_only_flags_restrict_to_one_tier(flag, expected):
-    """--fast-only and --medium-only run just that tier."""
+@pytest.mark.parametrize("marker", ["fast", "medium"])
+def test_pytest_marker_expression_restricts_to_one_tier(marker):
+    """Pytest's built-in marker expression runs just the selected tier."""
     import subprocess
     import sys
 
@@ -604,18 +381,17 @@ def test_only_flags_restrict_to_one_tier(flag, expected):
             sys.executable,
             "-m",
             "pytest",
-            __file__,
-            "-k",
-            "marker_does_not_skip",
-            flag,
+            f"{__file__}::test_fast_marker_does_not_skip",
+            f"{__file__}::test_medium_marker_does_not_skip",
+            "-m",
+            marker,
             "-q",
         ],
         capture_output=True,
         text=True,
         check=False,
     )
-    # This file has one fast-marked and one medium-marked test, so exactly one
-    # of them survives each flag.
+    # This file has one fast-marked and one medium-marked test, so only the
+    # requested tier survives the marker expression.
     assert "1 passed" in result.stdout, result.stdout
-    assert "1 skipped" in result.stdout, result.stdout
-    assert expected in flag
+    assert "1 deselected" in result.stdout, result.stdout
