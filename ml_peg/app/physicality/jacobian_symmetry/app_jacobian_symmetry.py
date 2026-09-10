@@ -162,7 +162,9 @@ def get_app() -> JacobianSymmetryApp:
         name=BENCHMARK_NAME,
         description=(
             "Fraction of the force Jacobian's antisymmetric component, "
-            "across 10 diverse structures."
+            "across 10 diverse structures. Conservative forces give zero; "
+            "larger values mean the forces do not conserve energy, so MD "
+            "simulations can drift or heat up unphysically."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "jacobian_symmetry_metrics_table.json",
