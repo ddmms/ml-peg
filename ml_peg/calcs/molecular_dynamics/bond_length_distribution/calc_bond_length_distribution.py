@@ -32,6 +32,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_bond_length_distribution(mlip: tuple[str, Any]) -> None:
     """
