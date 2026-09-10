@@ -29,10 +29,10 @@ through deletion an atom from the initial structure. These structures are relaxe
 and the Nudged Elastic Band method is used to calculate the energy barrier. This is
 compared to the reference activation energy for this path.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 
 Data availability
@@ -71,10 +71,10 @@ for both the DFT reference and the MLIP predictions.
 
 Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 Data availability
 -----------------
@@ -127,10 +127,10 @@ The benchmark includes the following 2D TMD materials (2H phase):
 * WSe₂
 * WTe₂
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests involving multiple foundation models are likely to take around an one hour to run on a single GPU.
+Fast: the benchmark takes around one minute per model on an A100 GPU.
 
 Data availability
 -----------------

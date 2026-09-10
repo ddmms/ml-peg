@@ -121,10 +121,10 @@ inequivalent neighbour shells up to max_index=8.
     (3×3×3 supercell).
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-* **Bulk properties** (``test_alzncumg_regression``): Low — 8 bulk cell relaxations;
+* **Bulk properties** (``test_alzncumg_regression``): Fast — 8 bulk cell relaxations;
   likely less than a minute on GPU.
 
 * **Surface and fault energies** (``test_alzncumg_fault_surfaces``): Medium — surface
@@ -136,7 +136,7 @@ Computational cost
   on GPU.
 
 * **Solute-solute binding** (``test_alzncumg_solute_solute``, marked ``slow``):
-  High — many FCC supercell relaxations per solute pair; likely hours on GPU.
+  Slow — many FCC supercell relaxations per solute pair; likely hours on GPU.
 
 
 Data availability

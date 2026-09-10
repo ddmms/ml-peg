@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TypedDict
 
 from dash.dash_table import DataTable
-from dash.html import H1, H3, A, Br, Div, Img, Span
+from dash.html import H1, H2, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
     build_download_controls,
     build_loading_summary_table,
+    build_speed_panel,
     build_summary_table,
     build_weight_components,
 )
@@ -26,6 +27,8 @@ class CategoryTest(TypedDict):
     name: str
     framework_ids: list[str]
     layout: Div
+    key: str
+    speed: str | None
 
 
 class CategoryView(TypedDict):
@@ -44,6 +47,7 @@ class _FrameworkViewRequired(TypedDict):
     framework_id: str
     label: str
     benchmarks_by_category: dict[str, list[Div]]
+    speeds: dict[str, str | None]
 
 
 class FrameworkView(_FrameworkViewRequired, total=False):
@@ -83,20 +87,25 @@ def build_framework_views(
             continue
 
         benchmarks_by_category: dict[str, list[Div]] = {}
+        speeds: dict[str, str | None] = {}
         for category_name, category_view in category_views.items():
-            tests = [
-                test["layout"]
+            matching = [
+                test
                 for test in category_view["tests"]
                 if framework_id in test["framework_ids"]
             ]
-            if tests:
-                benchmarks_by_category[category_name] = tests
+            if matching:
+                benchmarks_by_category[category_name] = [
+                    test["layout"] for test in matching
+                ]
+                speeds.update({test["key"]: test["speed"] for test in matching})
 
         if benchmarks_by_category:
             framework_views[framework_id] = {
                 "framework_id": framework_id,
                 "label": get_framework_config(framework_id)["label"],
                 "benchmarks_by_category": benchmarks_by_category,
+                "speeds": speeds,
             }
 
     return framework_views
@@ -250,7 +259,27 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
 
     sections = []
     for category_name, tests in benchmarks_by_category.items():
-        sections.append(H3(category_name, style={"marginTop": "26px"}))
+        sections.append(
+            Div(
+                style={
+                    "width": "100%",
+                    "height": "1px",
+                    "backgroundColor": "#a7adb3",
+                    "margin": "32px 0 0",
+                }
+            )
+        )
+        sections.append(
+            H2(
+                category_name,
+                style={
+                    "color": "black",
+                    "fontSize": "30px",
+                    "marginTop": "24px",
+                    "marginBottom": "12px",
+                },
+            )
+        )
         sections.append(Div(tests, style={"display": "grid", "gap": "24px"}))
 
     summary_block = []
@@ -286,6 +315,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 },
             ),
             *summary_block,
+            build_speed_panel(framework_view["speeds"]),
             *sections,
         ]
     )

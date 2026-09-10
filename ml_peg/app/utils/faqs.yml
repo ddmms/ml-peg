@@ -78,3 +78,9 @@
     our documentation and our notebook tutorial. You'll need to provide details about
     the benchmark's reference data, and performance metrics
   docs_url: "https://ddmms.github.io/ml-peg/developer_guide/add_benchmarks.html"
+
+- question: "How are test speeds estimated?"
+  answer: >
+    The speed ranges are rough estimates based on running MACE-MP-0a on a 40 GB
+    NVIDIA A100 GPU. Other potentials may be faster or slower
+  docs_url: null

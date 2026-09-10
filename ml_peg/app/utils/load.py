@@ -12,6 +12,7 @@ from dash.dcc import Graph
 from plotly.io import read_json
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
+from ml_peg.app.utils.speed import speed_for_table_path
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     calculate_column_widths,
@@ -227,6 +228,7 @@ def rebuild_table(
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
     table.column_widths = column_widths
+    table.speed = speed_for_table_path(filename)
 
     return table
 

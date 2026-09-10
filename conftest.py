@@ -26,6 +26,12 @@ def pytest_addoption(parser):
         help="Run very slow benchmarks",
     )
     parser.addoption(
+        "--run-multi-day",
+        action="store_true",
+        default=False,
+        help="Run multi-day benchmarks",
+    )
+    parser.addoption(
         "--models",
         action="store",
         default=None,
@@ -54,9 +60,15 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow calculations")
     config.addinivalue_line("markers", "very_slow: mark test as very slow calculations")
     config.addinivalue_line(
+        "markers", "multi_day: mark test as requiring multiple GPU days"
+    )
+    config.addinivalue_line(
         "markers",
         "framework(*ids): mark test as belonging to MLIP framework(s)",
     )
+
+    for marker in ("fast: seconds to minutes on GPU", "medium: tens of minutes on GPU"):
+        config.addinivalue_line("markers", marker)
 
     # Set current models from CLI input
     models.current_models = config.getoption("--models")
@@ -66,11 +78,15 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip slow tests and deselect tests outside the requested framework(s)."""
+    """Skip tests outside the requested speed tier and framework(s)."""
     skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
     skip_very_slow = pytest.mark.skip(reason="need --run-very-slow option to run")
+    skip_multi_day = pytest.mark.skip(reason="need --run-multi-day option to run")
+
     for item in items:
-        if "very_slow" in item.keywords and not config.getoption("--run-very-slow"):
+        if "multi_day" in item.keywords and not config.getoption("--run-multi-day"):
+            item.add_marker(skip_multi_day)
+        elif "very_slow" in item.keywords and not config.getoption("--run-very-slow"):
             item.add_marker(skip_very_slow)
         elif "slow" in item.keywords and not config.getoption("--run-slow"):
             item.add_marker(skip_slow)

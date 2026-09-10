@@ -74,6 +74,7 @@ def build_crystal(
     return atoms
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_consts(mlip: tuple[str, Any]) -> None:
     """

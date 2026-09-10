@@ -151,6 +151,7 @@ class BaseApp(ABC):
             framework_ids=self.framework_ids,
             table=self.table,
             column_widths=getattr(self.table, "column_widths", None),
+            speed=getattr(self.table, "speed", None),
             thresholds=self.table.thresholds,
             extra_components=self.extra_components,
         )

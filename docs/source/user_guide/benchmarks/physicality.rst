@@ -33,10 +33,10 @@ Same as (2), but the standard deviation of the force difference on the acetone a
 calculated.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minutes to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -64,10 +64,10 @@ with the two slabs separated by 100 Å is calculated. The absolute energy differ
 between the sum of the isolated slabs and that of the combined system is calculated.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minutes to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -126,10 +126,10 @@ Metrics
    positive correlation, so a value of +1, indicating that as atoms get closer together, the
    energy increases.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
+Slow: expected to take hours to run on GPU, or around one day for slower MLIPs.
 
 Data availability
 -----------------
@@ -169,10 +169,10 @@ Deviation of the Fe 2Cl system's RDF peak position from the experimental range.
 
 Deviation of the Fe 3Cl system's RDF peak position from the experimental range.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: Expected to take hours to run on GPU, or around one day for slower MLIPs.
+Very slow: expected to take hours to run on GPU, or around one day for slower MLIPs.
 
 Data availability
 -----------------
@@ -203,10 +203,11 @@ For a number of samples from an MD simulation, the total dipole is calculated. C
 Estimate band gap based on dipole, count structures where band gap disappears.
 
 
-Computational Cost
+Benchmark speed
 ------------------
 
-High: Requires around 500 ps of MD of 40 A slab to get converged distribution, around 1 day on one GPU.
+Very slow: requires around 500 ps of MD of a 40 Å slab to obtain a converged
+distribution, taking around one day on one GPU.
 
 
 Data availability
@@ -230,10 +231,11 @@ Metrics
 
 1. Dissociation of the Cl-Cl bond based on the interatomic distance.
 
-Computational Cost
+Benchmark speed
 ------------------
 
-Low: Requires up to 1000 optimizer steps for a 400-atom system, taking several GPU-minutes to complete.
+Fast: requires up to 1000 optimiser steps for a 400-atom system, taking several
+GPU-minutes to complete.
 
 
 Data availability

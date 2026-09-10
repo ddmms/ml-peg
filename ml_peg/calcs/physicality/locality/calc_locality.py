@@ -164,6 +164,7 @@ def prepared_solute() -> dict[str, Atoms]:
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 @pytest.mark.parametrize("model_name", MODELS)
 def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None:
     """
@@ -197,6 +198,7 @@ def test_ghost_atoms(prepared_solute: dict[str, Atoms], model_name: str) -> None
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 @pytest.mark.parametrize("model_name", MODELS)
 def test_rand_h(prepared_solute: dict[str, Atoms], model_name: str) -> None:
     """

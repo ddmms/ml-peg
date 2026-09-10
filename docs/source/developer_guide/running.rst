@@ -23,9 +23,12 @@ Help for this command can be found by running ``ml_peg calc --help``:
     │ --models                                 TEXT  Comma-separated models to run calculations on. Default is all models.      │
     │ --category                               TEXT  Category to run calculations for. Default is all categories. [default: *]  │
     │ --test                                   TEXT  Test to run calculations for. Default is all tests. [default: *]           │
-    │ --run-slow         --no-run-slow               Whether to run calculations labelled slow. [default: run-slow]             │
+    │ --run-slow         --no-run-slow               Whether to run calculations labelled slow.                                 │
+    │                                                [default: no-run-slow]                                                     │
     │ --run-very-slow    --no-run-very-slow          Whether to run calculations labelled very slow.                            │
     │                                                [default: no-run-very-slow]                                                │
+    │ --run-multi-day    --no-run-multi-day          Whether to run calculations labelled multi-day.                            │
+    │                                                [default: no-run-multi-day]                                                │
     │ --verbose          --no-verbose                Whether to run pytest with verbose and stdout printed. [default: verbose]  │
     │ --help                                         Show this message and exit.                                                │
     ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -51,6 +54,57 @@ This is effectively equivalent to:
     .. code-block:: bash
 
     pytest -vvv ml_peg/calcs/surfaces/S24/calc_S24.py --models mace-mp-0b3
+
+
+Speed markers
+~~~~~~~~~~~~~
+
+Every benchmark carries one of five speed markers, describing roughly how long
+its calculations take per model on a GPU:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Marker
+     - Runtime
+   * - ``fast``
+     - Seconds to minutes
+   * - ``medium``
+     - Tens of minutes
+   * - ``slow``
+     - Hours
+   * - ``very_slow``
+     - 10 hours to a day
+   * - ``multi_day``
+     - Multiple GPU days
+
+By default only ``fast`` and ``medium`` benchmarks run. Add ``--run-slow`` to
+include ``slow`` ones, ``--run-very-slow`` to include ``very_slow`` ones, and
+``--run-multi-day`` to include ``multi_day`` ones.
+
+To run a single tier rather than adding to the default selection, use pytest's
+marker expression option, for example ``-m fast`` or ``-m medium``.
+
+The markers are also the source of the speed badge shown next to each benchmark
+in the app. Where a benchmark has tests at more than one level, the badge shows
+the slowest, since that reflects the cost of running the whole benchmark.
+
+
+Inspecting runtimes
+~~~~~~~~~~~~~~~~~~~
+
+Use pytest's built-in ``--durations`` option to inspect benchmark runtimes:
+
+.. code-block:: bash
+
+    ml_peg calc \
+        --category <category> \
+        --test <benchmark> \
+        --models mace-mp-0a \
+        --durations=0
+
+Maintainer reference measurements are recorded manually in
+``ml_peg/analysis/utils/runtimes.yml``.
 
 
 Analysis

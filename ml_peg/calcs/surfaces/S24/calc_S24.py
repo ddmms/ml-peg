@@ -244,6 +244,7 @@ def build_project(repro: bool = False) -> None:
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 def test_s24():
     """Run S24 benchmark via pytest."""
     build_project(repro=True)
