@@ -1,0 +1,25 @@
+metrics:
+  Mean ΔE:
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom between successive orientations, over 114 orientation pairs (a cumulative walk of 14 steps increasing from 1 to 40° then 100 uniformly random steps) of 10 diverse structures"
+    level_of_theory: null
+  Max ΔE:
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom between successive orientations, over 114 orientation pairs (a cumulative walk of 14 steps increasing from 1 to 40° then 100 uniformly random steps) of 10 diverse structures"
+    level_of_theory: null
+  Mean ΔF:
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Mean force MAE between successive orientations (mean absolute difference of the two force predictions, compared in a common frame), over 114 orientation pairs of 10 diverse structures"
+    level_of_theory: null
+  Max ΔF:
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) force MAE between successive orientations (mean absolute difference of the two force predictions, compared in a common frame), over 114 orientation pairs of 10 diverse structures"
+    level_of_theory: null
