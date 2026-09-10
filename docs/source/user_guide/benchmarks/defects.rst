@@ -114,10 +114,10 @@ exceeds the ``bad`` threshold, the subset score is clamped to 0. The overall
 ``Score`` reported in the table is the unweighted average of all four per-subset
 scores.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: The geometries are static, requiring only single-point energy calculations
+Fast: The geometries are static, requiring only single-point energy calculations
 for the configurations and reference structures.
 
 Data availability
@@ -191,10 +191,10 @@ normalised score in :math:`[0, 1]`. The overall ``Score`` reported in the table
 is the unweighted average of all per-subset metric scores across both metrics
 and both subsets.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: Requires single-point energy calculations for the configurations in each
+Fast: Requires single-point energy calculations for the configurations in each
 subset.
 
 Data availability
@@ -285,10 +285,10 @@ different crystal structures. Only computed for structure pairs that pass the
 StructureMatcher test. The match criterion itself is a normalised max dist below 0.25.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Relatively slow: relaxations involve large defect supercells (50–500 atoms) and
+Slow: relaxations involve large defect supercells (50–500 atoms) and
 multiple initial structures per material-cation pair. On a single NVIDIA A100
 GPU, a full run (both PBE and PBEsol subsets) takes roughly 2-2.5 hours per
 MACE model.

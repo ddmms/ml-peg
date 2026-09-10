@@ -29,7 +29,7 @@ through deletion an atom from the initial structure. These structures are relaxe
 and the Nudged Elastic Band method is used to calculate the energy barrier. This is
 compared to the reference activation energy for this path.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
@@ -71,7 +71,7 @@ for both the DFT reference and the MLIP predictions.
 
 Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
@@ -136,7 +136,7 @@ falling back to ASEs interpolation if any exceptions are raised during optimisat
 which is carried out by ASE's NEBOptimizer.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
 Fast: the benchmark takes around one minute per model on an A100 GPU.

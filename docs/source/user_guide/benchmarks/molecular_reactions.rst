@@ -23,10 +23,10 @@ For each of the 20 reactions, the barrier is calculated from single point energi
 the reactant and transition state structures. The mean absolute error against the
 reference barriers is reported in kcal/mol.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests involve single point calculations on 40 small molecular structures, and are
+Fast: tests involve single point calculations on 40 small molecular structures, and are
 likely to take less than a minute to run on CPU.
 
 Data availability
@@ -76,10 +76,10 @@ and reference reaction energy is passed through a soft threshold (at 0.05
 kcal/mol) to give a value between 0 and 1, and these are averaged across all
 pairs. Pairs for which the model fails to produce an energy score 0.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: only single-point energies are evaluated, so tests run quickly even for the
+Fast: only single-point energies are evaluated, so tests run quickly even for the
 full dataset. Minutes on CPU and GPU.
 
 Data availability

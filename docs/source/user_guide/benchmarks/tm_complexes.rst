@@ -20,10 +20,10 @@ For each complex, the ionization energy is calculated by taking the difference i
 between the complex in its oxidized state and initial state, which differ by one electron
 and spin multiplicity. This is compared to the reference ionization energy, calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 Data availability
 -----------------
