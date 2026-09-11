@@ -1,0 +1,8 @@
+metrics:
+  Bond Length Deviation:
+    good: 0.0
+    bad: 0.05
+    unit: Å
+    weight: 1
+    tooltip: Mean absolute deviation of a tracked covalent bond from its QM-optimised reference length, averaged over the MD trajectory and across all molecules.
+    level_of_theory: DFT
