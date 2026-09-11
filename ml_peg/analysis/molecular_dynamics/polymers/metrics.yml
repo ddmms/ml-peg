@@ -1,0 +1,29 @@
+metrics:
+  MAE (small):
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Mean Absolute Error in density across the small polymer set (7 polymers)
+    level_of_theory: Experimental
+    weight: 1
+  MAE (medium):
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Mean Absolute Error in density across the medium polymer set (30 polymers)
+    level_of_theory: Experimental
+    weight: 1
+  MAE (large):
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Mean Absolute Error in density across the large polymer set (85 polymers)
+    level_of_theory: Experimental
+    weight: 1
+  MAE (X-large):
+    good: 0.0
+    bad: 0.1
+    unit: g/cm^3
+    tooltip: Mean Absolute Error in density across the full polymer set (130 polymers)
+    level_of_theory: Experimental
+    weight: 1
