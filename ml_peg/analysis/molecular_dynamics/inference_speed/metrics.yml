@@ -1,0 +1,8 @@
+metrics:
+  Forward Time / Atom:
+    good: 0.5
+    bad: 5.0
+    unit: µs/atom
+    weight: 1
+    tooltip: Mean wall-clock time of a single model forward pass (energy + forces) per atom, averaged across structures. Hardware-dependent (H100 reference); lower is faster.
+    level_of_theory: null
