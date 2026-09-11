@@ -1,0 +1,77 @@
+"""
+Compute solvent radial distribution functions from molecular dynamics.
+
+A short NVT molecular dynamics simulation is run for a box of each solvent
+(carbon tetrachloride, methanol and acetonitrile), and the radial distribution
+function of the atom of interest is compared to experiment.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+import shutil
+from typing import Any
+from warnings import warn
+
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.solvent_radial_distribution.solvent_radial_distribution import (  # noqa: E501
+    SolventRadialDistributionModelOutput,
+)
+from mlipaudit.io import write_model_output_to_disk
+
+from ml_peg.calcs.utils.mlipaudit import MlPegSolventRadialDistributionBenchmark
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+MODELS = load_models(current_models)
+
+OUT_PATH = Path(__file__).parent / "outputs"
+
+
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_solvent_radial_distribution(mlip: tuple[str, Any]) -> None:
+    """
+    Benchmark the solvent radial distribution functions.
+
+    Parameters
+    ----------
+    mlip
+        Name of model and model object to get calculator.
+    """
+    model_name, model = mlip
+    calc = model.get_calculator()
+    calc = model.add_d3_calculator(calc)
+
+    data_input_dir = download_s3_data(
+        key="inputs/molecular_dynamics/solvent_radial_distribution/solvent_radial_distribution.zip",
+        filename="solvent_radial_distribution.zip",
+    )
+
+    # Save the input data to the calculation outputs so the analysis is self
+    # contained and does not need to download it again.
+    name = MlPegSolventRadialDistributionBenchmark.name
+    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
+
+    benchmark = MlPegSolventRadialDistributionBenchmark(
+        force_field=calc,
+        data_input_dir=data_input_dir,
+        run_mode="standard",
+    )
+    try:
+        benchmark.run_model()
+    except Exception as exc:
+        warn(
+            f"Error running solvent RDF benchmark for {model_name}: {exc}",
+            stacklevel=2,
+        )
+        # Empty structure lists are treated as a failed benchmark by analyze().
+        benchmark.model_output = SolventRadialDistributionModelOutput(
+            structure_names=[], simulation_states=[]
+        )
+
+    write_model_output_to_disk(
+        "solvent_radial_distribution", benchmark.model_output, OUT_PATH / model_name
+    )
