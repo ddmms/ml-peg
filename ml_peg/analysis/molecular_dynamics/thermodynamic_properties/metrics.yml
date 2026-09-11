@@ -1,0 +1,70 @@
+metrics:
+  density_MAE:
+    good: 0.0
+    bad: 0.05
+    unit: g/L
+    tooltip: "Mean absolute error in liquid density"
+    level_of_theory: Experimental
+
+  density_MAZE:
+    good: 1.0
+    bad: 3.0
+    unit: dimensionless
+    tooltip: "Mean absolute density error normalized by simulation uncertainty"
+    level_of_theory: Experimental
+
+  cp_MAE:
+    good: 0.0
+    bad: 50.0
+    unit: J/(mol K)
+    tooltip: "Mean absolute error in constant-pressure heat capacity"
+    level_of_theory: Experimental
+
+  cp_MAZE:
+    good: 1.0
+    bad: 3.0
+    unit: dimensionless
+    tooltip: "Mean absolute heat-capacity error normalized by simulation uncertainty"
+    level_of_theory: Experimental
+
+  evaporation_enthalpy_MAE:
+    good: 0.0
+    bad: 0.70
+    unit: kJ/mol
+    tooltip: "Mean absolute error in evaporation enthalpy"
+    level_of_theory: Experimental
+
+  evaporation_enthalpy_MAZE:
+    good: 1.0
+    bad: 3.0
+    unit: dimensionless
+    tooltip: "Mean absolute evaporation enthalpy error normalized by simulation uncertainty"
+    level_of_theory: Experimental
+
+  compressibility_MAE:
+    good: 0.0
+    bad: 0.70
+    unit: 1/GPa
+    tooltip: "Mean absolute error in isothermal compressibility"
+    level_of_theory: Experimental
+
+  compressibility_MAZE:
+    good: 1.0
+    bad: 3.0
+    unit: dimensionless
+    tooltip: "Mean absolute compressibility error normalized by simulation uncertainty"
+    level_of_theory: Experimental
+
+  alpha_MAE:
+    good: 0.0
+    bad: 0.004
+    unit: 1e-3/K
+    tooltip: "Mean absolute error in thermal expansion coefficient"
+    level_of_theory: Experimental
+
+  alpha_MAZE:
+    good: 1.0
+    bad: 3.0
+    unit: dimensionless
+    tooltip: "Mean absolute thermal-expansion error normalized by simulation uncertainty"
+    level_of_theory: Experimental
