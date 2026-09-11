@@ -321,14 +321,14 @@ def _generate_all_random(
     dict[str, Atoms]
         All successfully generated structures keyed by label.
     """
-    rng = np.random.default_rng(seed)
     structures: dict[str, Atoms] = {}
     data_path.mkdir(parents=True, exist_ok=True)
 
     # Collect frames grouped by number of elements for saving
     frames_by_n_elements: dict[int, list[Atoms]] = {}
 
-    for n_elements, n_compositions, repeats in random_specs:
+    for idx, (n_elements, n_compositions, repeats) in enumerate(random_specs):
+        rng = np.random.default_rng([seed, idx])
         filepath = data_path / f"{n_elements}.xyz"
         if Path(filepath).exists():
             print(
@@ -373,7 +373,7 @@ def _generate_all_random(
                 1, max(2, max_atoms - n_elements + 2), size=n_elements
             )
             if len(counts) == 1:
-                counts = np.random.choice(
+                counts = rng.choice(
                     range(max_atoms // 2, max_atoms + 1), size=1
                 )  # for single element, pick a random count
                 # between max_atoms//2 and max_atoms
@@ -404,7 +404,7 @@ def _generate_all_random(
                     atoms = _gen_random_structure(
                         composition,
                         seed=int(rng.integers(0, 2**31)),
-                        space_group=1,  # random space group
+                        space_group=1,  # fix to P1
                     )
 
                     struct_label = f"{atoms.get_chemical_formula()}_pyxtal_{i}"
