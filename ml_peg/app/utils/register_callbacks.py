@@ -37,6 +37,7 @@ from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
     clean_thresholds,
+    drop_empty_model_rows,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
@@ -248,15 +249,12 @@ def register_summary_table_callbacks(
         if not computed_store:
             raise PreventUpdate
 
-        filtered_rows = filter_rows_by_models(computed_store, selected_models)
-        base_style = (
-            get_table_style(
-                filtered_rows,
-                cmap_name=cmap_name or "viridis_r",
-                weights=stored_weights,
-            )
-            if filtered_rows
-            else []
+        visible_rows = drop_empty_model_rows(computed_store)
+        filtered_rows = filter_rows_by_models(visible_rows, selected_models)
+        base_style = get_table_style(
+            filtered_rows,
+            cmap_name=cmap_name or "viridis_r",
+            weights=stored_weights,
         )
         style_with_warnings, tooltip_data = apply_level_of_theory_warnings(
             filtered_rows,
@@ -373,15 +371,11 @@ def register_category_table_callbacks(
         scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
         filtered_rows = filter_rows_by_models(display_rows, selected_models)
         filtered_scores = filter_rows_by_models(scored_rows, selected_models)
-        style = (
-            get_table_style(
-                filtered_rows,
-                scored_data=filtered_scores,
-                cmap_name=cmap_name or "viridis_r",
-                weights=weights,
-            )
-            if filtered_rows
-            else []
+        style = get_table_style(
+            filtered_rows,
+            scored_data=filtered_scores,
+            cmap_name=cmap_name or "viridis_r",
+            weights=weights,
         )
         style, tooltip_data = apply_level_of_theory_warnings(
             filtered_rows,
@@ -471,15 +465,11 @@ def register_category_table_callbacks(
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
-                style = (
-                    get_table_style(
-                        filtered_rows,
-                        scored_data=filtered_scores,
-                        cmap_name=cmap_name or "viridis_r",
-                        weights=stored_weights,
-                    )
-                    if filtered_rows
-                    else []
+                style = get_table_style(
+                    filtered_rows,
+                    scored_data=filtered_scores,
+                    cmap_name=cmap_name or "viridis_r",
+                    weights=stored_weights,
                 )
                 style, tooltip_data = apply_level_of_theory_warnings(
                     filtered_rows,
@@ -516,14 +506,10 @@ def register_category_table_callbacks(
             )
             filtered_rows = filter_rows_by_models(display_rows, selected_models)
             filtered_scores = filter_rows_by_models(scored_rows, selected_models)
-            style = (
-                get_table_style(
-                    filtered_rows,
-                    scored_data=filtered_scores,
-                    cmap_name=cmap_name or "viridis_r",
-                )
-                if filtered_rows
-                else []
+            style = get_table_style(
+                filtered_rows,
+                scored_data=filtered_scores,
+                cmap_name=cmap_name or "viridis_r",
             )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
@@ -587,15 +573,16 @@ def register_category_table_callbacks(
                 scored_rows = source_data
                 updated_store = no_update
 
-            filtered_rows = filter_rows_by_models(scored_rows, selected_models)
-            style = (
-                get_table_style(
-                    filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
-                    weights=stored_weights,
-                )
-                if filtered_rows
-                else []
+            # Hide models whose category scores are all NaN. Scores can flip
+            # to/from NaN when benchmark weights change, so filter on the fly here
+            # rather than removing rows from the store.
+            filtered_rows = drop_empty_model_rows(
+                filter_rows_by_models(scored_rows, selected_models)
+            )
+            style = get_table_style(
+                filtered_rows,
+                cmap_name=cmap_name or "viridis_r",
+                weights=stored_weights,
             )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
@@ -660,15 +647,13 @@ def register_category_table_callbacks(
             if not computed_store:
                 raise PreventUpdate
 
-            filtered_rows = filter_rows_by_models(computed_store, selected_models)
-            style = (
-                get_table_style(
-                    filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
-                    weights=stored_weights,
-                )
-                if filtered_rows
-                else []
+            filtered_rows = drop_empty_model_rows(
+                filter_rows_by_models(computed_store, selected_models)
+            )
+            style = get_table_style(
+                filtered_rows,
+                cmap_name=cmap_name or "viridis_r",
+                weights=stored_weights,
             )
             style, tooltip_data = apply_level_of_theory_warnings(
                 filtered_rows,
