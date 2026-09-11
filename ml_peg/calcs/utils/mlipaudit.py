@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+from mlipaudit.benchmarks import (
     ConformerSelectionBenchmark,
+    InferenceSpeedBenchmark,
+    TautomersBenchmark,
 )
-from mlipaudit.benchmarks import InferenceSpeedBenchmark
-from mlipaudit.benchmarks.tautomers.tautomers import TautomersBenchmark
 
 
 class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
