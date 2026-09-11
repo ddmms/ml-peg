@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ase.formula import Formula
 from dash import Dash, Input, Output, callback, dcc
 from dash.dcc import Loading
 from dash.exceptions import PreventUpdate
@@ -22,16 +23,49 @@ INFO_PATH = DATA_PATH / "info.json"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#compression"
 )
+COMPOSITION_TYPES = {
+    "elemental": 1,
+    "binary": 2,
+    "ternary": 3,
+}
 
 
-def _available_formulas(model_name: str) -> list[str]:
+def _composition_type(formula: str) -> str | None:
     """
-    List unique formulas available for a given model.
+    Classify a chemical formula by its number of elements.
+
+    Parameters
+    ----------
+    formula
+        Reduced chemical formula.
+
+    Returns
+    -------
+    str | None
+        ``"elemental"``, ``"binary"``, or ``"ternary"``. Returns ``None``
+        for formulas containing another number of elements.
+    """
+    n_elements = len(Formula(formula).count())
+    return next(
+        (
+            composition_type
+            for composition_type, count in COMPOSITION_TYPES.items()
+            if count == n_elements
+        ),
+        None,
+    )
+
+
+def _available_formulas(model_name: str, composition_type: str) -> list[str]:
+    """
+    List formulas available for a model and composition type.
 
     Parameters
     ----------
     model_name
         Selected model identifier.
+    composition_type
+        One of ``"elemental"``, ``"binary"``, or ``"ternary"``.
 
     Returns
     -------
@@ -41,7 +75,11 @@ def _available_formulas(model_name: str) -> list[str]:
     model_dir = FIGURE_PATH / model_name
     if not model_dir.exists():
         return []
-    return sorted(p.stem for p in model_dir.glob("*.json"))
+    return sorted(
+        p.stem
+        for p in model_dir.glob("*.json")
+        if _composition_type(p.stem) == composition_type
+    )
 
 
 class CompressionApp(BaseApp):
@@ -50,6 +88,7 @@ class CompressionApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register dropdown-driven compression curve callbacks."""
         model_dropdown_id = f"{BENCHMARK_NAME}-model-dropdown"
+        composition_type_id = f"{BENCHMARK_NAME}-composition-type-tabs"
         composition_dropdown_id = f"{BENCHMARK_NAME}-composition-dropdown"
         figure_id = f"{BENCHMARK_NAME}-figure"
 
@@ -57,24 +96,27 @@ class CompressionApp(BaseApp):
             Output(composition_dropdown_id, "options"),
             Output(composition_dropdown_id, "value"),
             Input(model_dropdown_id, "value"),
+            Input(composition_type_id, "value"),
         )
-        def _update_composition_options(model_name: str):
+        def _update_composition_options(model_name: str, composition_type: str):
             """
-            Update composition dropdown options based on selected model.
+            Update composition options based on the model and composition type.
 
             Parameters
             ----------
             model_name
                 Currently selected model identifier.
+            composition_type
+                Selected elemental, binary, or ternary composition type.
 
             Returns
             -------
             tuple
                 Dropdown options list and default value.
             """
-            if not model_name:
+            if not model_name or not composition_type:
                 raise PreventUpdate
-            formulas = _available_formulas(model_name)
+            formulas = _available_formulas(model_name, composition_type)
             options = [{"label": f, "value": f} for f in formulas]
             default = formulas[0] if formulas else None
             return options, default
@@ -97,15 +139,16 @@ class CompressionApp(BaseApp):
 
             Returns
             -------
-            Figure
-                Plotly figure loaded from the pre-built JSON file.
+            Figure | dict
+                Plotly figure loaded from the pre-built JSON file, or an empty
+                figure when the selected category has no data.
             """
             if not model_name or not composition:
-                raise PreventUpdate
+                return {}
 
             figure_file = FIGURE_PATH / model_name / f"{composition}.json"
             if not figure_file.exists():
-                raise PreventUpdate
+                return {}
 
             return read_json(figure_file)
 
@@ -131,6 +174,20 @@ def get_app() -> CompressionApp:
                     options=model_options,
                     value=default_model,
                     clearable=False,
+                    style={"width": "300px", "marginBottom": "20px"},
+                ),
+                Label("Select composition type:"),
+                dcc.Tabs(
+                    id=f"{BENCHMARK_NAME}-composition-type-tabs",
+                    value="elemental",
+                    children=[
+                        dcc.Tab(label=label, value=value)
+                        for value, label in (
+                            ("elemental", "Elemental"),
+                            ("binary", "Binary"),
+                            ("ternary", "Ternary"),
+                        )
+                    ],
                     style={"width": "300px", "marginBottom": "20px"},
                 ),
                 Label("Select composition:"),
