@@ -9,11 +9,10 @@ from mlipaudit.benchmarks import (
     ReactivityBenchmark,
     RingPlanarityBenchmark,
     TautomersBenchmark,
+    ConformerSelectionBenchmark,
+    InferenceSpeedBenchmark,
+    StabilityBenchmark,
 )
-<<<<<<< HEAD
-from mlipaudit.benchmarks import InferenceSpeedBenchmark
-from mlipaudit.benchmarks.stability.stability import StabilityBenchmark
-from mlipaudit.benchmarks.tautomers.tautomers import TautomersBenchmark
 
 
 class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
