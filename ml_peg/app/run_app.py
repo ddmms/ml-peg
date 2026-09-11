@@ -8,6 +8,7 @@ from pathlib import Path
 from dash import Dash
 
 from ml_peg.app.build_app import build_full_app
+from ml_peg.app.utils.head_scripts import build_analytics_head, build_no_flash_script
 
 DATA_PATH = Path(__file__).parent / "data"
 ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
@@ -48,19 +49,26 @@ app = Dash(
     title="ML-PEG",  # set browser tab title
     update_title=None,  # prevent the tab changing to Updating... during callbacks
     external_scripts=_analytics_scripts,
+    # Benchmark cards mount their bodies lazily, so their control ids are absent
+    # from the initial layout; allow callbacks to reference not-yet-present ids.
+    suppress_callback_exceptions=True,
+    meta_tags=[
+        # Render at real device width so the responsive layout + media queries
+        # apply on phones (without this, mobile browsers assume a ~980px page).
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"},
+    ],
+)
+
+# Apply the saved preferences before first paint so a reload doesn't flash the
+# wrong theme, zoom or font while Dash hydrates (see utils/head_scripts.py).
+app.index_string = app.index_string.replace(
+    "{%metas%}", "{%metas%}\n" + build_no_flash_script()
 )
 
 # Inject the inline gtag init into the parsed <head> so the browser executes it
 if ANALYTICS_ID:
     app.index_string = app.index_string.replace(
-        "{%metas%}",
-        "{%metas%}\n"
-        "    <script>"
-        "window.dataLayer=window.dataLayer||[];"
-        "function gtag(){dataLayer.push(arguments);}"
-        "gtag('js', new Date());"
-        f"gtag('config', '{ANALYTICS_ID}');"
-        "</script>",
+        "{%metas%}", "{%metas%}\n" + build_analytics_head(ANALYTICS_ID)
     )
 
 # Only build app when in production, otherwise run_app's layout is missing
