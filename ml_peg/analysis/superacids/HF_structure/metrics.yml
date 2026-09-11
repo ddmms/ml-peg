@@ -1,0 +1,19 @@
+# The `good` threshold of the R-factor is the statistical noise of the protocol
+# itself, measured by splitting the production window of one model in two halves
+# (R-factor 0.022). The peak position is read directly off the S(q) grid, so its
+# `good` threshold is one grid spacing, 0.05 1/A.
+metrics:
+    S(q) R-factor:
+        good: 0.02
+        bad: 0.5
+        unit: null
+        tooltip: "sum|S_exp - S_calc| / sum|S_exp| for the total neutron structure factor of liquid DF, from the first experimental point to 4 1/A. Experimental reference: McLain et al., Angew. Chem. Int. Ed. 43, 1952 (2004)"
+        level_of_theory: Experimental
+        weight: 1.0
+    First Peak Position Error:
+        good: 0.05
+        bad: 0.8
+        unit: "1/A"
+        tooltip: "Absolute error in the position of the maximum of S(q), located over the same range as the R-factor. Experimental reference: McLain et al., Angew. Chem. Int. Ed. 43, 1952 (2004)"
+        level_of_theory: Experimental
+        weight: 1.0
