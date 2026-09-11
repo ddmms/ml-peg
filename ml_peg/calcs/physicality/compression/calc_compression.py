@@ -6,10 +6,11 @@ import json
 from pathlib import Path
 
 from ase import Atoms, units
-from ase.build import bulk, make_supercell
-from ase.data import atomic_numbers, chemical_symbols, covalent_radii
+from ase.build import bulk
+from ase.data import chemical_symbols, covalent_radii
 from ase.io import read as ase_read
 from ase.io import write
+from ase.neighborlist import neighbor_list
 import numpy as np
 import pandas as pd
 import pytest
@@ -85,8 +86,13 @@ def _scale_using_isotropic_guess(atoms: Atoms) -> Atoms:
 
     For each pair of atoms the target bond length is the sum of their
     covalent radii (from ``ase.data.covalent_radii``).  The structure is
-    uniformly rescaled so that the shortest interatomic distance equals
-    the smallest such target across all pairs.
+    uniformly rescaled by the largest ``target / distance`` ratio over all
+    pairs, so that no pair is closer than its target and the most
+    compressed pair sits exactly at it.
+
+    The neighbour search uses 1.01*lengths.min() as the cutoff.  Every
+    atom has a periodic self-image at most that far away, so the search is
+    never empty.
 
     Parameters
     ----------
@@ -97,42 +103,12 @@ def _scale_using_isotropic_guess(atoms: Atoms) -> Atoms:
     -------
     Atoms
         A copy of *atoms* with the cell and positions rescaled.
-
-    Raises
-    ------
-    ValueError
-        If the shortest interatomic distance at the current cell is zero
-        or negative (degenerate geometry).
     """
     atoms = atoms.copy()
-    sc = make_supercell(atoms, 2 * np.eye(3))
-    distances = sc.get_all_distances(mic=True)
-    np.fill_diagonal(distances, np.inf)
-
-    # Build a matrix of target bond lengths (sum of covalent radii per pair)
-    radii = np.array(
-        [covalent_radii[atomic_numbers[s]] for s in sc.get_chemical_symbols()]
-    )
-    target_matrix = radii[:, None] + radii[None, :]
-
-    # Mask infinite entries (self-distances)
-    mask = np.isfinite(distances)
-    if not np.any(mask):
-        raise ValueError("No finite interatomic distances found")
-
-    # Find the pair with the smallest distance and its corresponding target
-    ratios = np.full_like(distances, np.inf)
-    ratios[mask] = target_matrix[mask] / distances[mask]
-
-    # The required scale factor is the ratio for the closest pair
-    closest_idx = np.unravel_index(np.argmin(distances), distances.shape)
-    min_dist = distances[closest_idx]
-    target_bond = target_matrix[closest_idx]
-
-    if min_dist <= 0.0:
-        raise ValueError("Degenerate geometry: shortest interatomic distance <= 0")
-
-    scale_factor = target_bond / min_dist
+    cutoff = 1.01 * atoms.cell.lengths().min()
+    i, j, d = neighbor_list("ijd", atoms, cutoff)
+    radii = covalent_radii[atoms.numbers]
+    scale_factor = ((radii[i] + radii[j]) / d).max()
     atoms.set_cell(atoms.cell * scale_factor, scale_atoms=True)
     return atoms
 
