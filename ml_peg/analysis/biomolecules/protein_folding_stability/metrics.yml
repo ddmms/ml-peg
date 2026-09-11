@@ -1,0 +1,22 @@
+metrics:
+  RMSD:
+    good: 0.0
+    bad: 2.0
+    unit: Å
+    weight: 1
+    tooltip: Root mean square deviation of the C-alpha atoms from the native reference structure, averaged over the trajectory and across all proteins. Lower is better.
+    level_of_theory: Experiment
+  TM Score:
+    good: 1.0
+    bad: 0.5
+    unit: null
+    weight: 1
+    tooltip: TM score of each trajectory frame against the native reference structure, averaged over the trajectory and across all proteins. Closer to 1 indicates the fold is retained.
+    level_of_theory: Experiment
+  Rgyr Deviation:
+    good: 0.0
+    bad: 2.0
+    unit: Å
+    weight: 1
+    tooltip: Maximum absolute deviation of the radius of gyration from the initial folded state along the trajectory, taken across all proteins. Lower is better.
+    level_of_theory: Experiment
