@@ -1,0 +1,29 @@
+metrics:
+  Energy Drift:
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom/ps
+    weight: 0
+    tooltip: Rate of drift of the total energy along the NVE trajectory, from a linear fit, per atom and averaged over the successfully simulated systems.
+    level_of_theory: null
+  Energy Drift Ratio:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    weight: 0
+    tooltip: Fitted total energy drift over the trajectory divided by the standard deviation of the kinetic energy, averaged over the successfully simulated systems. A ratio of 1 means the accumulated drift is as large as the natural kinetic energy fluctuation.
+    level_of_theory: null
+  Systems Completed:
+    good: 4.0
+    bad: 0.0
+    unit: null
+    weight: 0
+    tooltip: Number of the 4 systems that completed their trajectory and produced usable drift statistics. The drift metrics only average over these, so a low count means the drift columns cover fewer systems.
+    level_of_theory: null
+  NVE Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: mlipaudit per-system soft-threshold score on the energy drift ratio, averaged over the systems (failed systems score 0).
+    level_of_theory: null
