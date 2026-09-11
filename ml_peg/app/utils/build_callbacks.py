@@ -182,16 +182,15 @@ registered_highlights: dict[str, bool] = {}
 
 def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> None:
     """
-    Ring the most recently clicked point of a scatter plot.
+    Highlight the most recently clicked point or bar.
 
     Registered once per ``scatter_id`` and runs entirely client-side, so it adds
-    no server load and works for any scatter wired for click interactions. On
-    each click a single ring marker (a transparent-fill ``__clicked_point__``
-    trace) replaces the previous one. Its type and axes are copied from the
-    clicked trace so the ring sits on the same render layer (svg vs WebGL) and
-    subplot as the point. Frame following can be disabled for viewers whose
-    frames do not correspond one-to-one with scatter points, such as a density
-    cell containing multiple structures.
+    no server load and works for any scatter wired for click interactions.
+    Scatter clicks use a transparent-fill ``__clicked_point__`` ring trace.
+    Bar clicks instead add an outline directly to the complete selected bar so
+    Plotly does not render a second, partially overlapping bar. Frame following
+    can be disabled for viewers whose frames do not correspond one-to-one with
+    scatter points, such as a density cell containing multiple structures.
 
     Parameters
     ----------
@@ -220,31 +219,44 @@ def _register_point_highlight(scatter_id: str, follow_frames: bool = True) -> No
             const data = figure.data.filter(
                 (t) => t.name !== '__clicked_point__'
             );
-            data.push({
-                x: [pt.x],
-                y: [pt.y],
-                type: src.type || 'scatter',
-                mode: 'markers',
-                name: '__clicked_point__',
-                xaxis: src.xaxis,
-                yaxis: src.yaxis,
-                hoverinfo: 'skip',
-                showlegend: false,
-                cliponaxis: false,
-                marker: {
-                    size: 16,
-                    color: 'rgba(0,0,0,0)',
-                    line: {color: '#ff1493', width: 3},
-                },
-            });
-            // Record the clicked curve so a playing WEAS trajectory can move
-            // this ring to the matching frame's point (weas_frame_follow.js).
-            window.__mlPegActiveTraj = {
-                scatterId: "__SCATTER_ID__",
-                x: src.x || [],
-                y: src.y || [],
-                followFrames: __FOLLOW_FRAMES__,
-            };
+            if (src.type === 'bar') {
+                const count = Array.isArray(src.x) ? src.x.length : 0;
+                const lineColors = Array(count).fill('rgba(0,0,0,0)');
+                const lineWidths = Array(count).fill(0);
+                lineColors[pt.pointNumber] = '#ff1493';
+                lineWidths[pt.pointNumber] = 3;
+                const marker = Object.assign({}, src.marker || {}, {
+                    line: {color: lineColors, width: lineWidths},
+                });
+                data[pt.curveNumber] = Object.assign({}, src, {marker: marker});
+                window.__mlPegActiveTraj = null;
+            } else {
+                data.push({
+                    x: [pt.x],
+                    y: [pt.y],
+                    type: src.type || 'scatter',
+                    mode: 'markers',
+                    name: '__clicked_point__',
+                    xaxis: src.xaxis,
+                    yaxis: src.yaxis,
+                    hoverinfo: 'skip',
+                    showlegend: false,
+                    cliponaxis: false,
+                    marker: {
+                        size: 16,
+                        color: 'rgba(0,0,0,0)',
+                        line: {color: '#ff1493', width: 3},
+                    },
+                });
+                // Record the clicked curve so a playing WEAS trajectory can move
+                // this ring to the matching frame's point (weas_frame_follow.js).
+                window.__mlPegActiveTraj = {
+                    scatterId: "__SCATTER_ID__",
+                    x: src.x || [],
+                    y: src.y || [],
+                    followFrames: __FOLLOW_FRAMES__,
+                };
+            }
             const out = Object.assign({}, figure, {data: data});
             // Pin the axes to the live rendered range so adding the ring (a large
             // marker) can't autorange and resize the plot. Reading _fullLayout
