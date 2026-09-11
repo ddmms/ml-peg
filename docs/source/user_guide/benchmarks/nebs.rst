@@ -116,7 +116,9 @@ Metrics
 
 1. Diffusion barrier error
 
-The diffusion barrier is defined as the maximum energy along the NEB minimum energy path (MEP), relative to the initial state energy. This is compared to the reference DFT-PBE calculated barrier for each material.
+The diffusion barrier is defined as the maximum energy along the climbing-image NEB
+(cNEB) minimum energy path (MEP), relative to the initial state energy. This is
+compared to the reference DFT-PBE calculated barrier for each material.
 
 The benchmark includes the following 2D TMD materials (2H phase):
 
@@ -126,6 +128,13 @@ The benchmark includes the following 2D TMD materials (2H phase):
 * WS₂
 * WSe₂
 * WTe₂
+
+For each material, the endpoints are first relaxed using LBFGS until the maximum force
+component is below 0.1 eV/Å or 100 steps is reached. The cNEB band is constructed with
+11 images, and interpolation is attempted with pymatgen's structure interpolation,
+falling back to ASEs interpolation if any exceptions are raised during optimisation,
+which is carried out by ASE's NEBOptimizer.
+
 
 Computational cost
 ------------------
