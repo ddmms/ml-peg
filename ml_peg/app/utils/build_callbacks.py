@@ -315,7 +315,7 @@ def plot_from_scatter(
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
-    structs: str | list[str],
+    structs: str | list[str] | dict[str, str],
     mode: Literal["struct", "traj"] = "struct",
 ) -> None:
     """
@@ -328,7 +328,8 @@ def struct_from_scatter(
     struct_id
         ID for Dash plot placeholder Div where structures will be visualised.
     structs
-        List of structure filenames in same order as scatter data to be visualised.
+        Structure trajectory, list of filenames in scatter-point order, or mapping
+        from labels stored in point ``customdata`` to structure filenames.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
@@ -356,11 +357,19 @@ def struct_from_scatter(
         """
         if not click_data:
             return Div()
-        idx = click_data["points"][0]["pointNumber"]
+        point = click_data["points"][0]
+        idx = point["pointNumber"]
 
         if isinstance(structs, str):
             struct = structs
             index = idx
+        elif isinstance(structs, dict):
+            customdata = point.get("customdata")
+            label = customdata[-1] if isinstance(customdata, list) else customdata
+            struct = structs.get(label)
+            if struct is None:
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            index = 0
         else:
             struct = structs[idx]
             index = 0

@@ -11,6 +11,7 @@ from plotly.io import read_json
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import struct_from_scatter
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -19,6 +20,7 @@ MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Compression"
 DATA_PATH = APP_ROOT / "data" / "physicality" / "compression"
 FIGURE_PATH = DATA_PATH / "figures"
+STRUCTURE_PATH = DATA_PATH / "mock"
 INFO_PATH = DATA_PATH / "info.json"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/physicality.html#compression"
@@ -91,6 +93,7 @@ class CompressionApp(BaseApp):
         composition_type_id = f"{BENCHMARK_NAME}-composition-type-tabs"
         composition_dropdown_id = f"{BENCHMARK_NAME}-composition-dropdown"
         figure_id = f"{BENCHMARK_NAME}-figure"
+        structure_id = f"{BENCHMARK_NAME}-structure"
 
         @callback(
             Output(composition_dropdown_id, "options"),
@@ -152,6 +155,16 @@ class CompressionApp(BaseApp):
 
             return read_json(figure_file)
 
+        structure_paths = {
+            path.stem: f"/assets/physicality/compression/mock/{path.name}"
+            for path in STRUCTURE_PATH.glob("*.xyz")
+        }
+        struct_from_scatter(
+            scatter_id=figure_id,
+            struct_id=structure_id,
+            structs=structure_paths,
+        )
+
 
 def get_app() -> CompressionApp:
     """
@@ -207,6 +220,10 @@ def get_app() -> CompressionApp:
                 style={"height": "500px", "width": "100%", "marginTop": "20px"},
             ),
             type="circle",
+        ),
+        Div(
+            "Click a curve to view its structure.",
+            id=f"{BENCHMARK_NAME}-structure",
         ),
     ]
 

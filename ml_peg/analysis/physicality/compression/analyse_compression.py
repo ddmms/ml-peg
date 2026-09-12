@@ -32,7 +32,7 @@ INFO = get_struct_info(
     glob_pattern="compression/*.xyz",
     index="0",
     include_filenames=True,
-    write_structs=False,
+    write_structs=True,
     out_path=OUT_PATH,
 )
 
@@ -500,6 +500,7 @@ def _build_formula_figures(model_name: str, frame: pd.DataFrame) -> None:
                 continue
 
             color = _PALETTE[idx % len(_PALETTE)]
+            customdata = [[energy, struct_label] for energy in energies]
             fig.add_trace(
                 go.Scatter(
                     x=scales,
@@ -508,9 +509,10 @@ def _build_formula_figures(model_name: str, frame: pd.DataFrame) -> None:
                     name=struct_label,
                     line={"color": color},
                     marker={"size": 5, "color": color},
-                    customdata=energies,
+                    customdata=customdata,
                     hovertemplate=(
-                        "scale: %{x:.3f}<br>E/atom: %{customdata:.4f} eV<extra></extra>"
+                        "scale: %{x:.3f}<br>"
+                        "E/atom: %{customdata[0]:.4f} eV<extra></extra>"
                     ),
                 )
             )
