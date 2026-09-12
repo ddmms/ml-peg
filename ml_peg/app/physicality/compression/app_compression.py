@@ -12,6 +12,7 @@ from plotly.io import read_json
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import struct_from_scatter
+from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -163,6 +164,7 @@ class CompressionApp(BaseApp):
             scatter_id=figure_id,
             struct_id=structure_id,
             structs=structure_paths,
+            mode="traj",
         )
 
 
@@ -214,6 +216,11 @@ def get_app() -> CompressionApp:
             ],
             style={"marginBottom": "20px"},
         ),
+        Div(
+            "Click any marker on a curve to view the structures across its "
+            "compression trajectory.",
+            style=INSTRUCTION_STYLE,
+        ),
         Loading(
             dcc.Graph(
                 id=f"{BENCHMARK_NAME}-figure",
@@ -221,10 +228,7 @@ def get_app() -> CompressionApp:
             ),
             type="circle",
         ),
-        Div(
-            "Click a curve to view its structure.",
-            id=f"{BENCHMARK_NAME}-structure",
-        ),
+        Div(id=f"{BENCHMARK_NAME}-structure"),
     ]
 
     return CompressionApp(
