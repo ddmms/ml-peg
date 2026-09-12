@@ -369,7 +369,7 @@ def struct_from_scatter(
             struct = structs.get(label)
             if struct is None:
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
-            index = 0
+            index = idx if mode == "traj" else 0
         else:
             struct = structs[idx]
             index = 0
