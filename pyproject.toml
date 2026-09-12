@@ -32,6 +32,7 @@ dependencies = [
     "matcalc<0.5,>=0.4.7; python_version >= '3.11'",
     "matminer<0.10,>=0.9.3",
     "mdanalysis<3,>=2.9.0",
+    "mdtraj<2,>=1.10.0",
     "mlipx<0.2,>=0.1.5",
     "molify<0.3,>=0.2.2",
     "openpyxl<4,>=3.1.5",
