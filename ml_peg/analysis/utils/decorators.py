@@ -39,6 +39,7 @@ def plot_parity(
     filename: str = "parity.json",
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
+    log: bool = False,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -62,6 +63,9 @@ def plot_parity(
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
+    log
+        Whether to use log-log axes. When True, the y=x line spans the positive
+        data range. Default is False.
 
     Returns
     -------
@@ -155,14 +159,24 @@ def plot_parity(
                         )
                     )
 
-            full_fig = fig.full_figure_for_development()
-            x_range = full_fig.layout.xaxis.range
-            y_range = full_fig.layout.yaxis.range
+            if log:
+                # Log axes: span the y=x line over the positive data range only.
+                all_vals = list(ref) + [
+                    v for mlip in results if mlip != "ref" for v in results[mlip]
+                ]
+                positive = [
+                    v for v in all_vals if isinstance(v, (int, float)) and v > 0
+                ]
+                lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
+            else:
+                full_fig = fig.full_figure_for_development()
+                x_range = full_fig.layout.xaxis.range
+                y_range = full_fig.layout.yaxis.range
 
-            lims = [
-                np.min([x_range, y_range]),  # min of both axes
-                np.max([x_range, y_range]),  # max of both axes
-            ]
+                lims = [
+                    np.min([x_range, y_range]),  # min of both axes
+                    np.max([x_range, y_range]),  # max of both axes
+                ]
 
             fig.add_trace(
                 go.Scatter(
@@ -173,10 +187,16 @@ def plot_parity(
                 )
             )
 
+            xaxis = {"title": {"text": x_label}}
+            yaxis = {"title": {"text": y_label}}
+            if log:
+                xaxis["type"] = "log"
+                yaxis["type"] = "log"
+
             fig.update_layout(
                 title={"text": title},
-                xaxis={"title": {"text": x_label}},
-                yaxis={"title": {"text": y_label}},
+                xaxis=xaxis,
+                yaxis=yaxis,
             )
             if symbol_by:
                 fig.update_layout(
