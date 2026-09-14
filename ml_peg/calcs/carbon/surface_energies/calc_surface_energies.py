@@ -2,25 +2,27 @@
 
 from __future__ import annotations
 
-from copy import copy
 from pathlib import Path
 from typing import Any
 from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.carbon.utils.carbon_utils import (
+    energy_at,
+    get_dispersion_variants,
+    load_carbon_systems,
+    write_variant_frame,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
-
-GITHUB_URI = "https://raw.githubusercontent.com/patrickwrowe/Carbon_GAP/main/ml_peg_benchmark_data"
 
 AMORPHOUS_SYSTEM = "Amorphous_Bulk_Unrelaxed_2"
 EXCLUDED_SYSTEMS = ("Diamond_110",)
@@ -43,35 +45,6 @@ def surface_area(atoms: Atoms) -> float:
         Magnitude of the cross product of the first two cell vectors, in Angstrom^2.
     """
     return float(np.linalg.norm(np.cross(atoms.cell[0], atoms.cell[1])))
-
-
-def energy_at(atoms: Atoms, calc: Calculator, label: str) -> float:
-    """
-    Get the single-point potential energy of a copy of `atoms` with `calc` attached.
-
-    Parameters
-    ----------
-    atoms
-        Reference structure to evaluate, unmodified.
-    calc
-        ASE calculator to attach.
-    label
-        Description of the structure being evaluated, for warning messages.
-
-    Returns
-    -------
-    float
-        Potential energy in eV, or `np.nan` on failure.
-    """
-    struct = atoms.copy()
-    struct.info.setdefault("charge", 0)
-    struct.info.setdefault("spin", 1)
-    struct.calc = copy(calc)
-    try:
-        return struct.get_potential_energy()
-    except Exception as exc:
-        warn(f"Error computing energy for {label}: {exc}", stacklevel=2)
-        return np.nan
 
 
 def group_amorphous_frames(frames: list[Atoms]) -> dict[int, dict[str, Any]]:
@@ -277,28 +250,15 @@ def test_surface_energies(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
 
-    data_dir = (
-        download_github_data(filename="surface_energies.zip", github_uri=GITHUB_URI)
-        / "surface_energies"
-    )
-
-    with open(data_dir / "list") as file:
-        systems = [
-            system
-            for system in file.read().splitlines()
-            if system not in EXCLUDED_SYSTEMS
-        ]
+    data_dir, all_systems = load_carbon_systems("surface_energies")
+    systems = [system for system in all_systems if system not in EXCLUDED_SYSTEMS]
 
     references = {system: prepare_reference(data_dir, system) for system in systems}
 
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = (
-        (calc,)
-        if model.trained_on_dispersion
-        else (calc, model.add_d3_calculator(copy(calc)))
-    )
+    variant_calcs = get_dispersion_variants(model, calc)
     for variant_index, variant_calc in enumerate(variant_calcs):
         for system in systems:
             ref = references[system]
@@ -310,7 +270,6 @@ def test_surface_energies(mlip: tuple[str, Any]) -> None:
                     ref, variant_calc, system
                 )
 
-            atoms.info["system"] = system
             atoms.info["as_cut_surface_energy_j_m2"] = as_cut_j_m2
             atoms.info["relaxed_surface_energy_j_m2"] = relaxed_j_m2
             atoms.info["ref_as_cut_surface_energy_j_m2"] = ref[
@@ -320,6 +279,6 @@ def test_surface_energies(mlip: tuple[str, Any]) -> None:
                 "ref_relaxed_surface_energy_j_m2"
             ]
 
-            write(write_dir / f"{system}.extxyz", atoms, append=variant_index > 0)
-            if len(variant_calcs) == 1:
-                write(write_dir / f"{system}.extxyz", atoms, append=True)
+            write_variant_frame(
+                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
+            )

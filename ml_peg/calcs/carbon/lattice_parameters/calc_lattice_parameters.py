@@ -9,19 +9,21 @@ from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.io import read, write
+from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.carbon.utils.carbon_utils import (
+    get_dispersion_variants,
+    load_carbon_systems,
+    write_variant_frame,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
-
-GITHUB_URI = "https://raw.githubusercontent.com/patrickwrowe/Carbon_GAP/main/ml_peg_benchmark_data"
 
 REPEAT_FACTORS = {
     "Graphite": {"a": 6, "c": 2},
@@ -119,7 +121,6 @@ def relax_system(
     """
     atoms.info.setdefault("charge", 0)
     atoms.info.setdefault("spin", 1)
-    atoms.info["system"] = system
     atoms.calc = copy(calc)
 
     relaxed = True
@@ -182,13 +183,7 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
 
-    data_dir = (
-        download_github_data(filename="lattice_parameters.zip", github_uri=GITHUB_URI)
-        / "lattice_parameters"
-    )
-
-    with open(data_dir / "list") as file:
-        systems = file.read().splitlines()
+    data_dir, systems = load_carbon_systems("lattice_parameters")
 
     references = {system: prepare_reference(data_dir, system) for system in systems}
     ref_graphite_energy = references["Graphite"]["energy_per_atom"]
@@ -196,11 +191,7 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = (
-        (calc,)
-        if model.trained_on_dispersion
-        else (calc, model.add_d3_calculator(copy(calc)))
-    )
+    variant_calcs = get_dispersion_variants(model, calc)
     for variant_index, variant_calc in enumerate(variant_calcs):
         energy_per_atom = {}
         frames = {}
@@ -219,6 +210,6 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
             atoms.info["ref_energy_above_graphite_ev_per_atom"] = (
                 references[system]["energy_per_atom"] - ref_graphite_energy
             )
-            write(write_dir / f"{system}.extxyz", atoms, append=variant_index > 0)
-            if len(variant_calcs) == 1:
-                write(write_dir / f"{system}.extxyz", atoms, append=True)
+            write_variant_frame(
+                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
+            )

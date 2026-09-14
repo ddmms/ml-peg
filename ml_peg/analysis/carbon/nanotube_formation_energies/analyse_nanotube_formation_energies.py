@@ -42,7 +42,9 @@ CHIRALITIES = [calc_nanotubes.chirality_of(system) for system in SYSTEMS]
 DIAMETERS = INFO["diameter_angstrom"]
 
 
-def gather_strain_energies(frame_index: int) -> dict[str, list]:
+def gather_strain_energies(
+    frame_index: int, structs_path: Path | None = None
+) -> dict[str, list]:
     """
     Gather reference and predicted strain energies for every nanotube.
 
@@ -51,6 +53,9 @@ def gather_strain_energies(frame_index: int) -> dict[str, list]:
     frame_index
         Extxyz frame to read: 0 for the plain calculator, 1 for D3-corrected (same
         as 0 for models already trained on dispersion).
+    structs_path
+        Path to write each structure read to, for the app. Default is None, which
+        writes nothing.
 
     Returns
     -------
@@ -72,11 +77,16 @@ def gather_strain_energies(frame_index: int) -> dict[str, list]:
                 continue
 
             atoms = read(struct_file, index=frame_index)
+            if structs_path is not None:
+                structs_dir = structs_path / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{system}.xyz", atoms)
+
             results[model_name].append(
                 atoms.info.get("strain_energy_ev_per_atom", np.nan)
             )
             if not ref_stored:
-                results["ref"].append(atoms.info["reference_strain_energy_ev_per_atom"])
+                results["ref"].append(atoms.info["ref_strain_energy_ev_per_atom"])
 
         if not ref_stored:
             if len(results["ref"]) == len(SYSTEMS):
@@ -140,20 +150,7 @@ def strain_energy() -> dict[str, list]:
         Reference and per-model predicted strain energy, in eV per atom, for
         all 20 nanotubes.
     """
-    results = gather_strain_energies(frame_index=1)
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        structs_dir = OUT_PATH / model_name
-        for system in SYSTEMS:
-            struct_file = model_dir / f"{system}.extxyz"
-            if not struct_file.is_file():
-                continue
-            atoms = read(struct_file, index=1)
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", atoms)
-
-    return results
+    return gather_strain_energies(frame_index=1, structs_path=OUT_PATH)
 
 
 @pytest.fixture

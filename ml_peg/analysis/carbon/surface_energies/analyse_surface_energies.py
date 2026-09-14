@@ -46,7 +46,7 @@ RELAXED_ENTRIES = [
 
 
 def gather_metric_values(
-    entries: list[tuple[str, str]], frame_index: int
+    entries: list[tuple[str, str]], frame_index: int, structs_path: Path | None = None
 ) -> dict[str, list]:
     """
     Gather reference and predicted values for a set of (system, info key) entries.
@@ -58,6 +58,9 @@ def gather_metric_values(
     frame_index
         Extxyz frame to read: 0 for the plain calculator, 1 for D3-corrected (same
         as 0 for models already trained on dispersion).
+    structs_path
+        Path to write each structure read to, for the app. Default is None, which
+        writes nothing.
 
     Returns
     -------
@@ -78,6 +81,11 @@ def gather_metric_values(
                 continue
 
             atoms = read(struct_file, index=frame_index)
+            if structs_path is not None:
+                structs_dir = structs_path / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{system}.xyz", atoms)
+
             results[model_name].append(atoms.info.get(key, np.nan))
             if not ref_stored:
                 results["ref"].append(atoms.info[f"ref_{key}"])
@@ -130,20 +138,7 @@ def relaxed_surface_energy() -> dict[str, list]:
         Reference and per-model predicted relaxed surface energy, in J/m^2, for the
         two surfaces with a relaxed reference.
     """
-    results = gather_metric_values(RELAXED_ENTRIES, frame_index=1)
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        structs_dir = OUT_PATH / model_name
-        for system in RELAXED_SYSTEMS:
-            struct_file = model_dir / f"{system}.extxyz"
-            if not struct_file.is_file():
-                continue
-            atoms = read(struct_file, index=1)
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", atoms)
-
-    return results
+    return gather_metric_values(RELAXED_ENTRIES, frame_index=1, structs_path=OUT_PATH)
 
 
 @pytest.fixture

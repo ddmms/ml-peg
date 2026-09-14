@@ -56,7 +56,7 @@ ENERGY_ABOVE_GRAPHITE_ENTRIES = [
 
 
 def gather_metric_values(
-    entries: list[tuple[str, str]], frame_index: int
+    entries: list[tuple[str, str]], frame_index: int, structs_path: Path | None = None
 ) -> tuple[dict[str, list], dict[str, list]]:
     """
     Gather reference and predicted values for a set of (system, info key) entries.
@@ -68,6 +68,9 @@ def gather_metric_values(
     frame_index
         Extxyz frame to read: 0 for the plain calculator, 1 for D3-corrected (same
         as 0 for models already trained on dispersion).
+    structs_path
+        Path to write each structure read to, for the app. Default is None, which
+        writes nothing.
 
     Returns
     -------
@@ -90,6 +93,11 @@ def gather_metric_values(
                 continue
 
             atoms = read(struct_file, index=frame_index)
+            if structs_path is not None:
+                structs_dir = structs_path / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{system}.xyz", atoms)
+
             is_converged = atoms.info.get("converged", True)
             results[model_name].append(
                 atoms.info.get(key, np.nan) if is_converged else np.nan
@@ -179,19 +187,9 @@ def energy_above_graphite() -> dict[str, list]:
     dict[str, list]
         Reference and per-model predicted energy above graphite, in eV per atom.
     """
-    results, _ = gather_metric_values(ENERGY_ABOVE_GRAPHITE_ENTRIES, frame_index=1)
-
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        structs_dir = OUT_PATH / model_name
-        for system in SYSTEMS_NO_GRAPHITE:
-            struct_file = model_dir / f"{system}.extxyz"
-            if not struct_file.is_file():
-                continue
-            atoms = read(struct_file, index=1)
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", atoms)
-
+    results, _ = gather_metric_values(
+        ENERGY_ABOVE_GRAPHITE_ENTRIES, frame_index=1, structs_path=OUT_PATH
+    )
     return results
 
 

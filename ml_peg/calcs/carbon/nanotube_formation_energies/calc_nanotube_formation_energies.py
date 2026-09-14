@@ -29,25 +29,25 @@ geometry, with no relaxation.
 
 from __future__ import annotations
 
-from copy import copy
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 from ase import Atoms
-from ase.calculators.calculator import Calculator
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.carbon.utils.carbon_utils import (
+    energy_at,
+    get_dispersion_variants,
+    load_carbon_systems,
+    write_variant_frame,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
-
-GITHUB_URI = "https://raw.githubusercontent.com/patrickwrowe/Carbon_GAP/main/ml_peg_benchmark_data"
 
 GRAPHENE_SYSTEM = "Graphene"
 
@@ -108,35 +108,6 @@ def tube_diameter_angstrom(atoms: Atoms) -> float:
     return float(2 * radii.mean())
 
 
-def energy_at(atoms: Atoms, calc: Calculator, label: str) -> float:
-    """
-    Get the single-point potential energy of a copy of `atoms` with `calc` attached.
-
-    Parameters
-    ----------
-    atoms
-        Reference structure to evaluate, unmodified.
-    calc
-        ASE calculator to attach.
-    label
-        Description of the structure being evaluated, for warning messages.
-
-    Returns
-    -------
-    float
-        Potential energy in eV, or `np.nan` on failure.
-    """
-    struct = atoms.copy()
-    struct.info.setdefault("charge", 0)
-    struct.info.setdefault("spin", 1)
-    struct.calc = copy(calc)
-    try:
-        return struct.get_potential_energy()
-    except Exception as exc:
-        warn(f"Error computing energy for {label}: {exc}", stacklevel=2)
-        return np.nan
-
-
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     """
@@ -150,15 +121,7 @@ def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
 
-    data_dir = (
-        download_github_data(
-            filename="nanotube_formation_energies.zip", github_uri=GITHUB_URI
-        )
-        / "nanotube_formation_energies"
-    )
-
-    with open(data_dir / "list") as file:
-        systems = file.read().splitlines()
+    data_dir, systems = load_carbon_systems("nanotube_formation_energies")
     tubes = [system for system in systems if system != GRAPHENE_SYSTEM]
 
     graphene = read(data_dir / GRAPHENE_SYSTEM / "reference.xyz", index=0)
@@ -168,11 +131,7 @@ def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = (
-        (calc,)
-        if model.trained_on_dispersion
-        else (calc, model.add_d3_calculator(copy(calc)))
-    )
+    variant_calcs = get_dispersion_variants(model, calc)
     for variant_index, variant_calc in enumerate(variant_calcs):
         e_graphene_model = energy_at(graphene, variant_calc, GRAPHENE_SYSTEM)
 
@@ -182,17 +141,15 @@ def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
             e_tube_model = energy_at(tube, variant_calc, system)
 
             atoms = tube.copy()
-            atoms.info["system"] = system
-            atoms.info["chirality"] = chirality_of(system)
             atoms.info["diameter_angstrom"] = tube_diameter_angstrom(tube)
             atoms.info["strain_energy_ev_per_atom"] = (
                 e_tube_model / n_tube_atoms - e_graphene_model / n_graphene_atoms
             )
-            atoms.info["reference_strain_energy_ev_per_atom"] = (
+            atoms.info["ref_strain_energy_ev_per_atom"] = (
                 tube.info["REF_energy"] / n_tube_atoms
                 - e_graphene_ref / n_graphene_atoms
             )
 
-            write(write_dir / f"{system}.extxyz", atoms, append=variant_index > 0)
-            if len(variant_calcs) == 1:
-                write(write_dir / f"{system}.extxyz", atoms, append=True)
+            write_variant_frame(
+                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
+            )
