@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import functools
 import json
 from json import dump
@@ -207,6 +207,7 @@ def cell_to_scatter(
     filename: str | Path,
     x_label: str | None = None,
     y_label: str | None = None,
+    metric_axis_labels: Mapping[str, tuple[str | None, str | None]] | None = None,
     title_template: str = "{model} - {metric}",
 ) -> Callable:
     """
@@ -228,6 +229,9 @@ def cell_to_scatter(
         Label for x-axis (typically "Predicted"). Default is None.
     y_label
         Label for y-axis (typically "Reference"). Default is None.
+    metric_axis_labels
+        Optional mapping from metric key to ``(x_label, y_label)``. This overrides
+        the default labels for metrics with different quantities or units.
     title_template
         Template for plot titles with {model} and {metric} placeholders.
         Default is "{model} - {metric}".
@@ -331,10 +335,15 @@ def cell_to_scatter(
                     # Update layout
                     metric_label = metric_labels.get(metric_key, metric_key)
                     title = title_template.format(model=model_name, metric=metric_label)
+                    metric_x_label, metric_y_label = (
+                        metric_axis_labels.get(metric_key, (x_label, y_label))
+                        if metric_axis_labels
+                        else (x_label, y_label)
+                    )
                     fig.update_layout(
                         title={"text": title},
-                        xaxis={"title": {"text": x_label}},
-                        yaxis={"title": {"text": y_label}},
+                        xaxis={"title": {"text": metric_x_label}},
+                        yaxis={"title": {"text": metric_y_label}},
                     )
 
                     # Store figure as JSON-serializable dict
