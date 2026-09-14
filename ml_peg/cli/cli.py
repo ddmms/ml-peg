@@ -415,6 +415,15 @@ def run_analysis(
             case_sensitive=False,
         ),
     ] = "*",
+    update: Annotated[
+        bool,
+        Option(
+            help=(
+                "Whether to update saved tables and plots, preserving results for "
+                "models not being analysed, rather than overwriting them."
+            ),
+        ),
+    ] = False,
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
     ] = True,
@@ -437,6 +446,9 @@ def run_analysis(
     framework
         MLIP framework to run analysis for. Default is `*`, corresponding to all
         frameworks.
+    update
+        Whether to update saved tables and plots, preserving results for models not
+        being analysed, rather than overwriting them. Default is `False`.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -462,6 +474,9 @@ def run_analysis(
 
     if framework != "*":
         options.extend(["--framework", framework])
+
+    if update:
+        options.extend(["--update"])
 
     pytest.main(options)
 
