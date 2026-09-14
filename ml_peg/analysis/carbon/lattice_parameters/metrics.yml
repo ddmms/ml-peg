@@ -1,51 +1,50 @@
-# Thresholds are provisional, pending review against real model results.
 metrics:
   Lattice parameter MAPE (D3):
-    good: 0.0
+    good: 0.2
     bad: 2.0
     unit: "%"
-    tooltip: "Mean absolute percentage error in relaxed lattice parameters across the six periodic systems, with a D3 dispersion correction added for models not trained on dispersion"
-    level_of_theory: null
+    tooltip: "Mean absolute percentage error in relaxed lattice parameters across the five periodic systems, with a D3 dispersion correction added for models not trained on dispersion"
+    level_of_theory: optB88-vdW
     weight: 1
   Lattice parameter MAPE:
-    good: 0.0
+    good: 0.2
     bad: 2.0
     unit: "%"
-    tooltip: "Mean absolute percentage error in relaxed lattice parameters across the six periodic systems, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
-    level_of_theory: null
+    tooltip: "Mean absolute percentage error in relaxed lattice parameters across the five periodic systems, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
+    level_of_theory: optB88-vdW
     weight: 0
   Bond length MAPE (D3):
-    good: 0.0
-    bad: 2.0
+    good: 0.1
+    bad: 1.0
     unit: "%"
     tooltip: "Mean absolute percentage error in first and second neighbour shell bond lengths for C60 and C100, with a D3 dispersion correction added for models not trained on dispersion"
-    level_of_theory: null
+    level_of_theory: optB88-vdW
     weight: 1
   Bond length MAPE:
-    good: 0.0
-    bad: 2.0
+    good: 0.1
+    bad: 1.0
     unit: "%"
     tooltip: "Mean absolute percentage error in first and second neighbour shell bond lengths for C60 and C100, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
-    level_of_theory: null
+    level_of_theory: optB88-vdW
     weight: 0
   Energy above graphite MAE (D3):
-    good: 0.0
+    good: 10.0
     bad: 100.0
     unit: "meV/atom"
-    tooltip: "Mean absolute error in energy above graphite across the seven non-graphite systems, with a D3 dispersion correction added for models not trained on dispersion"
-    level_of_theory: null
+    tooltip: "Mean absolute error in energy above graphite across the six non-graphite systems, with a D3 dispersion correction added for models not trained on dispersion"
+    level_of_theory: optB88-vdW
     weight: 1
   Energy above graphite MAE:
-    good: 0.0
+    good: 10.0
     bad: 100.0
     unit: "meV/atom"
-    tooltip: "Mean absolute error in energy above graphite across the seven non-graphite systems, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
-    level_of_theory: null
+    tooltip: "Mean absolute error in energy above graphite across the six non-graphite systems, without an added D3 correction; identical to the D3 column for models already trained on dispersion"
+    level_of_theory: optB88-vdW
     weight: 0
   Convergence:
     good: 100.0
     bad: 99.0
     unit: "%"
     tooltip: "Percentage of relaxed frames that converged"
-    level_of_theory: null
+    level_of_theory: optB88-vdW
     weight: 1
