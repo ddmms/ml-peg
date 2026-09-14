@@ -24,6 +24,7 @@ INSTRUCTION_STYLE = {
 }
 TABLE_HINT = "Click a table cell to view its data."
 POINT_HINT = "Click the points to see more information."
+PARITY_LINE_NAME = "__parity_line__"
 
 
 def figure_from_dict(
@@ -262,7 +263,9 @@ def build_classified_parity_scatter(
             x=[lower, upper],
             y=[lower, upper],
             mode="lines",
+            name=PARITY_LINE_NAME,
             showlegend=False,
+            hoverinfo="skip",
             line={"color": "#8c8c8c", "dash": "dash"},
         )
     )
