@@ -51,10 +51,7 @@ each shell's mean bond length is compared to the DFT reference.
 
 3. Energy above graphite MAE
 
-The reference INCARs use ``ISPIN = 1`` for the isolated carbon atom, giving an atomic
-energy well above the spin-polarised ground state, so scoring against it directly
-would mark every physically correct model wrong. Energy is measured relative to
-graphite instead, cancelling the isolated-atom term:
+Energy is measured relative to graphite, the stable allotrope:
 
 ``energy_above_graphite_ev_per_atom = E(X)/n_X - E(graphite)/n_graphite``
 
@@ -147,11 +144,10 @@ Metrics
 
 ``strain_energy_ev_per_atom = E_tube / n_tube - E_graphene / n_graphene``
 
-Each side uses its own graphene energy — the model's own graphene single point for
-the model series, the DFT ``REF_energy`` for the reference series — so that the
-isolated-atom term cancels within each side rather than being carried across the
-comparison. Graphene is a fixed reference value, not a benchmarked system, and is
-excluded from both metrics and from the parity plot.
+Each side uses its own graphene energy: the model's own graphene single point for the
+model series, the DFT ``REF_energy`` for the reference series. Graphene is a fixed
+reference value, not a benchmarked system, and is excluded from both metrics and from
+the parity plot.
 
 Reference strain energies span roughly 20-530 meV/atom, so the reported error is a
 mean absolute error in meV/atom for the reason given under lattice parameters Metric
