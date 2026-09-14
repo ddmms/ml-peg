@@ -31,7 +31,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 
 CALC_PATH = CALCS_ROOT / "conformers" / "Folmsbee" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"

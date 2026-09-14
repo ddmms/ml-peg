@@ -71,6 +71,8 @@ Help for this command can be found by running ``ml_peg analyse --help``:
     │ --models                      TEXT  Comma-separated models to run analysis for. Default is all models.         │
     │ --category                    TEXT  Category to run analysis for. Default is all categories. [default: *]      │
     │ --test                        TEXT  Test to run analysis for. Default is all tests. [default: *]               │
+    │ --update      --no-update           Whether to update saved tables and plots, preserving results for models    │
+    │                                     not being analysed, rather than overwriting them. [default: no-update]     │
     │ --verbose     --no-verbose          Whether to run pytest with verbose and stdout printed. [default: verbose]  │
     │ --help                              Show this message and exit.                                                │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -94,6 +96,39 @@ This is effectively equivalent to:
     .. code-block:: bash
 
     pytest -vvv ml_peg/analysis/surfaces/OC157/analyse_OC157.py --models mace-mp-0b3,orb-v3-consv-inf-omat
+
+
+Adding a model to existing analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, running analysis for a subset of models rebuilds each benchmark's table
+from scratch, so models that were not analysed lose their saved metric values.
+
+To add a new model without rerunning analysis for every other model, use
+``--update``:
+
+.. code-block:: bash
+
+    ml_peg analyse --category surfaces --test OC157 --models my-new-model --update
+
+Results for models outside ``--models`` are then taken from the saved table and plots,
+while results for the analysed models are rebuilt from the current run. This applies to
+tables built with ``@build_table``, and to plots that show a trace per model:
+``@plot_parity``, ``@plot_scatter``, ``@plot_density_scatter``, ``@plot_hist``,
+``@plot_violin``, and ``@cell_to_scatter``. ``@plot_periodic_table`` and
+``@periodic_curve_gallery`` write one file per model, so are unaffected.
+
+Scores, weights, thresholds, and tooltips are recalculated for every row, so changes to
+a benchmark's thresholds are still applied to preserved rows. Axis limits and parity
+lines are likewise recalculated across preserved and new traces.
+
+.. note::
+
+    Results are matched to models by name. A preserved row will have empty values for
+    any metric that has been renamed or added since it was last analysed, and traces
+    are only preserved for models that are still defined in ``models.yml``. Bespoke
+    figures written by an individual benchmark's analysis script, rather than by one
+    of the decorators above, are always rebuilt from the current run.
 
 
 Application
