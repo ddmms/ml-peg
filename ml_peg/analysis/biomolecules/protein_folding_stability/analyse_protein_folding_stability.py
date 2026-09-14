@@ -11,8 +11,8 @@ import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.benchmarks.folding_stability.folding_stability import STRUCTURE_NAMES
 from mlipaudit.io import load_model_output_from_disk
+from mlipaudit.utils.biomolecules import STRUCTURE_NAMES
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
@@ -29,6 +29,12 @@ MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 BENCHMARK = MlPegFoldingStabilityBenchmark.name
+
+# Directory the calculation copied the input structures to, matching the directory
+# mlipaudit reads them from, i.e. ``{data_input_dir}/{data_name or name}``.
+BENCHMARK_DATA_DIR = (
+    MlPegFoldingStabilityBenchmark.data_name or MlPegFoldingStabilityBenchmark.name
+)
 
 CALC_PATH = CALCS_ROOT / "biomolecules" / "protein_folding_stability" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "biomolecules" / "protein_folding_stability"
@@ -53,7 +59,7 @@ def structure_xyz(structure_name: str) -> Path:
     Path
         Path to the structure's starting geometry.
     """
-    return CALC_PATH / BENCHMARK / "starting_structures" / f"{structure_name}.xyz"
+    return CALC_PATH / BENCHMARK_DATA_DIR / f"{structure_name}.xyz"
 
 
 def check_dataset() -> None:

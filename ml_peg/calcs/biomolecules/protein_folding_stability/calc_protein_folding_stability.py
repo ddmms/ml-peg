@@ -18,10 +18,10 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.folding_stability.folding_stability import (
-    STRUCTURE_NAMES,
     FoldingStabilityModelOutput,
 )
 from mlipaudit.io import write_model_output_to_disk
+from mlipaudit.utils.biomolecules import STRUCTURE_NAMES
 
 from ml_peg.calcs.utils.mlipaudit import MlPegFoldingStabilityBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -31,6 +31,17 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
+
+# Directory the downloaded input data is extracted to.
+# TODO: rename the uploaded data directory to "folding_stability" and drop this
+# constant, so the download matches the directory mlipaudit reads from.
+DOWNLOAD_DATA_DIR = "protein_folding_stability"
+
+# mlipaudit reads the input structures from ``{data_input_dir}/{data_name or name}``,
+# so the data must be copied to a directory of this name for the benchmark to find it.
+BENCHMARK_DATA_DIR = (
+    MlPegFoldingStabilityBenchmark.data_name or MlPegFoldingStabilityBenchmark.name
+)
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -52,14 +63,18 @@ def test_protein_folding_stability(mlip: tuple[str, Any]) -> None:
         filename="protein_folding_stability.zip",
     )
 
-    # Save the input data to the calculation outputs so the analysis is self
-    # contained and does not need to download it again.
-    name = MlPegFoldingStabilityBenchmark.name
-    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
+    # Save the input data to the calculation outputs, using the directory name
+    # mlipaudit expects, so the benchmark runs on the downloaded data rather than
+    # fetching it again, and the analysis is self contained.
+    shutil.copytree(
+        data_input_dir / DOWNLOAD_DATA_DIR,
+        OUT_PATH / BENCHMARK_DATA_DIR,
+        dirs_exist_ok=True,
+    )
 
     benchmark = MlPegFoldingStabilityBenchmark(
         force_field=calc,
-        data_input_dir=data_input_dir,
+        data_input_dir=OUT_PATH,
         run_mode="standard",
     )
     try:

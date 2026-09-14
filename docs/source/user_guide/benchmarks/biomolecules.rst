@@ -9,11 +9,12 @@ Summary
 -------
 
 Performance in keeping small proteins folded during molecular dynamics. For each
-protein, an NVT molecular dynamics simulation is run at 300 K starting from the
-native (folded) reference conformation, and the ability of the model to retain the
-fold is measured along the trajectory. The benchmark uses a small set of well
-characterised proteins (chignolin, tryptophan cage, and an orexin/hypocretin
-fragment) with experimental reference structures.
+protein, an energy minimisation is run from the native (folded) reference
+conformation, an NVT molecular dynamics simulation at 300 K is seeded with the
+minimised coordinates, and the ability of the model to retain the fold is measured
+along the trajectory. The benchmark uses a small set of well characterised proteins
+(chignolin, tryptophan cage, and a capped, solvated villin headpiece) with
+experimental reference structures.
 
 Metrics
 -------
@@ -51,7 +52,7 @@ Data availability
 Input structures:
 
 * MLIP Audit benchmark suite, InstaDeep. Native reference structures taken from the
-  Protein Data Bank (chignolin 1UAO, tryptophan cage 2JOF, orexin-B 1CQ0).
+  Protein Data Bank (chignolin 1UAO, tryptophan cage 2JOF, villin headpiece).
 
 Reference data:
 
