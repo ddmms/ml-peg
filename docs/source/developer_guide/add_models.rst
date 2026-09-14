@@ -235,6 +235,15 @@ After adding a model, run a small calculation first:
    ml_peg list models --models-file my_models.yml
    ml_peg calc --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model
 
+Analysis for the new model can then be added to the existing tables and plots,
+without rerunning analysis for all other models, using ``--update``:
+
+.. code-block:: bash
+
+   ml_peg analyse --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model --update
+
+See :doc:`Running tests </developer_guide/running>` for details.
+
 If loading fails, check that the optional dependency is installed, the
 ``module``/``class_name`` pair can be imported, local checkpoint paths are valid,
 and the model's ``kwargs`` match the calculator API.

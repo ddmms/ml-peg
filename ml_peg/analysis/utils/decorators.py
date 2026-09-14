@@ -14,7 +14,9 @@ import numpy as np
 import pandas as pd
 import plotly.colors as pc
 import plotly.graph_objects as go
+import plotly.io as pio
 
+from ml_peg import analysis, models
 from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_COLS,
     PERIODIC_TABLE_POSITIONS,
@@ -138,6 +140,10 @@ def plot_parity(
                         **marker_kwargs,
                     )
                 )
+
+            # Preserve traces for models not being analysed, before axis limits are
+            # calculated from all traces
+            fig = merge_saved_traces(fig, filename)
 
             if symbol_by:
                 for group in groups:
@@ -349,6 +355,16 @@ def cell_to_scatter(
                     # Store figure as JSON-serializable dict
                     model_data["figures"][metric_key] = json.loads(fig.to_json())
 
+            # Preserve figures for models not being analysed
+            if analysis.update_results:
+                saved_models = load_saved_models(filename)
+                preserved = {
+                    model: data
+                    for model, data in saved_models.items()
+                    if model in get_preserved_models()
+                }
+                data_bundle["models"] = order_models(preserved | models_data)
+
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w", encoding="utf8") as f:
@@ -471,6 +487,9 @@ def plot_hist(
                         name=model_name,
                     )
                 )
+
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
 
             fig.update_layout(
                 barmode="overlay",
@@ -617,6 +636,9 @@ def plot_scatter(
                             line_width=0,
                         )
 
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
+
             fig.update_layout(
                 title={"text": title},
                 xaxis={"title": {"text": x_label}},
@@ -676,13 +698,12 @@ def plot_scatter(
                         return None
                     return out if np.isfinite(out) else None
 
+                # Use plotted traces, rather than results, to include any traces
+                # preserved for models not being analysed
                 y_values = [
                     y_float
-                    for value in results.values()
-                    if isinstance(value, tuple | list)
-                    and len(value) >= 2
-                    and isinstance(value[1], list | tuple | np.ndarray)
-                    for y in value[1]
+                    for trace in fig.data
+                    for y in (trace.y if trace.y is not None else ())
                     for y_float in [_as_finite_float(y)]
                     if y_float is not None
                 ]
@@ -815,7 +836,7 @@ def plot_density_scatter(
             global_min = np.inf
             global_max = -np.inf
             processed = {}
-            annotations = []
+            annotations = {}
             annotation_fields = annotation_metadata or {}
             hover_fields = hover_metadata or {}
 
@@ -864,34 +885,22 @@ def plot_density_scatter(
                             annotation_values, annotation_fields.values(), strict=True
                         )
                     )
-                annotations.append(
-                    {
-                        "text": f"{model}"
-                        + (f" | {summary_text}" if summary_text else ""),
-                        "xref": "paper",
-                        "yref": "paper",
-                        "x": 0.02,
-                        "y": 0.98,
-                        "showarrow": False,
-                        "bgcolor": "rgba(255,255,255,0.8)",
-                        "bordercolor": "rgba(0,0,0,0.3)",
-                        "borderpad": 4,
-                    }
-                )
+                annotations[model] = {
+                    "text": f"{model}" + (f" | {summary_text}" if summary_text else ""),
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.02,
+                    "y": 0.98,
+                    "showarrow": False,
+                    "bgcolor": "rgba(255,255,255,0.8)",
+                    "bordercolor": "rgba(0,0,0,0.3)",
+                    "borderpad": 4,
+                }
                 processed[model] = {
                     "samples": sampled,
                     "counts": len(ref_vals),
                     "meta": hover_values if hover_fields else None,
                 }
-
-            if not np.isfinite(global_min) or not np.isfinite(global_max):
-                global_min, global_max = 0.0, 1.0
-
-            padding = 0.05 * (
-                global_max - global_min if global_max != global_min else 1.0
-            )
-            line_start = global_min - padding
-            line_end = global_max + padding
 
             fig = go.Figure()
             hover_lines = [
@@ -904,7 +913,7 @@ def plot_density_scatter(
                     hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
             hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-            for idx, model in enumerate(results):
+            for model in results:
                 sample_x, sample_y, density = processed[model]["samples"]
                 fig.add_trace(
                     go.Scattergl(
@@ -912,7 +921,6 @@ def plot_density_scatter(
                         y=sample_y,
                         mode="markers",
                         name=model,
-                        visible=idx == 0,
                         marker={
                             "size": 6,
                             "color": density,
@@ -928,6 +936,45 @@ def plot_density_scatter(
                     )
                 )
 
+            # Preserve traces, and their annotations, for models not being analysed
+            if analysis.update_results:
+                saved_fig = load_saved_figure(filename)
+                saved_traces = get_saved_traces(saved_fig)
+                if saved_traces:
+                    # Saved annotations are stored in the same order as saved models
+                    saved_meta = saved_fig.layout.meta or {}
+                    saved_annotations = dict(
+                        zip(
+                            saved_meta.get("models", []),
+                            saved_meta.get("annotations", []),
+                            strict=False,
+                        )
+                    )
+                    annotations = saved_annotations | annotations
+                    fig = go.Figure(
+                        data=order_traces(list(fig.data) + saved_traces),
+                        layout=fig.layout,
+                    )
+                    for trace in saved_traces:
+                        for values in (trace.x, trace.y):
+                            if values is None or len(values) == 0:
+                                continue
+                            global_min = min(global_min, min(values))
+                            global_max = max(global_max, max(values))
+
+            # Only show the first model, with the remainder toggled via the legend
+            for idx, trace in enumerate(fig.data):
+                trace.visible = idx == 0
+
+            if not np.isfinite(global_min) or not np.isfinite(global_max):
+                global_min, global_max = 0.0, 1.0
+
+            padding = 0.05 * (
+                global_max - global_min if global_max != global_min else 1.0
+            )
+            line_start = global_min - padding
+            line_end = global_max + padding
+
             fig.add_trace(
                 go.Scatter(
                     x=[line_start, line_end],
@@ -941,16 +988,20 @@ def plot_density_scatter(
 
             # Store all annotations and model order in layout meta so consumers
             # can swap annotation text when filtering per-model on the frontend.
+            plotted_models = [trace.name for trace in fig.data if trace.name]
+            ordered_annotations = [
+                annotations[model] for model in plotted_models if model in annotations
+            ]
             layout_meta = {
-                "annotations": annotations,
-                "models": list(results),
+                "annotations": ordered_annotations,
+                "models": plotted_models,
             }
 
             fig.update_layout(
                 title={"text": title} if title else None,
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
-                annotations=[annotations[0]] if annotations else [],
+                annotations=[ordered_annotations[0]] if ordered_annotations else [],
                 meta=layout_meta,
                 showlegend=True,
                 legend_title_text="Model",
@@ -1076,6 +1127,9 @@ def plot_violin(
                         hovertemplate=hovertemplate,
                     )
                 )
+
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
 
             fig.update_layout(
                 title={"text": title},
@@ -1744,6 +1798,204 @@ def periodic_curve_gallery(
     return periodic_curve_gallery_decorator
 
 
+def get_updated_models() -> set[str]:
+    """
+    Get models being analysed by the current run.
+
+    Returns
+    -------
+    set[str]
+        Names of models selected for the current run. Saved results for all other
+        models are preserved when updating.
+    """
+    return set(get_model_names(models.current_models))
+
+
+def get_preserved_models() -> set[str]:
+    """
+    Get models whose saved results are preserved by the current run.
+
+    Returns
+    -------
+    set[str]
+        Names of all models that are not being analysed. Models that are no longer
+        defined in models.yml are excluded, as they cannot be displayed by the app.
+    """
+    return set(get_model_names()) - get_updated_models()
+
+
+def order_models(model_data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Order models to match the model registry, keeping unrecognised models last.
+
+    Parameters
+    ----------
+    model_data
+        Mapping of model name to its data.
+
+    Returns
+    -------
+    dict[str, Any]
+        `model_data`, in the order models are defined in models.yml, followed by any
+        remaining models in their original order.
+    """
+    model_order = get_model_names()
+    ordered = [model for model in model_order if model in model_data]
+    ordered += [model for model in model_data if model not in set(model_order)]
+
+    return {model: model_data[model] for model in ordered}
+
+
+def load_saved_models(filename: str | Path) -> dict[str, Any]:
+    """
+    Load per-model data of a previously saved data bundle.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved data bundle.
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of model name to its saved data. Empty if the data bundle has not
+        been saved previously.
+    """
+    bundle_path = Path(filename)
+    if not bundle_path.exists():
+        print(f"No existing data found at {bundle_path}. Building new data.")
+        return {}
+
+    with bundle_path.open() as fp:
+        return json.load(fp).get("models", {})
+
+
+def load_saved_figure(filename: str | Path) -> go.Figure | None:
+    """
+    Load a previously saved figure.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    go.Figure | None
+        Saved figure, or `None` if the figure has not been saved previously.
+    """
+    plot_path = Path(filename)
+    if not plot_path.exists():
+        print(f"No existing plot found at {plot_path}. Building new plot.")
+        return None
+
+    return pio.read_json(plot_path)
+
+
+def get_saved_traces(saved_fig: go.Figure | None) -> list[go.Trace]:
+    """
+    Get traces of models that are not being analysed by the current run.
+
+    Traces without a model name, such as parity lines, are excluded, as these are
+    rebuilt for every run.
+
+    Parameters
+    ----------
+    saved_fig
+        Previously saved figure, or `None` if the figure has not been saved
+        previously.
+
+    Returns
+    -------
+    list[go.Trace]
+        Traces to be preserved from `saved_fig`.
+    """
+    if saved_fig is None:
+        return []
+
+    preserved_models = get_preserved_models()
+    return [trace for trace in saved_fig.data if trace.name in preserved_models]
+
+
+def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
+    """
+    Order model traces to match the model registry, keeping other traces last.
+
+    Parameters
+    ----------
+    traces
+        Traces to be ordered.
+
+    Returns
+    -------
+    list[go.Trace]
+        Model traces, in the order models are defined in models.yml, followed by any
+        remaining traces in their original order.
+    """
+    model_order = get_model_names()
+    model_traces = [trace for trace in traces if trace.name in set(model_order)]
+    other_traces = [trace for trace in traces if trace.name not in set(model_order)]
+
+    model_traces.sort(key=lambda trace: model_order.index(trace.name))
+    return model_traces + other_traces
+
+
+def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
+    """
+    Add traces for models that are not being analysed from a saved figure.
+
+    Parameters
+    ----------
+    fig
+        Figure built from the current analysis run.
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    go.Figure
+        Figure including traces preserved from the saved figure. `fig` is returned
+        unchanged if tables and plots are not being updated, or if there are no
+        traces to preserve.
+    """
+    if not analysis.update_results:
+        return fig
+
+    saved_traces = get_saved_traces(load_saved_figure(filename))
+    if not saved_traces:
+        return fig
+
+    return go.Figure(
+        data=order_traces(list(fig.data) + saved_traces), layout=fig.layout
+    )
+
+
+def load_saved_rows(filename: str | Path) -> dict[str, dict[str, Any]]:
+    """
+    Load rows of a previously saved table, keyed by model identifier.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved table.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of model identifier to its saved row. Empty if the table has not
+        been saved previously.
+    """
+    table_path = Path(filename)
+    if not table_path.exists():
+        print(f"No existing table found at {table_path}. Building new table.")
+        return {}
+
+    with table_path.open() as fp:
+        saved_table = json.load(fp)
+
+    return {row["id"]: row for row in saved_table.get("data", []) if "id" in row}
+
+
 def build_table(
     *,
     thresholds: Thresholds,
@@ -1864,13 +2116,26 @@ def build_table(
                     "'mlip_name_map'."
                 )
 
+            # When updating, preserve saved values for models outside this analysis run
+            saved_rows = {}
+            updated_mlips = set(mlips)
+            if analysis.update_results:
+                saved_rows = load_saved_rows(filename)
+                updated_mlips = get_updated_models()
+
             metrics_data = []
             for mlip in mlips:
                 display_name = display_names[mlip]
                 # For models without results, set metric values to None
                 row_data = {"MLIP": display_name}
+                saved_row = (
+                    saved_rows.get(mlip, {}) if mlip not in updated_mlips else {}
+                )
                 for key, value in results.items():
-                    row_data[key] = value.get(mlip, None)
+                    if saved_row:
+                        row_data[key] = saved_row.get(key, None)
+                    else:
+                        row_data[key] = value.get(mlip, None)
                 # Store the original model name in the row ID for callbacks, instead of
                 # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
                 row_data["id"] = mlip
