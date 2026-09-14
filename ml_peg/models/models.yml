@@ -68,7 +68,7 @@ orb-v3-consv-inf-omat:
   class_name: OrbCalc
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -99,7 +99,7 @@ mattersim-5M:
   class_name: MatterSimCalculator
   datasets: null
   additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -121,7 +121,7 @@ uma-s-1p1-omat:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   level_of_theory: PBE
   trained_on_dispersion: false
   kwargs:
@@ -235,7 +235,7 @@ pet-mad:
   module: upet.calculator
   class_name: UPETCalculator
   datasets: [MAD]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBEsol
   kwargs:
@@ -295,7 +295,7 @@ mace-polar-1-s:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:
@@ -305,7 +305,7 @@ mace-polar-1-m:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:
@@ -315,7 +315,7 @@ mace-polar-1-l:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:
