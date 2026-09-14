@@ -44,9 +44,9 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
     The adsorption energy (E(molecule+surface) - E(surface) - E(molecule)) is calculated
     for elements.
 
-    The reference energies are calculated using `pymatgen.io.vasp.sets.MatPESStaticSet`,
-    with `user_incar_setting`. The following modifications to the default settings are
-    made.
+    The reference energies were calculated by Warford et al. [2], using
+    `pymatgen.io.vasp.sets.MatPESStaticSet`, with `user_incar_setting`. The following
+    modifications to the default settings are made.
 
     {
     "ENCUT", 520
@@ -58,6 +58,11 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
 
     [1] Tran, Richard, et al. "Surface energies of elemental crystals." Scientific data
     3.1 (2016): 1-13 (https://doi.org/10.1038/sdata.2016.80).
+
+    [2] Warford, Thomas, Fabian L. Thiemann, and Gábor Csányi. "Better without U:
+    impact of selective Hubbard U correction on foundational MLIPs." Machine Learning:
+    Science and Technology 7.3 (2026): 035033
+    (https://doi.org/10.1088/2632-2153/ae6be5).
     """
 
     model: NodeWithCalculator = zntrack.deps()
