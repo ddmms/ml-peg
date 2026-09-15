@@ -63,7 +63,7 @@ mace-mh-1-omat:
     model: "mh-1"
     head: omat_pbe
 
-dpa-3.3-1M-omat:
+dpa-3p3-1M-omat:
   module: deepmd.calculator
   class_name: DP
   datasets: [OMAT]
