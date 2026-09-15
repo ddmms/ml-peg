@@ -63,6 +63,60 @@ mace-mh-1-omat:
     model: "mh-1"
     head: omat_pbe
 
+dpa-3.3-1M-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  overwrite_dtype: float32
+  kwargs:
+    model: DPA-3.3-1M
+    head: Omat24
+
+dpa-4-nano-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  overwrite_dtype: float32
+  kwargs:
+    model: DPA4-Nano-OMat24-v20260805
+
+dpa-4-neo-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  overwrite_dtype: float32
+  kwargs:
+    model: DPA4-Neo-OMat24-v20260805
+
+dpa-4-plus-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  overwrite_dtype: float32
+  kwargs:
+    model: DPA4-Plus-OMat24-v20260805
+
+dpa-4-plus-omol:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMol25]
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  overwrite_dtype: float32
+  kwargs:
+    model: DPA4-Plus-OMol25-100M-v20260820.pt
+  download:
+    url: https://huggingface.co/deepmodelingcommunity/DPA4-OMol/resolve/7f930ee4c33ded8df7868026f84831cb03f2182e/DPA4-Plus-OMol25-100M-v20260820.pt?download=true
+    filename: DPA4-Plus-OMol25-100M-v20260820.pt
+
 orb-v3-consv-inf-omat:
   module: orb_models.inference.calculator
   class_name: OrbCalc
