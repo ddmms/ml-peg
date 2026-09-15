@@ -14,7 +14,6 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
-    build_dispersion_name_map,
     get_struct_info,
     load_metrics_config,
 )
@@ -29,7 +28,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 CALC_PATH = CALCS_ROOT / "electrolytes" / "SSEMD" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "electrolytes" / "SSEMD"
 
@@ -431,7 +429,7 @@ def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float]:
     filename=OUT_PATH / "ssemd_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    mlip_name_map=D3_MODEL_NAMES,
+    mlip_name_map=MODELS,
 )
 def metrics(ssemd_errors: dict[str, float]) -> dict[str, dict]:
     """
