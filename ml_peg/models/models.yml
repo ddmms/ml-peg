@@ -66,7 +66,8 @@ mace-mh-1-omat:
 dpa-3p3-1M-omat:
   module: deepmd.calculator
   class_name: DP
-  datasets: [OMAT]
+  datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
   overwrite_dtype: float32
@@ -78,6 +79,7 @@ dpa-4-nano-omat:
   module: deepmd.calculator
   class_name: DP
   datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
   overwrite_dtype: float32
@@ -88,6 +90,7 @@ dpa-4-neo-omat:
   module: deepmd.calculator
   class_name: DP
   datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
   overwrite_dtype: float32
@@ -98,6 +101,7 @@ dpa-4-plus-omat:
   module: deepmd.calculator
   class_name: DP
   datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
   overwrite_dtype: float32
@@ -108,6 +112,7 @@ dpa-4-plus-omol:
   module: deepmd.calculator
   class_name: DP
   datasets: [OMol25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   overwrite_dtype: float32
@@ -222,7 +227,7 @@ MACE-OFF23(L):
 MACE-OFF24(M):
   module: mace.calculators
   class_name: mace_off
-  datasets: [SPICE]
+  datasets: [SPICE2]
   device: "auto"
   trained_on_dispersion: true
   kwargs:
