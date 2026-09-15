@@ -6,7 +6,13 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+import os
+from pathlib import Path
+import shutil
+import tempfile
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
+from urllib.request import urlopen
 from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
@@ -15,6 +21,59 @@ from mlipx.nodes.generic_ase import Device
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
+
+
+def _download_model(
+    *,
+    url: str,
+    filename: str,
+    cache_dir: Path | None = None,
+) -> Path:
+    """
+    Download a revision-pinned model to ML-PEG's cache.
+
+    Parameters
+    ----------
+    url
+        HTTPS URL for the model checkpoint.
+    filename
+        Basename to use for the cached checkpoint.
+    cache_dir
+        Cache directory. Defaults to ``~/.cache/ml-peg/models``.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the cached checkpoint.
+    """
+    if urlparse(url).scheme != "https":
+        raise ValueError("Model download URL must use HTTPS")
+    if Path(filename).name != filename:
+        raise ValueError("Model filename must not contain directory components")
+
+    cache_dir = cache_dir or Path.home() / ".cache" / "ml-peg" / "models"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    model_path = cache_dir / filename
+    if model_path.is_file():
+        return model_path
+
+    temporary_path: Path | None = None
+    try:
+        with (
+            urlopen(url) as response,  # noqa: S310 - HTTPS is required above
+            tempfile.NamedTemporaryFile(
+                dir=cache_dir, prefix=f".{filename}.", delete=False
+            ) as temporary_file,
+        ):
+            temporary_path = Path(temporary_file.name)
+            shutil.copyfileobj(response, temporary_file)
+
+        os.replace(temporary_path, model_path)
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
+
+    return model_path
 
 
 def _patch_metatomic_nvalchemi_max_neighbors() -> None:
@@ -139,6 +198,66 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
             kwargs["default_dtype"] = self.default_dtype
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class DpaCalc(SumCalc):
+    """Dataclass for DPA calculators provided by DeePMD-kit."""
+
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+    download: dict[str, str] | None = None
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the DeePMD ASE calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. DPA checkpoints are fixed at float32, so
+            both ``low`` and ``high`` use the checkpoint's native precision.
+        **kwargs
+            Keyword arguments that override the registry calculator options.
+
+        Returns
+        -------
+        Calculator
+            Loaded DeePMD ASE calculator.
+        """
+        if precision not in {"low", "high"}:
+            raise ValueError(f"Unknown precision: {precision}")
+        if self.default_dtype not in {None, "float32"}:
+            raise ValueError("The registered DPA checkpoints only support float32")
+
+        from deepmd.calculator import DP
+
+        calculator_kwargs = {**self.kwargs, **kwargs}
+        if self.download is not None:
+            calculator_kwargs["model"] = str(
+                _download_model(
+                    url=self.download["url"],
+                    filename=self.download["filename"],
+                )
+            )
+        return DP(**calculator_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the DeePMD ASE calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            from deepmd.calculator import DP  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
 
 
 @dataclasses.dataclass(kw_only=True)

@@ -99,6 +99,12 @@ The common fields are:
    benchmarks request either ``precision="high"`` or ``precision="low"``; this
    field forces a specific dtype regardless of that request.
 
+``download``
+   Optional download metadata used by wrappers for checkpoints that lack a
+   package-managed identifier. It contains an immutable ``url``, a safe
+   ``filename``. The DPA wrapper downloads these files atomically to
+   ``~/.cache/ml-peg/models`` before loading them.
+
 Examples
 -------------
 
@@ -215,6 +221,30 @@ PET-MAD entries use UPET's ``UPETCalculator``:
      dispersion_kwargs:
        xc: pbesol
 
+DPA entries use the dedicated ``DpaCalc`` wrapper selected by DeePMD's ``DP``
+class name. DeePMD's packaged aliases should be preferred over explicit URLs:
+
+.. code-block:: yaml
+
+   dpa-3.3-1m-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA-3.3-1M
+       head: Omat24
+     dispersion_kwargs:
+       xc: pbe
+
+The published DPA checkpoints are fixed at float32. Do not infer that
+``precision="high"`` converts them to float64: the wrapper intentionally leaves
+their dtype unchanged and rejects a float64 registry override. DeePMD also owns
+device selection, so the wrapper does not pass ML-PEG's generic ``device`` or
+``default_dtype`` arguments to ``DP``.
+
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. That is enough when the
 calculator accepts the same common arguments as the generic ML-PEG model wrapper.
@@ -234,6 +264,19 @@ After adding a model, run a small calculation first:
 
    ml_peg list models --models-file my_models.yml
    ml_peg calc --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model
+
+For DPA models, install the backend and exercise a small representative OMat or
+OMol system with:
+
+.. code-block:: bash
+
+   uv sync --extra dpa
+   ml_peg calc --category <category> --test <test> --models dpa-4-nano-omat
+   ML_PEG_RUN_DPA_MODEL_TESTS=1 uv run --extra dpa pytest tests/test_dpa_models.py
+
+Check the loaded checkpoint's actual parameter or graph dtype as well as finite
+energies, forces, and (for periodic systems) stress. For charge/spin-conditioned
+OMol models, also verify the expected ``atoms.info["charge_spin"]`` convention.
 
 If loading fails, check that the optional dependency is installed, the
 ``module``/``class_name`` pair can be imported, local checkpoint paths are valid,

@@ -204,6 +204,117 @@ mace-polar-1-l
        model: "polar-1-l"
 
 
+DPA
+===
+
+Install these models with ``uv sync --extra dpa``. The checkpoints are evaluated
+through DeePMD-kit and have a fixed native precision of float32; requesting
+either ML-PEG precision setting therefore runs the original float32 model.
+DeePMD selects the available compute device itself.
+
+The OMat models are trained at PBE/PBE+U level and are marked as not including
+dispersion, so benchmarks that request D3 add the PBE correction. DPA4 OMol is
+trained against OMol25's ``ωB97M-V/def2-TZVPD`` data, including dispersion, and
+uses ``atoms.info["charge_spin"]`` when supplied (neutral singlet ``[0, 1]`` is
+the model default).
+
+See the `DeePMD pretrained-model documentation
+<https://docs.deepmodeling.com/projects/deepmd/en/latest/model/pretrained.html>`_,
+the `DPA-3.3-1M model card
+<https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M>`_, and the DPA4
+`OMat24 <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`_ and
+`OMol25 <https://huggingface.co/deepmodelingcommunity/DPA4-OMol>`_ model cards.
+DPA-3.3-1M is distributed under CC-BY-4.0; the DPA4 checkpoints are
+CC-BY-NC-4.0 and therefore restricted to non-commercial use.
+
+dpa-3.3-1m-omat
+----------------
+
+.. code-block:: yaml
+
+   dpa-3.3-1m-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA-3.3-1M
+       head: Omat24
+     dispersion_kwargs:
+       xc: pbe
+
+dpa-4-nano-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-nano-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA4-Nano-OMat24-v20260805
+     dispersion_kwargs:
+       xc: pbe
+
+dpa-4-neo-omat
+--------------
+
+.. code-block:: yaml
+
+   dpa-4-neo-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA4-Neo-OMat24-v20260805
+     dispersion_kwargs:
+       xc: pbe
+
+dpa-4-plus-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-plus-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA4-Plus-OMat24-v20260805
+     dispersion_kwargs:
+       xc: pbe
+
+dpa-4-plus-omol
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-plus-omol:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMol25]
+     trained_on_dispersion: true
+     level_of_theory: ωB97M-V/def2-TZVPD
+     overwrite_dtype: float32
+     kwargs:
+       model: DPA4-Plus-OMol25-100M-v20260820.pt
+     download:
+       url: <revision-pinned Hugging Face URL>
+       filename: DPA4-Plus-OMol25-100M-v20260820.pt
+
+
 Orb
 ===
 
