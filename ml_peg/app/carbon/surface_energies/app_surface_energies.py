@@ -80,4 +80,5 @@ def get_app() -> SurfaceEnergiesApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
+        framework_ids="gap-20",
     )

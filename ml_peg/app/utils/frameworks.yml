@@ -64,3 +64,14 @@ mace-polar-1:
   tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411), click to read"
   description: "Benchmarks from 'MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry'."
   paper_url: "https://arxiv.org/abs/2602.19411"
+
+gap-20:
+  label: GAP-20
+  type: paper
+  color: "#b45309"
+  text_color: "#fff7ed"
+  url: "https://doi.org/10.1063/5.0005084"
+  icon: "📄"
+  tooltip: "Benchmark from the GAP-20 paper (J. Chem. Phys. 153, 034702), click to read"
+  description: "Benchmarks from 'An accurate and transferable machine learning potential for carbon'."
+  paper_url: "https://doi.org/10.1063/5.0005084"
