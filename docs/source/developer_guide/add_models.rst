@@ -226,24 +226,21 @@ class name. DeePMD's packaged aliases should be preferred over explicit URLs:
 
 .. code-block:: yaml
 
-   dpa-3.3-1m-omat:
+   dpa-3p3-1M-omat:
      module: deepmd.calculator
      class_name: DP
-     datasets: [OMAT]
+     datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
      trained_on_dispersion: false
      level_of_theory: PBE
      overwrite_dtype: float32
      kwargs:
        model: DPA-3.3-1M
        head: Omat24
-     dispersion_kwargs:
-       xc: pbe
 
-The published DPA checkpoints are fixed at float32. Do not infer that
-``precision="high"`` converts them to float64: the wrapper intentionally leaves
-their dtype unchanged and rejects a float64 registry override. DeePMD also owns
-device selection, so the wrapper does not pass ML-PEG's generic ``device`` or
-``default_dtype`` arguments to ``DP``.
+Here ``OpenLAM-v1`` is the umbrella pretraining collection, while familiar
+constituents are also listed individually so their known domains and element
+coverage remain visible. Its coverage entry is the verified union of its
+constituent datasets, not the checkpoint's broader executable type map.
 
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. That is enough when the

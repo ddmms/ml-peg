@@ -207,43 +207,26 @@ mace-polar-1-l
 DPA
 ===
 
-Install these models with ``uv sync --extra dpa``. The checkpoints are evaluated
-through DeePMD-kit and have a fixed native precision of float32; requesting
-either ML-PEG precision setting therefore runs the original float32 model.
-DeePMD selects the available compute device itself.
+Install these fixed-float32 DeePMD checkpoints with ``uv sync --extra dpa``.
+DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use OMat24
+or OMol25 as indicated by their names. DPA-3.3-1M is CC-BY-4.0, while DPA4 is
+CC-BY-NC-4.0 and restricted to non-commercial use.
 
-The OMat models are trained at PBE/PBE+U level and are marked as not including
-dispersion, so benchmarks that request D3 add the PBE correction. DPA4 OMol is
-trained against OMol25's ``ωB97M-V/def2-TZVPD`` data, including dispersion, and
-uses ``atoms.info["charge_spin"]`` when supplied (neutral singlet ``[0, 1]`` is
-the model default).
-
-See the `DeePMD pretrained-model documentation
-<https://docs.deepmodeling.com/projects/deepmd/en/latest/model/pretrained.html>`_,
-the `DPA-3.3-1M model card
-<https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M>`_, and the DPA4
-`OMat24 <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`_ and
-`OMol25 <https://huggingface.co/deepmodelingcommunity/DPA4-OMol>`_ model cards.
-DPA-3.3-1M is distributed under CC-BY-4.0; the DPA4 checkpoints are
-CC-BY-NC-4.0 and therefore restricted to non-commercial use.
-
-dpa-3.3-1m-omat
+dpa-3p3-1M-omat
 ----------------
 
 .. code-block:: yaml
 
-   dpa-3.3-1m-omat:
+   dpa-3p3-1M-omat:
      module: deepmd.calculator
      class_name: DP
-     datasets: [OMAT]
+     datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
      trained_on_dispersion: false
      level_of_theory: PBE
      overwrite_dtype: float32
      kwargs:
        model: DPA-3.3-1M
        head: Omat24
-     dispersion_kwargs:
-       xc: pbe
 
 dpa-4-nano-omat
 ---------------
@@ -259,8 +242,6 @@ dpa-4-nano-omat
      overwrite_dtype: float32
      kwargs:
        model: DPA4-Nano-OMat24-v20260805
-     dispersion_kwargs:
-       xc: pbe
 
 dpa-4-neo-omat
 --------------
@@ -276,8 +257,6 @@ dpa-4-neo-omat
      overwrite_dtype: float32
      kwargs:
        model: DPA4-Neo-OMat24-v20260805
-     dispersion_kwargs:
-       xc: pbe
 
 dpa-4-plus-omat
 ---------------
@@ -293,8 +272,6 @@ dpa-4-plus-omat
      overwrite_dtype: float32
      kwargs:
        model: DPA4-Plus-OMat24-v20260805
-     dispersion_kwargs:
-       xc: pbe
 
 dpa-4-plus-omol
 ---------------
