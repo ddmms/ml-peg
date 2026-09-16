@@ -6,25 +6,11 @@ Based on https://docs.pytest.org/en/latest/example/simple.html.
 
 from __future__ import annotations
 
-import pytest
-
 from ml_peg import models
 
 
 def pytest_addoption(parser):
     """Add flag to run tests for extra MLIPs."""
-    parser.addoption(
-        "--run-slow",
-        action="store_true",
-        default=False,
-        help="Run slow benchmarks",
-    )
-    parser.addoption(
-        "--run-very-slow",
-        action="store_true",
-        default=False,
-        help="Run very slow benchmarks",
-    )
     parser.addoption(
         "--models",
         action="store",
@@ -50,9 +36,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """Configure pytest to custom markers and CLI inputs."""
-    # Create custom marker for slow tests
-    config.addinivalue_line("markers", "slow: mark test as slow calculations")
-    config.addinivalue_line("markers", "very_slow: mark test as very slow calculations")
+    # Create custom markers
     config.addinivalue_line(
         "markers",
         "framework(*ids): mark test as belonging to MLIP framework(s)",
@@ -66,15 +50,7 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip slow tests and deselect tests outside the requested framework(s)."""
-    skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
-    skip_very_slow = pytest.mark.skip(reason="need --run-very-slow option to run")
-    for item in items:
-        if "very_slow" in item.keywords and not config.getoption("--run-very-slow"):
-            item.add_marker(skip_very_slow)
-        elif "slow" in item.keywords and not config.getoption("--run-slow"):
-            item.add_marker(skip_slow)
-
+    """Deselect tests outside the requested framework(s)."""
     # Keep only tests tagged with one of the requested frameworks
     framework = config.getoption("--framework")
     if not framework:
