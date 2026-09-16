@@ -13,7 +13,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    get_model_colour,
+    merge_saved_traces,
+    plot_parity,
+)
 from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -775,7 +780,7 @@ def write_pure_element_plot(filename: Path) -> None:
             row=row,
             col=1,
         )
-        for color_index, model_name in enumerate(model_names):
+        for model_name in model_names:
             labels = []
             deviations = []
             hover_values = []
@@ -832,7 +837,7 @@ def write_pure_element_plot(filename: Path) -> None:
                     customdata=hover_values,
                     mode="lines+markers",
                     name=model_name,
-                    line={"color": colors[color_index % len(colors)], "width": 1.5},
+                    line={"color": get_model_colour(model_name, colors), "width": 1.5},
                     marker={"size": 7},
                     showlegend=(row == 1),
                     hovertemplate=(
@@ -861,6 +866,10 @@ def write_pure_element_plot(filename: Path) -> None:
     )
     fig.update_xaxes(tickangle=-35, showgrid=True)
     fig.update_yaxes(title_text="Deviation from DFT / %", zeroline=False)
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
+
     fig.write_json(filename)
 
 
@@ -927,7 +936,7 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
                 col=col,
             )
 
-        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+        for model_name, model_records in records_by_model.items():
             if reference_key in model_records:
                 model_vals = model_records[reference_key].get("binding_energies")
                 if not isinstance(model_vals, list):
@@ -940,7 +949,7 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
                         mode="lines+markers",
                         name=model_name,
                         marker={
-                            "color": colors[c_idx % len(colors)],
+                            "color": get_model_colour(model_name, colors),
                             "symbol": "circle",
                         },
                         showlegend=(i == 0),
@@ -956,6 +965,9 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
     for i in range(1, num_keys + 1):
         fig.layout[f"yaxis{i}"].title = "Binding energy / meV"
         fig.layout[f"xaxis{i}"].title = "Nearest-neighbor index"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
 
     fig.write_json(filename)
 
@@ -1013,7 +1025,7 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
                 col=col,
             )
 
-        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+        for model_name, model_records in records_by_model.items():
             if reference_key in model_records["gsf"]:
                 model_vals = model_records["gsf"][reference_key].get("norm_energies")
                 if not isinstance(model_vals, list):
@@ -1026,7 +1038,7 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
                         mode="lines+markers",
                         name=model_name,
                         marker={
-                            "color": colors[c_idx % len(colors)],
+                            "color": get_model_colour(model_name, colors),
                             "symbol": "circle",
                         },
                         showlegend=(i == 0),
@@ -1042,6 +1054,9 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
     for i in range(1, num_keys + 1):
         fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / mJ m⁻²"
         fig.layout[f"xaxis{i}"].title = "Site index"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
 
     fig.write_json(filename)
 
@@ -1100,7 +1115,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
                 col=col,
             )
 
-        for c_idx, (model_name, model_records) in enumerate(records_by_model.items()):
+        for model_name, model_records in records_by_model.items():
             if reference_key in model_records["solute_stacking_faults"]:
                 model_vals = model_records["solute_stacking_faults"][reference_key].get(
                     "interaction_energies"
@@ -1115,7 +1130,7 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
                         mode="lines+markers",
                         name=model_name,
                         marker={
-                            "color": colors[c_idx % len(colors)],
+                            "color": get_model_colour(model_name, colors),
                             "symbol": "circle",
                         },
                         showlegend=(i == 0),
@@ -1130,6 +1145,9 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
     for i in range(1, num_keys + 1):
         fig.layout[f"yaxis{i}"].title = "Interaction energy / meV"
         fig.layout[f"xaxis{i}"].title = "SF index"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
 
     fig.write_json(filename)
 
