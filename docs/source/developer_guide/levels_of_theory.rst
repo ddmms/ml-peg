@@ -139,6 +139,7 @@ please add it to this table when making a pull request for your benchmark or mod
 **Benchmarks** (``ml_peg/analysis/<category>/<benchmark>/metrics.yml``)
 
 - ``PBE``
+- ``PBE+D3``
 - ``r2SCAN``
 - ``r2SCAN-3c``
 - ``CCSD(T)``
