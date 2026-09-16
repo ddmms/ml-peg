@@ -14,7 +14,7 @@ pytestmark = pytest.mark.usefixtures("fake_models")
 THRESHOLDS = {"MAE": {"good": 0.0, "bad": 10.0, "unit": "eV"}}
 
 
-def build(filename, results):
+def build(filename, results, mlip_name_map=None):
     """
     Build a table from pre-computed results.
 
@@ -24,9 +24,11 @@ def build(filename, results):
         Filename to save table.
     results
         Metric values for each model.
+    mlip_name_map
+        Optional mapping of model identifier to display name.
     """
 
-    @build_table(thresholds=THRESHOLDS, filename=filename)
+    @build_table(thresholds=THRESHOLDS, filename=filename, mlip_name_map=mlip_name_map)
     def metrics():
         """
         Get metrics.
@@ -112,6 +114,31 @@ def test_update_table(tmp_path, update_model_2):
 
     build(filename, {"MAE": {"model_2": 5.0}})
 
+    assert get_values(filename) == {"model_1": 1.0, "model_2": 5.0}
+
+
+def test_update_table_display_names(tmp_path, update_model_2):
+    """
+    Test display names of preserved models are set by the current run.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved table.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "table.json"
+    name_map = {"model_1": "model_1-D3", "model_2": "model_2-D3"}
+
+    build(filename, {"MAE": {"model_1": 1.0, "model_2": 2.0}}, name_map)
+    build(filename, {"MAE": {"model_2": 5.0}}, name_map)
+
+    with open(filename) as fp:
+        rows = json.load(fp)["data"]
+
+    # Display names must be applied to all models, not only those being analysed
+    assert {row["id"]: row["MLIP"] for row in rows} == name_map
     assert get_values(filename) == {"model_1": 1.0, "model_2": 5.0}
 
 

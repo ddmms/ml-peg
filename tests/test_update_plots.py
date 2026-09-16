@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -25,6 +26,27 @@ from ml_peg.analysis.utils.decorators import (
 pytestmark = pytest.mark.usefixtures("fake_models")
 
 
+def get_traces(filename):
+    """
+    Get all named traces in a saved figure, keyed by name.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    dict[str, dict]
+        Saved traces, excluding unnamed traces such as parity lines.
+    """
+    return {
+        trace.name: trace.to_plotly_json()
+        for trace in pio.read_json(filename).data
+        if trace.name
+    }
+
+
 def get_trace_names(filename):
     """
     Get names of all named traces in a saved figure.
@@ -39,7 +61,7 @@ def get_trace_names(filename):
     list[str]
         Names of the saved traces, excluding unnamed traces such as parity lines.
     """
-    return [trace.name for trace in pio.read_json(filename).data if trace.name]
+    return list(get_traces(filename))
 
 
 def parity(filename, results):
@@ -114,10 +136,16 @@ def test_update_plot(tmp_path, update_model_2, plot):
     filename = tmp_path / f"{plot}.json"
 
     save_plot(filename, all_results)
-    assert get_trace_names(filename) == ["model_1", "model_2"]
+    original_traces = get_traces(filename)
+    assert list(original_traces) == ["model_1", "model_2"]
 
     save_plot(filename, model_2_results)
-    assert get_trace_names(filename) == ["model_1", "model_2"]
+    updated_traces = get_traces(filename)
+    assert list(updated_traces) == ["model_1", "model_2"]
+
+    # model_1 must be preserved unchanged, and model_2 rebuilt from its new results
+    assert updated_traces["model_1"] == original_traces["model_1"]
+    assert updated_traces["model_2"] != original_traces["model_2"]
 
 
 @pytest.mark.parametrize("plot", PLOTS)
@@ -284,6 +312,36 @@ def test_update_subplot_traces(tmp_path, update_model_2):
     assert [trace.xaxis for trace in fig.data] == ["x", "x2", "x", "x2"]
 
 
+def test_reference_trace_order(tmp_path, update_model_2):
+    """
+    Test traces without a model name keep their position when traces are preserved.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "plot.json"
+    go.Figure(
+        [
+            go.Scatter(x=[1.0], y=[1.0], name="model_1"),
+            go.Scatter(x=[1.0], y=[1.0], name="Reference"),
+        ]
+    ).write_json(filename)
+
+    fig = go.Figure(
+        [
+            go.Scatter(x=[1.0], y=[2.0], name="model_2"),
+            go.Scatter(x=[1.0], y=[1.0], name="Reference"),
+        ]
+    )
+    fig = merge_saved_traces(fig, filename)
+
+    assert [trace.name for trace in fig.data] == ["model_1", "Reference", "model_2"]
+
+
 def test_unmatched_traces_warn(tmp_path, update_model_2):
     """
     Test a warning is raised when a saved plot has no traces to preserve.
@@ -319,6 +377,30 @@ def test_unmatched_data_warns(tmp_path, update_model_2):
 
     with pytest.warns(UserWarning, match="No data to preserve"):
         merge_saved_models({}, filename)
+
+
+def test_analysed_only_no_warning(tmp_path, update_model_2):
+    """
+    Test no warning is raised when saved results are all for the analysed model.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot and data.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    plot_filename = tmp_path / "plot.json"
+    go.Figure(go.Scatter(x=[1.0], y=[1.0], name="model_2")).write_json(plot_filename)
+
+    data_filename = tmp_path / "figures.json"
+    with open(data_filename, "w") as fp:
+        json.dump({"model_2": {"value": 1.2}}, fp)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        merge_saved_traces(go.Figure(), plot_filename)
+        merge_saved_models({"model_2": {"value": 1.5}}, data_filename)
 
 
 def test_model_colours():

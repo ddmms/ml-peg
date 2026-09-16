@@ -34,9 +34,15 @@ def fake_models(monkeypatch):
         Returns
         -------
         list[str]
-            Selected model names.
+            Selected model names, in the order they are defined.
         """
-        return ["model_1", "model_2"] if models is None else models.split(",")
+        all_models = ["model_1", "model_2"]
+        if models is None:
+            return all_models
+
+        selected = set(models.split(","))
+
+        return [model for model in all_models if model in selected]
 
     monkeypatch.setattr(decorators, "get_model_names", get_model_names)
     monkeypatch.setattr(
