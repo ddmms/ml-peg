@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 import functools
 import json
 from json import dump
 from pathlib import Path
 from typing import Any
+import warnings
 
 from dash import dash_table
 import numpy as np
@@ -357,13 +358,9 @@ def cell_to_scatter(
 
             # Preserve figures for models not being analysed
             if analysis.update_results:
-                saved_models = load_saved_models(filename)
-                preserved = {
-                    model: data
-                    for model, data in saved_models.items()
-                    if model in get_preserved_models()
-                }
-                data_bundle["models"] = order_models(preserved | models_data)
+                data_bundle["models"] = merge_saved_models(
+                    models_data, filename, key="models"
+                )
 
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -939,7 +936,7 @@ def plot_density_scatter(
             # Preserve traces, and their annotations, for models not being analysed
             if analysis.update_results:
                 saved_fig = load_saved_figure(filename)
-                saved_traces = get_saved_traces(saved_fig)
+                saved_traces = get_saved_traces(saved_fig, filename)
                 if saved_traces:
                     # Saved annotations are stored in the same order as saved models
                     saved_meta = saved_fig.layout.meta or {}
@@ -988,10 +985,11 @@ def plot_density_scatter(
 
             # Store all annotations and model order in layout meta so consumers
             # can swap annotation text when filtering per-model on the frontend.
-            plotted_models = [trace.name for trace in fig.data if trace.name]
-            ordered_annotations = [
-                annotations[model] for model in plotted_models if model in annotations
+            # Models without an annotation are excluded, to keep both lists aligned.
+            plotted_models = [
+                trace.name for trace in fig.data if trace.name in annotations
             ]
+            ordered_annotations = [annotations[model] for model in plotted_models]
             layout_meta = {
                 "annotations": ordered_annotations,
                 "models": plotted_models,
@@ -1846,7 +1844,33 @@ def order_models(model_data: dict[str, Any]) -> dict[str, Any]:
     return {model: model_data[model] for model in ordered}
 
 
-def load_saved_models(filename: str | Path) -> dict[str, Any]:
+def get_model_colour(model: str, colours: Sequence[str]) -> str:
+    """
+    Get the colour of a model, based on its position in the model registry.
+
+    Colours must not be assigned by the order models are plotted, as this depends on
+    the models being analysed, so would be reused by preserved traces when updating.
+
+    Parameters
+    ----------
+    model
+        Model to get the colour of.
+    colours
+        Colours to choose from, in order.
+
+    Returns
+    -------
+    str
+        Colour of `model`. Models not defined in models.yml share the colour
+        following those of all defined models.
+    """
+    model_order = get_model_names()
+    index = model_order.index(model) if model in model_order else len(model_order)
+
+    return colours[index % len(colours)]
+
+
+def load_saved_models(filename: str | Path, key: str | None = None) -> dict[str, Any]:
     """
     Load per-model data of a previously saved data bundle.
 
@@ -1854,6 +1878,9 @@ def load_saved_models(filename: str | Path) -> dict[str, Any]:
     ----------
     filename
         Filename of the saved data bundle.
+    key
+        Key of the saved data bundle holding per-model data. Default is `None`,
+        corresponding to the data bundle itself being keyed by model.
 
     Returns
     -------
@@ -1867,7 +1894,51 @@ def load_saved_models(filename: str | Path) -> dict[str, Any]:
         return {}
 
     with bundle_path.open() as fp:
-        return json.load(fp).get("models", {})
+        saved_bundle = json.load(fp)
+
+    return saved_bundle if key is None else saved_bundle.get(key, {})
+
+
+def merge_saved_models(
+    model_data: dict[str, Any], filename: str | Path, key: str | None = None
+) -> dict[str, Any]:
+    """
+    Add data for models that are not being analysed from a saved data bundle.
+
+    Parameters
+    ----------
+    model_data
+        Mapping of model name to data built from the current analysis run.
+    filename
+        Filename of the saved data bundle.
+    key
+        Key of the saved data bundle holding per-model data. Default is `None`,
+        corresponding to the data bundle itself being keyed by model.
+
+    Returns
+    -------
+    dict[str, Any]
+        `model_data`, including data preserved from the saved data bundle.
+        `model_data` is returned unchanged if tables and plots are not being updated.
+    """
+    if not analysis.update_results:
+        return model_data
+
+    saved_models = load_saved_models(filename, key)
+    preserved_models = get_preserved_models()
+    preserved = {
+        model: data for model, data in saved_models.items() if model in preserved_models
+    }
+
+    if saved_models and preserved_models and not preserved:
+        warnings.warn(
+            f"No data to preserve found in {filename}. Data is matched to models by "
+            "name, so results for models not being analysed will be lost if the data "
+            "is keyed differently.",
+            stacklevel=2,
+        )
+
+    return order_models(preserved | model_data)
 
 
 def load_saved_figure(filename: str | Path) -> go.Figure | None:
@@ -1892,7 +1963,9 @@ def load_saved_figure(filename: str | Path) -> go.Figure | None:
     return pio.read_json(plot_path)
 
 
-def get_saved_traces(saved_fig: go.Figure | None) -> list[go.Trace]:
+def get_saved_traces(
+    saved_fig: go.Figure | None, filename: str | Path
+) -> list[go.Trace]:
     """
     Get traces of models that are not being analysed by the current run.
 
@@ -1904,6 +1977,9 @@ def get_saved_traces(saved_fig: go.Figure | None) -> list[go.Trace]:
     saved_fig
         Previously saved figure, or `None` if the figure has not been saved
         previously.
+    filename
+        Filename `saved_fig` was loaded from, used to report traces that cannot be
+        preserved.
 
     Returns
     -------
@@ -1914,12 +1990,22 @@ def get_saved_traces(saved_fig: go.Figure | None) -> list[go.Trace]:
         return []
 
     preserved_models = get_preserved_models()
-    return [trace for trace in saved_fig.data if trace.name in preserved_models]
+    saved_traces = [trace for trace in saved_fig.data if trace.name in preserved_models]
+
+    if preserved_models and not saved_traces:
+        warnings.warn(
+            f"No traces to preserve found in {filename}. Traces are matched to models "
+            "by name, so results for models not being analysed will be lost if the "
+            "plot names its traces differently.",
+            stacklevel=2,
+        )
+
+    return saved_traces
 
 
 def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
     """
-    Order model traces to match the model registry, keeping other traces last.
+    Order model traces to match the model registry, leaving other traces in place.
 
     Parameters
     ----------
@@ -1929,15 +2015,23 @@ def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
     Returns
     -------
     list[go.Trace]
-        Model traces, in the order models are defined in models.yml, followed by any
-        remaining traces in their original order.
+        Model traces, in the order models are defined in models.yml. Traces without a
+        model name, such as reference curves, keep their original position.
     """
     model_order = get_model_names()
-    model_traces = [trace for trace in traces if trace.name in set(model_order)]
-    other_traces = [trace for trace in traces if trace.name not in set(model_order)]
+    model_names = set(model_order)
 
-    model_traces.sort(key=lambda trace: model_order.index(trace.name))
-    return model_traces + other_traces
+    # Sorting is stable, so models with multiple traces keep their relative order
+    model_traces = iter(
+        sorted(
+            (trace for trace in traces if trace.name in model_names),
+            key=lambda trace: model_order.index(trace.name),
+        )
+    )
+
+    return [
+        next(model_traces) if trace.name in model_names else trace for trace in traces
+    ]
 
 
 def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
@@ -1961,7 +2055,7 @@ def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
     if not analysis.update_results:
         return fig
 
-    saved_traces = get_saved_traces(load_saved_figure(filename))
+    saved_traces = get_saved_traces(load_saved_figure(filename), filename)
     if not saved_traces:
         return fig
 

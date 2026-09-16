@@ -113,10 +113,8 @@ To add a new model without rerunning analysis for every other model, use
 
 Results for models outside ``--models`` are then taken from the saved table and plots,
 while results for the analysed models are rebuilt from the current run. This applies to
-tables built with ``@build_table``, and to plots that show a trace per model:
-``@plot_parity``, ``@plot_scatter``, ``@plot_density_scatter``, ``@plot_hist``,
-``@plot_violin``, and ``@cell_to_scatter``. ``@plot_periodic_table`` and
-``@periodic_curve_gallery`` write one file per model, so are unaffected.
+tables built with ``@build_table``, and to plots that show a trace per model, such as
+``@plot_parity``.
 
 Scores, weights, thresholds, and tooltips are recalculated for every row, so changes to
 a benchmark's thresholds are still applied to preserved rows. Axis limits and parity
@@ -125,10 +123,44 @@ lines are likewise recalculated across preserved and new traces.
 .. note::
 
     Results are matched to models by name. A preserved row will have empty values for
-    any metric that has been renamed or added since it was last analysed, and traces
-    are only preserved for models that are still defined in ``models.yml``. Bespoke
-    figures written by an individual benchmark's analysis script, rather than by one
-    of the decorators above, are always rebuilt from the current run.
+    any metric that has been renamed or added since it was last analysed, and results
+    are only preserved for models that are still defined in ``models.yml``.
+
+
+Updating bespoke figures
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Benchmarks that build their own multi-model figures, rather than using one of the
+decorators above, must opt in to updating. Two helpers in
+``ml_peg/analysis/utils/decorators.py`` do this, and both return their input unchanged
+when ``--update`` is not set:
+
+``merge_saved_traces(fig, filename)``
+   Adds traces for models that are not being analysed from the figure saved at
+   ``filename``. Call it immediately before writing the figure. Traces are matched to
+   models by ``name``, and are reordered to match ``models.yml``. Traces without a
+   model name, such as reference curves, are rebuilt from the current run. Figures
+   built with ``make_subplots`` are supported, as preserved traces keep their axis
+   assignment.
+
+``merge_saved_models(model_data, filename, key=None)``
+   Adds entries for models that are not being analysed to a mapping of model name to
+   data, such as a figure per model saved in a single file. Pass ``key`` if the saved
+   file holds that mapping under a key, rather than being keyed by model itself.
+
+Figures that colour traces per model must also assign colours with
+``get_model_colour(model, colours)``, which indexes ``colours`` by the model's position
+in ``models.yml``. Indexing by plotted order instead gives the analysed models the same
+colours as the preserved traces.
+
+A warning is raised when a saved file exists but contains nothing to preserve, which
+usually means its traces or keys are not named after models.
+
+.. warning::
+
+    Updating reads, modifies, and rewrites each saved file, so analysis for a single
+    benchmark must not be updated by several runs at once. To add multiple models,
+    pass them together as ``--models model_1,model_2``, or run each update in turn.
 
 
 Application
