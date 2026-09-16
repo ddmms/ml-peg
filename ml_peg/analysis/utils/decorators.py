@@ -357,10 +357,9 @@ def cell_to_scatter(
                     model_data["figures"][metric_key] = json.loads(fig.to_json())
 
             # Preserve figures for models not being analysed
-            if analysis.update_results:
-                data_bundle["models"] = merge_saved_models(
-                    models_data, filename, key="models"
-                )
+            data_bundle["models"] = merge_saved_models(
+                models_data, filename, key="models"
+            )
 
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -1930,7 +1929,11 @@ def merge_saved_models(
         model: data for model, data in saved_models.items() if model in preserved_models
     }
 
-    if saved_models and preserved_models and not preserved:
+    # Saved data keyed by an analysed model is preserved by the current run, so only
+    # warn if no saved data can be matched to any model at all
+    unmatched = saved_models.keys().isdisjoint(get_model_names())
+
+    if saved_models and preserved_models and not preserved and unmatched:
         warnings.warn(
             f"No data to preserve found in {filename}. Data is matched to models by "
             "name, so results for models not being analysed will be lost if the data "
@@ -1992,7 +1995,12 @@ def get_saved_traces(
     preserved_models = get_preserved_models()
     saved_traces = [trace for trace in saved_fig.data if trace.name in preserved_models]
 
-    if preserved_models and not saved_traces:
+    # Traces named after an analysed model are rebuilt by the current run, so only
+    # warn if no saved trace can be matched to any model at all
+    model_names = set(get_model_names())
+    unmatched = not any(trace.name in model_names for trace in saved_fig.data)
+
+    if preserved_models and not saved_traces and unmatched:
         warnings.warn(
             f"No traces to preserve found in {filename}. Traces are matched to models "
             "by name, so results for models not being analysed will be lost if the "
