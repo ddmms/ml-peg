@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pytest import Config, Item, Parser
 
-from ml_peg import analysis, models
+from ml_peg import models
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -31,15 +31,6 @@ def pytest_addoption(parser: Parser) -> None:
         action="store",
         default=None,
         help="Filepath to model definitions. Default models.yml in models directory.",
-    )
-    parser.addoption(
-        "--update",
-        action="store_true",
-        default=False,
-        help=(
-            "Update saved tables and plots in place, preserving results for models "
-            "not included in --models, rather than overwriting them."
-        ),
     )
     parser.addoption(
         "--framework",
@@ -72,9 +63,6 @@ def pytest_configure(config: Config) -> None:
     model_file = config.getoption("--models-file")
     if model_file:
         models.models_file = model_file
-
-    # Set whether saved results are updated, rather than overwritten
-    analysis.update_results = config.getoption("--update")
 
 
 def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:

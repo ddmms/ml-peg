@@ -14,7 +14,11 @@ import pytest
 from scipy.optimize import curve_fit
 import yaml
 
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    get_model_colour,
+    merge_saved_traces,
+)
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -308,10 +312,10 @@ def generate_plots_for_app(processed_data) -> None:
                 row=(j + 1),
                 col=(i + 1),
             )
-    for iter, model in enumerate(MODELS):
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             for j, strain in enumerate(STRAINS):
-                color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
                 fig.add_trace(
                     go.Scatter(
                         x=processed_data["distances"],
@@ -340,6 +344,10 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_adsorption_energies.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
+
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     fig.write_json(filename)
 
@@ -368,8 +376,8 @@ def generate_plots_for_app(processed_data) -> None:
             row=1,
             col=(i + 1),
         )
-    for iter, model in enumerate(MODELS):
-        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             fig.add_trace(
                 go.Scatter(
@@ -400,6 +408,9 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_binding_energies.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
     fig.write_json(filename)
 
     # Third plot: 1x3 grid of binding lengths across all orientations
@@ -426,8 +437,8 @@ def generate_plots_for_app(processed_data) -> None:
             row=1,
             col=(i + 1),
         )
-    for iter, model in enumerate(MODELS):
-        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             fig.add_trace(
                 go.Scatter(
@@ -458,6 +469,9 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_binding_lengths.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename)
     fig.write_json(filename)
 
     return
