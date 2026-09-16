@@ -6,11 +6,20 @@ Based on https://docs.pytest.org/en/latest/example/simple.html.
 
 from __future__ import annotations
 
+from pytest import Config, Item, Parser
+
 from ml_peg import models
 
 
-def pytest_addoption(parser):
-    """Add flag to run tests for extra MLIPs."""
+def pytest_addoption(parser: Parser) -> None:
+    """
+    Add flag to run tests for extra MLIPs.
+
+    Parameters
+    ----------
+    parser
+        Pytest parser object.
+    """
     parser.addoption(
         "--models",
         action="store",
@@ -34,8 +43,15 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
-    """Configure pytest to custom markers and CLI inputs."""
+def pytest_configure(config: Config) -> None:
+    """
+    Configure pytest to custom markers and CLI inputs.
+
+    Parameters
+    ----------
+    config
+        Pytest configuration object.
+    """
     # Create custom markers
     config.addinivalue_line(
         "markers",
@@ -49,8 +65,17 @@ def pytest_configure(config):
         models.models_file = model_file
 
 
-def pytest_collection_modifyitems(config, items):
-    """Deselect tests outside the requested framework(s)."""
+def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:
+    """
+    Deselect tests outside the requested framework(s).
+
+    Parameters
+    ----------
+    config
+        Pytest configuration object.
+    items
+        Collected test items, modified in place to remove deselected tests.
+    """
     # Keep only tests tagged with one of the requested frameworks
     framework = config.getoption("--framework")
     if not framework:
