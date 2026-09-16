@@ -153,8 +153,8 @@ Figures that colour traces per model must also assign colours with
 in ``models.yml``. Indexing by plotted order instead gives the analysed models the same
 colours as the preserved traces.
 
-A warning is raised when a saved file exists but contains nothing to preserve, which
-usually means its traces or keys are not named after models.
+A warning is raised when none of a saved file's traces or keys can be matched to a
+model, which usually means they are not named after models.
 
 .. warning::
 
