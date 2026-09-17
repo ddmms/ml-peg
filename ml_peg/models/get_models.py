@@ -171,7 +171,6 @@ def load_models(
                 loaded_models[name] = DpaCalc(
                     default_dtype=cfg.get("overwrite_dtype"),
                     kwargs=cfg.get("kwargs", {}),
-                    download=cfg.get("download"),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )

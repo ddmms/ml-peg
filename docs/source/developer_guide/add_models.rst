@@ -99,12 +99,6 @@ The common fields are:
    benchmarks request either ``precision="high"`` or ``precision="low"``; this
    field forces a specific dtype regardless of that request.
 
-``download``
-   Optional download metadata used by wrappers for checkpoints that lack a
-   package-managed identifier. It contains an immutable ``url``, a safe
-   ``filename``. The DPA wrapper downloads these files atomically to
-   ``~/.cache/ml-peg/models`` before loading them.
-
 Examples
 -------------
 
@@ -222,7 +216,7 @@ PET-MAD entries use UPET's ``UPETCalculator``:
        xc: pbesol
 
 DPA entries use the dedicated ``DpaCalc`` wrapper selected by DeePMD's ``DP``
-class name. DeePMD's packaged aliases should be preferred over explicit URLs:
+class name and refer to checkpoints through DeePMD's packaged aliases:
 
 .. code-block:: yaml
 
@@ -262,8 +256,8 @@ After adding a model, run a small calculation first:
    ml_peg list models --models-file my_models.yml
    ml_peg calc --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model
 
-For DPA models, install the backend and exercise a small representative OMat or
-OMol system with:
+For DPA models, install the backend and exercise a small representative OMat
+system with:
 
 .. code-block:: bash
 
@@ -272,8 +266,7 @@ OMol system with:
    ML_PEG_RUN_DPA_MODEL_TESTS=1 uv run --extra dpa pytest tests/test_dpa_models.py
 
 Check the loaded checkpoint's actual parameter or graph dtype as well as finite
-energies, forces, and (for periodic systems) stress. For charge/spin-conditioned
-OMol models, also verify the expected ``atoms.info["charge_spin"]`` convention.
+energies, forces, and stress.
 
 If loading fails, check that the optional dependency is installed, the
 ``module``/``class_name`` pair can be imported, local checkpoint paths are valid,

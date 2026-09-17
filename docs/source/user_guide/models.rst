@@ -208,9 +208,9 @@ DPA
 ===
 
 Install these fixed-float32 DeePMD checkpoints with ``uv sync --extra dpa``.
-DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use OMat24
-or OMol25 as indicated by their names. DPA-3.3-1M is CC-BY-4.0, while DPA4 is
-CC-BY-NC-4.0 and restricted to non-commercial use.
+DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use OMat24.
+DPA-3.3-1M is CC-BY-4.0, while DPA4 is CC-BY-NC-4.0 and restricted to
+non-commercial use.
 
 dpa-3p3-1M-omat
 ----------------
@@ -272,25 +272,6 @@ dpa-4-plus-omat
      overwrite_dtype: float32
      kwargs:
        model: DPA4-Plus-OMat24-v20260805
-
-dpa-4-plus-omol
----------------
-
-.. code-block:: yaml
-
-   dpa-4-plus-omol:
-     module: deepmd.calculator
-     class_name: DP
-     datasets: [OMol25]
-     trained_on_dispersion: true
-     level_of_theory: ωB97M-V/def2-TZVPD
-     overwrite_dtype: float32
-     kwargs:
-       model: DPA4-Plus-OMol25-100M-v20260820.pt
-     download:
-       url: <revision-pinned Hugging Face URL>
-       filename: DPA4-Plus-OMol25-100M-v20260820.pt
-
 
 Orb
 ===

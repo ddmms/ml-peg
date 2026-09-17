@@ -2,28 +2,25 @@
 
 from __future__ import annotations
 
-import io
 import os
 from pathlib import Path
 import sys
 from types import ModuleType
 
-from ase.build import bulk, molecule
+from ase.build import bulk
 from ase.data import chemical_symbols
 import numpy as np
 import pytest
 import yaml
 
-from ml_peg.models import models as models_module
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import DpaCalc, _download_model
+from ml_peg.models.models import DpaCalc
 
 DPA_MODELS = (
     "dpa-3p3-1M-omat",
     "dpa-4-nano-omat",
     "dpa-4-neo-omat",
     "dpa-4-plus-omat",
-    "dpa-4-plus-omol",
 )
 DPA3_DATASETS = ["OpenLAM-v1", "OMAT", "MPtrj", "OC20", "OC22", "ODAC23", "SPICE2"]
 RUN_DPA_MODEL_TESTS = os.environ.get("ML_PEG_RUN_DPA_MODEL_TESTS") == "1"
@@ -57,14 +54,9 @@ def test_dpa_registry_metadata():
     assert registry["dpa-3p3-1M-omat"]["kwargs"]["head"] == "Omat24"
     assert registry["dpa-3p3-1M-omat"]["datasets"] == DPA3_DATASETS
 
-    omat_models = DPA_MODELS[1:-1]
+    omat_models = DPA_MODELS[1:]
     assert all(registry[name]["datasets"] == ["OMAT"] for name in omat_models)
-    assert all(not registry[name]["trained_on_dispersion"] for name in DPA_MODELS[:-1])
-
-    omol = registry["dpa-4-plus-omol"]
-    assert omol["datasets"] == ["OMol25"]
-    assert omol["trained_on_dispersion"]
-    assert omol["level_of_theory"] == "ωB97M-V/def2-TZVPD"
+    assert all(not registry[name]["trained_on_dispersion"] for name in DPA_MODELS)
 
 
 def test_dpa_registry_records_compatible_elements():
@@ -132,52 +124,6 @@ def test_dpa_rejects_unsupported_registry_precision(fake_deepmd):
         model.get_calculator()
 
 
-def test_external_dpa_checkpoint_is_downloaded_before_loading(
-    fake_deepmd, monkeypatch, tmp_path
-):
-    """The OMol model loads the path returned by the checkpoint downloader."""
-    model = load_models(("dpa-4-plus-omol",))["dpa-4-plus-omol"]
-    checkpoint = tmp_path / "verified.pt"
-    download_arguments = {}
-
-    def fake_download(**kwargs):
-        download_arguments.update(kwargs)
-        return checkpoint
-
-    monkeypatch.setattr(models_module, "_download_model", fake_download)
-
-    calculator = model.get_calculator(precision="low")
-
-    assert calculator.kwargs == {"model": str(checkpoint)}
-    assert download_arguments == model.download
-
-
-def test_model_download_is_cached(monkeypatch, tmp_path):
-    """A completed download is cached and not fetched again."""
-    content = b"DPA checkpoint bytes"
-    calls = 0
-
-    def fake_urlopen(url):
-        nonlocal calls
-        calls += 1
-        assert url == "https://example.com/model.pt"
-        return io.BytesIO(content)
-
-    monkeypatch.setattr(models_module, "urlopen", fake_urlopen)
-    download_kwargs = {
-        "url": "https://example.com/model.pt",
-        "filename": "model.pt",
-        "cache_dir": tmp_path,
-    }
-
-    first_path = _download_model(**download_kwargs)
-    second_path = _download_model(**download_kwargs)
-
-    assert first_path == second_path == tmp_path / "model.pt"
-    assert first_path.read_bytes() == content
-    assert calls == 1
-
-
 @pytest.mark.skipif(
     not RUN_DPA_MODEL_TESTS,
     reason="set ML_PEG_RUN_DPA_MODEL_TESTS=1 to run pretrained DPA checks",
@@ -190,17 +136,12 @@ def test_registered_dpa_model_evaluates_in_native_float32(model_name):
     model = load_models((model_name,))[model_name]
     calculator = model.get_calculator(precision="high")
 
-    if model_name.endswith("omol"):
-        atoms = molecule("H2O")
-        atoms.info["charge_spin"] = np.array([0, 1])
-    else:
-        atoms = bulk("Si", cubic=True)
+    atoms = bulk("Si", cubic=True)
     atoms.calc = calculator
 
     assert np.isfinite(atoms.get_potential_energy())
     assert np.isfinite(atoms.get_forces()).all()
-    if not model_name.endswith("omol"):
-        assert np.isfinite(atoms.get_stress()).all()
+    assert np.isfinite(atoms.get_stress()).all()
 
     deep_eval = calculator.dp.deep_eval
     backend = getattr(deep_eval, "_backend", deep_eval)
