@@ -70,7 +70,6 @@ dpa-3p3-1M-omat:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
-  overwrite_dtype: float32
   kwargs:
     model: DPA-3.3-1M
     head: Omat24
@@ -82,7 +81,6 @@ dpa-4-nano-omat:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
-  overwrite_dtype: float32
   kwargs:
     model: DPA4-Nano-OMat24-v20260805
 
@@ -93,7 +91,6 @@ dpa-4-neo-omat:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
-  overwrite_dtype: float32
   kwargs:
     model: DPA4-Neo-OMat24-v20260805
 
@@ -104,7 +101,6 @@ dpa-4-plus-omat:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
   level_of_theory: PBE
-  overwrite_dtype: float32
   kwargs:
     model: DPA4-Plus-OMat24-v20260805
 

@@ -226,7 +226,6 @@ class name and refer to checkpoints through DeePMD's packaged aliases:
      datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
      trained_on_dispersion: false
      level_of_theory: PBE
-     overwrite_dtype: float32
      kwargs:
        model: DPA-3.3-1M
        head: Omat24

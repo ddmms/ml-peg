@@ -223,7 +223,6 @@ dpa-3p3-1M-omat
      datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
      trained_on_dispersion: false
      level_of_theory: PBE
-     overwrite_dtype: float32
      kwargs:
        model: DPA-3.3-1M
        head: Omat24
@@ -239,7 +238,6 @@ dpa-4-nano-omat
      datasets: [OMAT]
      trained_on_dispersion: false
      level_of_theory: PBE
-     overwrite_dtype: float32
      kwargs:
        model: DPA4-Nano-OMat24-v20260805
 
@@ -254,7 +252,6 @@ dpa-4-neo-omat
      datasets: [OMAT]
      trained_on_dispersion: false
      level_of_theory: PBE
-     overwrite_dtype: float32
      kwargs:
        model: DPA4-Neo-OMat24-v20260805
 
@@ -269,7 +266,6 @@ dpa-4-plus-omat
      datasets: [OMAT]
      trained_on_dispersion: false
      level_of_theory: PBE
-     overwrite_dtype: float32
      kwargs:
        model: DPA4-Plus-OMat24-v20260805
 

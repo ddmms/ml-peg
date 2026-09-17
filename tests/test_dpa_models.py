@@ -49,7 +49,7 @@ def test_dpa_registry_metadata():
     registry_path = Path(__file__).parents[1] / "ml_peg" / "models" / "models.yml"
     registry = yaml.safe_load(registry_path.read_text(encoding="utf8"))
 
-    assert all(registry[name]["overwrite_dtype"] == "float32" for name in DPA_MODELS)
+    assert all("overwrite_dtype" not in registry[name] for name in DPA_MODELS)
     assert all(registry[name]["class_name"] == "DP" for name in DPA_MODELS)
     assert registry["dpa-3p3-1M-omat"]["kwargs"]["head"] == "Omat24"
     assert registry["dpa-3p3-1M-omat"]["datasets"] == DPA3_DATASETS
@@ -116,12 +116,12 @@ def test_dpa_native_precision_does_not_pass_unsupported_options(fake_deepmd, pre
     assert calculator.kwargs == {"model": "DPA-3.3-1M", "head": "Omat24"}
 
 
-def test_dpa_rejects_unsupported_registry_precision(fake_deepmd):
-    """A registry entry cannot claim unsupported float64 DPA computation."""
-    model = DpaCalc(default_dtype="float64", kwargs={"model": "checkpoint.pt"})
+def test_dpa_rejects_unknown_precision(fake_deepmd):
+    """The DPA wrapper rejects unknown ML-PEG precision choices."""
+    model = DpaCalc(kwargs={"model": "checkpoint.pt"})
 
-    with pytest.raises(ValueError, match="only support float32"):
-        model.get_calculator()
+    with pytest.raises(ValueError, match="Unknown precision"):
+        model.get_calculator(precision="medium")
 
 
 @pytest.mark.skipif(
