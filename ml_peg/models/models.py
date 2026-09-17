@@ -142,6 +142,55 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
 
 @dataclasses.dataclass(kw_only=True)
+class DpaCalc(SumCalc):
+    """Dataclass for DPA calculators provided by DeePMD-kit."""
+
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+        """
+        Prepare and load the DeePMD ASE calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. DPA checkpoints are fixed at float32, so
+            both ``low`` and ``high`` use the checkpoint's native precision.
+        **kwargs
+            Keyword arguments that override the registry calculator options.
+
+        Returns
+        -------
+        Calculator
+            Loaded DeePMD ASE calculator.
+        """
+        if precision not in {"low", "high"}:
+            raise ValueError(f"Unknown precision: {precision}")
+
+        from deepmd.calculator import DP
+
+        calculator_kwargs = {**self.kwargs, **kwargs}
+        return DP(**calculator_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the DeePMD ASE calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            from deepmd.calculator import DP  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+
+@dataclasses.dataclass(kw_only=True)
 class MatterSimCalc(GenericASECalc):
     """Dataclass for MatterSim calculator."""
 
