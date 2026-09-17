@@ -169,7 +169,6 @@ def load_models(
         match cfg["class_name"]:
             case "DP":
                 loaded_models[name] = DpaCalc(
-                    default_dtype=cfg.get("overwrite_dtype"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),

@@ -145,7 +145,6 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 class DpaCalc(SumCalc):
     """Dataclass for DPA calculators provided by DeePMD-kit."""
 
-    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, precision="high", **kwargs) -> Calculator:
@@ -167,8 +166,6 @@ class DpaCalc(SumCalc):
         """
         if precision not in {"low", "high"}:
             raise ValueError(f"Unknown precision: {precision}")
-        if self.default_dtype not in {None, "float32"}:
-            raise ValueError("The registered DPA checkpoints only support float32")
 
         from deepmd.calculator import DP
 
