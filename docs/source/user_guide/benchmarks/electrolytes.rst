@@ -42,6 +42,16 @@ reference data.
   "Machine learning potentials for complex aqueous systems made simple",
   Proceedings of the National Academy of Sciences 118, e2110077118 (2021).
 
+2. Stable trajectories
+
+Percentage of systems completed without exploding.
+
+During each MD run the configuration is checked periodically for non-finite
+positions, energies or forces, which terminates the trajectory. A system counts
+as stable only if no such failure occurs and the full 1 ns of MD is completed.
+The reported value is the percentage of the 49 systems that are stable, so 100%
+indicates that every trajectory ran to completion.
+
 Computational cost
 ------------------
 
