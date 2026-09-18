@@ -5,3 +5,10 @@ metrics:
     unit: null
     tooltip: "Minimum RDF similarity score across all systems and element pairs"
     level_of_theory: PBE
+    weight: 1.0
+  Stable trajectories:
+    good: 100.0
+    bad: 0.0
+    unit: "%"
+    tooltip: "Percentage of systems completed without exploding"
+    weight: 1.0

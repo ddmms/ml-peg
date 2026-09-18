@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from copy import copy
+import json
 from pathlib import Path
 import shutil
+from time import perf_counter
 from typing import Any
 from warnings import warn
 
@@ -42,6 +44,32 @@ N_EQUI_FRAMES: int = N_EQUI_STEPS // FRAME_FREQUENCY
 TCHAIN: int = 10
 
 N_SYSTEMS: int = 49
+
+
+def check_md_state(atoms: Atoms) -> None:
+    """
+    Raise if an MD configuration has exploded numerically.
+
+    The thermostat does not raise on non-finite forces, so without this check an
+    exploded trajectory would run to its final step and be reported as complete.
+
+    Parameters
+    ----------
+    atoms
+        Current MD configuration.
+
+    Raises
+    ------
+    RuntimeError
+        If positions, energy or forces are non-finite.
+    """
+    values_are_finite = (
+        np.all(np.isfinite(atoms.get_positions()))
+        and np.isfinite(atoms.get_potential_energy())
+        and np.all(np.isfinite(atoms.get_forces()))
+    )
+    if not values_are_finite:
+        raise RuntimeError("MD state contains non-finite values")
 
 
 def get_systems(data_dir: Path) -> Generator[tuple[Path, float, str], None, None]:
@@ -169,8 +197,27 @@ def test_ssemd_benchmark(mlip: tuple[str, Any], system_id: int) -> None:
         append_trajectory=True,
     )
     md_nvt.nsteps = nsteps_done
+    md_nvt.attach(check_md_state, interval=FRAME_FREQUENCY, atoms=atoms)
 
+    failure: str | None = None
+    start_time: float = perf_counter()
     try:
         md_nvt.run(steps=max(NSTEPS - nsteps_done, 0))
     except Exception as exc:
+        failure = f"{type(exc).__name__}: {exc}"
         warn(f"Error running MD: {exc}", stacklevel=2)
+
+    status: dict[str, Any] = {
+        "stable": failure is None and md_nvt.nsteps >= NSTEPS,
+        "completed_steps": md_nvt.nsteps,
+        "completed_time_ps": md_nvt.nsteps * DELTA_T_FS / 1000,
+        "expected_steps": NSTEPS,
+        "failure": failure,
+        "walltime_seconds": perf_counter() - start_time,
+        "model": model_name,
+        "system": system_name,
+        "temperature": temperature,
+        "seed": SEED,
+    }
+    status_path: Path = write_dir / f"{file_name}_status.json"
+    status_path.write_text(json.dumps(status, indent=2) + "\n")

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import itertools
+import json
 import math
 from pathlib import Path
 import pickle
+from warnings import warn
 
 from ase import Atoms, io
 from MDAnalysis import Universe
@@ -23,6 +25,7 @@ from ml_peg.calcs.electrolytes.SSEMD.calc_SSEMD import (
     DELTA_T_FS,
     FRAME_FREQUENCY,
     N_EQUI_FRAMES,
+    N_SYSTEMS,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -302,6 +305,58 @@ def load_reference_rdfs() -> dict[str, dict]:
     return ref_rdfs
 
 
+def load_status(model_name: str) -> dict[str, dict]:
+    """
+    Load MD status records written by ``calc_SSEMD.py`` for one model.
+
+    One file is written per system, as each system is dispatched as a separate
+    job. A system with no status file either never ran, or was interrupted
+    before it could write one, and so is treated as an incomplete run.
+
+    Parameters
+    ----------
+    model_name
+        Name of the MLIP model.
+
+    Returns
+    -------
+    dict[str, dict]
+        Mapping of ``system_name -> status record``.
+    """
+    statuses: dict[str, dict] = {}
+    for status_file in sorted((CALC_PATH / model_name).glob("*_status.json")):
+        system_name = status_file.stem.removesuffix(f"_{model_name}_status")
+        try:
+            statuses[system_name] = json.loads(status_file.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            warn(f"Could not read {status_file}: {exc}", stacklevel=2)
+    return statuses
+
+
+def stable_percentage(statuses: dict[str, dict]) -> float:
+    """
+    Calculate the percentage of a model's MD runs that completed.
+
+    Parameters
+    ----------
+    statuses
+        MD status records for one model, keyed by system name.
+
+    Returns
+    -------
+    float
+        Percentage stable, or NaN unless every expected system is present, so a
+        partially dispatched benchmark is not reported as a stability score.
+    """
+    if len(SYSTEM_NAMES) != N_SYSTEMS or set(statuses) != set(SYSTEM_NAMES):
+        return np.nan
+    return (
+        100
+        * sum(bool(status.get("stable")) for status in statuses.values())
+        / len(statuses)
+    )
+
+
 def compute_model_rdfs(model_name: str) -> dict[str, dict]:
     """
     Compute RDFs from a model's MD trajectory outputs.
@@ -309,6 +364,9 @@ def compute_model_rdfs(model_name: str) -> dict[str, dict]:
     Reads the saved ``.traj`` files produced by ``calc_SSEMD.py``, skips
     equilibration frames, subsamples, and computes RDFs for every element
     pair in each system.
+
+    Systems whose MD did not run to completion, and trajectories that cannot be
+    read, are omitted so they are scored as NaN rather than from partial data.
 
     Parameters
     ----------
@@ -326,12 +384,34 @@ def compute_model_rdfs(model_name: str) -> dict[str, dict]:
 
     system_rdfs: dict[str, dict] = {}
     traj_files = sorted(model_dir.glob("*.traj"))
+    statuses = load_status(model_name)
 
     for traj_file in traj_files:
         system_name = traj_file.stem.removesuffix(f"_{model_name}")
 
+        # Only score trajectories that ran to completion without exploding.
+        status = statuses.get(system_name)
+        if status is None:
+            warn(f"Skipping {traj_file.name}: no status file", stacklevel=2)
+            continue
+        if not status.get("stable"):
+            warn(
+                f"Skipping {traj_file.name}: MD incomplete "
+                f"({status.get('completed_steps')}/{status.get('expected_steps')} "
+                f"steps, failure: {status.get('failure')})",
+                stacklevel=2,
+            )
+            continue
+
         # Read trajectory, skip equilibration and subsample
-        ase_traj = io.read(str(traj_file), index=f"{N_EQUI_FRAMES}:")
+        try:
+            ase_traj = io.read(str(traj_file), index=f"{N_EQUI_FRAMES}:")
+        except Exception as exc:  # noqa: BLE001
+            warn(f"Could not read {traj_file}: {exc}", stacklevel=2)
+            continue
+        if not ase_traj:
+            warn(f"Skipping {traj_file.name}: no production frames", stacklevel=2)
+            continue
 
         time_between_frames = DELTA_T_FS * FRAME_FREQUENCY
         mda_traj = ase2mda(ase_traj, time_between_frames)
@@ -362,7 +442,7 @@ def rdf_scores() -> dict[str, list]:
 
     Compares RDFs computed from each model's trajectories against the AIMD
     reference RDFs. Systems without both a model and a reference RDF score
-    as NaN.
+    as NaN, as do systems whose MD was interrupted or exploded.
 
     Returns
     -------
@@ -425,13 +505,34 @@ def ssemd_errors(rdf_scores: dict[str, list]) -> dict[str, float]:
 
 
 @pytest.fixture
+def ssemd_stability() -> dict[str, float | None]:
+    """
+    Compute the percentage of systems each model completed without exploding.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Percentage of stable systems per model, or None if the model has not
+        been run on every system.
+    """
+    results: dict[str, float | None] = {}
+    for model_name in MODELS:
+        value = stable_percentage(load_status(model_name))
+        results[model_name] = float(value) if np.isfinite(value) else None
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "ssemd_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
     mlip_name_map=MODELS,
 )
-def metrics(ssemd_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    ssemd_errors: dict[str, float], ssemd_stability: dict[str, float | None]
+) -> dict[str, dict]:
     """
     Get all SSE-MD metrics.
 
@@ -439,6 +540,8 @@ def metrics(ssemd_errors: dict[str, float]) -> dict[str, dict]:
     ----------
     ssemd_errors
         Mean RDF scores for all models.
+    ssemd_stability
+        Percentage of systems completed without exploding, for all models.
 
     Returns
     -------
@@ -447,6 +550,7 @@ def metrics(ssemd_errors: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "RDF Score": ssemd_errors,
+        "Stable trajectories": ssemd_stability,
     }
 
 
