@@ -66,9 +66,10 @@ def get_volscan_results(
                 continue
 
             configs = read(model_path, ":")
-            structs_dir = OUT_PATH / model
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{model}-{conf_type.lower()}-volscan.extxyz", configs)
+
+        structs_dir = OUT_PATH / model
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{model}-{conf_type.lower()}-volscan.extxyz", configs)
 
         energies = [
             frame.calc.__dict__["results"]["energy"] * 1000 / len(frame)

@@ -43,6 +43,11 @@ class LIBelectrolyteVolumeScansApp(BaseApp):
 
         assets_dir = "/assets/electrolytes/LIB_electrolyte_volume_scans"
         structs = {
+            "ref": {
+                "Solvent": f"{assets_dir}/ref/ref-solvent-volscan.extxyz",
+                "Electrolyte": f"{assets_dir}/ref/ref-electrolyte-volscan.extxyz",
+            }
+        } | {
             model: {
                 "Solvent": f"{assets_dir}/{model}/{model}-solvent-volscan.extxyz",
                 "Electrolyte": f"{assets_dir}/{model}/"
@@ -63,7 +68,7 @@ class LIBelectrolyteVolumeScansApp(BaseApp):
                     scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{volscan}VS",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
                     structs=[
-                        structs[model][volscan.capitalize()],
+                        structs["ref"][volscan.capitalize()],
                         structs[model][volscan.capitalize()],
                     ],
                     mode="traj",
