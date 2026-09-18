@@ -528,7 +528,6 @@ def ssemd_stability() -> dict[str, float | None]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=MODELS,
 )
 def metrics(
     ssemd_errors: dict[str, float], ssemd_stability: dict[str, float | None]
