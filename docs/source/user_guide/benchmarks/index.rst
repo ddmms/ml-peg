@@ -5,6 +5,7 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    biomolecules
     bulk_crystal
     conformers
     defects
