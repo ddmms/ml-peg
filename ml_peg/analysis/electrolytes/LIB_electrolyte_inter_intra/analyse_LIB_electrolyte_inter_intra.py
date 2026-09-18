@@ -61,7 +61,6 @@ def get_property_results(prop_key: str) -> dict[str, float]:
         Dictionary of reference and predicted inter-intra property.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
-
     stored, property = property_metadata[prop_key]
 
     for model in results.keys():
@@ -69,7 +68,11 @@ def get_property_results(prop_key: str) -> dict[str, float]:
             configs = read(REF_PATH / "intrainter_PBED3.xyz", ":")
 
         else:
-            configs = read(CALC_PATH / model / f"intrainter_{model}_D3.xyz", ":")
+            model_path = CALC_PATH / model / f"intrainter_{model}_D3.xyz"
+            if not model_path.exists():
+                continue
+
+            configs = read(model_path, ":")
 
         for frame in configs:
             frame_data = getattr(frame, stored)
@@ -179,8 +182,11 @@ def get_property_rmses() -> dict[str, dict]:
         else:
             plot_parity_results(prop_key, results)
         for model in MODELS:
-            model_rmse = rmse(results["ref"], results[model])
-            property_rmse[prop_key][model] = model_rmse
+            try:
+                model_rmse = rmse(results["ref"], results[model])
+                property_rmse[prop_key][model] = model_rmse
+            except ValueError:
+                property_rmse[prop_key][model] = None
 
     return property_rmse
 
