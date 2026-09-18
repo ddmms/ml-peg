@@ -15,6 +15,7 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import (
     build_table,
+    merge_saved_models,
     plot_density_scatter,
 )
 from ml_peg.analysis.utils.utils import (
@@ -566,6 +567,10 @@ def elastic_tensor_violin(elasticity_stats: dict[str, dict[str, Any]]) -> None:
         violin_data[model_name] = fig.to_dict()
 
     violin_path = OUT_PATH / "figure_elastic_tensor_violin.json"
+
+    # Preserve figures for models not being analysed
+    violin_data = merge_saved_models(violin_data, violin_path)
+
     with open(violin_path, "w") as f:
         json.dump(violin_data, f)
 
