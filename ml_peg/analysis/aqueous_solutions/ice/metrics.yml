@@ -1,0 +1,19 @@
+metrics:
+  rdf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: RDF d score
+    level_of_theory: PBE-D3
+  vdos_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: vdos_score
+    level_of_theory: PBE-D3
+  vacf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: vacf_score
+    level_of_theory: PBE-D3
