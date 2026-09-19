@@ -73,6 +73,9 @@ orb-v3-consv-inf-omat:
   level_of_theory: PBE
   kwargs:
     name: "orb_v3_conservative_inf_omat"
+  # Use Orb's compiled AlchemiDFTD3 instead of the default TorchDFTD3 correction.
+  # dispersion_kwargs:
+  #   use_alchemi_d3: true
 
 orb-v3-direct-inf-omat:
   module: orb_models.inference.calculator
