@@ -149,9 +149,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                                 ref_eval_atoms.get_potential_energy()
                             )
 
-                            opt = PreconLBFGS(  # optimised settings for these relaxations
+                            opt = PreconLBFGS(
                                 atoms, precon=Exp(A=3), maxstep=0.2, logfile=None
-                            )
+                            )  # optimal Optimiser settings for these relaxations
                             opt.run(fmax=fmax, steps=steps)
                             converged = opt.converged()
 
