@@ -6,7 +6,7 @@ from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
 from ml_peg.app.utils.load import read_density_plot_for_model, read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -40,7 +40,7 @@ class LIBelectrolyteInterIntraApp(BaseApp):
                 ),
                 "Inter-Energy": read_plot(
                     DATA_PATH / f"inter-energy_parity_{model}.json",
-                    id=f"{BENCHMARK_NAME}-{model}-figure",
+                    id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
                 ),
                 "Intra-Virial": read_plot(
                     DATA_PATH / f"intra-virial_parity_{model}.json",
@@ -59,6 +59,15 @@ class LIBelectrolyteInterIntraApp(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             cell_to_plot=plots,
         )
+
+        assets_dir = "/assets/electrolytes/LIB_electrolyte_inter_intra/"
+        for model in MODELS:
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=f"{assets_dir}/{model}/{model}-intra_inter.extxyz",
+                mode="traj",
+            )
 
 
 def get_app() -> LIBelectrolyteInterIntraApp:
@@ -81,6 +90,7 @@ def get_app() -> LIBelectrolyteInterIntraApp:
         table_path=DATA_PATH / "inter_intra_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
     )

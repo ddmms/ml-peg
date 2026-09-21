@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 
@@ -73,6 +73,10 @@ def get_property_results(prop_key: str) -> dict[str, float]:
                 continue
 
             configs = read(model_path, ":")
+
+        structs_dir = OUT_PATH / model
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{model}-intra_inter.extxyz", configs)
 
         for frame in configs:
             frame_data = getattr(frame, stored)
