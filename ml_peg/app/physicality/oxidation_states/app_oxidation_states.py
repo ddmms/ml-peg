@@ -66,7 +66,7 @@ def get_app() -> FeOxidationStatesApp:
         name=BENCHMARK_NAME,
         description=(
             "Evaluate model ability to capture different oxidation states of Fe"
-            "from aqueous Fe 2Cl and Fe 3Cl MD RDFs"
+            " from aqueous Fe 2Cl and Fe 3Cl MD RDFs"
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "oxidation_states_table.json",
