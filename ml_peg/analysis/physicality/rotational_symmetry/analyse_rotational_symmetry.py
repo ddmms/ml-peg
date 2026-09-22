@@ -13,6 +13,10 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.physicality.rotational_symmetry.calc_rotational_symmetry import (
+    N_ROTATIONS,
+    ROTATIONS,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -26,64 +30,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 EV_TO_MEV = 1000
-# Must match the rotations built in calc_rotational_symmetry: each output file
-# holds the unrotated reference frame followed by these rotations in order (a
-# single cumulative walk whose first steps cover small and intermediate
-# relative angles, followed by uniformly random steps). They are rebuilt here
-# to compute the relative rotation angle between successive frames, which
-# successive-pair comparisons are plotted against.
-N_RANDOM = 100
-STEP_ANGLES = (
-    1.0,
-    1.0,
-    1.0,
-    1.0,
-    1.0,
-    2.0,
-    3.0,
-    5.0,
-    7.0,
-    10.0,
-    14.0,
-    20.0,
-    28.0,
-    40.0,
-)
-
-
-def _build_rotations() -> Rotation:
-    """
-    Rebuild the seeded walk of orientations used by the calc.
-
-    Each step composes a rotation onto the previous orientation: STEP_ANGLES
-    rotations about random axes, then N_RANDOM uniformly random rotations.
-
-    Returns
-    -------
-    Rotation
-        The walk's orientations, in order.
-    """
-    rng = np.random.default_rng(42)
-    axes = rng.normal(size=(len(STEP_ANGLES), 3))
-    axes /= np.linalg.norm(axes, axis=1, keepdims=True)
-    steps = Rotation.concatenate(
-        [
-            Rotation.from_rotvec(np.radians(STEP_ANGLES)[:, None] * axes),
-            Rotation.random(N_RANDOM, random_state=42),
-        ]
-    )
-
-    orientations = []
-    current = Rotation.identity()
-    for step in steps:
-        current = step * current
-        orientations.append(current)
-
-    return Rotation.concatenate(orientations)
-
-
-ROTATIONS = _build_rotations()
-N_ROTATIONS = len(STEP_ANGLES) + N_RANDOM
 
 
 def _frame_and_relative_angles() -> tuple[np.ndarray, list[float]]:
