@@ -206,4 +206,4 @@ Input structures:
 
 Reference data:
 
-* QM-optimised reference geometries of the aromatic molecules.
+* QM-optimised reference geometries from QM9 (:math:`B3LYP/6-31G(2df,p)` level of theory).
