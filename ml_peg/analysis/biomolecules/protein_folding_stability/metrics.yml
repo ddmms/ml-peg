@@ -1,0 +1,8 @@
+metrics:
+  RMSD:
+    good: 0.0
+    bad: 2.0
+    unit: Å
+    weight: 1
+    tooltip: Root mean square deviation of the C-alpha atoms from the native reference structure, averaged over the trajectory and across all proteins. Lower is better.
+    level_of_theory: Experimental
