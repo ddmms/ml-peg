@@ -215,6 +215,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead", "mace-polar-1")
 def test_plf547(metrics: dict[str, dict]) -> None:
     """
     Run PLF547 test.

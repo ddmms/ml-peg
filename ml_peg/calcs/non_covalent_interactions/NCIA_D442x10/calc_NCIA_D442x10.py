@@ -94,6 +94,7 @@ def get_monomers(atoms: Atoms):
     return (atoms_a, atoms_b)
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ncia_d442x10(mlip: tuple[str, Any]) -> None:
     """

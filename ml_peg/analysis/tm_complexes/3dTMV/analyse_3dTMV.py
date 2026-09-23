@@ -266,6 +266,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_3dtmv(metrics: dict[str, dict]) -> None:
     """
     Run 3dTMV test.

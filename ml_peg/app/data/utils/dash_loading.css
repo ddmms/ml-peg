@@ -27,10 +27,15 @@
     animation: ml-peg-spin 0.8s linear infinite;
 }
 
+/* Single-element progress bar (gradient fill over a track), so it appears from
+   the very first paint. Same ml-peg-bar-fill keyframe as the start-up mask. */
 ._dash-loading::after {
-    content: "Loading ML-PEG…";
-    font-size: 16px;
-    font-weight: 600;
-    color: #212529;
-    font-family: sans-serif;
+    content: "";
+    width: 200px;
+    height: 6px;
+    border-radius: 3px;
+    background:
+        linear-gradient(#119dff, #119dff) left center / 5% 100% no-repeat,
+        #d0ebff;
+    animation: ml-peg-bar-fill 10s ease-out forwards;
 }

@@ -33,6 +33,7 @@ DATASETS = [
 ]
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_gscdb138(mlip: tuple[str, Any]) -> None:
     """

@@ -114,6 +114,7 @@ def get_atoms(data_path, complex_id: int):
     return read(data_path / str(complex_id) / "struc.xyz")
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_3dtmv(mlip: tuple[str, Any]) -> None:
     """

@@ -383,6 +383,7 @@ def metrics(
     return metrics_dict
 
 
+@pytest.mark.framework("mace-multihead")
 def test_diatomics(metrics: dict[str, dict]) -> None:
     """
     Run diatomics analysis.
