@@ -46,7 +46,7 @@ def get_app() -> WaterRDFApp:
         framework_ids="mlip_audit",
         description=(
             "Performance in reproducing the oxygen-oxygen radial distribution "
-            "function of liquid water from a short NVT molecular dynamics "
+            "function of liquid water from a short NPT molecular dynamics "
             "simulation. Reference data from experiment."
         ),
         docs_url=DOCS_URL,

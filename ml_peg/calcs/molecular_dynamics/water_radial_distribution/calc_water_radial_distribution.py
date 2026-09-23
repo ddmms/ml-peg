@@ -1,7 +1,7 @@
 """
 Compute the water oxygen-oxygen radial distribution function.
 
-A short NVT molecular dynamics simulation of a box of 500 water molecules is
+A short NPT molecular dynamics simulation of a box of 500 water molecules is
 run, and the O-O radial distribution function is compared to experiment.
 """
 

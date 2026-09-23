@@ -78,15 +78,14 @@ Reference data:
 * Experimental
 
 
-
 Water radial distribution
 =========================
 
 Summary
 -------
 
-Performance in reproducing the oxygen-oxygen radial distribution function of
-liquid water. A short NVT molecular dynamics simulation of a box of 500 water
+Performance in reproducing the oxygen-oxygen radial distribution function (RDF)
+of liquid water. A short NPT molecular dynamics simulation of a box of 500 water
 molecules is run from an equilibrated structure, and the resulting O-O RDF is
 compared to the experimental reference.
 
@@ -100,8 +99,8 @@ is compared to the experimental peak of 2.8 Å.
 
 2. RDF RMSE
 
-The root mean square error of the radial distribution function against the
-experimental reference, evaluated over the range 2.5-10.0 Å.
+The root mean square error (RMSE) of the RDF against the experimental reference,
+evaluated over the range 2.5-10.0 Å.
 
 A plot shows the predicted RDF profile of each model against the experimental
 reference profile.
