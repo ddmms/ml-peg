@@ -12,11 +12,13 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.reference_geometry_stability.reference_geometry_stability import (  # noqa: E501
     ReferenceGeometryStabilityModelOutput,
 )
 from mlipaudit.io import write_model_output_to_disk
-import pytest
 
 from ml_peg.calcs.utils.mlipaudit import MlPegReferenceGeometryStabilityBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data

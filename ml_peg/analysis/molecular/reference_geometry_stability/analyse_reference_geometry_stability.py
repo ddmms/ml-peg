@@ -6,17 +6,23 @@ import json
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
-from mlipaudit.io import load_model_output_from_disk
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.reference_geometry_stability import (
+    reference_geometry_stability as rgs,
+)
+from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
 from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegReferenceGeometryStabilityBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
+
+EXAMPLE_INPUT_FILENAME = rgs.OPENFF_NEUTRAL_FILENAME
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -32,19 +38,21 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def _data_input_dir() -> Path:
+def check_dataset() -> None:
     """
-    Download and return the benchmark input data directory.
+    Check the dataset saved by the calculation is available.
 
-    Returns
-    -------
-    Path
-        Directory containing the extracted reference geometry stability data.
+    The calculation copies and unzips the downloaded dataset into its outputs,
+    so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
     """
-    return download_s3_data(
-        key="inputs/molecular/reference_geometry_stability/reference_geometry_stability.zip",
-        filename="reference_geometry_stability.zip",
-    )
+    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -57,7 +65,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``ReferenceGeometryStabilityResult``.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -66,7 +74,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegReferenceGeometryStabilityBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -86,10 +94,11 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
+
     benchmark = MlPegReferenceGeometryStabilityBenchmark(
         force_field=Calculator(),
-        data_input_dir=data_input_dir,
+        data_input_dir=CALC_PATH,
         run_mode="standard",
     )
     elements = sorted(
