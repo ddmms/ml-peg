@@ -10,8 +10,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from mlipaudit.io import write_model_output_to_disk
 import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.io import write_model_output_to_disk
 
 from ml_peg.calcs.utils.mlipaudit import MlPegStabilityBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -35,7 +37,7 @@ def test_stability(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
-    calc = model.get_calculator(precision="low")
+    calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
         key="inputs/molecular_dynamics/stability/stability.zip",

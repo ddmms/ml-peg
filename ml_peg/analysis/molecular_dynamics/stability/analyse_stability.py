@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.stability.stability import STRUCTURE_NAMES, STRUCTURES
 from mlipaudit.io import load_model_output_from_disk
-import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
@@ -18,12 +20,15 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegStabilityBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
+EXAMPLE_INPUT_FILENAME = STRUCTURES["Small_molecule_HCNO"]["xyz"]
+
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+
+BENCHMARK = MlPegStabilityBenchmark.name
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "stability" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "stability"
@@ -32,6 +37,23 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies and unzips the downloaded dataset into its
+    outputs, so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 def _fraction_completed(result) -> float:
@@ -69,10 +91,7 @@ def structure_results() -> dict[str, list]:
     dict[str, list]
         List of ``StabilityStructureResult`` objects for each model.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/molecular_dynamics/stability/stability.zip",
-        filename="stability.zip",
-    )
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -81,7 +100,7 @@ def structure_results() -> dict[str, list]:
             continue
         benchmark = MlPegStabilityBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -175,12 +194,9 @@ def metrics(success_rate: dict[str, float]) -> dict[str, dict]:
 @pytest.fixture
 def element_info() -> None:
     """Write element info for all benchmark systems, used by the app element filter."""
-    data_input_dir = download_s3_data(
-        key="inputs/molecular_dynamics/stability/stability.zip",
-        filename="stability.zip",
-    )
+    check_dataset()
     xyz_paths = [
-        data_input_dir / MlPegStabilityBenchmark.name / STRUCTURES[name]["xyz"]
+        CALC_PATH / MlPegStabilityBenchmark.name / STRUCTURES[name]["xyz"]
         for name in STRUCTURE_NAMES
     ]
     write_struct_info(data_path=xyz_paths, out_path=OUT_PATH)
