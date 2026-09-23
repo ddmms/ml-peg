@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 import ase
-from dash import Dash, dcc, html
+from dash import dcc, html
 from dash.dcc import Loading
 
 from ml_peg.app import APP_ROOT
@@ -187,11 +187,3 @@ def get_app() -> PhononApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    phonon_app = get_app()
-    full_app.layout = phonon_app.layout
-    phonon_app.register_callbacks()
-    full_app.run(port=8060, debug=True)

@@ -213,3 +213,77 @@ Data availability
 -----------------
 
 https://arxiv.org/html/2603.04228v1
+
+
+Water-Cl2 cluster relaxation
+============================
+
+Summary
+-------
+
+This test is mainly for long-range models to probe the stability of a Cl2 molecule when two solvated Cl- ions are present far outside the receptive field of the Cl2 molecule, and the total charge of the system being -2.
+
+Geometry relaxation may lead to the Cl2 molecule dissociating (incorrect behaviour) or staying stable (correct behaviour).
+
+Metrics
+-------
+
+1. Dissociation of the Cl-Cl bond based on the interatomic distance.
+
+Computational Cost
+------------------
+
+Low: Requires up to 1000 optimizer steps for a 400-atom system, taking several GPU-minutes to complete.
+
+
+Data availability
+-----------------
+
+The initial structures were generated for MACE-POLAR-1 https://arxiv.org/abs/2602.19411
+
+
+Jacobian Symmetry
+=================
+
+Summary
+-------
+
+Performance in predicting conservative forces, by measuring the antisymmetric fraction
+of the finite-difference force Jacobian [1].
+
+
+Metrics
+-------
+
+1. Mean lambda
+
+For ten diverse structures (eight molecules and two periodic carbon systems: diamond
+and a 2D sheet), the Jacobian of predicted forces with respect to atomic positions is built by
+central finite differences, perturbing each degree of freedom by :math:`\pm 10^{-3}` Å.
+For a conservative force field, where forces are the gradient of an energy, this
+Jacobian must be symmetric. Lambda is the fraction of the Jacobian's Frobenius norm that
+is antisymmetric, :math:`\lambda = \lVert J_{\text{anti}} \rVert / \lVert J \rVert`
+where :math:`J_{\text{anti}} = (J - J^T)/2`. Lambda is 0 for perfectly conservative
+forces, and increases towards 1 for models predicting more decoupled, non-conservative
+forces. Lambda is calculated for each structure, and the mean across all structures is
+reported.
+
+2. Max lambda
+
+Same as (1), but the maximum (worst-case) lambda across all structures is reported.
+
+
+Computational cost
+------------------
+
+Low: tests are likely to take a few minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+None required; structures are generated in ASE.
+
+[1] Bigi, Filippo, Marcel Langer, and Michele Ceriotti. "The dark side of the forces:
+assessing non-conservative force models for atomistic machine learning." arXiv preprint
+arXiv:2412.11569 (2024).

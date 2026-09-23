@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 import numpy as np
 
@@ -84,16 +83,3 @@ def get_app() -> OC157App:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    # Construct layout and register callbacks
-    oc157_app = get_app()
-    full_app.layout = oc157_app.layout
-    oc157_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8051, debug=True)
