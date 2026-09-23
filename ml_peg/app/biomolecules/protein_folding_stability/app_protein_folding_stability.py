@@ -45,7 +45,7 @@ def get_app() -> ProteinFoldingStabilityApp:
         name="Protein Folding Stability",
         framework_ids="mlip_audit",
         description=(
-            "Performance in keeping small proteins folded during molecular "
+            "Performance in keeping small solvated proteins folded during molecular "
             "dynamics started from their native conformation. The RMSD relative "
             "to experimental reference structures is tracked along the trajectory."
         ),
