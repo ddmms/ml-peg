@@ -134,12 +134,12 @@ def build_summary_table(
             if original_name in summary_data:
                 summary_data[original_name][category_col] = row["Score"]
 
-    # Ensure all models have entries for all category columns (None if missing)
+    # Preserve absent benchmark results as NaN so aggregate scores remain missing.
     data = []
     for mlip in summary_data:
         row = {"MLIP": mlip}
         for category_col in category_columns:
-            row[category_col] = summary_data[mlip].get(category_col, None)
+            row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
     data = calc_table_scores(data, weights=weights)

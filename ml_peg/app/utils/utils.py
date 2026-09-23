@@ -18,6 +18,8 @@ import yaml
 from ml_peg.models import MODELS_ROOT
 from ml_peg.models.get_models import get_model_names
 
+RESERVED_TABLE_COLUMNS = ("MLIP", "Score", "id", "link")
+
 
 class ThresholdEntry(TypedDict):
     """Structure describing the normalization thresholds for a metric."""
@@ -466,6 +468,52 @@ def filter_rows_by_models(
         for row in rows
         if (row.get("MLIP") in selected) or (row.get("id") in selected)
     ]
+
+
+def row_has_no_results(row: dict[str, str | float | None]) -> bool:
+    """
+    Check whether a table row has no result in any metric column.
+
+    Parameters
+    ----------
+    row
+        Table row to check.
+
+    Returns
+    -------
+    bool
+        `True` if no metric column holds a value, otherwise `False`.
+    """
+    for key, value in row.items():
+        if key in RESERVED_TABLE_COLUMNS:
+            continue
+        if value is None or value == "NaN" or value == "":
+            continue
+        if isinstance(value, float) and np.isnan(value):
+            continue
+        return False
+    return True
+
+
+def drop_empty_model_rows(
+    rows: list[dict[str, str | float | None]] | None,
+) -> list[dict[str, str | float | None]]:
+    """
+    Drop model rows if no metric column has a value.
+
+    Parameters
+    ----------
+    rows
+        Table rows to be filtered.
+
+    Returns
+    -------
+    list[dict[str, str | float | None]]
+        Filtered rows that have at least one metric result.
+    """
+    if not rows:
+        return []
+    return [row for row in rows if not row_has_no_results(row)]
 
 
 def get_scores(
@@ -960,7 +1008,6 @@ def format_metric_columns(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id", "link"}
     updated_columns: list[dict[str, object]] = []
 
     for column in columns:
@@ -969,7 +1016,7 @@ def format_metric_columns(
 
         if (
             not isinstance(column_id, str)
-            or column_id in reserved
+            or column_id in RESERVED_TABLE_COLUMNS
             or column_id not in thresholds
         ):
             updated_columns.append(column_copy)
@@ -1042,11 +1089,10 @@ def format_tooltip_headers(
         return None
 
     thresholds = thresholds or {}
-    reserved = {"MLIP", "Score", "id", "link"}
 
     updated: dict[str, Any] = {}
     for key, entry in tooltip_header.items():
-        if key in reserved:
+        if key in RESERVED_TABLE_COLUMNS:
             updated[key] = entry
             continue
 

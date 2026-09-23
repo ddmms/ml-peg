@@ -601,6 +601,9 @@ def get_table_style(
         contrast_with_white = 1.05 / (luminance + 0.05)
         return "black" if contrast_with_black >= contrast_with_white else "white"
 
+    if not data:
+        return []
+
     style_data_conditional: list[TableRow] = []
 
     # All columns other than MLIP and ID (not displayed) should be coloured

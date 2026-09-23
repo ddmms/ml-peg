@@ -116,7 +116,9 @@ Metrics
 
 1. Diffusion barrier error
 
-The diffusion barrier is defined as the maximum energy along the NEB minimum energy path (MEP), relative to the initial state energy. This is compared to the reference DFT-PBE calculated barrier for each material.
+The diffusion barrier is defined as the maximum energy along the climbing-image NEB
+(cNEB) minimum energy path (MEP), relative to the initial state energy. This is
+compared to the reference DFT-PBE calculated barrier for each material.
 
 The benchmark includes the following 2D TMD materials (2H phase):
 
@@ -126,6 +128,13 @@ The benchmark includes the following 2D TMD materials (2H phase):
 * WS₂
 * WSe₂
 * WTe₂
+
+For each material, the endpoints are first relaxed using LBFGS until the maximum force
+component is below 0.1 eV/Å or 100 steps is reached. The cNEB band is constructed with
+11 images, and interpolation is attempted with pymatgen's structure interpolation,
+falling back to ASEs interpolation if any exceptions are raised during optimisation,
+which is carried out by ASE's NEBOptimizer.
+
 
 Computational cost
 ------------------
@@ -157,3 +166,39 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1039/C4RA17320A
 * GGA (PBE) exchange correlation functional
+
+
+OC20NEB
+=======
+
+Summary
+-------
+
+Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset.
+
+Metrics
+-------
+
+1. Reaction energy difference compared to DFT reference
+
+2. Activation barrier difference compared to DFT reference
+
+3. NEB convergence
+
+Computational cost
+------------------
+
+Medium: tests are likely to take several minutes to run on CPU.
+
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
