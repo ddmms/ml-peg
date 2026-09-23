@@ -21,7 +21,7 @@ Metrics
 
 1. RMSD
 
-The root mean square deviation of the C-alpha atoms from the native reference
+The root mean square deviation (RMSD) of the C-alpha atoms from the native reference
 structure is computed for each frame of the trajectory, then averaged over the
 trajectory and across all proteins. A lower RMSD indicates the fold is retained.
 
