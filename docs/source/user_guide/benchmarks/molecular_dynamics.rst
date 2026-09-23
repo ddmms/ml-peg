@@ -169,9 +169,10 @@ Ring planarity
 Summary
 -------
 
-Performance in maintaining planar aromatic rings during molecular dynamics of small
-organic molecules. For each molecule, an NVT molecular dynamics simulation is run at 300 K
-starting from a QM-optimised reference geometry (selected from QM9), and the deviation of
+Performance in maintaining planar aromatic rings during molecular dynamics simulations
+of small organic molecules, evaluated on 6 molecules with aromatic ring systems
+selected from the QM9 dataset. For each molecule, an NVT molecular dynamics simulation
+is run at 300 K starting from the QM-optimised reference geometry, and the deviation of
 the ring atoms from their best-fit plane is measured along the trajectory.
 
 Metrics
