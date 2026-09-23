@@ -90,13 +90,6 @@ matbench-discovery:
       - Kristin A. Persson
     year: 2025
 
-mlip_audit:
-  label: MLIP Audit
-  color: "#1d4ed8"
-  text_color: "#ffffff"
-  url: "https://github.com/instadeepai/mlipaudit"
-  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
-
 mace-multihead:
   bibtex_key: batatia2025crosslearningelectronicstructure
   label: Multihead Cross Learning
