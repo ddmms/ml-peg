@@ -212,10 +212,7 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
     weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(
-    rmsd_trajectories,
-    get_avg_rmsd: dict[str, float],
-) -> dict[str, dict]:
+def metrics(rmsd_trajectories, get_avg_rmsd: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
