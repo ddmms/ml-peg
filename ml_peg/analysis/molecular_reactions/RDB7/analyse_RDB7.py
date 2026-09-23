@@ -171,6 +171,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": get_mae}
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_rdb7_barriers(
     metrics: dict[str, dict],
     barrier_density: dict[str, dict],

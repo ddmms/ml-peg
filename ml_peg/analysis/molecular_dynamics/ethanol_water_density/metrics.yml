@@ -1,0 +1,22 @@
+# the 'bad' defaults are approximately 3 times the mp0 result
+metrics:
+  RMSE density:
+    good: 0.0003  # approximate error of the reference on the coarse, sampled grid
+    bad: 0.3
+    unit: g cm^-3
+    tooltip: "RMSE between model and reference densities at the sampled compositions"
+    level_of_theory: Experimental
+
+  RMSE excess volume:
+    good: 0.02  # approximate error of the reference on the coarse, sampled grid
+    bad: 1.5
+    unit: cm^3 mol^-1
+    tooltip: "RMSE of excess (non-ideal) volume"
+    level_of_theory: Experimental
+
+  Peak x error:
+    good: 0.026  # approximate error of the reference on the coarse, sampled grid
+    bad: 0.3
+    unit: mole fraction
+    tooltip: "Absolute error in the mole-fraction location of minimal excess volume"
+    level_of_theory: Experimental

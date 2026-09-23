@@ -139,6 +139,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mace-multihead")
 def test_locality(metrics: dict[str, dict]) -> None:
     """
     Run locality analysis.

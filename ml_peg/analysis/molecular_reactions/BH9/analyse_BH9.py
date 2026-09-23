@@ -193,6 +193,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_bh9_barriers(metrics: dict[str, dict]) -> None:
     """
     Run BH9 test.

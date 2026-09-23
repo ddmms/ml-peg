@@ -150,6 +150,10 @@ class LNCI16Benchmark(zntrack.Node):
             {"charge": guest_charge, "system": system_name, "spin": 1}
         )
 
+        complex_atoms.positions -= np.mean(complex_atoms.positions, axis=0)
+        host_atoms.positions -= np.mean(host_atoms.positions, axis=0)
+        guest_atoms.positions -= np.mean(guest_atoms.positions, axis=0)
+
         return {
             "complex": complex_atoms,
             "host": host_atoms,

@@ -179,6 +179,7 @@ def benchmark_wiggle150(
     return conformer_atoms
 
 
+@pytest.mark.framework("mace-multihead")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_wiggle150(mlip: tuple[str, Any]) -> None:
     """

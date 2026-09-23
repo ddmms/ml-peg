@@ -134,6 +134,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     return {"MAE": get_mae}
 
 
+@pytest.mark.framework("mace-polar-1")
 def test_criegee22_barriers(metrics: dict[str, dict]) -> None:
     """
     Run Criegee22 barriers test.
