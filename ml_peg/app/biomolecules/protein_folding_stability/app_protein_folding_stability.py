@@ -46,9 +46,8 @@ def get_app() -> ProteinFoldingStabilityApp:
         framework_ids="mlip_audit",
         description=(
             "Performance in keeping small proteins folded during molecular "
-            "dynamics started from their native conformation. The RMSD, TM "
-            "score, and radius of gyration relative to experimental reference "
-            "structures are tracked along the trajectory."
+            "dynamics started from their native conformation. The RMSD relative "
+            "to experimental reference structures is tracked along the trajectory."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "protein_folding_stability_metrics_table.json",

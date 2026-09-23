@@ -25,18 +25,6 @@ The root mean square deviation of the C-alpha atoms from the native reference
 structure is computed for each frame of the trajectory, then averaged over the
 trajectory and across all proteins. A lower RMSD indicates the fold is retained.
 
-2. TM score
-
-The TM score of each trajectory frame against the native reference structure is
-computed, then averaged over the trajectory and across all proteins. A TM score
-closer to 1 indicates that the global fold is preserved.
-
-3. Radius of gyration deviation
-
-The maximum absolute deviation of the radius of gyration from the initial folded
-state along the trajectory, taken across all proteins. A lower value indicates the
-protein does not unfold or collapse.
-
 A line plot shows the RMSD from the reference structure along the trajectory,
 averaged across the proteins, for each model.
 

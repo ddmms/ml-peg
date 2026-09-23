@@ -3,8 +3,8 @@ Assess protein folding stability during molecular dynamics.
 
 A molecular dynamics simulation is run for each of a set of small proteins
 starting from their native (folded) conformation, and the ability of the model
-to keep each protein folded is measured along the trajectory via the RMSD,
-TM score, and radius of gyration relative to the reference structure.
+to keep each protein folded is measured along the trajectory via the RMSD
+relative to the reference structure.
 """
 
 from __future__ import annotations

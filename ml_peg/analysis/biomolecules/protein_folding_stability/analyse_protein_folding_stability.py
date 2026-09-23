@@ -205,53 +205,6 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_avg_tm_score(analyze_results) -> dict[str, float]:
-    """
-    Get the average TM score for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        Mapping of model name to its ``FoldingStabilityResult``.
-
-    Returns
-    -------
-    dict[str, float]
-        Average TM score against the reference structure, averaged across molecules.
-    """
-    return {
-        model_name: (result.avg_tm_score if result.avg_tm_score is not None else np.nan)
-        for model_name, result in analyze_results.items()
-    }
-
-
-@pytest.fixture
-def get_rgyr_deviation(analyze_results) -> dict[str, float]:
-    """
-    Get the maximum radius of gyration deviation for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        Mapping of model name to its ``FoldingStabilityResult``.
-
-    Returns
-    -------
-    dict[str, float]
-        Maximum absolute deviation of the radius of gyration from the initial
-        state, taken across molecules, in Angstrom.
-    """
-    return {
-        model_name: (
-            result.max_abs_deviation_radius_of_gyration
-            if result.max_abs_deviation_radius_of_gyration is not None
-            else np.nan
-        )
-        for model_name, result in analyze_results.items()
-    }
-
-
-@pytest.fixture
 @build_table(
     filename=OUT_PATH / "protein_folding_stability_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -262,8 +215,6 @@ def get_rgyr_deviation(analyze_results) -> dict[str, float]:
 def metrics(
     rmsd_trajectories,
     get_avg_rmsd: dict[str, float],
-    get_avg_tm_score: dict[str, float],
-    get_rgyr_deviation: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -274,21 +225,13 @@ def metrics(
         Per-model averaged RMSD trajectories (triggers the RMSD line plot).
     get_avg_rmsd
         Average RMSD values for all models.
-    get_avg_tm_score
-        Average TM scores for all models.
-    get_rgyr_deviation
-        Maximum radius of gyration deviations for all models.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "RMSD": get_avg_rmsd,
-        "TM Score": get_avg_tm_score,
-        "Rgyr Deviation": get_rgyr_deviation,
-    }
+    return {"RMSD": get_avg_rmsd}
 
 
 def test_protein_folding_stability(metrics: dict[str, dict], struct_info: dict) -> None:
