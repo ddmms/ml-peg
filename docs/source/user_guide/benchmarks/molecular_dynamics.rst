@@ -172,7 +172,7 @@ Summary
 Performance in maintaining planar aromatic rings during molecular dynamics simulations
 of small organic molecules, evaluated on 6 molecules with aromatic ring systems
 selected from the QM9 dataset. For each molecule, an NVT molecular dynamics simulation
-is run at 300 K starting from the QM-optimised reference geometry, and the deviation of
+is run at 300 K starting from the QM9-optimised geometry, and the deviation of
 the ring atoms from their best-fit plane is measured along the trajectory.
 
 Metrics
@@ -201,9 +201,9 @@ Data availability
 
 Input structures:
 
-* MLIP Audit benchmark suite, InstaDeep. Reference geometries selected from the QM9 dataset
+* MLIP Audit benchmark suite, InstaDeep. Starting geometries selected from the QM9 dataset
   (Ramakrishnan et al., Scientific Data 1, 140022, 2014).
 
 Reference data:
 
-* QM-optimised reference geometries from QM9 (:math:`B3LYP/6-31G(2df,p)` level of theory).
+* QM-optimised starting geometries from QM9 (:math:`B3LYP/6-31G(2df,p)` level of theory).
