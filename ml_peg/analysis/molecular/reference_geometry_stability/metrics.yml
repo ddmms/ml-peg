@@ -1,0 +1,15 @@
+metrics:
+  Avg RMSD:
+    good: 0.0
+    bad: 0.3
+    unit: Å
+    weight: 0
+    tooltip: Average heavy-atom RMSD between the minimized and reference geometry across all molecules.
+    level_of_theory: OpenFF industry dataset
+  Geometry Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: mlipaudit per-molecule soft-threshold score on the heavy-atom RMSD (failed molecules score 0).
+    level_of_theory: OpenFF industry dataset
