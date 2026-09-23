@@ -33,7 +33,7 @@ def build_header_controls() -> Div:
     """
     Build the buttons shown in the top-right corner of the app.
 
-    Holds the "Clear cache" button next to the "Tutorial" button. The two hidden
+    Holds the "Hard Reset" button next to the "Tutorial" button. The two hidden
     Divs are not shown, they just give the callbacks somewhere to write to.
 
     Returns
@@ -44,7 +44,7 @@ def build_header_controls() -> Div:
     return Div(
         [
             Button(
-                "Clear cache",
+                "Hard Reset",
                 id="clear-storage-button",
                 n_clicks=0,
                 title=(

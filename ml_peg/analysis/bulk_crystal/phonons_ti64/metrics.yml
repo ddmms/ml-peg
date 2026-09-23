@@ -1,0 +1,32 @@
+metrics:
+  ΔF (0 K) mean:
+    good: 0.0
+    bad: 0.007
+    unit: eV/atom
+    tooltip: "Mean |ΔF| (free energy) at 0 K per atom between ML and DFT."
+    weight: 1.0
+    level_of_theory: PBE
+
+  ΔF (2000 K) mean:
+    good: 0.0
+    bad: 0.03
+    unit: eV/atom
+    tooltip: "Mean |ΔF| (free energy) at 2000 K per atom between ML and DFT."
+    weight: 1.0
+    level_of_theory: PBE
+
+  ω_avg MAE:
+    good: 0.0
+    bad: 1.0
+    unit: THz
+    tooltip: "MAE of ω_avg per case, where ω_avg is the mean of all phonon band frequencies for that case, averaged over the 10 Ti64 cases."
+    weight: 1.0
+    level_of_theory: PBE
+
+  ω_max MAE:
+    good: 0.0
+    bad: 1.0
+    unit: THz
+    tooltip: "MAE of ω_max per case, where ω_max is the maximum phonon band frequency for that case, averaged over the 10 Ti64 cases."
+    weight: 1.0
+    level_of_theory: PBE

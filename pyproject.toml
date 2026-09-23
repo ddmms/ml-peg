@@ -9,7 +9,7 @@ authors = [
     { name = "Alin M. Elena" },
     { name = "Gábor Csányi" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.10",
@@ -27,13 +27,15 @@ dependencies = [
     "ase>=3.28.0",
     "boto3<2,>=1.40.49",
     "dash<5,>=4.0.0",
-    "janus-core<1.0.0,>=0.8.6",
+    "janus-core<1.0.0,>=0.9.2",
     "kaleido<2,>=1.0.0",
     "matcalc<0.5,>=0.4.7; python_version >= '3.11'",
     "matminer<0.10,>=0.9.3",
     "mdanalysis<3,>=2.9.0",
     "mlipx<0.2,>=0.1.5",
     "molify<0.3,>=0.2.2",
+    "numpy<3,>=1.26.4; python_version < '3.13'",
+    "numpy<3,>=2.1.0; python_version >= '3.13'",
     "openpyxl<4,>=3.1.5",
     "scipy<1.17,>=1",
     "scikit-learn<2,>=1.7.2",
@@ -55,30 +57,36 @@ dpa3 = [
     "deepmd-kit == 3.1.0",
 ]
 grace = [
-    "tensorpotential == 0.5.1; python_version < '3.13'",
+    "tensorpotential == 0.6.0",
 ]
 mace = [
-    "mace-torch==0.3.15",
+    "mace-torch == 0.3.16",
+    "graph-longrange",
 ]
 
 mattersim = [
-    "mattersim==1.2.2",
+    "mattersim==1.2.4; python_version >= '3.12'",
 ]
 mlipaudit = [
-    "mlipaudit; python_version >= '3.11'",
-    # dm-haiku 0.0.16 (pulled via mlip -> e3nn-jax -> haiku) still uses
-    # jax.core.DropVar, removed in JAX 0.11. Cap jax below 0.11.
-    "jax<0.11; python_version >= '3.11'",
-    "jaxlib<0.11; python_version >= '3.11'",
+    "mlipaudit == 0.1.6; python_version >= '3.11' and python_version < '3.14'",
 ]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
-pet-mad = [
-    "pet-mad == 1.4.4; sys_platform != 'win32'"
-]
 uma = [
     "fairchem-core == 2.19.0; python_version >= '3.11'",
+]
+upet = [
+    "upet==0.2.4; python_version >= '3.11'",
+]
+sevenn = [
+    "sevenn==0.12.1",
+]
+vivace = [
+    "simpoly[vivace,cuda13] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform == 'linux'",
+    "simpoly[vivace] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform != 'linux'",
+    "cuequivariance ==0.8.1; sys_platform != 'linux'",
+    "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
 ]
 
 [project.scripts]
@@ -163,6 +171,7 @@ select = [
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
+known-third-party = ["mlipx"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.pydocstyle]
@@ -198,24 +207,20 @@ default-groups = [
 
 conflicts = [
     [
-      { extra = "uma" },
+        { extra = "uma" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "mattersim" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "mace" },
+        { extra = "sevenn" },
+    ],
+    [
+      { extra = "vivace" },
       { extra = "mace" },
-    ],
-    [
-      { extra = "uma" },
-      { extra = "grace" },
-    ],
-    [
-      { extra = "mattersim" },
-      { extra = "mace" },
-    ],
-    [
-      { extra = "mattersim" },
-      { extra = "grace" },
-    ],
-    [
-      { extra = "mlipaudit" },
-      { extra = "grace" },
     ],
 ]
 
@@ -229,4 +234,4 @@ module-root = ""
 
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
-mlipaudit = { git = "https://github.com/instadeepai/MLIPAudit.git", branch = "mlpeg-migration" }
+graph-longrange = { git = "https://github.com/WillBaldwin0/graph_electrostatics", tag = "v0.4.0" }
