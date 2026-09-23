@@ -134,6 +134,7 @@ def compute_interaction_energy(dataset, label, calc):
     return atoms_list
 
 
+@pytest.mark.framework("mace-polar-1")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_quid(mlip: tuple[str, Any]) -> None:
     """

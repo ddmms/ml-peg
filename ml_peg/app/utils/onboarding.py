@@ -167,10 +167,9 @@ def build_tutorial_button() -> html.Button:
         "Tutorial",
         id="restart-tutorial-button",
         title="Restart the interactive tutorial",
+        # Positioning is handled by the header-controls container in build_app so
+        # this button can sit alongside the clear-cache button.
         style={
-            "position": "fixed",
-            "top": "20px",
-            "right": "20px",
             "padding": "8px 16px",
             "borderRadius": "6px",
             "border": "1px solid #cbd5e1",
@@ -179,7 +178,6 @@ def build_tutorial_button() -> html.Button:
             "cursor": "pointer",
             "fontWeight": 600,
             "fontSize": "14px",
-            "zIndex": "1600",  # Above loading overlays (1200/1400).
             "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
             "transition": "all 0.2s ease",
         },

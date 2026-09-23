@@ -80,7 +80,7 @@ can be used:
 
 .. code-block:: python
 
-    from ml_peg.app.utils.utils import write_struct_info
+    from ml_peg.analysis.utils.utils import write_struct_info
 
     def test_benchmark(metrics):
         write_struct_info(
@@ -100,7 +100,7 @@ elements should be saved for each. This can be done using ``get_struct_info``:
 
 .. code-block:: python
 
-    from ml_peg.app.utils.utils import get_struct_info
+    from ml_peg.analysis.utils.utils import get_struct_info
 
     SYSTEM_INFO = get_struct_info(
         calc_path=CALC_PATH,
@@ -114,7 +114,7 @@ elements should be saved for each. This can be done using ``get_struct_info``:
 
 Since tests of this form often require labels to be extracted for hoverdata, this
 function also provides the option to save lists of keys saved to ``Atoms.info`` through
- the ``info_keys`` option, as well as the filename stems using ``include_filenames``.
+the ``info_keys`` option, as well as the filename stems using ``include_filenames``.
 
 Instead of a single list of elements, this will save elements as a list of lists in
 ``OUT_PATH / "info.json"``, as well as storing the other extracted informaiton in the
