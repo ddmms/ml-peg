@@ -19,12 +19,13 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegInferenceSpeedBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+
+EXAMPLE_INPUT_FILENAME = "71_1jrs_leupeptin.xyz"
 
 BENCHMARK = MlPegInferenceSpeedBenchmark.name
 
@@ -40,19 +41,21 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 SECONDS_TO_MICROSECONDS = 1.0e6
 
 
-def _data_input_dir() -> Path:
+def check_dataset() -> None:
     """
-    Download and return the benchmark input data directory.
+    Check the dataset saved by the calculation is available.
 
-    Returns
-    -------
-    Path
-        Directory containing the extracted inference speed input data.
+    The calculation copies nad unzips the downloaded dataset into its outputs,
+    so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
     """
-    return download_s3_data(
-        key="inputs/molecular_dynamics/inference_speed/inference_speed.zip",
-        filename="inference_speed.zip",
-    )
+    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -65,7 +68,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``InferenceSpeedResult``.
     """
-    data_input_dir = _data_input_dir()
+    check_dataset()
 
     results = {}
     for model_name in MODELS:
@@ -74,7 +77,7 @@ def analyze_results() -> dict:
             continue
         benchmark = MlPegInferenceSpeedBenchmark(
             force_field=Calculator(),
-            data_input_dir=data_input_dir,
+            data_input_dir=CALC_PATH,
             run_mode="standard",
         )
         benchmark.model_output = load_model_output_from_disk(
@@ -87,7 +90,9 @@ def analyze_results() -> dict:
 @pytest.fixture
 def struct_info() -> None:
     """Write the combined element set to ``info.json`` for filtering."""
-    data_dir = _data_input_dir() / BENCHMARK
+    check_dataset()
+
+    data_dir = CALC_PATH / BENCHMARK
     write_struct_info(
         data_path=sorted(data_dir.glob("*.xyz")),
         out_path=OUT_PATH,
