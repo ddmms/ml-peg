@@ -6,13 +6,15 @@ import json
 from pathlib import Path
 
 from ase.calculators.calculator import Calculator
+import numpy as np
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     FINAL_CONVERGENCE_THRESHOLD,
     NEB_DATASET_FILENAME,
 )
 from mlipaudit.io import load_model_output_from_disk
-import numpy as np
-import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
