@@ -19,7 +19,10 @@ from ase.io import write
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.benchmarks.reactivity.reactivity import ReactivityModelOutput
+from mlipaudit.benchmarks.reactivity.reactivity import (
+    GRAMBOW_DATASET_FILENAME,
+    ReactivityModelOutput,
+)
 
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
@@ -36,6 +39,8 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
+BENCHMARK = MlPegGrambowBarrierHeightsBenchmark.name
+
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "grambow_barrier_heights" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "grambow_barrier_heights"
 
@@ -43,6 +48,23 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies and unzips the downloaded dataset into its outputs,
+    so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / GRAMBOW_DATASET_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -55,6 +77,8 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ReactivityResult)``.
     """
+    check_dataset()
+
     results = {}
     for model_name in MODELS:
         path = CALC_PATH / model_name / "model_output.json"
@@ -82,6 +106,8 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
+    check_dataset()
+
     benchmark = MlPegGrambowBarrierHeightsBenchmark(
         force_field=Calculator(),
         data_input_dir=CALC_PATH,
