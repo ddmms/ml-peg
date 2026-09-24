@@ -320,6 +320,123 @@ def build_serialized_scatter_content(
     return content, meta
 
 
+def build_scalar_metric_bar_content(
+    model_display: str,
+    column_id: str,
+    *,
+    models_data: Mapping[str, Any],
+    label_map: Mapping[str, str],
+    model_order: Sequence[str],
+    yaxis_titles: Mapping[str, str],
+    scatter_id: str,
+    instructions: str,
+):
+    """
+    Compare a scalar benchmark metric across all models with available data.
+
+    Parameters
+    ----------
+    model_display
+        Model selected in the metrics table. Its bar is highlighted.
+    column_id
+        Column identifier originating from the Dash DataTable.
+    models_data
+        Interactive dataset keyed by model name. Each model may contain a
+        ``scalar_metrics`` mapping with reference, prediction, and error values.
+    label_map
+        Mapping of table column labels to metric keys.
+    model_order
+        Model names in the order they should appear along the x-axis.
+    yaxis_titles
+        Mapping of metric keys to error-axis labels.
+    scatter_id
+        Graph identifier used by the shared plot callbacks.
+    instructions
+        Instructional text displayed above the bar chart.
+
+    Returns
+    -------
+    tuple | None
+        ``(content, meta)`` pair consumed by the shared callback helper, or
+        ``None`` when the selected column is not a scalar metric.
+    """
+    metric_key = label_map.get(column_id)
+    if metric_key is None:
+        return None
+
+    rows: list[tuple[str, float, float, float, float]] = []
+    for model_name in model_order:
+        comparison = (
+            models_data.get(model_name, {}).get("scalar_metrics", {}).get(metric_key)
+        )
+        if not comparison:
+            continue
+        ref_value = float(comparison["ref"])
+        pred_value = float(comparison["pred"])
+        signed_error = pred_value - ref_value
+        abs_error = float(comparison.get("error", abs(signed_error)))
+        if not np.isfinite([ref_value, pred_value, abs_error]).all():
+            continue
+        rows.append((model_name, ref_value, pred_value, signed_error, abs_error))
+
+    fig = go.Figure()
+    if rows:
+        model_names = [row[0] for row in rows]
+        errors = [row[4] for row in rows]
+        customdata = [list(row) for row in rows]
+        colours = [
+            "#e76f51" if model_name == model_display else "#4f7fb8"
+            for model_name in model_names
+        ]
+        hovertemplate = (
+            "<b>%{customdata[0]}</b><br>"
+            "Reference: %{customdata[1]:.6g}<br>"
+            "Prediction: %{customdata[2]:.6g}<br>"
+            "Signed difference: %{customdata[3]:+.6g}<br>"
+            "Absolute error: %{customdata[4]:.6g}<extra></extra>"
+        )
+        fig.add_trace(
+            go.Bar(
+                x=model_names,
+                y=errors,
+                customdata=customdata,
+                marker={"color": colours},
+                hovertemplate=hovertemplate,
+                showlegend=False,
+            )
+        )
+        # A fixed-size endpoint remains easy to click even when a bar is tiny.
+        fig.add_trace(
+            go.Scatter(
+                x=model_names,
+                y=errors,
+                mode="markers",
+                customdata=customdata,
+                marker={
+                    "color": colours,
+                    "line": {"color": "#ffffff", "width": 1},
+                    "size": 12,
+                },
+                hovertemplate=hovertemplate,
+                showlegend=False,
+                cliponaxis=False,
+            )
+        )
+
+    fig.update_layout(
+        title=f"{column_id} across MLIPs",
+        xaxis_title="MLIP",
+        yaxis_title=yaxis_titles.get(metric_key, column_id),
+        plot_bgcolor="#ffffff",
+    )
+    fig.update_xaxes(tickangle=-35)
+
+    graph = dcc.Graph(id=scatter_id, figure=fig)
+    meta = {"model": model_display, "type": "scalar_metric", "metric": metric_key}
+    content = html.Div([html.P(instructions, style=INSTRUCTION_STYLE), graph])
+    return content, meta
+
+
 def build_classification_panel(
     model_display: str,
     column_id: str,
