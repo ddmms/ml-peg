@@ -15,31 +15,23 @@ import shutil
 from typing import Any
 from warnings import warn
 
-from ase.data import chemical_symbols
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import (
-    NVEEnergyConservationBenchmark,
     NVEEnergyConservationModelOutput,
 )
 
+from ml_peg.calcs.utils.mlipaudit import MlPegNVEEnergyConservationBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-BENCHMARK = NVEEnergyConservationBenchmark.name
+BENCHMARK = MlPegNVEEnergyConservationBenchmark.name
 
 OUT_PATH = Path(__file__).parent / "outputs"
-
-# mlipaudit requires an external ASE calculator to declare the elements it
-# supports as `allowed_atomic_numbers`, and uses it to skip systems the model
-# cannot handle. ml-peg's calculators do not narrow this per model, so the whole
-# periodic table is declared and systems a model cannot handle are reported as
-# failed rather than skipped, consistent with the other MLIP Audit benchmarks.
-ALLOWED_ATOMIC_NUMBERS = set(range(1, len(chemical_symbols)))
 
 
 @pytest.mark.slow
@@ -56,7 +48,6 @@ def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
-    calc.allowed_atomic_numbers = ALLOWED_ATOMIC_NUMBERS
 
     data_input_dir = download_s3_data(
         key=f"inputs/molecular_dynamics/{BENCHMARK}/{BENCHMARK}.zip",
@@ -72,7 +63,7 @@ def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
         data_input_dir / BENCHMARK, OUT_PATH / BENCHMARK, dirs_exist_ok=True
     )
 
-    benchmark = NVEEnergyConservationBenchmark(
+    benchmark = MlPegNVEEnergyConservationBenchmark(
         force_field=calc,
         data_input_dir=data_input_dir,
         run_mode="standard",
