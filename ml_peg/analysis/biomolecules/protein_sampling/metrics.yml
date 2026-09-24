@@ -1,0 +1,22 @@
+metrics:
+  Backbone Dihedral RMSD:
+    good: 0.0
+    bad: 0.001
+    unit: null
+    weight: 1
+    tooltip: RMSD between the sampled and reference backbone (phi/psi) dihedral distributions, averaged over residue types and systems. Lower is better.
+    level_of_theory: MD reference
+  Backbone Hellinger Distance:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    weight: 1
+    tooltip: Hellinger distance between the sampled and reference backbone (phi/psi) dihedral distributions, averaged over residue types and systems. Lower is better.
+    level_of_theory: MD reference
+  Backbone Outliers Ratio:
+    good: 0.0
+    bad: 0.1
+    unit: null
+    weight: 1
+    tooltip: Fraction of sampled backbone dihedrals lying far from any reference data point, averaged over residue types and systems. Lower is better.
+    level_of_theory: MD reference
