@@ -9,6 +9,9 @@ import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.water_radial_distribution.water_radial_distribution import (
+    REFERENCE_DATA,
+)
 from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
@@ -28,7 +31,6 @@ DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 BENCHMARK = MlPegWaterRadialDistributionBenchmark.name
 WATERBOX_N500 = "water_box_n500_eq.pdb"
-REFERENCE_DATA = "experimental_reference.npz"
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "water_radial_distribution" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "water_radial_distribution"
@@ -37,6 +39,23 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies and unzip the downloaded dataset into its outputs,
+    so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / REFERENCE_DATA
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -49,6 +68,8 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``WaterRadialDistributionResult``.
     """
+    check_dataset()
+
     results = {}
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
@@ -69,6 +90,8 @@ def analyze_results() -> dict:
 @pytest.fixture
 def struct_info() -> None:
     """Write the combined element set to ``info.json`` for filtering."""
+    check_dataset()
+
     write_struct_info(
         data_path=CALC_PATH / BENCHMARK / WATERBOX_N500,
         out_path=OUT_PATH,
@@ -98,6 +121,8 @@ def rdf_profiles(analyze_results) -> dict[str, tuple[list, list]]:
     dict[str, tuple[list, list]]
         Reference and per-model ``(radii, g(r))`` profiles.
     """
+    check_dataset()
+
     reference = np.load(CALC_PATH / BENCHMARK / REFERENCE_DATA)
     results = {"ref": (reference["r_OO"].tolist(), reference["g_OO"].tolist())}
     for model_name, result in analyze_results.items():
