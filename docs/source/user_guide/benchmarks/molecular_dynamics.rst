@@ -171,21 +171,22 @@ Summary
 -------
 
 Performance in reproducing the radial distribution functions of common molecular
-liquids. For each of carbon tetrachloride, methanol and acetonitrile, a short NVT
-molecular dynamics simulation is run at 295.15 K starting from an equilibrated box, and
-the radial distribution function of the characteristic atom (C-C for carbon tetrachloride,
-O-O for methanol and N-N for acetonitrile) is computed from the trajectory.
+liquids. For each of carbon tetrachloride, methanol and acetonitrile, a short NPT
+molecular dynamics simulation is run at 293.15 K and 1 atm starting from an equilibrated
+box. The radial distribution function of the characteristic atom (C-C for carbon
+tetrachloride, O-O for methanol and N-N for acetonitrile) is computed from the trajectory.
 
 Metrics
 -------
 
 1. Peak deviation
 
-The position of the first solvent peak in the radial distribution function is compared to
-the experimental reference peak position for each solvent, and the absolute deviation is
+The position of the first solvent peak in the radial distribution function (RDF) is compared
+to the experimental reference peak position for each solvent, and the absolute deviation is
 averaged across the solvents. A lower deviation is better.
 
-A line plot shows the radial distribution function profiles for each model and solvent.
+A line plot shows the radial distribution function profiles for each model and solvent,
+however note that there is no complete experimental RDF available for these solvents.
 
 Computational cost
 ------------------
