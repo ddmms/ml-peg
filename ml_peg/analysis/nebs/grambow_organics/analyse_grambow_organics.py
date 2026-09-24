@@ -8,6 +8,7 @@ from pathlib import Path
 from ase.calculators.calculator import Calculator
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     FINAL_CONVERGENCE_THRESHOLD,
+    NEB_DATASET_FILENAME,
 )
 from mlipaudit.io import load_model_output_from_disk
 import numpy as np
@@ -18,7 +19,6 @@ from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegGrambowOrganicsBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -34,6 +34,23 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies and unzips the downloaded dataset into its outputs,
+    so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / NEB_DATASET_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 @pytest.fixture
@@ -80,13 +97,11 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    data_input_dir = download_s3_data(
-        key="inputs/nebs/grambow_organics/grambow_organics.zip",
-        filename="grambow_organics.zip",
-    )
+    check_dataset()
+
     benchmark = MlPegGrambowOrganicsBenchmark(
         force_field=Calculator(),
-        data_input_dir=data_input_dir,
+        data_input_dir=CALC_PATH,
         run_mode="standard",
     )
     elements = sorted(
