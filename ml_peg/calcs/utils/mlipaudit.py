@@ -5,6 +5,7 @@ from __future__ import annotations
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
+    NudgedElasticBandBenchmark,
     TautomersBenchmark,
 )
 
@@ -36,6 +37,17 @@ class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
 class MlPegTautomersBenchmark(TautomersBenchmark):
     """
     TautomersBenchmark wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
+    do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegGrambowOrganicsBenchmark(NudgedElasticBandBenchmark):
+    """
+    NudgedElasticBandBenchmark wired up for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
     do not expose ``allowed_atomic_numbers``.
