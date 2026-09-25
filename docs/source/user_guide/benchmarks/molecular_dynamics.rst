@@ -182,10 +182,20 @@ Metrics
 
 At each frame of the trajectory, the ring atoms are fitted to a plane and the root mean
 square deviation of the atoms from that plane is calculated. This is averaged over the
-trajectory and across all molecules. Aromatic rings are planar, so a well behaved potential
-keeps this deviation small; a lower deviation is better.
+trajectory and across all molecules. Aromatic rings are planar, so a well-behaved
+potential keeps this deviation small; a lower deviation is better. If any molecule is
+unstable (fails with an error or the simulation explodes), the metric is reported as
+NaN, as is the benchmark score.
 
-A histogram shows the distribution of the sampled planarity deviations for each model.
+2. Planarity deviation (stable only)
+
+The planarity deviation, averaged only over the molecules whose simulations were
+stable. This is identical to the metric above unless any molecule was unstable, in which
+case it still gives a value while the metric above is NaN. It is reported for
+information only and does not contribute to the benchmark score.
+
+A histogram shows the distribution of the sampled planarity deviations for each model,
+using only stable simulations.
 
 Computational cost
 ------------------

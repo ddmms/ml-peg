@@ -158,7 +158,10 @@ def deviation_distributions(analyze_results) -> dict[str, np.ndarray]:
 @pytest.fixture
 def get_mae_deviation(analyze_results) -> dict[str, float]:
     """
-    Get the mean planarity deviation for each model.
+    Get the mean planarity deviation for each model, over all molecules.
+
+    If all molecules completed the full simulation, returns the mean planarity
+    deviation. If any molecule did not complete, returns NaN.
 
     Parameters
     ----------
@@ -169,6 +172,32 @@ def get_mae_deviation(analyze_results) -> dict[str, float]:
     -------
     dict[str, float]
         Mean planarity deviation of the ring atoms over the trajectories, in Angstrom.
+    """
+    return {
+        model_name: (
+            np.nan
+            if result.failed or any(molecule.failed for molecule in result.molecules)
+            else result.mae_deviation
+        )
+        for model_name, result in analyze_results.items()
+    }
+
+
+@pytest.fixture
+def get_mae_deviation_stable(analyze_results) -> dict[str, float]:
+    """
+    Get the mean planarity deviation for each model, over stable molecules only.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``RingPlanarityResult``.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean planarity deviation of the ring atoms over the trajectories of the
+        molecules whose simulations succeeded and remained stable, in Angstrom.
     """
     return {
         model_name: (
@@ -189,6 +218,7 @@ def get_mae_deviation(analyze_results) -> dict[str, float]:
 def metrics(
     deviation_distributions,
     get_mae_deviation: dict[str, float],
+    get_mae_deviation_stable: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -198,7 +228,9 @@ def metrics(
     deviation_distributions
         Per-model deviation arrays (triggers the histogram plot).
     get_mae_deviation
-        Mean planarity deviations for all models.
+        Mean planarity deviations for all models, NaN if any molecule failed.
+    get_mae_deviation_stable
+        Mean planarity deviations over stable molecules for all models.
 
     Returns
     -------
@@ -207,6 +239,7 @@ def metrics(
     """
     return {
         "Planarity Deviation": get_mae_deviation,
+        "Planarity Deviation (stable only)": get_mae_deviation_stable,
     }
 
 
