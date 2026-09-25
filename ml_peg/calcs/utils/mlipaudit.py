@@ -10,9 +10,9 @@ from mlipaudit.benchmarks import (
 )
 
 
-class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
+class MlPegAuditBenchmark:
     """
-    ``BondLengthDistributionBenchmark`` wired up for ml-peg's ASE calculators.
+    Mixin wiring up mlipaudit benchmarks for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
     objects do not expose the set of elements the underlying model supports, so
@@ -23,34 +23,21 @@ class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
     skip_if_elements_missing = False
 
 
-class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
-    """
-    ConformerSelectionBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
+class MlPegBondLengthDistributionBenchmark(
+    MlPegAuditBenchmark, BondLengthDistributionBenchmark
+):
+    """``BondLengthDistributionBenchmark`` wired up for ml-peg."""
 
 
-class MlPegGrambowBarrierHeightsBenchmark(ReactivityBenchmark):
-    """
-    ReactivityBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
+class MlPegConformerSelectionBenchmark(
+    MlPegAuditBenchmark, ConformerSelectionBenchmark
+):
+    """``ConformerSelectionBenchmark`` wired up for ml-peg."""
 
 
-class MlPegTautomersBenchmark(TautomersBenchmark):
-    """
-    TautomersBenchmark wired up for ml-peg's ASE calculators.
+class MlPegGrambowBarrierHeightsBenchmark(MlPegAuditBenchmark, ReactivityBenchmark):
+    """``ReactivityBenchmark`` wired up for ml-peg."""
 
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
 
-    skip_if_elements_missing = False
+class MlPegTautomersBenchmark(MlPegAuditBenchmark, TautomersBenchmark):
+    """``TautomersBenchmark`` wired up for ml-peg."""
