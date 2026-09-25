@@ -53,8 +53,8 @@ chgnet = [
 d3 = [
     "torch-dftd==0.5.1",
 ]
-dpa3 = [
-    "deepmd-kit == 3.1.0",
+dpa = [
+    "deepmd-kit[torch] == 3.2.0",
 ]
 grace = [
     "tensorpotential == 0.6.0",
@@ -205,7 +205,25 @@ default-groups = [
     "pre-commit",
 ]
 
+override-dependencies = [
+    # MPICH, required by deepmd-kit's torch extra, has no Windows wheels, and is only
+    # loaded by deepmd-kit on Linux and macOS.
+    "mpich; sys_platform != 'win32'",
+]
+
 conflicts = [
+    [
+        { extra = "dpa" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "dpa" },
+        { extra = "uma" },
+    ],
+    [
+        { extra = "dpa" },
+        { extra = "upet" },
+    ],
     [
         { extra = "uma" },
         { extra = "mace" },

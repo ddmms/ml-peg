@@ -215,6 +215,26 @@ PET-MAD entries use UPET's ``UPETCalculator``:
      dispersion_kwargs:
        xc: pbesol
 
+DPA entries use the dedicated ``DpaCalc`` wrapper selected by DeePMD's ``DP``
+class name and refer to checkpoints through DeePMD's packaged aliases:
+
+.. code-block:: yaml
+
+   dpa-3p3-1M-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA-3.3-1M
+       head: Omat24
+
+Here ``OpenLAM-v1`` is the umbrella pretraining collection, while familiar
+constituents are also listed individually so their known domains and element
+coverage remain visible. Its coverage entry is the verified union of its
+constituent datasets, not the checkpoint's broader executable type map.
+
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. That is enough when the
 calculator accepts the same common arguments as the generic ML-PEG model wrapper.
@@ -234,6 +254,18 @@ After adding a model, run a small calculation first:
 
    ml_peg list models --models-file my_models.yml
    ml_peg calc --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model
+
+For DPA models, install the backend and exercise a small representative OMat
+system with:
+
+.. code-block:: bash
+
+   uv sync --extra dpa
+   ml_peg calc --category <category> --test <test> --models dpa-4-nano-omat
+   ML_PEG_RUN_DPA_MODEL_TESTS=1 uv run --extra dpa pytest tests/test_dpa_models.py
+
+Check the loaded checkpoint's actual parameter or graph dtype as well as finite
+energies, forces, and stress.
 
 If loading fails, check that the optional dependency is installed, the
 ``module``/``class_name`` pair can be imported, local checkpoint paths are valid,

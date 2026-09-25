@@ -37,6 +37,27 @@ jobs:
           file: coverage.xml
           base-path: ml_peg
 
+  dpa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install DPA dependencies
+        run: uv sync --extra dpa
+
+      - name: Check DPA calculator import
+        run: uv run --no-sync python -c "from deepmd.calculator import DP"
+
+      - name: Run DPA tests
+        run: uv run --no-sync pytest tests/test_dpa_models.py
+
   coverage:
     needs: tests
     runs-on: ubuntu-latest

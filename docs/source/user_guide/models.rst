@@ -204,6 +204,71 @@ mace-polar-1-l
        model: "polar-1-l"
 
 
+DPA
+===
+
+Install these fixed-float32 DeePMD checkpoints with ``uv sync --extra dpa``.
+DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use OMat24.
+DPA-3.3-1M is CC-BY-4.0, while DPA4 is CC-BY-NC-4.0 and restricted to
+non-commercial use.
+
+dpa-3p3-1M-omat
+----------------
+
+.. code-block:: yaml
+
+   dpa-3p3-1M-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA-3.3-1M
+       head: Omat24
+
+dpa-4-nano-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-nano-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Nano-OMat24-v20260805
+
+dpa-4-neo-omat
+--------------
+
+.. code-block:: yaml
+
+   dpa-4-neo-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Neo-OMat24-v20260805
+
+dpa-4-plus-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-plus-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Plus-OMat24-v20260805
+
 Orb
 ===
 
