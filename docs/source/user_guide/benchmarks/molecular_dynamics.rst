@@ -41,6 +41,47 @@ Reference data:
 * Experimental
 
 
+Polymer densities
+=================
+
+Summary
+-------
+
+Performance in predicting room-temperature amorphous densities for 130
+polymers. Starting structures are prebuilt polymer cells, and the reference
+data are experimental densities.
+
+Metrics
+-------
+
+1. Density error
+
+For each polymer, the density is calculated by averaging over the final 500 ps
+NPT production stage of a 24-stage Polymatic-style equilibration protocol. The
+protocol uses a 0.5 fs timestep and runs for about 2.06 ns per model and
+polymer at the default time prefactor. The predicted density is compared to the
+experimental reference density.
+
+Computational cost
+------------------
+
+Very high: tests are likely to take several days to run on GPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Built from the SimPoly polymer dataset and stored as prebuilt structures for
+  ML-PEG calculations.
+
+Reference data:
+
+* Simm et al., SimPoly: Simulation of Polymers with Machine Learning Force
+  Fields Derived from First Principles. arXiv:2510.13696 [physics.comp-ph]
+* Experimental
+
+
 Water density
 =============
 
