@@ -2,12 +2,13 @@
 Run molecular dynamics stability simulations.
 
 Short MD runs for small molecules, peptides and proteins in vacuum and
-solvent, checking how many simulations complete without error.
+solvent, checking whether they explode or lose hydrogen atoms.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 
 import pytest
@@ -25,6 +26,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_stability(mlip: tuple[str, Any]) -> None:
     """
@@ -44,6 +46,13 @@ def test_stability(mlip: tuple[str, Any]) -> None:
         filename="stability.zip",
     )
 
+    benchmark_name = MlPegStabilityBenchmark.name
+    shutil.copytree(
+        data_input_dir / benchmark_name,
+        OUT_PATH / benchmark_name,
+        dirs_exist_ok=True,
+    )
+
     benchmark = MlPegStabilityBenchmark(
         force_field=calc,
         data_input_dir=data_input_dir,
@@ -52,5 +61,5 @@ def test_stability(mlip: tuple[str, Any]) -> None:
     benchmark.run_model()
 
     write_model_output_to_disk(
-        "stability", benchmark.model_output, OUT_PATH / model_name
+        benchmark_name, benchmark.model_output, OUT_PATH / model_name
     )
