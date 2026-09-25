@@ -7,6 +7,7 @@ from mlipaudit.benchmarks import (
     ConformerSelectionBenchmark,
     ReactivityBenchmark,
     TautomersBenchmark,
+    WaterRadialDistributionBenchmark,
 )
 
 
@@ -48,6 +49,17 @@ class MlPegGrambowBarrierHeightsBenchmark(ReactivityBenchmark):
 class MlPegTautomersBenchmark(TautomersBenchmark):
     """
     TautomersBenchmark wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
+    do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegWaterRadialDistributionBenchmark(WaterRadialDistributionBenchmark):
+    """
+    WaterRadialDistributionBenchmark wired up for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
     do not expose ``allowed_atomic_numbers``.
