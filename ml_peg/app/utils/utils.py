@@ -13,6 +13,7 @@ from typing import Any, TypedDict
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
 import numpy as np
+from typing_extensions import NotRequired
 import yaml
 
 from ml_peg.models import MODELS_ROOT
