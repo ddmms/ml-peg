@@ -1,0 +1,7 @@
+metrics:
+    MAPE:
+        good: 3.0
+        bad: 20.0
+        unit: "%"
+        tooltip: "Mean Absolute Percentage Error in liquid density vs experiment. Experimental reference: Shair and Schurig, Ind. Eng. Chem. 43, 1624 (1951)"
+        level_of_theory: Experimental
