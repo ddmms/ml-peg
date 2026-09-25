@@ -15,6 +15,7 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+    FOLMSBEE_DATASET_FILENAME,
     ConformerSelectionModelOutput,
 )
 
@@ -33,6 +34,8 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
+BENCHMARK = MlPegConformerSelectionBenchmark.name
+
 CALC_PATH = CALCS_ROOT / "conformers" / "Folmsbee" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"
 
@@ -40,6 +43,23 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies the downloaded dataset into its outputs, so the
+    analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / FOLMSBEE_DATASET_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
 def labels() -> list[str]:
@@ -51,6 +71,8 @@ def labels() -> list[str]:
     list[str]
         List of all system names.
     """
+    check_dataset()
+
     mock_path = CALC_PATH / "mock" / "model_output.json"
     if not mock_path.exists():
         raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
@@ -92,6 +114,8 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
+    check_dataset()
+
     results = {}
     for model_name in MODELS:
         model_path = CALC_PATH / model_name / "model_output.json"
