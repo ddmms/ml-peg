@@ -56,31 +56,6 @@ def check_dataset() -> None:
         raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
-def _fraction_completed(result) -> float:
-    """
-    Get how far a simulation got before it became unstable.
-
-    Parameters
-    ----------
-    result
-        A ``StabilityStructureResult`` for a single structure.
-
-    Returns
-    -------
-    float
-        Fraction of the trajectory completed: 1.0 if stable, 0.0 if the
-        simulation did not run, otherwise the frame at which it exploded or
-        drifted divided by the total number of frames.
-    """
-    if result.failed:
-        return 0.0
-    if result.exploded_frame != -1:
-        return result.exploded_frame / result.num_frames
-    if result.drift_frame != -1:
-        return result.drift_frame / result.num_frames
-    return 1.0
-
-
 @pytest.fixture
 def structure_results() -> dict[str, list]:
     """
@@ -111,9 +86,9 @@ def structure_results() -> dict[str, list]:
 
 
 @pytest.fixture
-def success_rate(structure_results: dict[str, list]) -> dict[str, float]:
+def stability_score(structure_results: dict[str, list]) -> dict[str, float]:
     """
-    Get the fraction of MD simulations that completed without error.
+    Get the mean stability score over all systems.
 
     Parameters
     ----------
@@ -123,10 +98,10 @@ def success_rate(structure_results: dict[str, list]) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Fraction of successful simulations for each model.
+        Mean stability score for each model.
     """
     return {
-        model_name: sum(not r.failed for r in results) / len(results)
+        model_name: sum(r.score for r in results) / len(results)
         for model_name, results in structure_results.items()
     }
 
@@ -135,16 +110,13 @@ def success_rate(structure_results: dict[str, list]) -> dict[str, float]:
 @plot_scatter(
     title="Trajectory stability",
     x_label="System",
-    y_label="Fraction of trajectory completed",
-    hovertemplate="<b>%{x}</b><br>Completed: %{y:.2f}<extra>%{fullData.name}</extra>",
+    y_label="Stability score",
+    hovertemplate="<b>%{x}</b><br>Score: %{y:.2f}<extra>%{fullData.name}</extra>",
     filename=str(OUT_PATH / "stability_progress.json"),
 )
 def progress(structure_results: dict[str, list]) -> dict[str, tuple[list, list]]:
     """
-    Get per-structure trajectory progress for each model.
-
-    For every system, reports the fraction of the trajectory completed before it
-    exploded, drifted or failed to run.
+    Get per-structure stability scores for each model.
 
     Parameters
     ----------
@@ -154,12 +126,12 @@ def progress(structure_results: dict[str, list]) -> dict[str, tuple[list, list]]
     Returns
     -------
     dict[str, tuple[list, list]]
-        Structure names and completed fractions for each model.
+        Structure names and stability scores for each model.
     """
     return {
         model_name: (
             [r.structure_name for r in results],
-            [_fraction_completed(r) for r in results],
+            [r.score for r in results],
         )
         for model_name, results in structure_results.items()
     }
@@ -172,14 +144,14 @@ def progress(structure_results: dict[str, list]) -> dict[str, tuple[list, list]]
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(success_rate: dict[str, float]) -> dict[str, dict]:
+def metrics(stability_score: dict[str, float]) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
-    success_rate
-        Fraction of successful simulations for all models.
+    stability_score
+        Mean stability score for all models.
 
     Returns
     -------
@@ -187,7 +159,7 @@ def metrics(success_rate: dict[str, float]) -> dict[str, dict]:
         Metric names and values for all models.
     """
     return {
-        "Success Rate": success_rate,
+        "Stability Score": stability_score,
     }
 
 
@@ -215,7 +187,7 @@ def test_stability(
     metrics : dict[str, dict]
         Stability metric results provided by fixtures.
     progress : dict[str, tuple[list, list]]
-        Per-structure trajectory progress provided by fixtures.
+        Per-structure stability scores provided by fixtures.
     element_info : None
         Element info written for the app element filter.
     """
