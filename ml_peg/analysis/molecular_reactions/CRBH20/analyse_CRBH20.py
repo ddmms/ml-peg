@@ -26,7 +26,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
+D3_MODEL_NAMES = build_dispersion_name_map()
 
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "CRBH20" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "CRBH20"
