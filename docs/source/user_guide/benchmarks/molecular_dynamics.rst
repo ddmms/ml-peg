@@ -162,3 +162,58 @@ Input structures:
 Reference data:
 
 * QM-optimised equilibrium bond lengths of the reference geometries.
+
+
+Stability
+=========
+
+Summary
+-------
+
+Performance in running stable molecular dynamics across a diverse set of
+systems: small molecules (containing H/C/N/O, sulfur, and halogens), peptides
+in vacuum (neurotensin, PDB: 2LNF; cyclic oxytocin, PDB: 7OFG), a protein in
+vacuum (PDB: 1A7M), and solvated peptides with and without counter-ions.
+Each system is run with a 100,000 step NVT molecular dynamics simulation at 300 K,
+with a frame saved every 100 steps.
+
+Metrics
+-------
+
+1. Stability score
+
+The stability score as computed by MLIP Audit. Computed as:
+
+.. math::
+
+   S =
+   \begin{cases}
+   0, & \text{the simulation failed with an error} \\
+   \frac{1}{2} \frac{f_\mathrm{e}}{N}, & \text{the simulation exploded} \\
+   \frac{1}{2} + \frac{1}{2} \frac{f_\mathrm{h}}{N}, &
+   \text{no explosion, but a hydrogen was lost} \\
+   1, & \text{stable for the whole trajectory}
+   \end{cases}
+
+where :math:`N` is the total number of frames the simulation is run for,
+:math:`f_\mathrm{e}` is the frame where the system exploded, and
+:math:`f_\mathrm{h}` is the frame where a hydrogen drifted at least 2.5 Å away
+from all heavy atoms. The reported value is the mean of :math:`S` over all systems.
+The mean is between 0 and 1, where higher is better.
+
+A scatter plot below the table shows the stability score for each system and
+model. Individual models can be toggled via the legend.
+
+Computational cost
+------------------
+
+High: tests are likely to take many hours on GPU. Faster simulation times can be
+achieved using the jax accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep.
+  Structures derived from PDB entries 2LNF, 7OFG, and 1A7M.

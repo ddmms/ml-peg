@@ -1,0 +1,65 @@
+"""
+Run molecular dynamics stability simulations.
+
+Short MD runs for small molecules, peptides and proteins in vacuum and
+solvent, checking whether they explode or lose hydrogen atoms.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+import shutil
+from typing import Any
+
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.io import write_model_output_to_disk
+
+from ml_peg.calcs.utils.mlipaudit import MlPegStabilityBenchmark
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+MODELS = load_models(current_models)
+
+OUT_PATH = Path(__file__).parent / "outputs"
+
+
+@pytest.mark.very_slow
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_stability(mlip: tuple[str, Any]) -> None:
+    """
+    Benchmark molecular dynamics stability.
+
+    Parameters
+    ----------
+    mlip
+        Name of model and model object to get calculator.
+    """
+    model_name, model = mlip
+    calc = model.get_calculator(precision="low")
+    calc = model.add_d3_calculator(calc)
+
+    data_input_dir = download_s3_data(
+        key="inputs/molecular_dynamics/stability/stability.zip",
+        filename="stability.zip",
+    )
+
+    benchmark_name = MlPegStabilityBenchmark.name
+    shutil.copytree(
+        data_input_dir / benchmark_name,
+        OUT_PATH / benchmark_name,
+        dirs_exist_ok=True,
+    )
+
+    benchmark = MlPegStabilityBenchmark(
+        force_field=calc,
+        data_input_dir=data_input_dir,
+        run_mode="standard",
+    )
+    benchmark.run_model()
+
+    write_model_output_to_disk(
+        benchmark_name, benchmark.model_output, OUT_PATH / model_name
+    )
