@@ -1,0 +1,11 @@
+/* Keep long DataTable tooltips usable instead of letting them extend off-screen. */
+.dash-tooltip {
+  pointer-events: auto;
+}
+
+.dash-tooltip .dash-table-tooltip {
+  max-height: min(60vh, 28rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  user-select: text;
+}
