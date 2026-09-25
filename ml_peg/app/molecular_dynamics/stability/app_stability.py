@@ -34,9 +34,9 @@ def get_app() -> StabilityApp:
         name=BENCHMARK_NAME,
         framework_ids="mlip_audit",
         description=(
-            "Fraction of short molecular dynamics simulations that complete "
-            "without error, across small molecules, peptides and proteins in "
-            "vacuum and solvent."
+            "Stability of short molecular dynamics simulations, penalising "
+            "explosions and hydrogen loss, across small molecules, peptides and "
+            "proteins in vacuum and solvent."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "stability_metrics_table.json",
