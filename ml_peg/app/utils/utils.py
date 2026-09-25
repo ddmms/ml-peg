@@ -417,8 +417,10 @@ def clean_table_data(rows: list[dict]):
                 value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
             ):
                 row[key] = "NaN"
+                row["Score"] = "NaN"
             if value is None:
                 row[key] = "NaN"
+                row["Score"] = "NaN"
 
 
 def none_to_nan(rows: list[dict]) -> None:
