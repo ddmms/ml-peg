@@ -44,6 +44,10 @@ class BaseApp(ABC):
         benchmark out and show only its explicit `framework_ids`. Default is True.
     info_path
         Path to json file containing additional info for filtering. Default is None.
+    disclaimer
+        Text for a highlighted disclaimer box shown below the description, as a string
+        or a list of strings and components for inline links. Default is None, in which
+        case no box is shown.
     """
 
     def __init__(
@@ -56,6 +60,7 @@ class BaseApp(ABC):
         framework_ids: str | Sequence[str] = (),
         include_ml_peg: bool = True,
         info_path: Path | None = None,
+        disclaimer: str | list[str | Component] | None = None,
     ):
         """
         Initiaise class.
@@ -82,12 +87,17 @@ class BaseApp(ABC):
             benchmark out and show only its explicit `framework_ids`. Default is True.
         info_path
             Path to json file containing additional info for filtering. Default is None.
+        disclaimer
+            Text for a highlighted disclaimer box shown below the description, as a
+            string or a list of strings and components for inline links. Default is
+            None, in which case no box is shown.
         """
         self.name = name
         self.description = description
         self.table_path = table_path
         self.extra_components = extra_components
         self.docs_url = docs_url
+        self.disclaimer = disclaimer
         # The "ml_peg" tag is shown on every benchmark by default; any extra
         # frameworks (e.g. "mace-multihead") are displayed alongside it.
         self.framework_ids = [
@@ -153,6 +163,7 @@ class BaseApp(ABC):
             column_widths=getattr(self.table, "column_widths", None),
             thresholds=self.table.thresholds,
             extra_components=self.extra_components,
+            disclaimer=self.disclaimer,
         )
 
     @abstractmethod
