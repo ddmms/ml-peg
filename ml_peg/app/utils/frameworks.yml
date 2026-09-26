@@ -25,11 +25,23 @@ mlip_audit:
   color: "#1d4ed8"
   text_color: "#ffffff"
   url: "https://github.com/instadeepai/mlipaudit"
-  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/mlpeg-migration/InstaDeep_Logo.png"
+  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/v0.1.6/InstaDeep_Logo.png"
   description: "MLIPAudit is a Python library and app for benchmarking and validating Machine Learning Interatomic Potential (MLIP) models, in particular those based on the mlip library. It aims to cover a wide range of use cases and difficulties, providing users with a comprehensive overview of the performance of their models. It also provides the option to benchmark models of any origin (e.g., also those based on PyTorch) via the ASE calculator interface."
   project_url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
+
+matbench-discovery:
+  label: Matbench Discovery
+  color: "#061e25"
+  text_color: "#ffffff"
+  url: "https://matbench-discovery.materialsproject.org"
+  logo: "https://matbench-discovery.materialsproject.org/favicon.svg"
+  tooltip: "Benchmarks adapted from Matbench Discovery"
+  description: "Matbench Discovery evaluates machine-learned interatomic potentials for materials discovery, relaxed crystal structures, and diatomic interactions. ML-PEG runs the contributed benchmarks on its own model selection."
+  project_url: "https://matbench-discovery.materialsproject.org"
+  paper_url: "https://doi.org/10.1038/s42256-025-01055-1"
+  github: "https://github.com/janosh/matbench-discovery"
 
 mace-multihead:
   label: Multihead Cross Learning
