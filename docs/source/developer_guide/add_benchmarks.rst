@@ -42,6 +42,14 @@ Each metric in ``metrics.yml`` should have a ``level_of_theory`` field identifyi
 method. The app compares this string against the ``level_of_theory`` set in ``models.yml`` for each
 MLIP, flagging mismatches using the traffic light system. An exact string match is required.
 
+Each metric must also define ``good``, ``bad``, ``unit``, ``tooltip``, and ``weight``.
+Choose the ``good`` and ``bad`` thresholds based on scientific considerations rather than the
+range of scores produced by the current models. Typically, ``good`` is an error below which
+further improvement offers little benefit, such as the uncertainty of the reference method.
+The ``bad`` threshold marks an error at which a prediction is no longer useful and may even give
+incorrect qualitative trends. It is valid for every current model to receive a low score if none
+meet these criteria.
+
 .. warning::
 
     Use the standard strings defined in :doc:`Levels of theory </developer_guide/levels_of_theory>`.
@@ -65,9 +73,36 @@ Running Calculations
 The file should be named ``calc_[benchmark_name].py``,
 and placed in ``ml_peg/calcs/[category]/[benchmark_name]``.
 
-While not a requirement, we recommend placing input files in
-``ml_peg/calcs/[category]/[benchmark_name]/data``, and output files in
-``ml_peg/calcs/[category]/[benchmark_name]/outputs``, for consistency.
+For consistency, write output files to
+``ml_peg/calcs/[category]/[benchmark_name]/outputs``. Download input data at runtime rather than
+committing it to the code repository.
+
+Before implementing the calculation, check the following project conventions:
+
+* Select the calculator precision explicitly. Static calculations, geometry optimisations, NEBs,
+  and phonons normally use ``precision="high"`` and long molecular dynamics normally uses
+  ``precision="low"`` unless another choice is justified.
+* Before evaluating a structure, ensure ``atoms.info["charge"]`` and
+  ``atoms.info["spin"]`` (spin multiplicity) are set as integers. For inputs known to be neutral
+  singlets, simply assign ``atoms.info["charge"] = 0`` and ``atoms.info["spin"] = 1``. Otherwise,
+  preserve the physically meaningful values supplied by the input.
+* Catch failures for each independent structure, trajectory, or property, emit a warning with
+  useful model/system context, and store ``NaN`` or explicit failure metadata so the remaining
+  systems can still run. Bound iterative calculations and record convergence from the optimiser or
+  dynamics state.
+* Save raw model outputs and useful structures or trajectories under ``outputs/[model]`` in a
+  standard ASE format. Retain the component quantities needed to reproduce derived observables.
+  Calculate derived properties and metrics during analysis rather than in the calculation script.
+* Download all input data inside the test or run function. Store it in the ML-PEG S3 bucket and use
+  ``download_s3_data`` by default. Use ``download_github_data`` only when needed, and pin GitHub
+  data to an immutable release or commit. See :doc:`Data </developer_guide/data>` for both helpers.
+* Apply a D3 correction when it is consistent with the reference protocol.
+* Mark expensive tests with ``@pytest.mark.slow`` or ``@pytest.mark.very_slow``, add progress
+  reporting for long loops, and document a rough GPU runtime using a representative model, for
+  example ``mace-mp-0a``, and named hardware.
+
+Calculations and analyses should also follow the failure and mock-calculator guidance in
+:doc:`Element filtering </developer_guide/filter>`.
 
 The test contained in this file may be runnable as a standalone script,
 but it should also be possible to run with ``pytest``, e.g.:
@@ -79,8 +114,8 @@ but it should also be possible to run with ``pytest``, e.g.:
 
 .. note::
 
-    The ``-s`` stops ``pytest`` intercepting stdout, so ``print`` statements will
-    be print to the console.
+    The ``-s`` stops ``pytest`` intercepting stdout, so ``print`` statements are
+    printed to the console.
 
 
 ``pytest`` will run any functions beginning with ``test_``, enabling multiple types
@@ -112,11 +147,11 @@ the same calculation is run for each model name-model pair:
 
 .. code-block:: python3
 
+    from ml_peg.calcs.utils.utils import download_s3_data
     from ml_peg.models.get_models import load_models
     from ml_peg.models import current_models
 
     MODELS = load_models(current_models)
-    DATA_PATH = Path(__file__).parent / "data"
     OUT_PATH = Path(__file__).parent / "outputs"
 
 
@@ -131,15 +166,29 @@ the same calculation is run for each model name-model pair:
             Name of model use and model to get calculator.
         """
         model_name, model = mlip
+        calc = model.get_calculator(precision="high")
 
-        struct = read(DATA_PATH / "struct.xyz")
-        struct.calc = model.get_calculator()
+        data_path = (
+            download_s3_data(
+                key="inputs/[category]/[benchmark_name]/[benchmark_name].zip",
+                filename="[benchmark_name].zip",
+            )
+            / "[benchmark_name]"
+        )
+        struct = read(data_path / "struct.xyz")
+        struct.info["charge"] = 0
+        struct.info["spin"] = 1
+        struct.calc = calc
 
-        struct.get_potential_energy()
+        try:
+            struct.info["pred_energy"] = struct.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating {model_name}: {exc}", stacklevel=2)
+            struct.info["pred_energy"] = np.nan
 
-        write_dir = OUT_PATH / self.model_name
+        write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
-        write(write_dir / "struct.xyz", struct)
+        write(write_dir / "struct.extxyz", struct)
 
 
 
@@ -173,8 +222,8 @@ run identified and run using ``pytest``.
 
 .. code-block:: python3
 
-    # Local directory to store input data
-    DATA_PATH = Path(__file__).parent / "data"
+    S3_KEY = "inputs/[category]/[benchmark_name]/[benchmark_name].zip"
+    S3_FILENAME = "[benchmark_name].zip"
 
     # Local directory to store output data
     OUT_PATH = Path(__file__).parent / "outputs"
@@ -189,16 +238,26 @@ run identified and run using ``pytest``.
         def run(self):
             """Run new benchmark."""
             # Read in data and attach calculator
-            calc = self.model.get_calculator()
-            struct = read(DATA_PATH / "struct.xyz")
+            calc = self.model.get_calculator(precision="high")
+            data_path = (
+                download_s3_data(key=S3_KEY, filename=S3_FILENAME)
+                / "[benchmark_name]"
+            )
+            struct = read(data_path / "struct.xyz")
+            struct.info["charge"] = 0
+            struct.info["spin"] = 1
             struct.calc = calc
 
             # Run calculation
-            struct.get_potential_energy()
+            try:
+                struct.info["pred_energy"] = struct.get_potential_energy()
+            except Exception as exc:
+                warn(f"Error calculating {self.model_name}: {exc}", stacklevel=2)
+                struct.info["pred_energy"] = np.nan
 
             write_dir = OUT_PATH / self.model_name
             write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir / "struct.xyz", struct)
+            write(write_dir / "struct.extxyz", struct)
 
 
     def build_project(repro: bool = False) -> None:
@@ -241,12 +300,18 @@ Analysing Calculations
 The output files created by :ref:`calculations` must then be analysed to calculate the metrics
 as planned in :ref:`metrics`.
 
-In principle, the exact form of this flexible, as long as the outputs can be assembled as required
-in :ref:`dash` to build the new application tab.
+Analysis must tolerate models that were not run and individual calculations that failed. A failed
+required result should normally propagate to the aggregate metric as ``NaN``. Do not replace
+failed values with zero or silently remove them and score only the successful subset, as this
+rewards a model for failing difficult systems. Reference data should be loaded once and
+independently of which model happens to have an output directory.
+
+In principle, the exact form of this is flexible, as long as the outputs can be assembled as
+required in :ref:`dash` to build the new application tab.
 
 However, we strongly recommend following the template described below, which enables automated
-creation of tables and scatter plots, as well as placing structures to be visualised in an appropriate
-directory to be accessed by the app.
+creation of tables and scatter plots, as well as placing structures to be visualised in an
+appropriate directory to be accessed by the app.
 
 As with the script created in :ref:`calculations`, we create a new file to be run by ``pytest``,
 containing a function beginning with ``test_`` to launch the analysis.
@@ -333,6 +398,12 @@ for other functions.
 If your benchmark contains structures to be visualised, or images to be loaded, these
 should be saved to ``ml_peg/app/data/[category]/[benchmark_name]``, as they must
 be added as ``assets`` to be loaded into the app.
+
+All data needed by the app should be produced during analysis. App imports should not read directly
+from calculation outputs or perform scientific analysis. Reuse the existing ``plot_from_*`` and
+``struct_from_*`` callback helpers where possible. Keep plot values, hover labels, filenames, and
+structures in the same deterministic order. Ensure a clicked model trace displays that model's
+structure when geometries are model-dependent.
 
 Absolute paths to ``ml_peg/app`` and ``ml_peg/calcs`` can be imported for
 convenience.
@@ -584,5 +655,5 @@ the category pages.
 
 The ``logo`` field is optional. It can point to a remote image URL or a local
 Dash asset path such as ``/assets/frameworks/my_framework_logo.png``. Use a
-browser-supported image format such as ``.svg``, ``.png``, or ``.jpg``/``.jpeg``;
+browser-supported image format such as ``.svg``, ``.png``, or ``.jpg``/``.jpeg``.
 ``.pdf`` is not supported. For best results, use a square logo image.
