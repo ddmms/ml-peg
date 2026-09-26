@@ -180,10 +180,15 @@ def get_app() -> IronPropertiesApp:
     return IronPropertiesApp(
         name=BENCHMARK_NAME,
         description=(
-            "Adapted BCC iron benchmark based on Zhang et al., grouped into bulk "
-            "response, defect and phase energetics, slip, and cleavage scores. "
-            "Select a table cell for its component breakdown or use the controls "
-            "below to inspect model and DFT curves."
+            "Comprehensive BCC iron properties benchmark. "
+            "Includes equation of state (lattice parameter, bulk modulus), "
+            "elastic constants (C11, C12, C44), Bain path (BCC-FCC transformation), "
+            "vacancy formation energy, surface energies (100, 110, 111, 112), "
+            "generalized stacking fault energy curves for {110}<111> and "
+            "{112}<111> slip systems, and traction-separation curves for (100) "
+            "and (110) cleavage planes. Results are grouped into bulk response, "
+            "defect and phase energetics, slip, and cleavage scores. Select a table "
+            "cell for its component breakdown."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "iron_properties_metrics_table.json",

@@ -575,8 +575,15 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
     """
     Apply Voigt strain with off-diagonal cell adjustment.
 
-    The cell uses ASE row-vector storage and reproduces the restricted-triclinic
-    box changes in the reference LAMMPS implementation.
+    For normal strains (directions 1-3), this scales the corresponding LAMMPS
+    restricted-triclinic box components. ASE stores its lattice vectors by row,
+    so the LAMMPS tilt components map to columns of the ASE cell matrix.
+
+    LAMMPS equivalent for direction 1 (xx):
+        change_box all x delta 0 ${delta} xy delta ${deltaxy} xz delta ${deltaxz}
+    where deltaxy = up * xy, deltaxz = up * xz
+
+    For cubic/orthogonal cells (xy=xz=yz=0), this is equivalent to apply_strain().
 
     Parameters
     ----------
@@ -597,16 +604,21 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
     cell = atoms_strained.cell.array.copy()
 
     if direction == 1:
-        # LAMMPS changes lx, xy, and xz by the same fraction.
+        # Scale lx, xy, and xz, which occupy the first ASE cell column
+        # LAMMPS: x -> x + delta, xy -> xy + up*xy, xz -> xz + up*xz
         cell[:, 0] *= 1 + magnitude
     elif direction == 2:
-        # LAMMPS changes ly and yz by the same fraction.
+        # Scale ly and yz, which occupy the second ASE cell column
+        # LAMMPS: y -> y + delta, yz -> yz + up*yz
         cell[1:, 1] *= 1 + magnitude
     elif direction == 3:
+        # Scale the z cell component
+        # LAMMPS: z -> z + delta
         cell[2, 2] *= 1 + magnitude
     elif direction == 4:
         # yz shear: LAMMPS changes yz tilt only
-        # ASE stores lattice vectors by row; yz belongs to the z vector.
+        # For LAMMPS compatibility: simple shear (not symmetric)
+        # cell[2, 1] is the yz tilt component in ASE row-vector storage
         lz = cell[2, 2]
         cell[2, 1] += magnitude * lz
     elif direction == 5:

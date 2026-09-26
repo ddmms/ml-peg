@@ -119,6 +119,108 @@ CURVE_CONFIG = {
 }
 
 
+def load_model_results(model_name: str) -> dict[str, Any] | None:
+    """
+    Load iron properties results for a model.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model to load results for.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        Dictionary of results, or None if file does not exist.
+    """
+    json_path = CALC_PATH / model_name / "results.json"
+    if not json_path.exists():
+        return None
+    return json.loads(json_path.read_text())
+
+
+def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
+    """
+    Load curve data for a model.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model to load curve for.
+    curve_type
+        Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
+
+    Returns
+    -------
+    pd.DataFrame
+        Curve data, or empty DataFrame if file does not exist.
+    """
+    filename = CURVE_FILES.get(curve_type)
+    if not filename:
+        return pd.DataFrame()
+    csv_path = CALC_PATH / model_name / filename
+    if not csv_path.exists():
+        return pd.DataFrame()
+
+    curve = pd.read_csv(csv_path)
+    if curve_type == "eos" and "energy_meV" not in curve and "energy" in curve:
+        energy = pd.to_numeric(curve["energy"], errors="coerce")
+        if energy.notna().any():
+            curve["energy_meV"] = (energy - energy.min()) * 1000
+    if (
+        curve_type.startswith("sfe_")
+        and "displacement_fraction" not in curve
+        and "displacement" in curve
+    ):
+        displacement = pd.to_numeric(curve["displacement"], errors="coerce")
+        endpoint = displacement.max()
+        if _finite(endpoint) and endpoint > 0:
+            curve["displacement_fraction"] = displacement / endpoint
+    return curve
+
+
+def load_reference_curve(curve_type: str) -> pd.DataFrame:
+    """
+    Load and normalize one bundled DFT reference curve.
+
+    Parameters
+    ----------
+    curve_type
+        Curve identifier.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Normalized reference curve.
+    """
+    if curve_type == "eos":
+        curve = pd.read_csv(
+            REFERENCE_PATH / "eos.csv",
+            sep=";",
+            decimal=",",
+            header=None,
+            names=["volume", "energy_meV"],
+            skipinitialspace=True,
+        )
+        curve["energy_meV"] -= curve["energy_meV"].min()
+        return curve.sort_values("volume")
+    if curve_type == "bain":
+        curve = pd.read_csv(REFERENCE_PATH / "bain.csv")
+        bcc_index = (curve["ca_ratio"] - 1).abs().idxmin()
+        curve["energy_meV"] -= curve.loc[bcc_index, "energy_meV"]
+        return curve
+    if curve_type.startswith("sfe_"):
+        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
+        endpoints = pd.DataFrame(
+            {"displacement_fraction": [0.0, 1.0], "sfe_J_per_m2": [0.0, 0.0]}
+        )
+        return pd.concat([endpoints.iloc[:1], curve, endpoints.iloc[1:]])
+    if curve_type.startswith("ts_"):
+        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
+        return curve.rename(columns={"traction_GPa": "traction"})
+    raise KeyError(f"Unknown Iron reference curve: {curve_type}")
+
+
 def _finite(value: Any) -> bool:
     """
     Return whether a value is a finite scalar.
@@ -232,108 +334,6 @@ def _status_summary(status: Any) -> tuple[str, bool]:
     if converged:
         return f"{sum(converged)}/{len(converged)} relaxations converged", True
     return "complete", True
-
-
-def load_model_results(model_name: str) -> dict[str, Any] | None:
-    """
-    Load one model's result file.
-
-    Parameters
-    ----------
-    model_name
-        Registered model name.
-
-    Returns
-    -------
-    dict[str, Any] or None
-        Results when available.
-    """
-    result_path = CALC_PATH / model_name / "results.json"
-    if not result_path.exists():
-        return None
-    return json.loads(result_path.read_text())
-
-
-def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
-    """
-    Load one generated curve, returning an empty frame if unavailable.
-
-    Parameters
-    ----------
-    model_name
-        Registered model name.
-    curve_type
-        Curve identifier.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Generated curve or an empty frame.
-    """
-    filename = CURVE_FILES.get(curve_type)
-    if filename is None:
-        return pd.DataFrame()
-    path = CALC_PATH / model_name / filename
-    if not path.exists():
-        return pd.DataFrame()
-
-    curve = pd.read_csv(path)
-    if curve_type == "eos" and "energy_meV" not in curve and "energy" in curve:
-        energy = pd.to_numeric(curve["energy"], errors="coerce")
-        if energy.notna().any():
-            curve["energy_meV"] = (energy - energy.min()) * 1000
-    if (
-        curve_type.startswith("sfe_")
-        and "displacement_fraction" not in curve
-        and "displacement" in curve
-    ):
-        displacement = pd.to_numeric(curve["displacement"], errors="coerce")
-        endpoint = displacement.max()
-        if _finite(endpoint) and endpoint > 0:
-            curve["displacement_fraction"] = displacement / endpoint
-    return curve
-
-
-def load_reference_curve(curve_type: str) -> pd.DataFrame:
-    """
-    Load and normalize one bundled DFT reference curve.
-
-    Parameters
-    ----------
-    curve_type
-        Curve identifier.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Normalized reference curve.
-    """
-    if curve_type == "eos":
-        curve = pd.read_csv(
-            REFERENCE_PATH / "eos.csv",
-            sep=";",
-            decimal=",",
-            header=None,
-            names=["volume", "energy_meV"],
-            skipinitialspace=True,
-        )
-        curve["energy_meV"] -= curve["energy_meV"].min()
-        return curve.sort_values("volume")
-    if curve_type == "bain":
-        curve = pd.read_csv(REFERENCE_PATH / "bain.csv")
-        bcc_index = (curve["ca_ratio"] - 1).abs().idxmin()
-        curve["energy_meV"] -= curve.loc[bcc_index, "energy_meV"]
-        return curve
-    if curve_type.startswith("sfe_"):
-        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
-        endpoints = pd.DataFrame(
-            {"displacement_fraction": [0.0, 1.0], "sfe_J_per_m2": [0.0, 0.0]}
-        )
-        return pd.concat([endpoints.iloc[:1], curve, endpoints.iloc[1:]])
-    if curve_type.startswith("ts_"):
-        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
-        return curve.rename(columns={"traction_GPa": "traction"})
-    raise KeyError(f"Unknown Iron reference curve: {curve_type}")
 
 
 def _clean_curve(
@@ -865,6 +865,123 @@ def compute_group_scores(
     return scores, details
 
 
+def _load_all_results() -> dict[str, dict[str, Any]]:
+    """
+    Load results for all models.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Dictionary mapping model names to their results.
+    """
+    all_results: dict[str, dict[str, Any]] = {}
+    for model_name in MODELS:
+        results = load_model_results(model_name)
+        if results is not None:
+            all_results[model_name] = results
+    return all_results
+
+
+def _load_curves_for_all_models(curve_type: str) -> dict[str, pd.DataFrame]:
+    """
+    Load curves of given type for all models.
+
+    Parameters
+    ----------
+    curve_type
+        Type of curve to load (e.g., 'eos', 'bain', 'sfe_110').
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their curve DataFrames.
+    """
+    curves: dict[str, pd.DataFrame] = {}
+    for model_name in MODELS:
+        curve = load_curve(model_name, curve_type)
+        if not curve.empty:
+            curves[model_name] = curve
+    return curves
+
+
+@pytest.fixture
+def iron_eos_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load EOS curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their EOS curve DataFrames.
+    """
+    return _load_curves_for_all_models("eos")
+
+
+@pytest.fixture
+def iron_bain_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load Bain path curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their Bain path curve DataFrames.
+    """
+    return _load_curves_for_all_models("bain")
+
+
+@pytest.fixture
+def iron_sfe_110_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load SFE 110 curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their SFE 110 curve DataFrames.
+    """
+    return _load_curves_for_all_models("sfe_110")
+
+
+@pytest.fixture
+def iron_sfe_112_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load SFE 112 curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their SFE 112 curve DataFrames.
+    """
+    return _load_curves_for_all_models("sfe_112")
+
+
+@pytest.fixture
+def iron_ts_100_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load T-S (100) curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their T-S (100) curve DataFrames.
+    """
+    return _load_curves_for_all_models("ts_100")
+
+
+@pytest.fixture
+def iron_ts_110_curves() -> dict[str, pd.DataFrame]:
+    """
+    Load T-S (110) curves for all models.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Dictionary mapping model names to their T-S (110) curve DataFrames.
+    """
+    return _load_curves_for_all_models("ts_110")
+
+
 def _format_value(value: Any) -> str:
     """
     Format a scalar or sequence for Plotly hover text.
@@ -960,59 +1077,65 @@ def create_breakdown_figure(
 
 
 def create_curve_figure(
-    frame: pd.DataFrame, curve_type: str, model_name: str
+    df: pd.DataFrame, curve_type: str, model_name: str
 ) -> go.Figure:
     """
-    Plot a model curve together with its bundled DFT reference.
+    Create a Plotly figure for the given curve type.
 
     Parameters
     ----------
-    frame
-        Model curve.
+    df
+        DataFrame containing the curve data.
     curve_type
-        Curve identifier.
+        Type of curve to plot (e.g., 'eos', 'bain', 'sfe_110').
     model_name
-        Registered model name.
+        Name of the model for the title.
 
     Returns
     -------
-    plotly.graph_objects.Figure
-        Comparison figure.
+    go.Figure
+        Plotly figure object.
     """
     config = CURVE_CONFIG[curve_type]
     reference = load_reference_curve(curve_type)
-    figure = go.Figure()
-    figure.add_trace(
+
+    fig = go.Figure()
+
+    fig.add_trace(
         go.Scatter(
             x=reference[config["x"]],
             y=reference[config["y"]],
             mode="lines+markers",
-            name="DFT reference",
+            name="DFT Reference",
             line={"width": 2, "dash": "dash", "color": "gray"},
         )
     )
-    figure.add_trace(
+
+    fig.add_trace(
         go.Scatter(
-            x=frame[config["x"]],
-            y=frame[config["y"]],
+            x=df[config["x"]],
+            y=df[config["y"]],
             mode="lines+markers",
             name=model_name,
             line={"width": 2},
-            marker={"size": 5},
+            marker={"size": 6},
         )
     )
+
     if curve_type == "bain":
-        figure.add_vline(x=1.0, line_dash="dot", annotation_text="BCC")
-        figure.add_vline(x=np.sqrt(2), line_dash="dot", annotation_text="FCC")
+        fig.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="BCC")
+        fig.add_vline(
+            x=np.sqrt(2), line_dash="dash", line_color="gray", annotation_text="FCC"
+        )
     if curve_type.startswith(("sfe_", "ts_")):
         for trace_name, data, color in (
             ("DFT peak", reference, "gray"),
-            ("Model peak", frame, "red"),
+            ("Model peak", df, "red"),
         ):
             x, y = _clean_curve(data, config["x"], config["y"])
             if len(y) and np.any(y > 0):
                 peak = int(np.argmax(y))
-                figure.add_trace(
+                fig.add_trace(
                     go.Scatter(
                         x=[x[peak]],
                         y=[y[peak]],
@@ -1021,76 +1144,107 @@ def create_curve_figure(
                         marker={"size": 10, "color": color, "symbol": "x"},
                     )
                 )
-    figure.update_layout(
-        title=f"{config['title']} — {model_name}",
+
+    fig.update_layout(
+        title=f"{config['title']} - {model_name}",
         xaxis_title=config["x_label"],
         yaxis_title=config["y_label"],
         template="plotly_white",
+        showlegend=True,
         height=500,
     )
-    return figure
+
+    return fig
 
 
 def save_figures_for_model(
     model_name: str, details: dict[str, list[dict[str, Any]]]
 ) -> None:
     """
-    Save curve and score-breakdown figures for one model.
+    Pre-create and save all curve figures for a model as JSON.
 
     Parameters
     ----------
     model_name
-        Registered model name.
+        Name of the model.
     details
-        Group and overall-score component metadata.
+        Group and overall-score component metadata used for breakdown figures.
     """
-    figure_dir = OUT_PATH / "figures" / model_name
-    figure_dir.mkdir(parents=True, exist_ok=True)
+    figures_dir = OUT_PATH / "figures" / model_name
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
     for curve_type in CURVE_FILES:
-        frame = load_curve(model_name, curve_type)
-        if not frame.empty:
-            create_curve_figure(frame, curve_type, model_name).write_json(
-                figure_dir / f"{curve_type}.json"
-            )
+        df = load_curve(model_name, curve_type)
+        if df.empty:
+            continue
+        fig = create_curve_figure(df, curve_type, model_name)
+        fig_path = figures_dir / f"{curve_type}.json"
+        fig_path.write_text(json.dumps(fig.to_plotly_json()))
+
     for group, group_details in details.items():
         filename = group.lower().replace(" ", "_").replace("&", "and")
         create_breakdown_figure(model_name, group, group_details).write_json(
-            figure_dir / f"breakdown_{filename}.json"
+            figures_dir / f"breakdown_{filename}.json"
         )
 
 
 def collect_metrics() -> pd.DataFrame:
     """
-    Collect the four Iron group scores across available models.
+    Gather metrics for all models.
 
     Returns
     -------
     pandas.DataFrame
-        One row of group scores per model.
+        DataFrame containing metrics for all models.
     """
-    rows: list[dict[str, str | float]] = []
+    metrics_rows: list[dict[str, float | str]] = []
+
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    for model_name in MODELS:
-        results = load_model_results(model_name)
-        if results is None:
-            continue
+
+    all_results = _load_all_results()
+
+    for model_name, results in all_results.items():
         scores, details = compute_group_scores(model_name, results)
-        rows.append({"Model": model_name, **scores})
+        row = {"Model": model_name} | scores
+        metrics_rows.append(row)
         save_figures_for_model(model_name, details)
-    return pd.DataFrame(rows).reindex(columns=["Model", *GROUPS])
+
+    columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
+
+    return pd.DataFrame(metrics_rows).reindex(columns=columns)
 
 
 @pytest.fixture
 def iron_properties_collection() -> pd.DataFrame:
     """
-    Provide collected Iron group scores.
+    Collect iron properties metrics across all models.
 
     Returns
     -------
     pandas.DataFrame
-        One row of group scores per model.
+        DataFrame containing iron properties metrics for all models.
     """
     return collect_metrics()
+
+
+@pytest.fixture
+def iron_properties_metrics_dataframe(
+    iron_properties_collection: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Provide the aggregated iron properties metrics dataframe.
+
+    Parameters
+    ----------
+    iron_properties_collection
+        Collection of iron properties metrics.
+
+    Returns
+    -------
+    pd.DataFrame
+        The aggregated iron properties metrics DataFrame.
+    """
+    return iron_properties_collection
 
 
 @pytest.fixture
@@ -1100,40 +1254,42 @@ def iron_properties_collection() -> pd.DataFrame:
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
-def metrics(iron_properties_collection: pd.DataFrame) -> dict[str, dict]:
+def metrics(
+    iron_properties_metrics_dataframe: pd.DataFrame,
+) -> dict[str, dict]:
     """
-    Build the Iron dashboard table.
+    Compute iron properties metrics for all models.
 
     Parameters
     ----------
-    iron_properties_collection
-        Collected group scores.
+    iron_properties_metrics_dataframe
+        Aggregated per-model metrics.
 
     Returns
     -------
     dict[str, dict]
-        Group scores keyed by model.
+        Mapping of metric names to per-model results.
     """
-    return {
-        column: dict(
-            zip(
-                iron_properties_collection["Model"],
-                iron_properties_collection[column],
-                strict=True,
-            )
-        )
-        for column in GROUPS
-    }
+    metrics_df = iron_properties_metrics_dataframe
+    metrics_dict: dict[str, dict[str, float | None]] = {}
+    for column in metrics_df.columns:
+        if column == "Model":
+            continue
+        values = [
+            value if pd.notna(value) else None for value in metrics_df[column].tolist()
+        ]
+        metrics_dict[column] = dict(zip(metrics_df["Model"], values, strict=True))
+    return metrics_dict
 
 
 def test_iron_properties(metrics: dict[str, dict]) -> None:
     """
-    Generate Iron analysis artifacts.
+    Run iron properties analysis.
 
     Parameters
     ----------
     metrics
-        Generated group metrics.
+        Dictionary of iron properties metrics from the metrics fixture.
     """
     structure_path = CALC_PATH / "mock" / "structures" / "equilibrium_bcc.extxyz"
     if structure_path.exists():
