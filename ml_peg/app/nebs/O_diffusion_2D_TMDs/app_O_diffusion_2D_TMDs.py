@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -90,16 +89,3 @@ def get_app() -> ODiffusionTMDsApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    o_diffusion_app = get_app()
-    full_app.layout = o_diffusion_app.layout
-    o_diffusion_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8056, debug=True)

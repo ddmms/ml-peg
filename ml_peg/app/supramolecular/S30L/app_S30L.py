@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -51,7 +50,6 @@ class S30LApp(BaseApp):
                 "Overall MAE": scatter,
             },
         )
-
         struct_from_scatter(
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
@@ -84,16 +82,3 @@ def get_app() -> S30LApp:
         info_path=INFO_PATH,
         framework_ids=["mace-multihead", "mace-polar-1"],
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    s30l_app = get_app()
-    full_app.layout = s30l_app.layout
-    s30l_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8054, debug=True)

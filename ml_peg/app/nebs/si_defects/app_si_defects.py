@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -115,12 +114,3 @@ def get_app() -> SiDefectNebSinglepointsApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Use APP_ROOT/data as assets root so `assets/nebs/...` resolves correctly.
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    benchmark_app = get_app()
-    full_app.layout = benchmark_app.layout
-    benchmark_app.register_callbacks()
-    full_app.run(port=8060, debug=True)

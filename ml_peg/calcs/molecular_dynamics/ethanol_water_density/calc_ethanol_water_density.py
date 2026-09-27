@@ -38,7 +38,7 @@ NUM_NVT_STEPS = 50_000
 TIMESTEP = 1 * units.fs
 LOG_INTERVAL = 100
 ATM = 1.01325 * units.bar
-TEMPERATURE = 298.15
+TEMPERATURE = 293.15
 LANGEVIN_FRICTION = 1 / (500 * units.fs)
 
 N_COMPOSITIONS = 6
@@ -230,7 +230,7 @@ def run_npt(atoms, calc, output_fname):
     dyn.nsteps = nsteps
     dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
     try:
-        dyn.run(steps=NUM_NPT_STEPS)
+        dyn.run(steps=max(NUM_NPT_STEPS - nsteps, 0))
     except Exception as exc:
         warn(f"Error running NPT MD: {exc}", stacklevel=2)
         dyn.atoms.info["energy"] = np.nan

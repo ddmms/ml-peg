@@ -1,0 +1,61 @@
+metrics:
+  Spearman's (Oxides):
+    good: 1.0
+    bad: 0.6
+    unit: null
+    tooltip: Measure of the accuracy of the energy ranking of PBEsol relaxed oxide structures by MLIPs.
+    level_of_theory: PBEsol
+  MAE (Oxides):
+    good: 0.0
+    bad: 2.0
+    unit: eV
+    tooltip: Formation energy of split vacancy, considering lowest energy relaxed oxide structures.
+    level_of_theory: PBEsol
+  RMSD (Oxides):
+    good: 0.0
+    bad: 0.2
+    unit: Å
+    tooltip: RMSD between MLIP and PBEsol relaxed oxide structures that match.
+    level_of_theory: PBEsol
+  Match Rate (Oxides):
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: Fraction of MLIP relaxations that converge to the same structure as PBEsol.
+    level_of_theory: PBEsol
+  Max Dist (Oxides):
+    good: 0.0
+    bad: 0.3
+    unit: null
+    tooltip: Maximum normalised atomic displacement between MLIP and PBEsol relaxed structures (normalised by (V/N)^(1/3)).
+    level_of_theory: PBEsol
+  Spearman's (Nitrides):
+    good: 1.0
+    bad: 0.6
+    unit: null
+    tooltip: Measure of the accuracy of the energy ranking of PBE relaxed nitride structures by MLIPs.
+    level_of_theory: PBE
+  MAE (Nitrides):
+    good: 0.0
+    bad: 2.0
+    unit: eV
+    tooltip: Formation energy of split vacancy, considering lowest energy relaxed nitride structures.
+    level_of_theory: PBE
+  RMSD (Nitrides):
+    good: 0.0
+    bad: 0.2
+    unit: Å
+    tooltip: RMSD between MLIP and PBE relaxed nitride structures that match.
+    level_of_theory: PBE
+  Match Rate (Nitrides):
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: Fraction of MLIP relaxations that converge to the same structure as PBE.
+    level_of_theory: PBE
+  Max Dist (Nitrides):
+    good: 0.0
+    bad: 0.3
+    unit: null
+    tooltip: Maximum normalised atomic displacement between MLIP and PBE relaxed structures (normalised by (V/N)^(1/3)).
+    level_of_theory: PBE

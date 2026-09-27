@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -135,16 +134,3 @@ def get_app() -> CPOSS209App:
         info_path=INFO_PATH,
         framework_ids="mace-polar-1",
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    cposs209_app = get_app()
-    full_app.layout = cposs209_app.layout
-    cposs209_app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8053, debug=True)

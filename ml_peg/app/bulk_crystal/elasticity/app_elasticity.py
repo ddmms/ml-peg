@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-from dash import Dash
 from dash.dcc import Graph
 from dash.html import Div
 
@@ -132,11 +131,3 @@ def get_app() -> ElasticityApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    elasticity_app = get_app()
-    full_app.layout = elasticity_app.layout
-    elasticity_app.register_callbacks()
-    full_app.run(port=8054, debug=True)

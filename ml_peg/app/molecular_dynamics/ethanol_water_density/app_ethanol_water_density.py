@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -71,8 +70,9 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
         name=BENCHMARK_NAME,
         description=(
             "Ethanol–water mixture density at 293.15 K. Metrics include density RMSE, "
-            "excess-volume RMSE, and error in the mole-fraction "
-            "location of the maximum excess volume."
+            "excess-volume RMSE, and error in the mole-fraction location of the "
+            "excess-volume minimum, i.e. the composition with the greatest "
+            "volume contraction on mixing."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "density_metrics_table.json",
@@ -81,17 +81,3 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    # assets_folder should be the parent of the "assets/<category>/<benchmark>/..." tree
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    # Construct layout and register callbacks
-    app = get_app()
-    full_app.layout = app.layout
-    app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8051, debug=True)

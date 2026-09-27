@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
-from dash import Dash, html
+from dash import html
 
 # ml-peg imports
 from ml_peg.app import APP_ROOT
@@ -117,20 +117,3 @@ def get_app() -> CRBH20App:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(
-        __name__,
-        assets_folder=str(APP_ROOT / "data"),
-        suppress_callback_exceptions=True,
-    )
-
-    # Load Layout
-    app_instance = get_app()
-    full_app.layout = app_instance.layout
-    app_instance.register_callbacks()
-
-    # Run Server
-    print("Serving CRBH20 App on port 8055...")
-    full_app.run(port=8055, debug=True)
