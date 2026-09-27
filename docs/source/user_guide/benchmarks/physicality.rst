@@ -232,6 +232,13 @@ Metrics
    As above, this assumes a single minimum in the energy-scale factor curve, which is the case for almost all materials.
    This metric will be polluted in models containing holes.
 
+6. Failed fraction
+
+   Fraction of scale factors per structure at which the energy or pressure evaluation failed (returned NaN),
+   averaged over all structures. Failures typically occur under strong compression, e.g. from neighbour-count
+   caps or out-of-memory errors. Failed points are excluded from all other metrics, so this metric records the
+   portion of each curve that was not assessed.
+
 Benchmark speed
 ------------------
 

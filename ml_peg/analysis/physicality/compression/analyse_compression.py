@@ -75,6 +75,7 @@ DEFAULT_WEIGHTS = {
     "Pressure sign flips": 0.1,
     "ρ(-E,Vsmall)": 1.0,
     "ρ(E,Vlarge)": 0.1,
+    "Failed fraction": 1.0,
 }
 
 
@@ -219,12 +220,10 @@ def prepare_structure_series(
     # Shift energies so the equilibrium value (scale closest to 1.0) is zero
     # eq_idx = int(np.argmin(np.abs(scales - 1.0)))
     # shifted_energies = energies - energies[eq_idx]
+    # Shift by the last finite energy value (largest volume); an all-NaN
+    # curve is passed through so it can be counted as failed downstream
     finite = np.isfinite(energies)
-    if not finite.any():
-        return np.array([]), np.array([]), np.array([]), np.array([])
-    shifted_energies = (
-        energies - energies[finite][-1]
-    )  # Shift by the last finite energy value (largest volume)
+    shifted_energies = energies - energies[finite][-1] if finite.any() else energies
 
     return volumes, shifted_energies, pressures, scales
 
@@ -275,13 +274,16 @@ def compute_structure_metrics(
     if volumes.size < 3:
         return None
 
-    # Drop points where the energy or pressure evaluation failed
+    # Drop (and count) points where the energy or pressure evaluation failed
     valid = np.isfinite(shifted_energies) & np.isfinite(pressures)
+    failed_fraction = float(np.mean(~valid))
     volumes, shifted_energies, pressures, scales = (
         arr[valid] for arr in (volumes, shifted_energies, pressures, scales)
     )
     if volumes.size < 3:
-        return None
+        return dict.fromkeys(DEFAULT_THRESHOLDS, np.nan) | {
+            "Failed fraction": failed_fraction
+        }
 
     # Energy minima: find peaks in inverted energy
     minima = 0
@@ -350,6 +352,7 @@ def compute_structure_metrics(
         "Pressure sign flips": float(pressure_flips),
         "ρ(-E,Vsmall)": -float(spearman_compression),
         "ρ(E,Vlarge)": float(spearman_expansion),
+        "Failed fraction": failed_fraction,
     }
 
 
