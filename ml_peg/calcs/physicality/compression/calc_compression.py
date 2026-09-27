@@ -414,7 +414,8 @@ def _generate_all_random(
                     # Collect for saving grouped by number of elements
                     frames_by_n_elements.setdefault(n_elements, []).append(atoms)
                 except Exception as exc:
-                    print(f"Failed to generate {struct_label}: {exc}")
+                    comp_label = _composition_label(composition)
+                    print(f"Failed to generate {comp_label}_pyxtal_{i}: {exc}")
                     continue
 
     # Save structures to data_path as multi-frame xyz, grouped by element count
