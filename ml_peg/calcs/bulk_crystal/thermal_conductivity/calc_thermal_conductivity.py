@@ -14,14 +14,13 @@ from copy import deepcopy
 from pathlib import Path
 import sys
 import traceback
-from typing import Any, Literal
+from typing import Any
 import warnings
 
 import ase
 from ase.constraints import FixSymmetry
-from ase.filters import ExpCellFilter, Filter, FrechetCellFilter
+from ase.filters import FrechetCellFilter
 from ase.io import read, write
-from ase.optimize.optimize import Optimizer
 import h5py
 import pandas as pd
 import pytest
@@ -52,20 +51,6 @@ else:
     PARALLEL_TASK_NUM = 1
 
 
-ase_optimizer: Literal[
-    "GPMin",
-    "GOQN",
-    "BFGSLineSearch",
-    "QuasiNewton",
-    "SciPyFminBFGS",
-    "BFGS",
-    "LBFGSLineSearch",
-    "SciPyFminCG",
-    "FIRE2",
-    "FIRE",
-    "LBFGS",
-] = "FIRE"  # "LBFGS"
-ase_filter: Literal["frechet", "exp"] = "frechet"
 max_steps = 300
 fmax = 1e-4  # Run until the forces are smaller than this in eV/A
 enforce_relax_symm = True  # Enforce symmetry during relaxation
@@ -80,8 +65,6 @@ save_forces = True  # Save force sets to file
 temperatures: list[float] = [300]
 displacement_distance = 0.03
 is_plusminus = True
-
-default_dtype = "float64"
 
 FAST_ONLY = False
 
@@ -98,8 +81,7 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    model.default_dtype = default_dtype
-    calculator = model.get_calculator()
+    calc = model.get_calculator(precision="high")
 
     # Download dataset
     thermal_conductivity_dir = (
@@ -145,7 +127,7 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
             continue
 
         results_dict, fast_results_dict = calc_thermal_conductivity_per_structure(
-            atoms_input, calculator, out_dir
+            atoms_input, calc, out_dir
         )
 
         results_dict[tc.TCKeys.mat_id] = structure_id
@@ -214,32 +196,6 @@ def calc_thermal_conductivity_per_structure(
     }
     err_dict: dict[str, list[str]] = {"errors": [], "error_traceback": []}
 
-    # Select filter class
-    if ase_filter in {"frechet", "exp"}:
-        filter_cls: type[Filter] = {
-            "frechet": FrechetCellFilter,
-            "exp": ExpCellFilter,
-        }[ase_filter]
-    else:
-        # Default to FrechetCellFilter if not specified (for MACE compatibility)
-        filter_cls = FrechetCellFilter
-
-    # Select optimizer class
-    optimizer_dict = {
-        "GPMin": ase.optimize.GPMin,
-        "GOQN": ase.optimize.GoodOldQuasiNewton,
-        "BFGSLineSearch": ase.optimize.BFGSLineSearch,
-        "QuasiNewton": ase.optimize.BFGSLineSearch,
-        "SciPyFminBFGS": ase.optimize.sciopt.SciPyFminBFGS,
-        "BFGS": ase.optimize.BFGS,
-        "LBFGSLineSearch": ase.optimize.LBFGSLineSearch,
-        "SciPyFminCG": ase.optimize.sciopt.SciPyFminCG,
-        "FIRE2": ase.optimize.FIRE2,
-        "FIRE": ase.optimize.FIRE,
-        "LBFGS": ase.optimize.LBFGS,
-    }
-    optim_cls: type[Optimizer] = optimizer_dict[ase_optimizer]
-
     # Initialize variables that might be needed in error handling
     relax_dict: dict[str, Any] = {
         "max_stress": None,
@@ -256,11 +212,11 @@ def calc_thermal_conductivity_per_structure(
         if max_steps > 0:
             if enforce_relax_symm:
                 atoms.set_constraint(FixSymmetry(atoms, symprec=relax_symprec))
-                filtered_atoms = filter_cls(atoms, mask=[True] * 3 + [False] * 3)
+                filtered_atoms = FrechetCellFilter(atoms, mask=[True] * 3 + [False] * 3)
             else:
-                filtered_atoms = filter_cls(atoms)
+                filtered_atoms = FrechetCellFilter(atoms)
 
-            optimizer = optim_cls(filtered_atoms, logfile=out_dir / "relax.log")
+            optimizer = ase.optimize.FIRE(filtered_atoms, logfile=out_dir / "relax.log")
             optimizer.run(fmax=fmax, steps=max_steps)
 
             step_count = getattr(optimizer, "nsteps", None)  # Get optimizer step count
