@@ -219,9 +219,12 @@ def prepare_structure_series(
     # Shift energies so the equilibrium value (scale closest to 1.0) is zero
     # eq_idx = int(np.argmin(np.abs(scales - 1.0)))
     # shifted_energies = energies - energies[eq_idx]
+    finite = np.isfinite(energies)
+    if not finite.any():
+        return np.array([]), np.array([]), np.array([]), np.array([])
     shifted_energies = (
-        energies - energies[np.isfinite(energies)][-1]
-    )  # Shift by the last energy value (largest volume)
+        energies - energies[finite][-1]
+    )  # Shift by the last finite energy value (largest volume)
 
     return volumes, shifted_energies, pressures, scales
 
