@@ -208,7 +208,7 @@ def prepare_structure_series(
     # eq_idx = int(np.argmin(np.abs(scales - 1.0)))
     # shifted_energies = energies - energies[eq_idx]
     shifted_energies = (
-        energies - energies[-1]
+        energies - energies[np.isfinite(energies)][-1]
     )  # Shift by the last energy value (largest volume)
 
     return volumes, shifted_energies, pressures, scales
@@ -257,6 +257,14 @@ def compute_structure_metrics(
         Dictionary of metrics, or None if insufficient data.
     """
     volumes, shifted_energies, pressures, scales = prepare_structure_series(df_struct)
+    if volumes.size < 3:
+        return None
+
+    # Drop points where the energy or pressure evaluation failed
+    valid = np.isfinite(shifted_energies) & np.isfinite(pressures)
+    volumes, shifted_energies, pressures, scales = (
+        arr[valid] for arr in (volumes, shifted_energies, pressures, scales)
+    )
     if volumes.size < 3:
         return None
 
