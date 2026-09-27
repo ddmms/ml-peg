@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 import json
 from pathlib import Path
+from shutil import copyfile
 
 from ase.formula import Formula
 import numpy as np
@@ -26,6 +27,16 @@ OUT_PATH = APP_ROOT / "data" / "physicality" / "compression"
 CURVE_PATH = OUT_PATH / "curves"
 FIGURE_PATH = OUT_PATH / "figures"
 
+
+def _copy_mock_trajectories() -> None:
+    """Copy complete mock compression trajectories into the app assets."""
+    source_path = CALC_PATH / "mock" / "compression"
+    destination_path = OUT_PATH / "mock"
+    destination_path.mkdir(parents=True, exist_ok=True)
+    for trajectory_path in source_path.glob("*.xyz"):
+        copyfile(trajectory_path, destination_path / trajectory_path.name)
+
+
 # Save per-structure element lists (and labels) for app filtering
 INFO = get_struct_info(
     calc_path=CALC_PATH,
@@ -35,6 +46,7 @@ INFO = get_struct_info(
     write_structs=False,
     out_path=OUT_PATH,
 )
+_copy_mock_trajectories()
 
 # Palette for overlaid structure curves
 _PALETTE = [
@@ -508,17 +520,19 @@ def _build_formula_figures(model_name: str, frame: pd.DataFrame) -> None:
                 continue
 
             color = _PALETTE[idx % len(_PALETTE)]
+            customdata = [[energy, struct_label] for energy in energies]
             fig.add_trace(
                 go.Scatter(
                     x=scales,
                     y=_symlog(energies),
-                    mode="lines",
+                    mode="lines+markers",
                     name=struct_label,
                     line={"color": color},
                     marker={"size": 5, "color": color},
-                    customdata=energies,
+                    customdata=customdata,
                     hovertemplate=(
-                        "scale: %{x:.3f}<br>E/atom: %{customdata:.4f} eV<extra></extra>"
+                        "scale: %{x:.3f}<br>"
+                        "E/atom: %{customdata[0]:.4f} eV<extra></extra>"
                     ),
                 )
             )
