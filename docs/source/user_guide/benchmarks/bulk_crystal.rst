@@ -655,12 +655,13 @@ A scalar relative error :math:`e` is mapped to
 and surface energies.
 
 GSFE and traction curves compare their model and DFT interpolants over the common
-domain. Their score combines relative integrated absolute error (50%), relative
-peak-height error (30%), and peak-location error (20%) through a root-mean-square
-penalty. Integrated and peak-height errors reach their maximum penalty at 30%; the
-location cutoffs are 0.10 Burgers vectors for GSFE and 0.30 Å for traction. Missing
-curve coverage is penalised. The Bain curve uses the same integrated-error cutoff,
-with a separate 50% cutoff for its FCC endpoint.
+domain. GSFE scores combine relative integrated absolute error (62.5%) and relative
+peak-height error (37.5%) through a root-mean-square penalty. Traction scores combine
+relative integrated absolute error (50%), relative peak-height error (30%), and
+peak-location error (20%) through the same type of penalty. Integrated and
+peak-height errors reach their maximum penalty at 30%; the peak-location cutoff for
+traction is 0.30 Å. Missing curve coverage is penalised. The Bain curve uses the same
+integrated-error cutoff, with a separate 50% cutoff for its FCC endpoint.
 
 Component penalties are combined by weighted root mean square within each group.
 The dashboard then uses ML-PEG's standard weighted mean of the four group scores for

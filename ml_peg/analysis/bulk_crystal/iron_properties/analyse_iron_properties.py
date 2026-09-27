@@ -62,7 +62,6 @@ SCALAR_BAD_ERROR = {
 SURFACE_BAD_ERROR = 0.20
 CURVE_BAD_ERROR = 0.30
 BAIN_ENDPOINT_BAD_ERROR = 0.50
-GSFE_LOCATION_BAD = 0.10
 TS_LOCATION_BAD = 0.30
 
 CURVE_FILES = {
@@ -428,10 +427,10 @@ def _curve_score(
     x_column: str,
     y_column: str,
     domain: tuple[float, float],
-    location_bad: float,
+    location_bad: float | None = None,
 ) -> dict[str, float]:
     """
-    Score a curve using integrated, peak, and peak-location errors.
+    Score a curve using integrated and peak errors, optionally peak location.
 
     Parameters
     ----------
@@ -446,7 +445,8 @@ def _curve_score(
     domain
         Scoring-domain bounds.
     location_bad
-        Peak-location error mapped to a unit penalty.
+        Peak-location error mapped to a unit penalty. If None, omit its penalty
+        and renormalize the integrated and peak-height weights to 62.5% and 37.5%.
 
     Returns
     -------
@@ -494,20 +494,20 @@ def _curve_score(
         peak_error = abs(model_peak - reference_peak) / abs(reference_peak)
         location_error = abs(model_location - reference_location)
         peak_penalty = _penalty(peak_error, CURVE_BAD_ERROR)
-        location_penalty = _penalty(location_error, location_bad)
     else:
         model_peak = float("nan")
         model_location = float("nan")
         peak_error = float("nan")
         location_error = float("nan")
         peak_penalty = 1.0
-        location_penalty = 1.0
 
-    score = 1 - float(
-        np.sqrt(
-            0.50 * iae_penalty**2 + 0.30 * peak_penalty**2 + 0.20 * location_penalty**2
-        )
-    )
+    squared_penalty = 0.50 * iae_penalty**2 + 0.30 * peak_penalty**2
+    weight_sum = 0.80
+    if location_bad is not None:
+        location_penalty = _penalty(location_error, location_bad)
+        squared_penalty += 0.20 * location_penalty**2
+        weight_sum += 0.20
+    score = 1 - float(np.sqrt(squared_penalty / weight_sum))
     return {
         "score": score,
         "relative_iae": relative_iae,
@@ -796,7 +796,6 @@ def compute_group_scores(
             "displacement_fraction",
             "sfe_J_per_m2",
             (0.0, 1.0),
-            GSFE_LOCATION_BAD,
         )
         slip_details.append(
             _curve_detail(
@@ -819,7 +818,7 @@ def compute_group_scores(
             "separation",
             "traction",
             (0.0, 4.0),
-            TS_LOCATION_BAD,
+            location_bad=TS_LOCATION_BAD,
         )
         cleavage_details.append(
             _curve_detail(
