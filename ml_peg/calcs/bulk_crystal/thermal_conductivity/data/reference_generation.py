@@ -28,6 +28,8 @@ MAT_ID_FILE = DATA_PATH / "mat_id-phonondb.txt"
 STRUCTURE_FILE = DATA_PATH / "phononDB-PBE-structures.extxyz"
 SCRAPED_YAMLS_FILE = PH3_PARAMS_PATH / "scraped_yamls.txt"
 
+PHONONDB_COMMIT = "8cabbe0aee3dde48a19f1235864b0d3ab5cb9330"
+
 SCRAPE = False
 
 FAST_ONLY = True
@@ -180,7 +182,10 @@ def scrape_phono3py_data(
         A tuple containing a list of YAML strings and a corresponding list of material
         names.
     """
-    raw_url = "https://raw.githubusercontent.com/atztogo/phonondb/refs/heads/main/mdr/phono3py_103compounds_fd_PBE/README.md"
+    raw_url = (
+        "https://raw.githubusercontent.com/atztogo/phonondb/"
+        f"{PHONONDB_COMMIT}/mdr/phono3py_103compounds_fd_PBE/README.md"
+    )
     params_link_regex = r"\[\s*phono3py_params\.yaml\.xz\s*\]\((https?://[^)\s]+)\)"
     name_regex = r"(?m)^\|\s*[A-Za-z0-9]+-([A-Z][a-z]?(?:[A-Z][a-z]?|\d+)*)\s*\|"
 

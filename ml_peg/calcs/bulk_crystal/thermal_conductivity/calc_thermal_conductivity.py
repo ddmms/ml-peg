@@ -11,8 +11,8 @@ See https://arxiv.org/abs/2408.00755 for details.
 from __future__ import annotations
 
 from copy import deepcopy
+import os
 from pathlib import Path
-import sys
 import traceback
 from typing import Any
 import warnings
@@ -34,21 +34,6 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
-
-if len(sys.argv) >= 3:
-    try:
-        PARALLEL_TASK_ID = int(sys.argv[1])
-        PARALLEL_TASK_NUM = int(sys.argv[2])
-    except ValueError:
-        print(
-            "Could not parse parallel task arguments, running in serial.",
-            file=sys.stderr,
-        )
-        PARALLEL_TASK_ID = 0
-        PARALLEL_TASK_NUM = 1
-else:
-    PARALLEL_TASK_ID = 0
-    PARALLEL_TASK_NUM = 1
 
 
 max_steps = 300
@@ -79,9 +64,27 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Name of model use and model to get calculator.
+
+    Notes
+    -----
+    Set ``ML_PEG_TASK_ID`` and ``ML_PEG_TASK_COUNT`` to split the structures
+    between parallel tasks. Task IDs are zero-based. Both variables default to
+    a single serial task.
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
+
+    try:
+        task_id = int(os.environ.get("ML_PEG_TASK_ID", "0"))
+        task_count = int(os.environ.get("ML_PEG_TASK_COUNT", "1"))
+    except ValueError as exc:
+        raise ValueError(
+            "ML_PEG_TASK_ID and ML_PEG_TASK_COUNT must be integers."
+        ) from exc
+    if task_count < 1:
+        raise ValueError("ML_PEG_TASK_COUNT must be at least 1.")
+    if not 0 <= task_id < task_count:
+        raise ValueError("ML_PEG_TASK_ID must be between 0 and ML_PEG_TASK_COUNT - 1.")
 
     # Download dataset
     thermal_conductivity_dir = (
@@ -97,7 +100,7 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
         format="extxyz",
         index=":",
     )
-    atoms_list = atoms_list[PARALLEL_TASK_ID - 0 :: PARALLEL_TASK_NUM]
+    atoms_list = atoms_list[task_id::task_count]
 
     kappa_dicts = {}
     fast_kappa_dicts = {}
@@ -142,7 +145,7 @@ def test_thermal_conductivity(mlip: tuple[str, Any]) -> None:
             tc.dict_to_hdf5(fast_results_dict, f)
         fast_kappa_dicts[structure_id] = fast_results_dict
 
-    if PARALLEL_TASK_NUM == 1:
+    if task_count == 1:
         if not FAST_ONLY:
             df = pd.DataFrame(kappa_dicts).T
             # material_id is already a column, so drop the redundant index.
