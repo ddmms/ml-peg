@@ -34,3 +34,8 @@ metrics:
     bad: -1.0
     unit: null
     tooltip: Spearman correlation between energy and volume in the expanded region, defined as V > V(Emin) so this metric is polluted when Holes are present.
+  Failed fraction:
+    good: 0.0
+    bad: 0.1
+    unit: null
+    tooltip: Average fraction of scale factors per structure at which the energy or pressure evaluation failed (NaN), e.g. due to neighbour caps or out-of-memory errors. Failed points are excluded from all other metrics.
