@@ -219,19 +219,24 @@ the transition state.
 Metrics
 -------
 
+The reactant and product structures of each reaction are first minimised for up
+to 50 steps each. A NEB simulation with 10 images is then run between the
+minimised endpoints for up to 500 steps, using the provided transition state
+structure to build the initial path. This is followed by up to a further 500
+climbing-image NEB steps from the resulting images.
+
 1. Convergence rate
 
-Each reaction is run as a NEB simulation with 10 images for up to 500 steps,
-starting from the provided reactant, product and transition state structures. A
-reaction counts as converged when the maximum final NEB force falls below the
-convergence threshold. The reported metric is the fraction of the 100 reactions
+A reaction counts as converged when the maximum force of the final climbing-image
+NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
 that converged; failed simulations count as not converged.
 
 Computational cost
 ------------------
 
-High: 100 NEB simulations with up to 500 steps each and 10 images per
-simulation. Days on CPU, hours on GPU
+High: 100 NEB simulations with 10 images each, each with up to 500 ordinary and
+500 climbing-image NEB steps, plus up to 50 minimisation steps for each
+endpoint. Days on CPU, hours on GPU.
 
 Data availability
 -----------------
