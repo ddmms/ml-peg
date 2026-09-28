@@ -78,9 +78,10 @@ def make_fes(data, start, end, n_bins, t):
         return bin_centers, np.full(n_bins, np.nan)
     prob = hist / total
     k = 8.314
+    temp = t / 1000
     mask = prob != 0
     f = np.full_like(prob, np.nan)
-    f[mask] = -k * t * np.log(prob[mask])
+    f[mask] = -k * temp * np.log(prob[mask])
     f -= np.nanmin(f)
     return bin_centers, f
 
@@ -369,9 +370,13 @@ def compute_fes(extxyz_file, t):
         Free energy values corresponding to 'bins'.
     """
     cutoff_h_to_heavy = 3.0
+    alt_cutoff_h_to_heavy = 5.0
+    frame_min = 14000
     frame_max = 100000
     coord = []
     for frame_idx, atoms in enumerate(iread(extxyz_file, format="extxyz")):
+        if frame_idx < frame_min:
+            continue
         if frame_idx == frame_max:
             break
         matrix, h_to_heavy, h_orphan, h_lonely = build_connectivity_matrix_coh_hh_force(
@@ -404,13 +409,28 @@ def compute_fes(extxyz_file, t):
                 heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
                     h, atoms, nl, labels
                 )
+                if heavy2 is None:
+                    alt_nl = build_h_heavy_neighborlist_simple(
+                        atoms, alt_cutoff_h_to_heavy
+                    )
+                    heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
+                        h, atoms, alt_nl, labels
+                    )
                 if molecules[labels[heavy2]]["label"] == "C1H4O0":
                     dist_heavy = atoms.get_distance(h, h_to_heavy[h], mic=True)
                     coord.append(dist_heavy - dist_heavy2)
+
             if molecules[h_mol_idx]["label"] == "C1H5O0":
                 heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
                     h, atoms, nl, labels
                 )
+                if heavy2 is None:
+                    alt_nl = build_h_heavy_neighborlist_simple(
+                        atoms, alt_cutoff_h_to_heavy
+                    )
+                    heavy2, dist_heavy2 = second_nearest_heavy_outside_molecule(
+                        h, atoms, alt_nl, labels
+                    )
                 if molecules[labels[heavy2]]["label"] == "C0H2O1":
                     dist_heavy = atoms.get_distance(h, h_to_heavy[h], mic=True)
                     coord.append(dist_heavy2 - dist_heavy)

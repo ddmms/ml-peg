@@ -39,15 +39,15 @@ class HPHTCH4H2OApp(BaseApp):
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "FEP_MAE": scatter,
-                "DF_MAE": scatter,
-                "DF#_MAE": scatter_barrier,
+                "Free Energy Profile MAE": scatter,
+                "Free Energy of reaction MAE": scatter,
+                "Free Energy barrier MAE": scatter_barrier,
             },
         )
 
         @callback(
             Output(f"{BENCHMARK_NAME}-fes-plot", "children"),
-            Input(f"{BENCHMARK_NAME}-figure", "clickdata"),
+            Input(f"{BENCHMARK_NAME}-figure", "clickData"),
         )
         def update_fes_plot(clickdata):
             """

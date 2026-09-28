@@ -27,8 +27,18 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+def get_starting_frames() -> list[Path]:
+    """Return the starting structures for the benchmark."""
+
+
+STARTING_FRAMES = get_starting_frames()
+
+
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=MODELS.keys())
-def test_md(mlip: tuple[str, Any]) -> None:
+def test_md(
+    mlip: tuple[str, Any],
+    structure,
+) -> None:
     """
     Run a high pressure high temperature molecular dynamics simulations.
 
@@ -39,12 +49,15 @@ def test_md(mlip: tuple[str, Any]) -> None:
     ----------
     mlip
         Tuple containing the model name and the corresponding model object.
+    structure
+        Name of the structure to simulate, corresponding to the input structure
+        filename stem.
 
     Notes
     -----
-    Generate a trajectory as a .extxyz file in the output folder,
-    together with a two log files, one for the molecular dynamics (.log)
-    and one for the optimization (.opt).
+    Generate a trajectory as a .extxyz file and the associated restart file
+    in the output folder, together with two log files, one for the
+    molecular dynamics (.log) and one for the optimization (.opt).
     """
     model_name, model = mlip
 
@@ -62,7 +75,13 @@ def test_md(mlip: tuple[str, Any]) -> None:
         / "HPHT_CH4_H2O"
     )
     starting_frames_files = sorted(starting_frames_dir.glob("*.extxyz"))
-    for starting_frame in starting_frames_files:
+
+    if structure is None:
+        structures = starting_frames_files
+    else:
+        structures = [path for path in starting_frames_files if path.stem == structure]
+
+    for starting_frame in structures:
         structure_name = starting_frame.stem
         print(f"Actual structure : {structure_name}")
         traj_path = write_dir / f"{structure_name}.extxyz"
@@ -86,7 +105,7 @@ def test_md(mlip: tuple[str, Any]) -> None:
                 opt.run(fmax=0.2)
             except Exception as exc:
                 warnings.warn(
-                    f"Geomoetry optimization failed for {structure_name}: {exc}",
+                    f"Geometry optimization failed for {structure_name}: {exc}",
                     stacklevel=2,
                 )
                 continue
@@ -122,17 +141,19 @@ def test_md(mlip: tuple[str, Any]) -> None:
 
         dyn.attach(
             write_frame,
-            interval=1,
-            args=(traj_path, restart_path, atoms),
+            1,
+            traj_path,
+            restart_path,
+            atoms,
         )
         remaining_steps = 100000 - nsteps_done
         if remaining_steps <= 0:
             print(f"{structure_name}: trajectory already completed.")
             continue
+        print(f"{structure_name}: {remaining_steps} steps remaining, continuing MD.")
         try:
             dyn.run(remaining_steps)
+            print("MD finished", flush=True)
         except Exception as exc:
-            warnings.warn(
-                f"Molecular Dynamics failed for {structure_name}: {exc}", stacklevel=2
-            )
+            warnings.warn(f"MD failed for {structure_name}: {exc}", stacklevel=2)
             continue
