@@ -32,7 +32,8 @@ def regression_results() -> pd.DataFrame:
     """Run relaxation on first N test structures for all pressures."""
     models = load_models(current_models)
     model = models[MODEL_NAME]
-    calc = model.get_calculator()
+    # Use lower precision than real calculation
+    calc = model.get_calculator(precision="low")
 
     all_results = []
     for pressure_gpa, pressure_label in zip(PRESSURES, PRESSURE_LABELS, strict=False):
