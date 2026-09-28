@@ -14,13 +14,17 @@ DOI: 10.1038/s41597-020-0460-4
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import NEBModelOutput
+from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
+    NEB_DATASET_FILENAME,
+    NEBModelOutput,
+)
 from mlipaudit.io import write_model_output_to_disk
 
 from ml_peg.calcs.utils.mlipaudit import MlPegGrambowOrganicsBenchmark
@@ -53,9 +57,17 @@ def test_grambow_organics(mlip: tuple[str, Any]) -> None:
         filename="grambow_organics.zip",
     )
 
+    benchmark_name = MlPegGrambowOrganicsBenchmark.name
+    dataset_dir = OUT_PATH / benchmark_name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        data_input_dir / "grambow_organics" / NEB_DATASET_FILENAME,
+        dataset_dir,
+    )
+
     benchmark = MlPegGrambowOrganicsBenchmark(
         force_field=calc,
-        data_input_dir=data_input_dir,
+        data_input_dir=OUT_PATH,
         run_mode="standard",
     )
     try:
