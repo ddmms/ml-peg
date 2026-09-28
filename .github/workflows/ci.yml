@@ -53,9 +53,6 @@ jobs:
       - name: Install DPA dependencies
         run: uv sync --extra dpa
 
-      - name: Check DPA calculator import
-        run: uv run --no-sync python -c "from deepmd.calculator import DP"
-
       - name: Run DPA tests
         run: uv run --no-sync pytest tests/test_dpa_models.py
 

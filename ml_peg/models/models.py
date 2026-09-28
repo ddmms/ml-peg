@@ -170,7 +170,7 @@ class DpaCalc(SumCalc):
 
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the DeePMD ASE calculator.
 
@@ -187,8 +187,7 @@ class DpaCalc(SumCalc):
         Calculator
             Loaded DeePMD ASE calculator.
         """
-        if precision not in {"low", "high"}:
-            raise ValueError(f"Unknown precision: {precision}")
+        check_precision(precision)
 
         from deepmd.calculator import DP
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from importlib.util import find_spec
 from pathlib import Path
 import sys
 from types import ModuleType
@@ -23,7 +23,6 @@ DPA_MODELS = (
     "dpa-4-plus-omat",
 )
 DPA3_DATASETS = ["OpenLAM-v1", "OMAT", "MPtrj", "OC20", "OC22", "ODAC23", "SPICE2"]
-RUN_DPA_MODEL_TESTS = os.environ.get("ML_PEG_RUN_DPA_MODEL_TESTS") == "1"
 
 
 class _FakeDP:
@@ -31,6 +30,16 @@ class _FakeDP:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
+
+
+def test_dpa_calculator_imports_when_installed():
+    """Check the DeePMD calculator import when the DPA extra is installed."""
+    if find_spec("deepmd") is None:
+        pytest.skip("DPA extra is not installed")
+
+    from deepmd.calculator import DP
+
+    assert DP is not None
 
 
 @pytest.fixture
@@ -120,14 +129,10 @@ def test_dpa_rejects_unknown_precision(fake_deepmd):
     """The DPA wrapper rejects unknown ML-PEG precision choices."""
     model = DpaCalc(kwargs={"model": "checkpoint.pt"})
 
-    with pytest.raises(ValueError, match="Unknown precision"):
+    with pytest.raises(ValueError, match="Invalid precision"):
         model.get_calculator(precision="medium")
 
 
-@pytest.mark.skipif(
-    not RUN_DPA_MODEL_TESTS,
-    reason="set ML_PEG_RUN_DPA_MODEL_TESTS=1 to run pretrained DPA checks",
-)
 @pytest.mark.parametrize("model_name", DPA_MODELS)
 def test_registered_dpa_model_evaluates_in_native_float32(model_name):
     """Run a real checkpoint and inspect its compute dtype and finite outputs."""
