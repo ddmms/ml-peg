@@ -116,7 +116,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -182,7 +182,7 @@ class MatterSimCalc(GenericASECalc):
 
         MatterSimCalculator.__setstate__ = __setstate__
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -216,7 +216,7 @@ class VivaceCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -257,7 +257,7 @@ class OrbCalc(SumCalc):
     default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -340,7 +340,7 @@ class FairChemCalc(SumCalc):
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -426,7 +426,7 @@ class MockCalc(SumCalc):
 class UPETCalc(GenericASECalc):
     """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -459,12 +459,15 @@ class SevenNetCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Currently unused. Once supported, this will correspond to the level of
+            precision to evaluate the model.
         **kwargs
             Additional keyword arguments (ignored).
 
@@ -487,7 +490,7 @@ class GraceCalc(GenericASECalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
