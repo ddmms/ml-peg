@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
@@ -116,7 +116,9 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -182,7 +184,9 @@ class MatterSimCalc(GenericASECalc):
 
         MatterSimCalculator.__setstate__ = __setstate__
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -216,7 +220,9 @@ class VivaceCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -257,7 +263,9 @@ class OrbCalc(SumCalc):
     default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -340,7 +348,9 @@ class FairChemCalc(SumCalc):
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -426,7 +436,9 @@ class MockCalc(SumCalc):
 class UPETCalc(GenericASECalc):
     """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -459,7 +471,9 @@ class SevenNetCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -490,7 +504,9 @@ class GraceCalc(GenericASECalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, *, precision, **kwargs) -> Calculator:
+    def get_calculator(
+        self, *, precision: Literal["low", "high"], **kwargs
+    ) -> Calculator:
         """
         Prepare and load the calculator.
 
