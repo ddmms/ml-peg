@@ -6,6 +6,7 @@ from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     ReactivityBenchmark,
+    RingPlanarityBenchmark,
     TautomersBenchmark,
 )
 
@@ -37,6 +38,10 @@ class MlPegConformerSelectionBenchmark(
 
 class MlPegGrambowBarrierHeightsBenchmark(MlPegAuditBenchmark, ReactivityBenchmark):
     """``ReactivityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegRingPlanarityBenchmark(MlPegAuditBenchmark, RingPlanarityBenchmark):
+    """``RingPlanarityBenchmark`` wired up for ml-peg's ASE calculators."""
 
 
 class MlPegTautomersBenchmark(MlPegAuditBenchmark, TautomersBenchmark):
