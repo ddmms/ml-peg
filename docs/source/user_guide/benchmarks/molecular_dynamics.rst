@@ -121,7 +121,10 @@ Input structures:
 
 Reference data:
 
-* Experimental oxygen-oxygen radial distribution function.
+* Experimental oxygen-oxygen radial distribution function from: Skinner, L. B.
+  et al. Benchmark oxygen-oxygen pair-distribution function of ambient water
+  from x-ray diffraction measurements with a wide Q-range.
+  J. Chem. Phys. 138, 074506 (2013). https://doi.org/10.1063/1.4790861
 
 
 Water ethanol density curves
