@@ -12,16 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 from typing import Any
-from warnings import warn
 
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.benchmarks.folding_stability.folding_stability import (
-    FoldingStabilityModelOutput,
-)
 from mlipaudit.io import write_model_output_to_disk
-from mlipaudit.utils.biomolecules import STRUCTURE_NAMES
 
 from ml_peg.calcs.utils.mlipaudit import MlPegFoldingStabilityBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -78,20 +73,7 @@ def test_protein_folding_stability(mlip: tuple[str, Any]) -> None:
         data_input_dir=OUT_PATH,
         run_mode="standard",
     )
-    try:
-        benchmark.run_model()
-    except Exception as exc:
-        warn(
-            f"Error running protein folding stability benchmark for "
-            f"{model_name}: {exc}",
-            stacklevel=2,
-        )
-        # Structures with a ``None`` simulation state are treated as failed by
-        # analyze(), so this yields a failed result for every structure.
-        benchmark.model_output = FoldingStabilityModelOutput(
-            structure_names=list(STRUCTURE_NAMES),
-            simulation_states=[None] * len(STRUCTURE_NAMES),
-        )
+    benchmark.run_model()
 
     write_model_output_to_disk(
         MlPegFoldingStabilityBenchmark.name,
