@@ -33,15 +33,8 @@ class PolymerDensitiesApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        struct_dir_name = next(
-            (m for m in MODELS if any((DATA_PATH / m).glob("*.xyz"))),
-            None,
-        )
         structs = [
-            f"/assets/molecular_dynamics/polymers/{struct_dir_name}/{label}.xyz"
-            if struct_dir_name
-            and (DATA_PATH / struct_dir_name / f"{label}.xyz").exists()
-            else None
+            f"/assets/molecular_dynamics/polymers/reference/{label}.xyz"
             for label in polymer_labels()
         ]
 

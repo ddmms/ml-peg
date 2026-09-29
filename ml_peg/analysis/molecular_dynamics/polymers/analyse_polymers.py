@@ -5,7 +5,6 @@ from __future__ import annotations
 import functools
 import logging
 import pathlib
-from typing import Any
 
 import ase.io
 import ase.io.trajectory as ase_traj
@@ -52,7 +51,7 @@ POLYMER_SETS: dict[str, frozenset[str]] = {
     ),
 }
 OUT_PATH = app.APP_ROOT / "data" / "molecular_dynamics" / "polymers"
-LOCAL_STRUCTURES_DIR = calcs.CALCS_ROOT / "molecular_dynamics" / "polymers" / "polymers"
+REFERENCE_STRUCTURES_DIR = CALC_PATH / "reference"
 TRAJECTORY_MODEL_NAMES = tuple(
     model_name
     for model_name in MODELS
@@ -88,30 +87,6 @@ def load_polymer_table() -> pd.DataFrame:
     """
     df = pd.read_csv(DATA_CSV, na_values=["NaN"], encoding="utf-8", comment="%")
     return df.set_index("id").sort_index()
-
-
-@functools.cache
-def struct_info() -> dict[str, Any]:
-    """
-    Read the polymer structures and write out their info for element filtering.
-
-    Deferred rather than evaluated at import so that reading every structure file
-    happens when the benchmark runs, not during pytest collection.
-
-    Returns
-    -------
-    dict[str, Any]
-        Info for all polymer structures.
-    """
-    return analysis_utils.get_struct_info(
-        calc_path=LOCAL_STRUCTURES_DIR.parent,
-        model_name=LOCAL_STRUCTURES_DIR.name,
-        glob_pattern="*.xyz",
-        include_filenames=True,
-        write_info=True,
-        write_structs=False,
-        out_path=OUT_PATH,
-    )
 
 
 def labels() -> list[str]:
@@ -168,7 +143,7 @@ def _write_polymer_structure(
         Final trajectory frame to write. If None, write the input structure.
     """
     if atoms is None:
-        input_structure = LOCAL_STRUCTURES_DIR / f"{poly_id}.xyz"
+        input_structure = REFERENCE_STRUCTURES_DIR / f"{poly_id}.xyz"
         if not input_structure.exists():
             return
         atoms = ase.io.read(input_structure)
@@ -353,4 +328,12 @@ def test_polymers(metrics: dict[str, dict[str, float]]) -> None:  # noqa: PT019
     metrics
         Per-metric, per-model values produced by :func:`metrics`.
     """
-    struct_info()
+    analysis_utils.get_struct_info(
+        calc_path=REFERENCE_STRUCTURES_DIR.parent,
+        model_name=REFERENCE_STRUCTURES_DIR.name,
+        glob_pattern="*.xyz",
+        include_filenames=True,
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

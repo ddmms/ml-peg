@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import pathlib
+import shutil
 import typing as ty
 
 import ase
@@ -19,6 +21,7 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 
 OUT_PATH = pathlib.Path(__file__).parent / "outputs"
+REFERENCE_PATH = OUT_PATH / "reference"
 
 REFERENCE_TEMP_K: ty.Final[float] = 300.0
 REFERENCE_PRESSURE_ATM: ty.Final[float] = 1.0
@@ -44,6 +47,28 @@ def _load_polymer_table() -> pd.DataFrame:
 
 
 POLYMER_TABLE = _load_polymer_table()
+
+
+def _copy_reference_structures(input_dir: pathlib.Path) -> None:
+    """
+    Copy every input structure into the shared reference directory.
+
+    Each file is written via a process-unique temporary name and then moved into
+    place, so concurrent jobs cannot leave a partial file behind.
+
+    Parameters
+    ----------
+    input_dir
+        Downloaded directory of input structures.
+    """
+    REFERENCE_PATH.mkdir(parents=True, exist_ok=True)
+    for input_xyz_path in input_dir.glob("*.xyz"):
+        reference_xyz = REFERENCE_PATH / input_xyz_path.name
+        if reference_xyz.exists():
+            continue
+        tmp = reference_xyz.with_suffix(f".xyz.{os.getpid()}.tmp")
+        shutil.copyfile(input_xyz_path, tmp)
+        tmp.replace(reference_xyz)
 
 
 @pytest.mark.very_slow
@@ -77,6 +102,7 @@ def test_polymer_densities(
         key="inputs/molecular_dynamics/polymers/polymers.zip",
     )
     input_xyz_path = s3_dir / "polymers" / f"{poly_id}.xyz"
+    _copy_reference_structures(s3_dir / "polymers")
 
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
