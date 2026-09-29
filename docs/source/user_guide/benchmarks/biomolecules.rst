@@ -12,7 +12,10 @@ Performance in keeping small proteins folded during molecular dynamics. For each
 protein, an energy minimisation is run from the native (folded) reference
 conformation, an NVT molecular dynamics simulation at 300 K is seeded with the
 minimised coordinates, and the ability of the model to retain the fold is measured
-along the trajectory. The benchmark uses a small set of well-characterised proteins
+along the trajectory. If the energy minimisation of a protein fails or is unstable,
+the MD is instead run from the unminimised input structure.
+
+The benchmark uses a small set of well-characterised proteins
 (chignolin, tryptophan cage, and a capped villin headpiece) with experimental
 reference structures. Each protein is solvated in a water box, sized to
 accommodate the protein, giving systems of 1068 (chignolin), 2075 (tryptophan
