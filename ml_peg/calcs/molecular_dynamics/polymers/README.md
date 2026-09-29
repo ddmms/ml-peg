@@ -30,14 +30,10 @@ Starting structures are pulled from S3
 
 ```bash
 # Full protocol (~2.06 ns; hours on a GPU)
-uv run pytest -v -s \
-    ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
-    --poly-id PS --models mace-mp-0a
+ml_peg calc --test polymers --models mace-mp-0a --poly-id PS
 
 # Smoke test (~10 ps; minutes on a GPU)
-uv run pytest -v -s \
-    ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
-    --poly-id PS --models mace-mp-0a --time-prefactor 0.005
+ml_peg calc --test polymers --models mace-mp-0a --poly-id PS --time-prefactor 0.005
 ```
 
 Outputs land in `outputs/<model>/<poly_id>/` (one trajectory per stage,
