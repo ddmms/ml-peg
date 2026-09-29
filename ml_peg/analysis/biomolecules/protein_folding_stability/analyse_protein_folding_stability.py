@@ -39,6 +39,13 @@ BENCHMARK_DATA_DIR = (
 CALC_PATH = CALCS_ROOT / "biomolecules" / "protein_folding_stability" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "biomolecules" / "protein_folding_stability"
 
+# Display labels for each structure, used to name the per-structure metrics.
+STRUCTURE_LABELS = {
+    "chignolin_1uao_xray": "chignolin",
+    "trp_cage_2jof_xray": "trp-cage",
+    "villin_capped_solvated": "villin",
+}
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
@@ -143,17 +150,11 @@ def struct_info() -> dict:
 
 
 @pytest.fixture
-@plot_scatter(
-    title="RMSD from reference structure along trajectory",
-    x_label="Frame",
-    y_label="RMSD / Å",
-    show_line=True,
-    show_markers=False,
-    filename=str(OUT_PATH / "figure_rmsd_trajectory.json"),
-)
-def rmsd_trajectories(analyze_results) -> dict[str, tuple[list, list]]:
+def rmsd_trajectories(analyze_results) -> dict[str, dict[str, tuple[list, list]]]:
     """
-    Get the RMSD trajectory averaged across structures for each model.
+    Get the RMSD trajectory of each structure for each model, and plot them.
+
+    One line plot is saved per structure.
 
     Parameters
     ----------
@@ -162,31 +163,38 @@ def rmsd_trajectories(analyze_results) -> dict[str, tuple[list, list]]:
 
     Returns
     -------
-    dict[str, tuple[list, list]]
-        Per-model ``(frame, mean RMSD)`` profiles across the trajectory.
+    dict[str, dict[str, tuple[list, list]]]
+        Per-structure mapping of model name to ``(frame, RMSD)`` profiles.
     """
-    results = {}
+    trajectories = {structure_name: {} for structure_name in STRUCTURE_NAMES}
     for model_name, result in analyze_results.items():
-        if result.failed:
-            continue
-        trajectories = [
-            molecule.rmsd_trajectory
-            for molecule in result.molecules
-            if not molecule.failed and molecule.rmsd_trajectory is not None
-        ]
-        if not trajectories:
-            continue
-        num_frames = min(len(traj) for traj in trajectories)
-        stacked = np.array([traj[:num_frames] for traj in trajectories])
-        mean_rmsd = stacked.mean(axis=0)
-        results[model_name] = (list(range(num_frames)), mean_rmsd.tolist())
-    return results
+        for molecule in result.molecules:
+            if molecule.failed or molecule.rmsd_trajectory is None:
+                continue
+            trajectories[molecule.structure_name][model_name] = (
+                list(range(len(molecule.rmsd_trajectory))),
+                molecule.rmsd_trajectory,
+            )
+
+    for structure_name, structure_trajectories in trajectories.items():
+        plot_scatter(
+            title=f"RMSD from reference structure ({STRUCTURE_LABELS[structure_name]})",
+            x_label="Frame",
+            y_label="RMSD / Å",
+            show_line=True,
+            show_markers=False,
+            filename=str(OUT_PATH / f"figure_rmsd_trajectory_{structure_name}.json"),
+        )(lambda data=structure_trajectories: data)()
+
+    return trajectories
 
 
 @pytest.fixture
-def get_avg_rmsd(analyze_results) -> dict[str, float]:
+def get_rmsd(analyze_results) -> dict[str, dict[str, float]]:
     """
-    Get the average RMSD for each model.
+    Get the average RMSD of each structure for each model.
+
+    Structures that failed or are missing from the results are set to NaN.
 
     Parameters
     ----------
@@ -195,13 +203,27 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        Average RMSD from the reference structure, averaged across molecules.
+    dict[str, dict[str, float]]
+        Per-structure metric name mapped to the trajectory-averaged RMSD of each
+        model.
     """
-    return {
-        model_name: (result.avg_rmsd if result.avg_rmsd is not None else np.nan)
-        for model_name, result in analyze_results.items()
+    rmsd = {
+        f"RMSD ({STRUCTURE_LABELS[structure_name]})": {}
+        for structure_name in STRUCTURE_NAMES
     }
+    for model_name, result in analyze_results.items():
+        molecules = {molecule.structure_name: molecule for molecule in result.molecules}
+        for structure_name in STRUCTURE_NAMES:
+            molecule = molecules.get(structure_name)
+            value = (
+                molecule.avg_rmsd
+                if molecule is not None
+                and not molecule.failed
+                and molecule.avg_rmsd is not None
+                else np.nan
+            )
+            rmsd[f"RMSD ({STRUCTURE_LABELS[structure_name]})"][model_name] = value
+    return rmsd
 
 
 @pytest.fixture
@@ -212,23 +234,25 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
     weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(rmsd_trajectories, get_avg_rmsd: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    rmsd_trajectories, get_rmsd: dict[str, dict[str, float]]
+) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
     rmsd_trajectories
-        Per-model averaged RMSD trajectories (triggers the RMSD line plot).
-    get_avg_rmsd
-        Average RMSD values for all models.
+        Per-structure RMSD trajectories (triggers the RMSD line plots).
+    get_rmsd
+        Per-structure average RMSD values for all models.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {"RMSD": get_avg_rmsd}
+    return get_rmsd
 
 
 def test_protein_folding_stability(metrics: dict[str, dict], struct_info: dict) -> None:

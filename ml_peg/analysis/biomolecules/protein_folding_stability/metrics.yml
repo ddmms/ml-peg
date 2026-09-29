@@ -1,8 +1,22 @@
 metrics:
-  RMSD:
+  RMSD (chignolin):
     good: 0.0
     bad: 2.0
     unit: Å
     weight: 1
-    tooltip: Root mean square deviation of the C-alpha atoms from the native reference structure, averaged over the trajectory and across all proteins. Lower is better.
+    tooltip: Root mean square deviation of the C-alpha atoms of chignolin from the native reference structure, averaged over the trajectory. Lower is better.
+    level_of_theory: Experimental
+  RMSD (trp-cage):
+    good: 0.0
+    bad: 2.0
+    unit: Å
+    weight: 1
+    tooltip: Root mean square deviation of the C-alpha atoms of the tryptophan cage from the native reference structure, averaged over the trajectory. Lower is better.
+    level_of_theory: Experimental
+  RMSD (villin):
+    good: 0.0
+    bad: 2.0
+    unit: Å
+    weight: 1
+    tooltip: Root mean square deviation of the C-alpha atoms of the capped villin headpiece from the native reference structure, averaged over the trajectory. Lower is better.
     level_of_theory: Experimental

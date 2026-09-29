@@ -13,6 +13,12 @@ from ml_peg.app.utils.load import read_plot
 BENCHMARK_NAME = "ProteinFoldingStability"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/biomolecules.html#protein-folding-stability"
 DATA_PATH = APP_ROOT / "data" / "biomolecules" / "protein_folding_stability"
+# Display labels for each structure, matching the per-structure metric names.
+STRUCTURE_LABELS = {
+    "chignolin_1uao_xray": "chignolin",
+    "trp_cage_2jof_xray": "trp-cage",
+    "villin_capped_solvated": "villin",
+}
 
 
 class ProteinFoldingStabilityApp(BaseApp):
@@ -20,15 +26,18 @@ class ProteinFoldingStabilityApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_rmsd_trajectory.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        scatter_plots = {
+            f"RMSD ({label})": read_plot(
+                DATA_PATH / f"figure_rmsd_trajectory_{structure_name}.json",
+                id=f"{BENCHMARK_NAME}-{structure_name}-figure",
+            )
+            for structure_name, label in STRUCTURE_LABELS.items()
+        }
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"RMSD": scatter},
+            column_to_plot=scatter_plots,
         )
 
 

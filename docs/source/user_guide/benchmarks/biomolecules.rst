@@ -21,14 +21,18 @@ cage), and 3441 (villin headpiece) atoms.
 Metrics
 -------
 
-1. RMSD
+1. RMSD (chignolin)
+2. RMSD (trp-cage)
+3. RMSD (villin)
 
-The root mean square deviation (RMSD) of the C-alpha atoms from the native reference
-structure is computed for each frame of the trajectory, then averaged over the
-trajectory and across all proteins. A lower RMSD indicates the fold is retained.
+For each protein, the root mean square deviation (RMSD) of the C-alpha atoms from
+the native reference structure is computed for each frame of the trajectory, then
+averaged over the trajectory. A lower RMSD indicates the fold is retained. Each
+protein is reported as a separate, equally weighted metric, so a model that fails
+to simulate any of the proteins has no overall score.
 
-A line plot shows the RMSD from the reference structure along the trajectory,
-averaged across the proteins, for each model.
+For each protein, a line plot shows the RMSD from the reference structure along the
+trajectory for each model.
 
 Computational cost
 ------------------
