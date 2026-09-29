@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+from unittest.mock import patch
 
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
@@ -18,6 +19,7 @@ from mlipaudit.benchmarks import (
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     NudgedElasticBandBenchmark,
 )
+from mlipaudit.benchmarks.nve_energy_conservation import nve_energy_conservation
 
 
 class MlPegAuditBenchmark:
@@ -93,4 +95,19 @@ class MlPegGrambowOrganicsBenchmark(MlPegAuditBenchmark, NudgedElasticBandBenchm
 class MlPegNVEEnergyConservationBenchmark(
     MlPegAuditBenchmark, NVEEnergyConservationBenchmark
 ):
-    """``NVEEnergyConservationBenchmark`` wired up for ml-peg."""
+    """
+    ``NVEEnergyConservationBenchmark`` wired up for ml-peg.
+
+    ``run_model`` calls ``skip_unallowed_elements`` regardless of
+    ``skip_if_elements_missing``, which raises for ASE ``Calculator`` objects, so
+    it is patched out here.
+    """
+
+    def run_model(self) -> None:
+        """Run the benchmark without the per-system element pre-check."""
+        with patch.object(
+            nve_energy_conservation,
+            "skip_unallowed_elements",
+            lambda force_field, structure_tuples: [],
+        ):
+            super().run_model()
