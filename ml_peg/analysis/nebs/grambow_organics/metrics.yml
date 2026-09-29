@@ -5,4 +5,4 @@ metrics:
     unit: null
     weight: 1
     tooltip: Fraction of NEB reaction simulations that converged below the final force threshold.
-    level_of_theory: ωB97X-D3/def2-TZVP
+    level_of_theory: null
