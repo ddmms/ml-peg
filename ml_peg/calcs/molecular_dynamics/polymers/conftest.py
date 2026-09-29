@@ -17,7 +17,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser
         Pytest argument parser injected by the framework.
     """
-    parser.addoption("--poly-id", action="store", required=True, type=str)
+    parser.addoption("--poly-id", action="store", default="PS", type=str)
     parser.addoption("--time-prefactor", action="store", default=1.0, type=float)
 
 
