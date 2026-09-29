@@ -41,11 +41,6 @@ plus a `state.json` for resumability). Failures are caught and
 `pytest.skip`'d so the rest of the matrix still runs.
 
 Polymer subsets for array jobs are listed in `resources/polymer_sets/`.
-Regenerate them with:
-
-```bash
-python -m ml_peg.calcs.molecular_dynamics.polymers.generate_polymer_sets
-```
 
 See `example_submit.slurm` for a complete Slurm array-job template.
 
