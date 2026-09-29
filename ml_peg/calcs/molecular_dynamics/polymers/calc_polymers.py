@@ -46,6 +46,7 @@ def _load_polymer_table() -> pd.DataFrame:
 POLYMER_TABLE = _load_polymer_table()
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_polymer_densities(
     mlip: tuple[str, ty.Any],
