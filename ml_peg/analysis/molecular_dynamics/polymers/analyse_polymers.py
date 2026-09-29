@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 import pathlib
+from typing import Any
 
 import ase.io
 import ase.io.trajectory as ase_traj
@@ -71,9 +73,13 @@ METRICS_CONFIG_PATH = pathlib.Path(__file__).with_name("metrics.yml")
 ) = analysis_utils.load_metrics_config(METRICS_CONFIG_PATH)  # type: ignore[misc]
 
 
-def _load_polymer_table() -> pd.DataFrame:
+@functools.cache
+def load_polymer_table() -> pd.DataFrame:
     """
     Load the experimental polymer table indexed by polymer id.
+
+    Cached so the CSV is read once per session, however many callers ask for it,
+    without reading it during pytest collection.
 
     Returns
     -------
@@ -84,17 +90,28 @@ def _load_polymer_table() -> pd.DataFrame:
     return df.set_index("id").sort_index()
 
 
-POLYMER_TABLE = _load_polymer_table()
+@functools.cache
+def struct_info() -> dict[str, Any]:
+    """
+    Read the polymer structures and write out their info for element filtering.
 
-STRUCT_INFO = analysis_utils.get_struct_info(
-    calc_path=LOCAL_STRUCTURES_DIR.parent,
-    model_name=LOCAL_STRUCTURES_DIR.name,
-    glob_pattern="*.xyz",
-    include_filenames=True,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
+    Deferred rather than evaluated at import so that reading every structure file
+    happens when the benchmark runs, not during pytest collection.
+
+    Returns
+    -------
+    dict[str, Any]
+        Info for all polymer structures.
+    """
+    return analysis_utils.get_struct_info(
+        calc_path=LOCAL_STRUCTURES_DIR.parent,
+        model_name=LOCAL_STRUCTURES_DIR.name,
+        glob_pattern="*.xyz",
+        include_filenames=True,
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )
 
 
 def labels() -> list[str]:
@@ -106,7 +123,7 @@ def labels() -> list[str]:
     list[str]
         Polymer ids from ``data.csv``, in sorted order.
     """
-    return [str(poly_id) for poly_id in POLYMER_TABLE.index]
+    return [str(poly_id) for poly_id in load_polymer_table().index]
 
 
 def _load_density_csv(model_name: str) -> dict[str, float]:
@@ -221,13 +238,14 @@ def polymer_densities() -> dict[str, list[float]]:
         Missing, unreadable, or empty trajectories contribute ``NaN``.
     """
     poly_ids = labels()
+    polymer_table = load_polymer_table()
 
     results: dict[str, list[float]] = {"ref": []}
     for name in DENSITY_MODEL_NAMES:
         results[name] = []
 
     for poly_id in poly_ids:
-        ref_density = float(POLYMER_TABLE.loc[poly_id, "density"])
+        ref_density = float(polymer_table.loc[poly_id, "density"])
         results["ref"].append(ref_density)
 
     for model_name in DENSITY_MODEL_NAMES:
@@ -335,4 +353,4 @@ def test_polymers(metrics: dict[str, dict[str, float]]) -> None:  # noqa: PT019
     metrics
         Per-metric, per-model values produced by :func:`metrics`.
     """
-    return
+    struct_info()
