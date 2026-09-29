@@ -6,6 +6,8 @@ from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     FoldingStabilityBenchmark,
+    ReactivityBenchmark,
+    RingPlanarityBenchmark,
     TautomersBenchmark,
 )
 
@@ -37,6 +39,30 @@ class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
 class MlPegFoldingStabilityBenchmark(FoldingStabilityBenchmark):
     """
     ``FoldingStabilityBenchmark`` wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
+    objects do not expose the set of elements the underlying model supports, so
+    the benchmark cannot decide up front whether to skip. Missing element errors
+    are instead handled at runtime.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegGrambowBarrierHeightsBenchmark(ReactivityBenchmark):
+    """
+    ReactivityBenchmark wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
+    do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegRingPlanarityBenchmark(RingPlanarityBenchmark):
+    """
+    ``RingPlanarityBenchmark`` wired up for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
     objects do not expose the set of elements the underlying model supports, so

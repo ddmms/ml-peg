@@ -414,7 +414,7 @@ def _calc_model_mp_id(
     success = True
     with redirect_stdout(log), redirect_stderr(log):
         try:
-            calc = model.get_calculator()
+            calc = model.get_calculator(precision="high")
             _calc_mp_id(mp_id, calc, yaml_dir, ref_dir, out_dir)
         except Exception:  # noqa: BLE001
             success = False
