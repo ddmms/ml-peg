@@ -44,6 +44,7 @@ BENCHMARK_DATA_DIR = (
 )
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_protein_folding_stability(mlip: tuple[str, Any]) -> None:
     """
