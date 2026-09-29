@@ -68,7 +68,7 @@ mattersim = [
     "mattersim==1.2.4; python_version >= '3.12'",
 ]
 mlipaudit = [
-    "mlipaudit == 0.1.6; python_version >= '3.11' and python_version < '3.14'",
+    "mlipaudit == 0.1.8; python_version >= '3.11' and python_version < '3.14'",
 ]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
