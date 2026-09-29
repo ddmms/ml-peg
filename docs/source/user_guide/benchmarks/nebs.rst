@@ -229,7 +229,7 @@ climbing-image NEB steps from the resulting images.
 
 A reaction counts as converged when the maximum force of the final climbing-image
 NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
-that converged; failed simulations count as not converged.
+that converged. If any simulation errors, the metric is reported as NaN.
 
 Computational cost
 ------------------
