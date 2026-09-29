@@ -23,7 +23,7 @@ The CLI takes one or more `--poly-id` (omit to build all 130 from
 [`../resources/data.csv`](../resources/data.csv)) and writes
 `<output_dir>/<poly_id>.xyz`. EMC's intermediate files go to a tempdir and
 are removed automatically. `atoms.info` carries `charge=0`, `spin=1`,
-`n_ru_per_chain`, `seed`, and `build_date`.
+`n_ru_per_chain`, `seed`, and `date`.
 
 To rebuild the S3 archive:
 

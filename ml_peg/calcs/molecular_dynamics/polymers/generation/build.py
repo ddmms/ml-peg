@@ -18,7 +18,7 @@ Run as a module from the repo root, e.g.
 The script looks up the SMILES + end groups for each ``--poly-id`` in the
 bundled ``data.csv``, runs EMC to pack a polymer cell, and writes
 ``<output_dir>/<poly_id>.xyz`` (extxyz, with ``charge=0``, ``spin=1``,
-``n_ru_per_chain``, ``seed``, and ``build_date`` set in ``atoms.info``).
+``n_ru_per_chain``, ``seed``, and ``date`` set in ``atoms.info``).
 EMC's intermediate files are written to a temporary directory that is
 cleaned up automatically.
 """
