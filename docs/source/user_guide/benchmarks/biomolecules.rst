@@ -37,8 +37,7 @@ trajectory for each model.
 Computational cost
 ------------------
 
-High: one MD simulation per protein. Faster inference can be achieved using the
-jax-accelerated simulations in MLIP Audit directly.
+Very high: one MD simulation per protein. Likely to take several days to run on GPU.
 
 Data availability
 -----------------
