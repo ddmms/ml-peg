@@ -20,4 +20,5 @@ ml_peg calc \
   --category molecular_dynamics \
   --test polymers \
   --models "${MODEL}" \
-  --poly-id "${POLY_ID}"
+  --poly-id "${POLY_ID}" \
+  --run-very-slow
