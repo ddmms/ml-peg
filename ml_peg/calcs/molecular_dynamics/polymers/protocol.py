@@ -397,7 +397,7 @@ def _run_nvt(
         tdamp=TDAMP,
         trajectory=str(traj_path),
         loginterval=LOG_INTERVAL,
-        append_trajectory=True,
+        append_trajectory=n_done > 0,
     )
     _run_md(dyn=dyn, n_total=n_total, n_done=n_done)
     return atoms
@@ -451,7 +451,7 @@ def _run_npt(
         pdamp=PDAMP,
         trajectory=str(traj_path),
         loginterval=LOG_INTERVAL,
-        append_trajectory=True,
+        append_trajectory=n_done > 0,
     )
     _run_md(dyn=dyn, n_total=n_total, n_done=n_done)
     return atoms
