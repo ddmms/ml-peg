@@ -99,6 +99,12 @@ For consistency, we use similar model definitions as ``mlipx``. Models from
 ``current_models`` allows a subset of those to be used for calculations, including
 through a command-line input, ``--models``, to ``pytest``, or to ``ml_peg calc``.
 
+The ``get_calculator`` function should be used to load the ASE ``Calculator`` that can
+be attached to an ``Atoms`` object. This requires setting the ``precision`` argument,
+taking values of either "low" or "high", corresponding to float32 and float64 in most
+cases, respectively. For static calculations, "high" precision is highly recommended,
+while "low" precision is recommended for molecular dynamics simulations.
+
 Details about model definitions and loading are described in more detail in
 :doc:`Adding models </developer_guide/add_models>`.
 
@@ -133,7 +139,7 @@ the same calculation is run for each model name-model pair:
         model_name, model = mlip
 
         struct = read(DATA_PATH / "struct.xyz")
-        struct.calc = model.get_calculator()
+        struct.calc = model.get_calculator(precision="high")
 
         struct.get_potential_energy()
 
@@ -189,7 +195,7 @@ run identified and run using ``pytest``.
         def run(self):
             """Run new benchmark."""
             # Read in data and attach calculator
-            calc = self.model.get_calculator()
+            calc = self.model.get_calculator(precision="high")
             struct = read(DATA_PATH / "struct.xyz")
             struct.calc = calc
 
