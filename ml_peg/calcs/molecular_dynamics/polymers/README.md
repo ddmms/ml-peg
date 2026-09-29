@@ -55,16 +55,14 @@ Example Slurm-style lookup:
 SET_FILE=ml_peg/calcs/molecular_dynamics/polymers/resources/polymer_sets/medium.txt
 POLY_ID=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$SET_FILE")
 
-uv run pytest -v -s \
-    ml_peg/calcs/molecular_dynamics/polymers/calc_polymers.py \
-    --poly-id "$POLY_ID" --models mace-mp-0a
+ml_peg calc --test polymers --poly-id "$POLY_ID" --models mace-mp-0a --run-very-slow
 ```
 
 Analysis (averages density over the production stage, writes parity plot
 and MAE table for the dashboard):
 
 ```bash
-uv run pytest -v -s ml_peg/analysis/molecular_dynamics/polymers/analyse_polymers.py
+ml_peg analyse --test polymers
 ```
 
 ## Citation
