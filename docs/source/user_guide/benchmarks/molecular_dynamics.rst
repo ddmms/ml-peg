@@ -85,9 +85,12 @@ Summary
 -------
 
 Performance in reproducing the oxygen-oxygen radial distribution function (RDF)
-of liquid water. A short NPT molecular dynamics simulation of a box of 500 water
-molecules is run from an equilibrated structure, and the resulting O-O RDF is
-compared to the experimental reference.
+of liquid water. A 500 ps NPT molecular dynamics simulation (1 fs timestep,
+295.15 K, 1 atm, Langevin thermostat with a Monte Carlo barostat) of a box of
+500 water molecules is run with each model. All models start from the same
+pre-equilibrated structure, with no further model-specific equilibration.
+Snapshots are saved every 0.5 ps, and the O-O RDF, averaged over all 1000
+snapshots, is compared to the experimental reference.
 
 Metrics
 -------
@@ -116,8 +119,8 @@ Data availability
 
 Input structures:
 
-* MLIP Audit benchmark suite, InstaDeep. Equilibrated box of 500 water
-  molecules.
+* MLIP Audit benchmark suite, InstaDeep. Box of 500 water molecules,
+  pre-equilibrated in the NPT ensemble using the TIP3P water model.
 
 Reference data:
 
