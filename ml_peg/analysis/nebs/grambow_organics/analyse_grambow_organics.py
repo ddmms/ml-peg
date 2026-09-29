@@ -61,9 +61,9 @@ def convergence_rate() -> dict[str, float]:
     Get the fraction of NEB simulations that converged for each model.
 
     A reaction counts as converged when the maximum final NEB force is below the
-    convergence threshold. Failed simulations count as not converged, while a
-    failed calculation (empty model output) gets a NaN convergence rate. Models
-    without any calculation output are skipped.
+    convergence threshold. If any reaction simulation errored, or the whole
+    calculation failed (empty model output), the model gets a NaN convergence
+    rate. Models without any calculation output are skipped.
 
     Returns
     -------
@@ -79,14 +79,11 @@ def convergence_rate() -> dict[str, float]:
             CALC_PATH / model_name, MlPegGrambowOrganicsBenchmark
         )
         states = model_output.simulation_states
-        # A failed calculation writes an empty output, so it cannot be scored
-        if not states:
+        if not states or any(state is None for state in states):
             results[model_name] = np.nan
             continue
         n_converged = sum(
-            state is not None
-            and np.sqrt((state.forces**2).sum(axis=1).max())
-            < FINAL_CONVERGENCE_THRESHOLD
+            np.sqrt((state.forces**2).sum(axis=1).max()) < FINAL_CONVERGENCE_THRESHOLD
             for state in states
         )
         results[model_name] = n_converged / len(states)
