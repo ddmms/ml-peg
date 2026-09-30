@@ -5,11 +5,10 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-import shutil
 from typing import Any
 
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
@@ -113,7 +112,7 @@ def _as_bool(value: str) -> bool:
 @pytest.fixture
 def mc500_results() -> dict[str, dict[str, Any]]:
     """
-    Load relaxation results, calculate RMSCD values, and stage app trajectories.
+    Load relaxation results, calculate RMSCD values, and stage app structures.
 
     Returns
     -------
@@ -147,6 +146,8 @@ def mc500_results() -> dict[str, dict[str, Any]]:
 
         app_struct_dir = OUT_PATH / model_name / "structures"
         app_struct_dir.mkdir(parents=True, exist_ok=True)
+        app_reference_dir = OUT_PATH / "reference"
+        app_reference_dir.mkdir(parents=True, exist_ok=True)
 
         for row in rows:
             structure_id = row["structure_id"]
@@ -166,7 +167,11 @@ def mc500_results() -> dict[str, dict[str, Any]]:
             model_results["max_force"].append(float(row["max_force"]))
             all_elements.update(reference.get_chemical_symbols())
 
-            shutil.copy2(trajectory_path, app_struct_dir / trajectory_path.name)
+            # The reference is shared by every model, so it is written once to a
+            # common directory, with only the metadata that identifies it.
+            reference.info = {"structure_id": structure_id, "refcode": row["refcode"]}
+            write(app_reference_dir / f"{structure_id}.xyz", reference)
+            write(app_struct_dir / f"{structure_id}.xyz", relaxed)
 
         results[model_name] = model_results
 
