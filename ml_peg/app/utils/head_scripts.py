@@ -7,6 +7,10 @@ the whole point: they read the persisted preferences straight from
 ``localStorage`` and apply them to ``<html>`` so a reload doesn't flash the
 wrong theme, zoom or font before Dash hydrates.
 
+``run_app`` only needs ``analytics_scripts`` (for ``Dash(external_scripts=...)``)
+and ``inject_head_scripts`` (called on the constructed app); everything else here
+is an implementation detail of those two.
+
 Dash persists a local ``dcc.Store`` under its component id, so the keys here
 ("theme-store", "zoom-store", "font-store") must match the ids created in
 ``ml_peg.app.build_app``; the apply callbacks live in ``ml_peg.app.utils.settings``.
@@ -14,7 +18,13 @@ Dash persists a local ``dcc.Store`` under its component id, so the keys here
 
 from __future__ import annotations
 
+import os
+
+from dash import Dash
+
 from ml_peg.app.utils.settings import ZOOM_MAX, ZOOM_MIN
+
+ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
 
 
 def build_no_flash_script() -> str:
@@ -89,3 +99,45 @@ def build_analytics_head(analytics_id: str) -> str:
         f"gtag('config', '{analytics_id}');"
         "</script>"
     )
+
+
+def analytics_scripts() -> list[dict]:
+    """
+    Build the ``external_scripts`` entries for Dash.
+
+    Loads the async gtag script in ``<head>``, and only when an analytics ID is
+    configured. The companion inline init is added by ``inject_head_scripts``.
+
+    Returns
+    -------
+    list[dict]
+        Script tag attributes, empty if no analytics ID is set.
+    """
+    if not ANALYTICS_ID:
+        return []
+    return [
+        {
+            "src": f"https://www.googletagmanager.com/gtag/js?id={ANALYTICS_ID}",
+            "async": True,
+        }
+    ]
+
+
+def inject_head_scripts(app: Dash) -> None:
+    """
+    Prepend the inline head scripts to the app's index template.
+
+    Injected ahead of the parsed ``<head>`` so the browser executes them before
+    first paint, and before Dash's own assets.
+
+    Parameters
+    ----------
+    app
+        Dash application to modify in place.
+    """
+    scripts = [build_no_flash_script()]
+    if ANALYTICS_ID:
+        scripts.append(build_analytics_head(ANALYTICS_ID))
+
+    for script in scripts:
+        app.index_string = app.index_string.replace("{%metas%}", "{%metas%}\n" + script)
