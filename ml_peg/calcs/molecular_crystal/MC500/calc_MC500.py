@@ -145,7 +145,7 @@ def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
             key="inputs/molecular_crystal/MC500/MC500.zip",
             filename="MC500.zip",
         )
-        / "MC500_CIF"
+        / "MC500"
     )
     if not cif_dir.is_dir():
         raise FileNotFoundError(f"MC500 input directory not found: {cif_dir}")
