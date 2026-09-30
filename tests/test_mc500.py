@@ -9,6 +9,7 @@ import pytest
 from ml_peg.analysis.molecular_crystal.MC500.analyse_MC500 import (
     rms_cartesian_displacement,
 )
+from ml_peg.calcs.molecular_crystal.MC500 import cif_utils
 
 
 def test_rmscd_identical_structures() -> None:
@@ -48,3 +49,50 @@ def test_rmscd_rejects_different_atom_order() -> None:
 
     with pytest.raises(ValueError, match="different atom order"):
         rms_cartesian_displacement(reference, relaxed)
+
+
+def test_read_mc500_cif_expands_labels_and_shifts_boundary(monkeypatch) -> None:
+    """The MC500 reader retains labels and avoids exact cell boundaries."""
+    atoms = Atoms(
+        "CC",
+        scaled_positions=[[0.0, 0.2, 0.3], [0.5, 0.6, 0.7]],
+        cell=[5.0, 5.0, 5.0],
+        pbc=True,
+        info={
+            "_atom_site_label": ["C1"],
+            "_atom_site_occupancy": [1.0],
+        },
+    )
+    atoms.new_array("spacegroup_kinds", np.array([0, 0]))
+    read_kwargs = {}
+
+    def fake_read(filename, **kwargs):
+        read_kwargs.update(kwargs)
+        return atoms.copy()
+
+    monkeypatch.setattr(cif_utils, "read", fake_read)
+    result = cif_utils.read_mc500_cif("structure.cif")
+
+    assert read_kwargs["reader"] == "pycodcif"
+    assert read_kwargs["store_tags"] is True
+    assert result.arrays[cif_utils.CIF_LABEL_ARRAY].tolist() == ["C1", "C1"]
+    assert not np.isclose(
+        result.get_scaled_positions(wrap=False),
+        0.0,
+        atol=cif_utils.BOUNDARY_TOLERANCE,
+        rtol=0.0,
+    ).any()
+
+
+def test_read_mc500_cif_rejects_partial_occupancy(monkeypatch) -> None:
+    """The MC500 reader rejects disordered sites with partial occupancy."""
+    atoms = Atoms("C", positions=[[0.0, 0.0, 0.0]], cell=[5.0] * 3, pbc=True)
+    atoms.info = {
+        "_atom_site_label": ["C1"],
+        "_atom_site_occupancy": [0.5],
+    }
+    atoms.new_array("spacegroup_kinds", np.array([0]))
+    monkeypatch.setattr(cif_utils, "read", lambda *args, **kwargs: atoms)
+
+    with pytest.raises(ValueError, match="partial occupancies"):
+        cif_utils.read_mc500_cif("structure.cif")

@@ -10,7 +10,7 @@ from warnings import warn
 from ase import Atoms
 from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
-from ase.io import read, write
+from ase.io import write
 from ase.optimize import BFGS
 import numpy as np
 import pytest
@@ -18,6 +18,7 @@ import spglib
 from tqdm import tqdm
 
 # from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.molecular_crystal.MC500.cif_utils import read_mc500_cif
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -173,7 +174,7 @@ def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
         output_spacegroup = None
 
         try:
-            atoms = read(cif_file, reader="pycodcif")
+            atoms = read_mc500_cif(cif_file)
             reference = atoms.copy()
             reference.info = {}
             input_spacegroup = get_spacegroup_number(reference)

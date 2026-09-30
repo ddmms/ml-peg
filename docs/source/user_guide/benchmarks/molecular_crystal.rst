@@ -190,6 +190,6 @@ Input and reference structures:
 
 RMSCD definition:
 
-* J. van de Streek and M. A. Neumann, *Validation of molecular crystal structures
-  with dispersion-corrected density functional theory calculations*, Acta
-  Crystallographica Section B **66**, 544-558 (2010).
+* J. van de Streek and M. A. Neumann, *Validation of experimental molecular crystal
+  structures with dispersion-corrected density functional theory calculations*,
+  Acta Crystallographica Section B **66**, 544-558 (2010).
