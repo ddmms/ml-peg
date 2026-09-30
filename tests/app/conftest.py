@@ -73,6 +73,33 @@ TEST_BENCHMARK = "IONPI19"
 READY_TIMEOUT = 60_000
 
 
+def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN001
+    """
+    Block until the app has hydrated and hidden its start-up mask.
+
+    Waiting on ``#startup-mask`` being ``state="hidden"`` is not enough: Dash
+    serves an empty entry point and fetches the layout over ``_dash-layout``
+    after ``load``, so for the first moments of any load or reload the mask does
+    not exist — and Playwright counts "detached" as hidden, so such a wait
+    returns immediately against a blank page. Requiring the element to exist
+    *and* be hidden tests the end state that ``shell.py`` actually produces.
+
+    Parameters
+    ----------
+    page
+        Playwright page to wait on.
+    timeout
+        Milliseconds to wait before failing.
+    """
+    page.wait_for_function(
+        """() => {
+          const mask = document.getElementById('startup-mask');
+          return mask !== null && mask.style.display === 'none';
+        }""",
+        timeout=timeout,
+    )
+
+
 def _sha256(path: Path) -> str:
     """
     Return the SHA-256 hex digest of a file.
@@ -263,5 +290,5 @@ def ready_page(page, app_url):  # noqa: ANN001
         "JSON.stringify({completed: true})); } catch (e) {}"
     )
     page.goto(app_url)
-    page.wait_for_selector("#startup-mask", state="hidden", timeout=READY_TIMEOUT)
+    wait_for_app_ready(page)
     return page

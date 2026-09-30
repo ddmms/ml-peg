@@ -10,6 +10,7 @@ deliberately un-pinned on phones (<=768px) so the whole table can scroll.
 
 from __future__ import annotations
 
+from conftest import wait_for_app_ready
 from playwright.sync_api import Page, expect
 import pytest
 
@@ -42,7 +43,7 @@ def _load(page: Page, app_url: str, size: tuple[int, int]) -> None:
         "JSON.stringify({completed: true})); } catch (e) {}"
     )
     page.goto(app_url)
-    page.wait_for_selector("#startup-mask", state="hidden", timeout=TIMEOUT)
+    wait_for_app_ready(page)
 
 
 def _page_overflow(page: Page) -> float:

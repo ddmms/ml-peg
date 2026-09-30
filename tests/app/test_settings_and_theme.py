@@ -7,6 +7,7 @@ theming/settings work. The expand-all and card tests live with the cards chunk.
 
 from __future__ import annotations
 
+from conftest import wait_for_app_ready
 from playwright.sync_api import Page, expect
 
 TIMEOUT = 60_000
@@ -101,7 +102,7 @@ def test_font_choice_persists_on_reload(ready_page: Page) -> None:
         "window.localStorage.setItem('font-store', JSON.stringify('system'))"
     )
     ready_page.reload()
-    ready_page.wait_for_selector("#startup-mask", state="hidden", timeout=TIMEOUT)
+    wait_for_app_ready(ready_page)
     assert ready_page.locator("html").get_attribute("data-font") == "system", (
         "font choice not applied before first paint on reload"
     )
@@ -113,7 +114,7 @@ def test_table_zoom_preference_persists(ready_page: Page) -> None:
         "window.localStorage.setItem('zoom-store', JSON.stringify(150))"
     )
     ready_page.reload()
-    ready_page.wait_for_selector("#startup-mask", state="hidden", timeout=TIMEOUT)
+    wait_for_app_ready(ready_page)
     zoom = ready_page.evaluate(
         "getComputedStyle(document.documentElement)"
         ".getPropertyValue('--mlpeg-table-zoom').trim()"
@@ -136,7 +137,7 @@ def test_lazily_mounted_plot_follows_dark_theme(ready_page: Page) -> None:
         "window.localStorage.setItem('theme-store', JSON.stringify('dark'))"
     )
     ready_page.reload()
-    ready_page.wait_for_selector("#startup-mask", state="hidden", timeout=TIMEOUT)
+    wait_for_app_ready(ready_page)
     assert ready_page.locator("html").get_attribute("data-theme") == "dark"
 
     # Mount the IONPI19 parity plot: navigate to its category page and click an
@@ -178,9 +179,19 @@ def test_clear_cache_preserves_theme(ready_page: Page) -> None:
         "window.localStorage.getItem('theme-store') !== null", timeout=TIMEOUT
     )
 
+    # Hard Reset wipes storage and reloads. The click returns before the reload
+    # starts, so without a marker on the current document every assertion below
+    # would run against the pre-reset page and pass whatever the button did.
+    ready_page.evaluate("window.__preReset = true")
     ready_page.on("dialog", lambda dialog: dialog.accept())
     ready_page.locator("#clear-storage-button").click()
-    ready_page.wait_for_selector("#startup-mask", state="hidden", timeout=TIMEOUT)
+    ready_page.wait_for_function("window.__preReset === undefined", timeout=TIMEOUT)
+    wait_for_app_ready(ready_page)
+
+    assert (
+        ready_page.evaluate("JSON.parse(window.localStorage.getItem('theme-store'))")
+        == "dark"
+    ), "theme-store was wiped by Hard Reset instead of being preserved"
     assert ready_page.locator("html").get_attribute("data-theme") == "dark", (
         "theme preference lost after clearing the cache"
     )

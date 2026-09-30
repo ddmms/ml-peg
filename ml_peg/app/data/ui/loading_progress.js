@@ -118,14 +118,15 @@
   /* Dash mounts the page and table loading overlays long after first paint, so
    * the loop has to be able to wake up again after it has idled out.
    *
-   * Attributes as well as childList: the loop also stops for rings that are
-   * mounted but hidden, and an overlay revealed by a style or class change
-   * produces no childList record. Without that, a revealed ring would sit
-   * frozen at whatever number the loop stopped on.
+   * childList is enough: a ring only ever appears by being mounted. dcc.Loading
+   * renders its custom spinner conditionally rather than hiding it, and
+   * #startup-mask only goes the other way (visible -> display:none). Watching
+   * attributes too would run this callback on every style write anywhere on the
+   * page — including the tooltip portal's per-frame repositioning.
    *
-   * The wake-up test has to mirror tick()'s stop test, or the two fight: any
-   * attribute change on the page would restart the loop for another IDLE_FRAMES
-   * just because the completed start-up ring is still in the document. */
+   * The wake-up test has to mirror tick()'s stop test, or the two fight: a
+   * mutation would restart the loop for another IDLE_FRAMES just because the
+   * completed start-up ring is still in the document. */
   function observeForRings() {
     new MutationObserver(function () {
       if (running) {
@@ -138,12 +139,7 @@
           return;
         }
       }
-    }).observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["style", "class"],
-    });
+    }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
   /* Complete the start-up ring the moment the app is interactive, so the last
