@@ -1,7 +1,7 @@
 """
 Compute solvent radial distribution functions from molecular dynamics.
 
-A short NVT molecular dynamics simulation is run for a box of each solvent
+A short NPT molecular dynamics simulation is run for a box of each solvent
 (carbon tetrachloride, methanol and acetonitrile), and the radial distribution
 function of the atom of interest is compared to experiment.
 """

@@ -51,7 +51,7 @@ def get_app() -> SolventRDFApp:
         description=(
             "Performance in reproducing the radial distribution functions of "
             "liquid carbon tetrachloride, methanol and acetonitrile from short "
-            "NVT molecular dynamics simulations. Reference data from experiment."
+            "NPT molecular dynamics simulations. Reference data from experiment."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "solvent_radial_distribution_metrics_table.json",
