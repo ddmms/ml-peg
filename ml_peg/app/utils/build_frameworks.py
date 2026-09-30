@@ -184,9 +184,9 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         "gap": "6px",
         "padding": "6px 12px",
         "borderRadius": "8px",
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "var(--mlpeg-surface)",
         "border": "1px solid var(--mlpeg-border)",
-        "color": "#334155",
+        "color": "var(--mlpeg-ink-2)",
         "fontSize": "13px",
         "fontWeight": "500",
         "textDecoration": "none",
@@ -236,7 +236,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
             Div(
                 description_box_children,
                 style={
-                    "backgroundColor": "#f8fafc",
+                    "backgroundColor": "var(--mlpeg-surface-2)",
                     "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "12px",
                     "padding": "16px 20px",
