@@ -1,0 +1,7 @@
+metrics:
+  Stability Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "Mean MLIP Audit stability score: 0 if the run failed, up to 0.5 if it exploded, 0.5-1 if a hydrogen detached, 1 if stable."
+    weight: 1
