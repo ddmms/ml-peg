@@ -175,7 +175,8 @@ Benchmark speed
 ---------------
 
 Slow: the benchmark performs symmetry-constrained variable-cell relaxations of 500
-molecular crystals, with up to 1000 optimization steps for each structure.
+molecular crystals, with up to 1000 optimization steps for each structure, taking
+multiple hours on GPU for each model.
 
 
 Data availability

@@ -80,7 +80,7 @@ def relax_crystal(
     -------
     tuple[Atoms, bool, int, float]
         Relaxed structure, convergence status, number of optimization steps, and
-        final maximum atomic force in eV/Angstrom.
+        final maximum force on the cell filter in eV/Angstrom.
     """
     atoms.info["charge"] = 0
     atoms.info["spin"] = 1
@@ -90,7 +90,8 @@ def relax_crystal(
     filtered = FrechetCellFilter(atoms)
     optimizer = BFGS(filtered, logfile=None)
     converged = bool(optimizer.run(fmax=fmax, steps=max_steps))
-    max_force = float(np.linalg.norm(atoms.get_forces(), axis=1).max())
+    # Forces on the filter, including the cell gradients the optimizer converges on.
+    max_force = float(np.linalg.norm(filtered.get_forces(), axis=1).max())
 
     relaxed = atoms.copy()
     relaxed.calc = None
@@ -171,7 +172,6 @@ def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
         try:
             atoms = read_mc500_cif(cif_file)
             reference = atoms.copy()
-            reference.info = {}
             input_spacegroup = get_spacegroup_number(reference)
 
             relaxed, converged, steps, max_force = relax_crystal(atoms, calculator)
