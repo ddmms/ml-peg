@@ -1,4 +1,4 @@
-"""Obtain the cas input argument."""
+"""Shared options and fixtures for the molecular_dynamics tests."""
 
 from __future__ import annotations
 
@@ -53,3 +53,21 @@ def list_cas(request) -> bool:
         Requested command line argument.
     """
     return request.config.getoption("--list-cas")
+
+
+@pytest.fixture
+def precomputed(request) -> bool:
+    """
+    Get precomputed flag.
+
+    Parameters
+    ----------
+    request
+        Request.
+
+    Returns
+    -------
+    option
+        Requested command line argument.
+    """
+    return request.config.getoption("--precomputed")
