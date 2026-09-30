@@ -7,6 +7,9 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from ase.calculators.calculator import Calculator
+import numpy as np
+from plotly.colors import qualitative
+import plotly.graph_objects as go
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
@@ -15,7 +18,7 @@ from mlipaudit.benchmarks.inference_speed.inference_speed import (
 )
 from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 
-from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
@@ -44,6 +47,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 #: Conversion factor from seconds to microseconds.
 SECONDS_TO_MICROSECONDS = 1.0e6
+
+#: Colours cycled over models in the throughput plot.
+COLOURS = qualitative.Dark24
 
 
 def check_dataset() -> None:
@@ -124,17 +130,9 @@ def struct_info() -> None:
 
 
 @pytest.fixture
-@plot_scatter(
-    title="Inference speed scaling",
-    x_label="Number of atoms",
-    y_label="Forward pass time / s",
-    show_line=True,
-    show_markers=True,
-    filename=str(OUT_PATH / "figure_inference_speed_scaling.json"),
-)
-def scaling_curves(analyze_results) -> dict[str, tuple[list, list]]:
+def scaling_curves(analyze_results) -> dict[str, tuple[list, list, list]]:
     """
-    Get the forward-pass time scaling curve for each model.
+    Get the model throughput scaling curve for each model.
 
     Parameters
     ----------
@@ -143,25 +141,95 @@ def scaling_curves(analyze_results) -> dict[str, tuple[list, list]]:
 
     Returns
     -------
-    dict[str, tuple[list, list]]
-        Per-model ``(num_atoms, forward_time)`` curves, sorted by system size and
-        restricted to structures with a successful forward pass.
+    dict[str, tuple[list, list, list]]
+        Per-model ``(num_atoms, throughput, structure_names)`` curves, with the
+        throughput in atoms per second, sorted by system size and restricted to
+        structures with a successful forward pass.
     """
     curves = {}
     for model_name, result in analyze_results.items():
         if result.failed:
             continue
         points = [
-            (structure.num_atoms, structure.average_forward_time)
+            (
+                structure.num_atoms,
+                structure.num_atoms / structure.average_forward_time,
+                structure.structure_name,
+            )
             for structure in result.structures
-            if structure.average_forward_time is not None
+            if structure.average_forward_time
         ]
         if not points:
             continue
         points.sort(key=lambda point: point[0])
-        num_atoms, forward_times = zip(*points, strict=True)
-        curves[model_name] = (list(num_atoms), list(forward_times))
+        num_atoms, throughputs, names = zip(*points, strict=True)
+        curves[model_name] = (list(num_atoms), list(throughputs), list(names))
     return curves
+
+
+@pytest.fixture
+def throughput_plot(scaling_curves) -> None:
+    """
+    Plot model throughput against system size on log-log axes.
+
+    Each model is shown as markers with a power-law fit, ``throughput = a * N^k``,
+    obtained by a linear fit in log-log space.
+
+    Parameters
+    ----------
+    scaling_curves
+        Per-model ``(num_atoms, throughput, structure_names)`` curves.
+    """
+    fig = go.Figure()
+    for i, (model_name, (num_atoms, throughputs, names)) in enumerate(
+        scaling_curves.items()
+    ):
+        colour = COLOURS[i % len(COLOURS)]
+        fig.add_trace(
+            go.Scatter(
+                x=num_atoms,
+                y=throughputs,
+                name=model_name,
+                legendgroup=model_name,
+                mode="markers",
+                marker={"color": colour},
+                customdata=names,
+                hovertemplate=(
+                    f"<b>{model_name}</b><br>"
+                    "Structure: %{customdata}<br>"
+                    "Atoms: %{x}<br>"
+                    "Throughput: %{y:,.0f} atoms/s"
+                    "<extra></extra>"
+                ),
+            )
+        )
+        if len(set(num_atoms)) < 2:
+            continue
+        exponent, log_prefactor = np.polyfit(np.log(num_atoms), np.log(throughputs), 1)
+        grid = np.geomspace(min(num_atoms), max(num_atoms), 50)
+        fig.add_trace(
+            go.Scatter(
+                x=grid,
+                y=np.exp(log_prefactor) * grid**exponent,
+                name=f"{model_name} fit",
+                legendgroup=model_name,
+                showlegend=False,
+                mode="lines",
+                line={"color": colour},
+                hovertemplate=(
+                    f"<b>{model_name}</b> fit (throughput ∝ N<sup>{exponent:.2f}</sup>)"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+    fig.update_layout(
+        title={"text": "Model throughput vs system size"},
+        xaxis={"title": {"text": "Number of atoms"}, "type": "log"},
+        yaxis={"title": {"text": "Model Throughput (atoms/second)"}, "type": "log"},
+    )
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    fig.write_json(OUT_PATH / "figure_inference_speed_scaling.json")
 
 
 @pytest.fixture
@@ -203,7 +271,7 @@ def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
     mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
-    scaling_curves,
+    throughput_plot: None,
     get_forward_time_per_atom: dict[str, float],
 ) -> dict[str, dict]:
     """
@@ -211,8 +279,8 @@ def metrics(
 
     Parameters
     ----------
-    scaling_curves
-        Forward-pass time scaling curves for all models (triggers the scaling plot).
+    throughput_plot
+        Model throughput plot for all models (triggers writing the plot).
     get_forward_time_per_atom
         Mean per-atom forward-pass times for all models.
 
