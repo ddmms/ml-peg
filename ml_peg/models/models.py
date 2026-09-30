@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
@@ -15,6 +15,28 @@ from mlipx.nodes.generic_ase import Device
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
+
+Precision = Literal["low", "high"]
+
+
+def check_precision(precision: str) -> None:
+    """
+    Validate the precision argument.
+
+    Parameters
+    ----------
+    precision
+        Precision string to validate.
+
+    Raises
+    ------
+    ValueError
+        If the precision is not one of "low" or "high".
+    """
+    if precision not in get_args(Precision):
+        raise ValueError(
+            f"Invalid precision '{precision}'. Must be one of {get_args(Precision)}."
+        )
 
 
 def _patch_metatomic_nvalchemi_max_neighbors() -> None:
@@ -116,7 +138,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -132,6 +154,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
         kwargs["default_dtype"] = precision_map[precision]
 
@@ -182,7 +205,7 @@ class MatterSimCalc(GenericASECalc):
 
         MatterSimCalculator.__setstate__ = __setstate__
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -198,6 +221,7 @@ class MatterSimCalc(GenericASECalc):
         Calculator
             Loaded ASE Calculator.
         """
+        check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
         kwargs["dtype"] = precision_map[precision]
 
@@ -216,7 +240,7 @@ class VivaceCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -233,6 +257,8 @@ class VivaceCalc(SumCalc):
             Loaded ASE calculator.
         """
         from simpoly.vivace.calculator import MLFFCalculator
+
+        check_precision(precision)
 
         kwargs.update(self.kwargs)
         calc = MLFFCalculator(**kwargs)
@@ -257,7 +283,7 @@ class OrbCalc(SumCalc):
     default_dtype: str = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -281,6 +307,7 @@ class OrbCalc(SumCalc):
         torch._dynamo.disable()
         import os
 
+        check_precision(precision)
         os.environ["TORCH_DISABLE_MODULE_HIERARCHY_TRACKING"] = "1"
 
         method = getattr(pretrained, self.name)
@@ -340,7 +367,7 @@ class FairChemCalc(SumCalc):
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -364,6 +391,7 @@ class FairChemCalc(SumCalc):
         # fairchem defaults to float32; map the requested precision to the base
         # dtype so precision="high" runs in float64. A configured default_dtype
         # overrides this.
+        check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
         dtype = self.default_dtype or precision_map[precision]
         inference_settings = dataclasses.replace(
@@ -426,7 +454,7 @@ class MockCalc(SumCalc):
 class UPETCalc(GenericASECalc):
     """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -442,6 +470,7 @@ class UPETCalc(GenericASECalc):
         Calculator
             Loaded upet ASE calculator.
         """
+        check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
         kwargs["dtype"] = precision_map[precision]
 
@@ -459,12 +488,15 @@ class SevenNetCalc(SumCalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
         Parameters
         ----------
+        precision
+            Currently unused. Once supported, this will correspond to the level of
+            precision to evaluate the model.
         **kwargs
             Additional keyword arguments (ignored).
 
@@ -475,6 +507,7 @@ class SevenNetCalc(SumCalc):
         """
         from sevenn.sevennet_calculator import SevenNetCalculator
 
+        check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         device_str = device.value if isinstance(device, Device) else (device or "cpu")
         return SevenNetCalculator(device=device_str, **self.kwargs)
@@ -487,7 +520,7 @@ class GraceCalc(GenericASECalc):
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
-    def get_calculator(self, precision="high", **kwargs) -> Calculator:
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
 
@@ -505,6 +538,7 @@ class GraceCalc(GenericASECalc):
         """
         from tensorpotential.calculator.foundation_models import MODELS_NAME_LIST
 
+        check_precision(precision)
         precision_map = {"low": "", "high": "-fp64"}
         suffix = precision_map[precision]
 

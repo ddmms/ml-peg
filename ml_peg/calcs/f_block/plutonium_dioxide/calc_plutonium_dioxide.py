@@ -46,7 +46,7 @@ def test_plutonium_dioxide(mlip: tuple[str, Any]) -> None:
     ref_file = puo2_data_dir / "dft_ref_data.xyz"
     ref_structures = read(ref_file, ":")
 
-    calculator = model.get_calculator()
+    calculator = model.get_calculator(precision="high")
 
     for atoms in tqdm(ref_structures, desc="Evaluating energy, forces and stress"):
         atoms.calc = copy(calculator)
