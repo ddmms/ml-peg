@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from zipfile import ZipFile
 
 from ase.calculators.calculator import Calculator
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-from mlipaudit.io import load_model_output_from_disk
+from mlipaudit.benchmarks.inference_speed.inference_speed import (
+    InferenceSpeedModelOutput,
+)
+from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import (
@@ -58,6 +63,27 @@ def check_dataset() -> None:
         raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
+def _load_inference_speed_output(model_outputs_dir: Path) -> InferenceSpeedModelOutput:
+    """
+    Load an inference speed model output written by ``write_model_output_to_disk``.
+
+    Parameters
+    ----------
+    model_outputs_dir
+        Directory containing the ``inference_speed`` benchmark subdirectory.
+
+    Returns
+    -------
+    InferenceSpeedModelOutput
+        The loaded model output.
+    """
+    zip_path = Path(model_outputs_dir) / BENCHMARK / MODEL_OUTPUT_ZIP_FILENAME
+    with ZipFile(zip_path) as zip_file:
+        with zip_file.open(MODEL_OUTPUT_JSON_FILENAME) as json_file:
+            data = json.load(json_file)
+    return InferenceSpeedModelOutput.model_validate(data)
+
+
 @pytest.fixture
 def analyze_results() -> dict:
     """
@@ -80,9 +106,7 @@ def analyze_results() -> dict:
             data_input_dir=CALC_PATH,
             run_mode="standard",
         )
-        benchmark.model_output = load_model_output_from_disk(
-            CALC_PATH / model_name, MlPegInferenceSpeedBenchmark
-        )
+        benchmark.model_output = _load_inference_speed_output(CALC_PATH / model_name)
         results[model_name] = benchmark.analyze()
     return results
 
