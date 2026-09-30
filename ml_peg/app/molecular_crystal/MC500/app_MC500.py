@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import json
 
-from dash import Input, Output, callback
 from dash.dcc import Graph
-from dash.html import B, Div, Iframe, P
+from dash.html import Div, P
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    _register_point_highlight,
     plot_from_table_cell,
+    struct_pair_from_scatter,
 )
-from ml_peg.app.utils.weas import generate_weas_html
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -33,120 +31,6 @@ METRICS = (
     "Structures within threshold",
     "Convergence",
 )
-
-IFRAME_STYLE = {
-    "height": "550px",
-    "width": "100%",
-    "border": "1px solid #ddd",
-    "borderRadius": "5px",
-}
-GRID_STYLE = {
-    "display": "grid",
-    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
-    "gap": "8px",
-}
-CAPTION_STYLE = {
-    "fontSize": "1.15rem",
-    "borderLeft": "4px solid #636efa",
-    "paddingLeft": "10px",
-    "margin": "8px 0 14px 0",
-}
-
-
-def _structure_panel(structure: str, title: str) -> Div:
-    """
-    Build a labelled WEAS viewer for a single MC500 structure.
-
-    Parameters
-    ----------
-    structure
-        URL of the structure file.
-    title
-        Label displayed above the viewer.
-
-    Returns
-    -------
-    Div
-        Labelled structure viewer.
-    """
-    return Div(
-        [
-            P(B(title)),
-            Iframe(srcDoc=generate_weas_html(structure), style=IFRAME_STYLE),
-        ]
-    )
-
-
-def struct_pair_from_scatter(
-    scatter_id: str,
-    struct_id: str,
-    structure_ids: list[str],
-    model_name: str,
-) -> None:
-    """
-    Show reference and MLIP-relaxed structures beside each other on point click.
-
-    Parameters
-    ----------
-    scatter_id
-        ID of the clickable RMSCD graph.
-    struct_id
-        ID of the structure placeholder.
-    structure_ids
-        Structure identifiers in the same order as the scatter points.
-    model_name
-        Name of the model that produced the relaxed structures.
-    """
-    _register_point_highlight(scatter_id, follow_frames=False)
-
-    @callback(
-        Output(struct_id, "children", allow_duplicate=True),
-        Input(scatter_id, "clickData"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def show_structures(click_data):
-        """
-        Build the side-by-side structure comparison for a clicked point.
-
-        Parameters
-        ----------
-        click_data
-            Plotly data for the clicked RMSCD point.
-
-        Returns
-        -------
-        Div
-            Reference and relaxed structure viewers.
-        """
-        if not click_data:
-            return Div("Click on a point to view structures.")
-
-        point = click_data["points"][0]
-        index = point["pointNumber"]
-        if index >= len(structure_ids):
-            return Div("Structures unavailable for this point.")
-
-        custom_data = point.get("customdata") or []
-        refcode = custom_data[0] if custom_data else f"structure {index + 1}"
-        structure_id = structure_ids[index]
-        return Div(
-            [
-                P(B(f"CSD refcode: {refcode}"), style=CAPTION_STYLE),
-                Div(
-                    [
-                        _structure_panel(
-                            f"{ASSETS_PREFIX}/reference/{structure_id}.xyz",
-                            "r2SCAN+MBD reference",
-                        ),
-                        _structure_panel(
-                            f"{ASSETS_PREFIX}/{model_name}/structures/{structure_id}.xyz",
-                            f"MLIP relaxed ({model_name})",
-                        ),
-                    ],
-                    style=GRID_STYLE,
-                ),
-            ]
-        )
 
 
 class MC500App(BaseApp):
@@ -185,8 +69,20 @@ class MC500App(BaseApp):
             struct_pair_from_scatter(
                 scatter_id=f"{BENCHMARK_NAME}-{model_name}-figure",
                 struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                structure_ids=structure_ids,
-                model_name=model_name,
+                ref_structs=[
+                    f"{ASSETS_PREFIX}/reference/{structure_id}.xyz"
+                    for structure_id in structure_ids
+                ],
+                pred_structs=[
+                    f"{ASSETS_PREFIX}/{model_name}/structures/{structure_id}.xyz"
+                    for structure_id in structure_ids
+                ],
+                ref_title="r2SCAN+MBD reference",
+                pred_title=f"MLIP relaxed ({model_name})",
+                captions=[
+                    f"CSD refcode: {structure_id.split('_', maxsplit=1)[-1]}"
+                    for structure_id in structure_ids
+                ],
             )
 
 
