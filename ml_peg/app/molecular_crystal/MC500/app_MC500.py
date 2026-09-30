@@ -53,18 +53,16 @@ CAPTION_STYLE = {
 }
 
 
-def _structure_panel(trajectory: str, title: str, frame: int) -> Div:
+def _structure_panel(structure: str, title: str) -> Div:
     """
-    Build a labelled WEAS viewer opened at one frame of an MC500 trajectory.
+    Build a labelled WEAS viewer for a single MC500 structure.
 
     Parameters
     ----------
-    trajectory
-        URL of the two-frame reference and relaxed trajectory.
+    structure
+        URL of the structure file.
     title
         Label displayed above the viewer.
-    frame
-        Frame at which to open the trajectory.
 
     Returns
     -------
@@ -74,10 +72,7 @@ def _structure_panel(trajectory: str, title: str, frame: int) -> Div:
     return Div(
         [
             P(B(title)),
-            Iframe(
-                srcDoc=generate_weas_html(trajectory, mode="traj", index=frame),
-                style=IFRAME_STYLE,
-            ),
+            Iframe(srcDoc=generate_weas_html(structure), style=IFRAME_STYLE),
         ]
     )
 
@@ -85,7 +80,7 @@ def _structure_panel(trajectory: str, title: str, frame: int) -> Div:
 def struct_pair_from_scatter(
     scatter_id: str,
     struct_id: str,
-    trajectories: list[str],
+    structure_ids: list[str],
     model_name: str,
 ) -> None:
     """
@@ -97,8 +92,8 @@ def struct_pair_from_scatter(
         ID of the clickable RMSCD graph.
     struct_id
         ID of the structure placeholder.
-    trajectories
-        Two-frame trajectories in the same order as the scatter points.
+    structure_ids
+        Structure identifiers in the same order as the scatter points.
     model_name
         Name of the model that produced the relaxed structures.
     """
@@ -128,26 +123,24 @@ def struct_pair_from_scatter(
 
         point = click_data["points"][0]
         index = point["pointNumber"]
-        if index >= len(trajectories):
+        if index >= len(structure_ids):
             return Div("Structures unavailable for this point.")
 
         custom_data = point.get("customdata") or []
         refcode = custom_data[0] if custom_data else f"structure {index + 1}"
-        trajectory = trajectories[index]
+        structure_id = structure_ids[index]
         return Div(
             [
                 P(B(f"CSD refcode: {refcode}"), style=CAPTION_STYLE),
                 Div(
                     [
                         _structure_panel(
-                            trajectory,
+                            f"{ASSETS_PREFIX}/reference/{structure_id}.xyz",
                             "r2SCAN+MBD reference",
-                            frame=0,
                         ),
                         _structure_panel(
-                            trajectory,
+                            f"{ASSETS_PREFIX}/{model_name}/structures/{structure_id}.xyz",
                             f"MLIP relaxed ({model_name})",
-                            frame=1,
                         ),
                     ],
                     style=GRID_STYLE,
@@ -186,16 +179,13 @@ class MC500App(BaseApp):
 
         for model_name in MODELS:
             struct_dir = DATA_PATH / model_name / "structures"
-            trajectories = [
-                f"{ASSETS_PREFIX}/{model_name}/structures/{path.name}"
-                for path in sorted(struct_dir.glob("*.xyz"))
-            ]
-            if not trajectories:
+            structure_ids = [path.stem for path in sorted(struct_dir.glob("*.xyz"))]
+            if not structure_ids:
                 continue
             struct_pair_from_scatter(
                 scatter_id=f"{BENCHMARK_NAME}-{model_name}-figure",
                 struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                trajectories=trajectories,
+                structure_ids=structure_ids,
                 model_name=model_name,
             )
 
