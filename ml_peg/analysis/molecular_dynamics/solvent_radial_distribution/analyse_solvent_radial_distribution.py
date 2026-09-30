@@ -11,6 +11,9 @@ import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.solvent_radial_distribution.solvent_radial_distribution import (  # noqa: E501
+    REFERENCE_MAXIMA,
+)
 from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
@@ -136,18 +139,57 @@ def struct_info() -> dict:
     return info
 
 
+def get_rdf_profiles(analyze_results: dict, solvent: str) -> dict:
+    """
+    Get the predicted radial distribution profiles of one solvent for each model.
+
+    A vertical line at the experimental first solvent peak position is included as
+    the reference trace.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``SolventRadialDistributionResult``.
+    solvent
+        Name of the solvent.
+
+    Returns
+    -------
+    dict
+        Per-model ``(radii, g(r))`` profiles, and the reference peak position.
+    """
+    results = {}
+    for model_name, result in analyze_results.items():
+        if result.failed:
+            continue
+        for structure in result.structures:
+            if (
+                structure.structure_name != solvent
+                or structure.failed
+                or structure.radii is None
+                or structure.rdf is None
+            ):
+                continue
+            results[model_name] = (structure.radii, structure.rdf)
+
+    ref_peak = REFERENCE_MAXIMA[solvent]["distance"]
+    max_rdf = max((max(rdf) for _, rdf in results.values()), default=1.0)
+    results["ref"] = ([ref_peak, ref_peak], [0.0, max_rdf])
+    return results
+
+
 @pytest.fixture
 @plot_scatter(
-    title="Solvent radial distribution functions",
+    title="Carbon tetrachloride C-C radial distribution function",
     x_label="r / Å",
     y_label="g(r)",
     show_line=True,
     show_markers=False,
-    filename=str(OUT_PATH / "figure_rdf.json"),
+    filename=str(OUT_PATH / "figure_rdf_CCl4.json"),
 )
-def rdf_profiles(analyze_results) -> dict[str, tuple[list, list]]:
+def rdf_ccl4(analyze_results) -> dict[str, tuple[list, list]]:
     """
-    Get the predicted radial distribution profiles for each solvent.
+    Get the predicted carbon tetrachloride RDF profiles for each model.
 
     Parameters
     ----------
@@ -157,26 +199,23 @@ def rdf_profiles(analyze_results) -> dict[str, tuple[list, list]]:
     Returns
     -------
     dict[str, tuple[list, list]]
-        Per-model and per-solvent ``(radii, g(r))`` profiles.
+        Per-model ``(radii, g(r))`` profiles, and the reference peak position.
     """
-    results = {}
-    for model_name, result in analyze_results.items():
-        if result.failed:
-            continue
-        for structure in result.structures:
-            if structure.failed or structure.radii is None or structure.rdf is None:
-                continue
-            results[f"{model_name} ({structure.structure_name})"] = (
-                structure.radii,
-                structure.rdf,
-            )
-    return results
+    return get_rdf_profiles(analyze_results, "CCl4")
 
 
 @pytest.fixture
-def get_peak_deviation(analyze_results) -> dict[str, float]:
+@plot_scatter(
+    title="Methanol O-O radial distribution function",
+    x_label="r / Å",
+    y_label="g(r)",
+    show_line=True,
+    show_markers=False,
+    filename=str(OUT_PATH / "figure_rdf_methanol.json"),
+)
+def rdf_methanol(analyze_results) -> dict[str, tuple[list, list]]:
     """
-    Get the average first solvent peak deviation for each model.
+    Get the predicted methanol RDF profiles for each model.
 
     Parameters
     ----------
@@ -185,17 +224,73 @@ def get_peak_deviation(analyze_results) -> dict[str, float]:
 
     Returns
     -------
-    dict[str, float]
-        Average deviation of the first solvent peak from the reference, in Angstrom.
+    dict[str, tuple[list, list]]
+        Per-model ``(radii, g(r))`` profiles, and the reference peak position.
     """
-    return {
-        model_name: (
-            result.avg_peak_deviation
-            if result.avg_peak_deviation is not None
-            else np.nan
-        )
-        for model_name, result in analyze_results.items()
-    }
+    return get_rdf_profiles(analyze_results, "methanol")
+
+
+@pytest.fixture
+@plot_scatter(
+    title="Acetonitrile N-N radial distribution function",
+    x_label="r / Å",
+    y_label="g(r)",
+    show_line=True,
+    show_markers=False,
+    filename=str(OUT_PATH / "figure_rdf_acetonitrile.json"),
+)
+def rdf_acetonitrile(analyze_results) -> dict[str, tuple[list, list]]:
+    """
+    Get the predicted acetonitrile RDF profiles for each model.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``SolventRadialDistributionResult``.
+
+    Returns
+    -------
+    dict[str, tuple[list, list]]
+        Per-model ``(radii, g(r))`` profiles, and the reference peak position.
+    """
+    return get_rdf_profiles(analyze_results, "acetonitrile")
+
+
+@pytest.fixture
+def get_peak_deviations(analyze_results) -> dict[str, dict[str, float]]:
+    """
+    Get the first solvent peak deviation of each solvent for each model.
+
+    If a solvent's simulation failed or is missing, its deviation is NaN, so the
+    model's overall benchmark score is also NaN.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``SolventRadialDistributionResult``.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Per-solvent deviation of the first solvent peak from the reference, in
+        Angstrom, for each model.
+    """
+    deviations = {solvent: {} for solvent in SOLVENTS}
+    for model_name, result in analyze_results.items():
+        structures = {
+            structure.structure_name: structure for structure in result.structures
+        }
+        for solvent in SOLVENTS:
+            structure = structures.get(solvent)
+            if (
+                structure is None
+                or structure.failed
+                or structure.peak_deviation is None
+            ):
+                deviations[solvent][model_name] = np.nan
+            else:
+                deviations[solvent][model_name] = structure.peak_deviation
+    return deviations
 
 
 @pytest.fixture
@@ -207,18 +302,24 @@ def get_peak_deviation(analyze_results) -> dict[str, float]:
     mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
-    rdf_profiles,
-    get_peak_deviation: dict[str, float],
+    rdf_ccl4,
+    rdf_methanol,
+    rdf_acetonitrile,
+    get_peak_deviations: dict[str, dict[str, float]],
 ) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
-    rdf_profiles
-        Predicted RDF profiles for all models (triggers the RDF plot).
-    get_peak_deviation
-        Average first solvent peak deviations for all models.
+    rdf_ccl4
+        Predicted carbon tetrachloride RDF profiles (triggers the RDF plot).
+    rdf_methanol
+        Predicted methanol RDF profiles (triggers the RDF plot).
+    rdf_acetonitrile
+        Predicted acetonitrile RDF profiles (triggers the RDF plot).
+    get_peak_deviations
+        Per-solvent first solvent peak deviations for all models.
 
     Returns
     -------
@@ -226,7 +327,8 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "Peak Deviation": get_peak_deviation,
+        f"Peak Deviation ({solvent})": get_peak_deviations[solvent]
+        for solvent in SOLVENTS
     }
 
 

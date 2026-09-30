@@ -13,6 +13,7 @@ from ml_peg.app.utils.load import read_plot
 BENCHMARK_NAME = "SolventRDF"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#solvent-radial-distribution"
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "solvent_radial_distribution"
+SOLVENTS = ["CCl4", "methanol", "acetonitrile"]
 
 
 class SolventRDFApp(BaseApp):
@@ -20,15 +21,18 @@ class SolventRDFApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_rdf.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        column_to_plot = {
+            f"Peak Deviation ({solvent})": read_plot(
+                DATA_PATH / f"figure_rdf_{solvent}.json",
+                id=f"{BENCHMARK_NAME}-figure-{solvent}",
+            )
+            for solvent in SOLVENTS
+        }
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Peak Deviation": scatter},
+            column_to_plot=column_to_plot,
         )
 
 

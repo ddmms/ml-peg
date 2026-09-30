@@ -1,8 +1,22 @@
 metrics:
-  Peak Deviation:
+  Peak Deviation (CCl4):
     good: 0.0
     bad: 0.5
     unit: Å
     weight: 1
-    tooltip: Deviation of the first solvent peak position from the experimental reference, averaged across the solvents.
-    level_of_theory: Experiment
+    tooltip: Deviation of the first C-C peak position of liquid carbon tetrachloride (CCl4) from the experimental reference.
+    level_of_theory: Experimental
+  Peak Deviation (methanol):
+    good: 0.0
+    bad: 0.5
+    unit: Å
+    weight: 1
+    tooltip: Deviation of the first O-O peak position of liquid methanol from the experimental reference.
+    level_of_theory: Experimental
+  Peak Deviation (acetonitrile):
+    good: 0.0
+    bad: 0.5
+    unit: Å
+    weight: 1
+    tooltip: Deviation of the first N-N peak position of liquid acetonitrile from the experimental reference.
+    level_of_theory: Experimental

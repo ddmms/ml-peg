@@ -31,6 +31,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_solvent_radial_distribution(mlip: tuple[str, Any]) -> None:
     """
@@ -42,7 +43,7 @@ def test_solvent_radial_distribution(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
@@ -50,10 +51,10 @@ def test_solvent_radial_distribution(mlip: tuple[str, Any]) -> None:
         filename="solvent_radial_distribution.zip",
     )
 
-    # Save the input data to the calculation outputs so the analysis is self
-    # contained and does not need to download it again.
-    name = MlPegSolventRadialDistributionBenchmark.name
-    shutil.copytree(data_input_dir / name, OUT_PATH / name, dirs_exist_ok=True)
+    benchmark_name = MlPegSolventRadialDistributionBenchmark.name
+    shutil.copytree(
+        data_input_dir / benchmark_name, OUT_PATH / benchmark_name, dirs_exist_ok=True
+    )
 
     benchmark = MlPegSolventRadialDistributionBenchmark(
         force_field=calc,

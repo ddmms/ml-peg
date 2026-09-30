@@ -171,28 +171,29 @@ Summary
 -------
 
 Performance in reproducing the radial distribution functions of common molecular
-liquids. For each of carbon tetrachloride, methanol and acetonitrile, a short NPT
+liquids. For each of carbon tetrachloride (CCl4), methanol and acetonitrile, a short NPT
 molecular dynamics simulation is run at 293.15 K and 1 atm starting from an equilibrated
-box. The radial distribution function of the characteristic atom (C-C for carbon
-tetrachloride, O-O for methanol and N-N for acetonitrile) is computed from the trajectory.
+box. The radial distribution function of the characteristic atom (C-C for CCl4, O-O for
+methanol and N-N for acetonitrile) is computed from the trajectory.
 
 Metrics
 -------
 
-1. Peak deviation
+1. Peak deviation (CCl4, methanol, acetonitrile)
 
-The position of the first solvent peak in the radial distribution function (RDF) is compared
-to the experimental reference peak position for each solvent, and the absolute deviation is
-averaged across the solvents. A lower deviation is better.
+For each solvent, the position of the first solvent peak in the radial distribution function
+(RDF) is compared to the experimental reference peak position, and the absolute deviation is
+reported as a separate metric. A lower deviation is better. A failed simulation is scored as
+`np.nan`.
 
-A line plot shows the radial distribution function profiles for each model and solvent,
-however note that there is no complete experimental RDF available for these solvents.
+For each solvent, a line plot shows the RDF profiles of all models, with a vertical line
+marking the experimental first peak position. Note that there is no complete experimental
+RDF available for these solvents.
 
 Computational cost
 ------------------
 
-High: one MD simulation per solvent. Faster inference can be achieved using the
-jax-accelerated simulations in MLIP Audit directly.
+High: one MD simulation per solvent. Expected to take days on GPU.
 
 Data availability
 -----------------
@@ -204,4 +205,11 @@ Input structures:
 
 Reference data:
 
-* Experimental first solvent peak positions.
+* Experimental first solvent peak positions:
+
+  * Methanol: J.W. Handgraaf et al., Chem. Phys. Lett. 367, (2003)
+    https://doi.org/10.1016/S0009-2614(02)01779-7
+  * Acetonitrile: Pothoczki et al., J. Mol. Liq. 225, (2017)
+    https://doi.org/10.1016/j.molliq.2016.11.056
+  * CCl4: Nishikawa et al., Bull. Chem. Soc. Japan 52, (1979)
+    https://doi.org/10.1246/bcsj.52.293
