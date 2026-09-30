@@ -202,3 +202,52 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1021/acscatal.4c04272
 * GGA RPBE exchange correlation functional
+
+
+Grambow organics
+================
+
+Summary
+-------
+
+Performance in converging nudged elastic band (NEB) simulations for 100
+elementary organic reactions sampled from the Grambow dataset, involving small
+neutral molecules containing H, C, N and O. The benchmark assesses whether a
+model can produce a stable, converged reaction path, rather than the accuracy of
+the transition state.
+
+Metrics
+-------
+
+The reactant and product structures of each reaction are first minimised for up
+to 50 steps each. A NEB simulation with 10 images is then run between the
+minimised endpoints for up to 500 steps, using the provided transition state
+structure to build the initial path. This is followed by up to a further 500
+climbing-image NEB steps from the resulting images.
+
+1. Convergence rate
+
+A reaction counts as converged when the maximum force of the final climbing-image
+NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
+that converged. If any simulation errors, the metric is reported as NaN.
+
+Computational cost
+------------------
+
+High: 100 NEB simulations with 10 images each, each with up to 500 ordinary and
+500 climbing-image NEB steps, plus up to 50 minimisation steps for each
+endpoint. Days on CPU, hours on GPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Grambow, C.A., Pattanaik, L. & Green, W.H. Reactants, products, and
+  transition states of elementary chemical reactions based on quantum
+  chemistry. Sci Data 7, 137 (2020). DOI: 10.1038/s41597-020-0460-4
+
+Reference data:
+
+* Same as input data
+* :math:`\omega B97X-D3/def2-TZVP` level of theory.
