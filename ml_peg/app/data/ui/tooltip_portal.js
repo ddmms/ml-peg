@@ -74,8 +74,13 @@
     document.body.appendChild(portal);
   }
 
+  // Dash leaves the tooltip node mounted but empty between renders.
+  function isBlank(html) {
+    return !html || !html.trim();
+  }
+
   function hasContent() {
-    return currentHtml && currentHtml.trim().length > 0;
+    return !isBlank(currentHtml);
   }
 
   // The native tooltip HTML for a cell's table (display:none near an edge does
@@ -129,7 +134,12 @@
   // Transient-hover loop; runs only between a cell mouseover and the hide.
   function frame() {
     if (!looping || pinned) return;
-    if (anchorCell) setContent(readTooltip(anchorCell));
+    if (anchorCell) {
+      // A blank read means Dash is mid-render, not that the cell has no
+      // tooltip; committing it would blank the card for a frame.
+      var html = readTooltip(anchorCell);
+      if (!isBlank(html)) setContent(html);
+    }
     reposition();
     window.requestAnimationFrame(frame);
   }
@@ -167,7 +177,7 @@
   function pin(cell) {
     ensurePortal();
     var html = readTooltip(cell);
-    if (!html || !html.trim()) return; // nothing to pin for this cell
+    if (isBlank(html)) return; // nothing to pin for this cell
     cancelHide();
     looping = false; // switch from the hover loop to event-based positioning
     pinned = true;
