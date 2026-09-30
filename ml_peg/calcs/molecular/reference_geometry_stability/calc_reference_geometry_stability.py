@@ -9,6 +9,7 @@ reference structure.
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -41,12 +42,18 @@ def test_reference_geometry_stability(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
+    calc = model.get_calculator(precision="high")
     calc = model.add_d3_calculator(calc)
 
     data_input_dir = download_s3_data(
         key="inputs/molecular/reference_geometry_stability/reference_geometry_stability.zip",
         filename="reference_geometry_stability.zip",
+    )
+    benchmark_name = MlPegReferenceGeometryStabilityBenchmark.name
+    shutil.copytree(
+        data_input_dir / benchmark_name,
+        OUT_PATH / benchmark_name,
+        dirs_exist_ok=True,
     )
 
     benchmark = MlPegReferenceGeometryStabilityBenchmark(
