@@ -37,6 +37,7 @@
   var GAP = 8; // px between the anchor cell and the card
   var MARGIN = 8; // px keep-clear from the viewport edges
   var HIDE_DELAY = 150; // ms grace so the pointer can travel into the card
+  var STALE_FRAMES = 5; // frames to wait out a not-yet-updated tooltip node
 
   var portal = null; // our body-level container
   var inner = null; // the .dash-table-tooltip clone inside `portal`
@@ -47,6 +48,8 @@
   var looping = false; // transient hover loop active?
   var hideTimer = null;
   var pinned = false; // click-pinned (persistent + interactive)?
+  var staleHtml = null; // content belonging to the cell we just left
+  var staleFrames = 0;
 
   function ensurePortal() {
     if (portal) return;
@@ -81,6 +84,18 @@
 
   function hasContent() {
     return !isBlank(currentHtml);
+  }
+
+  // True while the tooltip node still holds the previous anchor's content.
+  // Bounded by STALE_FRAMES: two cells may legitimately share tooltip text, in
+  // which case the read never changes and waiting longer would show nothing.
+  function isStale(html) {
+    if (staleHtml === null) return false;
+    if (html !== staleHtml || ++staleFrames > STALE_FRAMES) {
+      staleHtml = null;
+      return false;
+    }
+    return true;
   }
 
   // The native tooltip HTML for a cell's table (display:none near an edge does
@@ -145,7 +160,7 @@
       // A blank read means Dash is mid-render, not that the cell has no
       // tooltip; committing it would blank the card for a frame.
       var html = readTooltip(anchorCell);
-      if (!isBlank(html)) setContent(html);
+      if (!isBlank(html) && !isStale(html)) setContent(html);
     }
     reposition();
     window.requestAnimationFrame(frame);
@@ -175,6 +190,7 @@
     anchorCell = null;
     lastRect = null;
     currentHtml = "";
+    staleHtml = null;
     if (portal) {
       portal.classList.remove("is-visible");
       inner.innerHTML = "";
@@ -225,6 +241,11 @@
     ensurePortal();
     cancelHide();
     if (cell !== anchorCell) {
+      // Dash keeps one tooltip node per table and updates it from its own
+      // (bubble-phase) handler, i.e. after this capture-phase one — so what it
+      // holds right now still belongs to the cell being left.
+      staleHtml = readTooltip(cell);
+      staleFrames = 0;
       anchorCell = cell;
       lastRect = cell.getBoundingClientRect();
       currentHtml = "";
