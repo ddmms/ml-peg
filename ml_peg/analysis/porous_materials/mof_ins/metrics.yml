@@ -1,0 +1,31 @@
+metrics:
+  Wasserstein distance:
+    good: 3.0
+    bad: 25.0
+    unit: meV
+    tooltip: >-
+      Wasserstein-1 distance between the simulated and measured INS spectra,
+      averaged over frameworks. Both spectra are clipped at zero, restricted
+      to the comparison window the reference declares, resampled onto one
+      uniform grid over that window and normalised by area, so the distance measures how far
+      spectral weight must move, in meV, independent of intensity scale and
+      of the uneven sampling of the digitised reference. The window keeps
+      the comparison in the region where a measured spectrum and an
+      incoherent-approximation weighted DOS are comparable.
+      Thresholds are set from expected performance for this property rather
+      than fitted to scored models, and should be revisited once more
+      models have been run.
+    weight: 1.0
+    level_of_theory: Experimental
+
+  Imaginary modes MAE:
+    good: 0.0
+    bad: 1.0
+    unit: "%"
+    tooltip: >-
+      Percentage of phonon modes phonopy excludes from the thermal-property
+      integration at zero cutoff frequency, q-point-weighted and averaged over
+      frameworks. Every framework here has been synthesised, so the expected
+      value is zero and the metric is the mean deviation from it.
+    weight: 1.0
+    level_of_theory: Experimental

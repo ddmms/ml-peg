@@ -1,0 +1,13 @@
+metrics:
+  Bulk modulus MAE:
+    good: 2.0
+    bad: 8.0
+    unit: GPa
+    tooltip: >-
+      Mean absolute error of the bulk modulus against experimental values,
+      from a Birch-Murnaghan fit to an isotropic energy-volume scan about the
+      relaxed structure. Thresholds are set from expected performance
+      for this property rather than fitted to scored models, and should be
+      revisited once more models have been run.
+    weight: 1.0
+    level_of_theory: Experimental
