@@ -211,9 +211,12 @@ Data availability
 
 Input structures:
 
-* OpenFF industry benchmark set. Selected for chemical diversity from the
-  dataset described in the MLIP Audit benchmark suite.
+* 200 neutral and 20 charged molecules from the OpenFF Industry Benchmark
+  Season 1 dataset, selected for chemical diversity as described in MLIP Audit.
 
 Reference data:
 
-* Reference geometries from the OpenFF industry dataset.
+* Reference geometries optimised at the B3LYP-D3(BJ)/DZVP level of theory, from:
+  L. D'Amore et al., Collaborative Assessment of Molecular Geometries and Energies
+  from the Open Force Field. J. Chem. Inf. Model. 62, 6094 (2022).
+  https://doi.org/10.1021/acs.jcim.2c01185
