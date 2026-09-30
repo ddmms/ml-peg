@@ -43,16 +43,12 @@
     ring.style.setProperty("--mlpeg-pct", String(Math.round(pct)));
   }
 
-  /* A ring only needs frames while it is both on screen and still climbing.
-   * Counting mounted rings instead would never let the loop idle out, because
-   * #startup-mask is not unmounted when it goes away — shell.py just sets
-   * display:none on it, so its (completed) ring stays in the document for the
-   * life of the page.
+  /* Counting mounted rings would never let the loop idle out: shell.py hides
+   * #startup-mask with display:none rather than unmounting it, so its finished
+   * ring stays in the document for the life of the page.
    *
-   * getClientRects() rather than offsetParent: offsetParent is null for
-   * position:fixed elements too, so a ring that was itself fixed (as the
-   * .mlpeg-loader wrapper around it already is) would read as hidden while
-   * plainly visible, and the loop would idle out mid-climb. */
+   * getClientRects() not offsetParent, which is also null for position:fixed —
+   * a fixed ring would read as hidden and stop the loop mid-climb. */
   function needsFrames(ring) {
     var entry = state.get(ring);
     return !(entry && entry.done) && ring.getClientRects().length > 0;
@@ -118,15 +114,12 @@
   /* Dash mounts the page and table loading overlays long after first paint, so
    * the loop has to be able to wake up again after it has idled out.
    *
-   * childList is enough: a ring only ever appears by being mounted. dcc.Loading
-   * renders its custom spinner conditionally rather than hiding it, and
-   * #startup-mask only goes the other way (visible -> display:none). Watching
-   * attributes too would run this callback on every style write anywhere on the
-   * page — including the tooltip portal's per-frame repositioning.
+   * childList is enough: a ring only ever appears by being mounted (dcc.Loading
+   * renders its spinner conditionally, and #startup-mask only ever hides).
+   * Watching attributes would fire on every style write on the page.
    *
-   * The wake-up test has to mirror tick()'s stop test, or the two fight: a
-   * mutation would restart the loop for another IDLE_FRAMES just because the
-   * completed start-up ring is still in the document. */
+   * Mirrors tick()'s stop test, or the two fight: any mutation would restart
+   * the loop just because the finished start-up ring is still mounted. */
   function observeForRings() {
     new MutationObserver(function () {
       if (running) {

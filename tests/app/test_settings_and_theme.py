@@ -179,9 +179,8 @@ def test_clear_cache_preserves_theme(ready_page: Page) -> None:
         "window.localStorage.getItem('theme-store') !== null", timeout=TIMEOUT
     )
 
-    # Hard Reset wipes storage and reloads. The click returns before the reload
-    # starts, so without a marker on the current document every assertion below
-    # would run against the pre-reset page and pass whatever the button did.
+    # The click returns before the reload starts, so without a marker on the
+    # current document the assertions below would run against the pre-reset page.
     ready_page.evaluate("window.__preReset = true")
     ready_page.on("dialog", lambda dialog: dialog.accept())
     ready_page.locator("#clear-storage-button").click()

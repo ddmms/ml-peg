@@ -70,9 +70,8 @@
   }
 
   // Merge the current theme into a layout (creation path). Copies rather than
-  // mutates: the layout belongs to dcc's figure prop, and writing theme colours
-  // into it would send them back to the server on any State(graph, "figure")
-  // and bake them into plot exports.
+  // mutates: the layout belongs to dcc's figure prop, so writing into it would
+  // leak theme colours back to the server and into plot exports.
   function themeLayout(src) {
     var t = chartTheme();
     var layout = copy(src);
@@ -145,10 +144,8 @@
     if (!window.Plotly || !gd || !gd.layout) return;
     // Skip graphs with no laid-out geometry (e.g. inside a collapsed card): a
     // relayout would re-measure the hidden container and lock in a zero height.
-    // Such a graph keeps the old theme until its figure prop next changes:
-    // revealing it triggers Plotly.Plots.resize, not the wrapped react, and
-    // nothing re-checks it. No figure is currently mounted hidden, so this is
-    // latent — but it needs a reveal hook if that changes.
+    // Such a graph keeps the old theme until its figure prop next changes —
+    // latent today (nothing is mounted hidden), but it would need a reveal hook.
     if (!gd.clientHeight) return;
     // Already current (creation-path figures usually are): skip the relayout.
     if (

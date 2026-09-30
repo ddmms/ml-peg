@@ -141,8 +141,7 @@ def inject_head_scripts(app: Dash) -> None:
     if ANALYTICS_ID:
         scripts.append(build_analytics_head(ANALYTICS_ID))
 
-    # One replace, so the scripts run in the order listed above (repeating the
-    # replace inserts each new script *before* the previous one).
+    # One replace: repeating it would insert each script *before* the previous.
     app.index_string = app.index_string.replace(
         "{%metas%}", "{%metas%}\n" + "\n".join(scripts)
     )

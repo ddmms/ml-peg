@@ -87,8 +87,8 @@
   }
 
   // True while the tooltip node still holds the previous anchor's content.
-  // Bounded by STALE_FRAMES: two cells may legitimately share tooltip text, in
-  // which case the read never changes and waiting longer would show nothing.
+  // Bounded, since two cells may legitimately share text: then the read never
+  // changes and waiting longer would show nothing at all.
   function isStale(html) {
     if (staleHtml === null) return false;
     if (html !== staleHtml || ++staleFrames > STALE_FRAMES) {
@@ -135,8 +135,8 @@
   }
 
   function reposition() {
-    // A client-side navigation can unmount the anchor under a pinned card;
-    // a detached node measures all-zeros and would strand it in the corner.
+    // A client-side navigation can unmount the anchor; a detached node
+    // measures all-zeros and would strand the card in the corner.
     if (anchorCell && !anchorCell.isConnected) {
       if (pinned) unpin();
       else hide();
@@ -241,9 +241,8 @@
     ensurePortal();
     cancelHide();
     if (cell !== anchorCell) {
-      // Dash keeps one tooltip node per table and updates it from its own
-      // (bubble-phase) handler, i.e. after this capture-phase one — so what it
-      // holds right now still belongs to the cell being left.
+      // Dash updates its one tooltip node per table from a bubble-phase
+      // handler, i.e. after this one — so it still holds the old cell's text.
       staleHtml = readTooltip(cell);
       staleFrames = 0;
       anchorCell = cell;

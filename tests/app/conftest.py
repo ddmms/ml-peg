@@ -77,12 +77,10 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
     """
     Block until the app has hydrated and hidden its start-up mask.
 
-    Waiting on ``#startup-mask`` being ``state="hidden"`` is not enough: Dash
-    serves an empty entry point and fetches the layout over ``_dash-layout``
-    after ``load``, so for the first moments of any load or reload the mask does
-    not exist — and Playwright counts "detached" as hidden, so such a wait
-    returns immediately against a blank page. Requiring the element to exist
-    *and* be hidden tests the end state that ``shell.py`` actually produces.
+    Waiting on ``#startup-mask`` being ``state="hidden"`` is not enough: the
+    mask is part of the layout Dash fetches after ``load``, so it is briefly
+    absent — and Playwright counts "detached" as hidden, making such a wait
+    return immediately against a blank page. Hence exists *and* hidden.
 
     Parameters
     ----------

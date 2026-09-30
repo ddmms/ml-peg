@@ -43,12 +43,10 @@ def build_version_check_script() -> str:
     """
     Build the pre-hydration script that drops cached state after a version bump.
 
-    Runs from ``<head>`` rather than as a callback, because a ``dcc.Store``
-    reads ``localStorage`` while it mounts and writes it back whenever its data
-    changes. A callback fires after all of that, so clearing there races the
-    stores it is clearing: any write still in flight re-persists the stale value
-    the bump was meant to drop, and it takes a reload to recover. Nothing has
-    read ``localStorage`` yet at this point, so no reload is needed either.
+    Runs from ``<head>`` rather than as a callback: a callback fires after the
+    ``dcc.Store``s have mounted and read ``localStorage``, so any write still in
+    flight re-persists the stale value the bump meant to drop. Pre-hydration,
+    nothing has read it yet, so no reload is needed either.
 
     Returns
     -------
