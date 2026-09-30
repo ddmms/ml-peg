@@ -23,6 +23,7 @@ import os
 from dash import Dash
 
 from ml_peg.app.utils.settings import ZOOM_MAX, ZOOM_MIN
+from ml_peg.app.utils.storage import build_version_check_script
 
 ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
 
@@ -135,9 +136,13 @@ def inject_head_scripts(app: Dash) -> None:
     app
         Dash application to modify in place.
     """
-    scripts = [build_no_flash_script()]
+    # Version check first: it may clear the very keys the no-flash script reads.
+    scripts = [build_version_check_script(), build_no_flash_script()]
     if ANALYTICS_ID:
         scripts.append(build_analytics_head(ANALYTICS_ID))
 
-    for script in scripts:
-        app.index_string = app.index_string.replace("{%metas%}", "{%metas%}\n" + script)
+    # One replace, so the scripts run in the order listed above (repeating the
+    # replace inserts each new script *before* the previous one).
+    app.index_string = app.index_string.replace(
+        "{%metas%}", "{%metas%}\n" + "\n".join(scripts)
+    )

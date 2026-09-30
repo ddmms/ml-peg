@@ -60,27 +60,44 @@
     return axes;
   }
 
-  // Merge the current theme into a layout object (creation path).
-  function themeLayout(layout) {
+  // Shallow copy; `undefined` copies to {}, standing in for the `|| {}` idiom.
+  function copy(obj) {
+    var out = {};
+    for (var k in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k];
+    }
+    return out;
+  }
+
+  // Merge the current theme into a layout (creation path). Copies rather than
+  // mutates: the layout belongs to dcc's figure prop, and writing theme colours
+  // into it would send them back to the server on any State(graph, "figure")
+  // and bake them into plot exports.
+  function themeLayout(src) {
     var t = chartTheme();
+    var layout = copy(src);
     layout.paper_bgcolor = t.paper;
     layout.plot_bgcolor = t.paper;
-    layout.font = layout.font || {};
+    layout.font = copy(layout.font);
     layout.font.color = t.font;
     axisKeys(layout).forEach(function (k) {
-      var axis = (layout[k] = layout[k] || {});
+      var axis = (layout[k] = copy(layout[k]));
       axis.gridcolor = t.grid;
       axis.zerolinecolor = t.grid;
       axis.linecolor = t.grid;
     });
     if (layout.polar) {
-      layout.polar.bgcolor = t.paper;
-      layout.polar.angularaxis = layout.polar.angularaxis || {};
-      layout.polar.angularaxis.gridcolor = t.grid;
-      layout.polar.radialaxis = layout.polar.radialaxis || {};
-      layout.polar.radialaxis.gridcolor = t.grid;
+      var polar = (layout.polar = copy(layout.polar));
+      polar.bgcolor = t.paper;
+      polar.angularaxis = copy(polar.angularaxis);
+      polar.angularaxis.gridcolor = t.grid;
+      polar.radialaxis = copy(polar.radialaxis);
+      polar.radialaxis.gridcolor = t.grid;
     }
-    if (layout.ternary) layout.ternary.bgcolor = t.paper;
+    if (layout.ternary) {
+      layout.ternary = copy(layout.ternary);
+      layout.ternary.bgcolor = t.paper;
+    }
     return layout;
   }
 
@@ -96,9 +113,10 @@
       P[name] = function (gd, dataOrFig, layout) {
         var args = Array.prototype.slice.call(arguments);
         if (dataOrFig && !Array.isArray(dataOrFig)) {
-          dataOrFig.layout = themeLayout(dataOrFig.layout || {});
+          args[1] = copy(dataOrFig);
+          args[1].layout = themeLayout(dataOrFig.layout);
         } else {
-          args[2] = themeLayout(layout || {});
+          args[2] = themeLayout(layout);
         }
         return orig.apply(this, args);
       };
@@ -125,10 +143,12 @@
   // Relayout one settled graph after a theme flip. Chrome only.
   function themeOne(gd, t) {
     if (!window.Plotly || !gd || !gd.layout) return;
-    // Skip graphs with no laid-out geometry (e.g. inside a collapsed card):
-    // a relayout would re-measure the hidden container and lock in a zero
-    // height. Such graphs re-render through the wrapped react on their next
-    // update — dcc resizes and redraws a graph revealed by expanding a card.
+    // Skip graphs with no laid-out geometry (e.g. inside a collapsed card): a
+    // relayout would re-measure the hidden container and lock in a zero height.
+    // Such a graph keeps the old theme until its figure prop next changes:
+    // revealing it triggers Plotly.Plots.resize, not the wrapped react, and
+    // nothing re-checks it. No figure is currently mounted hidden, so this is
+    // latent — but it needs a reveal hook if that changes.
     if (!gd.clientHeight) return;
     // Already current (creation-path figures usually are): skip the relayout.
     if (

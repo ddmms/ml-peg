@@ -120,6 +120,13 @@
   }
 
   function reposition() {
+    // A client-side navigation can unmount the anchor under a pinned card;
+    // a detached node measures all-zeros and would strand it in the corner.
+    if (anchorCell && !anchorCell.isConnected) {
+      if (pinned) unpin();
+      else hide();
+      return;
+    }
     if (anchorCell) {
       lastRect = anchorCell.getBoundingClientRect();
     }

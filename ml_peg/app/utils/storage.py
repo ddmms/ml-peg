@@ -39,6 +39,36 @@ _CLEAR_STORAGE_JS = """
 """
 
 
+def build_version_check_script() -> str:
+    """
+    Build the pre-hydration script that drops cached state after a version bump.
+
+    Runs from ``<head>`` rather than as a callback, because a ``dcc.Store``
+    reads ``localStorage`` while it mounts and writes it back whenever its data
+    changes. A callback fires after all of that, so clearing there races the
+    stores it is clearing: any write still in flight re-persists the stale value
+    the bump was meant to drop, and it takes a reload to recover. Nothing has
+    read ``localStorage`` yet at this point, so no reload is needed either.
+
+    Returns
+    -------
+    str
+        A ``<script>`` element, ready to be injected ahead of the parsed head.
+    """
+    return (
+        "    <script>(function(){try{"
+        f'var current="{__version__}";'
+        'var stored=window.localStorage.getItem("ml-peg-store-version");'
+        "if(stored!==current){"
+        # A first visit has nothing stale to drop; only record the version.
+        "if(stored!==null){"
+        f"{_CLEAR_STORAGE_JS}"
+        "}"
+        'window.localStorage.setItem("ml-peg-store-version",current);'
+        "}}catch(e){}})();</script>"
+    )
+
+
 def build_header_controls() -> Div:
     """
     Build the controls shown in the top-right corner of the app.
@@ -57,7 +87,6 @@ def build_header_controls() -> Div:
             build_settings_panel(),
             build_tutorial_button(),
             Div(id="clear-storage-dummy", style={"display": "none"}),
-            Div(id="storage-version-dummy", style={"display": "none"}),
             Div(id="theme-apply-dummy", style={"display": "none"}),
             Div(id="zoom-apply-dummy", style={"display": "none"}),
             Div(id="font-apply-dummy", style={"display": "none"}),
@@ -88,25 +117,5 @@ def register_storage_callbacks() -> None:
         prevent_initial_call=True,
     )
 
-    # Auto-clear browser-persisted stores when the released version changes, so a
-    # new release drops stale cached state automatically. The version is recorded
-    # in localStorage.
-    clientside_callback(
-        f"""
-        function (pathname) {{
-            const current = "{__version__}";
-            const stored = window.localStorage.getItem("ml-peg-store-version");
-            if (stored !== current) {{
-                {_CLEAR_STORAGE_JS}
-                window.localStorage.setItem("ml-peg-store-version", current);
-                if (stored !== null) {{
-                    window.location.reload();
-                }}
-            }}
-            return "";
-        }}
-        """,
-        Output("storage-version-dummy", "children"),
-        Input("app-location", "pathname"),
-        prevent_initial_call=False,
-    )
+    # The version-bump auto-clear is NOT a callback: see
+    # build_version_check_script.

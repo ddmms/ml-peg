@@ -195,3 +195,37 @@ def test_clear_cache_preserves_theme(ready_page: Page) -> None:
     assert ready_page.locator("html").get_attribute("data-theme") == "dark", (
         "theme preference lost after clearing the cache"
     )
+
+
+def test_version_bump_clears_cache_but_keeps_theme(ready_page: Page) -> None:
+    """A new release version drops stale cached state, keeping preferences."""
+    _open_settings(ready_page)
+    ready_page.locator("#theme-toggle").click()
+    expect(ready_page.locator("html")).to_have_attribute(
+        "data-theme", "dark", timeout=TIMEOUT
+    )
+    ready_page.wait_for_function(
+        "window.localStorage.getItem('theme-store') !== null", timeout=TIMEOUT
+    )
+
+    # Fake an upgrade: stale cached state plus a version stamp from an older
+    # release. The clear runs from <head>, before any Store reads localStorage.
+    ready_page.evaluate(
+        """() => {
+          window.localStorage.setItem('stale-weight-store', '{"MACE": 1}');
+          window.localStorage.setItem('ml-peg-store-version', '0.0.0-old');
+        }"""
+    )
+    ready_page.reload()
+    wait_for_app_ready(ready_page)
+
+    assert (
+        ready_page.evaluate("window.localStorage.getItem('stale-weight-store')") is None
+    ), "stale cached state survived the version bump"
+    assert (
+        ready_page.evaluate("JSON.parse(window.localStorage.getItem('theme-store'))")
+        == "dark"
+    ), "theme-store was wiped by the version bump instead of being preserved"
+    assert ready_page.locator("html").get_attribute("data-theme") == "dark", (
+        "theme preference lost across the version bump"
+    )
