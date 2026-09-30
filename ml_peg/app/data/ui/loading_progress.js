@@ -43,14 +43,32 @@
     ring.style.setProperty("--mlpeg-pct", String(Math.round(pct)));
   }
 
+  /* A ring only needs frames while it is both on screen and still climbing.
+   * Counting mounted rings instead would never let the loop idle out, because
+   * #startup-mask is not unmounted when it goes away — shell.py just sets
+   * display:none on it, so its (completed) ring stays in the document for the
+   * life of the page.
+   *
+   * getClientRects() rather than offsetParent: offsetParent is null for
+   * position:fixed elements too, so a ring that was itself fixed (as the
+   * .mlpeg-loader wrapper around it already is) would read as hidden while
+   * plainly visible, and the loop would idle out mid-climb. */
+  function needsFrames(ring) {
+    var entry = state.get(ring);
+    return !(entry && entry.done) && ring.getClientRects().length > 0;
+  }
+
   function tick(now) {
     watchStartupMask();
 
     var rings = document.querySelectorAll(".mlpeg-progress-ring");
-    idle = rings.length ? 0 : idle + 1;
+    var active = 0;
 
     for (var i = 0; i < rings.length; i++) {
       var ring = rings[i];
+      if (needsFrames(ring)) {
+        active++;
+      }
       var prev = state.get(ring);
 
       if (prev === undefined) {
@@ -79,7 +97,8 @@
     }
 
     // Idle out rather than burning a querySelectorAll every frame for the life
-    // of the page; observeForRings() brings us back when a ring next mounts.
+    // of the page; observeForRings() brings us back when a ring next needs us.
+    idle = active ? 0 : idle + 1;
     if (idle > IDLE_FRAMES) {
       running = false;
       return;
@@ -97,13 +116,34 @@
   }
 
   /* Dash mounts the page and table loading overlays long after first paint, so
-   * the loop has to be able to wake up again after it has idled out. */
+   * the loop has to be able to wake up again after it has idled out.
+   *
+   * Attributes as well as childList: the loop also stops for rings that are
+   * mounted but hidden, and an overlay revealed by a style or class change
+   * produces no childList record. Without that, a revealed ring would sit
+   * frozen at whatever number the loop stopped on.
+   *
+   * The wake-up test has to mirror tick()'s stop test, or the two fight: any
+   * attribute change on the page would restart the loop for another IDLE_FRAMES
+   * just because the completed start-up ring is still in the document. */
   function observeForRings() {
     new MutationObserver(function () {
-      if (!running && document.querySelector(".mlpeg-progress-ring")) {
-        start();
+      if (running) {
+        return;
       }
-    }).observe(document.documentElement, { childList: true, subtree: true });
+      var rings = document.querySelectorAll(".mlpeg-progress-ring");
+      for (var i = 0; i < rings.length; i++) {
+        if (needsFrames(rings[i])) {
+          start();
+          return;
+        }
+      }
+    }).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
   }
 
   /* Complete the start-up ring the moment the app is interactive, so the last
