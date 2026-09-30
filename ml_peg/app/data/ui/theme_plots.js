@@ -154,10 +154,11 @@
       update["polar.radialaxis.gridcolor"] = t.grid;
     }
     if (gd.layout.ternary) update["ternary.bgcolor"] = t.paper;
+    // A graph torn down mid-repaint must not disturb the rest of the pass
     try {
-      window.Plotly.relayout(gd, update);
+      window.Plotly.relayout(gd, update).catch(function () {});
     } catch (e) {
-      /* a graph mid-teardown must not break the repaint pass */
+      /* empty */
     }
   }
 
