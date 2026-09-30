@@ -136,3 +136,61 @@ Reference data:
 
 * Same as input data
 * wb97md3 with 1b CCSD(T) corrections
+
+
+MC500
+=====
+
+Summary
+-------
+
+Performance in reproducing 500 r2SCAN+MBD molecular-crystal geometries. Atomic
+positions and unit-cell parameters are relaxed while preserving the starting space-group
+symmetry.
+
+
+Metrics
+-------
+
+1. Mean RMS Cartesian displacement excluding hydrogen
+
+The root-mean-square Cartesian displacement (RMSCD) compares the fractional-coordinate
+displacements using both the reference and relaxed cells. Hydrogen atoms are excluded
+from the primary metric because their experimental positions are generally less reliable.
+
+2. Structures within 0.25 Å
+
+The percentage of the complete dataset with a non-hydrogen RMSCD no greater than the
+published 0.25 Å threshold. Failed calculations therefore do not count as passing.
+
+3. Convergence
+
+The percentage of structures that reach a maximum force below 0.01 eV/Å within 1000
+BFGS optimization steps.
+
+The all-atom RMSCD is also reported for context but is excluded from the overall score.
+
+
+Benchmark speed
+---------------
+
+Slow: the benchmark performs symmetry-constrained variable-cell relaxations of 500
+molecular crystals, with up to 1000 optimization steps for each structure, taking
+multiple hours on GPU for each model.
+
+
+Data availability
+-----------------
+
+Input and reference structures:
+
+* 500 molecular-crystal structures optimized with r2SCAN+MBD using CASTEP.
+* M. Husak, F. Fnukal and J. Cejka, *The use of machine learning interatomic
+  potentials for the verification of experimental molecular crystal structures*,
+  IUCrJ **13**, 623-634 (2026), DOI: 10.1107/S2052252526006949.
+
+RMSCD definition:
+
+* J. van de Streek and M. A. Neumann, *Validation of experimental molecular crystal
+  structures with dispersion-corrected density functional theory calculations*,
+  Acta Crystallographica Section B **66**, 544-558 (2010).

@@ -1,0 +1,29 @@
+metrics:
+  Mean RMSCD excluding H:
+    good: 0.0
+    bad: 0.25
+    unit: "Å"
+    tooltip: "Mean RMS Cartesian displacement excluding hydrogen atoms"
+    level_of_theory: "r2SCAN+MBD"
+
+  Mean RMSCD all atoms:
+    good: 0.0
+    bad: 0.25
+    weight: 0.0
+    unit: "Å"
+    tooltip: "Mean RMS Cartesian displacement including all atoms"
+    level_of_theory: "r2SCAN+MBD"
+
+  Structures within threshold:
+    good: 100.0
+    bad: 0.0
+    unit: "%"
+    tooltip: "Percentage of all MC500 structures with non-hydrogen RMSCD no greater than 0.25 Å"
+    level_of_theory: "r2SCAN+MBD"
+
+  Convergence:
+    good: 100.0
+    bad: 90.0
+    unit: "%"
+    tooltip: "Percentage of structures reaching the 0.01 eV/Å force threshold within 1000 BFGS steps"
+    level_of_theory: "r2SCAN+MBD"

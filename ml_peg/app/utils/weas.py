@@ -5,6 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+from dash.html import B, Div, Iframe, P, Span
+
+PANEL_IFRAME_STYLE = {
+    "width": "100%",
+    "border": "1px solid #ddd",
+    "borderRadius": "5px",
+}
+PANEL_SUBTITLE_STYLE = {"color": "#666", "fontSize": "0.9rem"}
+
 
 def generate_weas_html(
     filename: str | Path,
@@ -143,3 +152,54 @@ def generate_weas_html(
     </body>
     </html>
     """  # noqa: E501
+
+
+def weas_panel(
+    filename: str | Path,
+    title: str,
+    subtitle: str | None = None,
+    mode: Literal["struct", "traj"] = "struct",
+    index: int = 0,
+    height: str = "550px",
+    style: dict | None = None,
+) -> Div:
+    """
+    Build a labelled WEAS viewer.
+
+    Parameters
+    ----------
+    filename
+        Path of structure file to visualise.
+    title
+        Bold label displayed above the viewer.
+    subtitle
+        Additional detail displayed beside the title. Default is `None`.
+    mode
+        Whether viewing a single structure ("struct") or a trajectory ("traj").
+    index
+        Frame of structure file to load, or of trajectory to view.
+    height
+        Height of the viewer. Default is "550px".
+    style
+        Style applied to the surrounding Div. Default is `None`.
+
+    Returns
+    -------
+    Div
+        Label and WEAS viewer.
+    """
+    label = (
+        B(title)
+        if subtitle is None
+        else [B(title), Span(f" — {subtitle}", style=PANEL_SUBTITLE_STYLE)]
+    )
+    return Div(
+        [
+            P(label),
+            Iframe(
+                srcDoc=generate_weas_html(filename, mode, index),
+                style={"height": height} | PANEL_IFRAME_STYLE,
+            ),
+        ],
+        style=style,
+    )
