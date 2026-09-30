@@ -41,6 +41,47 @@ Reference data:
 * Experimental
 
 
+Polymer densities
+=================
+
+Summary
+-------
+
+Performance in predicting room-temperature amorphous densities for 130
+polymers. Starting structures are prebuilt polymer cells, and the reference
+data are experimental densities.
+
+Metrics
+-------
+
+1. Density error
+
+For each polymer, the density is calculated by averaging over the final 500 ps
+NPT production stage of a 24-stage Polymatic-style equilibration protocol. The
+protocol uses a 0.5 fs timestep and runs for about 2.06 ns per model and
+polymer at the default time prefactor. The predicted density is compared to the
+experimental reference density.
+
+Computational cost
+------------------
+
+Very high: tests are likely to take several days to run on GPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Built from the SimPoly polymer dataset and stored as prebuilt structures for
+  ML-PEG calculations.
+
+Reference data:
+
+* Simm et al., SimPoly: Simulation of Polymers with Machine Learning Force
+  Fields Derived from First Principles. arXiv:2510.13696 [physics.comp-ph]
+* Experimental
+
+
 Water density
 =============
 
@@ -86,7 +127,6 @@ Summary
 
 Benchmark of the density of water-ethanol mixtures for different concentrations of ethanol, compare to experiment.
 1 ns of NPT MD on about 120 water/ethanol molecules for 6 concentrations.
-
 
 Metrics
 -------
@@ -162,3 +202,59 @@ Input structures:
 Reference data:
 
 * QM-optimised equilibrium bond lengths of the reference geometries.
+
+
+Ring planarity
+==============
+
+Summary
+-------
+
+Performance in maintaining planar aromatic rings during molecular dynamics simulations
+of small organic molecules, evaluated on 6 molecules with aromatic ring systems
+selected from the QM9 dataset. For each molecule, an NVT molecular dynamics simulation
+is run at 300 K starting from the QM9-optimised geometry, and the deviation of
+the ring atoms from their best-fit plane is measured along the trajectory.
+
+Metrics
+-------
+
+1. Planarity deviation
+
+At each frame of the trajectory, the ring atoms are fitted to a plane and the root mean
+square deviation of the atoms from that plane is calculated. This is averaged over the
+trajectory and across all molecules. Aromatic rings are planar, so a well-behaved
+potential keeps this deviation small; a lower deviation is better. If any molecule is
+unstable (fails with an error or the simulation explodes), the metric is reported as
+NaN, as is the benchmark score.
+
+2. Planarity deviation (stable only)
+
+The planarity deviation, averaged only over the molecules whose simulations were
+stable. This is identical to the metric above unless any molecule was unstable, in which
+case it still gives a value while the metric above is NaN. It is reported for
+information only and does not contribute to the benchmark score.
+
+A histogram shows the distribution of the sampled planarity deviations for each model,
+using only stable simulations.
+
+Computational cost
+------------------
+
+High: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
+overhead rather than by system size, and tests are likely to take a couple of hours per
+model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
+MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. Starting geometries selected from the QM9 dataset
+  (Ramakrishnan et al., Scientific Data 1, 140022, 2014).
+
+Reference data:
+
+* QM-optimised starting geometries from QM9 (:math:`B3LYP/6-31G(2df,p)` level of theory).
