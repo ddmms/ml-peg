@@ -17,18 +17,14 @@ import pytest
 import spglib
 from tqdm import tqdm
 
-# from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.calcs.molecular_crystal.MC500.cif_utils import read_mc500_cif
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
-
-# Temporary local source. Replace this with the commented S3 download in
-# ``test_mc500_relaxation`` once the archive has been uploaded.
-LOCAL_DATA_PATH = Path(__file__).parents[4] / "data_mol_crys_michal" / "MC500_CIF"
 
 FMAX = 0.01
 MAX_STEPS = 1000
@@ -144,14 +140,13 @@ def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
     calculator = model.get_calculator(precision="high")
     calculator = model.add_d3_calculator(calculator)
 
-    # cif_dir = (
-    #     download_s3_data(
-    #         key="inputs/molecular_crystal/MC500/MC500.zip",
-    #         filename="MC500.zip",
-    #     )
-    #     / "MC500_CIF"
-    # )
-    cif_dir = LOCAL_DATA_PATH
+    cif_dir = (
+        download_s3_data(
+            key="inputs/molecular_crystal/MC500/MC500.zip",
+            filename="MC500.zip",
+        )
+        / "MC500_CIF"
+    )
     if not cif_dir.is_dir():
         raise FileNotFoundError(f"MC500 input directory not found: {cif_dir}")
 
