@@ -35,7 +35,7 @@ from ml_peg.calcs.molecular_dynamics.thermodynamic_properties.calc_properties im
 def test_density():
     """Test density calculation."""
     values = np.array([0.8, 1.0, 1.0, 1.2, 1.2, 1.4, 1.4, 1.6])
-    mean, stderr = density(values, block_size=2)
+    mean, stderr = density(values, block_size=2, teq=0)
     block_values = np.array([0.9, 1.1, 1.3, 1.5])
     assert mean == pytest.approx(np.mean(block_values))
     assert stderr == pytest.approx(
@@ -58,6 +58,7 @@ def test_heat_capacity_cp():
         pressure=press,
         n_molecules=n_molecules,
         block_size=2,
+        teq=0,
     )
 
     # Every block has the same population variance: 1 eV^2.
@@ -71,7 +72,7 @@ def test_isothermal_compressibility():
     volume = np.array([9.0, 11.0, 9.0, 11.0, 9.0, 11.0, 9.0, 11.0])
     temperature = 300.0
     kappa, stderr = isothermal_compressibility(
-        volume, temperature=temperature, block_size=2
+        volume, temperature=temperature, block_size=2, teq=0
     )
     # variance = 1 Angstrom^6, mean volume = 10 Angstrom^3.
     mean_volume = 10.0
@@ -86,7 +87,13 @@ def test_thermal_expansion():
     pot_energy, kin_energy = 2 * volume, 3 * volume
     temp, press = 300.0, 1.0
     alpha, stderr = thermal_expansion(
-        pot_energy, kin_energy, volume, temperature=temp, pressure=press, block_size=2
+        pot_energy,
+        kin_energy,
+        volume,
+        temperature=temp,
+        pressure=press,
+        block_size=2,
+        teq=0,
     )
     mean_volume, mean_cov = 10.0, 5.0 + press * units.bar
     # cov(V, H) = cov(V, 2V) = 2 var(V) = 2.
@@ -111,6 +118,7 @@ def test_evaporation_enthalpy():
         temperature=temp,
         n_molecules=n_mol,
         block_size=2,
+        teq=0,
     )
 
     # Each liquid block has mean U -100 and every gas block mean U -4,
