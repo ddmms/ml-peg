@@ -9,7 +9,7 @@ from ase.io import read
 from dash import Input, Output, callback
 from dash.dcc import Graph
 from dash.exceptions import PreventUpdate
-from dash.html import B, Div, Iframe, P, Span
+from dash.html import B, Div, P
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -18,7 +18,7 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.app.utils.weas import generate_weas_html
+from ml_peg.app.utils.weas import weas_panel
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -42,12 +42,6 @@ STOL = 0.25
 XYZ_NAMES = {"NV": "normal_vacancy.xyz", "SV": "split_vacancy.xyz"}
 VACANCY_LABELS = {"NV": "normal vacancy", "SV": "split vacancy"}
 
-IFRAME_STYLE = {
-    "height": "550px",
-    "width": "100%",
-    "border": "1px solid #ddd",
-    "borderRadius": "5px",
-}
 GRID_STYLE = {
     "display": "grid",
     "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
@@ -60,7 +54,6 @@ CAPTION_STYLE = {
     "margin": "8px 0 14px 0",
 }
 NOTE_STYLE = {"color": "#666", "fontSize": "0.9rem", "margin": "0 0 10px 10px"}
-SUBTITLE_STYLE = {"color": "#666", "fontSize": "0.9rem"}
 
 
 @lru_cache(maxsize=512)
@@ -203,16 +196,12 @@ def _struct_panel(struct_url: str, title: str, vac_type: str, frame: dict) -> Di
     if not frame["matched"]:
         subtitle += " · no match"
 
-    return Div(
-        [
-            P([B(title), Span(f" — {subtitle}", style=SUBTITLE_STYLE)]),
-            Iframe(
-                srcDoc=generate_weas_html(
-                    struct_url, mode="traj", index=frame["index"]
-                ),
-                style=IFRAME_STYLE,
-            ),
-        ]
+    return weas_panel(
+        struct_url,
+        title,
+        subtitle=subtitle,
+        mode="traj",
+        index=frame["index"],
     )
 
 

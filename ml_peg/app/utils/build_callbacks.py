@@ -22,7 +22,7 @@ from dash import (
 from dash.dcc import Graph
 from dash.development.base_component import Component
 from dash.exceptions import PreventUpdate
-from dash.html import Div, Iframe
+from dash.html import B, Div, Iframe, P
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
@@ -34,7 +34,7 @@ from ml_peg.analysis.utils.periodic_table import (
 from ml_peg.app.utils.build_components import build_plot_download_controls
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
-from ml_peg.app.utils.weas import generate_weas_html
+from ml_peg.app.utils.weas import generate_weas_html, weas_panel
 
 
 def plot_with_download_controls(graph: Graph) -> Div:
@@ -413,6 +413,89 @@ def struct_from_scatter(
                 },
             )
         )
+
+
+STRUCT_PAIR_GRID_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+    "gap": "8px",
+}
+STRUCT_PAIR_CAPTION_STYLE = {
+    "fontSize": "1.15rem",
+    "borderLeft": "4px solid #636efa",
+    "paddingLeft": "10px",
+    "margin": "8px 0 14px 0",
+}
+
+
+def struct_pair_from_scatter(
+    scatter_id: str,
+    struct_id: str,
+    ref_structs: list[str],
+    pred_structs: list[str],
+    ref_title: str,
+    pred_title: str,
+    captions: list[str] | None = None,
+) -> None:
+    """
+    Attach callback to show reference and predicted structures side by side.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    struct_id
+        ID for Dash placeholder Div where structures will be visualised.
+    ref_structs
+        Reference structure filenames in the same order as the scatter data.
+    pred_structs
+        Predicted structure filenames in the same order as the scatter data.
+    ref_title
+        Label displayed above the reference viewer.
+    pred_title
+        Label displayed above the predicted viewer.
+    captions
+        Caption displayed above each pair, in the same order as the scatter data.
+        Default is `None`, which omits the caption.
+    """
+    _register_point_highlight(scatter_id, follow_frames=False)
+
+    @callback(
+        Output(struct_id, "children", allow_duplicate=True),
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_struct_pair(click_data):
+        """
+        Register callback to show a structure pair when a point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div
+            Visualised structure pair on plot click.
+        """
+        if not click_data:
+            return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+        idx = click_data["points"][0]["pointNumber"]
+
+        if idx >= len(ref_structs) or idx >= len(pred_structs):
+            return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+
+        panels = Div(
+            [
+                weas_panel(ref_structs[idx], ref_title),
+                weas_panel(pred_structs[idx], pred_title),
+            ],
+            style=STRUCT_PAIR_GRID_STYLE,
+        )
+        if captions is None:
+            return panels
+        return Div([P(B(captions[idx]), style=STRUCT_PAIR_CAPTION_STYLE), panels])
 
 
 def struct_from_multi_scatters(
