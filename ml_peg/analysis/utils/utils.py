@@ -187,6 +187,110 @@ def rmse(ref: list, prediction: list) -> float:
     return np.sqrt(mean_squared_error(ref, prediction))
 
 
+def correlator(x: list, y: list) -> float:
+    """
+    Compute the covariance between two data series.
+
+    This is just a simple helper function to wrap
+    np.cov()
+
+    Parameters
+    ----------
+    x
+        First data series.
+    y
+        Second data series.
+
+    Returns
+    -------
+    float
+        Covariance between the two data series.
+    """
+    return np.cov(x, y, ddof=0)[0, 1]
+
+
+def block_estimate(
+    *values,
+    block_size: int,
+    estimator=np.mean,
+) -> tuple[float, float]:
+    """
+    Compute an observable and its standard error using block averaging.
+
+    Parameters
+    ----------
+    *values
+        One or more aligned input data series.
+    block_size
+        Number of samples in each block.
+    estimator
+        Function used to compute the observable.
+
+    Returns
+    -------
+    value
+        Observable computed over the full dataset.
+    stderr
+        Standard error estimated from the block values.
+    """
+    arrays = [np.asarray(value) for value in values]
+    value = estimator(*arrays)
+
+    if not np.all([array.size == arrays[0].size for array in arrays]):
+        raise ValueError("Input data series must have the same length.")
+
+    nblocks = len(arrays[0]) // block_size
+
+    if nblocks < 2:
+        return np.nan, np.nan
+
+    # Use the same samples for the central estimate and the block analysis.
+    nsamples = nblocks * block_size
+    arrays = [array[:nsamples] for array in arrays]
+
+    blocked_arrays = [array.reshape(nblocks, block_size) for array in arrays]
+
+    block_values = np.asarray(
+        [estimator(*(array[i] for array in blocked_arrays)) for i in range(nblocks)]
+    )
+
+    return (
+        value,
+        np.std(block_values, ddof=1) / np.sqrt(nblocks),
+    )
+
+
+def maze(ref: list, prediction: list, stderr: list) -> float:
+    """
+    Get mean absolute z error.
+
+    Parameters
+    ----------
+    ref
+        Reference data.
+    prediction
+        Predicted data.
+    stderr
+        Standard errors of the predicted data.
+
+    Returns
+    -------
+    float
+        Mean absolute z error.
+    """
+    if np.isnan(np.sum(prediction)) or np.isnan(np.sum(stderr)):
+        return np.nan
+
+    ref = np.asarray(ref)
+    prediction = np.asarray(prediction)
+    stderr = np.asarray(stderr)
+
+    if np.any(stderr <= 0):
+        return np.nan
+
+    return np.mean(np.abs(ref - prediction) / stderr)
+
+
 DENSITY_GRID_SIZE = 80
 DENSITY_MAX_POINTS_PER_CELL = 5
 DENSITY_SAMPLE_SEED = 0
