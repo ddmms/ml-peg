@@ -119,6 +119,58 @@ Reference data:
 * Experimental
 
 
+Water radial distribution
+=========================
+
+Summary
+-------
+
+Performance in reproducing the oxygen-oxygen radial distribution function (RDF)
+of liquid water. A 500 ps NPT molecular dynamics simulation (1 fs timestep,
+295.15 K, 1 atm, Langevin thermostat with a Monte Carlo barostat) of a box of
+500 water molecules is run with each model. All models start from the same
+pre-equilibrated structure, with no further model-specific equilibration.
+Snapshots are saved every 0.5 ps, and the O-O RDF, averaged over all 1000
+snapshots, is compared to the experimental reference.
+
+Metrics
+-------
+
+1. Peak deviation
+
+The position of the first solvent peak (the radius at which the RDF is maximal)
+is compared to the experimental peak of 2.8 Å.
+
+2. RDF RMSE
+
+The root mean square error (RMSE) of the RDF against the experimental reference,
+evaluated over the range 2.5-10.0 Å.
+
+A plot shows the predicted RDF profile of each model against the experimental
+reference profile.
+
+Computational cost
+------------------
+
+High: tests are likely to take several hours on GPU. Faster simulation times can be
+achieved using the jax accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. Box of 500 water molecules,
+  pre-equilibrated in the NPT ensemble using the TIP3P water model.
+
+Reference data:
+
+* Experimental oxygen-oxygen radial distribution function from: Skinner, L. B.
+  et al. Benchmark oxygen-oxygen pair-distribution function of ambient water
+  from x-ray diffraction measurements with a wide Q-range.
+  J. Chem. Phys. 138, 074506 (2013). https://doi.org/10.1063/1.4790861
+
+
 Water ethanol density curves
 ============================
 

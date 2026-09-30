@@ -8,6 +8,7 @@ from mlipaudit.benchmarks import (
     ReactivityBenchmark,
     RingPlanarityBenchmark,
     TautomersBenchmark,
+    WaterRadialDistributionBenchmark,
 )
 
 
@@ -62,6 +63,17 @@ class MlPegRingPlanarityBenchmark(RingPlanarityBenchmark):
 class MlPegTautomersBenchmark(TautomersBenchmark):
     """
     TautomersBenchmark wired up for ml-peg's ASE calculators.
+
+    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
+    do not expose ``allowed_atomic_numbers``.
+    """
+
+    skip_if_elements_missing = False
+
+
+class MlPegWaterRadialDistributionBenchmark(WaterRadialDistributionBenchmark):
+    """
+    WaterRadialDistributionBenchmark wired up for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
     do not expose ``allowed_atomic_numbers``.
