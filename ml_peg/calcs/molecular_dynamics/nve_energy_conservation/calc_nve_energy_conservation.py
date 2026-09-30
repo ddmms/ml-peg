@@ -47,7 +47,7 @@ def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
-    calc = model.add_d3_calculator(calc)
+    # Do not add D3 term: evaluate energy conservation of model alone.
 
     data_input_dir = download_s3_data(
         key=f"inputs/molecular_dynamics/{BENCHMARK}/{BENCHMARK}.zip",
