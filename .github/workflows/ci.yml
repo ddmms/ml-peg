@@ -26,9 +26,7 @@ jobs:
         env:
           # show timings of tests
           PYTEST_ADDOPTS: "--durations=0"
-        # tests/app is the browser suite, run separately by ui-tests.yml (which
-        # installs Chromium and fetches the ~800 KB test fixture from the
-        # bucket); skip it here.
+        # tests/app is the browser suite, run separately by ui-tests.yml
         run: uv run pytest --cov ml_peg --cov-append . --cov-report xml --ignore=tests/app
 
       - name: Report coverage to Coveralls
