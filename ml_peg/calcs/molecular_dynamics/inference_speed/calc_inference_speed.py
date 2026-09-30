@@ -2,9 +2,8 @@
 Measure model inference speed and how it scales with system size.
 
 For each structure in a size-stratified protein dataset, the model forward pass
-(energy + forces) is timed and a short molecular dynamics run is executed per
-backend. The timings are later aggregated into a scaling curve and a per-atom
-forward-time metric.
+(energy + forces) is timed. The timings are later aggregated into a scaling curve
+and a per-atom forward-time metric.
 """
 
 from __future__ import annotations

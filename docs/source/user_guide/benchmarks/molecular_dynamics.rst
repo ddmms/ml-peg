@@ -171,9 +171,8 @@ Summary
 -------
 
 Measure of model inference speed and how it scales with system size. A
-size-stratified protein dataset is used, and for each structure the model forward
-pass (energy + forces) is timed and a short molecular dynamics run is executed per
-backend.
+size-stratified dataset of 13 biomolecular structures (71-6713 atoms) is used.
+For each system the model forward pass (energy + forces) is timed.
 
 Metrics
 -------
@@ -193,14 +192,15 @@ hardware is an NVIDIA H100 GPU.
 Computational cost
 ------------------
 
-High: timing runs on GPU, scaling with the number and size of the systems.
+Low: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
 
 Input structures:
 
-* Size-stratified protein dataset (elements N, H, O, S, C).
+* MLIP Audit benchmark suite, InstaDeep. A size-stratified set of protein chains
+  (elements C, N, H, O, S, P) taken from the PDB.
 
 Reference data:
 
