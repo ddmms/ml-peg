@@ -36,10 +36,14 @@ def pytest_addoption(parser: Parser) -> None:
         "--framework",
         action="store",
         default=None,
-        help=(
-            "Run only tests belonging to these MLIP framework(s), as a "
-            "comma-separated list of framework ids. Default is all tests."
-        ),
+        help="Run only tests belonging to these MLIP framework(s), as a "
+        "comma-separated list of framework ids. Default is all tests.",
+    )
+    parser.addoption(
+        "--precomputed",
+        action="store_true",
+        default=False,
+        help="Use precomputed data where available.",
     )
 
 
