@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from os import PathLike
+from typing import Literal
 
 from ase import Atoms
 from ase.io import read
@@ -34,7 +35,7 @@ def _validate_cif(atoms: Atoms, filename: str | PathLike[str]) -> None:
         raise ValueError(f"MC500 CIF must be fully periodic: {filename}")
 
     occupancies = atoms.info.get("_atom_site_occupancy")
-    if occupancies is None or not np.allclose(
+    if occupancies is not None and not np.allclose(
         np.asarray(occupancies, dtype=float), 1.0
     ):
         raise ValueError(
@@ -83,9 +84,11 @@ def _move_from_cell_boundaries(atoms: Atoms) -> None:
         atoms.set_scaled_positions(scaled)
 
 
-def read_mc500_cif(filename: str | PathLike[str]) -> Atoms:
+def _read_mc500_cif(
+    filename: str | PathLike[str], *, reader: Literal["ase", "pycodcif"]
+) -> Atoms:
     """
-    Read and normalize an MC500 reference CIF for relaxation.
+    Read and normalize an MC500 reference CIF with a selected ASE backend.
 
     ASE expands the CIF symmetry operations into a complete conventional unit cell.
     The resulting ``Atoms`` object is therefore an explicit P1 representation for the
@@ -96,6 +99,8 @@ def read_mc500_cif(filename: str | PathLike[str]) -> Atoms:
     ----------
     filename
         Path to an MC500 CIF file.
+    reader
+        ASE CIF parser backend.
 
     Returns
     -------
@@ -106,7 +111,7 @@ def read_mc500_cif(filename: str | PathLike[str]) -> Atoms:
     atoms = read(
         filename,
         format="cif",
-        reader="pycodcif",
+        reader=reader,
         store_tags=True,
         primitive_cell=False,
         subtrans_included=True,
@@ -116,3 +121,48 @@ def read_mc500_cif(filename: str | PathLike[str]) -> Atoms:
     _store_expanded_labels(atoms)
     _move_from_cell_boundaries(atoms)
     return atoms
+
+
+def read_mc500_cif(filename: str | PathLike[str]) -> Atoms:
+    """
+    Read an MC500 CIF using the parser from the original workflow.
+
+    This mirrors the preparation performed by the supplied C# and Python code: use
+    ASE's native CIF parser, expand the original symmetry to a full explicit unit cell,
+    wrap all atoms into that cell, retain their original labels, and avoid coordinates
+    exactly on a periodic boundary. The C# implementation recorded the wrapping shifts
+    because it exported and later reread an intermediate CIF. ML-PEG keeps the same
+    ``Atoms`` object in memory throughout relaxation, so atom ordering and periodic
+    images remain aligned without a separate reverse-shift import step.
+
+    Parameters
+    ----------
+    filename
+        Path to an MC500 CIF file.
+
+    Returns
+    -------
+    Atoms
+        Prepared full-cell structure.
+    """
+    return _read_mc500_cif(filename, reader="ase")
+
+
+def read_mc500_cif_pycodcif(filename: str | PathLike[str]) -> Atoms:
+    """
+    Read an MC500 CIF using ASE's optional ``pycodcif`` backend.
+
+    This alternative is retained for a future parser comparison. It requires the
+    external ``pycodcif`` package and its system build dependencies.
+
+    Parameters
+    ----------
+    filename
+        Path to an MC500 CIF file.
+
+    Returns
+    -------
+    Atoms
+        Prepared full-cell structure.
+    """
+    return _read_mc500_cif(filename, reader="pycodcif")
