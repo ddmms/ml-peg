@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from dash.dcc import Graph
 from dash.html import Div, P
 
@@ -13,6 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_cell,
     struct_pair_from_scatter,
 )
+from ml_peg.app.utils.load import read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -38,21 +37,12 @@ class MC500App(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register table, plot, and structure callbacks."""
-        figure_path = DATA_PATH / "figure_rmscd.json"
-        figures = {}
-        if figure_path.exists():
-            with figure_path.open(encoding="utf-8") as f:
-                figures = json.load(f)
-
         plots: dict[str, dict[str, Graph]] = {}
         for model_name in MODELS:
-            figure = figures.get(model_name)
-            if figure is None:
+            figure_path = DATA_PATH / f"figure_rmscd_{model_name}.json"
+            if not figure_path.exists():
                 continue
-            graph = Graph(
-                id=f"{BENCHMARK_NAME}-{model_name}-figure",
-                figure=figure,
-            )
+            graph = read_plot(figure_path, id=f"{BENCHMARK_NAME}-{model_name}-figure")
             plots[model_name] = dict.fromkeys(METRICS, graph)
 
         plot_from_table_cell(
@@ -61,9 +51,10 @@ class MC500App(BaseApp):
             cell_to_plot=plots,
         )
 
-        for model_name in MODELS:
-            struct_dir = DATA_PATH / model_name / "structures"
-            structure_ids = [path.stem for path in sorted(struct_dir.glob("*.xyz"))]
+        # Ordering comes from the mock run, so it matches the scatter points even
+        # when a model failed to relax some structures.
+        structure_ids = (self.info or {}).get("filenames", [])
+        for model_name in plots:
             if not structure_ids:
                 continue
             struct_pair_from_scatter(

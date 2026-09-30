@@ -17,6 +17,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
 )
 from ml_peg.app import APP_ROOT
@@ -35,6 +36,16 @@ RMSCD_THRESHOLD = 0.25
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
+)
+
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="structures/*.xyz",
+    index=0,
+    include_filenames=True,
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
 )
 
 
@@ -121,7 +132,6 @@ def mc500_results() -> dict[str, dict[str, Any]]:
         counts.
     """
     results: dict[str, dict[str, Any]] = {}
-    all_elements: set[str] = set()
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
@@ -152,20 +162,22 @@ def mc500_results() -> dict[str, dict[str, Any]]:
         for row in rows:
             structure_id = row["structure_id"]
             trajectory_path = model_dir / "structures" / f"{structure_id}.xyz"
+
+            model_results["structure_ids"].append(structure_id)
+            model_results["refcodes"].append(row["refcode"])
+            model_results["converged"].append(_as_bool(row["converged"]))
+            model_results["steps"].append(int(row["steps"]))
+            model_results["max_force"].append(float(row["max_force"]))
+
             if not trajectory_path.exists():
+                model_results["rmscd"].append(np.nan)
+                model_results["rmscd_no_h"].append(np.nan)
                 continue
 
             reference, relaxed = read(trajectory_path, index=":")
             rmscd, rmscd_no_h, _ = rms_cartesian_displacement(reference, relaxed)
-
-            model_results["structure_ids"].append(structure_id)
-            model_results["refcodes"].append(row["refcode"])
             model_results["rmscd"].append(rmscd)
             model_results["rmscd_no_h"].append(rmscd_no_h)
-            model_results["converged"].append(_as_bool(row["converged"]))
-            model_results["steps"].append(int(row["steps"]))
-            model_results["max_force"].append(float(row["max_force"]))
-            all_elements.update(reference.get_chemical_symbols())
 
             # The reference is shared by every model, so it is written once to a
             # common directory, with only the metadata that identifies it.
@@ -174,10 +186,6 @@ def mc500_results() -> dict[str, dict[str, Any]]:
             write(app_struct_dir / f"{structure_id}.xyz", relaxed)
 
         results[model_name] = model_results
-
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
-        json.dump({"elements": sorted(all_elements)}, f, indent=1)
 
     return results
 
@@ -192,7 +200,6 @@ def rmscd_figures(mc500_results: dict[str, dict[str, Any]]) -> None:
     mc500_results
         Per-model MC500 results.
     """
-    figures: dict[str, dict] = {}
     for model_name, result in mc500_results.items():
         if not result["rmscd_no_h"]:
             continue
@@ -256,30 +263,10 @@ def rmscd_figures(mc500_results: dict[str, dict[str, Any]]) -> None:
             xaxis_title="Structure index",
             yaxis_title="RMSCD / Å",
         )
-        figures[model_name] = fig.to_plotly_json()
-
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    with (OUT_PATH / "figure_rmscd.json").open("w", encoding="utf-8") as f:
-        json.dump(figures, f, cls=PlotlyJSONEncoder)
-
-
-def _mean(values: list[float]) -> float:
-    """
-    Return the finite mean of a list, or NaN when it has no finite values.
-
-    Parameters
-    ----------
-    values
-        Values to average.
-
-    Returns
-    -------
-    float
-        Mean of the finite values, or NaN if none are finite.
-    """
-    finite = np.asarray(values, dtype=float)
-    finite = finite[np.isfinite(finite)]
-    return float(finite.mean()) if finite.size else np.nan
+        OUT_PATH.mkdir(parents=True, exist_ok=True)
+        figure_path = OUT_PATH / f"figure_rmscd_{model_name}.json"
+        with figure_path.open("w", encoding="utf-8") as f:
+            json.dump(fig.to_plotly_json(), f, cls=PlotlyJSONEncoder)
 
 
 @pytest.fixture
@@ -318,8 +305,9 @@ def metrics(
     for model_name, result in mc500_results.items():
         total = result["total"]
         values_no_h = result["rmscd_no_h"]
-        mean_no_h[model_name] = _mean(values_no_h)
-        mean_all[model_name] = _mean(result["rmscd"])
+        values_all = result["rmscd"]
+        mean_no_h[model_name] = float(np.mean(values_no_h)) if values_no_h else np.nan
+        mean_all[model_name] = float(np.mean(values_all)) if values_all else np.nan
         within_threshold[model_name] = (
             100
             * sum(
