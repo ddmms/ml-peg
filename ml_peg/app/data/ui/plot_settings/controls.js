@@ -263,6 +263,9 @@
     if (!plotNode.__mlPegSizeGuard) {
       plotNode.__mlPegSizeGuard = true;
       plotNode.on("plotly_afterplot", () => {
+        // Drops the held size if the redraw replaced the figure, so that does
+        // not depend on the user having hovered the plot first.
+        snapshot(plotNode);
         const wanted = plotNode.__mlPegSize;
         if (!wanted) return;
         // Clearing a dimension drops the key rather than nulling it, so an
