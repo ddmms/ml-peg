@@ -82,5 +82,5 @@
 - question: "How are test speeds estimated?"
   answer: >
     The speed ranges are rough estimates based on running MACE-MP-0a on a 40 GB
-    NVIDIA A100 GPU. Other potentials may be faster or slower
+    NVIDIA A100 GPU. This is only meant to be ballpark speed and other potentials may be faster or slower.
   docs_url: null
