@@ -204,7 +204,7 @@ def test_read_property_from_log(tmp_path):
     assert np.allclose(volume, [2496.3, 2480.9, 2505.6, 2490.2])
 
 
-def test_analyse_liquid(tmp_path):
+def test_analyse_liquid(tmp_path, monkeypatch):
     """
     Test analysing thermodynamic properties from a log.
 
@@ -225,6 +225,11 @@ def test_analyse_liquid(tmp_path):
     write_test_log(log_file_liq, "liq")
     log_file_gas = tmp_path / "test-gas.log"
     write_test_log(log_file_gas, "gas")
+    monkeypatch.setattr(
+        "ml_peg.analysis.molecular_dynamics.thermodynamic_properties.utils."
+        "detect_equilibration_time",
+        lambda *args, **kwargs: 0.0,
+    )
     results = analyse_liquid(
         log_file_liq=log_file_liq,
         log_file_gas=log_file_gas,

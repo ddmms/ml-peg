@@ -1,4 +1,4 @@
-"""Utillity functions to process logs and compute thermodynamic properties."""
+"""Utility functions to process logs and compute thermodynamic properties."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from warnings import warn
 from ase.io import read, write
 import numpy as np
 import pytest
+import red
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.thermodynamics import (
@@ -111,15 +112,14 @@ def read_property_from_log(
     return np.asarray(values), unit
 
 
-def detect_equilibration_time(
-    energy,
-    density,
-    time_ps,
-    block_size=1000,
-    tolerance=3.0,
-):
+def detect_equilibration_time(energy, density, time_ps, block_size=100):
     """
-    Detect equilibration from block-averaged energy and density.
+    Detect equilibration time using the RED window method.
+
+    Determines the equilibration point according to the minimum of the squared
+    standard error for block-averaged energy and density
+    (Clark et al., J. Chem. Theory Comput. 2025,
+    doi:10.1021/acs.jctc.4c01359).
 
     Parameters
     ----------
@@ -130,39 +130,42 @@ def detect_equilibration_time(
     time_ps
         Simulation time, in ps, corresponding to each logged sample.
     block_size
-        Number of samples in each block.
-    tolerance
-        Maximum deviation from the final-blocks mean, in units of the
-        block-to-block standard deviation.
+        Number of samples in each block used for equilibration detection.
 
     Returns
     -------
     float
         Estimated equilibration time in ps.
     """
-    n = len(energy) // block_size
+    energy = np.asarray(energy)
+    density = np.asarray(density)
+    time_ps = np.asarray(time_ps)
 
-    energy = np.asarray(energy[: n * block_size]).reshape(n, block_size).mean(axis=1)
-    density = np.asarray(density[: n * block_size]).reshape(n, block_size).mean(axis=1)
-    if len(energy) == 0:
-        raise RuntimeError("detect_equilibration_time called with empty energy array")
-    tail = int(n / 10)
-    if tail < 10:
-        warn("Equilibration time estimate is going to be not reliable", stacklevel=2)
-    energy_final = energy[-tail:].mean()
-    density_final = density[-tail:].mean()
+    n = min(len(energy), len(density), len(time_ps)) // block_size
+    if n < 2:
+        raise ValueError("Trajectory is too short for equilibration detection.")
 
-    energy_std = np.std(energy)
-    density_std = np.std(density)
+    energy_block = energy[:n * block_size].reshape(n, block_size).mean(axis=1)
+    density_block = density[:n * block_size].reshape(n, block_size).mean(axis=1)
 
-    equilibrated = (np.abs(energy - energy_final) < tolerance * energy_std) & (
-        np.abs(density - density_final) < tolerance * density_std
+    energy_cut, _, _ = red.detect_equilibration_window(
+        energy_block, method="min_sse"
+    )
+    density_cut, _, _ = red.detect_equilibration_window(
+        density_block, method="min_sse"
     )
 
-    for i in range(n):
-        if np.all(equilibrated[i:]):
-            return float(time_ps[i * block_size])
-    return float(time_ps[-1])
+    energy_ps = float(time_ps[int(energy_cut) * block_size])
+    density_ps = float(time_ps[int(density_cut) * block_size])
+    cut_ps = max(energy_ps, density_ps, 250.0)
+
+    if abs(energy_ps - density_ps) > 500.0:
+        warn(
+            "Energy and density equilibration cutoff times differ by more than 500 ps",
+            stacklevel=2,
+        )
+
+    return cut_ps
 
 
 def analyse_liquid(
@@ -231,7 +234,7 @@ def analyse_liquid(
     )
 
     teq_ps = detect_equilibration_time(
-        pot_energy_series, density_series, time_series, block_size=block_size
+        pot_energy_series, density_series, time_series, block_size=100
     )
     teq = int(np.argwhere(time_series >= teq_ps)[0, 0])
 
