@@ -260,7 +260,7 @@
       width: size.width,
       height: size.height,
     };
-    if (!plotNode.__mlPegSizeGuard) {
+    if (!plotNode.__mlPegSizeGuard && typeof plotNode.on === "function") {
       plotNode.__mlPegSizeGuard = true;
       plotNode.on("plotly_afterplot", () => {
         // Drops the held size if the redraw replaced the figure, so that does
