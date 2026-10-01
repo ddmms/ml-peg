@@ -54,6 +54,8 @@
     const key = figureKey(plotNode);
     const cached = plotNode.__mlPegPlotSettings;
     if (cached && cached.key === key) return cached;
+    // A new figure comes with its own size; stop holding the old one's.
+    plotNode.__mlPegSize = null;
 
     const layout = plotNode.layout || {};
     const axes = {};
@@ -247,6 +249,35 @@
     return {autosize: false, width: dimensions[0], height: dimensions[1]};
   }
 
+  /* Dash copies relayout changes back into the figure prop, but skips
+  autosize, width and height. The next Plotly.react therefore redraws at the
+  authored size and silently undoes the chosen one, so re-apply it whenever
+  that happens. */
+  function enforceSize(plotNode, size) {
+    // Kept as its own object, since callers go on to extend what they passed.
+    plotNode.__mlPegSize = {
+      autosize: size.autosize,
+      width: size.width,
+      height: size.height,
+    };
+    if (!plotNode.__mlPegSizeGuard) {
+      plotNode.__mlPegSizeGuard = true;
+      plotNode.on("plotly_afterplot", () => {
+        const wanted = plotNode.__mlPegSize;
+        if (!wanted) return;
+        // Clearing a dimension drops the key rather than nulling it, so an
+        // exact comparison here would never settle and would loop forever.
+        const layout = plotNode.layout || {};
+        const matches = ["autosize", "width", "height"].every(
+          (key) => (hasValue(layout[key]) ? layout[key] : null) === wanted[key]
+        );
+        if (matches) return;
+        window.Plotly.relayout(plotNode, wanted);
+      });
+    }
+    return size;
+  }
+
   // Suffix the authored title, not the rendered one, so repeated applies
   // cannot stack suffixes or eat a title that really ends in "(log)".
   function titleUpdate(plotNode, axisName, scale) {
@@ -258,11 +289,11 @@
 
   // Put the figure back the way its author wrote it.
   function resetLayout(plotNode, snap) {
-    const update = {
+    const update = enforceSize(plotNode, {
       autosize: snap.autosize,
       width: snap.width,
       height: snap.height,
-    };
+    });
     Object.keys(snap.axes).forEach((name) => {
       const entry = snap.axes[name];
       MANAGED_AXIS_KEYS.forEach((key) => {
@@ -363,7 +394,7 @@
         try {
           const update = Object.assign(
             {},
-            sizeUpdate(sizePreset, width, height),
+            enforceSize(plotNode, sizeUpdate(sizePreset, width, height)),
             axisUpdate(plotNode, "x", {
               scale: xScale,
               minimum: xMin,
