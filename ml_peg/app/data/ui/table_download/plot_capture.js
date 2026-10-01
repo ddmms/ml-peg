@@ -5,6 +5,11 @@
  * the rendered Plotly graph in the browser and exports either the trace x/y
  * data as CSV, the current figure as PNG/SVG, or an interactive HTML file.
  */
+const TRACE_LABELS = {
+  __parity_line__: "y=x",
+  __clicked_point__: "selected point",
+};
+
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   plot_download: {
     downloadPlot: function (nClicks, downloadFormat, graphId) {
@@ -66,7 +71,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               ? []
               : [trace.y];
           const pointCount = Math.max(xValues.length, yValues.length);
-          const traceName = trace.name || `trace_${traceIndex}`;
+          // Internal tags identify helper traces in the browser; export them
+          // under a readable label rather than leaking the sentinel.
+          const traceName =
+            TRACE_LABELS[trace.name] || trace.name || `trace_${traceIndex}`;
           for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
             rows.push([
               traceName,
