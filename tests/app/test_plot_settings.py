@@ -207,3 +207,22 @@ def test_size_preset_applies(ready_page: Page) -> None:
 
     assert _layout(page, "width") == 700
     assert _layout(page, "height") == 700
+
+
+def test_rejected_apply_does_not_resize_later(ready_page: Page) -> None:
+    """A size chosen alongside an invalid limit is not kept for the next redraw."""
+    page = ready_page
+    _open_menu(page)
+    before = _layout(page, "width")
+
+    _choose(page, "size-preset", "Square (700 × 700)")
+    _fill(page, "x-min", "-5")
+    _apply(page)
+    expect(page.locator(_setting("message"))).not_to_be_empty()
+    assert _layout(page, "width") == before
+
+    # The size is re-asserted on every redraw, so a rejected one would only
+    # show up once something else repaints the plot.
+    page.locator(_setting("y-autoscale")).click()
+    page.wait_for_timeout(1000)
+    assert _layout(page, "width") == before

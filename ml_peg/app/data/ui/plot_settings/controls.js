@@ -395,9 +395,9 @@
         }
 
         try {
-          const update = Object.assign(
+          const size = sizeUpdate(sizePreset, width, height);
+          const axes = Object.assign(
             {},
-            enforceSize(plotNode, sizeUpdate(sizePreset, width, height)),
             axisUpdate(plotNode, "x", {
               scale: xScale,
               minimum: xMin,
@@ -417,7 +417,12 @@
               spacing: yTickSpacing,
             }),
           );
-          window.Plotly.relayout(plotNode, update);
+          // Held only once both axes have validated: a rejected apply must not
+          // leave a size behind for the next redraw to pick up.
+          window.Plotly.relayout(
+            plotNode,
+            Object.assign({}, enforceSize(plotNode, size), axes)
+          );
           return [Date.now(), "", ...unchangedControls];
         } catch (error) {
           return [noUpdate, error.message || String(error), ...unchangedControls];
