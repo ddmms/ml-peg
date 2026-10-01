@@ -155,9 +155,17 @@
   // What the menu should show for the plot as it is rendered right now.
   function controlsFromPlot(plotNode) {
     const full = plotNode._fullLayout || {};
+    const layout = plotNode.layout || {};
+    // _fullLayout always holds the dtick Plotly chose for itself. Syncing that
+    // would pin it on Apply, and a linear step read as decades on a log axis
+    // can draw thousands of ticks, so only an authored dtick counts.
+    const axisState = (axis) => {
+      const name = axisNames(plotNode, axis)[0];
+      return Object.assign({}, full[name], {dtick: (layout[name] || {}).dtick});
+    };
     return controlValues(
-      full[axisNames(plotNode, "x")[0]],
-      full[axisNames(plotNode, "y")[0]],
+      axisState("x"),
+      axisState("y"),
       full.width,
       full.height,
       full.autosize
@@ -208,8 +216,16 @@
     }
 
     const update = {};
+    const full = plotNode._fullLayout || {};
     axisNames(plotNode, axis).forEach((name) => {
-      update[`${name}.type`] = scale || "linear";
+      // The menu only offers linear and log, so writing a type onto a
+      // category or date axis would turn its labels into NaN and blank it.
+      const currentType = (full[name] || {}).type;
+      const scalable = currentType === "linear" || currentType === "log";
+      if (scalable) {
+        update[`${name}.type`] = scale || "linear";
+        Object.assign(update, titleUpdate(plotNode, name, scale));
+      }
       update[`${name}.tickformat`] =
         tickFormat === "decimal"
           ? `.${numericPrecision}f`
@@ -224,7 +240,6 @@
         update[`${name}.range`] = null;
         update[`${name}.autorange`] = reversed ? "reversed" : true;
       }
-      Object.assign(update, titleUpdate(plotNode, name, scale));
     });
     return update;
   }
