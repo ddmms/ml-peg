@@ -359,7 +359,17 @@ def test_multi_day_marker_requires_explicit_flag():
 
     nodeid = f"{__file__}::test_multi_day_marker_runs_when_enabled"
     skipped = subprocess.run(
-        [sys.executable, "-m", "pytest", "-p", "ml_peg.conftest", nodeid, "-q"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            "ml_peg.conftest",
+            "-p",
+            "ml_peg.calcs.conftest",
+            nodeid,
+            "-q",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -371,6 +381,8 @@ def test_multi_day_marker_requires_explicit_flag():
             "pytest",
             "-p",
             "ml_peg.conftest",
+            "-p",
+            "ml_peg.calcs.conftest",
             nodeid,
             "--run-multi-day",
             "-q",

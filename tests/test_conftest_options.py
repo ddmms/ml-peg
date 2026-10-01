@@ -391,9 +391,15 @@ def test_framework_option(tmp_path, options, selected):
 @pytest.mark.parametrize(
     "cli_options, expected, unexpected",
     (
-        ((), ("--run-slow", "--run-mock"), ("--run-very-slow", "--mock-only")),
+        (
+            (),
+            ("--run-mock",),
+            ("--run-slow", "--run-very-slow", "--run-multi-day", "--mock-only"),
+        ),
+        (("--run-slow",), ("--run-slow",), ()),
         (("--no-run-slow",), (), ("--run-slow",)),
         (("--run-very-slow",), ("--run-very-slow",), ()),
+        (("--run-multi-day",), ("--run-multi-day",), ()),
         (("--no-run-mock",), (), ("--run-mock",)),
         (("--mock-only",), ("--run-mock", "--mock-only"), ()),
     ),
