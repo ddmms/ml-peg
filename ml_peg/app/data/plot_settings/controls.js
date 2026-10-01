@@ -19,9 +19,8 @@
       : container.querySelector(".js-plotly-plot");
   }
 
-  // Subplot grids number their axes (xaxis, xaxis2, ...). The menu drives all
-  // of them together, which is what a grid of comparable panels wants; a figure
-  // overlaying two differently scaled y axes would need per-axis controls.
+  // Subplot grids number their axes (xaxis, xaxis2, ...) and are driven
+  // together; overlaid axes of differing scale would need per-axis controls.
   function axisNames(plotNode, axis) {
     const full = plotNode._fullLayout || {};
     const pattern = new RegExp(`^${axis}axis\\d*$`);
@@ -29,13 +28,32 @@
     return names.length ? names.sort() : [`${axis}axis`];
   }
 
-  /* Figures arrive with their own log scales, ranges and sizes, so the menu
-  cannot treat "linear, autoranged, responsive" as the state to return to. The
-  authored layout is captured before the user can touch the plot, and drives
-  both "Reset all" and the values shown when the menu is opened. */
+  /* One Graph id hosts a succession of figures, so a snapshot has to be
+  dropped when the plot under it is replaced. Series endpoints are sampled as
+  well as structure: two models share trace names, types and lengths. Guides
+  are two points long and so left unsampled, since parity_line_autorange.js
+  rewrites them in place. */
+  function figureKey(plotNode) {
+    const sample = (values) =>
+      values && values.length > 2 ? `${values[0]},${values[values.length - 1]}` : "";
+    return (plotNode.data || [])
+      .filter((trace) => trace.name !== "__clicked_point__")
+      .map((trace) => {
+        const length = (trace.x || trace.y || []).length;
+        const name = trace.name || "";
+        const type = trace.type || "";
+        return `${name}:${type}:${length}:${sample(trace.x)}/${sample(trace.y)}`;
+      })
+      .join("|");
+  }
+
+  // Figures author their own log scales, ranges and sizes, so "linear,
+  // autoranged, responsive" is not the state to return to. Drives "Reset all".
   function snapshot(plotNode) {
-    if (plotNode.__mlPegPlotSettings) return plotNode.__mlPegPlotSettings;
     if (!plotNode._fullLayout) return null;
+    const key = figureKey(plotNode);
+    const cached = plotNode.__mlPegPlotSettings;
+    if (cached && cached.key === key) return cached;
 
     const layout = plotNode.layout || {};
     const axes = {};
@@ -46,8 +64,7 @@
         MANAGED_AXIS_KEYS.forEach((key) => {
           entry[key] = key in source ? copy(source[key]) : null;
         });
-        // An authored range with no explicit autorange means a pinned axis;
-        // say so, so restoring it cannot be read as "autorange unspecified".
+        // An authored range with no autorange key means a pinned axis.
         if (entry.autorange === null && Array.isArray(entry.range)) {
           entry.autorange = false;
         }
@@ -55,11 +72,11 @@
       });
     });
 
-    // Plotly only autosizes when no explicit size was given, so a figure that
-    // sets width and height is a fixed-size figure even with no autosize key.
+    // Plotly only autosizes when no explicit size was given.
     const width = hasValue(layout.width) ? layout.width : null;
     const height = hasValue(layout.height) ? layout.height : null;
     const snap = {
+      key,
       axes,
       autosize:
         "autosize" in layout ? layout.autosize : !(width !== null && height !== null),
@@ -230,8 +247,8 @@
     return {autosize: false, width: dimensions[0], height: dimensions[1]};
   }
 
-  // Suffix the authored title rather than the rendered one, so repeated
-  // applies cannot stack suffixes or eat a title that really ends in "(log)".
+  // Suffix the authored title, not the rendered one, so repeated applies
+  // cannot stack suffixes or eat a title that really ends in "(log)".
   function titleUpdate(plotNode, axisName, scale) {
     const snap = snapshot(plotNode);
     const base = snap && snap.axes[axisName] ? snap.axes[axisName].title : "";
@@ -256,9 +273,8 @@
     return update;
   }
 
-  // Capture the authored layout on first hover, before any pan or zoom can
-  // edit gd.layout. Pages are rebuilt as the user navigates, so this cannot be
-  // done once up front.
+  // Capture on first hover, before a pan or zoom can edit gd.layout. Pages are
+  // rebuilt as the user navigates, so this cannot be done once up front.
   document.addEventListener(
     "pointerover",
     (event) => {
@@ -316,8 +332,7 @@
         }
         const snap = snapshot(plotNode);
 
-        // Opening the menu shows the plot's current state instead of a
-        // hardcoded default, so applying cannot silently flatten a log axis.
+        // Show the plot's current state, so applying cannot flatten a log axis.
         if (triggerType === "plot-settings-summary") {
           return [noUpdate, "", ...controlsFromPlot(plotNode)];
         }
