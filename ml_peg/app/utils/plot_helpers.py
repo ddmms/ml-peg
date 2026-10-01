@@ -10,12 +10,12 @@ import numpy as np
 import plotly.graph_objects as go
 
 INSTRUCTION_STYLE = {
-    "backgroundColor": "#f5f8fc",
-    "border": "1px solid #d7e3f0",
-    "borderLeft": "4px solid #4f7fb8",
+    "backgroundColor": "var(--mlpeg-accent-soft)",
+    "border": "1px solid var(--mlpeg-accent-soft-border)",
+    "borderLeft": "4px solid var(--mlpeg-accent)",
     "borderRadius": "6px",
     "boxSizing": "border-box",
-    "color": "#24415f",
+    "color": "var(--mlpeg-accent-strong)",
     "display": "inline-block",
     "fontSize": "13px",
     "margin": "8px 0 12px 0",

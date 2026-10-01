@@ -356,7 +356,7 @@ def render_dispersion_component(
             style={
                 "maxWidth": "100%",
                 "maxHeight": "500px",
-                "border": "1px solid #ccc",
+                "border": "1px solid var(--mlpeg-border)",
                 "display": "block",
             },
         ),
@@ -367,7 +367,7 @@ def render_dispersion_component(
         iframe_style = {
             "height": "400px",
             "width": "100%",
-            "border": "1px solid #ddd",
+            "border": "1px solid var(--mlpeg-border)",
             "borderRadius": "5px",
         }
         children.append(
