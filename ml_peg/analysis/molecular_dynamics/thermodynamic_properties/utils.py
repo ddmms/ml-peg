@@ -144,7 +144,8 @@ def detect_equilibration_time(
 
     energy = np.asarray(energy[: n * block_size]).reshape(n, block_size).mean(axis=1)
     density = np.asarray(density[: n * block_size]).reshape(n, block_size).mean(axis=1)
-
+    if len(energy) == 0:
+        raise RuntimeError("detect_equilibration_time called with empty energy array")
     tail = int(n / 10)
     if tail < 10:
         warn("Equilibration time estimate is going to be not reliable", stacklevel=2)
@@ -229,7 +230,9 @@ def analyse_liquid(
         skip_time_ps=skip_time_ps,
     )
 
-    teq_ps = detect_equilibration_time(pot_energy_series, density_series, time_series)
+    teq_ps = detect_equilibration_time(
+        pot_energy_series, density_series, time_series, block_size=block_size
+    )
     teq = int(np.argwhere(time_series >= teq_ps)[0, 0])
 
     return {
