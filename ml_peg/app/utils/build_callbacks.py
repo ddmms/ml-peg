@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 from typing import Literal
 
+import dash
 from dash import (
     MATCH,
     ClientsideFunction,
@@ -39,17 +40,19 @@ from ml_peg.app.utils.plot_settings import build_plot_settings_controls
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
 
-plot_settings_callbacks_registered = False
+REGISTERED_FLAG = "_ml_peg_plot_settings_registered"
 
 
 def register_plot_settings_callbacks() -> None:
-    """Register the shared client-side plot-axis callback once."""
-    global plot_settings_callbacks_registered
-    if plot_settings_callbacks_registered:
+    """Register the shared client-side plot-axis callback once per Dash app."""
+    # Tracked on the app rather than at module scope so a second app built in
+    # the same process still gets the callback registered.
+    app = dash.get_app()
+    if getattr(app, REGISTERED_FLAG, False):
         return
-    plot_settings_callbacks_registered = True
+    setattr(app, REGISTERED_FLAG, True)
 
-    clientside_callback(
+    app.clientside_callback(
         ClientsideFunction(namespace="plot_settings", function_name="applyAxes"),
         Output({"type": "plot-settings-result", "index": MATCH}, "data"),
         Output({"type": "plot-settings-message", "index": MATCH}, "children"),
