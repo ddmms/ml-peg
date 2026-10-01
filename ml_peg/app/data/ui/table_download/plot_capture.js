@@ -5,14 +5,16 @@
  * the rendered Plotly graph in the browser and exports either the trace x/y
  * data as CSV, the current figure as PNG/SVG, or an interactive HTML file.
  */
-const TRACE_LABELS = {
-  __parity_line__: "y=x",
-  __clicked_point__: "selected point",
-};
-
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   plot_download: {
     downloadPlot: function (nClicks, downloadFormat, graphId) {
+      // Kept local: asset scripts share one global scope, so a top-level const
+      // would clash with any other asset declaring the same name. Keys match
+      // PARITY_LINE_NAME in plot_helpers.py and the scatter click-ring trace.
+      const TRACE_LABELS = {
+        __parity_line__: "y=x",
+        __clicked_point__: "selected point",
+      };
       const dash = window.dash_clientside;
       const noUpdate = dash ? dash.no_update : null;
       if (!nClicks || !graphId) {
