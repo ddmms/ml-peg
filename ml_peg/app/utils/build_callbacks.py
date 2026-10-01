@@ -40,21 +40,19 @@ from ml_peg.app.utils.plot_settings import build_plot_settings_controls
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 from ml_peg.app.utils.weas import generate_weas_html
 
-REGISTERED_FLAG = "_ml_peg_plot_settings_registered"
-
 
 def register_plot_settings_callbacks() -> None:
     """Register the shared client-side plot-axis callback once per Dash app."""
-    # Tracked on the app rather than at module scope so a second app built in
-    # the same process still gets the callback registered.
     app = dash.get_app()
-    if getattr(app, REGISTERED_FLAG, False):
+    output = Output({"type": "plot-settings-result", "index": MATCH}, "data")
+    # A multi-output callback is keyed by all of its outputs joined together, so
+    # look for this one within each key rather than as a key of its own.
+    if any(str(output) in key for key in app.callback_map):
         return
-    setattr(app, REGISTERED_FLAG, True)
 
     app.clientside_callback(
         ClientsideFunction(namespace="plot_settings", function_name="applyAxes"),
-        Output({"type": "plot-settings-result", "index": MATCH}, "data"),
+        output,
         Output({"type": "plot-settings-message", "index": MATCH}, "children"),
         Output({"type": "plot-settings-x-scale", "index": MATCH}, "value"),
         Output({"type": "plot-settings-y-scale", "index": MATCH}, "value"),
