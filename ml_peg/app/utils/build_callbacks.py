@@ -77,6 +77,7 @@ def register_plot_settings_callbacks() -> None:
         Input({"type": "plot-settings-reset", "index": MATCH}, "n_clicks"),
         Input({"type": "plot-settings-x-autoscale", "index": MATCH}, "n_clicks"),
         Input({"type": "plot-settings-y-autoscale", "index": MATCH}, "n_clicks"),
+        Input({"type": "plot-settings-summary", "index": MATCH}, "n_clicks"),
         State({"type": "plot-settings-x-scale", "index": MATCH}, "value"),
         State({"type": "plot-settings-y-scale", "index": MATCH}, "value"),
         State({"type": "plot-settings-x-min", "index": MATCH}, "value"),

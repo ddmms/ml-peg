@@ -22,6 +22,9 @@ autorange to the current selection. */
     for (let i = 0; i < traces.length; i++) {
       const trace = traces[i];
       if (trace.mode !== "lines" || !trace.x || !trace.y) continue;
+      // The guide is always hidden from the legend; requiring that keeps a
+      // genuine two-point data series from being rescaled away.
+      if (trace.showlegend !== false) continue;
       if (trace.x.length !== 2 || trace.y.length !== 2) continue;
       if (trace.x[0] === trace.y[0] && trace.x[1] === trace.y[1]) return i;
     }

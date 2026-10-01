@@ -4,6 +4,11 @@
 
   const hasValue = (value) => value !== null && value !== undefined && value !== "";
   const isReversed = (value) => Array.isArray(value) && value.includes("reverse");
+  const copy = (value) => (Array.isArray(value) ? value.slice() : value);
+
+  // Layout keys the menu writes, and therefore has to be able to put back.
+  const MANAGED_AXIS_KEYS = ["type", "range", "autorange", "tickformat", "dtick"];
+  const SIZE_PRESETS = {square: [700, 700], wide: [1000, 600]};
 
   // Resolve the Plotly node nested inside a Dash Graph container.
   function plotNodeFor(graphId) {
@@ -14,8 +19,145 @@
       : container.querySelector(".js-plotly-plot");
   }
 
+  // Subplot grids number their axes (xaxis, xaxis2, ...). The menu drives all
+  // of them together, which is what a grid of comparable panels wants; a figure
+  // overlaying two differently scaled y axes would need per-axis controls.
+  function axisNames(plotNode, axis) {
+    const full = plotNode._fullLayout || {};
+    const pattern = new RegExp(`^${axis}axis\\d*$`);
+    const names = Object.keys(full).filter((key) => pattern.test(key));
+    return names.length ? names.sort() : [`${axis}axis`];
+  }
+
+  /* Figures arrive with their own log scales, ranges and sizes, so the menu
+  cannot treat "linear, autoranged, responsive" as the state to return to. The
+  authored layout is captured before the user can touch the plot, and drives
+  both "Reset all" and the values shown when the menu is opened. */
+  function snapshot(plotNode) {
+    if (plotNode.__mlPegPlotSettings) return plotNode.__mlPegPlotSettings;
+    if (!plotNode._fullLayout) return null;
+
+    const layout = plotNode.layout || {};
+    const axes = {};
+    ["x", "y"].forEach((axis) => {
+      axisNames(plotNode, axis).forEach((name) => {
+        const source = layout[name] || {};
+        const entry = {title: (source.title && source.title.text) || ""};
+        MANAGED_AXIS_KEYS.forEach((key) => {
+          entry[key] = key in source ? copy(source[key]) : null;
+        });
+        // An authored range with no explicit autorange means a pinned axis;
+        // say so, so restoring it cannot be read as "autorange unspecified".
+        if (entry.autorange === null && Array.isArray(entry.range)) {
+          entry.autorange = false;
+        }
+        axes[name] = entry;
+      });
+    });
+
+    // Plotly only autosizes when no explicit size was given, so a figure that
+    // sets width and height is a fixed-size figure even with no autosize key.
+    const width = hasValue(layout.width) ? layout.width : null;
+    const height = hasValue(layout.height) ? layout.height : null;
+    const snap = {
+      axes,
+      autosize:
+        "autosize" in layout ? layout.autosize : !(width !== null && height !== null),
+      width,
+      height,
+    };
+    plotNode.__mlPegPlotSettings = snap;
+    return snap;
+  }
+
+  // Translate one axis container into the menu's control values.
+  function controlsForAxis(axisLayout) {
+    const source = axisLayout || {};
+    const logarithmic = source.type === "log";
+    const toData = (value) => (logarithmic ? Math.pow(10, value) : value);
+
+    let minimum = null;
+    let maximum = null;
+    let reversed = source.autorange === "reversed";
+    if (!source.autorange && Array.isArray(source.range)) {
+      const ends = source.range.map(Number);
+      reversed = ends[0] > ends[1];
+      const low = reversed ? ends[1] : ends[0];
+      const high = reversed ? ends[0] : ends[1];
+      minimum = toData(low);
+      maximum = toData(high);
+    }
+
+    let tickFormat = "auto";
+    let precision = 2;
+    const match = /^\.(\d+)([fe])$/.exec(source.tickformat || "");
+    if (match) {
+      tickFormat = match[2] === "f" ? "decimal" : "scientific";
+      precision = Number(match[1]);
+    }
+
+    return {
+      scale: logarithmic ? "log" : "linear",
+      minimum,
+      maximum,
+      reversed: reversed ? ["reverse"] : [],
+      tickFormat,
+      precision,
+      spacing: typeof source.dtick === "number" ? source.dtick : null,
+    };
+  }
+
+  function sizeControls(width, height, autosize) {
+    if (autosize !== false || !hasValue(width) || !hasValue(height)) {
+      return ["responsive", null, null];
+    }
+    const preset = Object.keys(SIZE_PRESETS).find(
+      (key) => SIZE_PRESETS[key][0] === width && SIZE_PRESETS[key][1] === height
+    );
+    return preset ? [preset, null, null] : ["custom", width, height];
+  }
+
+  // Assemble the 17 control outputs in the order the Python callback declares.
+  function controlValues(xAxis, yAxis, width, height, autosize) {
+    const x = controlsForAxis(xAxis);
+    const y = controlsForAxis(yAxis);
+    const size = sizeControls(width, height, autosize);
+    return [
+      x.scale, y.scale,
+      x.minimum, x.maximum,
+      y.minimum, y.maximum,
+      size[0], size[1], size[2],
+      x.reversed, y.reversed,
+      x.tickFormat, x.precision, x.spacing,
+      y.tickFormat, y.precision, y.spacing,
+    ];
+  }
+
+  // What the menu should show for the plot as it is rendered right now.
+  function controlsFromPlot(plotNode) {
+    const full = plotNode._fullLayout || {};
+    return controlValues(
+      full[axisNames(plotNode, "x")[0]],
+      full[axisNames(plotNode, "y")[0]],
+      full.width,
+      full.height,
+      full.autosize
+    );
+  }
+
+  // What the menu should show once the authored layout has been restored.
+  function controlsFromSnapshot(plotNode, snap) {
+    return controlValues(
+      snap.axes[axisNames(plotNode, "x")[0]],
+      snap.axes[axisNames(plotNode, "y")[0]],
+      snap.width,
+      snap.height,
+      snap.autosize
+    );
+  }
+
   // Validate one axis and translate form values into Plotly layout updates.
-  function axisUpdate(axis, settings) {
+  function axisUpdate(plotNode, axis, settings) {
     const {scale, minimum, maximum, reversed, tickFormat, precision, spacing} = settings;
     const hasMinimum = hasValue(minimum);
     const hasMaximum = hasValue(maximum);
@@ -37,50 +179,50 @@
       throw new Error(`${axis.toUpperCase()} tick spacing must be positive.`);
     }
 
-    const update = {
-      [`${axis}axis.type`]: scale || "linear",
-      [`${axis}axis.tickformat`]:
+    let range = null;
+    if (hasMinimum) {
+      range =
+        scale === "log"
+          ? [Math.log10(Number(minimum)), Math.log10(Number(maximum))]
+          : [Number(minimum), Number(maximum)];
+      if (reversed) range.reverse();
+    }
+
+    const update = {};
+    axisNames(plotNode, axis).forEach((name) => {
+      update[`${name}.type`] = scale || "linear";
+      update[`${name}.tickformat`] =
         tickFormat === "decimal"
           ? `.${numericPrecision}f`
           : tickFormat === "scientific"
             ? `.${numericPrecision}e`
-            : null,
-      [`${axis}axis.dtick`]: hasValue(spacing) ? Number(spacing) : null,
-    };
-
-    if (!hasMinimum) {
-      update[`${axis}axis.range`] = null;
-      update[`${axis}axis.autorange`] = reversed ? "reversed" : true;
-      return update;
-    }
-
-    let range =
-      scale === "log"
-        ? [Math.log10(Number(minimum)), Math.log10(Number(maximum))]
-        : [Number(minimum), Number(maximum)];
-    if (reversed) range = range.reverse();
-    update[`${axis}axis.autorange`] = false;
-    update[`${axis}axis.range`] = range;
+            : null;
+      update[`${name}.dtick`] = hasValue(spacing) ? Number(spacing) : null;
+      if (range) {
+        update[`${name}.autorange`] = false;
+        update[`${name}.range`] = range.slice();
+      } else {
+        update[`${name}.range`] = null;
+        update[`${name}.autorange`] = reversed ? "reversed" : true;
+      }
+      Object.assign(update, titleUpdate(plotNode, name, scale));
+    });
     return update;
   }
 
   // Map responsive, preset, or custom sizing onto Plotly dimensions.
   function sizeUpdate(preset, customWidth, customHeight) {
-    const presets = {
-      square: [700, 700],
-      wide: [1000, 600],
-    };
     if (!preset || preset === "responsive") {
       return {autosize: true, width: null, height: null};
     }
 
-    let dimensions = presets[preset];
+    let dimensions = SIZE_PRESETS[preset];
     if (preset === "custom") {
       if (!hasValue(customWidth) || !hasValue(customHeight)) {
         throw new Error("Custom size requires both width and height.");
       }
       dimensions = [Number(customWidth), Number(customHeight)];
-      if (dimensions.some((value) => value < 200 || value > 3000)) {
+      if (dimensions.some((value) => !(value >= 200 && value <= 3000))) {
         throw new Error("Custom width and height must be between 200 and 3000 px.");
       }
     }
@@ -88,37 +230,45 @@
     return {autosize: false, width: dimensions[0], height: dimensions[1]};
   }
 
-  // Add or remove the log suffix without duplicating it on repeated applies.
-  function axisTitleUpdate(plotNode, axis, scale) {
-    const axisName = `${axis}axis`;
-    const layoutAxis = (plotNode.layout && plotNode.layout[axisName]) || {};
-    const fullLayoutAxis = (plotNode._fullLayout && plotNode._fullLayout[axisName]) || {};
-    const currentTitle =
-      (layoutAxis.title && layoutAxis.title.text) ||
-      (fullLayoutAxis.title && fullLayoutAxis.title.text) ||
-      "";
-    const baseTitle = String(currentTitle).replace(/ \(log\)$/, "");
-    if (!baseTitle) return {};
-    return {[`${axisName}.title.text`]: scale === "log" ? `${baseTitle} (log)` : baseTitle};
+  // Suffix the authored title rather than the rendered one, so repeated
+  // applies cannot stack suffixes or eat a title that really ends in "(log)".
+  function titleUpdate(plotNode, axisName, scale) {
+    const snap = snapshot(plotNode);
+    const base = snap && snap.axes[axisName] ? snap.axes[axisName].title : "";
+    if (!base) return {};
+    return {[`${axisName}.title.text`]: scale === "log" ? `${base} (log)` : base};
   }
 
-  function resetLayout(plotNode) {
-    return Object.assign({
-      autosize: true,
-      width: null,
-      height: null,
-      "xaxis.type": "linear",
-      "xaxis.range": null,
-      "xaxis.autorange": true,
-      "xaxis.tickformat": null,
-      "xaxis.dtick": null,
-      "yaxis.type": "linear",
-      "yaxis.range": null,
-      "yaxis.autorange": true,
-      "yaxis.tickformat": null,
-      "yaxis.dtick": null,
-    }, axisTitleUpdate(plotNode, "x", "linear"), axisTitleUpdate(plotNode, "y", "linear"));
+  // Put the figure back the way its author wrote it.
+  function resetLayout(plotNode, snap) {
+    const update = {
+      autosize: snap.autosize,
+      width: snap.width,
+      height: snap.height,
+    };
+    Object.keys(snap.axes).forEach((name) => {
+      const entry = snap.axes[name];
+      MANAGED_AXIS_KEYS.forEach((key) => {
+        update[`${name}.${key}`] = copy(entry[key]);
+      });
+      if (entry.title) update[`${name}.title.text`] = entry.title;
+    });
+    return update;
   }
+
+  // Capture the authored layout on first hover, before any pan or zoom can
+  // edit gd.layout. Pages are rebuilt as the user navigates, so this cannot be
+  // done once up front.
+  document.addEventListener(
+    "pointerover",
+    (event) => {
+      const target = event.target;
+      if (!target || !target.closest) return;
+      const plotNode = target.closest(".js-plotly-plot");
+      if (plotNode) snapshot(plotNode);
+    },
+    true
+  );
 
   // One pattern-matching callback serves every graph settings menu.
   window.dash_clientside = Object.assign({}, window.dash_clientside, {
@@ -128,6 +278,7 @@
         resetClicks,
         xAutoscaleClicks,
         yAutoscaleClicks,
+        summaryClicks,
         xScale,
         yScale,
         xMin,
@@ -153,7 +304,9 @@
         const triggered = dash.callback_context.triggered_id;
         const triggerType = triggered && triggered.type;
 
-        if ((!applyClicks && !resetClicks && !xAutoscaleClicks && !yAutoscaleClicks) || !graphId) {
+        const clicked =
+          applyClicks || resetClicks || xAutoscaleClicks || yAutoscaleClicks || summaryClicks;
+        if (!clicked || !graphId) {
           return [noUpdate, "", ...unchangedControls];
         }
 
@@ -161,47 +314,34 @@
         if (!plotNode || !window.Plotly) {
           return [noUpdate, "Plot is not currently available.", ...unchangedControls];
         }
+        const snap = snapshot(plotNode);
+
+        // Opening the menu shows the plot's current state instead of a
+        // hardcoded default, so applying cannot silently flatten a log axis.
+        if (triggerType === "plot-settings-summary") {
+          return [noUpdate, "", ...controlsFromPlot(plotNode)];
+        }
 
         if (triggerType === "plot-settings-reset") {
-          window.Plotly.relayout(plotNode, resetLayout(plotNode));
-          return [
-            Date.now(),
-            "",
-            "linear",
-            "linear",
-            null,
-            null,
-            null,
-            null,
-            "responsive",
-            null,
-            null,
-            [],
-            [],
-            "auto",
-            2,
-            null,
-            "auto",
-            2,
-            null,
-          ];
+          if (!snap) {
+            return [noUpdate, "Plot is not currently available.", ...unchangedControls];
+          }
+          window.Plotly.relayout(plotNode, resetLayout(plotNode, snap));
+          return [Date.now(), "", ...controlsFromSnapshot(plotNode, snap)];
         }
 
         if (triggerType === "plot-settings-x-autoscale" || triggerType === "plot-settings-y-autoscale") {
           const axis = triggerType === "plot-settings-x-autoscale" ? "x" : "y";
           const reversed = axis === "x" ? isReversed(xReverse) : isReversed(yReverse);
-          window.Plotly.relayout(plotNode, {
-            [`${axis}axis.range`]: null,
-            [`${axis}axis.autorange`]: reversed ? "reversed" : true,
+          const update = {};
+          axisNames(plotNode, axis).forEach((name) => {
+            update[`${name}.range`] = null;
+            update[`${name}.autorange`] = reversed ? "reversed" : true;
           });
+          window.Plotly.relayout(plotNode, update);
           const controls = [...unchangedControls];
-          if (axis === "x") {
-            controls[2] = null;
-            controls[3] = null;
-          } else {
-            controls[4] = null;
-            controls[5] = null;
-          }
+          controls[axis === "x" ? 2 : 4] = null;
+          controls[axis === "x" ? 3 : 5] = null;
           return [Date.now(), "", ...controls];
         }
 
@@ -209,7 +349,7 @@
           const update = Object.assign(
             {},
             sizeUpdate(sizePreset, width, height),
-            axisUpdate("x", {
+            axisUpdate(plotNode, "x", {
               scale: xScale,
               minimum: xMin,
               maximum: xMax,
@@ -218,7 +358,7 @@
               precision: xTickPrecision,
               spacing: xTickSpacing,
             }),
-            axisUpdate("y", {
+            axisUpdate(plotNode, "y", {
               scale: yScale,
               minimum: yMin,
               maximum: yMax,
@@ -227,8 +367,6 @@
               precision: yTickPrecision,
               spacing: yTickSpacing,
             }),
-            axisTitleUpdate(plotNode, "x", xScale),
-            axisTitleUpdate(plotNode, "y", yScale),
           );
           window.Plotly.relayout(plotNode, update);
           return [Date.now(), "", ...unchangedControls];

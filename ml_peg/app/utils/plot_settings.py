@@ -204,7 +204,14 @@ def build_plot_settings_controls(graph_id: str) -> Details:
     """
     return Details(
         [
-            Summary("Plot settings", className="plot-settings-summary"),
+            # Toggling the menu re-reads the plot, so the controls show the
+            # figure's real state rather than a hardcoded default.
+            Summary(
+                "Plot settings",
+                id=_plot_setting_id("summary", graph_id),
+                n_clicks=0,
+                className="plot-settings-summary",
+            ),
             Div(
                 [
                     _build_plot_size_controls(graph_id),
