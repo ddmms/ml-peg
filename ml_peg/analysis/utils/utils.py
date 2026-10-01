@@ -234,10 +234,18 @@ def block_estimate(
         Standard error estimated from the block values.
     """
     arrays = [np.asarray(value) for value in values]
-    value = estimator(*arrays)
 
     if not np.all([array.size == arrays[0].size for array in arrays]):
         raise ValueError("Input data series must have the same length.")
+
+    # The central estimate (value, below) is evaluated on the full dataset.
+    # For fluctuation-based (ie, nonlinear) observables like cp, compressibility, etc.,
+    # this is important because the full variance equals the mean block variance plus
+    # the variance of the block means.
+    # Averaging block variances therefore omits the positive block cross-contributions
+    # and generally underestimates the observable. For linear observables like
+    # the density, this does not matter.
+    value = estimator(*arrays)
 
     nblocks = len(arrays[0]) // block_size
 

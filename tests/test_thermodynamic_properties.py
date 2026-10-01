@@ -45,9 +45,12 @@ def test_density():
 
 def test_heat_capacity_cp():
     """Test constant pressure heat capacity calculation."""
-    penergy = np.array([0.0, 2.0, 1.0, 3.0, 2.0, 4.0, 3.0, 5.0]) / 3.0
-    kenergy = np.array([0.0, 2.0, 1.0, 3.0, 2.0, 4.0, 3.0, 5.0]) / 3.0
-    vol = np.array([0.0, 2.0, 1.0, 3.0, 2.0, 4.0, 3.0, 5.0]) / units.bar / 3.0
+    # We build a simple series with equal contributions from all 3 terms
+    # (potential, kinetic, pressure)
+    # The values are chosen so that the block-analysis gives zero error.
+    penergy = np.array([0.0, 2.0, 1.0, 3.0, 2.0, 4.0, 3.0, 5.0])
+    kenergy = penergy
+    vol = penergy / units.bar
     temperature, press, n_molecules = 300.0, 1.0, 10
 
     cp, stderr = heat_capacity_cp(
@@ -60,9 +63,9 @@ def test_heat_capacity_cp():
         block_size=2,
         teq=0,
     )
+    enthalpy = penergy + kenergy + press * units.bar * vol
 
-    # Every block has the same population variance: 1 eV^2.
-    expected = 1.0 / (units.kB * temperature**2) * EV_TO_J_MOL / n_molecules
+    expected = enthalpy.var() / (units.kB * temperature**2) * EV_TO_J_MOL / n_molecules
     assert cp == pytest.approx(expected)
     assert stderr == pytest.approx(0.0)
 
@@ -210,11 +213,18 @@ def test_analyse_liquid(tmp_path):
     path
         Path to the log.
     """
+    # Assuming the generated log values are not changed,
+    # this is most likely triggered if the treatment of
+    # fluctuation-based observables (cp, compressibility, etc.)
+    # in the block analysis is changed. The central estimate is
+    # currently evaluated over the full dataset rather than as
+    # the mean of the block estimates. These are equivalent for
+    # linear estimators such as the mean used for density, but
+    # not in general for variances and covariances.
     log_file_liq = tmp_path / "test-liq.log"
     write_test_log(log_file_liq, "liq")
     log_file_gas = tmp_path / "test-gas.log"
     write_test_log(log_file_gas, "gas")
-
     results = analyse_liquid(
         log_file_liq=log_file_liq,
         log_file_gas=log_file_gas,
@@ -237,10 +247,10 @@ def test_analyse_liquid(tmp_path):
         assert np.isfinite(stderr)
 
     assert results["density"][0] == pytest.approx(807.0)
-    assert results["cp"][0] == pytest.approx(155.8059)
-    assert results["compressibility"][0] == pytest.approx(0.00574133)
+    assert results["cp"][0] == pytest.approx(159.65888)
+    assert results["compressibility"][0] == pytest.approx(0.00783511548)
     assert results["evaporation_enthalpy"][0] == pytest.approx(30.92115)
-    assert results["alpha"][0] == pytest.approx(0.50401255)
+    assert results["alpha"][0] == pytest.approx(0.5519127)
 
 
 # Test the interface between calc and analysis

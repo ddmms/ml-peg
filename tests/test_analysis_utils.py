@@ -44,10 +44,12 @@ def test_block_estimate_custom_estimator():
         ]
     )
 
-    assert mean == pytest.approx(np.mean(block_values))
-    assert stderr == pytest.approx(
-        np.std(block_values, ddof=1) / np.sqrt(len(block_values))
-    )
+    expected_mean = np.var(values)
+
+    expected_stderr = np.std(block_values, ddof=1) / np.sqrt(len(block_values))
+
+    assert mean == pytest.approx(expected_mean)
+    assert stderr == pytest.approx(expected_stderr)
 
 
 def test_block_estimate_multiple_series():
@@ -66,7 +68,7 @@ def test_block_estimate_multiple_series():
         ]
     )
 
-    assert mean == pytest.approx(np.mean(block_values))
+    assert mean == pytest.approx(correlator(x, y))
     assert stderr == pytest.approx(
         np.std(block_values, ddof=1) / np.sqrt(len(block_values))
     )
