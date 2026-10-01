@@ -1212,8 +1212,8 @@ def build_speed_badge(speed: str | None) -> Component | None:
                 "Test speed",
                 style={
                     **segment_style,
-                    "backgroundColor": "#e2e8f0",
-                    "color": "#475569",
+                    "backgroundColor": "var(--mlpeg-surface-3)",
+                    "color": "var(--mlpeg-ink-2)",
                     "borderRadius": "999px 0 0 999px",
                 },
             ),
@@ -1266,7 +1266,7 @@ def build_speed_panel(
     row_heading_style = {
         "fontSize": "12px",
         "fontWeight": "600",
-        "color": "#6c757d",
+        "color": "var(--mlpeg-muted)",
         "padding": "6px 18px 6px 0",
         "textAlign": "left",
         "whiteSpace": "nowrap",
@@ -1276,7 +1276,7 @@ def build_speed_panel(
         "fontWeight": "600",
         "letterSpacing": "0.04em",
         "textTransform": "uppercase",
-        "color": "#6c757d",
+        "color": "var(--mlpeg-muted)",
         "padding": "6px 12px",
         "textAlign": "center",
         "whiteSpace": "nowrap",
@@ -1301,7 +1301,7 @@ def build_speed_panel(
                             SPEED_LEVELS[level]["runtime"],
                             style={
                                 "fontSize": "12px",
-                                "color": "#6c757d",
+                                "color": "var(--mlpeg-muted)",
                                 "padding": "6px 12px",
                                 "textAlign": "center",
                                 "whiteSpace": "nowrap",
@@ -1318,7 +1318,7 @@ def build_speed_panel(
                             style={
                                 "fontSize": "26px",
                                 "fontWeight": "700",
-                                "color": "#212529",
+                                "color": "var(--mlpeg-heading)",
                                 "lineHeight": "1.1",
                                 "padding": "6px 12px",
                                 "textAlign": "center",
@@ -1338,7 +1338,7 @@ def build_speed_panel(
             H2(
                 "Test speeds",
                 style={
-                    "color": "black",
+                    "color": "var(--mlpeg-heading)",
                     "marginTop": "30px",
                     **({"fontSize": title_font_size} if title_font_size else {}),
                 },
@@ -1346,13 +1346,16 @@ def build_speed_panel(
             Div(
                 panel_contents,
                 style={
-                    "backgroundColor": "#f8fafc",
-                    "border": "1px solid #e2e8f0",
+                    "backgroundColor": "var(--mlpeg-surface)",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "12px",
                     "padding": "16px 20px",
                     "marginBottom": "12px",
                     "width": "fit-content",
-                    "maxWidth": "820px",
+                    # Cap at the container so narrow screens scroll the table
+                    # inside the card instead of overflowing the page.
+                    "maxWidth": "min(820px, 100%)",
+                    "boxSizing": "border-box",
                 },
             ),
         ]

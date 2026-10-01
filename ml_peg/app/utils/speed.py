@@ -6,6 +6,8 @@ import ast
 from collections.abc import Iterable
 from pathlib import Path
 
+# Badge colours are CSS variables defined, with dark-theme overrides, in
+# app/data/ui/utils/speed_badge.css.
 # Ordered cheapest to most expensive. The ordering is what resolves benchmarks
 # carrying more than one marker, since the badge shows the slowest one present.
 SPEED_LEVELS: dict[str, dict[str, str]] = {
@@ -13,36 +15,36 @@ SPEED_LEVELS: dict[str, dict[str, str]] = {
         "label": "Fast",
         "runtime": "Under 10 min",
         "tooltip": "Tests run in seconds to minutes on GPU",
-        "color": "#dcfce7",
-        "text_color": "#166534",
+        "color": "var(--mlpeg-speed-fast-bg)",
+        "text_color": "var(--mlpeg-speed-fast-fg)",
     },
     "medium": {
         "label": "Medium",
         "runtime": "10 min to 1 hour",
         "tooltip": "Tests run in tens of minutes on GPU",
-        "color": "#fef9c3",
-        "text_color": "#854d0e",
+        "color": "var(--mlpeg-speed-medium-bg)",
+        "text_color": "var(--mlpeg-speed-medium-fg)",
     },
     "slow": {
         "label": "Slow",
         "runtime": "1 to 10 hours",
         "tooltip": "Tests run in hours on GPU",
-        "color": "#ffedd5",
-        "text_color": "#9a3412",
+        "color": "var(--mlpeg-speed-slow-bg)",
+        "text_color": "var(--mlpeg-speed-slow-fg)",
     },
     "very_slow": {
         "label": "Very slow",
         "runtime": "10 hours to 1 day",
         "tooltip": "Tests run in 10 hours to a day on GPU",
-        "color": "#fee2e2",
-        "text_color": "#991b1b",
+        "color": "var(--mlpeg-speed-very-slow-bg)",
+        "text_color": "var(--mlpeg-speed-very-slow-fg)",
     },
     "multi_day": {
         "label": "Multi-day",
         "runtime": "Multiple days",
         "tooltip": "Tests require multiple GPU days",
-        "color": "#ede9fe",
-        "text_color": "#5b21b6",
+        "color": "var(--mlpeg-speed-multi-day-bg)",
+        "text_color": "var(--mlpeg-speed-multi-day-fg)",
     },
 }
 
