@@ -427,11 +427,14 @@ Worst-case absolute change in energy per atom, across the ten structures.
 
 3. Mean ΔF
 
-Mean of the largest absolute force component change, across the ten structures.
+Each structure's force change is the largest absolute change in any force component,
+over every atom and Cartesian direction. Note that this differs from the identically
+named metric of the rotational symmetry test, which reports a force MAE. The mean of
+that per-structure worst case, across the ten structures, is reported.
 
 4. Max ΔF
 
-Worst-case largest absolute force component change, across the ten structures.
+Same as (3), but the maximum (worst-case) across all structures is reported.
 
 Benchmark speed
 ------------------
