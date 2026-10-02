@@ -95,6 +95,7 @@ def evaluate(calc, struct: Atoms, shift_magnitude: float) -> Atoms:
     return struct
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_translational_symmetry(mlip: tuple[str, Any]) -> None:
     """
