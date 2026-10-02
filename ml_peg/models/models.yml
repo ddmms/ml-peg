@@ -63,6 +63,47 @@ mace-mh-1-omat:
     model: "mh-1"
     head: omat_pbe
 
+dpa-3p3-1M-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: DPA-3.3-1M
+    head: Omat24
+
+dpa-4-nano-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: DPA4-Nano-OMat24-v20260805
+
+dpa-4-neo-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: DPA4-Neo-OMat24-v20260805
+
+dpa-4-plus-omat:
+  module: deepmd.calculator
+  class_name: DP
+  datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: DPA4-Plus-OMat24-v20260805
+
 orb-v3-consv-inf-omat:
   module: orb_models.inference.calculator
   class_name: OrbCalc
@@ -168,7 +209,7 @@ MACE-OFF23(L):
 MACE-OFF24(M):
   module: mace.calculators
   class_name: mace_off
-  datasets: [SPICE]
+  datasets: [SPICE2]
   device: "auto"
   trained_on_dispersion: true
   kwargs:

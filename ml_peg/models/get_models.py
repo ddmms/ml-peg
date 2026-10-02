@@ -136,6 +136,7 @@ def load_models(
         Loaded models from models.yml and/or loaded mock model.
     """
     from ml_peg.models.models import (
+        DpaCalc,
         FairChemCalc,
         GenericASECalc,
         GraceCalc,
@@ -166,6 +167,12 @@ def load_models(
         print(f"Loading model from {filepath}: {name}")
 
         match cfg["class_name"]:
+            case "DP":
+                loaded_models[name] = DpaCalc(
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
             case "FAIRChemCalculator":
                 kwargs = cfg.get("kwargs", {})
                 loaded_models[name] = FairChemCalc(
