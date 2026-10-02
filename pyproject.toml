@@ -86,6 +86,9 @@ upet = [
 sevenn = [
     "sevenn==0.12.1",
 ]
+tace = [
+    "tace==0.2.2",
+]
 vivace = [
     "simpoly[vivace,cuda13]; sys_platform == 'linux'",
     "simpoly[vivace]; sys_platform != 'linux'",
