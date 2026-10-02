@@ -11,6 +11,7 @@ import pytest
 from scipy.constants import e, epsilon_0
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
+from ml_peg.analysis.utils.dipoles import get_z_dipoles
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
@@ -59,16 +60,7 @@ def get_dipoles() -> dict[str, np.ndarray]:
         model_dir = CALC_PATH / model_name
         if model_dir.exists():
             atoms = read(model_dir / "slab-traj.extxyz", ":")
-            dipoles = np.zeros(len(atoms))
-            for i, struc in enumerate(atoms):
-                o_index = [atom.index for atom in struc if atom.number == 8]
-                h_index = [atom.index for atom in struc if atom.number == 1]
-                dipoles[i] = (
-                    np.sum(struc.positions[o_index, 2]) * (-q)
-                    + np.sum(struc.positions[h_index, 2]) * q / 2
-                )
-            dipoles_unit_area = dipoles / atoms[0].cell[0, 0] / atoms[0].cell[1, 1]
-            results[model_name] = dipoles_unit_area
+            results[model_name] = get_z_dipoles(atoms, q=q)
     return results
 
 
