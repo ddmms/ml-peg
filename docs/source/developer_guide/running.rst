@@ -71,6 +71,8 @@ Help for this command can be found by running ``ml_peg analyse --help``:
     │ --models                      TEXT  Comma-separated models to run analysis for. Default is all models.         │
     │ --category                    TEXT  Category to run analysis for. Default is all categories. [default: *]      │
     │ --test                        TEXT  Test to run analysis for. Default is all tests. [default: *]               │
+    │ --update      --no-update           Whether to update saved tables and plots, preserving results for models    │
+    │                                     not being analysed, rather than overwriting them. [default: no-update]     │
     │ --verbose     --no-verbose          Whether to run pytest with verbose and stdout printed. [default: verbose]  │
     │ --help                              Show this message and exit.                                                │
     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
@@ -94,6 +96,71 @@ This is effectively equivalent to:
     .. code-block:: bash
 
     pytest -vvv ml_peg/analysis/surfaces/OC157/analyse_OC157.py --models mace-mp-0b3,orb-v3-consv-inf-omat
+
+
+Adding a model to existing analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, running analysis for a subset of models rebuilds each benchmark's table
+from scratch, so models that were not analysed lose their saved metric values.
+
+To add a new model without rerunning analysis for every other model, use
+``--update``:
+
+.. code-block:: bash
+
+    ml_peg analyse --category surfaces --test OC157 --models my-new-model --update
+
+Results for models outside ``--models`` are then taken from the saved table and plots,
+while results for the analysed models are rebuilt from the current run. This applies to
+tables built with ``@build_table``, and to plots that show a trace per model, such as
+``@plot_parity``.
+
+Scores, weights, thresholds, and tooltips are recalculated for every row, so changes to
+a benchmark's thresholds are still applied to preserved rows. Axis limits and parity
+lines are likewise recalculated across preserved and new traces.
+
+.. note::
+
+    Results are matched to models by name. A preserved row will have empty values for
+    any metric that has been renamed or added since it was last analysed, and results
+    are only preserved for models that are still defined in ``models.yml``.
+
+
+Updating bespoke figures
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Benchmarks that build their own multi-model figures, rather than using one of the
+decorators above, must opt in to updating. Two helpers in
+``ml_peg/analysis/utils/decorators.py`` do this, and both return their input unchanged
+when ``--update`` is not set:
+
+``merge_saved_traces(fig, filename)``
+   Adds traces for models that are not being analysed from the figure saved at
+   ``filename``. Call it immediately before writing the figure. Traces are matched to
+   models by ``name``, and are reordered to match ``models.yml``. Traces without a
+   model name, such as reference curves, are rebuilt from the current run. Figures
+   built with ``make_subplots`` are supported, as preserved traces keep their axis
+   assignment.
+
+``merge_saved_models(model_data, filename, key=None)``
+   Adds entries for models that are not being analysed to a mapping of model name to
+   data, such as a figure per model saved in a single file. Pass ``key`` if the saved
+   file holds that mapping under a key, rather than being keyed by model itself.
+
+Figures that colour traces per model must also assign colours with
+``get_model_colour(model, colours)``, which indexes ``colours`` by the model's position
+in ``models.yml``. Indexing by plotted order instead gives the analysed models the same
+colours as the preserved traces.
+
+A warning is raised when none of a saved file's traces or keys can be matched to a
+model, which usually means they are not named after models.
+
+.. warning::
+
+    Updating reads, modifies, and rewrites each saved file, so analysis for a single
+    benchmark must not be updated by several runs at once. To add multiple models,
+    pass them together as ``--models model_1,model_2``, or run each update in turn.
 
 
 Application

@@ -22,7 +22,7 @@ from ml_peg.app.utils.utils import (
     clean_thresholds,
     clean_weights,
 )
-from ml_peg.models.get_models import load_model_configs
+from ml_peg.models.get_models import get_model_names, load_model_configs
 
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
@@ -32,7 +32,7 @@ ZERO_WEIGHT_OPACITY = 0.4
 
 
 def build_dispersion_name_map(
-    models: Iterable[str],
+    models: Iterable[str] | None = None,
     suffix: str = "-D3",
 ) -> dict[str, str]:
     """
@@ -41,7 +41,8 @@ def build_dispersion_name_map(
     Parameters
     ----------
     models
-        Iterable of model identifiers to inspect.
+        Iterable of model identifiers to inspect. Default is all defined models, so
+        display names are also correct for models outside the current analysis run.
     suffix
         String appended to model names that need the dispersion correction indicator.
         Defaults to "-D3" for D3 dispersion corrections.
@@ -51,7 +52,9 @@ def build_dispersion_name_map(
     dict[str, str]
         Mapping of model -> display name for models not trained with dispersion.
     """
-    configs, _ = load_model_configs(tuple(models))
+    models = tuple(get_model_names() if models is None else models)
+
+    configs, _ = load_model_configs(models)
     name_map: dict[str, str] = {}
 
     for model in models:

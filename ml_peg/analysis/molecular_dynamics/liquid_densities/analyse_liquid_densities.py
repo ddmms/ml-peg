@@ -21,7 +21,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
+D3_MODEL_NAMES = build_dispersion_name_map()
 
 
 LOG_INTERVAL_PS = 0.1
