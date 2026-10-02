@@ -25,7 +25,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 import numpy as np
 import pytest
 
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -53,9 +53,9 @@ LOG_INTERVAL = 100
 ADD_D3 = False
 
 DATA_ZIP = "battery_electrolyte_densities.zip"
-DATA_URI = (
-    "https://raw.githubusercontent.com/KMNitesh05/"
-    "sodium-ion-battery-electrolyte-dataset/main/data"
+DATA_KEY = (
+    "inputs/molecular_dynamics/battery_electrolyte_densities/"
+    "battery_electrolyte_densities.zip"
 )
 
 
@@ -185,31 +185,6 @@ def run_npt(atoms: Atoms, calc, output_fname: Path) -> None:
         dyn.atoms.info["energy"] = np.nan
 
 
-def get_structure_paths() -> list[Path]:
-    """
-    Download the dataset and return its structure files in a fixed order.
-
-    Returns
-    -------
-    list[Path]
-        Sorted paths to the equilibrated configurations. The index into this
-        list is the ``--system-id`` of the corresponding system.
-    """
-    data_path = (
-        download_github_data(filename=DATA_ZIP, github_uri=DATA_URI)
-        / "battery_electrolyte_densities"
-    )
-    paths = sorted((data_path / "structures").glob("*.xyz"))
-
-    if len(paths) != N_SYSTEMS:
-        raise ValueError(
-            f"Expected {N_SYSTEMS} structures in {data_path / 'structures'}, "
-            f"found {len(paths)}"
-        )
-
-    return paths
-
-
 @pytest.mark.framework("omol25-electrolytes")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -228,7 +203,17 @@ def test_battery_electrolyte_densities(mlip: tuple[str, Any], system_id: int) ->
         f"system_id out of range. Please use a value from 0 to {N_SYSTEMS - 1}"
     )
 
-    input_xyz_path = get_structure_paths()[system_id]
+    data_path = (
+        download_s3_data(filename=DATA_ZIP, key=DATA_KEY)
+        / "battery_electrolyte_densities"
+    )
+    structure_paths = sorted((data_path / "structures").glob("*.xyz"))
+    if len(structure_paths) != N_SYSTEMS:
+        raise ValueError(
+            f"Expected {N_SYSTEMS} structures in {data_path / 'structures'}, "
+            f"found {len(structure_paths)}"
+        )
+    input_xyz_path = structure_paths[system_id]
 
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
