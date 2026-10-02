@@ -29,14 +29,17 @@ def _hover(page: Page, column: str) -> None:
     )
 
 
-def _wait_for_tooltip(page: Page, contains: str = "") -> None:
+def _wait_for_tooltip(page: Page, contains: str) -> None:
     """Block until the portal is showing a tooltip containing ``contains``."""
     page.wait_for_function(
         """(expected) => {
           const p = document.querySelector('.mlpeg-tooltip-portal');
           if (!p || !p.classList.contains('is-visible')) return false;
-          const text = p.querySelector('.dash-table-tooltip').textContent.trim();
-          return text.length > 0 && text.includes(expected);
+          // The whole point of the portal is to sit outside the table's
+          // horizontal scroller, which would otherwise clip the card.
+          if (p.parentElement !== document.body) return false;
+          return p.querySelector('.dash-table-tooltip')
+            .textContent.includes(expected);
         }""",
         arg=contains,
         timeout=TIMEOUT,
@@ -57,8 +60,7 @@ def _portal_text(page: Page) -> str | None:
 def test_hover_shows_that_cells_tooltip(ready_page: Page) -> None:
     """Hovering a header shows its own tooltip in the portal."""
     _hover(ready_page, COLUMN_A)
-    _wait_for_tooltip(ready_page)
-    assert TOOLTIP_A in (_portal_text(ready_page) or "")
+    _wait_for_tooltip(ready_page, TOOLTIP_A)
 
 
 def test_moving_between_cells_never_shows_the_previous_tooltip(
@@ -71,9 +73,11 @@ def test_moving_between_cells_never_shows_the_previous_tooltip(
     returns the *previous* cell's HTML.
     """
     _hover(ready_page, COLUMN_A)
-    _wait_for_tooltip(ready_page)
+    _wait_for_tooltip(ready_page, TOOLTIP_A)
+    # Tied to column A, so a text that the bug could never reproduce cannot
+    # make the comparison below pass without testing anything.
     text_a = _portal_text(ready_page)
-    assert text_a
+    assert TOOLTIP_A in text_a
 
     # Sample every frame, so a single-frame flash is caught. Each sample records
     # the cell under the pointer, to tell pre-switch frames apart.
