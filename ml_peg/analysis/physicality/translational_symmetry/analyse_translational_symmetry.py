@@ -12,6 +12,10 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.physicality.translational_symmetry.calc_translational_symmetry import (  # noqa: E501
+    MAGNITUDES,
+    STRUCTURES,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -25,11 +29,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 EV_TO_MEV = 1000
-# Must match calc_translational_symmetry.MAGNITUDES.
-MAGNITUDES = (1, 40, 1000)
-# Must match len(calc_translational_symmetry.STRUCTURES). A model only receives
-# scores for a magnitude if every structure was evaluated successfully at it.
-N_STRUCTURES = 10
+
+# Scores require complete results: a model only receives scores for a magnitude
+# if every structure was evaluated successfully at it, rather than being scored
+# on the structures that survived.
+EXPECTED_STRUCTS = sorted(STRUCTURES)
+N_STRUCTURES = len(EXPECTED_STRUCTS)
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
