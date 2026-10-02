@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterable
 from pathlib import Path
+from warnings import warn
 
 # Badge colours are CSS variables defined, with dark-theme overrides, in
 # app/data/ui/utils/speed_badge.css.
@@ -125,22 +126,23 @@ def get_benchmark_speed(calc_dir: Path) -> str | None:
 
 def summarise_speeds(speeds: Iterable[str | None]) -> dict[str, int]:
     """
-    Count benchmarks per speed level, including unclassified benchmarks.
+    Count benchmarks per speed level.
 
     Parameters
     ----------
     speeds
-        Speed level of each benchmark, with None for unmarked benchmarks.
+        Speed level of each benchmark, with None for unmarked benchmarks, which are
+        not counted.
 
     Returns
     -------
     dict[str, int]
-        Count for each speed level and for unclassified benchmarks.
+        Count for each speed level.
     """
     counts = dict.fromkeys(SPEED_ORDER, 0)
-    counts["unclassified"] = 0
     for speed in speeds:
-        counts[speed if speed in SPEED_ORDER else "unclassified"] += 1
+        if speed in counts:
+            counts[speed] += 1
     return counts
 
 
@@ -156,9 +158,15 @@ def speed_for_table_path(table_path: Path | str) -> str | None:
     Returns
     -------
     str | None
-        Speed marker for the matching benchmark, or None when none is found.
+        Speed marker for the matching benchmark, or None when none is found or the
+        benchmark's markers conflict.
     """
     from ml_peg.calcs import CALCS_ROOT
 
     table_dir = Path(table_path).parent
-    return get_benchmark_speed(CALCS_ROOT / table_dir.parent.name / table_dir.name)
+    try:
+        return get_benchmark_speed(CALCS_ROOT / table_dir.parent.name / table_dir.name)
+    except ValueError as err:
+        # Drop the badge rather than failing the whole app build.
+        warn(f"Skipping speed badge for {table_dir.name}: {err}", stacklevel=2)
+        return None

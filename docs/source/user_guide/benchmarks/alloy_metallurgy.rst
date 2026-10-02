@@ -124,6 +124,9 @@ inequivalent neighbour shells up to max_index=8.
 Benchmark speed
 ------------------
 
+Slow: all four tests are marked ``slow``, as the analysis combines their outputs
+into a single table. Their individual costs are:
+
 * **Bulk properties** (``test_alzncumg_regression``): Fast — 8 bulk cell relaxations;
   likely less than a minute on GPU.
 
@@ -131,11 +134,11 @@ Benchmark speed
   slab and stacking fault calculations across ~30 surface/fault/GSF combinations;
   likely minutes on GPU.
 
-* **Elastic constants** (``test_alzncumg_elasticity``, marked ``slow``): Medium —
+* **Elastic constants** (``test_alzncumg_elasticity``): Medium —
   stress-strain elastic tensor for 8 structures; likely minutes to tens of minutes
   on GPU.
 
-* **Solute-solute binding** (``test_alzncumg_solute_solute``, marked ``slow``):
+* **Solute-solute binding** (``test_alzncumg_solute_solute``):
   Slow — many FCC supercell relaxations per solute pair; likely hours on GPU.
 
 

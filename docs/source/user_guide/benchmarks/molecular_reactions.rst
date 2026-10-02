@@ -127,10 +127,10 @@ activation energy and reaction energy errors.
 A density scatter plot shows the predicted against reference activation energies
 on clicking the barrier height column.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: around 36,000 single point inference calls (three states per reaction). Minutes on GPU, tens of minutes to hours on CPU.
+Fast: around 36,000 single point inference calls (three states per reaction). Minutes on GPU, tens of minutes to hours on CPU.
 
 Data availability
 -----------------

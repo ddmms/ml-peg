@@ -268,10 +268,10 @@ scattering channel. It does not include phonon–phonon scattering from third-or
 constants and should be treated as an order-of-magnitude estimate.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: band-structure and thermal-property calculations together typically take
+Fast: band-structure and thermal-property calculations together typically take
 several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
 conventional supercell and share the equilibrium force constants; the thermal step
 adds force-constant evaluations at V\ :sub:`0` + δ and V\ :sub:`0` − δ, so total wall
@@ -378,10 +378,10 @@ bars (7 meV/atom at 0 K, ≈20% of the ~35 meV/atom zero-point energy; 30 meV/at
 differences (tens of meV/atom) that such calculations are used to resolve.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: dispersion, DOS and thermodynamic calculations typically take minutes per model on CPU.
+Fast: dispersion, DOS and thermodynamic calculations typically take minutes per model on CPU.
 Thermodynamic calculations are enabled for a 7/10 subset of cases.
 Ti64 calculations were run as a single process on CPU on an
 x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit

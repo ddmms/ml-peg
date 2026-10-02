@@ -166,6 +166,17 @@ def test_speed_for_table_path_maps_to_calc_dir():
     assert speed_for_table_path(table_path) == "slow"
 
 
+def test_speed_for_table_path_with_conflicting_markers_is_none(tmp_path, monkeypatch):
+    """Conflicting markers drop the badge with a warning instead of raising."""
+    from ml_peg.app.utils.speed import speed_for_table_path
+    import ml_peg.calcs
+
+    write_calc(tmp_path, [["slow", "very_slow"]])
+    monkeypatch.setattr(ml_peg.calcs, "CALCS_ROOT", tmp_path)
+    with pytest.warns(UserWarning, match="conflicting speed markers"):
+        assert speed_for_table_path(tmp_path / "mycat" / "mybench" / "x.json") is None
+
+
 def test_speed_for_unknown_table_path_is_none():
     """A table path with no matching calc directory reports None."""
     from ml_peg.app.utils.speed import speed_for_table_path
@@ -201,7 +212,7 @@ def test_multi_day_marker_runs_when_enabled():
 
 
 def test_summarise_speeds_counts_each_level():
-    """Each level is counted, with unmarked benchmarks kept separate."""
+    """Each level is counted, and unmarked benchmarks are not."""
     from ml_peg.app.utils.speed import summarise_speeds
 
     counts = summarise_speeds(["fast", "fast", "slow", None])
@@ -211,7 +222,6 @@ def test_summarise_speeds_counts_each_level():
         "slow": 1,
         "very_slow": 0,
         "multi_day": 0,
-        "unclassified": 1,
     }
 
 
@@ -226,7 +236,6 @@ def test_summarise_speeds_handles_empty_input():
         "slow",
         "very_slow",
         "multi_day",
-        "unclassified",
     }
     assert sum(counts.values()) == 0
 

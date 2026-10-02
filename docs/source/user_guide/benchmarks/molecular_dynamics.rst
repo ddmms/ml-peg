@@ -62,10 +62,10 @@ protocol uses a 0.5 fs timestep and runs for about 2.06 ns per model and
 polymer at the default time prefactor. The predicted density is compared to the
 experimental reference density.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests are likely to take several days to run on GPU.
 
 Data availability
 -----------------
@@ -182,10 +182,10 @@ deviation is better.
 
 A histogram shows the distribution of the sampled bond length deviations for each model.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: 8 molecules of 4-13 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+Slow: 8 molecules of 4-13 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
 overhead rather than by system size, and tests are likely to take a couple of hours per
 model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
@@ -238,10 +238,10 @@ information only and does not contribute to the benchmark score.
 A histogram shows the distribution of the sampled planarity deviations for each model,
 using only stable simulations.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+Slow: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
 overhead rather than by system size, and tests are likely to take a couple of hours per
 model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
@@ -300,10 +300,10 @@ The mean is between 0 and 1, where higher is better.
 A scatter plot below the table shows the stability score for each system and
 model. Individual models can be toggled via the legend.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take many hours on GPU. Faster simulation times can be
+Very slow: tests are likely to take many hours on GPU. Faster simulation times can be
 achieved using the jax accelerated simulations in MLIP Audit directly.
 
 Data availability

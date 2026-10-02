@@ -275,10 +275,10 @@ reported.
 Same as (1), but the maximum (worst-case) lambda across all structures is reported.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a few minutes to run on CPU.
+Fast: tests are likely to take a few minutes to run on CPU.
 
 
 Data availability
@@ -363,10 +363,10 @@ Worst-case per-pair force MAE, as above.
 Learning Interatomic Potentials via an Open, Accessible Benchmark Platform." arXiv
 preprint arXiv:2509.20630 (2025).
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: single-point evaluations only (10 structures evaluated in 115
+Fast: single-point evaluations only (10 structures evaluated in 115
 orientations each), likely to take seconds to minutes per model on GPU, or
 minutes to tens of minutes on CPU.
 

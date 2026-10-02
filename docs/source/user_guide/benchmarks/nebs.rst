@@ -185,10 +185,10 @@ Metrics
 
 3. NEB convergence
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Very slow: tests are likely to take several minutes to run on CPU.
 
 
 Data availability

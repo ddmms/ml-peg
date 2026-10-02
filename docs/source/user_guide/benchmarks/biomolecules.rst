@@ -37,10 +37,10 @@ to simulate any of the proteins has no overall score.
 For each protein, a line plot shows the RMSD from the reference structure along the
 trajectory for each model.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: one MD simulation per protein. Likely to take several days to run on GPU.
+Multi-day: one MD simulation per protein. Likely to take several days to run on GPU.
 
 Data availability
 -----------------
