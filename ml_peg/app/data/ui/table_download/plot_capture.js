@@ -8,6 +8,13 @@
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   plot_download: {
     downloadPlot: function (nClicks, downloadFormat, graphId) {
+      // Kept local: asset scripts share one global scope, so a top-level const
+      // would clash with any other asset declaring the same name. Keys match
+      // PARITY_LINE_NAME in plot_helpers.py and the scatter click-ring trace.
+      const TRACE_LABELS = {
+        __parity_line__: "y=x",
+        __clicked_point__: "selected point",
+      };
       const dash = window.dash_clientside;
       const noUpdate = dash ? dash.no_update : null;
       if (!nClicks || !graphId) {
@@ -66,7 +73,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
               ? []
               : [trace.y];
           const pointCount = Math.max(xValues.length, yValues.length);
-          const traceName = trace.name || `trace_${traceIndex}`;
+          // Internal tags identify helper traces in the browser; export them
+          // under a readable label rather than leaking the sentinel.
+          const traceName =
+            TRACE_LABELS[trace.name] || trace.name || `trace_${traceIndex}`;
           for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
             rows.push([
               traceName,

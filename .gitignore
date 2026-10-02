@@ -41,7 +41,6 @@ __pycache__/
 ml_peg/app/data/*
 !ml_peg/app/data/ui/
 !ml_peg/app/data/ui/**
-!ml_peg/app/data/element_coverage.json
 certs/
 data.tar.gz
 scratchpad/
