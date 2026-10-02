@@ -37,6 +37,7 @@ dependencies = [
     "numpy<3,>=1.26.4; python_version < '3.13'",
     "numpy<3,>=2.1.0; python_version >= '3.13'",
     "openpyxl<4,>=3.1.5",
+    "orjson<4,>=3.9",
     "plotly>=6,<7",
     "scipy<1.17,>=1",
     "scikit-learn<2,>=1.7.2",
