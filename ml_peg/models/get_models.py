@@ -143,6 +143,7 @@ def load_models(
         MockCalc,
         OrbCalc,
         SevenNetCalc,
+        TaceCalc,
         UPETCalc,
         VivaceCalc,
     )
@@ -218,6 +219,14 @@ def load_models(
             case "SevenNetCalculator":
                 loaded_models[name] = SevenNetCalc(
                     device=cfg.get("device", "cpu"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "TACEAseCalc":
+                loaded_models[name] = TaceCalc(
+                    device=cfg.get("device", "cpu"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
