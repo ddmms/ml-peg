@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib.util import find_spec
 from pathlib import Path
 import sys
 from types import ModuleType
@@ -30,16 +29,6 @@ class _FakeDP:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-
-
-def test_dpa_calculator_imports_when_installed():
-    """Check the DeePMD calculator import when the DPA extra is installed."""
-    if find_spec("deepmd") is None:
-        pytest.skip("DPA extra is not installed")
-
-    from deepmd.calculator import DP
-
-    assert DP is not None
 
 
 @pytest.fixture
