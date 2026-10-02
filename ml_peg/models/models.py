@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+import os
 from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
 
@@ -37,6 +38,18 @@ def check_precision(precision: str) -> None:
         raise ValueError(
             f"Invalid precision '{precision}'. Must be one of {get_args(Precision)}."
         )
+
+
+def _patch_os_sched_getaffinity() -> None:
+    """
+    Provide ``os.sched_getaffinity`` on platforms that lack it, such as macOS.
+
+    TACE's bundled ``eqx`` kernels call the Linux-only ``os.sched_getaffinity`` at
+    import time to size a thread pool, so importing TACE fails elsewhere. The
+    fallback reports every CPU as available, matching an unrestricted Linux process.
+    """
+    if not hasattr(os, "sched_getaffinity"):
+        os.sched_getaffinity = lambda pid: set(range(os.cpu_count() or 1))
 
 
 def _patch_metatomic_nvalchemi_max_neighbors() -> None:
@@ -511,6 +524,70 @@ class SevenNetCalc(SumCalc):
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         device_str = device.value if isinstance(device, Device) else (device or "cpu")
         return SevenNetCalculator(device=device_str, **self.kwargs)
+
+
+# https://github.com/xvzemin/tace
+@dataclasses.dataclass(kw_only=True)
+class TaceCalc(SumCalc):
+    """Dataclass for TACE calculators."""
+
+    device: Device | None = None
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Keyword arguments that override the registry calculator options.
+
+        Returns
+        -------
+        Calculator
+            Loaded TACE ASE calculator.
+        """
+        _patch_os_sched_getaffinity()
+
+        from tace.foundations import tace_foundations
+        from tace.interface.ase import TACEAseCalc
+
+        check_precision(precision)
+        precision_map = {"low": "float32", "high": "float64"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+
+        # TACEAseCalc needs a checkpoint path, not a foundation model name. The
+        # registry downloads the checkpoint on first use and caches it.
+        calc_kwargs = {**self.kwargs, **kwargs}
+        calc_kwargs["model"] = str(tace_foundations[calc_kwargs["model"]])
+        return TACEAseCalc(dtype=dtype, device=device, **calc_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the calculator module is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be loaded.
+        """
+        _patch_os_sched_getaffinity()
+        try:
+            from tace.interface.ase import TACEAseCalc
+
+            return True
+        except ImportError:
+            return False
 
 
 @dataclasses.dataclass(kw_only=True)

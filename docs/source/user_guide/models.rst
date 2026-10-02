@@ -461,3 +461,34 @@ sevennet-omni-mpa
     kwargs:
       model: "7net-omni"
       modal: "mpa"
+
+TACE
+====
+
+tace-omat24-7m
+--------------
+
+.. code-block:: yaml
+
+  tace-omat24-7m:
+    module: tace.interface.ase
+    class_name: TACEAseCalc
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "TACE-OMat24-7M"
+
+tace-oam-7m
+-----------
+
+.. code-block:: yaml
+
+  tace-oam-7m:
+    module: tace.interface.ase
+    class_name: TACEAseCalc
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "TACE-OAM-7M"
