@@ -262,7 +262,6 @@ system with:
 
    uv sync --extra dpa
    ml_peg calc --category <category> --test <test> --models dpa-4-nano-omat
-   ML_PEG_RUN_DPA_MODEL_TESTS=1 uv run --extra dpa pytest tests/test_dpa_models.py
 
 Check the loaded checkpoint's actual parameter or graph dtype as well as finite
 energies, forces, and stress.
