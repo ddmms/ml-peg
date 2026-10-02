@@ -39,6 +39,13 @@ MAGNITUDES = (1, 40, 1000)
 _graphene = graphene(formula="C2", a=2.46, thickness=0.0, vacuum=20.0)
 _graphene.pbc = True
 
+# Diamond, rattled with a fixed seed so the atoms carry forces of a realistic
+# magnitude: a perfect crystal's true forces vanish by symmetry, so any
+# violation that scales with the size of the forces is understated there.
+# Matches the rattle used in the rotational symmetry physicality test.
+_diamond = bulk("C", "diamond", a=3.567)
+_diamond.rattle(stdev=0.05, seed=42)
+
 # Ten diverse, low-cost structures: varied bond orders, elements, geometries,
 # and two periodic systems (3D bulk, 2D sheet). Elements are restricted to
 # those supported by every registered model (including molecule-only models),
@@ -53,7 +60,7 @@ STRUCTURES = {
     "SO2": molecule("SO2"),
     "CH3OH": molecule("CH3OH"),
     "C6H6": molecule("C6H6"),
-    "C_diamond": bulk("C", "diamond", a=3.567),
+    "C_diamond": _diamond,
     "graphene": _graphene,
 }
 

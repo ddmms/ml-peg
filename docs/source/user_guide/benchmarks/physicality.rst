@@ -306,8 +306,9 @@ equivariant by construction, and this test measures how far they deviate.
 Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
 CH3OH and C6H6) and two periodic systems (diamond and graphene), matching the
 translational symmetry test. Diamond is rattled with a fixed seed so that the atoms
-carry nonzero forces: a perfect crystal's forces vanish by symmetry, which would leave
-it probing energies only. Each structure is evaluated before and after each of 114
+carry forces of a realistic magnitude: a perfect crystal's true forces vanish by
+symmetry, so any violation that scales with the size of the forces is understated
+there. Each structure is evaluated before and after each of 114
 rigid rotations about the origin, forming a single cumulative walk through
 orientation space: 14 steps increasing from 1 to 40°, followed by 100 uniformly random
 steps, all generated with a fixed seed so that every model sees the identical walk. For the periodic structures the cell is rotated together with
@@ -388,9 +389,12 @@ both unchanged, and any deviation reflects the model's implementation rather tha
 physics.
 
 Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
-CH3OH and C6H6) and two periodic systems (diamond and graphene). Each is evaluated
-before and after a rigid translation along a fixed, non-axis-aligned direction, at
-magnitudes of 1, 40 and 1000 Å. The direction is deliberately not axis-aligned: for a
+CH3OH and C6H6) and two periodic systems (diamond and graphene), matching the
+rotational symmetry test. Diamond is rattled with a fixed seed so that the atoms carry
+forces of a realistic magnitude: a perfect crystal's true forces vanish by symmetry, so
+any violation that scales with the size of the forces is understated there.
+Each structure is evaluated before and after a rigid translation
+along a fixed, non-axis-aligned direction, at magnitudes of 1, 40 and 1000 Å. The direction is deliberately not axis-aligned: for a
 shift along a single axis the rounding error can be identical for every atom, cancelling
 out of the relative geometry and hiding the effect entirely.
 

@@ -105,9 +105,10 @@ N_ROTATIONS = len(STEP_ANGLES) + N_RANDOM
 _graphene = graphene(formula="C2", a=2.46, thickness=0.0, vacuum=20.0)
 _graphene.pbc = True
 
-# Diamond, rattled with a fixed seed so the atoms carry nonzero forces: a
-# perfect crystal's forces vanish by symmetry, which would leave the periodic
-# structures probing energies only. Carbon is also supported by every model,
+# Diamond, rattled with a fixed seed so the atoms carry forces of a realistic
+# magnitude: a perfect crystal's true forces vanish by symmetry, so any
+# violation that scales with the size of the forces is understated there.
+# Carbon is also supported by every model,
 # unlike fcc aluminium, which is outside the element coverage of the
 # molecular models.
 _diamond = bulk("C", "diamond", a=3.567)
