@@ -80,7 +80,7 @@ def get_app() -> TranslationalSymmetryApp:
     return TranslationalSymmetryApp(
         name=BENCHMARK_NAME,
         description=(
-            "Energy and force changes after a rigid translation, at two magnitudes."
+            "Energy and force changes after a rigid translation, at 1, 40 and 1000 Å."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "translational_symmetry_metrics_table.json",

@@ -116,14 +116,15 @@ def _mean_max(values: list[float]) -> tuple[float | None, float | None]:
     """
     Get the mean and max of a list of values, requiring a complete set.
 
-    A model must evaluate every structure successfully to be scored: any
-    missing structure or failed (NaN) evaluation returns (None, None), which
-    renders as a blank table cell rather than a score over a subset.
+    A model must evaluate every structure successfully to be scored: an empty
+    set of values (any structure missing) or a failed (NaN) evaluation returns
+    (None, None), which renders as a blank table cell rather than a score over
+    a subset.
 
     Parameters
     ----------
     values
-        Values to aggregate, one per successfully read structure.
+        Values to aggregate, one per expected structure.
 
     Returns
     -------
@@ -160,10 +161,12 @@ def magnitude_metrics(
 
     for model_name, per_struct in deltas_by_structure.items():
         for magnitude in MAGNITUDES:
+            # Checked by name, not count, so outputs for an unexpected or
+            # renamed structure cannot stand in for a missing one.
             pairs = [
-                deltas[magnitude]
-                for deltas in per_struct.values()
-                if magnitude in deltas
+                per_struct[name][magnitude]
+                for name in EXPECTED_STRUCTS
+                if magnitude in per_struct.get(name, {})
             ]
             energies = [pair[0] for pair in pairs]
             forces = [pair[1] for pair in pairs]

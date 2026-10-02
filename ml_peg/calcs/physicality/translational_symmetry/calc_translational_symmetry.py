@@ -20,8 +20,8 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# Fixed, non-axis-aligned direction, scanned at a small and a large magnitude
-# (Å). Testing both distinguishes "any shift at all breaks it" from "large
+# Fixed, non-axis-aligned direction, scanned at several magnitudes (Å).
+# Testing more than one distinguishes "any shift at all breaks it" from "large
 # shifts break it worse", which is not the same thing for every model.
 DIRECTION = np.array([37.2, -18.9, 24.6])
 DIRECTION = DIRECTION / np.linalg.norm(DIRECTION)
