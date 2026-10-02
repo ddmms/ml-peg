@@ -13,6 +13,7 @@
 *.extxyz
 *.yaml
 !dvc.yaml
+!.coderabbit.yaml
 *.pdf
 *.hdf5
 *.traj
