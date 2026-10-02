@@ -31,6 +31,7 @@ BENCHMARK_DATA_DOWNLOAD_URL = (
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_gmtkn55(mlip: tuple[str, Any]) -> None:
     """

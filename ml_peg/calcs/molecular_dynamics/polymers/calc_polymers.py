@@ -71,7 +71,7 @@ def _copy_reference_structures(input_dir: pathlib.Path) -> None:
         tmp.replace(reference_xyz)
 
 
-@pytest.mark.very_slow
+@pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_polymer_densities(
     mlip: tuple[str, ty.Any],

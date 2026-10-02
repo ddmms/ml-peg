@@ -29,10 +29,10 @@ through deletion an atom from the initial structure. These structures are relaxe
 and the Nudged Elastic Band method is used to calculate the energy barrier. This is
 compared to the reference activation energy for this path.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 
 Data availability
@@ -71,10 +71,10 @@ for both the DFT reference and the MLIP predictions.
 
 Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 Data availability
 -----------------
@@ -136,10 +136,10 @@ falling back to ASEs interpolation if any exceptions are raised during optimisat
 which is carried out by ASE's NEBOptimizer.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests involving multiple foundation models are likely to take around an one hour to run on a single GPU.
+Fast: the benchmark takes around one minute per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -185,10 +185,10 @@ Metrics
 
 3. NEB convergence
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Very slow: tests may take over 10 hours to run on GPU.
 
 
 Data availability

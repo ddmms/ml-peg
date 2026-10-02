@@ -54,6 +54,7 @@ def make_slab(
 
 
 @pytest.mark.framework("mace-multihead")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_extensivity(mlip: tuple[str, Any]) -> None:
     """

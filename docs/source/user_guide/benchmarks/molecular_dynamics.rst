@@ -21,10 +21,10 @@ For each system, the density is calculated by taking the average density of an N
 dynamics run. The initial part of the simulation, here 500 ps, is omitted from the density
 calculation. This is compared to the reference density, obtained from experiment.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 Data availability
 -----------------
@@ -62,10 +62,10 @@ protocol uses a 0.5 fs timestep and runs for about 2.06 ns per model and
 polymer at the default time prefactor. The predicted density is compared to the
 experimental reference density.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests are likely to take several days to run on GPU.
 
 Data availability
 -----------------
@@ -100,10 +100,10 @@ For each system, the density is calculated by taking the average density of an N
 dynamics run. The initial part of the simulation, here 500 ps, is omitted from the density
 calculation. This is compared to the reference density, obtained from experiment.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 Data availability
 -----------------
@@ -142,10 +142,10 @@ calculation. This is compared to the reference density, obtained from experiment
 The excess volume is computed as the difference between the actual molar volume of the mixture and the ideal molar volume obtained by linear combination of the pure-component molar volumes.
 The concentration of the minimal excess volume is estimated by fitting a quadratic to the three grid points surrounding the minimum and taking the vertex of the parabola.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very high: tests are likely to take several days to run on GPU.
+Multi-day: tests take several days to run on GPU.
 
 
 Data availability
@@ -182,10 +182,10 @@ deviation is better.
 
 A histogram shows the distribution of the sampled bond length deviations for each model.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: 8 molecules of 4-13 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+Slow: 8 molecules of 4-13 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
 overhead rather than by system size, and tests are likely to take a couple of hours per
 model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
@@ -238,10 +238,10 @@ information only and does not contribute to the benchmark score.
 A histogram shows the distribution of the sampled planarity deviations for each model,
 using only stable simulations.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
+Slow: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
 overhead rather than by system size, and tests are likely to take a couple of hours per
 model on GPU. Faster inference can be achieved using the jax-accelerated simulations in
@@ -300,10 +300,10 @@ The mean is between 0 and 1, where higher is better.
 A scatter plot below the table shows the stability score for each system and
 model. Individual models can be toggled via the legend.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take many hours on GPU. Faster simulation times can be
+Very slow: tests are likely to take many hours on GPU. Faster simulation times can be
 achieved using the jax accelerated simulations in MLIP Audit directly.
 
 Data availability

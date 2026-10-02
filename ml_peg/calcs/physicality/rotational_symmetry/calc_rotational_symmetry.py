@@ -178,6 +178,7 @@ def evaluate(calc, struct: Atoms, angle: float, rot: np.ndarray) -> Atoms:
     return struct
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_rotational_symmetry(mlip: tuple[str, Any]) -> None:
     """

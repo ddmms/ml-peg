@@ -23,6 +23,11 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.speed import (
+    SPEED_LEVELS,
+    SPEED_ORDER,
+    summarise_speeds,
+)
 from ml_peg.app.utils.utils import (
     build_level_of_theory_warnings,
     build_threshold_input_style,
@@ -1177,6 +1182,186 @@ def build_framework_badge(framework_id: str) -> Component:
     return badge
 
 
+def build_speed_badge(speed: str | None) -> Component | None:
+    """
+    Build a badge showing a benchmark's computational cost.
+
+    Parameters
+    ----------
+    speed
+        Speed level name, or None when the benchmark carries no speed marker.
+
+    Returns
+    -------
+    Component | None
+        Styled badge, or None when there is no recognised level to show.
+    """
+    config = SPEED_LEVELS.get(speed) if speed else None
+    if config is None:
+        return None
+
+    segment_style = {
+        "display": "inline-flex",
+        "alignItems": "center",
+        "padding": "2px 8px",
+        "lineHeight": "1.8",
+    }
+    return html.Span(
+        [
+            html.Span(
+                "Test speed",
+                style={
+                    **segment_style,
+                    "backgroundColor": "var(--mlpeg-surface-3)",
+                    "color": "var(--mlpeg-ink-2)",
+                    "borderRadius": "999px 0 0 999px",
+                },
+            ),
+            html.Span(
+                config["label"],
+                style={
+                    **segment_style,
+                    "backgroundColor": config["color"],
+                    "color": config["text_color"],
+                    "borderRadius": "0 999px 999px 0",
+                },
+            ),
+        ],
+        className="speed-badge",
+        style={
+            "display": "inline-flex",
+            "alignItems": "stretch",
+            "fontSize": "11px",
+            "fontWeight": "600",
+            "letterSpacing": "0.02em",
+            "textTransform": "uppercase",
+        },
+        # Drawn by speed_badge.css rather than the native `title` attribute,
+        # whose show delay browsers do not let us configure.
+        **{"data-tooltip": config["tooltip"]},
+    )
+
+
+def build_speed_panel(
+    speeds: dict[str, str | None], title_font_size: str | None = None
+) -> Div:
+    """
+    Build a panel summarising benchmark speed classifications.
+
+    Parameters
+    ----------
+    speeds
+        Mapping of ``<category>/<benchmark>`` to speed level, with None for
+        benchmarks carrying no speed marker.
+    title_font_size
+        Optional CSS font size for the panel heading. Default is None.
+
+    Returns
+    -------
+    Div
+        Panel listing benchmark counts and typical runtime ranges.
+    """
+    counts = summarise_speeds(speeds.values())
+
+    row_heading_style = {
+        "fontSize": "12px",
+        "fontWeight": "600",
+        "color": "var(--mlpeg-muted)",
+        "padding": "6px 18px 6px 0",
+        "textAlign": "left",
+        "whiteSpace": "nowrap",
+    }
+    speed_heading_style = {
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "letterSpacing": "0.04em",
+        "textTransform": "uppercase",
+        "color": "var(--mlpeg-muted)",
+        "padding": "6px 12px",
+        "textAlign": "center",
+        "whiteSpace": "nowrap",
+    }
+    panel_contents = Div(
+        html.Table(
+            [
+                html.Tr(
+                    [html.Th("Test speed", style=row_heading_style)]
+                    + [
+                        html.Th(
+                            SPEED_LEVELS[level]["label"],
+                            style=speed_heading_style,
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+                html.Tr(
+                    [html.Th("Typical GPU runtime per test", style=row_heading_style)]
+                    + [
+                        html.Td(
+                            SPEED_LEVELS[level]["runtime"],
+                            style={
+                                "fontSize": "12px",
+                                "color": "var(--mlpeg-muted)",
+                                "padding": "6px 12px",
+                                "textAlign": "center",
+                                "whiteSpace": "nowrap",
+                            },
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+                html.Tr(
+                    [html.Th("Number of tests", style=row_heading_style)]
+                    + [
+                        html.Td(
+                            str(counts.get(level, 0)),
+                            style={
+                                "fontSize": "26px",
+                                "fontWeight": "700",
+                                "color": "var(--mlpeg-heading)",
+                                "lineHeight": "1.1",
+                                "padding": "6px 12px",
+                                "textAlign": "center",
+                            },
+                        )
+                        for level in SPEED_ORDER
+                    ]
+                ),
+            ],
+            style={"borderCollapse": "collapse"},
+        ),
+        style={"overflowX": "auto"},
+    )
+
+    return Div(
+        [
+            H2(
+                "Test speeds",
+                style={
+                    "color": "var(--mlpeg-heading)",
+                    "marginTop": "30px",
+                    **({"fontSize": title_font_size} if title_font_size else {}),
+                },
+            ),
+            Div(
+                panel_contents,
+                style={
+                    "backgroundColor": "var(--mlpeg-surface)",
+                    "border": "1px solid var(--mlpeg-border)",
+                    "borderRadius": "12px",
+                    "padding": "16px 20px",
+                    "marginBottom": "12px",
+                    "width": "fit-content",
+                    # Cap at the container so narrow screens scroll the table
+                    # inside the card instead of overflowing the page.
+                    "maxWidth": "min(820px, 100%)",
+                    "boxSizing": "border-box",
+                },
+            ),
+        ]
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1186,6 +1371,7 @@ def build_test_layout(
     extra_components: list[Component] | None = None,
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
+    speed: str | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1211,6 +1397,9 @@ def build_test_layout(
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
+    speed
+        Benchmark speed level used to render a cost badge. Default is None, which
+        renders no badge.
 
     Returns
     -------
@@ -1233,8 +1422,13 @@ def build_test_layout(
                 "gap": "10px",
             },
         ),
-        H3(description),
     ]
+
+    speed_badge = build_speed_badge(speed)
+    if speed_badge is not None:
+        layout_contents.append(Div(speed_badge, style={"margin": "8px 0 0"}))
+
+    layout_contents.append(H3(description))
 
     layout_contents.extend(
         [

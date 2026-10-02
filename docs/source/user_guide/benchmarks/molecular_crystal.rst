@@ -24,10 +24,10 @@ comprises, and the energy of the isolated molecule. This is compared to the refe
 lattice energy.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -67,10 +67,10 @@ and the energy of the isolated water molecule. This is compared to the reference
 formation energy.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -116,10 +116,10 @@ The relative error is computed by identifying the most stable polymorphs and, fo
 This metric cares more about the ranking of the crystal polymorphs rather than reproducing the reference values of the lattice energies.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests should take a few minutes on a CPU
+Fast: tests should take a few minutes on a CPU.
 
 
 Data availability

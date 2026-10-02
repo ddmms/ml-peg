@@ -68,6 +68,7 @@ def diamond_data() -> Path:
     )
 
 
+@pytest.mark.fast
 def test_phonons_diamond_ref(diamond_data: Path) -> None:
     """
     Copy the pre-converted DFT reference data to ``outputs/DFT/``.
@@ -82,6 +83,7 @@ def test_phonons_diamond_ref(diamond_data: Path) -> None:
         shutil.copy2(diamond_data / name, DFT_REF_PATH / name)
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_phonons_diamond(mlip: tuple[str, Any], diamond_data: Path) -> None:
     """

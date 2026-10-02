@@ -144,6 +144,7 @@ def _case_path(case_name: str) -> tuple[list[list[float]], list[str]]:
     return HEX_KPATH, HEX_LABELS
 
 
+@pytest.mark.fast
 def test_phonons_ti64_ref(ti64_data: Path) -> None:
     """
     Copy the pre-converted CASTEP reference data to ``outputs/DFT/``.
@@ -261,6 +262,7 @@ def _calc_case(case: str, calc: Any, data_dir: Path, out_dir: Path) -> None:
             json.dump(thermal_safe, handle, indent=4)
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_phonons_ti64(mlip: tuple[str, Any], ti64_data: Path) -> None:
     """

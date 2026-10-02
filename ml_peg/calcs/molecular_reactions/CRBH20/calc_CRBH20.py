@@ -27,6 +27,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 EV_TO_KCAL = units.mol / units.kcal
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_crbh20_barrier_calculation(mlip: tuple[str, Any]) -> None:
     """

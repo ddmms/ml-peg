@@ -288,9 +288,12 @@ def run_calcs(
     ] = False,
     run_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled slow.")
-    ] = True,
+    ] = False,
     run_very_slow: Annotated[
         bool, Option(help="Whether to run calculations labelled very slow.")
+    ] = False,
+    run_multi_day: Annotated[
+        bool, Option(help="Whether to run calculations labelled multi-day.")
     ] = False,
     verbose: Annotated[
         bool, Option(help="Whether to run pytest with verbose and stdout printed.")
@@ -322,9 +325,11 @@ def run_calcs(
     mock_only
         Whether to only run mock calculations, with no models. Default is `False`.
     run_slow
-        Whether to run slow calculations. Default is `True`.
+        Whether to run slow calculations. Default is `False`.
     run_very_slow
         Whether to run very slow calculations. Default is `False`.
+    run_multi_day
+        Whether to run multi-day calculations. Default is `False`.
     verbose
         Whether to run pytest with verbose and stdout printed. Default is `True`.
     """
@@ -346,6 +351,9 @@ def run_calcs(
 
     if run_very_slow:
         options.extend(["--run-very-slow"])
+
+    if run_multi_day:
+        options.extend(["--run-multi-day"])
 
     if run_mock:
         options.extend(["--run-mock"])

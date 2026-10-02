@@ -97,6 +97,7 @@ def perturbed_structures(calc, struct: Atoms, eps: float = EPS) -> list[Atoms]:
     return frames
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_jacobian_symmetry(mlip: tuple[str, Any]) -> None:
     """

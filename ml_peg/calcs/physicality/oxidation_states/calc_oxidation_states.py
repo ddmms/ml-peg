@@ -76,6 +76,7 @@ def test_iron_oxidation_state_md(mlip: tuple[str, Any]) -> None:
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("model_name", MODELS)
 def test_iron_oxygen_rdfs(model_name: str) -> None:
     """
