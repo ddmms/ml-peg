@@ -908,3 +908,47 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Elemental Cohesive Energy
+=========================
+
+Summary
+-------
+
+Performance in predicting the cohesive energies of 25 elemental crystals: 21 metals in
+their cubic phases, and C, Si, Ge and Sn in the diamond structure.
+
+Metrics
+-------
+
+1. MAE (PBE)
+
+Mean absolute error (MAE) between predicted and reference (PBE) cohesive energies.
+
+For each element, the bulk cell is relaxed while keeping its cubic symmetry, and a
+single atom is evaluated in a 30 Å periodic box. The cohesive energy is the energy of
+the isolated atom minus the bulk energy per atom.
+
+2. MAE (Experimental)
+
+Mean absolute error (MAE) between predicted and experimental cohesive energies.
+
+Computational cost
+------------------
+
+Low: tests are likely to take less than a minute to run on CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Generated with ASE
+
+Reference data:
+
+* G.-X. Zhang, A. M. Reilly, A. Tkatchenko and M. Scheffler. Performance of various
+  density-functional approximations for cohesive properties of 64 bulk solids. New J.
+  Phys. 2018 20 063020
+* PBE (all-electron, without zero-point correction) and experiment (0 K)
