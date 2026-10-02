@@ -12,15 +12,34 @@ from playwright.sync_api import Page
 
 TIMEOUT = 60_000
 
-# Two adjacent summary-table headers with distinct tooltips.
+# Two summary-table headers with distinct tooltips. Both have to come from
+# categories the fixture always supplies, or the test passes only on a machine
+# that happens to hold the full dataset. The tooltip text is the category's
+# description from <category>/<category>.yml.
 COLUMN_A = "Bulk Crystals Score"
-COLUMN_B = "Electrolytes Score"
+TOOLTIP_A = "Bulk crystal"
+COLUMN_B = "Physicality Score"
+TOOLTIP_B = "additivity"
 
 
 def _hover(page: Page, column: str) -> None:
     """Point at a header cell (one mouse jump, so no cells in between)."""
     page.locator(f'#summary-table th[data-dash-column="{column}"]').first.hover(
         timeout=TIMEOUT
+    )
+
+
+def _wait_for_tooltip(page: Page, contains: str = "") -> None:
+    """Block until the portal is showing a tooltip containing ``contains``."""
+    page.wait_for_function(
+        """(expected) => {
+          const p = document.querySelector('.mlpeg-tooltip-portal');
+          if (!p || !p.classList.contains('is-visible')) return false;
+          const text = p.querySelector('.dash-table-tooltip').textContent.trim();
+          return text.length > 0 && text.includes(expected);
+        }""",
+        arg=contains,
+        timeout=TIMEOUT,
     )
 
 
@@ -38,15 +57,8 @@ def _portal_text(page: Page) -> str | None:
 def test_hover_shows_that_cells_tooltip(ready_page: Page) -> None:
     """Hovering a header shows its own tooltip in the portal."""
     _hover(ready_page, COLUMN_A)
-    ready_page.wait_for_function(
-        """() => {
-          const p = document.querySelector('.mlpeg-tooltip-portal');
-          return !!p && p.classList.contains('is-visible')
-            && p.querySelector('.dash-table-tooltip').textContent.trim().length > 0;
-        }""",
-        timeout=TIMEOUT,
-    )
-    assert "Bulk crystal" in (_portal_text(ready_page) or "")
+    _wait_for_tooltip(ready_page)
+    assert TOOLTIP_A in (_portal_text(ready_page) or "")
 
 
 def test_moving_between_cells_never_shows_the_previous_tooltip(
@@ -59,14 +71,7 @@ def test_moving_between_cells_never_shows_the_previous_tooltip(
     returns the *previous* cell's HTML.
     """
     _hover(ready_page, COLUMN_A)
-    ready_page.wait_for_function(
-        """() => {
-          const p = document.querySelector('.mlpeg-tooltip-portal');
-          return !!p && p.classList.contains('is-visible')
-            && p.querySelector('.dash-table-tooltip').textContent.trim().length > 0;
-        }""",
-        timeout=TIMEOUT,
-    )
+    _wait_for_tooltip(ready_page)
     text_a = _portal_text(ready_page)
     assert text_a
 
@@ -90,7 +95,10 @@ def test_moving_between_cells_never_shows_the_previous_tooltip(
         }"""
     )
     _hover(ready_page, COLUMN_B)
-    ready_page.wait_for_timeout(600)
+    # Sampling continues across this wait, so a slow Dash update costs time
+    # rather than coverage. Reaching the second tooltip is itself the assertion
+    # that it appeared at all.
+    _wait_for_tooltip(ready_page, TOOLTIP_B)
     samples = ready_page.evaluate(
         """() => {
           window.cancelAnimationFrame(window.__sampler);
@@ -102,7 +110,4 @@ def test_moving_between_cells_never_shows_the_previous_tooltip(
     assert over_b, "no frames sampled with the pointer over the second header"
     assert text_a not in over_b, (
         "the previous cell's tooltip was painted against the new anchor"
-    )
-    assert "Solid-state electrolyte" in (_portal_text(ready_page) or ""), (
-        "the new cell's tooltip never appeared"
     )
