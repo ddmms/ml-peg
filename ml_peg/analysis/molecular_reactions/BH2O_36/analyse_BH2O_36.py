@@ -79,9 +79,16 @@ def barrier_heights() -> dict[str, list]:
     system_names = SYSTEM_NAMES
     for model_name in MODELS:
         for system_name in system_names:
-            atoms_rct = read(CALC_PATH / model_name / f"{system_name}_rct.xyz")
-            atoms_pro = read(CALC_PATH / model_name / f"{system_name}_pro.xyz")
-            atoms_ts = read(CALC_PATH / model_name / f"{system_name}_ts.xyz")
+            rct_path = CALC_PATH / model_name / f"{system_name}_rct.xyz"
+            pro_path = CALC_PATH / model_name / f"{system_name}_pro.xyz"
+            ts_path = CALC_PATH / model_name / f"{system_name}_ts.xyz"
+            if not rct_path.exists() or not pro_path.exists() or not ts_path.exists():
+                results[model_name].extend([float("nan"), float("nan")])
+                continue
+
+            atoms_rct = read(rct_path)
+            atoms_pro = read(pro_path)
+            atoms_ts = read(ts_path)
 
             # TS - Reactants barrier
             results[model_name].append(
@@ -130,7 +137,12 @@ def barrier_heights() -> dict[str, list]:
                 [atoms_pro, atoms_ts],
                 append=False,
             )
-        ref_stored = True
+
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]) * 2:
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

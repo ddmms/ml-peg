@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -34,6 +34,7 @@ SYSTEM_INFO = get_struct_info(
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
+    include_filenames=True,
 )
 
 
@@ -86,10 +87,16 @@ def adsorption_energies() -> dict[str, list]:
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         if not model_dir.exists():
-            results[model_name] = []
+            results[model_name].append(float("nan"))
             continue
 
-        for system_path in sorted(model_dir.glob("*.xyz")):
+        for system_path in [
+            model_dir / f"{filename}.xyz" for filename in SYSTEM_INFO["filenames"]
+        ]:
+            if not system_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
             mol_surface = read(system_path)
 
             # Get pre-calculated adsorption energies
@@ -100,12 +107,11 @@ def adsorption_energies() -> dict[str, list]:
                 ref_ads_energy = mol_surface.info["ref_adsorption_energy"]
                 results["ref"].append(ref_ads_energy)
 
-            # Write molecule-surface structure to app data
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system_path.stem}.xyz", mol_surface)
-
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(SYSTEM_INFO["system_name"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

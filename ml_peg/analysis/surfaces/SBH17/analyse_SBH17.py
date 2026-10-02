@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -75,22 +75,20 @@ def surface_barriers() -> dict[str, list]:
             structs = read(xyz_file, index=":")
 
             gp_energy = structs[0].get_potential_energy()
-            system = structs[0].info["system"]
             ts_energy = structs[1].get_potential_energy()
 
             barrier = ts_energy - gp_energy
             results[model_name].append(barrier)
 
-            # Copy individual structure files to app data directory
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", structs)
-
             # Store reference energies (only once)
             if not ref_stored:
                 results["ref"].append(structs[0].info["ref"])
 
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(SYSTEM_INFO["system"]) / 2:
+                ref_stored = True
+            else:
+                results["ref"] = []
 
     return results
 

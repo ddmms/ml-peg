@@ -14,6 +14,7 @@ from ml_peg.analysis.utils.decorators import (
 )
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    count_valid,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -62,7 +63,12 @@ def interaction_energies() -> dict[str, list]:
 
     for model_name in MODELS:
         for label in INFO["filenames"]:
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path)
             if not ref_stored:
                 results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
 
@@ -73,7 +79,11 @@ def interaction_energies() -> dict[str, list]:
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}.xyz", atoms)
 
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
@@ -107,7 +117,7 @@ def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict
         density_inputs[model_name] = {
             "ref": ref_vals,
             "pred": preds,
-            "meta": {"system_count": len([val for val in preds if val is not None])},
+            "meta": {"system_count": count_valid(preds)},
         }
         write_density_trajectories(
             labels_list=label_list,

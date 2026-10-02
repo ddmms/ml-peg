@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -89,19 +89,26 @@ def relative_energies() -> dict[str, list]:
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
     ref_stored = False
     for model_name in MODELS:
-        for i, system_path in enumerate((CALC_PATH / model_name).glob("*.xyz")):
+        for system_path in [
+            CALC_PATH / model_name / f"{filename}.xyz" for filename in INFO["filenames"]
+        ]:
+            if not system_path.exists():
+                results[model_name].extend([float("nan")] * 3)
+                continue
+
             structs = read(system_path, index=":")
             pred_energies = [atoms.get_potential_energy() for atoms in structs]
             results[model_name].extend(get_relative_energies(pred_energies))
+
             if not ref_stored:
                 ref_energies = [atoms.info["ref_energy"] for atoms in structs]
                 results["ref"].extend(get_relative_energies(ref_energies))
 
-            # Write structures in order as glob is unsorted
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{i}.xyz", structs)
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == 3 * N_SYSTEMS:
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
@@ -122,9 +129,12 @@ def oc157_mae(relative_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            relative_energies["ref"], relative_energies[model_name]
-        )
+        if len(relative_energies[model_name]) == len(relative_energies["ref"]):
+            results[model_name] = mae(
+                relative_energies["ref"], relative_energies[model_name]
+            )
+        else:
+            results[model_name] = float("nan")
     return results
 
 

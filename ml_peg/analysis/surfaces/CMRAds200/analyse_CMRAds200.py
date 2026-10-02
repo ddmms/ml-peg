@@ -35,6 +35,7 @@ SYSTEM_INFO = get_struct_info(
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
+    include_filenames=True,
 )
 
 
@@ -68,8 +69,9 @@ def adsorption_energies() -> dict[str, list]:
         if not model_dir.exists():
             results[model_name] = []
             continue
+
         mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
-        for mol_surface_idx, mol_surface in enumerate(mol_surface_list):
+        for mol_surface in mol_surface_list:
             # Get pre-calculated adsorption energies
             pred_ads_energy = mol_surface.info["pred_adsorption_energy"]
             results[model_name].append(pred_ads_energy)
@@ -78,11 +80,11 @@ def adsorption_energies() -> dict[str, list]:
                 ref_ads_energy = mol_surface.info["PBE_adsorption_energy"]
                 results["ref"].append(ref_ads_energy)
 
-            # Write molecule-surface structure to app data
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{mol_surface_idx}.xyz", mol_surface)
-
+        if not ref_stored:
+            if len(results["ref"]) == len(SYSTEM_INFO["sys_formula"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
         ref_stored = True
     return results
 
@@ -104,9 +106,12 @@ def cmrads_mae(adsorption_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        results[model_name] = mae(
-            adsorption_energies["ref"], adsorption_energies[model_name]
-        )
+        if len(adsorption_energies[model_name]) == len(adsorption_energies["ref"]):
+            results[model_name] = mae(
+                adsorption_energies["ref"], adsorption_energies[model_name]
+            )
+        else:
+            results[model_name] = float("nan")
     return results
 
 
@@ -145,4 +150,11 @@ def test_cmrads200(metrics: dict[str, dict]) -> None:
     metrics
         All CMRAds200 metrics.
     """
-    return
+    mol_surface_list = read(
+        CALC_PATH / "mock" / "mol_surface_structs.extxyz", index=":"
+    )
+    for mol_surface_idx, mol_surface in enumerate(mol_surface_list):
+        # Write molecule-surface structure to app data
+        structs_dir = OUT_PATH / "mock"
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{mol_surface_idx}.xyz", mol_surface)
