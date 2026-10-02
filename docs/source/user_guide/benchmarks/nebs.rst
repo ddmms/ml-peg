@@ -188,7 +188,7 @@ Metrics
 Benchmark speed
 ------------------
 
-Very slow: tests are likely to take several minutes to run on CPU.
+Very slow: tests may take over 10 hours to run on GPU.
 
 
 Data availability
