@@ -892,6 +892,15 @@ input[type="number"] {
 .dash-table-container th[data-dash-column="link"] {
   box-shadow: 6px 0 6px -6px rgba(0, 0, 0, 0.18);
 }
+/* PNG table export (table_download/capture.js) rasterises this shadow as a wide
+   grey band down the next column, and a static image never scrolls, so drop it
+   while capturing. */
+.mlpeg-capturing td[data-dash-column="MLIP"],
+.mlpeg-capturing th[data-dash-column="MLIP"],
+.mlpeg-capturing td[data-dash-column="link"],
+.mlpeg-capturing th[data-dash-column="link"] {
+  box-shadow: none !important;
+}
 
 /* ---- DataTable hover tooltip ------------------------------------------
    Presented at <body> level by tooltip_portal.js so it is never clipped by the

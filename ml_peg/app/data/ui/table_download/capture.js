@@ -69,6 +69,9 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           if (!htmlToImage) {
             throw new Error("html-to-image unavailable");
           }
+          // Hide the pinned-column scroll shadow while capturing (see theme.css),
+          // as it rasterises into a grey band in PNG exports.
+          tableNode.classList.add("mlpeg-capturing");
           // html-to-image reads the table already drawn by the browser, including
           // computed styles, so the export matches the live Dash table instead of
           // just the raw table values.
@@ -105,6 +108,9 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         .catch((error) => {
           console.error("Table export failed", error);
           return noUpdate;
+        })
+        .finally(() => {
+          tableNode.classList.remove("mlpeg-capturing");
         });
     },
   },
