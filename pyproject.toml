@@ -62,7 +62,7 @@ grace = [
 ]
 mace = [
     "mace-torch == 0.3.16",
-    "graph-longrange",
+    "graph-longrange == 0.4.0",
 ]
 
 mattersim = [
@@ -84,8 +84,8 @@ sevenn = [
     "sevenn==0.12.1",
 ]
 vivace = [
-    "simpoly[vivace,cuda13] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform == 'linux'",
-    "simpoly[vivace] @ git+https://github.com/microsoft/simpoly.git@da100ad32d971214cf9343d9d853e8ce61604dc0; sys_platform != 'linux'",
+    "simpoly[vivace,cuda13]; sys_platform == 'linux'",
+    "simpoly[vivace]; sys_platform != 'linux'",
     "cuequivariance ==0.8.1; sys_platform != 'linux'",
     "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
 ]
@@ -254,4 +254,4 @@ module-root = ""
 
 [tool.uv.sources]
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
-graph-longrange = { git = "https://github.com/WillBaldwin0/graph_electrostatics", tag = "v0.4.0" }
+simpoly = { git = "https://github.com/microsoft/simpoly.git", rev = "da100ad32d971214cf9343d9d853e8ce61604dc0" }
