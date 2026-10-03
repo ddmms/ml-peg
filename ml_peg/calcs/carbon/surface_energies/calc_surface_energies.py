@@ -8,16 +8,11 @@ from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.calcs.carbon.utils.carbon_utils import (
-    energy_at,
-    get_dispersion_variants,
-    load_carbon_systems,
-    write_variant_frame,
-)
+from ml_peg.calcs.carbon.utils.carbon_utils import energy_at, load_carbon_systems
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -249,6 +244,7 @@ def test_surface_energies(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
+    calc = model.add_d3_calculator(calc)
 
     data_dir, all_systems = load_carbon_systems("surface_energies")
     systems = [system for system in all_systems if system not in EXCLUDED_SYSTEMS]
@@ -258,27 +254,21 @@ def test_surface_energies(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = get_dispersion_variants(model, calc)
-    for variant_index, variant_calc in enumerate(variant_calcs):
-        for system in systems:
-            ref = references[system]
-            if ref["is_amorphous"]:
-                atoms, as_cut_j_m2 = evaluate_amorphous(ref["by_config"], variant_calc)
-                relaxed_j_m2 = np.nan
-            else:
-                atoms, as_cut_j_m2, relaxed_j_m2 = evaluate_facet(
-                    ref, variant_calc, system
-                )
+    for system in systems:
+        ref = references[system]
+        if ref["is_amorphous"]:
+            atoms, as_cut_j_m2 = evaluate_amorphous(ref["by_config"], calc)
+            relaxed_j_m2 = np.nan
+        else:
+            atoms, as_cut_j_m2, relaxed_j_m2 = evaluate_facet(ref, calc, system)
 
-            atoms.info["as_cut_surface_energy_j_m2"] = as_cut_j_m2
-            atoms.info["relaxed_surface_energy_j_m2"] = relaxed_j_m2
-            atoms.info["ref_as_cut_surface_energy_j_m2"] = ref[
-                "ref_as_cut_surface_energy_j_m2"
-            ]
-            atoms.info["ref_relaxed_surface_energy_j_m2"] = ref[
-                "ref_relaxed_surface_energy_j_m2"
-            ]
+        atoms.info["as_cut_surface_energy_j_m2"] = as_cut_j_m2
+        atoms.info["relaxed_surface_energy_j_m2"] = relaxed_j_m2
+        atoms.info["ref_as_cut_surface_energy_j_m2"] = ref[
+            "ref_as_cut_surface_energy_j_m2"
+        ]
+        atoms.info["ref_relaxed_surface_energy_j_m2"] = ref[
+            "ref_relaxed_surface_energy_j_m2"
+        ]
 
-            write_variant_frame(
-                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
-            )
+        write(write_dir / f"{system}.extxyz", atoms)

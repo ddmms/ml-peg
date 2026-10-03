@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dash.dcc import Graph
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -11,10 +12,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Surface Energies"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/carbon.html#surface-energies"
@@ -22,39 +20,62 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "carbon" / "surface_energies"
 INFO_PATH = DATA_PATH / "info.json"
 
+# Table column, figure JSON suffix
+PLOTS = {
+    "As-cut surface energy MAE": "as_cut",
+    "Relaxed surface energy MAE": "relaxed",
+}
+
+
+def get_mock_structs(scatter: Graph) -> list[str]:
+    """
+    Get mock structure paths in the same order as a scatter plot's points.
+
+    Parameters
+    ----------
+    scatter
+        Scatter plot whose first hoverdata field is the system name.
+
+    Returns
+    -------
+    list[str]
+        Asset paths to the mock structure for each point.
+    """
+    traces = scatter.figure.data if scatter.figure else ()
+    if not traces or traces[0].customdata is None:
+        return []
+    return [
+        f"/assets/carbon/surface_energies/mock/{point[0]}.extxyz"
+        for point in traces[0].customdata
+    ]
+
 
 class SurfaceEnergiesApp(BaseApp):
     """Surface energies benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_surface_energies_relaxed.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        scatters = {
+            column: read_plot(
+                DATA_PATH / f"figure_surface_energies_{suffix}.json",
+                id=f"{BENCHMARK_NAME}-{suffix}-figure",
+            )
+            for column, suffix in PLOTS.items()
+        }
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Relaxed surface energy MAE (D3)": scatter},
+            column_to_plot=scatters,
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted(f.stem for f in model_dir.glob("*.xyz"))
-            structs = [
-                f"/assets/carbon/surface_energies/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
-
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
-        )
+        for scatter in scatters.values():
+            struct_from_scatter(
+                scatter_id=scatter.id,
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                structs=get_mock_structs(scatter),
+                mode="struct",
+            )
 
 
 def get_app() -> SurfaceEnergiesApp:

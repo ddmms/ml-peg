@@ -9,16 +9,12 @@ from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.io import read
+from ase.io import read, write
 from janus_core.calculations.geom_opt import GeomOpt
 import numpy as np
 import pytest
 
-from ml_peg.calcs.carbon.utils.carbon_utils import (
-    get_dispersion_variants,
-    load_carbon_systems,
-    write_variant_frame,
-)
+from ml_peg.calcs.carbon.utils.carbon_utils import load_carbon_systems
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -136,15 +132,17 @@ def relax_system(
         relaxed = False
 
     energy_per_atom = np.nan
-    converged = False
+    max_force = np.nan
     if relaxed:
         try:
-            converged = bool(np.abs(atoms.get_forces()).max() < ref["fmax"])
+            max_force = float(np.abs(atoms.get_forces()).max())
             energy_per_atom = atoms.get_potential_energy() / len(atoms)
         except Exception as exc:
             warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
 
-    atoms.info["converged"] = converged
+    atoms.info["converged"] = bool(max_force < ref["fmax"])
+    atoms.info["max_force_ev_per_angstrom"] = max_force
+    atoms.info["fmax_ev_per_angstrom"] = ref["fmax"]
 
     if ref["is_molecule"]:
         shell_1, shell_2 = get_shell_means(atoms) if relaxed else (np.nan, np.nan)
@@ -182,6 +180,7 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
+    calc = model.add_d3_calculator(calc)
 
     data_dir, systems = load_carbon_systems("lattice_parameters")
 
@@ -191,25 +190,19 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = get_dispersion_variants(model, calc)
-    for variant_index, variant_calc in enumerate(variant_calcs):
-        energy_per_atom = {}
-        frames = {}
-        for system in systems:
-            atoms = read(data_dir / system / "reference.xyz", index=0)
-            energy_per_atom[system] = relax_system(
-                atoms, variant_calc, system, references[system]
-            )
-            frames[system] = atoms
+    energy_per_atom = {}
+    frames = {}
+    for system in systems:
+        atoms = read(data_dir / system / "reference.xyz", index=0)
+        energy_per_atom[system] = relax_system(atoms, calc, system, references[system])
+        frames[system] = atoms
 
-        graphite_energy = energy_per_atom["Graphite"]
-        for system, atoms in frames.items():
-            atoms.info["energy_above_graphite_ev_per_atom"] = (
-                energy_per_atom[system] - graphite_energy
-            )
-            atoms.info["ref_energy_above_graphite_ev_per_atom"] = (
-                references[system]["energy_per_atom"] - ref_graphite_energy
-            )
-            write_variant_frame(
-                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
-            )
+    graphite_energy = energy_per_atom["Graphite"]
+    for system, atoms in frames.items():
+        atoms.info["energy_above_graphite_ev_per_atom"] = (
+            energy_per_atom[system] - graphite_energy
+        )
+        atoms.info["ref_energy_above_graphite_ev_per_atom"] = (
+            references[system]["energy_per_atom"] - ref_graphite_energy
+        )
+        write(write_dir / f"{system}.extxyz", atoms)

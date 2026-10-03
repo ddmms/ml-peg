@@ -33,16 +33,11 @@ from pathlib import Path
 from typing import Any
 
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 
-from ml_peg.calcs.carbon.utils.carbon_utils import (
-    energy_at,
-    get_dispersion_variants,
-    load_carbon_systems,
-    write_variant_frame,
-)
+from ml_peg.calcs.carbon.utils.carbon_utils import energy_at, load_carbon_systems
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -120,6 +115,7 @@ def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     """
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
+    calc = model.add_d3_calculator(calc)
 
     data_dir, systems = load_carbon_systems("nanotube_formation_energies")
     tubes = [system for system in systems if system != GRAPHENE_SYSTEM]
@@ -131,25 +127,20 @@ def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    variant_calcs = get_dispersion_variants(model, calc)
-    for variant_index, variant_calc in enumerate(variant_calcs):
-        e_graphene_model = energy_at(graphene, variant_calc, GRAPHENE_SYSTEM)
+    e_graphene_model = energy_at(graphene, calc, GRAPHENE_SYSTEM)
 
-        for system in tubes:
-            tube = read(data_dir / system / "reference.xyz", index=0)
-            n_tube_atoms = len(tube)
-            e_tube_model = energy_at(tube, variant_calc, system)
+    for system in tubes:
+        tube = read(data_dir / system / "reference.xyz", index=0)
+        n_tube_atoms = len(tube)
+        e_tube_model = energy_at(tube, calc, system)
 
-            atoms = tube.copy()
-            atoms.info["diameter_angstrom"] = tube_diameter_angstrom(tube)
-            atoms.info["strain_energy_ev_per_atom"] = (
-                e_tube_model / n_tube_atoms - e_graphene_model / n_graphene_atoms
-            )
-            atoms.info["ref_strain_energy_ev_per_atom"] = (
-                tube.info["REF_energy"] / n_tube_atoms
-                - e_graphene_ref / n_graphene_atoms
-            )
+        atoms = tube.copy()
+        atoms.info["diameter_angstrom"] = tube_diameter_angstrom(tube)
+        atoms.info["strain_energy_ev_per_atom"] = (
+            e_tube_model / n_tube_atoms - e_graphene_model / n_graphene_atoms
+        )
+        atoms.info["ref_strain_energy_ev_per_atom"] = (
+            tube.info["REF_energy"] / n_tube_atoms - e_graphene_ref / n_graphene_atoms
+        )
 
-            write_variant_frame(
-                write_dir / f"{system}.extxyz", atoms, variant_index, len(variant_calcs)
-            )
+        write(write_dir / f"{system}.extxyz", atoms)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -11,10 +13,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Nanotube Formation Energies"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/carbon.html"
@@ -34,24 +33,23 @@ class NanotubeFormationEnergiesApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
+        # Assets dir will be parent directory - individual files for each system
+        structs_dir = DATA_PATH / "mock"
+        if not structs_dir.exists():
+            warnings.warn(f"Structures directory {structs_dir} not found", stacklevel=2)
+        structs = [
+            f"/assets/carbon/nanotube_formation_energies/mock/{struct_file.name}"
+            for struct_file in sorted(structs_dir.glob("*.extxyz"))
+        ]
+
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
-                "Armchair strain energy MAE (D3)": scatter,
-                "Zigzag strain energy MAE (D3)": scatter,
+                "Armchair strain energy MAE": scatter,
+                "Zigzag strain energy MAE": scatter,
             },
         )
-
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted(f.stem for f in model_dir.glob("*.xyz"))
-            structs = [
-                f"/assets/carbon/nanotube_formation_energies/{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
 
         struct_from_scatter(
             scatter_id=f"{BENCHMARK_NAME}-figure",
