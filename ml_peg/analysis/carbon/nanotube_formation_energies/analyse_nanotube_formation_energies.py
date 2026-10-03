@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -33,7 +33,7 @@ INFO = get_struct_info(
     index=0,
     info_keys=["diameter_angstrom"],
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     out_path=OUT_PATH,
     include_filenames=True,
 )
@@ -42,20 +42,9 @@ CHIRALITIES = [calc_nanotubes.chirality_of(system) for system in SYSTEMS]
 DIAMETERS = INFO["diameter_angstrom"]
 
 
-def gather_strain_energies(
-    frame_index: int, structs_path: Path | None = None
-) -> dict[str, list]:
+def gather_strain_energies() -> dict[str, list]:
     """
     Gather reference and predicted strain energies for every nanotube.
-
-    Parameters
-    ----------
-    frame_index
-        Extxyz frame to read: 0 for the plain calculator, 1 for D3-corrected (same
-        as 0 for models already trained on dispersion).
-    structs_path
-        Path to write each structure read to, for the app. Default is None, which
-        writes nothing.
 
     Returns
     -------
@@ -76,12 +65,7 @@ def gather_strain_energies(
                 results[model_name].append(np.nan)
                 continue
 
-            atoms = read(struct_file, index=frame_index)
-            if structs_path is not None:
-                structs_dir = structs_path / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{system}.xyz", atoms)
-
+            atoms = read(struct_file)
             results[model_name].append(
                 atoms.info.get("strain_energy_ev_per_atom", np.nan)
             )
@@ -134,7 +118,7 @@ def mae_for_chirality(
 @pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_nanotube_formation_energies.json",
-    title="Nanotube strain energy (D3-corrected)",
+    title="Nanotube strain energy",
     x_label="Predicted strain energy / eV per atom",
     y_label="Reference strain energy / eV per atom",
     hoverdata={"Tube": SYSTEMS, "Diameter / Å": DIAMETERS},
@@ -142,7 +126,7 @@ def mae_for_chirality(
 )
 def strain_energy() -> dict[str, list]:
     """
-    Get reference and D3-corrected predicted nanotube strain energy.
+    Get reference and predicted nanotube strain energy.
 
     Returns
     -------
@@ -150,7 +134,7 @@ def strain_energy() -> dict[str, list]:
         Reference and per-model predicted strain energy, in eV per atom, for
         all 20 nanotubes.
     """
-    return gather_strain_energies(frame_index=1, structs_path=OUT_PATH)
+    return gather_strain_energies()
 
 
 @pytest.fixture
@@ -162,35 +146,25 @@ def strain_energy() -> dict[str, list]:
 )
 def metrics(strain_energy: dict[str, list]) -> dict[str, dict]:
     """
-    Get armchair and zigzag strain energy metrics, D3-corrected and uncorrected.
+    Get armchair and zigzag strain energy metrics.
 
     Parameters
     ----------
     strain_energy
-        D3-corrected reference and predicted strain energy.
+        Reference and predicted strain energy.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    plain = gather_strain_energies(frame_index=0)
-
     return {
-        "Armchair strain energy MAE (D3)": {
+        "Armchair strain energy MAE": {
             model_name: 1000 * mae_for_chirality(strain_energy, model_name, "Armchair")
             for model_name in MODELS
         },
-        "Armchair strain energy MAE": {
-            model_name: 1000 * mae_for_chirality(plain, model_name, "Armchair")
-            for model_name in MODELS
-        },
-        "Zigzag strain energy MAE (D3)": {
-            model_name: 1000 * mae_for_chirality(strain_energy, model_name, "Zigzag")
-            for model_name in MODELS
-        },
         "Zigzag strain energy MAE": {
-            model_name: 1000 * mae_for_chirality(plain, model_name, "Zigzag")
+            model_name: 1000 * mae_for_chirality(strain_energy, model_name, "Zigzag")
             for model_name in MODELS
         },
     }

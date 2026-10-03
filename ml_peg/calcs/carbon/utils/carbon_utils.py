@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
-from typing import Any
 from warnings import warn
 
 from ase import Atoms
 from ase.calculators.calculator import Calculator
-from ase.io import write
 import numpy as np
 
 from ml_peg.calcs.utils.utils import download_github_data
@@ -67,53 +65,3 @@ def energy_at(atoms: Atoms, calc: Calculator, label: str) -> float:
     except Exception as exc:
         warn(f"Error computing energy for {label}: {exc}", stacklevel=2)
         return np.nan
-
-
-def get_dispersion_variants(model: Any, calc: Calculator) -> tuple[Calculator, ...]:
-    """
-    Get the calculator variants to evaluate one model with.
-
-    A model already trained on dispersion is evaluated once; any other model is
-    evaluated twice, without and with a D3 correction.
-
-    Parameters
-    ----------
-    model
-        Model instance providing the dispersion correction.
-    calc
-        Uncorrected calculator for `model`.
-
-    Returns
-    -------
-    tuple[Calculator, ...]
-        The uncorrected calculator alone, or the uncorrected and D3-corrected
-        calculators.
-    """
-    if model.trained_on_dispersion:
-        return (calc,)
-    return (calc, model.add_d3_calculator(copy(calc)))
-
-
-def write_variant_frame(
-    struct_file: Path, atoms: Atoms, variant_index: int, n_variants: int
-) -> None:
-    """
-    Write one variant's result, keeping every output file two frames long.
-
-    Frame 0 holds the uncorrected result and frame 1 the D3-corrected one, so a
-    model evaluated once has its single result written to both.
-
-    Parameters
-    ----------
-    struct_file
-        Extxyz file to write to.
-    atoms
-        Structure to write.
-    variant_index
-        Index of the variant being written.
-    n_variants
-        Number of variants being evaluated for this model.
-    """
-    write(struct_file, atoms, append=variant_index > 0)
-    if n_variants == 1:
-        write(struct_file, atoms, append=True)

@@ -11,10 +11,8 @@ used to validate GAP-20. All three benchmarks share one reference dataset:
   cutoff (VASP), ``ISPIN = 1`` throughout.
 * Data repository: https://github.com/patrickwrowe/Carbon_GAP
 
-Each model not already trained with dispersion corrections is run twice, plain and
-with a D3 correction added; models trained on dispersion run once, since D3 would be
-a no-op. The D3-corrected metrics carry the benchmark score; the uncorrected metrics
-are reported alongside at zero weight.
+A D3 dispersion correction is added to models not already trained with dispersion
+corrections.
 
 Lattice parameters
 ==================
@@ -60,10 +58,17 @@ excluded; the other six systems contribute. Reference values span 72-450 meV/ato
 a percentage error would be dominated by the smallest denominator and this is
 reported as a mean absolute error in meV/atom.
 
+4. Convergence
+
+Percentage of the seven relaxations whose largest residual force component falls
+below the threshold. An unconverged relaxation is reported as NaN for every quantity
+measured from it, with a warning, and is excluded from the metrics above rather than
+voiding them; it is penalised here instead.
+
 Computational cost
 ------------------
 
-Medium: relaxations of up to 288 atoms, per model variant.
+Medium: relaxations of up to 288 atoms.
 
 Data availability
 -----------------
@@ -80,9 +85,6 @@ Summary
 As-cut and relaxed surface energies for diamond {100}, graphite (0001) and amorphous
 carbon. Every value is a single-point evaluation of the model's calculator at a
 shipped DFT reference geometry; the benchmark performs no geometry optimisation.
-
-Graphite (0001) is a cleave between basal planes held together only by dispersion, so
-its uncorrected column is expected to look poor for that surface specifically.
 
 Metrics
 -------
@@ -115,7 +117,7 @@ DFT reference used only unrelaxed cuts, so no relaxed reference exists.
 Computational cost
 ------------------
 
-Small: 65 single points per model variant — three each for diamond {100} and graphite
+Small: 65 single points per model — three each for diamond {100} and graphite
 (0001), plus 59 for the amorphous ensemble (10 bulk, 49 slab, up to 216 atoms each).
 
 Data availability
@@ -156,7 +158,7 @@ mean absolute error in meV/atom for the reason given under lattice parameters Me
 Computational cost
 ------------------
 
-Small: 21 single points per model variant, 20 tubes plus one graphene reference.
+Small: 21 single points per model, 20 tubes plus one graphene reference.
 
 Data availability
 -----------------

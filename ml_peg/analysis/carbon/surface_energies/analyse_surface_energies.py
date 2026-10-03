@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -32,7 +32,7 @@ INFO = get_struct_info(
     glob_pattern="*.extxyz",
     index=0,
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     out_path=OUT_PATH,
     include_filenames=True,
 )
@@ -45,9 +45,7 @@ RELAXED_ENTRIES = [
 ]
 
 
-def gather_metric_values(
-    entries: list[tuple[str, str]], frame_index: int, structs_path: Path | None = None
-) -> dict[str, list]:
+def gather_metric_values(entries: list[tuple[str, str]]) -> dict[str, list]:
     """
     Gather reference and predicted values for a set of (system, info key) entries.
 
@@ -55,12 +53,6 @@ def gather_metric_values(
     ----------
     entries
         System and info-key pairs identifying which structures and fields to read.
-    frame_index
-        Extxyz frame to read: 0 for the plain calculator, 1 for D3-corrected (same
-        as 0 for models already trained on dispersion).
-    structs_path
-        Path to write each structure read to, for the app. Default is None, which
-        writes nothing.
 
     Returns
     -------
@@ -80,12 +72,7 @@ def gather_metric_values(
                 results[model_name].append(np.nan)
                 continue
 
-            atoms = read(struct_file, index=frame_index)
-            if structs_path is not None:
-                structs_dir = structs_path / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{system}.xyz", atoms)
-
+            atoms = read(struct_file)
             results[model_name].append(atoms.info.get(key, np.nan))
             if not ref_stored:
                 results["ref"].append(atoms.info[f"ref_{key}"])
@@ -122,15 +109,36 @@ def mae_or_nan(results: dict[str, list], model_name: str) -> float:
 
 @pytest.fixture
 @plot_parity(
+    filename=OUT_PATH / "figure_surface_energies_as_cut.json",
+    title="As-cut surface energy",
+    x_label="Predicted as-cut surface energy / J per m^2",
+    y_label="Reference as-cut surface energy / J per m^2",
+    hoverdata={"System": SYSTEMS},
+)
+def as_cut_surface_energy() -> dict[str, list]:
+    """
+    Get reference and predicted as-cut surface energy.
+
+    Returns
+    -------
+    dict[str, list]
+        Reference and per-model predicted as-cut surface energy, in J/m^2, for all
+        three surfaces.
+    """
+    return gather_metric_values(AS_CUT_ENTRIES)
+
+
+@pytest.fixture
+@plot_parity(
     filename=OUT_PATH / "figure_surface_energies_relaxed.json",
-    title="Relaxed surface energy (D3-corrected)",
+    title="Relaxed surface energy",
     x_label="Predicted relaxed surface energy / J per m^2",
     y_label="Reference relaxed surface energy / J per m^2",
     hoverdata={"System": RELAXED_SYSTEMS},
 )
 def relaxed_surface_energy() -> dict[str, list]:
     """
-    Get reference and D3-corrected predicted relaxed surface energy.
+    Get reference and predicted relaxed surface energy.
 
     Returns
     -------
@@ -138,7 +146,7 @@ def relaxed_surface_energy() -> dict[str, list]:
         Reference and per-model predicted relaxed surface energy, in J/m^2, for the
         two surfaces with a relaxed reference.
     """
-    return gather_metric_values(RELAXED_ENTRIES, frame_index=1, structs_path=OUT_PATH)
+    return gather_metric_values(RELAXED_ENTRIES)
 
 
 @pytest.fixture
@@ -148,31 +156,31 @@ def relaxed_surface_energy() -> dict[str, list]:
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
 )
-def metrics(relaxed_surface_energy: dict[str, list]) -> dict[str, dict]:
+def metrics(
+    as_cut_surface_energy: dict[str, list], relaxed_surface_energy: dict[str, list]
+) -> dict[str, dict]:
     """
-    Get all surface energies metrics, D3-corrected and uncorrected.
+    Get all surface energies metrics.
 
     Parameters
     ----------
+    as_cut_surface_energy
+        Reference and predicted as-cut surface energy.
     relaxed_surface_energy
-        D3-corrected reference and predicted relaxed surface energy.
+        Reference and predicted relaxed surface energy.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    as_cut_d3 = gather_metric_values(AS_CUT_ENTRIES, frame_index=1)
-    as_cut_plain = gather_metric_values(AS_CUT_ENTRIES, frame_index=0)
-    relaxed_plain = gather_metric_values(RELAXED_ENTRIES, frame_index=0)
-
     return {
-        "As-cut surface energy MAE (D3)": {m: mae_or_nan(as_cut_d3, m) for m in MODELS},
-        "As-cut surface energy MAE": {m: mae_or_nan(as_cut_plain, m) for m in MODELS},
-        "Relaxed surface energy MAE (D3)": {
+        "As-cut surface energy MAE": {
+            m: mae_or_nan(as_cut_surface_energy, m) for m in MODELS
+        },
+        "Relaxed surface energy MAE": {
             m: mae_or_nan(relaxed_surface_energy, m) for m in MODELS
         },
-        "Relaxed surface energy MAE": {m: mae_or_nan(relaxed_plain, m) for m in MODELS},
     }
 
 
