@@ -1,0 +1,15 @@
+metrics:
+  As-cut surface energy MAE:
+    good: 0.1
+    bad: 1.0
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in as-cut surface energy across diamond {100}, graphite (0001) and amorphous carbon"
+    level_of_theory: optB88-vdW
+    weight: 1
+  Relaxed surface energy MAE:
+    good: 0.1
+    bad: 1.0
+    unit: "J/m^2"
+    tooltip: "Mean absolute error in relaxed surface energy across diamond {100} and graphite (0001); amorphous carbon has no relaxed reference and is excluded from this metric"
+    level_of_theory: optB88-vdW
+    weight: 1
