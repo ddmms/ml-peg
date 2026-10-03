@@ -306,8 +306,9 @@ equivariant by construction, and this test measures how far they deviate.
 Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
 CH3OH and C6H6) and two periodic systems (diamond and graphene), matching the
 translational symmetry test. Diamond is rattled with a fixed seed so that the atoms
-carry nonzero forces: a perfect crystal's forces vanish by symmetry, which would leave
-it probing energies only. Each structure is evaluated before and after each of 114
+carry forces of a realistic magnitude: a perfect crystal's true forces vanish by
+symmetry, so any violation that scales with the size of the forces is understated
+there. Each structure is evaluated before and after each of 114
 rigid rotations about the origin, forming a single cumulative walk through
 orientation space: 14 steps increasing from 1 to 40°, followed by 100 uniformly random
 steps, all generated with a fixed seed so that every model sees the identical walk. For the periodic structures the cell is rotated together with
@@ -369,6 +370,76 @@ Benchmark speed
 Fast: single-point evaluations only (10 structures evaluated in 115
 orientations each), likely to take seconds to minutes per model on GPU, or
 minutes to tens of minutes on CPU.
+
+Data availability
+-----------------
+
+None required; all structures are generated in ASE.
+
+
+Translational Symmetry
+======================
+
+Summary
+-------
+
+Performance in respecting translational invariance. Energy and forces depend only on the
+relative positions of atoms, so rigidly translating every atom in a structure must leave
+both unchanged, and any deviation reflects the model's implementation rather than
+physics.
+
+Ten diverse structures are evaluated: eight molecules (H2O, CH4, NH3, C2H4, C2H2, SO2,
+CH3OH and C6H6) and two periodic systems (diamond and graphene), matching the
+rotational symmetry test. Diamond is rattled with a fixed seed so that the atoms carry
+forces of a realistic magnitude: a perfect crystal's true forces vanish by symmetry, so
+any violation that scales with the size of the forces is understated there.
+Each structure is evaluated before and after a rigid translation
+along a fixed, non-axis-aligned direction, at magnitudes of 1, 40 and 1000 Å. The direction is deliberately not axis-aligned: for a
+shift along a single axis the rounding error can be identical for every atom, cancelling
+out of the relative geometry and hiding the effect entirely.
+
+Testing more than one magnitude distinguishes a model that breaks under any shift at all
+from one that degrades as atoms move further from the origin, which is the signature of
+finite precision coordinates.
+
+.. note::
+
+    For periodic structures the effective displacement is bounded by the cell, since a
+    rigid translation is wrapped back into it. The larger translations therefore probe
+    diamond (a 3.567 Å cell) no more strongly than the 1 Å translation does.
+    Graphene is built with 20 Å of vacuum, giving a 40 Å cell, so that the 40 Å
+    translation is not wrapped away to under 1 Å.
+
+Metrics
+-------
+
+Each metric is reported separately for each translation magnitude (1, 40 and 1000 Å).
+A model only receives scores for a magnitude if it evaluated all ten structures
+successfully at it; any failed evaluation leaves that magnitude's metrics blank.
+
+1. Mean ΔE
+
+Mean absolute change in energy per atom, across the ten structures.
+
+2. Max ΔE
+
+Worst-case absolute change in energy per atom, across the ten structures.
+
+3. Mean ΔF
+
+Each structure's force change is the largest absolute change in any force component,
+over every atom and Cartesian direction. Note that this differs from the identically
+named metric of the rotational symmetry test, which reports a force MAE. The mean of
+that per-structure worst case, across the ten structures, is reported.
+
+4. Max ΔF
+
+Same as (3), but the maximum (worst-case) across all structures is reported.
+
+Benchmark speed
+------------------
+
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
