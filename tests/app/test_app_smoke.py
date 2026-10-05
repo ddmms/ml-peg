@@ -7,6 +7,7 @@ silently regress clicking behaviour or ship blank plots.
 
 from __future__ import annotations
 
+from conftest import wait_for_app_ready
 from playwright.sync_api import Page, expect
 
 READY_TIMEOUT = 60_000
@@ -21,7 +22,7 @@ def _open_ready(page: Page, app_url: str) -> None:
         "JSON.stringify({completed: true})); } catch (e) {}"
     )
     page.goto(app_url)
-    page.wait_for_selector("#startup-mask", state="hidden", timeout=READY_TIMEOUT)
+    wait_for_app_ready(page)
 
 
 def test_app_boots_with_title(page: Page, app_url: str) -> None:
@@ -41,17 +42,19 @@ def test_summary_table_renders_rows(page: Page, app_url: str) -> None:
 def test_model_filter_reduces_rows(page: Page, app_url: str) -> None:
     """Deselecting a model in the multi-select filter drops its summary row."""
     _open_ready(page, app_url)
-    rows = page.locator("#summary-table tbody tr")
-    expect(rows.first).to_be_visible(timeout=READY_TIMEOUT)
-    initial = rows.count()
-    assert initial > 1
+    models = page.locator('#summary-table td[data-dash-column="MLIP"]')
+    removed = models.get_by_text("mace-mp-0a", exact=True)
+    retained = models.get_by_text("mace-mp-0b3", exact=True)
+    expect(removed).to_be_visible(timeout=READY_TIMEOUT)
+    expect(retained).to_be_visible(timeout=READY_TIMEOUT)
 
     # "Visible models" is a listbox dropdown; open it and deselect one model.
     # Only visible options: the settings-popover radio/checklist options also
     # carry role="option" but stay hidden inside the closed <details>.
     page.locator("#model-filter-checklist").click()
-    page.locator('[role="option"][aria-selected="true"]:visible').first.click()
-    expect(rows).to_have_count(initial - 1, timeout=30_000)
+    page.get_by_role("option", name="mace-mp-0a", exact=True).click()
+    expect(removed).to_have_count(0, timeout=30_000)
+    expect(retained).to_be_visible(timeout=READY_TIMEOUT)
 
 
 def test_navigate_to_category_renders_table(page: Page, app_url: str) -> None:
