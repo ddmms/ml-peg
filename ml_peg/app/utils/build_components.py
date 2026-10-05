@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import copy
 from importlib import metadata
 from pathlib import Path
 import time
@@ -31,6 +32,7 @@ from ml_peg.app.utils.speed import (
 )
 from ml_peg.app.utils.utils import (
     SUMMARY_TABLE_ID,
+    apply_column_decimals,
     build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
@@ -38,7 +40,7 @@ from ml_peg.app.utils.utils import (
     get_mlip_column_width,
     get_threshold_colours,
     load_model_registry_configs,
-    sig_fig_format,
+    row_has_no_results,
     weight_input_style,
 )
 from ml_peg.models import current_models
@@ -276,7 +278,7 @@ def build_summary_table(
         column_id = column["id"]
         if column_id != "MLIP":
             column["type"] = "numeric"
-            column["format"] = sig_fig_format()
+    columns = apply_column_decimals(columns, data)
 
     style = get_table_style(data)
     registry_configs = load_model_registry_configs()
@@ -546,7 +548,7 @@ def build_weight_input(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 38px)",
+                    "right": "calc(50% + 31px)",
                 },
             )
         )
@@ -1009,10 +1011,21 @@ def build_loading_summary_table(table: DataTable) -> Loading:
     Loading
         Loading wrapper scoped to applied filter changes and table updates.
     """
+    # Render a copy without models that have no scores. The sync callbacks drop
+    # them too, but only after mount, so painting them first flashed a fully
+    # hatched-out table. ``table.data`` itself stays complete: it seeds the
+    # computed stores, which need every row (scores can flip to/from NaN).
+    keep = [i for i, row in enumerate(table.data or []) if not row_has_no_results(row)]
+    visible = copy(table)
+    visible.data = [table.data[i] for i in keep]
+    tooltips = getattr(table, "tooltip_data", None)
+    if tooltips:
+        # Tooltips are matched to rows by index, so filter them in step.
+        visible.tooltip_data = [tooltips[i] for i in keep if i < len(tooltips)]
     # Longer delay_hide than the default: a summary table gets several quick
     # updates in a row as category scores propagate, so bridge the gaps into one
     # spinner instead of several flashes.
-    return build_filter_overlay(table.id, Div(table), delay_hide=600)
+    return build_filter_overlay(table.id, Div(visible), delay_hide=600)
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
@@ -1911,7 +1924,7 @@ def build_threshold_inputs(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 34px)",
+                    "right": "calc(50% + 31px)",
                 },
             ),
             DCC_Input(
@@ -1928,10 +1941,10 @@ def build_threshold_inputs(
                 html.Span(
                     f"[{unit_label}]",
                     style={
-                        "fontSize": "12px",
+                        "fontSize": "11px",
                         "color": "var(--mlpeg-muted)",
                         "position": "absolute",
-                        "left": "calc(50% + 32px)",
+                        "left": "calc(50% + 28px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",
@@ -1947,7 +1960,7 @@ def build_threshold_inputs(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 34px)",
+                    "right": "calc(50% + 31px)",
                     "top": "50%",
                     "transform": "translateY(-50%)",
                     "whiteSpace": "nowrap",
@@ -1967,10 +1980,10 @@ def build_threshold_inputs(
                 html.Span(
                     f"[{unit_label}]",
                     style={
-                        "fontSize": "12px",
+                        "fontSize": "11px",
                         "color": "var(--mlpeg-muted)",
                         "position": "absolute",
-                        "left": "calc(50% + 32px)",
+                        "left": "calc(50% + 28px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",

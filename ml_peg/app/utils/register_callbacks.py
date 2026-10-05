@@ -36,6 +36,7 @@ from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
     SUMMARY_TABLE_ID,
     Thresholds,
+    apply_column_decimals,
     build_level_of_theory_warnings,
     build_threshold_input_style,
     clean_thresholds,
@@ -506,8 +507,9 @@ def register_category_table_callbacks(
                     metric_levels=metric_levels,
                     model_configs=model_configs,
                 )
-                columns = format_metric_columns(
-                    current_columns, thresholds, show_normalized
+                columns = apply_column_decimals(
+                    format_metric_columns(current_columns, thresholds, show_normalized),
+                    filtered_rows,
                 )
                 tooltips = format_tooltip_headers(
                     raw_tooltips, thresholds, show_normalized
@@ -551,8 +553,9 @@ def register_category_table_callbacks(
                 metric_levels=metric_levels,
                 model_configs=model_configs,
             )
-            columns = format_metric_columns(
-                current_columns, thresholds, show_normalized
+            columns = apply_column_decimals(
+                format_metric_columns(current_columns, thresholds, show_normalized),
+                filtered_rows,
             )
             tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
 
@@ -1182,8 +1185,11 @@ def register_normalization_callbacks(
                 scored_data=scored_rows,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
             )
-            columns = format_metric_columns(
-                current_columns, cleaned_thresholds, normalized_active
+            columns = apply_column_decimals(
+                format_metric_columns(
+                    current_columns, cleaned_thresholds, normalized_active
+                ),
+                display_rows,
             )
             tooltips = format_tooltip_headers(
                 raw_tooltips, cleaned_thresholds, normalized_active
