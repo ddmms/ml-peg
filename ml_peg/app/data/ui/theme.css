@@ -627,9 +627,12 @@ a:hover {
   border: 1px solid var(--mlpeg-table-outline);
   /* Grow with a table wider than the scroll box. Otherwise this box stays at
      the visible width and its right border is left as a stray line part-way
-     across the table once you scroll. !important beats Dash's inline
-     min-width:100%. */
+     across the table once you scroll. It is a flex item, so only min-width
+     stops it shrinking to the box (!important beats Dash's inline
+     min-width:100%), and width:100% keeps a narrower table filling its
+     wrapper as Dash's rule did. */
   min-width: min-content !important;
+  width: 100%;
 }
 /* Hover highlights the whole row with a soft neutral wash that reads clearly
    over the (pastel) heatmap cells — a gentle "this row" cue, no blue tint. */
