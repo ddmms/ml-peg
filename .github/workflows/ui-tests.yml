@@ -63,7 +63,18 @@ jobs:
 
       - name: Run UI tests
         # ci.yml skips tests/app, so this job is the only coverage of ml_peg/app
-        run: uv run pytest tests/app -q --cov ml_peg --cov-report xml
+        run: >-
+          uv run pytest tests/app -q --cov ml_peg --cov-report xml
+          --tracing=retain-on-failure --screenshot=only-on-failure
+          --output=test-results
+
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-failures
+          path: test-results/
+          retention-days: 7
 
       - name: Report coverage to Coveralls
         uses: coverallsapp/github-action@v2
