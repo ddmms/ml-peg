@@ -240,6 +240,14 @@ def rebuild_table(
     return table
 
 
+# A responsive dcc.Graph sizes itself to height:100% of its container on re-render
+# (e.g. adding the click-highlight ring). Our containers have no height, so
+# without this the graph box collapses to 0 and the figure overflows onto
+# whatever sits below it (the WEAS viewer). 450px is Plotly's default height,
+# which these figures (no authored layout.height) render at anyway.
+RESPONSIVE_GRAPH_STYLE = {"height": "450px"}
+
+
 def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
     """
     Read preprepared plotly Figure.
@@ -264,10 +272,12 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
         figure = read_json(filename)
     else:
         figure = None
+    responsive = _responsive_mode(figure)
     return Graph(
         id=id,
         figure=figure,
-        responsive=_responsive_mode(figure),
+        responsive=responsive,
+        style=RESPONSIVE_GRAPH_STYLE if responsive is True else None,
         config={"displaylogo": False},
     )
 
@@ -383,10 +393,12 @@ def read_density_plot_for_model(
         warn(f"No model data found for {model}", stacklevel=2)
         return None
 
+    responsive = _responsive_mode(filtered_fig)
     return Graph(
         id=id,
         figure=filtered_fig,
-        responsive=_responsive_mode(filtered_fig),
+        responsive=responsive,
+        style=RESPONSIVE_GRAPH_STYLE if responsive is True else None,
         config={"displaylogo": False},
     )
 
