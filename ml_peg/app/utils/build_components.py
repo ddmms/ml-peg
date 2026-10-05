@@ -12,7 +12,7 @@ from dash.dash_table import DataTable
 from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
-from dash.html import H2, Br, Button, Details, Div, Label, Span, Summary
+from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
