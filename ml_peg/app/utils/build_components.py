@@ -423,9 +423,9 @@ def table_wrapper_style(table: object) -> dict[str, str]:
     """
     Style for the div wrapping a table (+ its controls) inside .mlpeg-table-scroll.
 
-    Caps the wrapper width and centres it, so many-column tables fill the page
-    while few-column tables stay tidy and centred instead of stretching a single
-    column too wide. Stretching tables (``fill_width=True``) may grow to
+    Caps the wrapper width, so many-column tables fill the page while few-column
+    tables stay tidy and left-aligned instead of stretching a single column too
+    wide. Stretching tables (``fill_width=True``) may grow to
     ``STRETCH_CAP_FACTOR`` × natural width; fixed-width tables (``fill_width=False``,
     e.g. the summary tables) are capped at their natural width so the width:100%
     weight/threshold grid can't stretch past them. The cap lives on the shared
@@ -459,7 +459,6 @@ def table_wrapper_style(table: object) -> dict[str, str]:
             # shrinking this wrapper instead makes Dash remeasure and collapse a
             # horizontally scrolled table during resize.
             style["width"] = width
-        style["margin"] = "0 auto"
     return style
 
 
