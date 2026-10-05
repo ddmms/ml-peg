@@ -276,6 +276,47 @@ def test_cell_click_detail_not_clipped(ready_page: Page) -> None:
     )
 
 
+def test_point_click_keeps_plot_above_structure(ready_page: Page) -> None:
+    """Clicking a scatter point never collapses the plot over the structure viewer.
+
+    A responsive ``dcc.Graph`` sizes itself to ``height: 100%`` of its container
+    when the click-highlight callback re-renders it. With no height on that
+    container the graph box collapsed to 0, so the 450px figure overflowed and
+    covered (cropped) the WEAS viewer injected below it.
+    """
+    ready_page.set_viewport_size({"width": 1400, "height": 1000})
+    _goto_ionpi19(ready_page)
+    cell = ready_page.locator('#IONPI19-table td[data-dash-column="MAE"]').first
+    expect(cell).to_be_visible(timeout=TIMEOUT)
+    cell.click()
+    point = ready_page.locator("#IONPI19-figure-placeholder .scatterlayer .point").first
+    expect(point).to_be_attached(timeout=TIMEOUT)
+    point.click(force=True)
+    expect(ready_page.locator("#IONPI19-struct-placeholder iframe")).to_be_attached(
+        timeout=TIMEOUT
+    )
+    # The highlight ring is added by a clientside callback; give it a frame.
+    ready_page.wait_for_timeout(500)
+
+    result = ready_page.evaluate(
+        """() => {
+            const graph = document.querySelector(
+                '#IONPI19-figure-placeholder .dash-graph');
+            const svg = graph.querySelector('.main-svg');
+            const viewer = document.querySelector('#IONPI19-struct-placeholder');
+            return {
+                graph: graph.getBoundingClientRect().height,
+                svgBottom: svg.getBoundingClientRect().bottom,
+                viewerTop: viewer.getBoundingClientRect().top,
+            };
+        }"""
+    )
+    assert result["graph"] > 0, "plot box collapsed to zero height"
+    assert result["svgBottom"] <= result["viewerTop"] + 1, (
+        f"plot overlaps the structure viewer: {result}"
+    )
+
+
 def test_hover_tooltip_shows_fully_in_viewport(ready_page: Page) -> None:
     """DataTable hover tooltips are re-presented at body level, unclipped.
 
@@ -312,6 +353,37 @@ def test_hover_tooltip_shows_fully_in_viewport(ready_page: Page) -> None:
     assert box["y"] + box["height"] <= viewport["h"] + 1, (
         f"tooltip overflows bottom edge: {box} vh={viewport['h']}"
     )
+
+
+def test_hover_tooltip_adds_no_vertical_scroll(ready_page: Page) -> None:
+    """Hovering a model never gives the table wrapper a vertical scrollbar.
+
+    The wrapper's overflow-x:auto forces overflow-y to auto too, so Dash's native
+    tooltip must be removed from layout (not just made invisible) or a tall one,
+    on the last row, extends the wrapper's scroll area below the table.
+    """
+    # Tall enough that Dash drops the last row's tooltip below the cell (at the
+    # default 720px it flips above, staying inside the table, and hides the bug).
+    ready_page.set_viewport_size({"width": 1400, "height": 1000})
+    _goto_ionpi19(ready_page)
+    ready_page.wait_for_function(
+        "document.documentElement.classList.contains('mlpeg-tooltip-js')",
+        timeout=TIMEOUT,
+    )
+    cell = ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]').last
+    expect(cell).to_be_visible(timeout=TIMEOUT)
+    cell.hover()
+    expect(ready_page.locator(".mlpeg-tooltip-portal.is-visible")).to_be_visible(
+        timeout=TIMEOUT
+    )
+
+    overflow = cell.evaluate(
+        """(td) => {
+            const wrap = td.closest('.mlpeg-table-scroll');
+            return wrap.scrollHeight - wrap.clientHeight;
+        }"""
+    )
+    assert overflow <= 0, f"table wrapper scrolls vertically by {overflow}px"
 
 
 def test_click_pins_info_card(ready_page: Page) -> None:
