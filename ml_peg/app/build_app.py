@@ -603,7 +603,7 @@ def build_category_page_layout(
                             build_download_controls(summary_table.id, row=True),
                             build_loading_summary_table(summary_table),
                             Br(),
-                            weight_components,
+                            Div(weight_components, className="mlpeg-controls-panel"),
                         ],
                         style=table_wrapper_style(summary_table),
                     ),
@@ -1225,7 +1225,10 @@ def build_nav(
                                     build_download_controls(summary_table.id, row=True),
                                     build_loading_summary_table(summary_table),
                                     Br(),
-                                    weight_components,
+                                    Div(
+                                        weight_components,
+                                        className="mlpeg-controls-panel",
+                                    ),
                                 ],
                                 style=table_wrapper_style(summary_table),
                             ),
@@ -1250,7 +1253,10 @@ def build_nav(
                                                 combined_framework_table
                                             ),
                                             Br(),
-                                            framework_weight_components,
+                                            Div(
+                                                framework_weight_components,
+                                                className="mlpeg-controls-panel",
+                                            ),
                                         ],
                                         style=table_wrapper_style(
                                             combined_framework_table

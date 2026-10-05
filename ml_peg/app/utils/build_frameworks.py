@@ -323,7 +323,7 @@ def build_framework_page_layout(
                             build_download_controls(summary_table.id, row=True),
                             build_loading_summary_table(summary_table),
                             Br(),
-                            weight_components,
+                            Div(weight_components, className="mlpeg-controls-panel"),
                         ],
                         style=table_wrapper_style(summary_table),
                     ),
