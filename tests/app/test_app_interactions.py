@@ -194,6 +194,29 @@ def test_table_outline_spans_scrolled_table(ready_page: Page) -> None:
     )
 
 
+def test_scoring_panel_matches_table_width(ready_page: Page) -> None:
+    """A stretching benchmark table fills its wrapper, so the panel matches it.
+
+    Overriding Dash's inline ``min-width: 100%`` on ``.dash-spreadsheet-inner``
+    let fill-width tables shrink to their natural width while the scoring panel
+    below kept the full wrapper width, leaving the panel visibly too long.
+    """
+    _goto_ionpi19(ready_page)
+    _expand_scoring(ready_page)
+    result = ready_page.evaluate(
+        """() => {
+            const sc = document.getElementById('IONPI19-table')
+                .closest('.mlpeg-table-scroll');
+            const w = (s) => sc.querySelector(s).getBoundingClientRect().width;
+            return {table: w('table'), panel: w('.mlpeg-controls-panel')};
+        }"""
+    )
+    # The panel also spans the 1px outline on each side of the table.
+    assert abs(result["panel"] - result["table"]) <= 3, (
+        f"scoring panel and table widths differ: {result}"
+    )
+
+
 def test_no_horizontal_page_overflow(ready_page: Page) -> None:
     """A heavy category page must not overflow horizontally (tables scroll)."""
     _goto_ionpi19(ready_page)
