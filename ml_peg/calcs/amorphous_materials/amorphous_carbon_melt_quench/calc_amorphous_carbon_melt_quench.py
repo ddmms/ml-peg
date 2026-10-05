@@ -228,7 +228,7 @@ def _run_density(
     atoms = _build_diamond_supercell()
     _scale_to_density(atoms, density)
 
-    atoms.calc = model.get_calculator()
+    atoms.calc = model.get_calculator(precision="high")
 
     out_dir = OUT_PATH / model_name / f"density_{density:.1f}"
     out_dir.mkdir(parents=True, exist_ok=True)
