@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 import functools
 import json
 from json import dump
@@ -33,6 +33,9 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
+
+# Figure metadata key recording what each subplot panel is plotted against
+PANEL_KEYS_META = "panel_keys"
 
 
 def plot_parity(
@@ -1836,6 +1839,33 @@ def get_preserved_models() -> set[str]:
     return set(get_model_names()) - get_updated_models()
 
 
+def warn_dropped_models(dropped_models: Iterable[str], filename: str | Path) -> None:
+    """
+    Warn that saved results will be removed when rewriting a file.
+
+    Results can only be preserved for models defined in the models file used by the
+    current run, so results saved for any other model are lost when the file is
+    rewritten.
+
+    Parameters
+    ----------
+    dropped_models
+        Names of models with saved results that cannot be preserved.
+    filename
+        Filename of the file being rewritten.
+    """
+    dropped = sorted(set(dropped_models))
+    if not dropped:
+        return
+
+    warnings.warn(
+        f"Saved results for {', '.join(dropped)} will be removed from {filename}. "
+        "Only models defined in the models file used by the current run can be "
+        "preserved, so add these models to it to keep their results.",
+        stacklevel=3,
+    )
+
+
 def order_models(model_data: dict[str, Any]) -> dict[str, Any]:
     """
     Order models to match the model registry, keeping unrecognised models last.
@@ -1946,7 +1976,10 @@ def merge_saved_models(
 
     # Saved data keyed by an analysed model is preserved by the current run, so only
     # warn if no saved data can be matched to any model at all
-    unmatched = saved_models.keys().isdisjoint(get_model_names())
+    model_names = set(get_model_names())
+    unmatched = saved_models.keys().isdisjoint(model_names)
+
+    warn_dropped_models(saved_models.keys() - model_names, filename)
 
     if saved_models and preserved_models and not preserved and unmatched:
         warnings.warn(
@@ -2026,6 +2059,131 @@ def get_saved_traces(
     return saved_traces
 
 
+def get_panel_keys(fig: go.Figure) -> list[str]:
+    """
+    Get the keys identifying each subplot panel of a figure.
+
+    Parameters
+    ----------
+    fig
+        Figure to get panel keys of.
+
+    Returns
+    -------
+    list[str]
+        Keys of each panel, in subplot order. Empty if `fig` has no panel keys,
+        including all figures saved before panel keys were recorded.
+    """
+    meta = fig.layout.meta
+    if not isinstance(meta, dict):
+        return []
+
+    return list(meta.get(PANEL_KEYS_META, []))
+
+
+def set_panel_keys(fig: go.Figure, panel_keys: Sequence[str]) -> None:
+    """
+    Record the keys identifying each subplot panel of a figure.
+
+    Panel keys allow preserved traces to be matched to the panel they belong to, even
+    if the panels of the figure change between runs.
+
+    Parameters
+    ----------
+    fig
+        Figure to record panel keys for.
+    panel_keys
+        Keys of each panel, in the order the panels were added to `fig`.
+    """
+    meta = fig.layout.meta if isinstance(fig.layout.meta, dict) else {}
+    fig.layout.meta = meta | {PANEL_KEYS_META: list(panel_keys)}
+
+
+def get_axis_index(axis: str | None) -> int:
+    """
+    Get the subplot index an axis name refers to.
+
+    Parameters
+    ----------
+    axis
+        Axis name, such as "x" or "y3". `None` corresponds to the first axis.
+
+    Returns
+    -------
+    int
+        One-based index of the axis.
+    """
+    if not axis:
+        return 1
+
+    return int(axis[1:]) if axis[1:] else 1
+
+
+def remap_saved_panels(
+    saved_traces: list[go.Trace],
+    saved_fig: go.Figure,
+    fig: go.Figure,
+    filename: str | Path,
+) -> list[go.Trace]:
+    """
+    Move preserved traces to the subplot panel matching their panel key.
+
+    Axes are assigned by panel position, so preserved traces would otherwise be drawn
+    in the wrong panel if the panels of the figure change between runs.
+
+    Parameters
+    ----------
+    saved_traces
+        Traces to be preserved from `saved_fig`.
+    saved_fig
+        Previously saved figure.
+    fig
+        Figure built from the current analysis run.
+    filename
+        Filename `saved_fig` was loaded from.
+
+    Returns
+    -------
+    list[go.Trace]
+        `saved_traces`, reassigned to the panels of `fig`. Traces are dropped if their
+        panel is no longer plotted. `saved_traces` is returned unchanged if `fig` is
+        not a figure with panel keys.
+    """
+    current_keys = get_panel_keys(fig)
+    if not current_keys:
+        return saved_traces
+
+    saved_keys = get_panel_keys(saved_fig)
+    if not saved_keys:
+        # Saved before panel keys were recorded, so panels can only be matched by
+        # position, and traces in panels beyond the current grid cannot be drawn
+        saved_keys = current_keys
+
+    positions = {key: index for index, key in enumerate(current_keys, start=1)}
+
+    remapped = []
+    dropped = set()
+    for trace in saved_traces:
+        index = get_axis_index(trace.xaxis)
+        key = saved_keys[index - 1] if index <= len(saved_keys) else None
+        if key not in positions:
+            dropped.add(trace.name)
+            continue
+        position = positions[key]
+        suffix = "" if position == 1 else position
+        trace.update(xaxis=f"x{suffix}", yaxis=f"y{suffix}")
+        remapped.append(trace)
+
+    if dropped:
+        warnings.warn(
+            f"Saved traces for {', '.join(sorted(dropped))} will be removed from "
+            f"{filename}, as the panels they were plotted in are no longer plotted.",
+            stacklevel=3,
+        )
+
+    return remapped
+
+
 def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
     """
     Order model traces to match the model registry, leaving other traces in place.
@@ -2057,7 +2215,9 @@ def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
     ]
 
 
-def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
+def merge_saved_traces(
+    fig: go.Figure, filename: str | Path, panel_keys: Sequence[str] | None = None
+) -> go.Figure:
     """
     Add traces for models that are not being analysed from a saved figure.
 
@@ -2067,6 +2227,12 @@ def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
         Figure built from the current analysis run.
     filename
         Filename of the saved figure.
+    panel_keys
+        Keys identifying what each subplot panel of `fig` is plotted against, in the
+        order the panels were added. Default is `None`, corresponding to a figure
+        whose panels, if any, are the same for every run. Preserved traces are
+        matched to panels by key, so this must be set if the panels depend on the
+        models being analysed.
 
     Returns
     -------
@@ -2075,10 +2241,18 @@ def merge_saved_traces(fig: go.Figure, filename: str | Path) -> go.Figure:
         unchanged if tables and plots are not being updated, or if there are no
         traces to preserve.
     """
+    if panel_keys is not None:
+        set_panel_keys(fig, panel_keys)
+
     if not analysis.update_results:
         return fig
 
-    saved_traces = get_saved_traces(load_saved_figure(filename), filename)
+    saved_fig = load_saved_figure(filename)
+    saved_traces = get_saved_traces(saved_fig, filename)
+    if not saved_traces:
+        return fig
+
+    saved_traces = remap_saved_panels(saved_traces, saved_fig, fig, filename)
     if not saved_traces:
         return fig
 
@@ -2239,6 +2413,7 @@ def build_table(
             if analysis.update_results:
                 saved_rows = load_saved_rows(filename)
                 updated_mlips = get_updated_models()
+                warn_dropped_models(saved_rows.keys() - set(mlips), filename)
 
             metrics_data = []
             for mlip in mlips:

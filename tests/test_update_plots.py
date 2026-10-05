@@ -22,13 +22,14 @@ from ml_peg.analysis.utils.decorators import (
     plot_scatter,
     plot_violin,
 )
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 
 pytestmark = pytest.mark.usefixtures("fake_models")
 
 
 def get_traces(filename):
     """
-    Get all named traces in a saved figure, keyed by name.
+    Get all model traces in a saved figure, keyed by name.
 
     Parameters
     ----------
@@ -38,12 +39,12 @@ def get_traces(filename):
     Returns
     -------
     dict[str, dict]
-        Saved traces, excluding unnamed traces such as parity lines.
+        Saved traces, excluding traces such as parity lines.
     """
     return {
         trace.name: trace.to_plotly_json()
         for trace in pio.read_json(filename).data
-        if trace.name
+        if trace.name and trace.name != PARITY_LINE_NAME
     }
 
 
@@ -59,7 +60,7 @@ def get_trace_names(filename):
     Returns
     -------
     list[str]
-        Names of the saved traces, excluding unnamed traces such as parity lines.
+        Names of the saved traces, excluding traces such as parity lines.
     """
     return list(get_traces(filename))
 
@@ -312,6 +313,80 @@ def test_update_subplot_traces(tmp_path, update_model_2):
     assert [trace.xaxis for trace in fig.data] == ["x", "x2", "x", "x2"]
 
 
+def subplot_figure(panel_keys, model, y_value):
+    """
+    Build a single-row subplot figure with one trace per panel.
+
+    Parameters
+    ----------
+    panel_keys
+        Keys identifying each panel, in subplot order.
+    model
+        Name of the model the traces are plotted for.
+    y_value
+        Value plotted in every panel.
+
+    Returns
+    -------
+    go.Figure
+        Figure with one panel per key.
+    """
+    fig = make_subplots(rows=1, cols=len(panel_keys), subplot_titles=panel_keys)
+    for col in range(1, len(panel_keys) + 1):
+        fig.add_trace(go.Scatter(x=[1.0], y=[y_value], name=model), row=1, col=col)
+
+    return fig
+
+
+def test_update_subplot_panels_reordered(tmp_path, update_model_2):
+    """
+    Test preserved traces follow their panel when the subplot grid changes.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "subplots.json"
+    saved_fig = subplot_figure(["a", "b"], "model_1", 1.0)
+    merge_saved_traces(saved_fig, filename, ["a", "b"]).write_json(filename)
+
+    # A new structure is now plotted first, moving panel "a" to the second position
+    fig = merge_saved_traces(
+        subplot_figure(["c", "a", "b"], "model_2", 2.0), filename, ["c", "a", "b"]
+    )
+
+    preserved = {trace.xaxis: trace for trace in fig.data if trace.name == "model_1"}
+    assert sorted(preserved) == ["x2", "x3"]
+    assert all(trace.yaxis == trace.xaxis.replace("x", "y") for trace in fig.data)
+
+
+def test_update_subplot_panel_removed(tmp_path, update_model_2):
+    """
+    Test preserved traces are dropped when their panel is no longer plotted.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "subplots.json"
+    saved_fig = subplot_figure(["a", "b"], "model_1", 1.0)
+    merge_saved_traces(saved_fig, filename, ["a", "b"]).write_json(filename)
+
+    with pytest.warns(UserWarning, match="panels they were plotted in"):
+        fig = merge_saved_traces(subplot_figure(["a"], "model_2", 2.0), filename, ["a"])
+
+    assert [(trace.name, trace.xaxis) for trace in fig.data] == [
+        ("model_1", "x"),
+        ("model_2", "x"),
+    ]
+
+
 def test_reference_trace_order(tmp_path, update_model_2):
     """
     Test traces without a model name keep their position when traces are preserved.
@@ -377,6 +452,27 @@ def test_unmatched_data_warns(tmp_path, update_model_2):
 
     with pytest.warns(UserWarning, match="No data to preserve"):
         merge_saved_models({}, filename)
+
+
+def test_dropped_data_warns(tmp_path, update_missing_model_1):
+    """
+    Test a warning is raised for saved data of models outside the models file.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved data.
+    update_missing_model_1
+        Fixture setting up an update run with a models file without `model_1`.
+    """
+    filename = tmp_path / "figures.json"
+    with open(filename, "w") as fp:
+        json.dump({"model_1": {"value": 1.1}, "model_2": {"value": 1.2}}, fp)
+
+    with pytest.warns(UserWarning, match="Saved results for model_1 will be removed"):
+        merged = merge_saved_models({"model_2": {"value": 1.5}}, filename)
+
+    assert merged == {"model_2": {"value": 1.5}}
 
 
 def test_analysed_only_no_warning(tmp_path, update_model_2):

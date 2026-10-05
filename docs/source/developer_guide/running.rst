@@ -180,6 +180,14 @@ lines are likewise recalculated across preserved and new traces.
     any metric that has been renamed or added since it was last analysed, and results
     are only preserved for models that are still defined in ``models.yml``.
 
+.. warning::
+
+    Only models defined in the models file used by the current run can be preserved.
+    Running ``--update`` with a ``--models-file`` that defines only the new model
+    therefore removes the saved results of every other model. Pass a models file that
+    defines all models to be shown, and a warning naming the models whose results are
+    about to be removed is raised otherwise.
+
 
 Updating bespoke figures
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,13 +197,19 @@ decorators above, must opt in to updating. Two helpers in
 ``ml_peg/analysis/utils/decorators.py`` do this, and both return their input unchanged
 when ``--update`` is not set:
 
-``merge_saved_traces(fig, filename)``
+``merge_saved_traces(fig, filename, panel_keys=None)``
    Adds traces for models that are not being analysed from the figure saved at
    ``filename``. Call it immediately before writing the figure. Traces are matched to
    models by ``name``, and are reordered to match ``models.yml``. Traces without a
    model name, such as reference curves, are rebuilt from the current run. Figures
    built with ``make_subplots`` are supported, as preserved traces keep their axis
    assignment.
+
+   Pass ``panel_keys`` if the panels of a ``make_subplots`` figure depend on the models
+   being analysed, giving a key identifying what each panel is plotted against, in the
+   order the panels were added. Preserved traces are then matched to the panel with the
+   same key, rather than keeping the position they had when saved, and traces whose
+   panel is no longer plotted are dropped with a warning.
 
 ``merge_saved_models(model_data, filename, key=None)``
    Adds entries for models that are not being analysed to a mapping of model name to
@@ -208,7 +222,9 @@ in ``models.yml``. Indexing by plotted order instead gives the analysed models t
 colours as the preserved traces.
 
 A warning is raised when none of a saved file's traces or keys can be matched to a
-model, which usually means they are not named after models.
+model, which usually means they are not named after models. A warning naming the
+models whose results are about to be removed is also raised when a saved table or
+data bundle holds results for models the current models file does not define.
 
 .. warning::
 

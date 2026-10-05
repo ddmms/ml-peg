@@ -71,3 +71,20 @@ def update_model_2(monkeypatch, fake_models):
     """
     monkeypatch.setattr(models, "current_models", "model_2")
     monkeypatch.setattr(analysis, "update_results", True)
+
+
+@pytest.fixture
+def update_missing_model_1(monkeypatch, update_model_2):
+    """
+    Set up an update run with a models file that no longer defines `model_1`.
+
+    Parameters
+    ----------
+    monkeypatch
+        Pytest monkeypatch fixture.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    monkeypatch.setattr(
+        decorators, "get_model_names", lambda models=None, filepath=None: ["model_2"]
+    )

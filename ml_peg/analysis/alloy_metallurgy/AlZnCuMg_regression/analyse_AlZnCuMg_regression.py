@@ -868,7 +868,7 @@ def write_pure_element_plot(filename: Path) -> None:
     fig.update_yaxes(title_text="Deviation from DFT / %", zeroline=False)
 
     # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    fig = merge_saved_traces(fig, filename, list(PURE_ELEMENT_PROPERTY_SPECS))
 
     fig.write_json(filename)
 
@@ -966,8 +966,8 @@ def write_custom_solute_solute_plot(records_by_model: dict, filename: Path):
         fig.layout[f"yaxis{i}"].title = "Binding energy / meV"
         fig.layout[f"xaxis{i}"].title = "Nearest-neighbor index"
 
-    # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    # Preserve traces for models not being analysed, matching them to their panel
+    fig = merge_saved_traces(fig, filename, common_keys)
 
     fig.write_json(filename)
 
@@ -1055,8 +1055,8 @@ def write_custom_gsf_plot(records_by_model: dict, filename: Path):
         fig.layout[f"yaxis{i}"].title = "Normalized GSF energy / mJ m⁻²"
         fig.layout[f"xaxis{i}"].title = "Site index"
 
-    # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    # Preserve traces for models not being analysed, matching them to their panel
+    fig = merge_saved_traces(fig, filename, common_keys)
 
     fig.write_json(filename)
 
@@ -1146,8 +1146,8 @@ def write_custom_solute_sf_plot(records_by_model: dict, filename: Path):
         fig.layout[f"yaxis{i}"].title = "Interaction energy / meV"
         fig.layout[f"xaxis{i}"].title = "SF index"
 
-    # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    # Preserve traces for models not being analysed, matching them to their panel
+    fig = merge_saved_traces(fig, filename, common_keys)
 
     fig.write_json(filename)
 

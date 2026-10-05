@@ -346,7 +346,7 @@ def generate_plots_for_app(processed_data) -> None:
     filename = OUT_PATH / "figure_adsorption_energies.json"
 
     # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    fig = merge_saved_traces(fig, filename, subplot_titles)
 
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     fig.write_json(filename)
@@ -410,7 +410,7 @@ def generate_plots_for_app(processed_data) -> None:
     filename = OUT_PATH / "figure_binding_energies.json"
 
     # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    fig = merge_saved_traces(fig, filename, ORIENTATIONS)
     fig.write_json(filename)
 
     # Third plot: 1x3 grid of binding lengths across all orientations
@@ -471,7 +471,7 @@ def generate_plots_for_app(processed_data) -> None:
     filename = OUT_PATH / "figure_binding_lengths.json"
 
     # Preserve traces for models not being analysed
-    fig = merge_saved_traces(fig, filename)
+    fig = merge_saved_traces(fig, filename, ORIENTATIONS)
     fig.write_json(filename)
 
     return

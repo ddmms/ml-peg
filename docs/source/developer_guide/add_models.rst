@@ -391,7 +391,12 @@ without rerunning analysis for all other models, using ``--update``:
 
 .. code-block:: bash
 
-   ml_peg analyse --category molecular_crystal --test X23 --models-file my_models.yml --models my-mace-model --update
+   ml_peg analyse --category molecular_crystal --test X23 --models my-mace-model --update
+
+Saved results are only preserved for models defined in the models file used by the
+run, so ``my_models.yml`` must define every model to be shown, not only the new one.
+Add the new model to the default ``models.yml``, as in the command above, or copy
+the existing entries into ``my_models.yml`` and pass ``--models-file my_models.yml``.
 
 See :doc:`Running tests </developer_guide/running>` for details.
 

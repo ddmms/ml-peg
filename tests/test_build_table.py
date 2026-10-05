@@ -142,6 +142,31 @@ def test_update_table_display_names(tmp_path, update_model_2):
     assert get_values(filename) == {"model_1": 1.0, "model_2": 5.0}
 
 
+def test_update_table_dropped_models_warn(tmp_path, update_missing_model_1):
+    """
+    Test a warning is raised for saved rows of models outside the models file.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved table.
+    update_missing_model_1
+        Fixture setting up an update run with a models file without `model_1`.
+    """
+    filename = tmp_path / "table.json"
+    saved_rows = [
+        {"id": "model_1", "MLIP": "model_1", "MAE": 1.0},
+        {"id": "model_2", "MLIP": "model_2", "MAE": 2.0},
+    ]
+    with open(filename, "w") as fp:
+        json.dump({"data": saved_rows}, fp)
+
+    with pytest.warns(UserWarning, match="Saved results for model_1 will be removed"):
+        build(filename, {"MAE": {"model_2": 5.0}})
+
+    assert get_values(filename) == {"model_2": 5.0}
+
+
 def test_update_new_table(tmp_path, update_model_2):
     """
     Test updating a table that has not previously been saved.
