@@ -328,7 +328,7 @@ class OrbCalc(SumCalc):
 
     name: str
     device: Device | None = None
-    default_dtype: str = None
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:

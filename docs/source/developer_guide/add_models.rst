@@ -121,11 +121,19 @@ The common fields are:
 
 ``overwrite_dtype``
    Optional precision override for model wrappers that support it. Most
-   benchmarks request either ``precision="high"`` or ``precision="low"``; this
-   field forces a specific dtype regardless of that request.
+   benchmarks request either ``precision="high"`` or ``precision="low"``, which
+   each wrapper maps onto its backend's precision argument; this field replaces
+   whatever that mapping would have produced, regardless of the request.
+
+   The value is passed straight through to the backend, so its accepted form is
+   whatever that backend expects — usually ``float32`` or ``float64``, but Orb
+   takes its own precision strings and ``grace_fm`` takes a suffix appended to
+   ``kwargs.model`` (``-fp64``) that selects a different published checkpoint.
+   Check the relevant ``get_calculator`` in ``ml_peg/models/models.py`` before
+   setting it; wrappers whose backend has no dtype argument ignore the field.
 
 Examples
--------------
+--------
 
 MACE-MP foundation model:
 
@@ -328,6 +336,11 @@ The wrapper must implement ``get_calculator(self, *, precision, **kwargs)``,
 call ``check_precision(precision)``, map ``"low"``/``"high"`` onto the
 calculator's dtype argument, let ``overwrite_dtype`` (stored as
 ``default_dtype``) override that mapping, and return a loaded ASE calculator.
+Subclasses of ``GenericASECalc`` inherit ``default_dtype``, while ``SumCalc``
+subclasses (e.g. ``OrbCalc``, ``FairChemCalc``) must declare it. Leave it out
+only if the backend has no dtype argument to override, and note that in the
+``get_calculator`` docstring.
+
 Import the backend inside ``get_calculator`` rather than at module level, so
 ``models.py`` stays importable without the extra installed. Optionally define an
 ``available`` property that reports whether the backend can be loaded.
@@ -340,10 +353,14 @@ adding a ``case`` for the ``class_name`` used in the YAML:
    case "MyNetCalculator":
        loaded_models[name] = MyNetCalc(
            device=cfg.get("device", "cpu"),
+           default_dtype=cfg.get("overwrite_dtype", None),
            kwargs=cfg.get("kwargs", {}),
            trained_on_dispersion=cfg.get("trained_on_dispersion", False),
            dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
        )
+
+Pass every field the wrapper supports here — a field the wrapper accepts but
+``load_models`` never forwards is ignored without any error.
 
 The YAML entry records the model configuration, while the Python wrapper defines
 how ML-PEG constructs the calculator.
