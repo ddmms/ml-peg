@@ -55,6 +55,28 @@ def generate_weas_html(
         frame = index
         atoms_txt = "atoms"
 
+    # In traj mode, report the current frame to the parent page on every change
+    # (play, step, slider) so a linked plot can highlight the matching point.
+    # WEAS has no frame-change event, so poll editor.avr.currentFrame via rAF.
+    frame_reporter = (
+        """
+        let __mlPegLastFrame = editor.avr.currentFrame;
+        function __mlPegReportFrame() {
+            const f = editor.avr.currentFrame;
+            if (f !== __mlPegLastFrame) {
+                __mlPegLastFrame = f;
+                window.parent.postMessage(
+                    {type: "ml-peg-weas-frame", frame: f}, "*"
+                );
+            }
+            requestAnimationFrame(__mlPegReportFrame);
+        }
+        requestAnimationFrame(__mlPegReportFrame);
+        """
+        if mode == "traj"
+        else ""
+    )
+
     color_by_js = f'editor.avr.color_by = "{color_by}";' if color_by is not None else ""
     color_ramp_js = (
         f"editor.avr.color_ramp = {json.dumps(color_ramp)};"
@@ -92,6 +114,14 @@ def generate_weas_html(
     <!doctype html>
     <html lang="en">
     <body>
+        <div id="weas-title"
+             style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+                    font-size: 12px;
+                    color: #444;
+                    margin: 0 0 8px 0;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;"></div>
         <div id="viewer-wrapper" style="position: relative; width: 100%; height: 500px">
             <div id="viewer" style="width: 100%; height: 100%"></div>
             {legend_html}
@@ -110,16 +140,32 @@ def generate_weas_html(
         import {{ WEAS, parseXYZ, parseCIF, parseCube, parseXSF }} from 'https://unpkg.com/weas/dist/index.mjs';
         const domElement = document.getElementById("viewer");
 
-        // hide the buttons
+        // WEAS calls download/upload "export"/"import" in the browser bundle.
         const guiConfig = {{
             buttons: {{
                 enabled: {str(show_controls).lower()},
+                fullscreen: true,
+                undo: false,
+                redo: false,
+                export: true,
+                import: false,
+                measurement: false,
             }},
         }};
         const editor = new WEAS({{ domElement, viewerConfig: {{ _modelStyle: 1 }}, guiConfig}});
+        const originalExportImage = editor.tjs.exportImage.bind(editor.tjs);
+        editor.tjs.exportImage = function(resolution = 3) {{
+            return originalExportImage(resolution);
+        }};
 
         let structureData;
         const filename = "{str(filename)}";
+        const title = document.getElementById("weas-title");
+        if (title) {{
+            const basename = filename.split(/[/\\\\]/).pop() || filename;
+            title.textContent = `Viewing: ${{basename}}`;
+            title.title = basename;
+        }}
         console.log("filename: ", filename);
         structureData = await fetchFile(filename);
         console.log("structureData: ", structureData);
@@ -149,7 +195,7 @@ def generate_weas_html(
         editor.avr.currentFrame = {frame};
         editor.avr.drawModels();
         editor.render();
-
+        {frame_reporter}
         </script>
     </body>
     </html>
