@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import warnings
 
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
@@ -197,6 +198,41 @@ def test_update_density_annotations(tmp_path, update_model_2):
         "model_1",
         "model_2",
     ]
+
+
+def test_update_density_non_finite(tmp_path, update_model_2):
+    """
+    Test non-finite values in preserved density traces are ignored for axis limits.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    save_plot, _, model_2_results = PLOTS["density"]
+    filename = tmp_path / "density.json"
+
+    # Non-finite values are saved as null, and read back as None
+    save_plot(
+        filename,
+        {
+            "model_1": {"ref": [1.0, float("nan")], "pred": [1.1, 2.1]},
+            "model_2": {"ref": [1.0, 2.0], "pred": [1.2, 2.2]},
+        },
+    )
+    save_plot(filename, model_2_results)
+
+    assert get_trace_names(filename) == ["model_1", "model_2"]
+
+    # Axis limits, and so the parity line, must be set by the finite values
+    parity_line = next(
+        trace
+        for trace in pio.read_json(filename).data
+        if trace.name == PARITY_LINE_NAME
+    )
+    assert np.isfinite(parity_line.x).all()
 
 
 def cell_scatter_bundle(models_data):

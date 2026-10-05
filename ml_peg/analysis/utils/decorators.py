@@ -969,10 +969,15 @@ def plot_density_scatter(
                     )
                     for trace in saved_traces:
                         for values in (trace.x, trace.y):
-                            if values is None or len(values) == 0:
+                            if values is None:
                                 continue
-                            global_min = min(global_min, min(values))
-                            global_max = max(global_max, max(values))
+                            # Non-finite values are saved as null, and read back as None
+                            coords = np.asarray(values, dtype=float)
+                            coords = coords[np.isfinite(coords)]
+                            if coords.size == 0:
+                                continue
+                            global_min = min(global_min, coords.min())
+                            global_max = max(global_max, coords.max())
 
             # Only show the first model, with the remainder toggled via the legend
             for idx, trace in enumerate(fig.data):
