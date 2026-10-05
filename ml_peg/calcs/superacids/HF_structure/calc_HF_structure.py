@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Any
 from warnings import warn
 
@@ -112,6 +113,11 @@ def test_hf_structure(mlip: tuple[str, Any]) -> None:
 
         atoms = read(hf_structure_dir / "start.xyz")
         traj_path.unlink(missing_ok=True)
+
+        # Copy experimental reference locally, so analysis can run offline
+        references_dir = OUT_PATH / "references"
+        references_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(hf_structure_dir / "SQ_EXP.dat", references_dir / "SQ_EXP.dat")
 
     atoms.calc = calc
 
