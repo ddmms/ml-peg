@@ -97,7 +97,6 @@ def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
                 [
                     Span(name, className="mlpeg-bench-title"),
                     Span(
-                        "▸",
                         className="mlpeg-bench-chevron",
                         **{"aria-hidden": "true"},
                     ),
@@ -682,6 +681,8 @@ def build_weight_components(
                             "color": "var(--mlpeg-muted)",
                             "fontStyle": "normal",
                             "marginTop": "2px",
+                            # Wrapped lines come out roughly equal in length.
+                            "textWrap": "balance",
                         },
                     ),
                 ],
@@ -1726,7 +1727,10 @@ def build_test_layout(
     controls_visual = Details(
         [
             Summary(
-                "Adjust scoring — weights & thresholds",
+                [
+                    Span("Adjust scoring", className="mlpeg-controls-title"),
+                    Span("weights and thresholds", className="mlpeg-controls-hint"),
+                ],
                 className="mlpeg-controls-summary",
             ),
             Div(
