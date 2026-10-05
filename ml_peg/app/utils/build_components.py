@@ -12,7 +12,7 @@ from dash.dash_table import DataTable
 from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
-from dash.html import H2, Br, Button, Details, Div, Label, Span, Summary
+from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
@@ -1586,6 +1586,8 @@ def build_test_layout(
     speed_badge = build_speed_badge(speed)
     if speed_badge is not None:
         layout_contents.append(Div(speed_badge, style={"margin": "8px 0 0"}))
+
+    layout_contents.append(H3(description))
 
     # A single docs link reads cleaner than a disclosure widget with an arrow.
     if docs_url:
