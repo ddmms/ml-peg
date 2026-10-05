@@ -625,6 +625,11 @@ a:hover {
    enough to scroll (caught by test_responsive at the 780px viewport). */
 .dash-table-container .dash-spreadsheet-inner {
   border: 1px solid var(--mlpeg-table-outline);
+  /* Grow with a table wider than the scroll box. Otherwise this box stays at
+     the visible width and its right border is left as a stray line part-way
+     across the table once you scroll. !important beats Dash's inline
+     min-width:100%. */
+  min-width: min-content !important;
 }
 /* Hover highlights the whole row with a soft neutral wash that reads clearly
    over the (pastel) heatmap cells — a gentle "this row" cue, no blue tint. */

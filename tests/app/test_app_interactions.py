@@ -162,6 +162,38 @@ def test_threshold_boxes_are_not_clipped(ready_page: Page) -> None:
     )
 
 
+def test_table_outline_spans_scrolled_table(ready_page: Page) -> None:
+    """A table wider than its card keeps its outline at the real last column.
+
+    Dash pins ``.dash-spreadsheet-inner`` (which carries the outline) to the
+    visible width, so on a scrolled table its right border was left as a stray
+    vertical line part-way across the columns.
+    """
+    ready_page.set_viewport_size({"width": 1100, "height": 1000})
+    ready_page.locator('#sidebar-nav a[href="/category/bulk-crystals"]').click()
+    expect(ready_page.locator(".mlpeg-bench-body table").first).to_be_visible(
+        timeout=TIMEOUT
+    )
+
+    result = ready_page.evaluate(
+        """() => {
+            const sc = document.querySelector('.mlpeg-bench-body .mlpeg-table-scroll');
+            return {
+                scroll: sc.scrollWidth,
+                client: sc.clientWidth,
+                outline: sc.querySelector('.dash-spreadsheet-inner')
+                    .getBoundingClientRect().width,
+                table: sc.querySelector('table').getBoundingClientRect().width,
+            };
+        }"""
+    )
+    # Guard: the fixture's 12-column table must actually overflow at this width.
+    assert result["scroll"] > result["client"], f"table does not scroll: {result}"
+    assert result["outline"] >= result["table"], (
+        f"outline stops short of the table: {result}"
+    )
+
+
 def test_no_horizontal_page_overflow(ready_page: Page) -> None:
     """A heavy category page must not overflow horizontally (tables scroll)."""
     _goto_ionpi19(ready_page)
