@@ -15,6 +15,7 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.speed import speed_for_table_path
 from ml_peg.app.utils.utils import (
+    apply_column_decimals,
     build_level_of_theory_warnings,
     calculate_column_widths,
     clean_table_data,
@@ -23,7 +24,6 @@ from ml_peg.app.utils.utils import (
     drop_empty_model_rows,
     is_numeric_column,
     none_to_nan,
-    sig_fig_format,
 )
 from ml_peg.models.get_models import load_model_configs
 
@@ -121,7 +121,6 @@ def rebuild_table(
             continue
         if column.get("type") == "numeric" or is_numeric_column(data, column_id):
             column["type"] = "numeric"
-            column.setdefault("format", sig_fig_format())
         if column_name is not None and not isinstance(column_name, str):
             raise TypeError(
                 "Column display names must be strings. "
@@ -192,7 +191,8 @@ def rebuild_table(
 
     table = DataTable(
         data=data,
-        columns=columns,
+        # One fixed decimal count per column (e.g. 11.000 next to 0.355).
+        columns=apply_column_decimals(columns, data),
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
@@ -204,7 +204,7 @@ def rebuild_table(
             "whiteSpace": "normal",
             "height": "auto",
             "minHeight": "70px",
-            "textAlign": "right",
+            "textAlign": "center",
             "verticalAlign": "bottom",
             "lineHeight": "1.4",
             "padding": "8px",

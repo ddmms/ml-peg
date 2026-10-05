@@ -157,7 +157,7 @@ def build_threshold_input_style(border_colour: str) -> dict[str, str]:
     # inner <input>'s border via an inherited CSS variable rather than drawing a
     # second box on the .dash-input-container wrapper (see theme.css).
     return {
-        "width": "60px",
+        "width": "54px",
         "fontSize": "12px",
         "padding": "2px 4px",
         "boxSizing": "border-box",
@@ -180,7 +180,7 @@ def weight_input_style() -> dict[str, str]:
     # .dash-input-container, and the inner <input> already draws the box (see
     # theme.css). Styling this wrapper too gave a redundant box-in-a-box.
     return {
-        "width": "60px",
+        "width": "54px",
         "fontSize": "12px",
         "padding": "2px 4px",
         "textAlign": "center",
@@ -324,18 +324,77 @@ def is_numeric_column(rows: list[dict], column_id: str) -> bool:
     return False
 
 
-def sig_fig_format() -> TableFormat.Format:
+# Decimal places for table numbers: enough for the column's smallest non-zero
+# value to keep this many significant figures, within these bounds.
+TABLE_SIG_FIGS = 3
+MAX_TABLE_DECIMALS = 4
+DEFAULT_TABLE_DECIMALS = 2
+
+
+def column_decimals(values: Sequence[object]) -> int:
     """
-    Build a formatter that displays three significant figures.
+    Choose one decimal count for a table column.
+
+    Every value in a column is shown with the same number of decimals, chosen so
+    the smallest non-zero magnitude still shows ``TABLE_SIG_FIGS`` significant
+    figures (e.g. 11.000 alongside 0.355, not 11.0 alongside 0.355).
+
+    Parameters
+    ----------
+    values
+        Column values. Non-numeric entries (``"NaN"``, ``None``) and zeros are
+        ignored, as they carry no scale information.
 
     Returns
     -------
-    TableFormat.Format
-        Dash table format configured for three significant figures.
+    int
+        Decimal places, between 0 and ``MAX_TABLE_DECIMALS``.
     """
-    return TableFormat.Format(precision=3).scheme(
-        TableFormat.Scheme.decimal_or_exponent
-    )
+    magnitudes = [
+        abs(value)
+        for value in values
+        if isinstance(value, int | float)
+        and not isinstance(value, bool)
+        and np.isfinite(value)
+        and value != 0
+    ]
+    if not magnitudes:
+        return DEFAULT_TABLE_DECIMALS
+    leading = int(np.floor(np.log10(min(magnitudes))))
+    return int(np.clip(TABLE_SIG_FIGS - 1 - leading, 0, MAX_TABLE_DECIMALS))
+
+
+def apply_column_decimals(
+    columns: Sequence[Mapping[str, object]],
+    rows: Sequence[Mapping[str, object]] | None,
+) -> list[dict[str, object]]:
+    """
+    Give each numeric column a fixed decimal format based on its values.
+
+    Parameters
+    ----------
+    columns
+        DataTable column definitions. Only ``type: "numeric"`` columns change.
+    rows
+        Rows the table will display, used to pick each column's decimals.
+
+    Returns
+    -------
+    list[dict[str, object]]
+        Copies of the column definitions with ``format`` set on numeric columns.
+    """
+    rows = rows or []
+    updated = []
+    for column in columns:
+        column_copy = dict(column)
+        if column_copy.get("type") == "numeric":
+            column_id = column_copy.get("id")
+            decimals = column_decimals([row.get(column_id) for row in rows])
+            column_copy["format"] = TableFormat.Format(
+                precision=decimals, scheme=TableFormat.Scheme.fixed
+            )
+        updated.append(column_copy)
+    return updated
 
 
 def clean_thresholds(
