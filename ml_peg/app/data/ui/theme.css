@@ -483,10 +483,19 @@ a:hover {
   border-radius: var(--radius-pill);
   background: var(--mlpeg-surface-2);
   color: var(--mlpeg-ink-2);
-  font-size: 15px;
   transition:
     transform 0.18s ease,
     background 0.18s ease;
+}
+/* Right-pointing chevron drawn from two borders (a "▸" glyph renders tiny). */
+.mlpeg-bench-chevron::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: -3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
 }
 .mlpeg-bench-header:hover .mlpeg-bench-chevron {
   background: var(--mlpeg-surface-3);
@@ -659,48 +668,92 @@ a:hover {
 /* ---- Collapsible "Adjust scoring" panel below each table ---------------- */
 .mlpeg-controls-details {
   margin-top: var(--sp-3);
+  /* Grow with an overflowing table (see .mlpeg-controls-panel). */
+  min-width: min-content;
 }
+/* A full-width header bar in the panel's own grey, so when open the bar and
+   the panel below read as one block rather than a pill floating above it. */
 .mlpeg-controls-summary {
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: baseline;
   gap: var(--sp-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--mlpeg-ink-2);
-  padding: 8px 16px;
-  border: 1px solid var(--mlpeg-border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--mlpeg-surface);
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px var(--sp-5);
+  border-left: 3px solid var(--mlpeg-accent);
+  border-radius: var(--radius-lg);
+  background: var(--mlpeg-surface-2);
   list-style: none;
   user-select: none;
   transition: background 0.15s ease;
 }
 .mlpeg-controls-summary:hover {
-  background: var(--mlpeg-surface-2);
+  background: var(--mlpeg-surface-3);
 }
 .mlpeg-controls-summary::-webkit-details-marker {
   display: none;
 }
-.mlpeg-controls-summary::before {
-  content: "\25B8"; /* ▸ */
+.mlpeg-controls-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mlpeg-ink);
+}
+.mlpeg-controls-hint {
+  font-size: var(--fs-sm);
   color: var(--mlpeg-ink-3);
+}
+/* Chevron pinned to the right edge, drawn from two borders like the card
+   chevron. Points right when closed, down when open. */
+.mlpeg-controls-summary::after {
+  content: "";
+  align-self: center;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  margin-right: 4px;
+  border-right: 2px solid var(--mlpeg-ink-2);
+  border-bottom: 2px solid var(--mlpeg-ink-2);
+  transform: rotate(-45deg);
   transition: transform 0.15s ease;
 }
-.mlpeg-controls-details[open] .mlpeg-controls-summary::before {
-  transform: rotate(90deg);
+.mlpeg-controls-details[open] .mlpeg-controls-summary::after {
+  transform: translateY(-2px) rotate(45deg);
+}
+.mlpeg-controls-details[open] .mlpeg-controls-summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px solid var(--mlpeg-table-border);
+}
+.mlpeg-controls-details[open] .mlpeg-controls-panel {
+  margin-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 /* No border here: the panel sits inside an already-bordered card, so a second
    border reads as a redundant box-in-a-box. The tinted surface + radius alone
-   group the controls. */
+   group the controls. No horizontal padding: the scoring grids mirror the
+   table's column template, so any side inset shifts every box off its column. */
 .mlpeg-controls-panel {
   width: 100%;
+  /* When the window is narrower than the table, the grid overflows at its
+     minmax() px minimums. Growing to that width keeps the grey behind the part
+     revealed by scrolling instead of stopping at the window edge. */
+  min-width: min-content;
   box-sizing: border-box;
   background: var(--mlpeg-surface-2);
   border-radius: var(--radius-lg);
-  padding: var(--sp-5);
+  padding: var(--sp-5) 0;
   margin-top: var(--sp-2);
+}
+/* Inset the label column (under MLIP) instead. Padding inside the cell keeps
+   every grid track, and so every box, in place. !important beats the label
+   cells' inline padding. */
+.mlpeg-controls-panel .mlpeg-scoring-grid > :first-child {
+  box-sizing: border-box;
+  padding-left: var(--sp-4) !important;
 }
 
 /* ---- Scoring grids: column separators + ghost reset ------------------- */
@@ -944,9 +997,12 @@ input[type="number"] {
    Presented at <body> level by tooltip_portal.js so it is never clipped by the
    horizontally-scrolling table wrapper (see that file for why CSS alone can't
    fix it). Dash's native tooltip is hidden only once the JS has marked <html>,
-   so tooltips still work (clipped) if the asset ever fails to load. */
+   so tooltips still work (clipped) if the asset ever fails to load.
+   display:none, not visibility:hidden: a hidden-but-laid-out tooltip still
+   extends the wrapper's scroll area, giving the card a vertical scrollbar on
+   hover. The portal only reads its innerHTML, which display:none keeps. */
 .mlpeg-tooltip-js .dash-tooltip {
-  visibility: hidden !important;
+  display: none !important;
 }
 .mlpeg-tooltip-portal {
   position: fixed;
