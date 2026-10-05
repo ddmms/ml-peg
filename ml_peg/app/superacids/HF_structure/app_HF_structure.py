@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dash import Dash
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -11,11 +10,7 @@ from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "HF Structure Factor"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
@@ -66,16 +61,3 @@ def get_app() -> HFStructureApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
     )
-
-
-if __name__ == "__main__":
-    # Create Dash app
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-
-    # Construct layout and register callbacks
-    app = get_app()
-    full_app.layout = app.layout
-    app.register_callbacks()
-
-    # Run app
-    full_app.run(port=8057, debug=True)

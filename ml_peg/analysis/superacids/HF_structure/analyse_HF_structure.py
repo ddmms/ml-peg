@@ -22,7 +22,6 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -77,15 +76,7 @@ def load_reference_sq() -> tuple[np.ndarray, np.ndarray]:
     tuple[numpy.ndarray, numpy.ndarray]
         Scattering vector in 1/A, and structure factor.
     """
-    hf_structure_dir = (
-        download_s3_data(
-            key="inputs/superacids/HF_structure/HF_structure.zip",
-            filename="HF_structure.zip",
-        )
-        / "HF_structure"
-    )
-
-    data = np.loadtxt(hf_structure_dir / "SQ_EXP.dat")
+    data = np.loadtxt(CALC_PATH / "references" / "SQ_EXP.dat")
 
     return data[:, 0], data[:, 1]
 

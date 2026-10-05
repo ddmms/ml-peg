@@ -1,6 +1,4 @@
-==========
 Benchmarks
-==========
 
 .. toctree::
     :maxdepth: 3
