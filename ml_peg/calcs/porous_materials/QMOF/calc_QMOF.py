@@ -53,7 +53,7 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
     for mof in tqdm(mofs, desc=model_name):
         mof.calc = copy(calc)
         mof.info.setdefault("charge", 0)
-        mof.info.setdefault("spin_multiplicity", 1)
+        mof.info.setdefault("spin", 1)
         try:
             sp = SinglePoint(struct=mof)
             sp.run()
