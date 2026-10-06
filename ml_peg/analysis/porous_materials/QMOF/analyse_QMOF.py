@@ -77,13 +77,12 @@ def qmof_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
+        struct_path = CALC_PATH / model_name / "qmof_valid_structures.traj"
 
-        if not model_dir.exists():
+        if not struct_path.exists():
             continue
 
-        struct_file = "qmof_valid_structures.traj"
-        mofs = read(model_dir / struct_file, index=":")
+        mofs = read(struct_path, index=":")
         for mof in mofs:
             mof_energy = mof.get_potential_energy() / len(mof)
 
