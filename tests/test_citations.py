@@ -219,7 +219,7 @@ def test_benchmark_runs_print_guidance_without_writing_files(
         [CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"]
     )
 
-    assert "CITATION GUIDANCE" in summary
+    assert "CITATIONS" in summary
     assert "conformers/ACONFL" in summary
     assert "MODELS (" not in summary
     # Nothing is written, so a run leaves the working directory untouched
@@ -241,22 +241,21 @@ def test_terminal_summary_prints_citations_and_implementers() -> None:
 
 
 def test_implementer_is_separated_from_the_citation() -> None:
-    """The implementer sits under its own heading, not trailing the reference."""
+    """The implementer is named beside the benchmark, not in the cited reference."""
     summary = format_citation_summary({"category/test": _credits(TEST_CITATION)})
     lines = summary.splitlines()
 
-    citation_label = lines.index("      benchmark citation:")
-    implementer_label = lines.index("      implemented in ML-PEG by:")
+    header = next(line for line in lines if "category/test" in line)
+    reference = next(line for line in lines if "First Author" in line)
 
-    assert "First Author" in lines[citation_label + 1]
-    assert "Test Implementer" in lines[implementer_label + 1]
+    assert "implemented by Test Implementer" in header
     # The implementer never shares a line with the work being cited
-    assert "Test Implementer" not in lines[citation_label + 1]
-    assert citation_label < implementer_label
+    assert "Test Implementer" not in reference
+    assert lines.index(header) < lines.index(reference)
 
 
-def test_citation_label_is_pluralised_in_the_summary() -> None:
-    """The heading matches the number of sources listed for the benchmark."""
+def test_references_are_numbered_in_the_summary() -> None:
+    """Each benchmark numbers its references, so long lists stay easy to scan."""
     second = Citation(
         key="second",
         title="Second source",
@@ -264,11 +263,35 @@ def test_citation_label_is_pluralised_in_the_summary() -> None:
         role="reference_data",
     )
 
-    one = format_citation_summary({"category/test": _credits(TEST_CITATION)})
-    two = format_citation_summary({"category/test": _credits(TEST_CITATION, second)})
+    summary = format_citation_summary(
+        {"category/test": _credits(TEST_CITATION, second)}
+    )
+    lines = summary.splitlines()
 
-    assert "benchmark citation:" in one
-    assert "benchmark citations:" in two
+    assert any(line.startswith("    [1] First Author") for line in lines)
+    assert any(line.startswith("    [2] Third Author") for line in lines)
+
+
+def test_reference_numbers_are_right_aligned() -> None:
+    """References past [9] start in the same column as the earlier ones."""
+    citations = [
+        Citation(
+            key=f"source-{index}",
+            title=f"Source {index}",
+            authors=("An Author",),
+            role="benchmark_method",
+        )
+        for index in range(1, 11)
+    ]
+
+    lines = format_citation_summary(
+        {"category/test": _credits(*citations)}
+    ).splitlines()
+    starts = {line.index("An Author") for line in lines if "An Author" in line}
+
+    assert any(line.startswith("     [1] An Author") for line in lines)
+    assert any(line.startswith("    [10] An Author") for line in lines)
+    assert len(starts) == 1
 
 
 def test_doi_is_part_of_the_citation_in_the_summary() -> None:
@@ -294,7 +317,7 @@ def test_terminal_summary_is_a_bounded_block() -> None:
     lines = summary.splitlines()
 
     assert lines[0] == lines[-1] == "=" * SUMMARY_WIDTH
-    assert "CITATION GUIDANCE" in lines[1]
+    assert "CITATIONS" in lines[1]
     assert all(len(line) <= SUMMARY_WIDTH for line in lines)
     assert all(line == line.rstrip() for line in lines)
 
@@ -442,8 +465,7 @@ def test_inspired_benchmark_is_not_called_an_original_paper() -> None:
 
     assert "'Benchmark references'" in rendered
     assert "(inspired by)" in rendered
-    assert "built on:" in summary
-    assert "benchmark citation" not in summary
+    assert "(inspired by)" in summary
 
 
 def test_a_benchmark_paper_still_wins_the_heading() -> None:
@@ -451,7 +473,10 @@ def test_a_benchmark_paper_still_wins_the_heading() -> None:
     both = _credits(TEST_CITATION, INSPIRED_CITATION)
 
     assert "'Benchmark references'" in str(build_benchmark_credit_components(both))
-    assert "benchmark citations:" in format_citation_summary({"category/test": both})
+    summary = format_citation_summary({"category/test": both})
+    # Only the inspiration is tagged, as benchmark papers are the default reference
+    assert summary.count("(inspired by)") == 1
+    assert "(benchmark paper)" not in summary
 
 
 def test_citation_links_the_title_and_doi_only() -> None:
@@ -561,7 +586,7 @@ def test_empty_citations_are_shown_as_to_be_added() -> None:
     # The implementer is known, so the only placeholder is the references
     assert rendered.count("To be added") == 1
     assert "Devised" not in rendered
-    assert "benchmark citation:\n        ! to be added" in summary
+    assert "! references to be added" in summary
     assert "Test Implementer" in summary
     assert "incomplete for 1 benchmark(s)" in " ".join(summary.split())
 

@@ -21,6 +21,9 @@ SUMMARY_WIDTH = 79
 # Author lists longer than this are shortened to "First Author et al."
 MAX_AUTHORS = 5
 
+# Joins words that must not be split across lines when wrapping
+NBSP = "\u00a0"
+
 
 def format_authors(authors: Sequence[str]) -> str:
     """
@@ -505,47 +508,44 @@ def _section(title: str) -> list[str]:
     return ["", f"  {title}", "  " + "-" * (SUMMARY_WIDTH - 4)]
 
 
-def _citation_heading(citations: Sequence[Citation]) -> str:
+def _citation_lines(citation: Citation, indent: str, number: str = "") -> list[str]:
     """
-    Return the heading introducing a benchmark's sources.
-
-    Parameters
-    ----------
-    citations
-        Sources listed for one benchmark.
-
-    Returns
-    -------
-    str
-        Heading matching what the sources are. A benchmark built on earlier work
-        rather than taken from it has no benchmark paper to name.
-    """
-    if not any(citation.role == "benchmark_method" for citation in citations):
-        return "built on"
-    return f"benchmark citation{'s' if len(citations) > 1 else ''}"
-
-
-def _citation_lines(citation: Citation, indent: str) -> list[str]:
-    """
-    Build the wrapped reference and link lines for one citation.
+    Build the wrapped lines for one citation, optionally numbered.
 
     Parameters
     ----------
     citation
         Citation to render.
     indent
-        Indent applied to the first line of the reference.
+        Indent applied to the first line.
+    number
+        Label such as ``"[1]"`` shown before the reference. Default is none.
 
     Returns
     -------
     list[str]
-        Wrapped reference, ending in the DOI or URL when one is set. Links are never
-        broken across lines, so that they stay selectable in the terminal.
+        Wrapped reference, with later lines aligned under its text and ending in the
+        DOI or URL when one is set. Links are never broken across lines, so that they
+        stay selectable in the terminal.
     """
     text = citation.reference
+    # Benchmark papers are the default kind of reference, and framework citations sit
+    # under their own heading, so only other roles are tagged
+    if citation.role_label and citation.role not in (
+        "benchmark_method",
+        "upstream_framework",
+    ):
+        # Non-breaking spaces keep a tag such as "(inspired by)" on one line
+        tag = citation.role_label.replace(" ", NBSP)
+        text = f"{text[:-1]} ({tag})."
     if citation.link:
         text = f"{text} {citation.link}"
-    return _wrap(text, indent)
+    if not number:
+        lines = _wrap(text, indent)
+    else:
+        prefix = f"{indent}{number} "
+        lines = _wrap(text, prefix, " " * len(prefix))
+    return [line.replace(NBSP, " ") for line in lines]
 
 
 def format_citation_summary(
@@ -572,61 +572,63 @@ def format_citation_summary(
         Citation guidance for printing to the terminal.
     """
     frameworks = frameworks or {}
-    missing = sorted(set(missing_benchmarks))
+    names = sorted(set(benchmarks) | set(missing_benchmarks))
 
     rule = "=" * SUMMARY_WIDTH
     lines = [
         rule,
-        "CITATION GUIDANCE".center(SUMMARY_WIDTH).rstrip(),
+        "CITATIONS".center(SUMMARY_WIDTH).rstrip(),
         rule,
         "",
         *_wrap(
-            "Please cite the benchmarks below. Benchmark implementers are credited "
-            "separately, and are not authors of the work being cited.",
+            "Please cite the references below for the benchmarks you ran. "
+            "Implementers are credited for adding a benchmark to ML-PEG, and are not "
+            "authors of the cited work.",
             "  ",
             "  ",
         ),
     ]
 
-    if benchmarks or missing:
-        lines.extend(_section(f"BENCHMARKS ({len(benchmarks) + len(missing)})"))
-        for index, benchmark in enumerate(sorted(set(benchmarks) | set(missing))):
-            if index:
-                lines.append("")
-            lines.append(f"    {benchmark}")
+    unfilled_benchmarks = 0
+    if names:
+        lines.extend(_section(f"BENCHMARKS ({len(names)})"))
+        for index, benchmark in enumerate(names):
             credits = benchmarks.get(benchmark)
             citations = credits.citations if credits else ()
-            if citations:
-                lines.append(f"      {_citation_heading(citations)}:")
-                for citation in citations:
-                    lines.extend(_citation_lines(citation, "        "))
-            else:
-                lines.extend(["      benchmark citation:", "        ! to be added"])
-            contributors = credits.contributors if credits else ()
-            names = ", ".join(item.name for item in contributors)
-            lines.append("      implemented in ML-PEG by:")
-            lines.extend(
-                _wrap(names, "        ") if names else ["        ! to be added"]
+            contributors = ", ".join(
+                item.name for item in (credits.contributors if credits else ())
             )
+            unfilled_benchmarks += not citations or not contributors
+
+            if index:
+                lines.append("")
+            implemented = (
+                f"implemented by {contributors}"
+                if contributors
+                else "! implementer to be added"
+            )
+            lines.extend(_wrap(f"{benchmark}  ({implemented})", "  ", "    "))
+            if not citations:
+                lines.append("    ! references to be added")
+            # Right-align the numbers, so references start in one column past [9]
+            width = len(f"[{len(citations)}]")
+            for number, citation in enumerate(citations, start=1):
+                label = f"[{number}]".rjust(width)
+                lines.extend(_citation_lines(citation, "    ", label))
 
     if frameworks:
         lines.extend(_section(f"SOURCE FRAMEWORKS ({len(frameworks)})"))
         for index, (label, citation) in enumerate(frameworks.items()):
             if index:
                 lines.append("")
-            lines.append(f"    {label}")
+            lines.append(f"  {label}")
             lines.extend(
-                _citation_lines(citation, "      ")
+                _citation_lines(citation, "    ")
                 if citation
-                else ["      ! citation to be added"]
+                else ["    ! citation to be added"]
             )
 
     unfilled_frameworks = sum(1 for c in frameworks.values() if not c)
-    unfilled_benchmarks = len(missing) + sum(
-        1
-        for credits in benchmarks.values()
-        if not credits.citations or not credits.contributors
-    )
     incomplete = []
     if unfilled_benchmarks:
         incomplete.append(f"{unfilled_benchmarks} benchmark(s)")
@@ -638,7 +640,7 @@ def format_citation_summary(
                 "",
                 *_wrap(
                     f"! Citation metadata is incomplete for {', '.join(incomplete)}. "
-                    "Please help by adding it.",
+                    "Please help by adding it to citations.yml.",
                     "  ",
                     "    ",
                 ),
