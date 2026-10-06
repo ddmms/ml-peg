@@ -53,6 +53,7 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
             column_to_plot={
                 "MAE vs DFT": scatter,
                 "MAE vs Expt": scatter,
+                "Stable runs": scatter,
             },
         )
 
