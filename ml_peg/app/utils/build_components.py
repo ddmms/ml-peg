@@ -1394,8 +1394,8 @@ def _citation_reference(citation: Citation) -> Component:
         html.A(title, href=citation.link, target="_blank") if citation.link else title,
         html.Span(f", {authors}{year}"),
     ]
-    # Roles say what a source contributed, but "benchmark paper" only restates the
-    # label above it
+    # Roles say what a source contributed. Benchmark papers are left untagged, as
+    # they are the default kind of benchmark reference
     if citation.role_label and citation.role != "benchmark_method":
         contents.append(html.Span(f" ({citation.role_label})", style=CREDIT_NOTE_STYLE))
     if citation.doi:
@@ -1499,11 +1499,10 @@ def build_benchmark_credit_components(
     credits: BenchmarkCredits | None,
 ) -> Component:
     """
-    Build the always-visible citation and benchmark-implementer box.
+    Build the benchmark credit box: implementers always shown, references collapsed.
 
-    Three states are distinguished: metadata not yet supplied (explicit placeholder),
-    a benchmark devised for ML-PEG with no external source (``citations`` present but
-    empty), and a benchmark with one or more sources to cite.
+    Missing metadata, or empty ``citations`` or ``contributors``, are shown as "To be
+    added". References are collapsed, as a benchmark can cite many sources.
 
     Parameters
     ----------
@@ -1515,29 +1514,23 @@ def build_benchmark_credit_components(
     Component
         Credit box for the benchmark header.
     """
-    if credits is None:
+    if credits is None or not credits.citations:
         citation_line = _credit_line(
-            "Original benchmark paper: ", html.Span("To be added"), "0"
-        )
-    elif not credits.citations:
-        # No source to name, so the statement stands on its own without a label
-        citation_line = html.Div(
-            html.Strong("Devised for ML-PEG", style=CREDIT_LABEL_STYLE)
+            "Benchmark references: ", html.Span("To be added"), "0"
         )
     else:
-        # A benchmark built on earlier work rather than taken from it has no
-        # benchmark paper of its own to name
-        if not any(
-            citation.role == "benchmark_method" for citation in credits.citations
-        ):
-            label = "Built on:"
-        elif len(credits.citations) > 1:
-            label = "Original benchmark papers:"
-        else:
-            label = "Original benchmark paper:"
-        citation_line = html.Div(
+        # Each reference's role tag says how it relates to the benchmark
+        citation_line = Details(
             [
-                html.Strong(label, style=CREDIT_LABEL_STYLE),
+                Summary(
+                    [
+                        html.Strong("Benchmark references", style=CREDIT_LABEL_STYLE),
+                        html.Span(
+                            f" ({len(credits.citations)})", style=CREDIT_NOTE_STYLE
+                        ),
+                    ],
+                    style={"cursor": "pointer"},
+                ),
                 *[_citation_reference(citation) for citation in credits.citations],
             ]
         )
@@ -1550,12 +1543,12 @@ def build_benchmark_credit_components(
         people.extend(_contributor(contributor))
     return Div(
         [
-            citation_line,
             _credit_line(
-                "Implemented in ML-PEG by: ",
+                "Implemented by: ",
                 html.Span(people or "To be added"),
-                "8px",
+                "0",
             ),
+            Div(citation_line, style={"marginTop": "8px"}),
         ],
         style={
             "background": "var(--mlpeg-surface-2)",

@@ -127,9 +127,8 @@ class BenchmarkCredits:
     """
     Citations and implementation contributors for one benchmark.
 
-    An empty ``citations`` tuple means the benchmark was devised for ML-PEG and has no
-    external source to cite, which is distinct from missing metadata (represented by
-    the absence of a ``BenchmarkCredits`` instance).
+    Empty ``citations`` or ``contributors`` mean that information has not been added
+    yet, and are shown as placeholders like missing metadata.
     """
 
     contributors: tuple[Contributor, ...]
@@ -586,23 +585,15 @@ def format_citation_summary(
                 lines.append("")
             lines.append(f"    {benchmark}")
             credits = benchmarks.get(benchmark)
-            if credits is None:
-                lines.extend(
-                    [
-                        "      benchmark citation:",
-                        "        ! to be added",
-                        "      implemented in ML-PEG by:",
-                        "        ! to be added",
-                    ]
-                )
-                continue
-            if credits.citations:
-                lines.append(f"      {_citation_heading(credits.citations)}:")
-                for citation in credits.citations:
+            citations = credits.citations if credits else ()
+            if citations:
+                lines.append(f"      {_citation_heading(citations)}:")
+                for citation in citations:
                     lines.extend(_citation_lines(citation, "        "))
             else:
-                lines.append("      Devised for ML-PEG")
-            names = ", ".join(item.name for item in credits.contributors)
+                lines.extend(["      benchmark citation:", "        ! to be added"])
+            contributors = credits.contributors if credits else ()
+            names = ", ".join(item.name for item in contributors)
             lines.append("      implemented in ML-PEG by:")
             lines.extend(
                 _wrap(names, "        ") if names else ["        ! to be added"]
@@ -621,9 +612,14 @@ def format_citation_summary(
             )
 
     unfilled_frameworks = sum(1 for c in frameworks.values() if not c)
+    unfilled_benchmarks = len(missing) + sum(
+        1
+        for credits in benchmarks.values()
+        if not credits.citations or not credits.contributors
+    )
     incomplete = []
-    if missing:
-        incomplete.append(f"{len(missing)} benchmark(s)")
+    if unfilled_benchmarks:
+        incomplete.append(f"{unfilled_benchmarks} benchmark(s)")
     if unfilled_frameworks:
         incomplete.append(f"{unfilled_frameworks} framework(s)")
     if incomplete:

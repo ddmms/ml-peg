@@ -113,8 +113,8 @@ def test_reject_unknown_citation_role(tmp_path: Path) -> None:
         load_benchmark_credits(path)
 
 
-def test_empty_citations_is_distinct_from_missing_metadata(tmp_path: Path) -> None:
-    """An empty citation list loads successfully and is not treated as missing."""
+def test_empty_citations_load(tmp_path: Path) -> None:
+    """An empty citation list loads successfully, for references not yet added."""
     path = tmp_path / "citations.yml"
     path.write_text("contributors:\n  - name: Test Contributor\ncitations: []\n")
 
@@ -330,8 +330,8 @@ def test_terminal_summary_does_not_split_names_at_hyphens() -> None:
     assert "mace-\n" not in summary
 
 
-def test_benchmark_credit_is_not_hidden_in_a_details_element() -> None:
-    """Citation authors and implementers render outside any collapsible section."""
+def test_implementer_shown_and_references_collapsed() -> None:
+    """Implementers are always visible, while the references start collapsed."""
     table = DataTable(
         id="credit-test-table",
         columns=[{"id": "MLIP", "name": "MLIP"}, {"id": "Score", "name": "Score"}],
@@ -356,10 +356,12 @@ def test_benchmark_credit_is_not_hidden_in_a_details_element() -> None:
         for component in _walk_components(details)
     ]
     collapsed_text = " ".join(str(component) for component in collapsed)
-    assert "First Author, Second Author" in str(layout)
+    details = [c for c in _walk_components(layout) if isinstance(c, Details)]
+    assert "First Author, Second Author" in collapsed_text
     assert "Test Implementer" in str(layout)
-    assert "First Author" not in collapsed_text
     assert "Test Implementer" not in collapsed_text
+    # Closed by default, as a benchmark can cite many sources
+    assert details and not any(getattr(d, "open", False) for d in details)
 
 
 def test_documentation_is_a_direct_link() -> None:
@@ -402,12 +404,11 @@ INSPIRED_CITATION = Citation(
 
 
 def test_inspired_benchmark_is_not_called_an_original_paper() -> None:
-    """A benchmark built on earlier work has no benchmark paper to name."""
+    """A benchmark built on earlier work tags the source it was inspired by."""
     rendered = str(build_benchmark_credit_components(_credits(INSPIRED_CITATION)))
     summary = format_citation_summary({"category/test": _credits(INSPIRED_CITATION)})
 
-    assert "Built on:" in rendered
-    assert "Original benchmark paper" not in rendered
+    assert "'Benchmark references'" in rendered
     assert "(inspired by)" in rendered
     assert "built on:" in summary
     assert "benchmark citation" not in summary
@@ -417,7 +418,7 @@ def test_a_benchmark_paper_still_wins_the_heading() -> None:
     """Mixing in an inspiration does not demote a real benchmark paper."""
     both = _credits(TEST_CITATION, INSPIRED_CITATION)
 
-    assert "Original benchmark papers:" in str(build_benchmark_credit_components(both))
+    assert "'Benchmark references'" in str(build_benchmark_credit_components(both))
     assert "benchmark citations:" in format_citation_summary({"category/test": both})
 
 
@@ -515,23 +516,22 @@ def test_missing_credit_renders_placeholders() -> None:
     """Benchmarks without metadata display explicit credit placeholders."""
     rendered = str(build_benchmark_credit_components(None))
 
-    assert "Original benchmark paper: " in rendered
+    assert "Benchmark references: " in rendered
     assert rendered.count("To be added") == 2
 
 
-def test_ml_peg_only_benchmark_says_so_plainly() -> None:
-    """A benchmark devised for ML-PEG says just that, with no source to name."""
+def test_empty_citations_are_shown_as_to_be_added() -> None:
+    """An empty citation list is a placeholder, like missing metadata."""
     rendered = str(build_benchmark_credit_components(_credits()))
     summary = format_citation_summary({"category/test": _credits()})
 
-    assert "Devised for ML-PEG" in rendered
-    assert "Devised for ML-PEG" in summary
-    # No heading introducing a paper, and no ML-PEG citation standing in for one
-    assert "Original benchmark paper" not in rendered
-    assert "Built on" not in rendered
-    assert "built on" not in summary
-    assert "benchmark citation" not in summary
-    assert "To be added" not in rendered.split("Implemented in ML-PEG by")[0]
+    assert "Benchmark references: " in rendered
+    # The implementer is known, so the only placeholder is the references
+    assert rendered.count("To be added") == 1
+    assert "Devised" not in rendered
+    assert "benchmark citation:\n        ! to be added" in summary
+    assert "Test Implementer" in summary
+    assert "incomplete for 1 benchmark(s)" in " ".join(summary.split())
 
 
 def test_citations_are_not_rendered_as_a_bullet_list() -> None:
@@ -542,11 +542,11 @@ def test_citations_are_not_rendered_as_a_bullet_list() -> None:
     element_names = {type(component).__name__ for component in components}
 
     assert not element_names & {"Ul", "Ol", "Li"}
-    assert "Original benchmark paper:" in str(components[0])
+    assert "'Benchmark references'" in str(components[0])
 
 
-def test_citation_label_is_pluralised() -> None:
-    """The label matches the number of sources listed."""
+def test_reference_count_is_shown() -> None:
+    """The collapsed summary says how many references it hides."""
     second = Citation(
         key="second-source",
         title="Second source",
@@ -557,9 +557,8 @@ def test_citation_label_is_pluralised() -> None:
     one = str(build_benchmark_credit_components(_credits(TEST_CITATION)))
     two = str(build_benchmark_credit_components(_credits(TEST_CITATION, second)))
 
-    assert "Original benchmark paper:" in one
-    assert "Original benchmark papers:" not in one
-    assert "Original benchmark papers:" in two
+    assert "' (1)'" in one
+    assert "' (2)'" in two
 
 
 def test_role_tag_shown_only_where_it_adds_meaning() -> None:
