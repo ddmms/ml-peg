@@ -77,7 +77,7 @@ def qmof_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        struct_path = CALC_PATH / model_name / "qmof_valid_structures.traj"
+        struct_path = CALC_PATH / model_name / "qmof_valid_structures.extxyz"
 
         if not struct_path.exists():
             continue

@@ -10,7 +10,7 @@ Summary
 -------
 
 Quantum MOF Database, a public online collection of electronic and physical properties for more than 20,000 metal–organic frameworks (MOFs) and coordination polymers[1].
-This benchamrk uses only the subset which was compatible with the MACE_MP paper. Removed structures involve missing elements or inconsistent DFT[2].
+This benchamrk uses only the subset which was compatible with the MACE_MP paper. Removed structures involve missing elements or inconsistent DFT, 13912 [2].
 
 
 Metrics

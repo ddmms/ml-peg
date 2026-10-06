@@ -18,6 +18,7 @@ from tqdm import tqdm
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
+from math import nan
 
 MODELS = load_models(current_models)
 
@@ -49,6 +50,7 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
         / "QMOF"
     )
     input_file = "qmof_valid_structures.traj"
+    output_file = "qmof_valid_structures.extxyz"
     mofs = read(qmof_energy_dir / input_file, index=":")
     mofs_results = []
     for mof in tqdm(mofs, desc=model_name):
@@ -60,9 +62,9 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
             sp.run()
             mofs_results.append(sp.struct)
         except Exception as e:
-            print(f"Error occurred while running calculation for {model_name}: {e}")
+            mof.info['energy'] = nan
+            mofs_results.append(mof)
     # Write output structures
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
-    if mofs_results:
-        write(write_dir / input_file, mofs_results, format="traj")
+    write(write_dir / output_file, mofs_results, format="extxyz")
