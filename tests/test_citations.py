@@ -12,7 +12,7 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
-from conftest import CitationReporter
+from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
     build_test_layout,
@@ -34,6 +34,7 @@ from ml_peg.citations import (
     load_benchmark_credits,
     load_framework_citations,
 )
+from ml_peg.conftest import CitationReporter
 
 
 def _walk_components(component: Component) -> Iterator[Component]:
@@ -633,10 +634,10 @@ def test_citation_reporter_records_only_executed_benchmarks(tmp_path: Path) -> N
 
 
 class _Item:
-    """Minimal pytest item stub carrying framework markers."""
+    """Minimal pytest item stub carrying an absolute path and framework markers."""
 
-    def __init__(self, fspath: str, *framework_ids: str) -> None:
-        self.fspath = fspath
+    def __init__(self, path: Path, *framework_ids: str) -> None:
+        self.path = path
         self._framework_ids = framework_ids
 
     def iter_markers(self, name: str) -> list[object]:
@@ -664,9 +665,9 @@ def test_citation_reporter_records_framework_markers(tmp_path: Path) -> None:
 
     reporter.pytest_collection_modifyitems(
         [
-            _Item("ml_peg/calcs/conformers/ported/calc_ported.py", "mlip_audit"),
+            _Item(CALCS_ROOT / "conformers/ported/calc_ported.py", "mlip_audit"),
             _Item(
-                "ml_peg/analysis/conformers/ignored/analyse_ignored.py", "mlip_audit"
+                ANALYSIS_ROOT / "conformers/ignored/analyse_ignored.py", "mlip_audit"
             ),
         ]
     )

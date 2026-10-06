@@ -1368,8 +1368,8 @@ def build_speed_panel(
     )
 
 
-CREDIT_LABEL_STYLE = {"color": "#334155"}
-CREDIT_NOTE_STYLE = {"color": "#64748b", "fontSize": "0.9em"}
+CREDIT_LABEL_STYLE = {"color": "var(--mlpeg-heading)"}
+CREDIT_NOTE_STYLE = {"color": "var(--mlpeg-muted)", "fontSize": "0.9em"}
 
 
 def _citation_reference(citation: Citation) -> Component:
@@ -1440,10 +1440,11 @@ def _credit_line(label: str, value: Component | str, top_margin: str) -> Compone
     )
 
 
-# GitHub mark, inlined so the credit box needs no external request
+# GitHub mark, inlined so the credit box needs no external request. Used as a CSS mask
+# so its colour follows the light/dark theme
 GITHUB_ICON = (
     "data:image/svg+xml;charset=utf-8,"
-    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23334155'"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'"
     "%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17."
     "55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13"
     "-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52."
@@ -1474,15 +1475,22 @@ def _contributor(contributor: Contributor) -> list[Component]:
     return [
         html.Span(contributor.name),
         html.A(
-            html.Img(
-                src=GITHUB_ICON,
-                alt=f"{contributor.name} on GitHub",
-                style={"height": "14px", "width": "14px", "verticalAlign": "-2px"},
+            html.Span(
+                style={
+                    "backgroundColor": "var(--mlpeg-heading)",
+                    "display": "inline-block",
+                    "height": "14px",
+                    "mask": f'url("{GITHUB_ICON}") center / contain no-repeat',
+                    "verticalAlign": "-2px",
+                    "WebkitMask": f'url("{GITHUB_ICON}") center / contain no-repeat',
+                    "width": "14px",
+                },
             ),
             href=f"https://github.com/{contributor.github}",
             target="_blank",
             title=f"@{contributor.github}",
             style={"marginLeft": "4px"},
+            **{"aria-label": f"{contributor.name} on GitHub"},
         ),
     ]
 
@@ -1550,9 +1558,9 @@ def build_benchmark_credit_components(
             ),
         ],
         style={
-            "background": "#f8fafc",
-            "border": "1px solid #cbd5e1",
-            "borderLeft": "4px solid #475569",
+            "background": "var(--mlpeg-surface-2)",
+            "border": "1px solid var(--mlpeg-border)",
+            "borderLeft": "4px solid var(--mlpeg-border-strong)",
             "borderRadius": "6px",
             "margin": "8px 0 12px",
             "maxWidth": "1100px",
@@ -1647,10 +1655,10 @@ def build_test_layout(
                 target="_blank",
                 style={
                     "alignItems": "center",
-                    "backgroundColor": "#f8fafc",
-                    "border": "1px solid #cbd5e1",
+                    "backgroundColor": "var(--mlpeg-surface-2)",
+                    "border": "1px solid var(--mlpeg-border)",
                     "borderRadius": "6px",
-                    "color": "#0d6efd",
+                    "color": "var(--mlpeg-accent)",
                     "display": "inline-flex",
                     "fontSize": "13px",
                     "fontWeight": "600",
