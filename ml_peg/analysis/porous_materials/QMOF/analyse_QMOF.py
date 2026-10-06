@@ -10,7 +10,6 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
-    get_struct_info,
     load_metrics_config,
     mae,
     sample_density_grid,
@@ -28,15 +27,6 @@ OUT_PATH = APP_ROOT / "data" / "porous_materials" / "QMOF"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
-)
-
-
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="qmof_valid_structures.traj",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
 )
 
 
