@@ -49,11 +49,17 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
     )
     input_file = "qmof_valid_structures.traj"
     mofs = read(qmof_energy_dir / input_file, index=":")
+    mofs_results = []
     for mof in tqdm(mofs, desc=model_name):
         mof.calc = copy(calc)
-        sp = SinglePoint(struct=mof)
-        sp.run()
+        try:
+            sp = SinglePoint(struct=mof)
+            sp.run()
+            mofs_results.append(sp.struct)
+        except Exception as e:
+            print(f"Error occurred while running calculation for {model_name}: {e}")
     # Write output structures
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
-    write(write_dir / input_file, mofs)
+    if mofs_results:
+        write(write_dir / input_file, mofs_results, format="traj")
