@@ -70,7 +70,7 @@ def get_app() -> QMOFApp:
         name=BENCHMARK_NAME,
         description=(
             "Performance in predicting energies of metal organic frameworks from the "
-            "QMOF database, compared against PBE+D3 reference data."
+            "QMOF database, compared against PBE reference data."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "qmof_metrics_table.json",
