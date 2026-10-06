@@ -588,8 +588,7 @@ def format_citation_summary(
         "",
         *_wrap(
             "Please cite the references below for the benchmarks you ran. "
-            "Implementers are credited for adding a benchmark to ML-PEG, and are not "
-            "authors of the cited work.",
+            "Implementers are credited for adding each benchmark to ML-PEG.",
             "  ",
             "  ",
         ),
