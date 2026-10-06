@@ -323,9 +323,19 @@ def load_benchmark_credits(path: str | Path) -> BenchmarkCredits:
     if not isinstance(raw_citations, list):
         raise CitationMetadataError(f"{path}: citations must be a list")
 
+    # Implementers are listed alphabetically by surname, unlike citation authors,
+    # whose published order is kept
     contributors = tuple(
-        _parse_contributor(value, f"{path}: contributors[{index}]")
-        for index, value in enumerate(raw_contributors)
+        sorted(
+            (
+                _parse_contributor(value, f"{path}: contributors[{index}]")
+                for index, value in enumerate(raw_contributors)
+            ),
+            key=lambda contributor: (
+                contributor.name.split()[-1].casefold(),
+                contributor.name.casefold(),
+            ),
+        )
     )
     citations = tuple(
         _parse_citation(value, f"{path}: citations[{index}]")

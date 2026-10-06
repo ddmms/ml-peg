@@ -113,6 +113,38 @@ def test_reject_unknown_citation_role(tmp_path: Path) -> None:
         load_benchmark_credits(path)
 
 
+def test_contributors_are_sorted_by_surname(tmp_path: Path) -> None:
+    """Implementers are listed alphabetically by surname, whatever the file order."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "contributors:\n"
+        "  - name: Zoe Adams\n"
+        "  - name: Ben Young\n"
+        "  - name: Amy Clark\n"
+        "citations: []\n"
+    )
+
+    names = [item.name for item in load_benchmark_credits(path).contributors]
+
+    assert names == ["Zoe Adams", "Amy Clark", "Ben Young"]
+
+
+def test_citation_authors_keep_published_order(tmp_path: Path) -> None:
+    """Citation authors are not reordered, as their order is part of the citation."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "citations:\n"
+        "  - key: paper\n"
+        "    role: benchmark_method\n"
+        "    title: Paper\n"
+        "    authors: [Zed Last, Abe First]\n"
+    )
+
+    credits = load_benchmark_credits(path)
+
+    assert credits.citations[0].authors == ("Zed Last", "Abe First")
+
+
 def test_empty_citations_load(tmp_path: Path) -> None:
     """An empty citation list loads successfully, for references not yet added."""
     path = tmp_path / "citations.yml"
