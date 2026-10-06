@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from dash import Input, Output, callback
-from dash.html import Div, Iframe
+from dash.html import Div, Span
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_column,
+    struct_from_multi_scatters,
+)
 from ml_peg.app.utils.load import read_plot
-from ml_peg.app.utils.weas import generate_weas_html
 
 BENCHMARK_NAME = "Melt-quench carbon"
 DOCS_URL = (
@@ -18,6 +19,18 @@ DOCS_URL = (
 )
 DATA_PATH = APP_ROOT / "data" / "amorphous_materials" / "amorphous_carbon_melt_quench"
 INFO_PATH = DATA_PATH / "info.json"
+
+# Coordination classes are written as stand-in elements, shown in WEAS default colors
+LEGEND = Div(
+    [
+        Span(f"■ {label}", style={"color": color, "marginRight": "16px"})
+        for label, color in (
+            ("sp1 (coord=2)", "green"),
+            ("sp2 (coord=3)", "blue"),
+            ("sp3 (coord=4)", "orange"),
+        )
+    ]
+)
 
 
 class AmorphousCarbonMeltQuenchApp(BaseApp):
@@ -39,49 +52,15 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
             },
         )
 
-        @callback(
-            Output("amorphous-carbon-melt-quench-struct-placeholder", "children"),
-            Input("amorphous-carbon-melt-quench-figure", "clickData"),
+        # Model traces carry structure paths as customdata. Reference traces have none
+        struct_from_multi_scatters(
+            scatter_id="amorphous-carbon-melt-quench-figure",
+            struct_id="amorphous-carbon-melt-quench-struct-placeholder",
+            structs=[
+                list(trace.customdata or [])
+                for trace in (scatter.figure.data if scatter.figure else [])
+            ],
         )
-        def show_structure(click_data) -> Div:
-            """
-            Render a structure viewer for the clicked point.
-
-            Parameters
-            ----------
-            click_data
-                Plotly click payload from the sp3 vs density scatter.
-
-            Returns
-            -------
-            Div
-                Viewer iframe or placeholder message.
-            """
-            if not click_data:
-                return Div("Click on a model point to view the structure.")
-            point = click_data["points"][0]
-            struct_path = point.get("customdata")
-            if not struct_path:
-                return Div("No structure available for this point.")
-            return Div(
-                Iframe(
-                    srcDoc=generate_weas_html(
-                        struct_path,
-                        legend_items=[
-                            ("sp1 (coord=2)", "green"),
-                            ("sp2 (coord=3)", "blue"),
-                            ("sp3 (coord=4)", "orange"),
-                        ],
-                        show_bounds=True,
-                    ),
-                    style={
-                        "height": "550px",
-                        "width": "100%",
-                        "border": "1px solid #ddd",
-                        "borderRadius": "5px",
-                    },
-                )
-            )
 
 
 def get_app() -> AmorphousCarbonMeltQuenchApp:
@@ -103,6 +82,7 @@ def get_app() -> AmorphousCarbonMeltQuenchApp:
         table_path=DATA_PATH / "amorphous_carbon_melt_quench_metrics_table.json",
         extra_components=[
             Div(id="amorphous-carbon-melt-quench-figure-placeholder"),
+            LEGEND,
             Div(id="amorphous-carbon-melt-quench-struct-placeholder"),
         ],
         framework_ids="mace-mp",
