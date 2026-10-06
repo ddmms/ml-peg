@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dash import Input, Output, callback
 from dash.html import Div, Span
 
 from ml_peg.app import APP_ROOT
@@ -20,7 +21,8 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "amorphous_materials" / "amorphous_carbon_melt_quench"
 INFO_PATH = DATA_PATH / "info.json"
 
-# Coordination classes are written as stand-in elements, shown in WEAS default colors
+# Coordination classes are written as stand-in elements, shown in WEAS default colors.
+# Hidden until a structure is shown in the viewer
 LEGEND = Div(
     [
         Span(f"■ {label}", style={"color": color, "marginRight": "16px"})
@@ -29,7 +31,9 @@ LEGEND = Div(
             ("sp2 (coord=3)", "blue"),
             ("sp3 (coord=4)", "orange"),
         )
-    ]
+    ],
+    id="amorphous-carbon-melt-quench-legend",
+    hidden=True,
 )
 
 
@@ -61,6 +65,26 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
                 for trace in (scatter.figure.data if scatter.figure else [])
             ],
         )
+
+        @callback(
+            Output("amorphous-carbon-melt-quench-legend", "hidden"),
+            Input("amorphous-carbon-melt-quench-struct-placeholder", "children"),
+        )
+        def toggle_legend(struct_children) -> bool:
+            """
+            Show the legend only while a structure is displayed.
+
+            Parameters
+            ----------
+            struct_children
+                Current contents of the structure placeholder.
+
+            Returns
+            -------
+            bool
+                Whether the legend is hidden.
+            """
+            return "Iframe" not in str(struct_children)
 
 
 def get_app() -> AmorphousCarbonMeltQuenchApp:
