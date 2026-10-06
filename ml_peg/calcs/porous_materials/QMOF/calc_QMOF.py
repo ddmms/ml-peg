@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from copy import copy
+from math import nan
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +19,12 @@ from tqdm import tqdm
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-from math import nan
 
 MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
- 
- 
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_qmof_energy(mlip: tuple[str, Any]) -> None:
@@ -61,8 +61,8 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
             sp = SinglePoint(struct=mof)
             sp.run()
             mofs_results.append(sp.struct)
-        except Exception as e:
-            mof.info['energy'] = nan
+        except Exception:
+            mof.info["energy"] = nan
             mofs_results.append(mof)
     # Write output structures
     write_dir = OUT_PATH / model_name
