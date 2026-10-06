@@ -16,7 +16,7 @@ This benchamrk uses only the subset which was compatible with the MACE_MP paper.
 Metrics
 -------
 
-MAE 
+MAE
 
 Mean Absolute Error of energy per atom for all systems
 
