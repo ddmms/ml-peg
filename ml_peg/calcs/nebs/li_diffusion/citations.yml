@@ -3,11 +3,13 @@ contributors:
     github: "ElliottKasoar"
 
 citations:
-  - key: "mp-19017"
+  - key: "morgan-2004-olivine"
     role: reference_data
-    title: "Li diffusion barrier reference data"
+    title: "Li Conductivity in LixMPO4 (M = Mn, Fe, Co, Ni) Olivine Materials"
     authors:
-      - "Materials Project"
-    year: null
+      - "D. Morgan"
+      - "A. Van der Ven"
+      - "G. Ceder"
+    year: 2004
     doi: "10.1149/1.1633511"
     url: null

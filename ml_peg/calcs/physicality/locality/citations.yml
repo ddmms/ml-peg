@@ -2,5 +2,5 @@ contributors:
   - name: "Joseph Hart"
     github: "joehart2001"
 
-# Devised for ML-PEG: the benchmark docs state no external source is required.
+# TODO: devised for ML-PEG, so cite the ML-PEG paper here once it is available.
 citations: []

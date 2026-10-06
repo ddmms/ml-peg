@@ -5,7 +5,7 @@ contributors:
 citations:
   - key: "price-2025-cposs209"
     role: benchmark_method
-    title: "CPOSS209 crystal structure set"
+    title: "One Size Fits All? Development of the CPOSS209 Data Set of Experimental and Hypothetical Polymorphs for Testing Computational Modeling Methods"
     authors:
       - "Louise S. Price"
       - "Matteo Paloni"

@@ -5,13 +5,14 @@ contributors:
 citations:
   - key: "lim-2026-graphene-wetting"
     role: benchmark_method
-    title: "Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential"
+    title: "Strain-Dependent Wetting of Graphene"
     authors:
-      - "D. W. Lim"
-      - "X. R. Advincula"
-      - "W. C. Witt"
-      - "F. L. Thiemann"
-      - "C. Schran"
-    year: null
+      - "Darren Wayne Lim"
+      - "Xavier R. Advincula"
+      - "William C. Witt"
+      - "Angelos Michaelides"
+      - "Fabian L. Thiemann"
+      - "Christoph Schran"
+    year: 2026
     doi: null
     url: "https://arxiv.org/abs/2601.20134"

@@ -7,8 +7,19 @@ citations:
     role: benchmark_method
     title: "Efficient Long-Range Machine Learning Force Fields for Liquid and Materials Properties"
     authors:
-      - "Weber"
-      - "et al."
+      - "John L. Weber"
+      - "Rishabh D. Guha"
+      - "Garvit Agarwal"
+      - "Yujing Wei"
+      - "Aidan A. Fike"
+      - "Xiaowei Xie"
+      - "James Stevenson"
+      - "Biswajit Santra"
+      - "Richard A. Friesner"
+      - "Karl Leswing"
+      - "Mathew D. Halls"
+      - "Robert Abel"
+      - "Leif D. Jacobson"
     year: 2025
     doi: null
     url: "https://arxiv.org/abs/2505.06462"

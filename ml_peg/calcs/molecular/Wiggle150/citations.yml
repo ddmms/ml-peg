@@ -7,8 +7,13 @@ citations:
     role: benchmark_method
     title: "Wiggle150: Benchmarking Density Functionals and Neural Network Potentials on Highly Strained Conformers"
     authors:
-      - "R. R. Brew"
-      - "et al."
+      - "Rebecca R. Brew"
+      - "Ian A. Nelson"
+      - "Meruyert Binayeva"
+      - "Amlan S. Nayak"
+      - "Wyatt J. Simmons"
+      - "Joseph J. Gair"
+      - "Corin C. Wagen"
     year: 2025
-    doi: null
+    doi: "10.1021/acs.jctc.5c00015"
     url: null

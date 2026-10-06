@@ -21,15 +21,15 @@ citations:
     role: reference_data
     title: "A Foundational Potential Energy Surface Dataset for Materials"
     authors:
-      - "A. D. Kaplan"
-      - "R. Liu"
-      - "J. Qi"
-      - "T. W. Ko"
-      - "B. Deng"
-      - "J. Riebesell"
-      - "G. Ceder"
-      - "K. A. Persson"
-      - "S. P. Ong"
+      - "Aaron D. Kaplan"
+      - "Runze Liu"
+      - "Ji Qi"
+      - "Tsz Wai Ko"
+      - "Bowen Deng"
+      - "Janosh Riebesell"
+      - "Gerbrand Ceder"
+      - "Kristin A. Persson"
+      - "Shyue Ping Ong"
     year: 2025
     doi: "10.48550/arXiv.2503.04070"
     url: null

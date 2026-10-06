@@ -18,7 +18,11 @@ from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
 from ml_peg.app.utils.utils import normalize_framework_id
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.citations import app_citation_metadata_path, load_optional_benchmark_credits
+from ml_peg.citations import (
+    CitationMetadataError,
+    app_citation_metadata_path,
+    load_optional_benchmark_credits,
+)
 
 
 class BaseApp(ABC):
@@ -110,11 +114,16 @@ class BaseApp(ABC):
         except ValueError:
             self.credits = None
         else:
-            self.credits = load_optional_benchmark_credits(
-                app_citation_metadata_path(
-                    benchmark_path.parent.name, benchmark_path.name, CALCS_ROOT
+            # Invalid metadata shows as "To be added" rather than breaking the app
+            try:
+                self.credits = load_optional_benchmark_credits(
+                    app_citation_metadata_path(
+                        benchmark_path.parent.name, benchmark_path.name, CALCS_ROOT
+                    )
                 )
-            )
+            except CitationMetadataError as err:
+                warnings.warn(f"Invalid citations for {self.name}: {err}", stacklevel=2)
+                self.credits = None
         self.metrics = [
             col["id"]
             for col in self.table.columns

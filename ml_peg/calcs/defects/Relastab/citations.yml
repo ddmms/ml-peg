@@ -36,18 +36,11 @@ citations:
     title: "Calculation of crystal defects induced in CaWO4 cryogenic detector by 100 eV displacement cascades using a data driven force field"
     authors:
       - "G. Soum-Sidikov"
-      - "A. Boisard"
-      - "M. Loidl"
-      - "O. Stézowski"
-      - "A. Music"
-      - "G. Music"
-      - "Y. Zeng"
-      - "R. Cong"
-      - "T. Yang"
-      - "A. Echeverria"
-      - "L. Music"
-      - "D. Music"
-      - "V. Music"
+      - "J. P. Crocombette"
+      - "M. C. Marinica"
+      - "C. Doutre"
+      - "D. Lhuillier"
+      - "L. Thulliez"
     year: 2025
-    doi: null
+    doi: "10.1103/PhysRevD.111.085021"
     url: null

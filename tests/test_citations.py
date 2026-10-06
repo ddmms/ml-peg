@@ -12,6 +12,7 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
+from ml_peg import citations as citations_module
 from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
@@ -143,6 +144,73 @@ def test_citation_authors_keep_published_order(tmp_path: Path) -> None:
     credits = load_benchmark_credits(path)
 
     assert credits.citations[0].authors == ("Zed Last", "Abe First")
+
+
+def test_et_al_is_not_accepted_as_an_author(tmp_path: Path) -> None:
+    """Authors are listed in full, as "et al." is added when displayed."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "citations:\n"
+        "  - key: paper\n"
+        "    role: benchmark_method\n"
+        "    title: Paper\n"
+        "    authors: [A. Author, et al.]\n"
+    )
+
+    with pytest.raises(CitationMetadataError, match="not 'et al.'"):
+        load_benchmark_credits(path)
+
+
+def test_invalid_framework_citation_is_a_metadata_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed frameworks.yml citation raises a clear metadata error."""
+    registry = tmp_path / "frameworks.yml"
+    registry.write_text(
+        "arena:\n  label: Arena\n  type: framework\n  citation: just a string\n"
+    )
+    monkeypatch.setattr(citations_module, "FRAMEWORKS_FILE", registry)
+
+    with pytest.raises(CitationMetadataError, match="arena.citation must be a mapping"):
+        load_framework_citations(["arena"])
+
+
+def test_invalid_citations_do_not_break_the_app(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bad metadata drops the credits with a warning, instead of stopping the app."""
+    from ml_peg.app import APP_ROOT, base_app
+
+    table = DataTable(
+        id="bad-table",
+        columns=[{"id": "MLIP", "name": "MLIP"}],
+        data=[],
+        tooltip_header={},
+    )
+    table.weights = {}
+    table.thresholds = {}
+
+    def invalid_metadata(path: Path) -> None:
+        raise CitationMetadataError(f"{path}: citations[0].role must be one of")
+
+    monkeypatch.setattr(base_app, "rebuild_table", lambda *args, **kwargs: table)
+    monkeypatch.setattr(base_app, "load_optional_benchmark_credits", invalid_metadata)
+
+    class _App(base_app.BaseApp):
+        def register_callbacks(self) -> None:
+            """Register no callbacks."""
+
+    with pytest.warns(UserWarning, match="Invalid citations for Bad"):
+        app = _App(
+            name="Bad",
+            description="Bad metadata",
+            table_path=APP_ROOT / "data" / "category" / "bench" / "table.json",
+            extra_components=[],
+            info_path=APP_ROOT / "data" / "category" / "bench" / "info.json",
+        )
+
+    assert app.credits is None
+    assert "Benchmark references: " in str(app.layout)
 
 
 def test_empty_citations_load(tmp_path: Path) -> None:

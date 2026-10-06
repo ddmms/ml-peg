@@ -219,10 +219,14 @@ def _authors(value: Any, location: str) -> tuple[str, ...]:
     """
     if not isinstance(value, list) or not value:
         raise CitationMetadataError(f"{location} must be a non-empty list")
-    return tuple(
+    authors = tuple(
         _non_empty_string(author, f"{location}[{index}]")
         for index, author in enumerate(value)
     )
+    # Long lists are shortened for display, so every entry must be a real author
+    if any(author.rstrip(".").casefold() == "et al" for author in authors):
+        raise CitationMetadataError(f"{location} must list authors, not 'et al.'")
+    return authors
 
 
 def _year(value: Any, location: str) -> int | None:
@@ -446,7 +450,7 @@ def load_framework_citations(
             continue
         label = entry.get("label", framework_id)
         location = f"frameworks.yml: {framework_id}.citation"
-        raw = entry.get("citation") or {}
+        raw = _mapping(entry.get("citation") or {}, location)
         if not raw.get("title") or not raw.get("authors"):
             citations[label] = None
             continue
@@ -456,7 +460,9 @@ def load_framework_citations(
             authors=_authors(raw.get("authors"), f"{location}.authors"),
             year=_year(raw.get("year"), f"{location}.year"),
             role="upstream_framework",
-            url=entry.get("paper_url"),
+            url=_optional_string(
+                entry.get("paper_url"), f"frameworks.yml: {framework_id}.paper_url"
+            ),
         )
     return citations
 

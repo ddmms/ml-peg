@@ -7,8 +7,21 @@ citations:
     role: benchmark_method
     title: "Charting the complete elastic properties of inorganic crystalline compounds"
     authors:
-      - "M. de Jong"
-      - "et al."
+      - "Maarten de Jong"
+      - "Wei Chen"
+      - "Thomas Angsten"
+      - "Anubhav Jain"
+      - "Randy Notestine"
+      - "Anthony Gamst"
+      - "Marcel Sluiter"
+      - "Chaitanya Krishna Ande"
+      - "Sybrand van der Zwaag"
+      - "Jose J Plata"
+      - "Cormac Toher"
+      - "Stefano Curtarolo"
+      - "Gerbrand Ceder"
+      - "Kristin A. Persson"
+      - "Mark Asta"
     year: 2015
-    doi: null
+    doi: "10.1038/sdata.2015.9"
     url: null
