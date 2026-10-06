@@ -6,15 +6,13 @@ import csv
 from pathlib import Path
 from warnings import warn
 
-from ase import Atoms, units
+from ase import Atoms
 from ase.build import bulk
 from ase.io import write
-from ase.md.langevin import Langevin
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import LBFGS
+from janus_core.calculations.md import NVT
 import numpy as np
 import pytest
-from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -32,9 +30,10 @@ DIAMOND_LATTICE = 3.5  # Angstrom
 MELT_TEMP = 8000.0  # K
 FINAL_TEMP = 300.0  # K
 MELT_TIME_PS = 3.0  # ps
-COOLING_RATE = 1000.0  # K/ps
+QUENCH_TEMP_STEP = 100.0  # K
+QUENCH_TEMP_TIME = 100.0  # fs, so 1000 K/ps cooling rate
 DT_FS = 1.0  # fs
-FRICTION = 0.001 / units.fs
+FRICTION = 0.001  # fs^-1
 TRAJ_INTERVAL = 100  # write a trajectory frame every N MD steps
 
 
@@ -121,86 +120,52 @@ def _scale_to_density(atoms: Atoms, target_density: float) -> None:
     atoms.set_cell(atoms.cell * scale, scale_atoms=True)
 
 
-def _attach_trajectory_writer(dyn, atoms: Atoms, traj_path: Path) -> None:
-    """
-    Append the current structure to a trajectory every ``TRAJ_INTERVAL`` steps.
-
-    Parameters
-    ----------
-    dyn
-        MD dynamics object to attach the writer to.
-    atoms
-        Atomic configuration being propagated.
-    traj_path
-        Trajectory file to append snapshots to.
-    """
-
-    def _snapshot() -> None:
-        """Append the current structure to the trajectory file."""
-        frame = atoms.copy()
-        frame.calc = None
-        write(traj_path, frame, append=True, format="extxyz")
-
-    dyn.attach(_snapshot, interval=TRAJ_INTERVAL)
-
-
-def _melt(atoms: Atoms, steps: int, traj_path: Path) -> None:
+def _melt(atoms: Atoms, out_dir: Path) -> None:
     """
     Melt the structure at a fixed temperature.
 
     Parameters
     ----------
     atoms
-        Atomic configuration (mutated in-place).
-    steps
-        Number of MD steps.
-    traj_path
-        Trajectory file to append snapshots to during the run.
+        Atomic configuration with calculator attached (mutated in-place).
+    out_dir
+        Directory for MD outputs.
     """
-    MaxwellBoltzmannDistribution(atoms, temperature_K=MELT_TEMP)
-    dyn = Langevin(
-        atoms,
-        timestep=DT_FS * units.fs,
-        temperature=MELT_TEMP * units.kB,
+    NVT(
+        struct=atoms,
+        temp=MELT_TEMP,
+        steps=int(MELT_TIME_PS * 1000.0 / DT_FS),
+        timestep=DT_FS,
         friction=FRICTION,
-    )
-    pbar = tqdm(total=steps, desc="melt", leave=False)
-    dyn.attach(pbar.update, interval=1)
-    _attach_trajectory_writer(dyn, atoms, traj_path)
-    dyn.run(steps)
-    pbar.close()
+        traj_every=TRAJ_INTERVAL,
+        file_prefix=out_dir / "melt",
+        enable_progress_bar=True,
+    ).run()
 
 
-def _quench(atoms: Atoms, steps: int, temp_step: float, traj_path: Path) -> None:
+def _quench(atoms: Atoms, out_dir: Path) -> None:
     """
-    Quench the structure by linearly reducing the temperature.
+    Quench the structure with a stepwise linear cooling ramp.
 
     Parameters
     ----------
     atoms
-        Atomic configuration (mutated in-place).
-    steps
-        Number of MD steps.
-    temp_step
-        Temperature decrement per step (K).
-    traj_path
-        Trajectory file to append snapshots to during the run.
+        Atomic configuration with calculator attached (mutated in-place).
+    out_dir
+        Directory for MD outputs.
     """
-    dyn = Langevin(
-        atoms,
-        timestep=DT_FS * units.fs,
-        temperature=MELT_TEMP * units.kB,
+    NVT(
+        struct=atoms,
+        timestep=DT_FS,
         friction=FRICTION,
-    )
-    _attach_trajectory_writer(dyn, atoms, traj_path)
-
-    for step in tqdm(range(steps), desc="quench", leave=False):
-        dyn.run(1)
-        target_temp = max(FINAL_TEMP, MELT_TEMP - temp_step * step)
-        MaxwellBoltzmannDistribution(atoms, temperature_K=target_temp)
-        current_temp = atoms.get_temperature()
-        if current_temp > 0:
-            atoms.set_momenta(atoms.get_momenta() * (target_temp / current_temp) ** 0.5)
+        temp_start=MELT_TEMP,
+        temp_end=FINAL_TEMP,
+        temp_step=QUENCH_TEMP_STEP,
+        temp_time=QUENCH_TEMP_TIME,
+        traj_every=TRAJ_INTERVAL,
+        file_prefix=out_dir / "quench",
+        enable_progress_bar=True,
+    ).run()
 
 
 def _run_density(
@@ -232,19 +197,12 @@ def _run_density(
 
     out_dir = OUT_PATH / model_name / f"density_{density:.1f}"
     out_dir.mkdir(parents=True, exist_ok=True)
-    traj_path = out_dir / f"trajectory_density_{density:.1f}.extxyz"
-    traj_path.unlink(missing_ok=True)
-
-    melt_steps = int(MELT_TIME_PS * 1000.0 / DT_FS)
-    dt_ps = DT_FS * 1.0e-3
-    temp_step = COOLING_RATE * dt_ps
-    quench_steps = int((MELT_TEMP - FINAL_TEMP) / temp_step)
 
     try:
         LBFGS(atoms).run(fmax=10.0, steps=500)
-        _melt(atoms, melt_steps, traj_path)
-        _quench(atoms, quench_steps, temp_step, traj_path)
-        LBFGS(atoms).run(fmax=0.02, steps=1)
+        _melt(atoms, out_dir)
+        _quench(atoms, out_dir)
+        LBFGS(atoms).run(fmax=0.02, steps=1000)
         if not np.all(np.isfinite(atoms.get_positions())):
             raise ValueError("non-finite positions after quench")
     except Exception as exc:
@@ -263,7 +221,7 @@ def _run_density(
     write(out_dir / f"final_density_{density:.1f}.xyz", atoms)
 
 
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_amorphous_carbon_melt_quench(mlip: tuple[str, object]) -> None:
     """
