@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Literal
 
@@ -12,10 +11,7 @@ def generate_weas_html(
     mode: Literal["struct", "traj"] = "struct",
     index: int = 0,
     *,
-    color_by: str | None = None,
-    color_ramp: list[str] | None = None,
     legend_items: list[tuple[str, str]] | None = None,
-    show_controls: bool = True,
     show_bounds: bool = False,
 ) -> str:
     """
@@ -32,14 +28,8 @@ def generate_weas_html(
         Frame of structure file to load, or of trajectory to view. In "struct" mode,
         all structures will be loaded by default. In "traj" mode, the first frame will
         be loaded by default.
-    color_by
-        Optional atom attribute name to color by.
-    color_ramp
-        Optional color ramp for attribute coloring.
     legend_items
         Optional legend entries as ``(label, color)`` pairs.
-    show_controls
-        Whether to display viewer controls.
     show_bounds
         Whether to show the periodic cell bounds.
 
@@ -74,13 +64,6 @@ def generate_weas_html(
         requestAnimationFrame(__mlPegReportFrame);
         """
         if mode == "traj"
-        else ""
-    )
-
-    color_by_js = f'editor.avr.color_by = "{color_by}";' if color_by is not None else ""
-    color_ramp_js = (
-        f"editor.avr.color_ramp = {json.dumps(color_ramp)};"
-        if color_ramp is not None
         else ""
     )
 
@@ -143,7 +126,7 @@ def generate_weas_html(
         // WEAS calls download/upload "export"/"import" in the browser bundle.
         const guiConfig = {{
             buttons: {{
-                enabled: {str(show_controls).lower()},
+                enabled: true,
                 fullscreen: true,
                 undo: false,
                 redo: false,
@@ -175,8 +158,6 @@ def generate_weas_html(
             const atoms = parseXYZ(structureData);
             editor.avr.atoms = {atoms_txt};
             editor.avr.modelStyle = 1;
-            {color_by_js}
-            {color_ramp_js}
             {bounds_js}
 
         }} else if (filename.endsWith(".cif")) {{
