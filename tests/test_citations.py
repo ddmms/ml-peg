@@ -176,7 +176,7 @@ def test_invalid_framework_citation_is_a_metadata_error(
 
 
 def test_invalid_citations_do_not_break_the_app(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Bad metadata drops the credits with a warning, instead of stopping the app."""
     from ml_peg.app import APP_ROOT, base_app
@@ -190,11 +190,14 @@ def test_invalid_citations_do_not_break_the_app(
     table.weights = {}
     table.thresholds = {}
 
-    def invalid_metadata(path: Path) -> None:
-        raise CitationMetadataError(f"{path}: citations[0].role must be one of")
+    # Real loader on a file with a YAML syntax error, the hardest case to catch
+    bad_file = tmp_path / "citations.yml"
+    bad_file.write_text('citations:\n  - key: "unterminated\n')
 
     monkeypatch.setattr(base_app, "rebuild_table", lambda *args, **kwargs: table)
-    monkeypatch.setattr(base_app, "load_optional_benchmark_credits", invalid_metadata)
+    monkeypatch.setattr(
+        base_app, "app_citation_metadata_path", lambda *args, **kwargs: bad_file
+    )
 
     class _App(base_app.BaseApp):
         def register_callbacks(self) -> None:
@@ -211,6 +214,33 @@ def test_invalid_citations_do_not_break_the_app(
 
     assert app.credits is None
     assert "Benchmark references: " in str(app.layout)
+
+
+def test_yaml_syntax_errors_are_metadata_errors(tmp_path: Path) -> None:
+    """Malformed YAML raises the same error as invalid metadata, naming the file."""
+    path = tmp_path / "citations.yml"
+    path.write_text('citations:\n  - key: "unterminated\n    role: [benchmark_method\n')
+
+    with pytest.raises(CitationMetadataError, match="invalid YAML"):
+        load_benchmark_credits(path)
+
+
+def test_incomplete_notice_names_the_file_to_edit() -> None:
+    """Gaps point to citations.yml for benchmarks and frameworks.yml for frameworks."""
+    empty = {"category/test": BenchmarkCredits(contributors=(), citations=())}
+
+    framework_only = format_citation_summary({}, frameworks={"MLIP Arena": None})
+    benchmark_only = format_citation_summary(empty)
+    both = format_citation_summary(empty, frameworks={"MLIP Arena": None})
+
+    def notice(summary: str) -> str:
+        return " ".join(summary.split("! Citation metadata")[1].split())
+
+    assert "frameworks.yml" in notice(framework_only)
+    assert "citations.yml" not in notice(framework_only)
+    assert "citations.yml" in notice(benchmark_only)
+    assert "frameworks.yml" not in notice(benchmark_only)
+    assert "citations.yml and frameworks.yml" in notice(both)
 
 
 def test_empty_citations_load(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 import textwrap
 from typing import TYPE_CHECKING, Any
 
-from yaml import safe_load
+from yaml import YAMLError, safe_load
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -322,7 +322,11 @@ def load_benchmark_credits(path: str | Path) -> BenchmarkCredits:
         Validated benchmark credits.
     """
     path = Path(path)
-    document = _mapping(safe_load(path.read_text()), str(path))
+    try:
+        raw_document = safe_load(path.read_text())
+    except YAMLError as err:
+        raise CitationMetadataError(f"{path}: invalid YAML: {err}") from err
+    document = _mapping(raw_document, str(path))
     raw_contributors = document.get("contributors", [])
     raw_citations = document.get("citations") or []
     if not isinstance(raw_contributors, list):
@@ -634,18 +638,20 @@ def format_citation_summary(
             )
 
     unfilled_frameworks = sum(1 for c in frameworks.values() if not c)
-    incomplete = []
+    incomplete, files = [], []
     if unfilled_benchmarks:
         incomplete.append(f"{unfilled_benchmarks} benchmark(s)")
+        files.append("each benchmark's citations.yml")
     if unfilled_frameworks:
         incomplete.append(f"{unfilled_frameworks} framework(s)")
+        files.append(f"{FRAMEWORKS_FILE.name}")
     if incomplete:
         lines.extend(
             [
                 "",
                 *_wrap(
                     f"! Citation metadata is incomplete for {', '.join(incomplete)}. "
-                    "Please help by adding it to citations.yml.",
+                    f"Please help by adding it to {' and '.join(files)}.",
                     "  ",
                     "    ",
                 ),
