@@ -29,11 +29,18 @@ grid densities within the reference density range.
 Mean absolute error in sp3 fraction relative to the experimental reference curve, at
 grid densities within the reference density range.
 
-Computational cost
-------------------
+3. Stable runs
 
-High: melt-quench MD runs for each model and 5 density grid points. Expect roughly
-one to a few hours per model on a GPU in total.
+Percentage of densities whose melt-quench completed without crashing or producing
+non-finite positions, energies or forces.
+
+Both MAEs are computed over stable runs only, so a run that fails is penalised by
+this metric rather than by the MAEs.
+
+Benchmark speed
+---------------
+
+Slow: melt-quench MD runs for each model and 5 density grid points. Expect multiple hours per model on a GPU in total.
 
 Data availability
 -----------------
