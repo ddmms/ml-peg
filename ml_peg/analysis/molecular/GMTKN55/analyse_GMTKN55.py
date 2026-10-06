@@ -22,7 +22,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 CALC_PATH = CALCS_ROOT / "molecular" / "GMTKN55" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "GMTKN55"
 
