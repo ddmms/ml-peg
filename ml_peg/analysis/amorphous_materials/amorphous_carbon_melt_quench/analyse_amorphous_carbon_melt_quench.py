@@ -19,6 +19,9 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.amorphous_materials.amorphous_carbon_melt_quench.calc_amorphous_carbon_melt_quench import (  # noqa: E501
+    DENSITY_GRID,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -31,7 +34,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-DENSITY_GRID = [1.5, 2.0, 2.5, 3.0, 3.5]
 SP3_CUTOFF = 1.85
 STRUCTURES_DIR = OUT_PATH / "structures"
 
@@ -188,7 +190,7 @@ def _load_model_summary(model_name: str) -> dict[float, float]:
 
 def _structure_asset_path(model_name: str, density: float) -> str:
     """
-    Return asset path for trajectory if present, else colored structure.
+    Return asset path for the colored final structure.
 
     Parameters
     ----------
@@ -200,7 +202,7 @@ def _structure_asset_path(model_name: str, density: float) -> str:
     Returns
     -------
     str
-        Asset path for the structure or trajectory.
+        Asset path for the colored structure.
     """
     rel_dir = (
         Path("amorphous_materials")
@@ -209,12 +211,7 @@ def _structure_asset_path(model_name: str, density: float) -> str:
         / model_name
         / f"density_{density:.1f}"
     )
-    traj_name = f"trajectory_density_{density:.1f}.extxyz"
-    colored_name = f"colored_density_{density:.1f}.extxyz"
-    traj_path = STRUCTURES_DIR / model_name / f"density_{density:.1f}" / traj_name
-    if traj_path.exists():
-        return f"/assets/{rel_dir.as_posix()}/{traj_name}"
-    return f"/assets/{rel_dir.as_posix()}/{colored_name}"
+    return f"/assets/{rel_dir.as_posix()}/colored_density_{density:.1f}.extxyz"
 
 
 def _load_all_model_data(models: Iterable[str]) -> dict[str, dict[float, float]]:
@@ -265,6 +262,9 @@ def _mae_against_reference(
     """
     Compute MAE against a reference curve at the density grid.
 
+    Only grid densities within the reference density range are compared, as
+    ``np.interp`` would otherwise clamp to the nearest reference end point.
+
     Parameters
     ----------
     model_series
@@ -282,13 +282,22 @@ def _mae_against_reference(
     densities, predictions = _series_from_mapping(model_series)
     if len(densities) != len(DENSITY_GRID):
         return None
-    ref_interp = np.interp(densities, ref_density, ref_sp3)
-    return float(mae(ref_interp.tolist(), predictions))
+    densities = np.asarray(densities)
+    in_range = (densities >= ref_density.min()) & (densities <= ref_density.max())
+    ref_interp = np.interp(densities[in_range], ref_density, ref_sp3)
+    return float(mae(ref_interp.tolist(), np.asarray(predictions)[in_range].tolist()))
 
 
-def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
+def sp3_vs_density(
+    model_data: dict[str, dict[float, float]],
+) -> dict[str, tuple[list[float], list[float]]]:
     """
     Generate sp3 vs density plot data.
+
+    Parameters
+    ----------
+    model_data
+        Mapping model -> {density: sp3_fraction}.
 
     Returns
     -------
@@ -302,7 +311,6 @@ def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
         "Expt.": (expt_density.tolist(), expt_sp3.tolist()),
     }
 
-    model_data = _load_all_model_data(MODELS)
     for model_name, mapping in model_data.items():
         densities, sp3 = _series_from_mapping(mapping)
         if densities:
@@ -313,6 +321,7 @@ def sp3_vs_density() -> dict[str, tuple[list[float], list[float]]]:
 
 def build_sp3_vs_density_plot(
     filename: Path,
+    model_data: dict[str, dict[float, float]],
     title: str = "sp3 fraction vs density",
     x_label: str = "Density (g cm^-3)",
     y_label: str = "sp3 count (%)",
@@ -324,6 +333,8 @@ def build_sp3_vs_density_plot(
     ----------
     filename
         Path to save the plotly JSON file.
+    model_data
+        Mapping model -> {density: sp3_fraction}.
     title
         Plot title.
     x_label
@@ -331,7 +342,7 @@ def build_sp3_vs_density_plot(
     y_label
         Y-axis label.
     """
-    data = sp3_vs_density()
+    data = sp3_vs_density(model_data)
     fig = go.Figure()
 
     dft = data.get("DFT")
@@ -384,9 +395,27 @@ def build_sp3_vs_density_plot(
 
 
 @pytest.fixture
-def mae_vs_dft() -> dict[str, float | None]:
+def model_data() -> dict[str, dict[float, float]]:
+    """
+    Load sp3 fraction data for all models once.
+
+    Returns
+    -------
+    dict[str, dict[float, float]]
+        Mapping model -> {density: sp3_fraction}.
+    """
+    return _load_all_model_data(MODELS)
+
+
+@pytest.fixture
+def mae_vs_dft(model_data: dict[str, dict[float, float]]) -> dict[str, float | None]:
     """
     Compute MAE against DFT reference for each model.
+
+    Parameters
+    ----------
+    model_data
+        Mapping model -> {density: sp3_fraction}.
 
     Returns
     -------
@@ -394,7 +423,6 @@ def mae_vs_dft() -> dict[str, float | None]:
         Mapping of model name to MAE (or ``None`` if unavailable).
     """
     dft_density, dft_sp3, _, _ = _load_reference()
-    model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
     for model_name, mapping in model_data.items():
         results[model_name] = _mae_against_reference(mapping, dft_density, dft_sp3)
@@ -402,9 +430,14 @@ def mae_vs_dft() -> dict[str, float | None]:
 
 
 @pytest.fixture
-def mae_vs_expt() -> dict[str, float | None]:
+def mae_vs_expt(model_data: dict[str, dict[float, float]]) -> dict[str, float | None]:
     """
     Compute MAE against experimental reference for each model.
+
+    Parameters
+    ----------
+    model_data
+        Mapping model -> {density: sp3_fraction}.
 
     Returns
     -------
@@ -412,7 +445,6 @@ def mae_vs_expt() -> dict[str, float | None]:
         Mapping of model name to MAE (or ``None`` if unavailable).
     """
     _, _, expt_density, expt_sp3 = _load_reference()
-    model_data = _load_all_model_data(MODELS)
     results: dict[str, float | None] = {}
     for model_name, mapping in model_data.items():
         results[model_name] = _mae_against_reference(mapping, expt_density, expt_sp3)
@@ -451,7 +483,9 @@ def metrics(
     }
 
 
-def test_amorphous_carbon_melt_quench(metrics: dict[str, dict]) -> None:
+def test_amorphous_carbon_melt_quench(
+    metrics: dict[str, dict], model_data: dict[str, dict[float, float]]
+) -> None:
     """
     Run analysis for amorphous carbon melt-quench benchmark.
 
@@ -459,6 +493,8 @@ def test_amorphous_carbon_melt_quench(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         Metric data produced by the analysis fixtures.
+    model_data
+        Mapping model -> {density: sp3_fraction}.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    build_sp3_vs_density_plot(OUT_PATH / "figure_sp3_vs_density.json")
+    build_sp3_vs_density_plot(OUT_PATH / "figure_sp3_vs_density.json", model_data)
