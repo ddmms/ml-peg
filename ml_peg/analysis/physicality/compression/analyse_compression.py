@@ -338,7 +338,6 @@ def compute_structure_metrics(
         "Holes": float(holes),
         "Energy minima": float(minima),
         "Deep Energy minima": float(deep_minima),
-        # "Energy inflections": float(inflections),
         "Big Pressure sign flips": float(big_pressure_flips),
         "Pressure sign flips": float(pressure_flips),
         "ρ(-E,Vsmall)": -float(spearman_compression),
