@@ -66,17 +66,6 @@ _PALETTE = [
 LINEAR_FRAC: float = 0.6
 LINTHRESH_ENERGY: float = 10.0  # eV/atom
 SYMLOG_DECADES: int = 5
-DEFAULT_WEIGHTS = {
-    "Holes": 1.0,
-    "Energy minima": 0.1,
-    "Deep Energy minima": 1.0,
-    "Energy inflections": 0.1,
-    "Big Pressure sign flips": 1.0,
-    "Pressure sign flips": 0.1,
-    "ρ(-E,Vsmall)": 1.0,
-    "ρ(E,Vlarge)": 0.1,
-    "Failed fraction": 1.0,
-}
 
 
 def _symlog(
@@ -166,7 +155,9 @@ def _symlog_ticks(
 
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
 
 def load_model_data(model_name: str) -> pd.DataFrame:
