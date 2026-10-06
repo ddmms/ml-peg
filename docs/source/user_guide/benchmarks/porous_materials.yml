@@ -11,6 +11,7 @@ Summary
 
 Quantum MOF Database, a public online collection of electronic and physical properties for more than 20,000 metal–organic frameworks (MOFs) and coordination polymers[1].
 This benchamrk uses only the subset which was compatible with the MACE_MP paper. Removed structures involve missing elements or inconsistent DFT, 13912 [2].
+The DFT is computed at PBE level.
 
 
 Metrics
@@ -23,7 +24,7 @@ Mean Absolute Error of energy per atom for all systems
 Benchmark speed
 ------------------
 
-Medium: each singlepoint is likely to take less than a minute to run on CPU.
+Medium: shall tale 10s of minutes on a A100 GPU
 
 
 Reference data
