@@ -203,8 +203,13 @@ def _run_density(
         _melt(atoms, out_dir)
         _quench(atoms, out_dir)
         LBFGS(atoms).run(fmax=0.02, steps=1000)
-        if not np.all(np.isfinite(atoms.get_positions())):
-            raise ValueError("non-finite positions after quench")
+        finite = (
+            np.all(np.isfinite(atoms.get_positions()))
+            and np.isfinite(atoms.get_potential_energy())
+            and np.all(np.isfinite(atoms.get_forces()))
+        )
+        if not finite:
+            raise ValueError("non-finite positions, energy or forces after quench")
     except Exception as exc:
         warn(
             f"{model_name} melt-quench crashed at density {density:.1f}: {exc!r}; "
@@ -212,6 +217,8 @@ def _run_density(
             stacklevel=2,
         )
         atoms.info["failed"] = True
+        # Single line, as newlines in an info string corrupt the extxyz header
+        atoms.info["failure"] = " ".join(f"{type(exc).__name__}: {exc}".split())
 
     atoms.calc = None
     atoms.info["ref_dft_density"] = np.array(reference["DFT"][0])

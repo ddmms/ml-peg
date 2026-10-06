@@ -235,7 +235,9 @@ def _series_from_mapping(
     mapping: dict[float, float],
 ) -> tuple[list[float], list[float]]:
     """
-    Return density/sp3 lists aligned to the density grid.
+    Return density/sp3 lists for stable runs, aligned to the density grid.
+
+    Failed runs (NaN sp3) are excluded, so they are neither plotted nor scored.
 
     Parameters
     ----------
@@ -245,12 +247,12 @@ def _series_from_mapping(
     Returns
     -------
     tuple[list[float], list[float]]
-        Density values and sp3 percentages aligned to the density grid.
+        Density values and sp3 percentages of stable runs.
     """
     densities: list[float] = []
     sp3: list[float] = []
     for density in DENSITY_GRID:
-        if density in mapping:
+        if density in mapping and np.isfinite(mapping[density]):
             densities.append(density)
             sp3.append(mapping[density])
     return densities, sp3
@@ -262,6 +264,7 @@ def _mae_against_reference(
     """
     Compute MAE against a reference curve at the density grid.
 
+    Only stable runs are compared, as failures are scored by the stability metric.
     Only grid densities within the reference density range are compared, as
     ``np.interp`` would otherwise clamp to the nearest reference end point.
 
@@ -277,13 +280,16 @@ def _mae_against_reference(
     Returns
     -------
     float | None
-        MAE against the reference curve or ``None`` if data are incomplete.
+        MAE against the reference curve, or ``None`` if the run is incomplete or no
+        stable run is within the reference range.
     """
-    densities, predictions = _series_from_mapping(model_series)
-    if len(densities) != len(DENSITY_GRID):
+    if len(model_series) != len(DENSITY_GRID):
         return None
+    densities, predictions = _series_from_mapping(model_series)
     densities = np.asarray(densities)
     in_range = (densities >= ref_density.min()) & (densities <= ref_density.max())
+    if not in_range.any():
+        return None
     ref_interp = np.interp(densities[in_range], ref_density, ref_sp3)
     return float(mae(ref_interp.tolist(), np.asarray(predictions)[in_range].tolist()))
 
@@ -452,6 +458,31 @@ def mae_vs_expt(model_data: dict[str, dict[float, float]]) -> dict[str, float | 
 
 
 @pytest.fixture
+def stable_runs(model_data: dict[str, dict[float, float]]) -> dict[str, float | None]:
+    """
+    Compute the percentage of densities each model completed stably.
+
+    Parameters
+    ----------
+    model_data
+        Mapping model -> {density: sp3_fraction}.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Percentage of stable runs, or ``None`` if not every density was run.
+    """
+    results: dict[str, float | None] = {}
+    for model_name, mapping in model_data.items():
+        if len(mapping) != len(DENSITY_GRID):
+            results[model_name] = None
+            continue
+        n_stable = sum(np.isfinite(sp3) for sp3 in mapping.values())
+        results[model_name] = 100.0 * n_stable / len(DENSITY_GRID)
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "amorphous_carbon_melt_quench_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -461,6 +492,7 @@ def mae_vs_expt(model_data: dict[str, dict[float, float]]) -> dict[str, float | 
 def metrics(
     mae_vs_dft: dict[str, float | None],
     mae_vs_expt: dict[str, float | None],
+    stable_runs: dict[str, float | None],
 ) -> dict[str, dict]:
     """
     Build metrics table entries.
@@ -471,6 +503,8 @@ def metrics(
         MAE values against the DFT reference.
     mae_vs_expt
         MAE values against the experimental reference.
+    stable_runs
+        Percentage of densities completed stably.
 
     Returns
     -------
@@ -480,6 +514,7 @@ def metrics(
     return {
         "MAE vs DFT": mae_vs_dft,
         "MAE vs Expt": mae_vs_expt,
+        "Stable runs": stable_runs,
     }
 
 
