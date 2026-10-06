@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dash import Dash, Input, Output, callback
+from dash import Input, Output, callback
 from dash.html import Div, Iframe
 
 from ml_peg.app import APP_ROOT
@@ -45,7 +45,7 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
         )
         def show_structure(click_data) -> Div:
             """
-            Render a structure/trajectory viewer for the clicked point.
+            Render a structure viewer for the clicked point.
 
             Parameters
             ----------
@@ -63,18 +63,15 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
             struct_path = point.get("customdata")
             if not struct_path:
                 return Div("No structure available for this point.")
-            mode = "traj" if "trajectory_" in str(struct_path) else "struct"
             return Div(
                 Iframe(
                     srcDoc=generate_weas_html(
                         struct_path,
-                        mode=mode,
                         legend_items=[
                             ("sp1 (coord=2)", "green"),
                             ("sp2 (coord=3)", "blue"),
                             ("sp3 (coord=4)", "orange"),
                         ],
-                        show_controls=True,
                         show_bounds=True,
                     ),
                     style={
@@ -111,13 +108,3 @@ def get_app() -> AmorphousCarbonMeltQuenchApp:
         framework_ids="mace-mp",
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent)
-
-    benchmark_app = get_app()
-    full_app.layout = benchmark_app.layout
-    benchmark_app.register_callbacks()
-
-    full_app.run(port=8052, debug=True)
