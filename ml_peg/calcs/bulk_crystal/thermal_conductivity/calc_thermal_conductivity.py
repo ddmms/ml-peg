@@ -21,6 +21,7 @@ import ase
 from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io import read, write
+from ase.optimize import FIRE
 import h5py
 import pandas as pd
 import pytest
@@ -219,7 +220,7 @@ def calc_thermal_conductivity_per_structure(
             else:
                 filtered_atoms = FrechetCellFilter(atoms)
 
-            optimizer = ase.optimize.FIRE(filtered_atoms, logfile=out_dir / "relax.log")
+            optimizer = FIRE(filtered_atoms, logfile=out_dir / "relax.log")
             optimizer.run(fmax=fmax, steps=max_steps)
 
             step_count = getattr(optimizer, "nsteps", None)  # Get optimizer step count
@@ -331,16 +332,8 @@ def calc_thermal_conductivity_per_structure(
                 ph3, temperatures=temperatures, log_level=2
             )
         fast_results_dict = (
-            info_dict | relax_dict | freqs_dict | fast_kappa_dict | err_dict
+            info_dict | relax_dict | freqs_dict | fast_kappa_dict | deepcopy(err_dict)
         )
-
-        if not FAST_ONLY:
-            with tc.tqdm_gridpoints(desc="Conducitivity calc"):
-                ph3.mesh_numbers = atoms.info["q_point_mesh"]
-                ph3, kappa_dict, _cond = tc.calculate_conductivity(
-                    ph3, temperatures=temperatures, log_level=2
-                )
-            results_dict = info_dict | relax_dict | freqs_dict | kappa_dict | err_dict
 
     except (ValueError, RuntimeError, OSError, KeyError) as exc:
         warnings.warn(
@@ -351,5 +344,26 @@ def calc_thermal_conductivity_per_structure(
         err_dict["error_traceback"] += [traceback.format_exc()]
         results_dict = info_dict | relax_dict | freqs_dict | err_dict
         return results_dict, results_dict
+
+    if FAST_ONLY:
+        return fast_results_dict, fast_results_dict
+
+    # A failure on the full mesh must not invalidate a successful fast result.
+    try:
+        with tc.tqdm_gridpoints(desc="Conducitivity calc"):
+            ph3.mesh_numbers = atoms.info["q_point_mesh"]
+            ph3, kappa_dict, _cond = tc.calculate_conductivity(
+                ph3, temperatures=temperatures, log_level=2
+            )
+        results_dict = info_dict | relax_dict | freqs_dict | kappa_dict | err_dict
+    except (ValueError, RuntimeError, OSError, KeyError) as exc:
+        warnings.warn(
+            f"Failed to calculate full-mesh conductivity {mat_id}: {exc!r}",
+            stacklevel=2,
+        )
+        traceback.print_exc()
+        err_dict["errors"] += [f"ConductivityError: {exc!r}"]
+        err_dict["error_traceback"] += [traceback.format_exc()]
+        results_dict = info_dict | relax_dict | freqs_dict | err_dict
 
     return results_dict, fast_results_dict
