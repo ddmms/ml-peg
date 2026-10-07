@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 import functools
 import json
 from json import dump
+from numbers import Real
 from pathlib import Path
 from typing import Any
 import warnings
@@ -176,7 +177,9 @@ def plot_parity(
                     v for mlip in results if mlip != "ref" for v in results[mlip]
                 ]
                 positive = [
-                    v for v in all_vals if isinstance(v, (int, float)) and v > 0
+                    v
+                    for v in all_vals
+                    if isinstance(v, Real) and np.isfinite(v) and v > 0
                 ]
                 lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
             else:
