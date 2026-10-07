@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import math
+from numbers import Real
 from typing import Literal
 
 import dash
@@ -179,7 +181,7 @@ def plot_from_table_cell(
         Nested dictionary of model names, column names, and plot to show.
     table_data
         Optional table data to check for None/missing values. If provided,
-        cells with None values will show "No data available" message.
+        cells with None or NaN values will show "No data available" message.
     """
     register_plot_download_callbacks()
     register_plot_settings_callbacks()
@@ -212,11 +214,18 @@ def plot_from_table_cell(
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
 
-        # Check if cell value is None (no data for this model)
+        # Missing metrics can be None, numeric NaN or the table's "NaN" string.
         if current_table_data and row_index is not None:
             try:
                 cell_value = current_table_data[row_index].get(column_id)
-                if cell_value is None:
+                if (
+                    cell_value is None
+                    or (isinstance(cell_value, Real) and math.isnan(cell_value))
+                    or (
+                        isinstance(cell_value, str)
+                        and cell_value.strip().lower() == "nan"
+                    )
+                ):
                     return Div("No data available for this model."), None
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
