@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING, Any
 
 from yaml import YAMLError, safe_load
 
+from ml_peg.app import APP_ROOT
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-FRAMEWORKS_FILE = Path(__file__).parent / "app" / "utils" / "frameworks.yml"
+FRAMEWORKS_FILE = APP_ROOT / "utils" / "frameworks.yml"
 
 # Width of the citation guidance printed after a benchmark run
 SUMMARY_WIDTH = 79
@@ -67,7 +69,7 @@ class CitationMetadataError(ValueError):
 
 @dataclass(frozen=True)
 class Contributor:
-    """A person who implemented a benchmark in ML-PEG."""
+    """A person who contributed to a benchmark's addition to ML-PEG."""
 
     name: str
     github: str | None = None
@@ -128,14 +130,15 @@ class Citation:
 @dataclass(frozen=True)
 class BenchmarkCredits:
     """
-    Citations and implementation contributors for one benchmark.
+    Citations, implementers, and other contributors for one benchmark.
 
-    Empty ``citations`` or ``contributors`` mean that information has not been added
-    yet, and are shown as placeholders like missing metadata.
+    Empty ``citations`` or ``implementers`` mean that information has not been
+    added yet. Other contributors are optional.
     """
 
     contributors: tuple[Contributor, ...]
     citations: tuple[Citation, ...]
+    implementers: tuple[Contributor, ...] = ()
 
 
 def _mapping(value: Any, location: str) -> Mapping[str, Any]:
@@ -328,13 +331,16 @@ def load_benchmark_credits(path: str | Path) -> BenchmarkCredits:
         raise CitationMetadataError(f"{path}: invalid YAML: {err}") from err
     document = _mapping(raw_document, str(path))
     raw_contributors = document.get("contributors", [])
+    raw_implementers = document.get("implementers", [])
     raw_citations = document.get("citations") or []
     if not isinstance(raw_contributors, list):
         raise CitationMetadataError(f"{path}: contributors must be a list")
+    if not isinstance(raw_implementers, list):
+        raise CitationMetadataError(f"{path}: implementers must be a list")
     if not isinstance(raw_citations, list):
         raise CitationMetadataError(f"{path}: citations must be a list")
 
-    # Implementers are listed alphabetically by surname, unlike citation authors,
+    # Contributors are listed alphabetically by surname, unlike citation authors,
     # whose published order is kept
     contributors = tuple(
         sorted(
@@ -348,6 +354,18 @@ def load_benchmark_credits(path: str | Path) -> BenchmarkCredits:
             ),
         )
     )
+    implementers = tuple(
+        sorted(
+            (
+                _parse_contributor(value, f"{path}: implementers[{index}]")
+                for index, value in enumerate(raw_implementers)
+            ),
+            key=lambda person: (
+                person.name.split()[-1].casefold(),
+                person.name.casefold(),
+            ),
+        )
+    )
     citations = tuple(
         _parse_citation(value, f"{path}: citations[{index}]")
         for index, value in enumerate(raw_citations)
@@ -355,7 +373,9 @@ def load_benchmark_credits(path: str | Path) -> BenchmarkCredits:
     keys = [citation.key for citation in citations]
     if len(keys) != len(set(keys)):
         raise CitationMetadataError(f"{path}: citation keys must be unique")
-    return BenchmarkCredits(contributors=contributors, citations=citations)
+    return BenchmarkCredits(
+        implementers=implementers, contributors=contributors, citations=citations
+    )
 
 
 def load_optional_benchmark_credits(path: str | Path) -> BenchmarkCredits | None:
@@ -592,7 +612,7 @@ def format_citation_summary(
         "",
         *_wrap(
             "Please cite the references below for the benchmarks you ran. "
-            "Implementers are credited for adding each benchmark to ML-PEG.",
+            "Implementers and other contributors are credited separately.",
             "  ",
             "  ",
         ),
@@ -607,16 +627,21 @@ def format_citation_summary(
             contributors = ", ".join(
                 item.name for item in (credits.contributors if credits else ())
             )
-            unfilled_benchmarks += not citations or not contributors
+            implementers = ", ".join(
+                item.name for item in (credits.implementers if credits else ())
+            )
+            unfilled_benchmarks += not citations or not implementers
 
             if index:
                 lines.append("")
-            implemented = (
-                f"implemented by {contributors}"
-                if contributors
+            implementation = (
+                f"implemented by {implementers}"
+                if implementers
                 else "! implementer to be added"
             )
-            lines.extend(_wrap(f"{benchmark}  ({implemented})", "  ", "    "))
+            lines.extend(_wrap(f"{benchmark}  ({implementation})", "  ", "    "))
+            if contributors:
+                lines.extend(_wrap(f"Contributors: {contributors}", "    ", "      "))
             if not citations:
                 lines.append("    ! references to be added")
             # Right-align the numbers, so references start in one column past [9]

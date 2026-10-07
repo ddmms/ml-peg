@@ -1,6 +1,8 @@
-contributors:
+implementers:
   - name: "Anruo Zhong"
     github: "zhonganr"
+
+contributors: []
 
 citations:
   - key: "allera-2025-activation-entropy"

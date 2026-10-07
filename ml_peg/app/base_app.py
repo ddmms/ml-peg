@@ -18,7 +18,7 @@ from ml_peg.app.utils.build_components import build_test_layout
 from ml_peg.app.utils.load import rebuild_table
 from ml_peg.app.utils.utils import normalize_framework_id
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.citations import (
+from ml_peg.utils.citations import (
     CitationMetadataError,
     app_citation_metadata_path,
     load_optional_benchmark_credits,

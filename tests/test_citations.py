@@ -12,14 +12,15 @@ from dash.html import Details, Summary
 import pytest
 from yaml import safe_load
 
-from ml_peg import citations as citations_module
 from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app.utils.build_components import (
     build_benchmark_credit_components,
     build_test_layout,
 )
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.citations import (
+from ml_peg.conftest import CitationReporter
+from ml_peg.utils import citations as citations_module
+from ml_peg.utils.citations import (
     FRAMEWORKS_FILE,
     SUMMARY_WIDTH,
     BenchmarkCredits,
@@ -35,7 +36,6 @@ from ml_peg.citations import (
     load_benchmark_credits,
     load_framework_citations,
 )
-from ml_peg.conftest import CitationReporter
 
 
 def _walk_components(component: Component) -> Iterator[Component]:
@@ -53,7 +53,9 @@ def _write_credits(path: Path, key: str = "source-paper") -> None:
     """Write minimal valid benchmark citation metadata."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        f"""contributors:
+        f"""implementers:
+  - name: Test Implementer
+contributors:
   - name: Test Contributor
 citations:
   - key: {key}
@@ -67,9 +69,11 @@ citations:
 
 
 def _credits(*citations: Citation) -> BenchmarkCredits:
-    """Build benchmark credits with one test implementer."""
+    """Build benchmark credits with separate implementation and other credit."""
     return BenchmarkCredits(
-        contributors=(Contributor("Test Implementer"),), citations=citations
+        implementers=(Contributor("Test Implementer"),),
+        contributors=(Contributor("Test Contributor"),),
+        citations=citations,
     )
 
 
@@ -83,13 +87,14 @@ TEST_CITATION = Citation(
 
 
 def test_load_benchmark_credits(tmp_path: Path) -> None:
-    """Citation metadata preserves publication and implementation credit."""
+    """Citation metadata preserves publication and contributor credit."""
     path = tmp_path / "citations.yml"
     _write_credits(path)
 
     credits = load_benchmark_credits(path)
 
     assert credits.contributors == (Contributor(name="Test Contributor"),)
+    assert credits.implementers == (Contributor(name="Test Implementer"),)
     assert credits.citations[0].title == "Test reference data"
     assert credits.citations[0].role_label == "reference data"
 
@@ -114,20 +119,45 @@ def test_reject_unknown_citation_role(tmp_path: Path) -> None:
         load_benchmark_credits(path)
 
 
-def test_contributors_are_sorted_by_surname(tmp_path: Path) -> None:
-    """Implementers are listed alphabetically by surname, whatever the file order."""
+@pytest.mark.parametrize("role", ["implementers", "contributors"])
+def test_credit_roles_are_sorted_by_surname(tmp_path: Path, role: str) -> None:
+    """Both credit roles are listed by surname, whatever the file order."""
     path = tmp_path / "citations.yml"
     path.write_text(
-        "contributors:\n"
+        f"{role}:\n"
         "  - name: Zoe Adams\n"
         "  - name: Ben Young\n"
         "  - name: Amy Clark\n"
         "citations: []\n"
     )
 
-    names = [item.name for item in load_benchmark_credits(path).contributors]
+    names = [item.name for item in getattr(load_benchmark_credits(path), role)]
 
     assert names == ["Zoe Adams", "Amy Clark", "Ben Young"]
+
+
+def test_invalid_implementer_list_is_a_metadata_error(tmp_path: Path) -> None:
+    """Implementation credit uses the same validated list format as contributors."""
+    path = tmp_path / "citations.yml"
+    path.write_text("implementers: A. Implementer\ncitations: []\n")
+    with pytest.raises(CitationMetadataError, match="implementers must be a list"):
+        load_benchmark_credits(path)
+
+
+def test_other_contributors_are_optional() -> None:
+    """Known implementers and citations are complete without additional contributors."""
+    credits = BenchmarkCredits(
+        implementers=(Contributor("A. Implementer"),),
+        contributors=(),
+        citations=(TEST_CITATION,),
+    )
+    summary = format_citation_summary({"category/test": credits})
+    rendered = str(build_benchmark_credit_components(credits))
+    assert "incomplete" not in summary
+    assert "implemented by A. Implementer" in summary
+    assert "Implemented by: " in rendered
+    assert "Contributors: " not in rendered
+    assert "To be added" not in rendered
 
 
 def test_citation_authors_keep_published_order(tmp_path: Path) -> None:
@@ -307,6 +337,19 @@ def test_repository_framework_citations_are_valid() -> None:
             assert citation.title, label
 
 
+@pytest.mark.parametrize("path", sorted(CALCS_ROOT.glob("*/*/citations.yml")))
+def test_repository_benchmark_citations_are_valid(path: Path) -> None:
+    """Benchmark credit files have a calculation script and valid metadata."""
+    assert list(path.parent.glob("calc_*.py")), path
+    credits = load_benchmark_credits(path)
+    assert credits.implementers, path
+    implementers = {person.name for person in credits.implementers}
+    contributors = {person.name for person in credits.contributors}
+    assert len(implementers) == len(credits.implementers), path
+    assert len(contributors) == len(credits.contributors), path
+    assert implementers.isdisjoint(contributors), path
+
+
 def test_benchmark_runs_print_guidance_without_writing_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -324,22 +367,23 @@ def test_benchmark_runs_print_guidance_without_writing_files(
     assert list(tmp_path.rglob("*")) == []
 
 
-def test_terminal_summary_prints_citations_and_implementers() -> None:
-    """Terminal guidance includes paper authors and implementers."""
+def test_terminal_summary_prints_citations_and_contributors() -> None:
+    """Terminal guidance includes paper authors and contributors."""
     summary = format_citation_summary(
         {"category/test": _credits(TEST_CITATION)},
         missing_benchmarks=("category/other",),
     )
 
     assert "First Author, Second Author (2026). Test source." in summary
-    assert "implemented" in summary
-    assert "Test Implementer" in summary
+    assert "Contributors:" in summary
+    assert "implemented by Test Implementer" in summary
+    assert "Test Contributor" in summary
     assert "BENCHMARKS (2)" in summary
     assert "category/other" in summary
 
 
-def test_implementer_is_separated_from_the_citation() -> None:
-    """The implementer is named beside the benchmark, not in the cited reference."""
+def test_contributor_is_separated_from_the_citation() -> None:
+    """The contributor is named beside the benchmark, not in the cited reference."""
     summary = format_citation_summary({"category/test": _credits(TEST_CITATION)})
     lines = summary.splitlines()
 
@@ -347,8 +391,9 @@ def test_implementer_is_separated_from_the_citation() -> None:
     reference = next(line for line in lines if "First Author" in line)
 
     assert "implemented by Test Implementer" in header
-    # The implementer never shares a line with the work being cited
-    assert "Test Implementer" not in reference
+    assert "Contributors: Test Contributor" in summary
+    # The contributor never shares a line with the work being cited
+    assert "Test Contributor" not in reference
     assert lines.index(header) < lines.index(reference)
 
 
@@ -483,8 +528,8 @@ def test_terminal_summary_does_not_split_names_at_hyphens() -> None:
     assert "mace-\n" not in summary
 
 
-def test_implementer_shown_and_references_collapsed() -> None:
-    """Implementers are always visible, while the references start collapsed."""
+def test_contributor_shown_and_references_collapsed() -> None:
+    """Contributors are always visible, while the references start collapsed."""
     table = DataTable(
         id="credit-test-table",
         columns=[{"id": "MLIP", "name": "MLIP"}, {"id": "Score", "name": "Score"}],
@@ -511,8 +556,12 @@ def test_implementer_shown_and_references_collapsed() -> None:
     collapsed_text = " ".join(str(component) for component in collapsed)
     details = [c for c in _walk_components(layout) if isinstance(c, Details)]
     assert "First Author, Second Author" in collapsed_text
+    assert "Contributors: " in str(layout)
+    assert "Implemented by: " in str(layout)
     assert "Test Implementer" in str(layout)
     assert "Test Implementer" not in collapsed_text
+    assert "Test Contributor" in str(layout)
+    assert "Test Contributor" not in collapsed_text
     # Closed by default, as a benchmark can cite many sources
     assert details and not any(getattr(d, "open", False) for d in details)
 
@@ -601,8 +650,8 @@ def test_citation_links_the_title_and_doi_only() -> None:
     assert str(links[1].children) == "10.1234/example"
 
 
-def test_implementer_links_to_github() -> None:
-    """Implementers with a recorded handle link to their GitHub account."""
+def test_contributor_links_to_github() -> None:
+    """Contributors with a recorded handle link to their GitHub account."""
     credits = BenchmarkCredits(
         contributors=(
             Contributor("Alice Smith", github="asmith"),
@@ -681,11 +730,11 @@ def test_empty_citations_are_shown_as_to_be_added() -> None:
     summary = format_citation_summary({"category/test": _credits()})
 
     assert "Benchmark references: " in rendered
-    # The implementer is known, so the only placeholder is the references
+    # The contributor is known, so the only placeholder is the references
     assert rendered.count("To be added") == 1
     assert "Devised" not in rendered
     assert "! references to be added" in summary
-    assert "Test Implementer" in summary
+    assert "Test Contributor" in summary
     assert "incomplete for 1 benchmark(s)" in " ".join(summary.split())
 
 

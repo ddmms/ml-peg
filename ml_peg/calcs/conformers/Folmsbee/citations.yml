@@ -1,6 +1,12 @@
-contributors:
+implementers:
+  - name: "Joseph Hart"
+    github: "joehart2001"
   - name: "Leon Wehrhan"
     github: "lwehrhan"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "folmsbee-2020-conformers"

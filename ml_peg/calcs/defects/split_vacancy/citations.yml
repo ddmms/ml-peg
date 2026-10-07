@@ -1,6 +1,10 @@
-contributors:
+implementers:
   - name: "Thomas Warford"
     github: "ThomasWarford"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "kavanagh-2025-split-vacancy"

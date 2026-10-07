@@ -1,6 +1,8 @@
-contributors:
+implementers:
   - name: "Tamas Tompa"
     github: "ttompa"
+
+contributors: []
 
 citations:
   - key: "zhang-2023-iron"

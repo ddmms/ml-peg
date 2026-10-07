@@ -1,6 +1,10 @@
-contributors:
+implementers:
   - name: "Joseph Hart"
     github: "joehart2001"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "chiang-2025-mlip-arena"

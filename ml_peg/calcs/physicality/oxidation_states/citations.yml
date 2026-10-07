@@ -1,6 +1,10 @@
-contributors:
+implementers:
   - name: "Panagiotis Kourtis"
     github: "PKourtis"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "kocer-2024-redox"

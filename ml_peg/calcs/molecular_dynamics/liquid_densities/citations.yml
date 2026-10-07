@@ -1,6 +1,10 @@
-contributors:
+implementers:
   - name: "Domantas Kuryla"
     github: "kuryla"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "weber-2025-longrange"

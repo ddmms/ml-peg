@@ -16,6 +16,7 @@ from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
+from ml_peg.app.utils.icons import GITHUB_ICON
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_download_callbacks,
@@ -39,14 +40,14 @@ from ml_peg.app.utils.utils import (
     sig_fig_format,
     weight_input_style,
 )
-from ml_peg.citations import (
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
+from ml_peg.utils.citations import (
     BenchmarkCredits,
     Citation,
     Contributor,
     format_authors,
 )
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
@@ -1440,30 +1441,14 @@ def _credit_line(label: str, value: Component | str, top_margin: str) -> Compone
     )
 
 
-# GitHub mark, inlined so the credit box needs no external request. Used as a CSS mask
-# so its colour follows the light/dark theme
-GITHUB_ICON = (
-    "data:image/svg+xml;charset=utf-8,"
-    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'"
-    "%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17."
-    "55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13"
-    "-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52."
-    "28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02."
-    "08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82"
-    " 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95."
-    "29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8"
-    "c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E"
-)
-
-
 def _contributor(contributor: Contributor) -> list[Component]:
     """
-    Build one implementer's name, linked to their GitHub account where known.
+    Build one contributor's name, linked to their GitHub account where known.
 
     Parameters
     ----------
     contributor
-        Person who implemented the benchmark in ML-PEG.
+        Person who contributed to the benchmark's addition to ML-PEG.
 
     Returns
     -------
@@ -1499,10 +1484,10 @@ def build_benchmark_credit_components(
     credits: BenchmarkCredits | None,
 ) -> Component:
     """
-    Build the benchmark credit box: implementers always shown, references collapsed.
+    Build separate implementation, contributor, and reference credits.
 
-    Missing metadata, or empty ``citations`` or ``contributors``, are shown as "To be
-    added". References are collapsed, as a benchmark can cite many sources.
+    Missing implementers or citations are shown as "To be added". Other contributors
+    are optional. References are collapsed, as a benchmark can cite many sources.
 
     Parameters
     ----------
@@ -1535,19 +1520,22 @@ def build_benchmark_credit_components(
             ]
         )
 
-    contributors = credits.contributors if credits else ()
-    people: list[Component] = []
-    for contributor in contributors:
-        if people:
-            people.append(html.Span(", "))
-        people.extend(_contributor(contributor))
+    credit_lines = []
+    groups = [("Implemented by: ", credits.implementers if credits else ())]
+    if credits and credits.contributors:
+        groups.append(("Contributors: ", credits.contributors))
+    for label, persons in groups:
+        people: list[Component] = []
+        for person in persons:
+            if people:
+                people.append(html.Span(", "))
+            people.extend(_contributor(person))
+        credit_lines.append(
+            _credit_line(label, html.Span(people or "To be added"), "0")
+        )
     return Div(
         [
-            _credit_line(
-                "Implemented by: ",
-                html.Span(people or "To be added"),
-                "0",
-            ),
+            *credit_lines,
             Div(citation_line, style={"marginTop": "8px"}),
         ],
         style={
@@ -1604,7 +1592,7 @@ def build_test_layout(
         Benchmark speed level used to render a cost badge. Default is None, which
         renders no badge.
     credits
-        Benchmark citations and implementation contributors. Default is None.
+        Benchmark citations and benchmark contributors. Default is None.
 
     Returns
     -------

@@ -146,7 +146,7 @@ class CitationReporter:
             return
 
         # Imported here so collection does not pay for loading the citation module
-        from ml_peg.citations import build_run_citations
+        from ml_peg.utils.citations import build_run_citations
 
         framework_ids = {
             framework_id

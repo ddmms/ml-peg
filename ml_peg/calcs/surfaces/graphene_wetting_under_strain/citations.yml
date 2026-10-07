@@ -1,6 +1,12 @@
-contributors:
+implementers:
   - name: "Darren Lim"
     github: "dwl38"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "lim-2026-graphene-wetting"

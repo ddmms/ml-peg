@@ -1,6 +1,12 @@
-contributors:
+implementers:
   - name: "Alexandre Peuch"
     github: "alxdr-peuch"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "angsten-2014-vacancy"

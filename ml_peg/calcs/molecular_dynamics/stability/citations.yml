@@ -1,5 +1,10 @@
-contributors:
+implementers:
   - name: "Leon Wehrhan"
     github: "lwehrhan"
+
+contributors:
+  - name: "Marco Carobene"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations: []

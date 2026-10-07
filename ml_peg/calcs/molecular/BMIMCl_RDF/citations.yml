@@ -1,6 +1,8 @@
-contributors:
+implementers:
   - name: "Fabian Zills"
     github: "PythonFZ"
+
+contributors: []
 
 citations:
   - key: "zills-2025-molify"

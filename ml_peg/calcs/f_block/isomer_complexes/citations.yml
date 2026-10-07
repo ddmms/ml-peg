@@ -1,6 +1,12 @@
-contributors:
+implementers:
   - name: "Ilyes Batatia"
     github: "ilyes319"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 citations:
   - key: "rose-2024-gfn-ff"
