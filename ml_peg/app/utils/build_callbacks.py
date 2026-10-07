@@ -423,8 +423,8 @@ def struct_from_scatter(
     struct_id: str,
     structs: str | list[str] | dict[str, str] | None = None,
     mode: Literal["struct", "traj"] = "struct",
-    struct_template: str | None = None,
     follow_frames: bool | None = None,
+    struct_template: str | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
@@ -453,15 +453,15 @@ def struct_from_scatter(
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
-    struct_template
-        Asset path template containing ``{id}``, filled from the clicked point's
-        ``customdata`` (id-based matching). Default is None.
     follow_frames
         Whether stepping through a WEAS trajectory moves the scatter highlight to
         the point with the same index. If None (default), following is enabled
         only for a single shared trajectory file. This is for e.g. a NEB, whereas a list
         of per-point files, including density-cell structure collections, keeps
         the highlight on the clicked point. Set explicitly to override.
+    struct_template
+        Asset path template containing ``{id}``, filled from the clicked point's
+        ``customdata`` (id-based matching). Default is None.
     """
     if follow_frames is None:
         follow_frames = mode == "traj" and isinstance(structs, str)
