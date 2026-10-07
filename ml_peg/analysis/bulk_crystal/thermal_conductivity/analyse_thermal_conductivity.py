@@ -291,8 +291,14 @@ def _add_missing_error_rows(
     Returns
     -------
     pd.DataFrame
-        Prediction results reindexed to the reference when rows are missing.
+        Prediction results with a raw-conductivity column and any missing rows.
     """
+    # All-failure records can omit this entire column. Supply missing input data
+    # so the existing metric functions apply their established failure penalties.
+    if tc.TCKeys.kappa_tot_rta not in df:
+        df = df.copy()
+        df[tc.TCKeys.kappa_tot_rta] = np.nan
+
     missing = ref_df.index.difference(df.index)
     if len(missing):
         warnings.warn(
