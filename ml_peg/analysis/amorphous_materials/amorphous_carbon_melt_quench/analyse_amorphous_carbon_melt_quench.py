@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from functools import lru_cache
 from pathlib import Path
 
 from ase.io import read, write
@@ -47,9 +48,10 @@ get_struct_info(
 )
 
 
+@lru_cache(maxsize=1)
 def _load_reference() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Load DFT/Expt reference curves embedded in the calc outputs.
+    Load and lazily cache DFT/Expt reference curves embedded in the calc outputs.
 
     Returns
     -------
