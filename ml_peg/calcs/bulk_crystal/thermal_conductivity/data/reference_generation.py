@@ -239,7 +239,9 @@ def scrape_phono3py_data(
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
-                xz_bytes = requests.get(link, timeout=30).content
+                response = requests.get(link, timeout=30)
+                response.raise_for_status()
+                xz_bytes = response.content
                 return lzma.decompress(xz_bytes).decode("utf-8")
             except Exception as exc:
                 last_exc = exc
@@ -323,7 +325,7 @@ for i in pbar:
     if SKIP_EXISTING:
         if FAST_ONLY and os.path.exists(yaml_file.parent / "fast_kappa.hdf5"):
             print(
-                "Skipping {mat_id}: fast_kappa.hdf5 already exists at "
+                f"Skipping {mat_id}: fast_kappa.hdf5 already exists at "
                 f"{yaml_file.parent / 'fast_kappa.hdf5'}"
             )
             continue
@@ -331,7 +333,7 @@ for i in pbar:
             yaml_file.parent / "fast_kappa.hdf5"
         ):
             print(
-                "Skipping {mat_id}: kappa.hdf5 and fast_kappa.hdf5 already exist at "
+                f"Skipping {mat_id}: kappa.hdf5 and fast_kappa.hdf5 already exist at "
                 f"{yaml_file.parent / 'kappa.hdf5'}"
             )
             continue
