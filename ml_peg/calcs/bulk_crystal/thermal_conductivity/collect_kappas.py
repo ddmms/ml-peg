@@ -39,9 +39,13 @@ def collect_kappas(parent_dir: Path, filename_no_ext: str, output_name_no_ext: s
     dicts = tc.load_hdf5_subdir_dicts(parent_dir, filename_no_ext + ".hdf5")
     print("Loading finished.")
 
+    if not dicts:
+        print(f"No {filename_no_ext} data found. Skipping collection.")
+        return
+
     df = pd.DataFrame(dicts).T
     # material_id is already a column, so drop the redundant index.
-    df.reset_index(drop=True).to_json(OUT_PATH / f"{output_name_no_ext}.json.gz")
+    df.reset_index(drop=True).to_json(parent_dir / f"{output_name_no_ext}.json.gz")
     with h5py.File(parent_dir / f"{output_name_no_ext}.hdf5", "w") as f:
         tc.dict_to_hdf5(dicts, f)
 
@@ -56,7 +60,7 @@ for model in models:
 
     if not any(not (d / "fast_kappa.hdf5").exists() for d in subdirs):
         try:
-            collect_kappas(model_dir, "fast_kappa", "fast_kappa")
+            collect_kappas(model_dir, "fast_kappa", "fast_kappas")
         except Exception as exc:
             print(f"Error collecting fast kappas for {model}: {exc}")
     else:
@@ -67,7 +71,7 @@ for model in models:
 
     if not any(not (d / "kappa.hdf5").exists() for d in subdirs):
         try:
-            collect_kappas(model_dir, "kappa", "kappa")
+            collect_kappas(model_dir, "kappa", "kappas")
         except Exception as exc:
             print(f"Error collecting kappas for {model}: {exc}")
     else:
