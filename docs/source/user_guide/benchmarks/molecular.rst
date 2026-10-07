@@ -174,3 +174,60 @@ Input structures:
   Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
   N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654
+
+
+
+BDEs
+====
+
+Summary
+-------
+
+Performance in predicting C-H bond dissociation energies (BDEs) for 60 CYP3A4 drug-like
+substrates (CHO elements only), comprising 1117 sp3 C-H bonds across all molecules.
+
+
+Metrics
+-------
+
+1. Direct BDE
+
+Mean absolute error (MAE) of predicted BDEs against DFT reference values, in kcal/mol.
+
+For each molecule, BDEs are computed as: BDE = E(radical) + E(H) − E(molecule), where
+energies are evaluated on DFT-optimised geometries.
+
+2. BDE rank
+
+Mean Kendall's τ rank correlation of predicted BDE rankings against reference rankings,
+evaluated per molecule and averaged across all 60 compounds.
+
+3. Direct BDE (MLFF opt)
+
+Same as (1), but geometries are first relaxed using the MLFF before evaluating energies.
+
+4. BDE rank (MLFF opt)
+
+Same as (2), but using MLFF-optimised geometries.
+
+
+Computational cost
+------------------
+
+Medium: the DFT geometry tests are fast, but the MLFF geometry optimisation tests may
+take several minutes per model on CPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Gelzinyte, E. et al. Transferable Machine Learning Interatomic Potential for Bond
+  Dissociation Energy Estimation. J. Chem. Theory Comput. 20, 164-177 (2024).
+  DOI: 10.1021/acs.jctc.3c00710
+
+Reference data:
+
+* Same as input data
+* B3LYP-D3BJ/def2-SV(P)
