@@ -18,6 +18,7 @@ Benchmarks
     nebs
     non_covalent_interactions
     physicality
+    superacids
     supramolecular
     surfaces
     tm_complexes
