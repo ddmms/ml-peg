@@ -553,8 +553,8 @@ def calculate_kappa_avg(kappa: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     kappa : np.ndarray
-        Thermal conductivity tensor, typically of shape (..., 3, 3) where
-        the last two dimensions represent the 3x3 conductivity tensor.
+        Thermal conductivity tensor of shape (..., 6) in Phono3py's Voigt
+        order: xx, yy, zz, yz, xz, xy.
         Earlier dimensions may include temperatures or other parameters.
 
     Returns
