@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
-from ase.optimize import GoodOldQuasiNewton
+from ase.optimize.precon import Exp, PreconLBFGS
 import numpy as np
 from pymatgen.core import Structure
 from pymatgen.core.structure_matcher import ElementComparator, StructureMatcher
@@ -149,7 +149,9 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                                 ref_eval_atoms.get_potential_energy()
                             )
 
-                            opt = GoodOldQuasiNewton(atoms, logfile=None)
+                            opt = PreconLBFGS(
+                                atoms, precon=Exp(A=3), maxstep=0.2, logfile=None
+                            )  # optimal Optimiser settings for these relaxations
                             opt.run(fmax=fmax, steps=steps)
                             converged = opt.converged()
 
