@@ -2,9 +2,7 @@ implementers:
   - name: "Elliott Kasoar"
     github: "ElliottKasoar"
 
-contributors:
-  - name: "Joseph Hart"
-    github: "joehart2001"
+contributors: []
 
 citations:
   - key: "morgan-2004-olivine"

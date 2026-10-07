@@ -2,11 +2,7 @@ implementers:
   - name: "William Deng"
     github: "Quantumplations"
 
-contributors:
-  - name: "Joseph Hart"
-    github: "joehart2001"
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "batatia-2024-mace-mp"

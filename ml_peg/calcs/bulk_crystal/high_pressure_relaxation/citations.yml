@@ -2,9 +2,7 @@ implementers:
   - name: "Jonathan Schmidt"
     github: "JonathanSchmidt1"
 
-contributors:
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "loew-2026-pressure"

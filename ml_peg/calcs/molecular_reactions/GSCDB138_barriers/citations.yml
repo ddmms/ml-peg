@@ -1,12 +1,12 @@
 implementers:
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
   - name: "Domantas Kuryla"
     github: "kuryla"
 
 contributors:
   - name: "Joseph Hart"
     github: "joehart2001"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
 
 # TODO: no paper is named in this benchmark's docs. Add its references here.
 citations: []

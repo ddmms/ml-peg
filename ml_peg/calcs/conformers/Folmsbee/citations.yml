@@ -1,12 +1,16 @@
 implementers:
-  - name: "Joseph Hart"
-    github: "joehart2001"
   - name: "Leon Wehrhan"
     github: "lwehrhan"
 
 contributors:
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Joseph Hart"
+    github: "joehart2001"
   - name: "Elliott Kasoar"
     github: "ElliottKasoar"
+  - name: "Lucien Walewski"
+    github: "lwalew"
 
 citations:
   - key: "folmsbee-2020-conformers"

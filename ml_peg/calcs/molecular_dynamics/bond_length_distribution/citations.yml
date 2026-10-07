@@ -2,6 +2,10 @@ implementers:
   - name: "Lucien Walewski"
     github: "lwalew"
 
-contributors: []
+contributors:
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
 
 citations: []

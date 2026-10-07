@@ -2,9 +2,7 @@ implementers:
   - name: "Thomas Warford"
     github: "ThomasWarford"
 
-contributors:
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "tran-2016-surface-energies"

@@ -3,10 +3,10 @@ implementers:
     github: "lwehrhan"
 
 contributors:
-  - name: "Joseph Hart"
-    github: "joehart2001"
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Lucien Walewski"
+    github: "lwalew"
 
 citations:
   - key: "wahl-2020-tautobase"

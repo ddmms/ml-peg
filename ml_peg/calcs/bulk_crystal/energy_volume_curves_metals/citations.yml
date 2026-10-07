@@ -2,9 +2,7 @@ implementers:
   - name: "Petr Grigorev"
     github: "pgrigorev"
 
-contributors:
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "cak-2014-bop"

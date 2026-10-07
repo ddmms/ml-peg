@@ -2,11 +2,7 @@ implementers:
   - name: "Benjamin X. Shi"
     github: "benshi97"
 
-contributors:
-  - name: "Joseph Hart"
-    github: "joehart2001"
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "schmidt-2018-cmr"

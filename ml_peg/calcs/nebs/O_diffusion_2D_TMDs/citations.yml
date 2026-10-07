@@ -2,11 +2,7 @@ implementers:
   - name: "Jad Jaafar"
     github: "Jad-J3far"
 
-contributors:
-  - name: "Joseph Hart"
-    github: "joehart2001"
-  - name: "Elliott Kasoar"
-    github: "ElliottKasoar"
+contributors: []
 
 citations:
   - key: "liu-2015-o-diffusion-tmd"
