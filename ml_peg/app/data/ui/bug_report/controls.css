@@ -1,0 +1,93 @@
+.mlpeg-bug-report-button {
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mlpeg-bug-report {
+  box-sizing: border-box;
+  width: min(720px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius);
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+  font-family: var(--font-sans);
+  overflow: auto;
+}
+
+.mlpeg-bug-report::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.mlpeg-bug-report h2 { margin: 0 0 8px; }
+.mlpeg-bug-report p { font-size: 13px; line-height: 1.5; }
+.mlpeg-bug-report label { display: block; margin: 14px 0 5px; font-size: 13px; }
+.mlpeg-bug-report input[type="text"],
+.mlpeg-bug-report textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink);
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+}
+.mlpeg-bug-report textarea { min-height: 70px; resize: vertical; }
+.mlpeg-bug-report button {
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: 5px;
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink);
+}
+.mlpeg-bug-report button:disabled { opacity: 0.55; cursor: wait; }
+.mlpeg-bug-report .bug-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mlpeg-bug-report button[type="submit"] {
+  background: var(--mlpeg-accent-strong);
+  color: white;
+  margin-left: auto;
+}
+.mlpeg-bug-report canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--mlpeg-border);
+  touch-action: none;
+  cursor: crosshair;
+}
+.mlpeg-bug-report pre {
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow: auto;
+}
+.mlpeg-bug-report summary { cursor: pointer; font-size: 13px; margin-top: 12px; }
+.mlpeg-bug-report [hidden] { display: none; }
+.mlpeg-bug-report .bug-report-status { color: var(--mlpeg-ink-2); }
+
+@media (max-width: 768px) {
+  .mlpeg-bug-report { padding: 16px; }
+  .mlpeg-bug-report-button { padding: 6px 8px; font-size: 0; }
+  .mlpeg-bug-report-button::before { content: "🐞"; font-size: 16px; }
+  .mlpeg-bug-report input[type="text"], .mlpeg-bug-report textarea { font-size: 16px; }
+}

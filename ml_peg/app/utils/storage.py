@@ -13,6 +13,7 @@ from dash import Input, Output, clientside_callback
 from dash.html import Div
 
 from ml_peg import __version__
+from ml_peg.app.utils.bug_report import build_bug_report_button
 from ml_peg.app.utils.onboarding import build_tutorial_button
 from ml_peg.app.utils.settings import build_settings_panel
 
@@ -84,6 +85,7 @@ def build_header_controls() -> Div:
         [
             build_settings_panel(),
             build_tutorial_button(),
+            build_bug_report_button(),
             Div(id="clear-storage-dummy", style={"display": "none"}),
             Div(id="theme-apply-dummy", style={"display": "none"}),
             Div(id="zoom-apply-dummy", style={"display": "none"}),
