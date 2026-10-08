@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -67,16 +67,6 @@ REF_BARRIERS_KCAL = {
     rxn_id: barrier * EV_TO_KCAL for rxn_id, barrier in REF_BARRIERS_EV.items()
 }
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    sort_key=lambda path: int(path.stem.removeprefix("crbh20_")),
-    index=0,
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
-
 
 @pytest.fixture
 @plot_parity(
@@ -115,11 +105,6 @@ def reaction_barriers() -> dict[str, list]:
             structs = read(xyz_file, index=":")
             reactant = structs[0]
             results[model_name].append(reactant.info.get("barrier_kcal", np.nan))
-
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"crbh20_{rxn_id}.xyz", structs)
 
     return results
 
@@ -185,3 +170,12 @@ def test_crbh20_analysis(metrics: dict[str, dict]) -> None:
     """
     assert metrics is not None
     assert "MAE" in metrics
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        sort_key=lambda path: int(path.stem.removeprefix("crbh20_")),
+        index=0,
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

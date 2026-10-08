@@ -141,6 +141,7 @@ def conformer_energies(analyze_results) -> dict[str, list]:
     for model_name in MODELS:
         benchmark, result = analyze_results[model_name]
         if benchmark is None or result is None:
+            results[model_name] = [np.nan] * len(labels())
             continue
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
@@ -159,15 +160,18 @@ def conformer_energies(analyze_results) -> dict[str, list]:
             if not ref_stored:
                 results["ref"].append(float(molecule.reference_energy_profile[i]))
 
-            # Write structures for app
-            data_mol = data_by_name[mol_name]
-            atoms = Atoms(
-                symbols=data_mol.atom_symbols,
-                positions=data_mol.conformer_coordinates[i],
-            )
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
+            if not ref_stored:
+                # Write structures for app. Conformers are defined by the
+                # dataset, so are the same for all models
+                data_mol = data_by_name[mol_name]
+                atoms = Atoms(
+                    symbols=data_mol.atom_symbols,
+                    positions=data_mol.conformer_coordinates[i],
+                )
+                structs_dir = OUT_PATH / "mock"
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{label}.xyz", atoms)
+
         ref_stored = True
     return results
 

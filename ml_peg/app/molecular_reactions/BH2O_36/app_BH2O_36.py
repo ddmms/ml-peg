@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "BH2O-36"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#bh2o-36"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "BH2O_36"
@@ -31,28 +28,23 @@ class BH2O36App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            # Get system names from trajectory files
-            labels = sorted(
-                {
-                    f.stem.replace("_rct_to_ts", "")
-                    for f in sorted(model_dir.glob("*_rct_to_ts.xyz"))
-                }
-            )
-            asset_prefix = f"/assets/molecular_reactions/BH2O_36/{MODELS[0]}/"
-            # Each system has 2 data points:
-            # TS-Reactants (rct->TS), TS-Products (pro->TS)
-            structs = [
-                path
-                for label in labels
-                for path in [
-                    f"{asset_prefix}{label}_rct_to_ts.xyz",
-                    f"{asset_prefix}{label}_pro_to_ts.xyz",
-                ]
+        structs_dir = DATA_PATH / "mock"
+        # Get system names from trajectory files
+        labels = sorted(
+            f.stem.replace("_rct_to_ts", "")
+            for f in structs_dir.glob("*_rct_to_ts.xyz")
+        )
+        asset_prefix = "/assets/molecular_reactions/BH2O_36/mock/"
+        # Each system has 2 data points:
+        # TS-Reactants (rct->TS), TS-Products (pro->TS)
+        structs = [
+            path
+            for label in labels
+            for path in [
+                f"{asset_prefix}{label}_rct_to_ts.xyz",
+                f"{asset_prefix}{label}_pro_to_ts.xyz",
             ]
-        else:
-            structs = []
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,

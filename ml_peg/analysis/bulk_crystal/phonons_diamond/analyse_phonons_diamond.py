@@ -39,15 +39,6 @@ METRIC_LABEL_KAPPA = "Δκ_L (W/m/K)"
 METRICS_YML = Path(__file__).with_name("metrics.yml")
 THRESHOLDS, METRIC_TOOLTIPS, WEIGHTS = load_metrics_config(METRICS_YML)
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-    model_name="DFT",
-)
-
 
 def _load_pickle(path: Path) -> Any | None:
     """
@@ -367,3 +358,11 @@ def test_phonons_diamond_analysis(
     table_path = OUT_PATH / "phonons_diamond_bands_table.json"
     assert table_path.exists()
     assert SCATTER_FILENAME.exists()
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+        model_name="DFT",
+    )
