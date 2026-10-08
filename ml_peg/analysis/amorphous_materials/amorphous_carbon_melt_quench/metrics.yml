@@ -15,7 +15,7 @@ metrics:
     weight: 0
   Stable runs:
     good: 100.0
-    bad: 90.0
+    bad: 60.0
     unit: "%"
     tooltip: Percentage of densities whose melt-quench completed without crashing or producing non-finite values
     level_of_theory: null

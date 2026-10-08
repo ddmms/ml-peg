@@ -33,6 +33,8 @@ grid densities within the reference density range.
 
 Percentage of densities whose melt-quench completed without crashing or producing
 non-finite positions, energies or forces.
+The default good threshold is 100% and the bad threshold is 60%, giving a normalised
+stability score of 1 for five completed densities, 0.5 for four, and 0 for three or fewer.
 
 Both MAEs are computed over stable runs only, so a run that fails is penalised by
 this metric rather than by the MAEs.
