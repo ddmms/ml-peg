@@ -8,6 +8,7 @@ implementers:
 contributors:
   - name: "Elliott Kasoar"
     github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
   - key: "dejong-2015-elasticity"

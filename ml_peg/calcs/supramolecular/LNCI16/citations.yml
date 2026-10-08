@@ -6,6 +6,7 @@ implementers:
 contributors:
   - name: "Elliott Kasoar"
     github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
   - key: "gorges-2023-lnci16"
