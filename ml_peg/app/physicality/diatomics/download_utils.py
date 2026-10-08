@@ -221,6 +221,7 @@ def register_data_download_callbacks(
                     model_name=model_name,
                     element_value=element_value,
                     overview_label=overview_label,
+                    dpi=300,
                 )
             except PreventUpdate:
                 return no_update, no_data_message

@@ -99,8 +99,8 @@ def get_app() -> DiatomicsApp:
                     "toImageButtonOptions": {
                         "format": "png",
                         "filename": "diatomics",
-                        "width": 12000,
-                        "height": 6000,
+                        "width": 9000,
+                        "height": 4500,
                         "scale": 1,
                     },
                 },
