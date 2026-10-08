@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -88,9 +88,6 @@ def interaction_energies() -> dict[str, list]:
     results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-
         for label in INFO["filenames"]:
             struct_path = CALC_PATH / model_name / f"{label}.xyz"
             if not struct_path.exists():
@@ -99,9 +96,6 @@ def interaction_energies() -> dict[str, list]:
 
             atoms = read(struct_path, index=0)
             results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
-
-            # Write structures for app
-            write(structs_dir / f"{label}.xyz", atoms)
 
     return results
 

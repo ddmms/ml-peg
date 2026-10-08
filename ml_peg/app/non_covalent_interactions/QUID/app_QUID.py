@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "QUID"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#quid"
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "QUID"
