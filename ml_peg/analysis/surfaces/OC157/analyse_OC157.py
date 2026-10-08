@@ -32,7 +32,7 @@ INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
     index=":",
-    info_keys=["composition"],
+    info_keys=["composition", "ref_energy"],
     include_filenames=True,
     write_info=True,
     write_structs=True,
@@ -63,7 +63,14 @@ def get_relative_energies(energies: list) -> list:
     ]
 
 
-LABELS = ["E_2 - E_1", "E_3 - E_2", "E_3 - E_2"] * N_SYSTEMS
+LABELS = ["E_2 - E_1", "E_3 - E_1", "E_3 - E_2"] * N_SYSTEMS
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [
+    energy
+    for system in range(N_SYSTEMS)
+    for energy in get_relative_energies(INFO["ref_energy"][3 * system : 3 * system + 3])
+]
 
 
 @pytest.fixture
@@ -86,12 +93,11 @@ def relative_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted relative energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
+
     for model_name in MODELS:
-        for system_path in [
-            CALC_PATH / model_name / f"{filename}.xyz" for filename in INFO["filenames"]
-        ]:
+        for filename in INFO["filenames"]:
+            system_path = CALC_PATH / model_name / f"{filename}.xyz"
             if not system_path.exists():
                 results[model_name].extend([float("nan")] * 3)
                 continue
@@ -100,15 +106,6 @@ def relative_energies() -> dict[str, list]:
             pred_energies = [atoms.get_potential_energy() for atoms in structs]
             results[model_name].extend(get_relative_energies(pred_energies))
 
-            if not ref_stored:
-                ref_energies = [atoms.info["ref_energy"] for atoms in structs]
-                results["ref"].extend(get_relative_energies(ref_energies))
-
-        if not ref_stored:
-            if len(results["ref"]) == 3 * N_SYSTEMS:
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 
@@ -129,12 +126,9 @@ def oc157_mae(relative_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if len(relative_energies[model_name]) == len(relative_energies["ref"]):
-            results[model_name] = mae(
-                relative_energies["ref"], relative_energies[model_name]
-            )
-        else:
-            results[model_name] = float("nan")
+        results[model_name] = mae(
+            relative_energies["ref"], relative_energies[model_name]
+        )
     return results
 
 
@@ -162,6 +156,10 @@ def ranking_error(relative_energies: dict[str, list]) -> dict[str, float]:
         ref_max.append(np.argmax(ref_energies))
 
     for model_name in MODELS:
+        if np.isnan(np.sum(relative_energies[model_name])):
+            results[model_name] = float("nan")
+            continue
+
         pred_min = []
         pred_max = []
         for i in range(len(relative_energies[model_name]) // 3):

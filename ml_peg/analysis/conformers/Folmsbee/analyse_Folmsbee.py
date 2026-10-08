@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 import json
 from pathlib import Path
 
@@ -42,6 +43,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
+@cache
 def labels() -> list[str]:
     """
     Get list of system names.

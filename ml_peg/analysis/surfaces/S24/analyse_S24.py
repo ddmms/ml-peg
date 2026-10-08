@@ -30,12 +30,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PAT
 # Extract system metadata from mock calculation
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
-    info_keys=["system_name", "sys_id"],
+    info_keys=["system_name", "sys_id", "ref_adsorption_energy"],
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
     include_filenames=True,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = SYSTEM_INFO["ref_adsorption_energy"]
 
 
 def compute_adsorption_energy(
@@ -81,18 +84,13 @@ def adsorption_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted adsorption energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            results[model_name].append(float("nan"))
-            continue
 
-        for system_path in [
-            model_dir / f"{filename}.xyz" for filename in SYSTEM_INFO["filenames"]
-        ]:
+        for filename in SYSTEM_INFO["filenames"]:
+            system_path = model_dir / f"{filename}.xyz"
             if not system_path.exists():
                 results[model_name].append(float("nan"))
                 continue
@@ -100,18 +98,8 @@ def adsorption_energies() -> dict[str, list]:
             mol_surface = read(system_path)
 
             # Get pre-calculated adsorption energies
-            pred_ads_energy = mol_surface.info["adsorption_energy"]
-            results[model_name].append(pred_ads_energy)
+            results[model_name].append(mol_surface.info["adsorption_energy"])
 
-            if not ref_stored:
-                ref_ads_energy = mol_surface.info["ref_adsorption_energy"]
-                results["ref"].append(ref_ads_energy)
-
-        if not ref_stored:
-            if len(results["ref"]) == len(SYSTEM_INFO["system_name"]):
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 

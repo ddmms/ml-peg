@@ -40,11 +40,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
+    info_keys=["ref_rel_energy"],
     include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_rel_energy"]]
 
 
 @pytest.fixture
@@ -66,8 +70,7 @@ def conformer_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for label in INFO["filenames"]:
@@ -77,14 +80,7 @@ def conformer_energies() -> dict[str, list]:
                 continue
             atoms = read(struct_path)
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_rel_energy"] * EV_TO_KCAL)
 
-        if not ref_stored:
-            if len(results["ref"]) == len(INFO["filenames"]):
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 

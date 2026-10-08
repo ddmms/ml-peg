@@ -82,10 +82,19 @@ LABELS = [f"{i}_AB" for i in range(1, 18)] + ["18", "19"]
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
+    info_keys=["ref_int_energy"],
+    include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete.
+# Reference energies are shared by all species in a system
+REF_INT_ENERGIES = dict(zip(INFO["filenames"], INFO["ref_int_energy"], strict=True))
+REF_ENERGIES = [
+    REF_INT_ENERGIES[species[0]] * EV_TO_KCAL for species in SPECIES.values()
+]
 
 
 @pytest.fixture
@@ -107,32 +116,21 @@ def conformer_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        for system in range(1, 20):
+        for system in SPECIES:
             model_int_energy = 0
-            for spec, stoic in zip(SPECIES[system], STOICH[system], strict=False):
-                label = spec
+            for label, stoic in zip(SPECIES[system], STOICH[system], strict=True):
                 struct_path = CALC_PATH / model_name / f"{label}.xyz"
                 if not struct_path.exists():
                     model_int_energy = float("nan")
-                    ref_int_energy = float("nan")
                     break
                 atoms = read(struct_path)
                 model_int_energy += atoms.info["model_energy"] * stoic
-                ref_int_energy = atoms.info["ref_int_energy"]
 
             results[model_name].append(model_int_energy * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(ref_int_energy * EV_TO_KCAL)
 
-        if not ref_stored:
-            if len(results["ref"]) == 19:
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 

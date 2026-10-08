@@ -85,7 +85,12 @@ def adsorption_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*.xyz")):
+        for label in SYSTEM_INFO["filenames"]:
+            system_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not system_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
             structs = read(system_path, index=":")
 
             surface, mol_surface, molecule = structs

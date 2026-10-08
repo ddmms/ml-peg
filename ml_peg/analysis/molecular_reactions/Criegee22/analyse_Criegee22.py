@@ -74,12 +74,12 @@ def barrier_heights() -> dict[str, list]:
             continue
 
         for label in INFO["filenames"]:
-            structs_dir = model_dir / f"{label}.xyz"
-            if not structs_dir.exists():
+            struct_path = model_dir / f"{label}.xyz"
+            if not struct_path.exists():
                 results[model_name].append(float("nan"))
                 continue
 
-            structs = read(structs_dir, index=":")
+            structs = read(struct_path, index=":")
             results[model_name].append(
                 (structs[1].info["model_energy"] - structs[0].info["model_energy"])
                 * EV_TO_KCAL

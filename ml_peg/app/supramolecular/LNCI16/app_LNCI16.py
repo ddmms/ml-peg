@@ -11,11 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "LNCI16"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/supramolecular.html#lnci16"
@@ -35,9 +31,11 @@ class LNCI16App(BaseApp):
         )
 
         # Assets dir will be parent directory - individual files for each system
+        # Sorted to match the order systems are plotted in during analysis
+        structs_dir = DATA_PATH / "mock"
         structs = [
-            f"/assets/supramolecular/LNCI16/{MODELS[0]}/{i}.xyz"
-            for i in range(16)  # LNCI16 has 16 systems
+            f"/assets/supramolecular/LNCI16/mock/{struct_file.name}"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
         plot_from_table_column(
