@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+import re
 import textwrap
 from typing import TYPE_CHECKING, Any
 
@@ -73,6 +74,7 @@ class Contributor:
 
     name: str
     github: str | None = None
+    email: str | None = None
 
 
 @dataclass(frozen=True)
@@ -270,9 +272,15 @@ def _parse_contributor(value: Any, location: str) -> Contributor:
         The parsed contributor.
     """
     item = _mapping(value, location)
+    email = _optional_string(item.get("email"), f"{location}.email")
+    if email is not None and not re.fullmatch(
+        r"[^\s@<>:]+@[^\s@<>:]+\.[^\s@<>:]+", email
+    ):
+        raise CitationMetadataError(f"{location}.email must be a plain email address")
     return Contributor(
         name=_non_empty_string(item.get("name"), f"{location}.name"),
         github=_optional_string(item.get("github"), f"{location}.github"),
+        email=email,
     )
 
 
@@ -577,6 +585,26 @@ def _citation_lines(citation: Citation, indent: str, number: str = "") -> list[s
     return [line.replace(NBSP, " ") for line in lines]
 
 
+def _credit_names(people: Iterable[Contributor]) -> str:
+    """
+    Join credited names with optional email contact details.
+
+    Parameters
+    ----------
+    people
+        Benchmark implementers or contributors.
+
+    Returns
+    -------
+    str
+        Names and any recorded email addresses.
+    """
+    return ", ".join(
+        f"{person.name} <{person.email}>" if person.email else person.name
+        for person in people
+    )
+
+
 def format_citation_summary(
     benchmarks: Mapping[str, BenchmarkCredits],
     missing_benchmarks: Iterable[str] = (),
@@ -623,12 +651,8 @@ def format_citation_summary(
         for index, benchmark in enumerate(names):
             credits = benchmarks.get(benchmark)
             citations = credits.citations if credits else ()
-            contributors = ", ".join(
-                item.name for item in (credits.contributors if credits else ())
-            )
-            implementers = ", ".join(
-                item.name for item in (credits.implementers if credits else ())
-            )
+            contributors = _credit_names(credits.contributors if credits else ())
+            implementers = _credit_names(credits.implementers if credits else ())
             unfilled_benchmarks += not citations or not implementers
 
             if index:

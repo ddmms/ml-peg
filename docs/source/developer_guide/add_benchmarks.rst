@@ -75,10 +75,12 @@ Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
     implementers:          # who wrote the ML-PEG benchmark implementation
       - name: A. Implementer
         github: aimplementer
+        email: aimplementer@example.org  # optional
 
     contributors:          # other substantive contributions to the benchmark
       - name: A. Contributor
         github: acontributor
+        email: acontributor@example.org  # optional
 
     citations:             # what a user of this benchmark must cite
       - key: author-2025-benchmark
@@ -90,6 +92,11 @@ Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
         year: 2025
         doi: 10.1234/example
         url: https://example.org/benchmark
+
+``github`` and ``email`` are optional for both credit groups. Use a GitHub handle
+and a plain email address, such as ``name@example.org``, rather than a profile
+URL or ``mailto:`` URL. Either contact field may be omitted or ``null``. Email
+contacts appear as links in the app and beside names in the terminal citation guidance.
 
 ``implementers`` lists the people who wrote the ML-PEG calculation, analysis, or
 app implementation. ``contributors`` lists other substantive contributions,

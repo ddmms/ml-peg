@@ -13,10 +13,8 @@ import pytest
 from yaml import safe_load
 
 from ml_peg.analysis import ANALYSIS_ROOT
-from ml_peg.app.utils.build_components import (
-    build_benchmark_credit_components,
-    build_test_layout,
-)
+from ml_peg.app.utils.build_components import build_test_layout
+from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.conftest import CitationReporter
 from ml_peg.utils import citations as citations_module
@@ -97,6 +95,67 @@ def test_load_benchmark_credits(tmp_path: Path) -> None:
     assert credits.implementers == (Contributor(name="Test Implementer"),)
     assert credits.citations[0].title == "Test reference data"
     assert credits.citations[0].role_label == "reference data"
+
+
+@pytest.mark.parametrize("credit_role", ["implementers", "contributors"])
+@pytest.mark.parametrize("github", [None, "asmith"])
+def test_email_contacts_load_and_render(
+    tmp_path: Path, credit_role: str, github: str | None
+) -> None:
+    """Both credit groups support email with or without a GitHub account."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        f"{credit_role}:\n"
+        "  - name: Alice Smith\n"
+        f"    github: {github or 'null'}\n"
+        "    email: alice+benchmarks@example.org\n"
+        "citations: []\n"
+    )
+    credits = load_benchmark_credits(path)
+    person = getattr(credits, credit_role)[0]
+    assert person == Contributor(
+        "Alice Smith", github=github, email="alice+benchmarks@example.org"
+    )
+    rendered = build_benchmark_credit_components(credits)
+    links = [
+        component
+        for component in _walk_components(rendered)
+        if type(component).__name__ == "A"
+    ]
+    expected = (["https://github.com/asmith"] if github else []) + [
+        "mailto:alice+benchmarks@example.org"
+    ]
+    assert [link.href for link in links] == expected
+    assert links[-1].title == person.email
+    assert "Alice Smith <alice+benchmarks@example.org>" in " ".join(
+        format_citation_summary({"category/test": credits}).split()
+    )
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "''",
+        "42",
+        "alice",
+        "'Alice <alice@example.org>'",
+        "'alice@ example.org'",
+        "'mailto:alice@example.org'",
+    ],
+)
+def test_invalid_email_contacts_are_metadata_errors(tmp_path: Path, email: str) -> None:
+    """Email metadata requires a plain address, with a useful field location."""
+    path = tmp_path / "citations.yml"
+    path.write_text(f"contributors:\n  - name: Alice\n    email: {email}\n")
+    with pytest.raises(CitationMetadataError, match=r"contributors\[0\].email"):
+        load_benchmark_credits(path)
+
+
+def test_email_contacts_can_be_null(tmp_path: Path) -> None:
+    """Null email is treated like an omitted optional field."""
+    path = tmp_path / "citations.yml"
+    path.write_text("contributors:\n  - name: Alice\n    email: null\n")
+    assert load_benchmark_credits(path).contributors == (Contributor("Alice"),)
 
 
 def test_reject_duplicate_citation_keys(tmp_path: Path) -> None:
@@ -678,6 +737,7 @@ def test_contributor_links_to_github() -> None:
     ]
 
     assert [link.href for link in links] == ["https://github.com/asmith"]
+    assert "Alice Smith" in str(links[0].children)
     # The icon is inlined, so the credit box makes no external request
     assert "data:image/svg+xml" in str(rendered)
     assert "Alice Smith" in str(rendered)
