@@ -10,6 +10,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    get_struct_info,
     load_metrics_config,
     mae,
     sample_density_grid,
@@ -188,4 +189,11 @@ def test_qmof(metrics: dict[str, dict], qmof_density: dict[str, dict]) -> None:
     qmof_density
         Density scatter data for QMOF energies.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="qmof_valid_structures.extxyz",
+        info_keys=["qmof_id"],
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )
