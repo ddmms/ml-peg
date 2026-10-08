@@ -32,11 +32,11 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
 
         # Assets dir will be parent directory
         structs = [
-            f"/assets/surfaces/elemental_slab_oxygen_adsorption/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/surfaces/elemental_slab_oxygen_adsorption/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -50,7 +50,7 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
             structs=structs,
-            mode="traj",
+            mode="struct",
         )
 
 

@@ -68,9 +68,18 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in INFO["filenames"]:
-            structs = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            results[model_name] = [float("nan")] * len(INFO["filenames"])
+            continue
 
+        for label in INFO["filenames"]:
+            structs_dir = model_dir / f"{label}.xyz"
+            if not structs_dir.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            structs = read(structs_dir, index=":")
             results[model_name].append(
                 (structs[1].info["model_energy"] - structs[0].info["model_energy"])
                 * EV_TO_KCAL
@@ -85,7 +94,12 @@ def barrier_heights() -> dict[str, list]:
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}_rct.xyz", structs)
-        ref_stored = True
+
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 
