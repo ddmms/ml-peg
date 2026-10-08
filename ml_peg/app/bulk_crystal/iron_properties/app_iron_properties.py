@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import plot_from_table_cell
 from ml_peg.app.utils.plot_helpers import figure_from_dict
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -22,6 +23,13 @@ DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "iron_properties"
 FIGURES_PATH = DATA_PATH / "figures"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/bulk_crystal.html#iron-properties"
 INFO_PATH = DATA_PATH / "info.json"
+BREAKDOWN_FILES = {
+    "Score": "breakdown_score.json",
+    "Bulk response": "breakdown_bulk_response.json",
+    "Defect & phase energetics": "breakdown_defect_and_phase_energetics.json",
+    "Slip": "breakdown_slip.json",
+    "Cleavage": "breakdown_cleavage.json",
+}
 
 
 def _load_figure(model_name: str, curve_type: str) -> go.Figure | None:
@@ -54,6 +62,26 @@ class IronPropertiesApp(BaseApp):
         model_dropdown_id = f"{BENCHMARK_NAME}-model-dropdown"
         curve_dropdown_id = f"{BENCHMARK_NAME}-curve-dropdown"
         figure_id = f"{BENCHMARK_NAME}-figure"
+
+        cell_to_plot = {}
+        for model_name in MODELS:
+            plots = {}
+            for column, filename in BREAKDOWN_FILES.items():
+                figure_path = FIGURES_PATH / model_name / filename
+                if not figure_path.exists():
+                    continue
+                plots[column] = dcc.Graph(
+                    id=f"{BENCHMARK_NAME}-{model_name}-{column}-breakdown",
+                    figure=figure_from_dict(json.loads(figure_path.read_text())),
+                )
+            if plots:
+                cell_to_plot[model_name] = plots
+
+        plot_from_table_cell(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-breakdown-placeholder",
+            cell_to_plot=cell_to_plot,
+        )
 
         @callback(
             Output(figure_id, "figure"),
@@ -112,6 +140,7 @@ def get_app() -> IronPropertiesApp:
     default_model = model_options[0]["value"] if model_options else None
 
     extra_components = [
+        Div(id=f"{BENCHMARK_NAME}-breakdown-placeholder"),
         Div(
             [
                 Label("Select model for curve visualization:"),
@@ -157,7 +186,9 @@ def get_app() -> IronPropertiesApp:
             "vacancy formation energy, surface energies (100, 110, 111, 112), "
             "generalized stacking fault energy curves for {110}<111> and "
             "{112}<111> slip systems, and traction-separation curves for (100) "
-            "and (110) cleavage planes."
+            "and (110) cleavage planes. Results are grouped into bulk response, "
+            "defect and phase energetics, slip, and cleavage scores. Select a table "
+            "cell for its component breakdown."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "iron_properties_metrics_table.json",
