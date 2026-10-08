@@ -13,6 +13,7 @@ from dash.exceptions import PreventUpdate
 from ml_peg.app.physicality.diatomics.curve_utils import (
     load_model_curves,
     render_periodic_curve_gallery_png,
+    render_periodic_curve_gallery_svg,
 )
 
 
@@ -184,7 +185,7 @@ def register_data_download_callbacks(
         n_clicks
             Number of times the download button has been clicked.
         download_format
-            Chosen export format (``csv``, ``json`` or ``png``).
+            Chosen export format (``csv``, ``json``, ``png`` or ``svg``).
         model_name
             Name of the currently selected model.
         element_value
@@ -202,6 +203,17 @@ def register_data_download_callbacks(
         no_data_message = "No curve data for this selection."
         stem = _safe_filename_stem(model_name, element_value, overview_label)
         fmt = (download_format or "csv").lower()
+        if fmt == "svg":
+            try:
+                svg_bytes = render_periodic_curve_gallery_svg(
+                    curve_dir=curve_path,
+                    model_name=model_name,
+                    element_value=element_value,
+                    overview_label=overview_label,
+                )
+            except PreventUpdate:
+                return no_update, no_data_message
+            return dcc.send_bytes(svg_bytes, f"{stem}.svg", type="image/svg+xml"), ""
         if fmt == "png":
             try:
                 png_bytes, _width, _height = render_periodic_curve_gallery_png(

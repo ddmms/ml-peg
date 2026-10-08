@@ -89,7 +89,7 @@ def get_app() -> DiatomicsApp:
         ),
         build_data_download_controls(
             DATA_DOWNLOAD_ID,
-            formats=(("CSV", "csv"), ("JSON", "json"), ("PNG", "png")),
+            formats=(("CSV", "csv"), ("JSON", "json"), ("PNG", "png"), ("SVG", "svg")),
         ),
         Loading(
             dcc.Graph(

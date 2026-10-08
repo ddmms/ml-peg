@@ -7,6 +7,7 @@ import io
 import json
 import math
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dash import Input, Output, callback
 from dash.exceptions import PreventUpdate
@@ -19,6 +20,9 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_ROWS,
 )
 from ml_peg.app.utils.plot_export import bytes_to_data_uri, figure_to_bytes
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
 
 
 def load_model_curves(
@@ -77,14 +81,13 @@ def load_model_curves(
     return selected_element, filtered
 
 
-def render_periodic_curve_gallery_png(
+def _build_periodic_curve_gallery(
     *,
     curve_dir: str | Path,
     model_name: str,
     element_value: str | None,
     overview_label: str,
-    dpi: int = 600,
-) -> tuple[bytes, float, float]:
+) -> Figure:
     """
     Draw the periodic-table grid of diatomic curves for one model and view.
 
@@ -98,13 +101,11 @@ def render_periodic_curve_gallery_png(
         Current dropdown choice: the overview label, or an element symbol.
     overview_label
         The dropdown value that means "show the homonuclear overview".
-    dpi
-        Resolution of the rendered image, in dots per inch.
 
     Returns
     -------
-    tuple[bytes, float, float]
-        The PNG image bytes, and the image's width and height in pixels.
+    Figure
+        Matplotlib figure containing the selected curves. The caller must close it.
     """
     selected_element, filtered = load_model_curves(
         curve_dir, model_name, element_value, overview_label
@@ -174,10 +175,88 @@ def render_periodic_curve_gallery_png(
         else f"Homonuclear diatomics: {model_name}"
     )
     fig.suptitle(title, fontsize=32, fontweight="bold")
-    png_bytes = figure_to_bytes(fig, "png", dpi=dpi)
-    width, height = fig.get_size_inches() * dpi
-    plt.close(fig)
-    return png_bytes, float(width), float(height)
+    return fig
+
+
+def render_periodic_curve_gallery_png(
+    *,
+    curve_dir: str | Path,
+    model_name: str,
+    element_value: str | None,
+    overview_label: str,
+    dpi: int = 600,
+) -> tuple[bytes, float, float]:
+    """
+    Render the selected diatomic curves as a PNG image.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory holding one subfolder of curve files per model.
+    model_name
+        Name of the model to plot.
+    element_value
+        Current dropdown choice: the overview label, or an element symbol.
+    overview_label
+        The dropdown value that means "show the homonuclear overview".
+    dpi
+        Resolution of the rendered image, in dots per inch.
+
+    Returns
+    -------
+    tuple[bytes, float, float]
+        The PNG image bytes, and the image's width and height in pixels.
+    """
+    fig = _build_periodic_curve_gallery(
+        curve_dir=curve_dir,
+        model_name=model_name,
+        element_value=element_value,
+        overview_label=overview_label,
+    )
+    try:
+        png_bytes = figure_to_bytes(fig, "png", dpi=dpi)
+        width, height = fig.get_size_inches() * dpi
+        return png_bytes, float(width), float(height)
+    finally:
+        plt.close(fig)
+
+
+def render_periodic_curve_gallery_svg(
+    *,
+    curve_dir: str | Path,
+    model_name: str,
+    element_value: str | None,
+    overview_label: str,
+) -> bytes:
+    """
+    Render the selected diatomic curves as a vector SVG image.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory holding one subfolder of curve files per model.
+    model_name
+        Name of the model to plot.
+    element_value
+        Current dropdown choice: the overview label, or an element symbol.
+    overview_label
+        The dropdown value that means "show the homonuclear overview".
+
+    Returns
+    -------
+    bytes
+        SVG image bytes containing vector curves and labels.
+    """
+    fig = _build_periodic_curve_gallery(
+        curve_dir=curve_dir,
+        model_name=model_name,
+        element_value=element_value,
+        overview_label=overview_label,
+    )
+    try:
+        return figure_to_bytes(fig, "svg")
+    finally:
+        plt.close(fig)
 
 
 def register_image_gallery_callbacks(
