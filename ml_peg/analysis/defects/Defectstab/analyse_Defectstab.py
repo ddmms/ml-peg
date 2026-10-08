@@ -5,7 +5,7 @@ from __future__ import annotations
 import collections
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -30,7 +30,7 @@ INFO = get_struct_info(
     info_keys=["system", "subset", "ref"],
     include_filenames=True,
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     out_path=OUT_PATH,
 )
 
@@ -144,11 +144,6 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
                     "ref": ref_val,
                 }
             )
-
-            # Copy structure to output for App
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / xyz_file.name, atoms)
 
     return results
 

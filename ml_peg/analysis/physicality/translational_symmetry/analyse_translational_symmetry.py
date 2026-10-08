@@ -36,14 +36,6 @@ EV_TO_MEV = 1000
 EXPECTED_STRUCTS = sorted(STRUCTURES)
 N_STRUCTURES = len(EXPECTED_STRUCTS)
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
-
 
 def struct_deltas(
     model_name: str, struct_name: str
@@ -320,4 +312,10 @@ def test_translational_symmetry(
     structure_breakdown
         Triggers per-structure energy and force plot generation.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

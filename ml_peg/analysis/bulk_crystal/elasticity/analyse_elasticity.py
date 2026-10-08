@@ -45,13 +45,6 @@ G_COLUMN = "G_vrh"
 E_TENSOR_COLUMN = "elastic_tensor"
 SYMMETRY_COLUMN = "crystal_system"
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="relaxed_structures.extxyz",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
 
 # Sources:
 # Physical Properties of Crystals: An Introduction (pp 215)
@@ -685,4 +678,10 @@ def test_elasticity(
     density_trajectories
         Writes density-scatter trajectory files for WEAS structure viewing.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="relaxed_structures.extxyz",
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )

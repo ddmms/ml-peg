@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -29,7 +29,7 @@ EV_TO_KCAL = units.mol / units.kcal
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     include_filenames=True,
     out_path=OUT_PATH,
 )
@@ -99,9 +99,6 @@ def isomer_relative_energies() -> dict[str, list]:
 
                 pred_energies.append(atoms.info.get("model_energy") * EV_TO_KCAL)
                 ref_energies.append(atoms.info.get("ref_energy") * EV_TO_KCAL)
-
-                # Copy structure to app directory
-                write(structs_dir / f"{system}_{isomer}.xyz", atoms)
 
             # Compute relative energies
             min_pred_energy = min(pred_energies)

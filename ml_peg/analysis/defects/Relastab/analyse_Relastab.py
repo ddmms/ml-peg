@@ -5,7 +5,7 @@ from __future__ import annotations
 import collections
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 from scipy.stats import spearmanr
@@ -78,11 +78,6 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
                     "ref": ref_energy,
                 }
             )
-
-            # Copy structure to output for App
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / xyz_file.name, atoms)
 
     return results
 

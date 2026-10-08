@@ -15,11 +15,8 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
 # --- Configuration ---
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "CRBH20 Reaction Barriers"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
@@ -60,16 +57,9 @@ class CRBH20App(BaseApp):
         )
 
         # 2. Setup Structure Visualization
-        # We pick the first available model to source the structures from
-        # (Since all models have the same geometry for the reactant/TS generally)
-        # Note: We loop through MODELS to find one that actually exists in your data
-        valid_model = MODELS[0]
-        for m in MODELS:
-            if (DATA_PATH / m).exists():
-                valid_model = m
-                break
-
-        structs_dir = DATA_PATH / valid_model
+        # Structures come from the mock calculation, which is always complete
+        # (all models have the same geometry for the reactant/TS)
+        structs_dir = DATA_PATH / "mock"
 
         # We must sort these numerically (1, 2, ... 10)
         # so they align with the plot points
@@ -77,9 +67,7 @@ class CRBH20App(BaseApp):
 
         # Dash Asset Paths: The 'assets' folder is mounted at APP_ROOT/data
         # So we construct the URL path starting from there.
-        structs = [
-            f"/assets/molecular_reactions/CRBH20/{valid_model}/{f.name}" for f in files
-        ]
+        structs = [f"/assets/molecular_reactions/CRBH20/mock/{f.name}" for f in files]
 
         # 3. Link Table Rows to the Plot
         plot_from_table_column(

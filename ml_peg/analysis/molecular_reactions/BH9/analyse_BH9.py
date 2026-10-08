@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -122,10 +122,6 @@ def barrier_heights() -> dict[str, list]:
             model_forward_barrier = 0
             ref_forward_barrier = 0
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-
             struct_path = model_dir / f"{system_name}.xyz"
             if not struct_path.exists():
                 results[model_name].append(float("nan"))
@@ -137,8 +133,6 @@ def barrier_heights() -> dict[str, list]:
                 model_forward_barrier -= struct.info["model_energy"]
 
             ref_forward_barrier = atoms[0].info["ref_forward_barrier"]
-
-            write(structs_dir / f"{system_name}.xyz", atoms)
 
             results[model_name].append(model_forward_barrier * EV_TO_KCAL)
             if not ref_stored:

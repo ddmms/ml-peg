@@ -39,17 +39,6 @@ M_ETOH = 46.06844  # g/mol
 
 OUT_PATH.mkdir(parents=True, exist_ok=True)
 
-# Save per-composition elemental info (and composition dir labels) for app filtering.
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/*.traj",
-    index=0,
-    write_info=True,
-    write_structs=False,  # all files are "mock.traj", flat write would collide
-    out_path=OUT_PATH,
-    include_dirs=True,
-)
-
 
 def weight_to_mole_fraction(w):
     r"""
@@ -550,4 +539,13 @@ def test_ethanol_water_density(metrics: dict[str, dict], curve_plots: None) -> N
     None
         The test validates fixture execution and writes artifacts.
     """
-    return
+    # Save per-composition elemental info (and dir labels) for app filtering
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*/*.traj",
+        index=0,
+        write_info=True,
+        write_structs=False,  # all files are "mock.traj", flat write would collide
+        out_path=OUT_PATH,
+        include_dirs=True,
+    )

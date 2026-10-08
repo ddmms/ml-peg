@@ -48,7 +48,7 @@ INFO = get_struct_info(
     glob_pattern="*_forward.xyz",
     include_filenames=True,
     write_info=True,
-    write_structs=True,
+    write_structs=False,
     out_path=OUT_PATH,
 )
 
@@ -86,8 +86,6 @@ def barrier_heights() -> dict[str, list]:
         if not model_dir.exists():
             results[model_name] = [float("nan")] * len(LABELS) * 2
             continue
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
 
         for label in LABELS:
             for direction in ("forward", "reverse"):
@@ -106,9 +104,6 @@ def barrier_heights() -> dict[str, list]:
                     results["ref"].append(
                         atoms[-1].info[f"ref_{direction}_bh"] * EV_TO_KCAL
                     )
-
-                # Write structures for app
-                write(structs_dir / f"{label}_{direction}.xyz", atoms)
 
         if not ref_stored:
             if len(results["ref"]) == len(INFO["filenames"]) * 2:
@@ -174,4 +169,10 @@ def test_cyclo70_barriers(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
-    return
+    # Write structures from the mock calculation for the app
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for label in LABELS:
+        for direction in ("forward", "reverse"):
+            atoms = read(CALC_PATH / "mock" / f"{label}_{direction}.xyz", index=":")
+            write(structs_dir / f"{label}_{direction}.xyz", atoms)

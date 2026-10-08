@@ -115,29 +115,6 @@ def barrier_heights() -> dict[str, list]:
                     / units.kcal
                 )
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-
-            # Write individual structures
-            write(structs_dir / f"{system_name}_rct.xyz", atoms_rct)
-            write(structs_dir / f"{system_name}_pro.xyz", atoms_pro)
-            write(structs_dir / f"{system_name}_ts.xyz", atoms_ts)
-
-            # Write trajectory files for each barrier type
-            # TS-Reactants barrier: reactants -> TS
-            write(
-                structs_dir / f"{system_name}_rct_to_ts.xyz",
-                [atoms_rct, atoms_ts],
-                append=False,
-            )
-            # TS-Products barrier: products -> TS
-            write(
-                structs_dir / f"{system_name}_pro_to_ts.xyz",
-                [atoms_pro, atoms_ts],
-                append=False,
-            )
-
         if not ref_stored:
             if len(results["ref"]) == len(INFO["filenames"]) * 2:
                 ref_stored = True
@@ -203,4 +180,14 @@ def test_bh2o_36_barriers(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
-    return
+    # Write structures from the mock calculation for the app
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for system_name in SYSTEM_NAMES:
+        atoms_rct = read(CALC_PATH / "mock" / f"{system_name}_rct.xyz")
+        atoms_pro = read(CALC_PATH / "mock" / f"{system_name}_pro.xyz")
+        atoms_ts = read(CALC_PATH / "mock" / f"{system_name}_ts.xyz")
+
+        # Trajectory for each barrier type: reactants -> TS and products -> TS
+        write(structs_dir / f"{system_name}_rct_to_ts.xyz", [atoms_rct, atoms_ts])
+        write(structs_dir / f"{system_name}_pro_to_ts.xyz", [atoms_pro, atoms_ts])
