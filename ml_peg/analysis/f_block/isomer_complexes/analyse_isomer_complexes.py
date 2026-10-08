@@ -87,9 +87,6 @@ def isomer_relative_energies() -> dict[str, list]:
             results[model_name] = [None] * total
             continue
 
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-
         for system in LABELS:
             pred_energies = []
             ref_energies = []

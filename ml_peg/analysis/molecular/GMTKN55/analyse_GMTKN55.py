@@ -52,6 +52,8 @@ INFO = get_struct_info(
             or struct.info["spin"] not in ALLOWED_MULTIPLICITY
             for struct in structs
         ),
+        # Reference value is shared by all structures in a system
+        "ref_value": lambda structs: structs[0].info["ref_value"],
     },
     write_info=True,
     write_structs=False,
@@ -67,6 +69,9 @@ INFO["systems"] = INFO["system_name"]
 # Weight is shared by all systems in a subset
 INFO["weights"] = dict(zip(INFO["dirs"], INFO["weight"], strict=True))
 INFO["counts"] = Counter(INFO["dirs"])
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = INFO["ref_value"]
 
 _CATEGORY_LABELS = {
     "Basic properties and reaction energies for small systems": "Small systems",
@@ -101,8 +106,7 @@ def rel_energies() -> dict[str, list[float]]:
     dict[str, list[float]]
         Dictionary of all reference and predicted relative energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
     systems = list(zip(INFO["dirs"], INFO["filenames"], strict=True))
 
     for model_name in MODELS:
@@ -120,17 +124,6 @@ def rel_energies() -> dict[str, list[float]]:
                 pred_rel_energy += struct.get_potential_energy() * struct.info["count"]
 
             results[model_name].append(pred_rel_energy * EV_TO_KCAL_PER_MOL)
-
-            # Only store reference results from first model with all systems
-            # Shared by all structures in a system, so can use last structure
-            if not ref_stored:
-                results["ref"].append(struct.info["ref_value"])
-
-        if not ref_stored:
-            if len(results["ref"]) == len(systems):
-                ref_stored = True
-            else:
-                results["ref"] = []
 
     return results
 
@@ -150,17 +143,11 @@ def all_errors(rel_energies: dict[str, list[float]]) -> dict[str, list[float]]:
     dict[str, list[float]]
         Dictionary of relative MADs, grouped by model.
     """
-    n_systems = len(INFO["filenames"])
-
     errors = {}
     for model_name in MODELS:
-        # Errors must match INFO to allow filtering by excluded systems
-        if len(rel_energies["ref"]) == n_systems == len(rel_energies[model_name]):
-            errors[model_name] = np.abs(
-                np.subtract(rel_energies[model_name], rel_energies["ref"])
-            )
-        else:
-            errors[model_name] = np.full(n_systems, np.nan)
+        errors[model_name] = np.abs(
+            np.subtract(rel_energies[model_name], rel_energies["ref"])
+        )
     return errors
 
 
