@@ -198,13 +198,12 @@ def test_read_property_from_log(tmp_path):
     volume, units = read_property_from_log(
         log_file,
         "volume",
-        skip_time_ps=0.0,
     )
 
     assert np.allclose(volume, [2496.3, 2480.9, 2505.6, 2490.2])
 
 
-def test_analyse_liquid(tmp_path, monkeypatch):
+def test_analyse_liquid(tmp_path):
     """
     Test analysing thermodynamic properties from a log.
 
@@ -225,18 +224,13 @@ def test_analyse_liquid(tmp_path, monkeypatch):
     write_test_log(log_file_liq, "liq")
     log_file_gas = tmp_path / "test-gas.log"
     write_test_log(log_file_gas, "gas")
-    monkeypatch.setattr(
-        "ml_peg.analysis.molecular_dynamics.thermodynamic_properties.utils."
-        "detect_equilibration_time",
-        lambda *args, **kwargs: 0.0,
-    )
     results = analyse_liquid(
         log_file_liq=log_file_liq,
         log_file_gas=log_file_gas,
         temperature=300.0,
         pressure=1.0,
         n_molecules=128,
-        skip_time_ps=0.0,
+        equil_time_ps=0.0,
         block_size=2,
     )
 
@@ -297,11 +291,7 @@ def test_log_md_matches_analysis_reader(tmp_path, caplog):
     }
 
     for property_name in ["Epot", "volume", "density"]:
-        values, unit = read_property_from_log(
-            log_file,
-            property_name,
-            skip_time_ps=0.0,
-        )
+        values, unit = read_property_from_log(log_file, property_name)
         assert np.isclose(values[0], expected[property_name][0])
         assert len(values) == 1
         assert np.isfinite(values[0])

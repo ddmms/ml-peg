@@ -62,7 +62,6 @@ PROPERTIES = {
 def read_property_from_log(
     fname: Path,
     property_name: str,
-    skip_time_ps: float = 0.0,
 ) -> tuple[np.ndarray, str | None]:
     """
     Read a property time series and unit from a log file.
@@ -73,15 +72,11 @@ def read_property_from_log(
         Path to the log file.
     property_name
         Name of the property to extract from the log.
-    skip_time_ps
-        Initial time to discard, in ps. Values recorded before this time are ignored.
-        Note that the code will still use only the frames after the equilbration time,
-        which is estimated internally.
 
     Returns
     -------
     np.ndarray
-        Property values recorded after the equilibration time.
+        Property values recorded.
     str | None
         Unit associated with the property.
     """
@@ -106,13 +101,11 @@ def read_property_from_log(
 
             except (ValueError, IndexError):
                 continue
-
-            if time_ps >= skip_time_ps:
-                values.append(value)
+            values.append(value)
     return np.asarray(values), unit
 
 
-def detect_equilibration_time(energy, density, time_ps, block_size=100):
+def detect_equilibration_time(energy, density, time_ps, block_size):
     """
     Detect equilibration time using the RED window method.
 
@@ -145,15 +138,11 @@ def detect_equilibration_time(energy, density, time_ps, block_size=100):
     if n < 2:
         raise ValueError("Trajectory is too short for equilibration detection.")
 
-    energy_block = energy[:n * block_size].reshape(n, block_size).mean(axis=1)
-    density_block = density[:n * block_size].reshape(n, block_size).mean(axis=1)
+    energy_block = energy[: n * block_size].reshape(n, block_size).mean(axis=1)
+    density_block = density[: n * block_size].reshape(n, block_size).mean(axis=1)
 
-    energy_cut, _, _ = red.detect_equilibration_window(
-        energy_block, method="min_sse"
-    )
-    density_cut, _, _ = red.detect_equilibration_window(
-        density_block, method="min_sse"
-    )
+    energy_cut, _, _ = red.detect_equilibration_window(energy_block, method="min_sse")
+    density_cut, _, _ = red.detect_equilibration_window(density_block, method="min_sse")
 
     energy_ps = float(time_ps[int(energy_cut) * block_size])
     density_ps = float(time_ps[int(density_cut) * block_size])
@@ -174,7 +163,7 @@ def analyse_liquid(
     temperature: float,
     pressure: float,
     n_molecules: int,
-    skip_time_ps: float,
+    equil_time_ps: float | None,
     block_size: int,
 ) -> dict[str, tuple[float, float]]:
     """
@@ -192,8 +181,8 @@ def analyse_liquid(
         Simulation pressure in bar.
     n_molecules
         Number of molecules in the liquid simulation cell.
-    skip_time_ps
-        Initial length of trajectory, in ps, to be disregarded.
+    equil_time_ps
+        Discard frames after this time, or estimate if None.
     block_size
         Number of logged samples in each statistical block.
 
@@ -205,37 +194,35 @@ def analyse_liquid(
     time_series, time_units = read_property_from_log(
         log_file_liq,
         "t",
-        skip_time_ps=skip_time_ps,
     )
     density_series, density_units = read_property_from_log(
         log_file_liq,
         "density",
-        skip_time_ps=skip_time_ps,
     )
     volume_series, volume_units = read_property_from_log(
         log_file_liq,
         "volume",
-        skip_time_ps=skip_time_ps,
     )
     pot_energy_series, pot_energy_units = read_property_from_log(
         log_file_liq,
         "Epot",
-        skip_time_ps=skip_time_ps,
     )
     kin_energy_series, kin_energy_units = read_property_from_log(
         log_file_liq,
         "Ekin",
-        skip_time_ps=skip_time_ps,
     )
     pot_energy_series_gas, pot_energy_units_gas = read_property_from_log(
         log_file_gas,
         "Epot",
-        skip_time_ps=skip_time_ps,
     )
 
-    teq_ps = detect_equilibration_time(
-        pot_energy_series, density_series, time_series, block_size=100
-    )
+    if equil_time_ps is None:
+        teq_ps = detect_equilibration_time(
+            pot_energy_series, density_series, time_series, block_size=100
+        )
+    else:
+        teq_ps = equil_time_ps
+
     teq = int(np.argwhere(time_series >= teq_ps)[0, 0])
 
     return {
@@ -309,7 +296,7 @@ def analyse_thermodynamic_properties(
     calc_path,
     out_path,
     block_size,
-    skip_time_ps,
+    equil_time_ps,
 ):
     """
     Analyse thermodynamic properties for all selected models and systems.
@@ -326,8 +313,8 @@ def analyse_thermodynamic_properties(
         Path where analysed structures and results are written.
     block_size
         Size of blocks used for statistical error estimation.
-    skip_time_ps
-        Initial simulation time, in ps, excluded from the analysis.
+    equil_time_ps
+        Discard frames after this time, or estimate if None.
 
     Returns
     -------
@@ -399,7 +386,7 @@ def analyse_thermodynamic_properties(
                 pressure=atoms.info["exp_pressure"],
                 n_molecules=atoms.info["n_molecules"],
                 block_size=block_size,
-                skip_time_ps=skip_time_ps,
+                equil_time_ps=equil_time_ps,
             )
 
             for property_name, (value, stderr) in calculated.items():
@@ -678,7 +665,7 @@ def thermodynamic_properties_factory(models, info, calc_path, out_path):
     @pytest.fixture
     def thermodynamic_properties(
         block_size: int,
-        skip_time_ps: float,
+        equil_time_ps: float,
     ) -> dict[str, dict]:
         """
         Analyse thermodynamic properties for all systems and models.
@@ -687,9 +674,8 @@ def thermodynamic_properties_factory(models, info, calc_path, out_path):
         ----------
         block_size
             The size of blocks used for error estimate.
-        skip_time_ps
-            The initial time (in ps) that is skipped in
-            the analysis.
+        equil_time_ps
+            Discard frames after this time, or estimate if None.
 
         Returns
         -------
@@ -702,7 +688,7 @@ def thermodynamic_properties_factory(models, info, calc_path, out_path):
             calc_path=calc_path,
             out_path=out_path,
             block_size=block_size,
-            skip_time_ps=skip_time_ps,
+            equil_time_ps=equil_time_ps,
         )
 
     return thermodynamic_properties

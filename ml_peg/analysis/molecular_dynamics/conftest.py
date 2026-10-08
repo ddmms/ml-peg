@@ -38,7 +38,7 @@ def block_size(request) -> int:
 
 
 @pytest.fixture
-def skip_time_ps(request) -> float:
+def equil_time_ps(request) -> float:
     """
     Return the skipped time in ps.
 
