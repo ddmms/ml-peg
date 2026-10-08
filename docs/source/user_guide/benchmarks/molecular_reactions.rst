@@ -40,7 +40,7 @@ Input structures:
 Reference data:
 
 * Same as input data
-* DFT (r2SCAN)
+* DFT (PBE+D3, Becke-Johnson damping)
 
 
 Tautomers
