@@ -59,50 +59,56 @@ PROPERTIES = {
 }
 
 
-def read_property_from_log(
+def read_properties_from_log(
     fname: Path,
-    property_name: str,
-) -> tuple[np.ndarray, str | None]:
+    property_names: list[str],
+) -> tuple[dict[str, np.ndarray], dict[str, str | None]]:
     """
-    Read a property time series and unit from a log file.
+    Read multiple property time series and their units from a log file.
 
     Parameters
     ----------
     fname
         Path to the log file.
-    property_name
-        Name of the property to extract from the log.
+    property_names
+        Names of the properties to extract.
 
     Returns
     -------
-    np.ndarray
-        Property values recorded.
-    str | None
-        Unit associated with the property.
+    dict[str, np.ndarray]
+        Property names mapped to arrays of recorded values.
+    dict[str, str | None]
+        Property names mapped to their units.
     """
-    values = []
-    unit = None
-    last_time_ps = -1.0
+    values = {name: [] for name in property_names}
+    units = dict.fromkeys(property_names)
+    last_time_ps = -np.inf
+
     with open(fname) as lines:
         for line in lines:
-            items = line.strip().split()
-            try:
-                time_index = items.index("t:")
-                property_index = items.index(f"{property_name}:")
+            items = line.split()
+            indices = {
+                item[:-1]: i for i, item in enumerate(items) if item.endswith(":")
+            }
 
-                time_ps = float(items[time_index + 1])
+            try:
+                time_ps = float(items[indices["t"] + 1])
                 if time_ps <= last_time_ps:
                     continue
-                last_time_ps = time_ps
-                value = float(items[property_index + 1])
 
-                if property_index + 2 < len(items):
-                    unit = items[property_index + 2]
-
-            except (ValueError, IndexError):
+                row = {name: float(items[indices[name] + 1]) for name in property_names}
+            except (KeyError, ValueError, IndexError):
                 continue
-            values.append(value)
-    return np.asarray(values), unit
+
+            last_time_ps = time_ps
+
+            for name, value in row.items():
+                values[name].append(value)
+                i = indices[name] + 2
+                if i < len(items) and not items[i].endswith(":"):
+                    units[name] = items[i]
+
+    return {name: np.asarray(v) for name, v in values.items()}, units
 
 
 def detect_equilibration_time(energy, density, time_ps, block_size):
@@ -191,30 +197,24 @@ def analyse_liquid(
     dict[str, tuple[float, float]]
         Mean and standard error for each thermodynamic observable.
     """
-    time_series, time_units = read_property_from_log(
+    liq_values, liq_units = read_properties_from_log(
         log_file_liq,
-        "t",
+        ["t", "density", "volume", "Epot", "Ekin"],
     )
-    density_series, density_units = read_property_from_log(
-        log_file_liq,
-        "density",
-    )
-    volume_series, volume_units = read_property_from_log(
-        log_file_liq,
-        "volume",
-    )
-    pot_energy_series, pot_energy_units = read_property_from_log(
-        log_file_liq,
-        "Epot",
-    )
-    kin_energy_series, kin_energy_units = read_property_from_log(
-        log_file_liq,
-        "Ekin",
-    )
-    pot_energy_series_gas, pot_energy_units_gas = read_property_from_log(
+
+    gas_values, gas_units = read_properties_from_log(
         log_file_gas,
-        "Epot",
+        ["Epot"],
     )
+
+    time_series = liq_values["t"]
+    density_series = liq_values["density"]
+    volume_series = liq_values["volume"]
+    pot_energy_series = liq_values["Epot"]
+    kin_energy_series = liq_values["Ekin"]
+
+    pot_energy_series_gas = gas_values["Epot"]
+
     if equil_time_ps is None:
         teq_ps = detect_equilibration_time(
             pot_energy_series, density_series, time_series, block_size=100
