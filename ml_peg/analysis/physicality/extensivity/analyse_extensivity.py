@@ -95,7 +95,7 @@ def test_extensivity(metrics: dict[str, dict]) -> None:
     get_struct_info(
         calc_path=CALC_PATH,
         glob_pattern="slabs.xyz",
-        write_info=False,
+        write_info=True,
         write_structs=True,
         out_path=OUT_PATH,
         index=0,

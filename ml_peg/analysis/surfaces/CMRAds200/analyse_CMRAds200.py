@@ -31,15 +31,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PAT
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="mol_surface_structs.extxyz",
-    info_keys=["sys_formula"],
+    info_keys=["sys_formula", "PBE_adsorption_energy"],
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
-    include_filenames=True,
 )
 
 
 LABELS = SYSTEM_INFO["sys_formula"]
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = SYSTEM_INFO["PBE_adsorption_energy"]
 
 
 @pytest.fixture
@@ -61,31 +63,24 @@ def adsorption_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted adsorption energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            results[model_name] = []
+        struct_path = CALC_PATH / model_name / "mol_surface_structs.extxyz"
+        if not struct_path.exists():
+            results[model_name] = [float("nan")] * len(LABELS)
             continue
 
-        mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
+        mol_surface_list = read(struct_path, index=":")
+        if len(mol_surface_list) != len(LABELS):
+            # Systems cannot be matched to the reference, so all results are discarded
+            results[model_name] = [float("nan")] * len(LABELS)
+            continue
+
         for mol_surface in mol_surface_list:
             # Get pre-calculated adsorption energies
-            pred_ads_energy = mol_surface.info["pred_adsorption_energy"]
-            results[model_name].append(pred_ads_energy)
+            results[model_name].append(mol_surface.info["pred_adsorption_energy"])
 
-            if not ref_stored:
-                ref_ads_energy = mol_surface.info["PBE_adsorption_energy"]
-                results["ref"].append(ref_ads_energy)
-
-        if not ref_stored:
-            if len(results["ref"]) == len(SYSTEM_INFO["sys_formula"]):
-                ref_stored = True
-            else:
-                results["ref"] = []
-        ref_stored = True
     return results
 
 
@@ -106,12 +101,9 @@ def cmrads_mae(adsorption_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if len(adsorption_energies[model_name]) == len(adsorption_energies["ref"]):
-            results[model_name] = mae(
-                adsorption_energies["ref"], adsorption_energies[model_name]
-            )
-        else:
-            results[model_name] = float("nan")
+        results[model_name] = mae(
+            adsorption_energies["ref"], adsorption_energies[model_name]
+        )
     return results
 
 

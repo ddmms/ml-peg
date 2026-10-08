@@ -106,7 +106,7 @@ def rel_energies() -> dict[str, list[float]]:
     systems = list(zip(INFO["dirs"], INFO["filenames"], strict=True))
 
     for model_name in MODELS:
-        for count, (subset, label) in enumerate(systems):
+        for subset, label in systems:
             system_path = CALC_PATH / model_name / subset / f"{label}.xyz"
             if not system_path.exists():
                 results[model_name].append(float("nan"))
@@ -125,11 +125,6 @@ def rel_energies() -> dict[str, list[float]]:
             # Shared by all structures in a system, so can use last structure
             if not ref_stored:
                 results["ref"].append(struct.info["ref_value"])
-
-            # Write out all structs in system for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{count}.xyz", structs)
 
         if not ref_stored:
             if len(results["ref"]) == len(systems):
@@ -346,4 +341,11 @@ def test_gmtkn55(metrics):
     metrics
         All GMTKN55 metrics.
     """
-    return
+    # Write out structures from the mock calculation for the app
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for count, (subset, label) in enumerate(
+        zip(INFO["dirs"], INFO["filenames"], strict=True)
+    ):
+        structs = read(CALC_PATH / "mock" / subset / f"{label}.xyz", index=":")
+        write(structs_dir / f"{count}.xyz", structs)

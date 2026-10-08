@@ -71,10 +71,20 @@ LABELS = list(range(1, 29))
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
+    info_keys=["ref_ionization_energy"],
+    include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_IONIZATION_ENERGIES = dict(
+    zip(INFO["filenames"], INFO["ref_ionization_energy"], strict=True)
+)
+REF_ENERGIES = [
+    REF_IONIZATION_ENERGIES[str(complex_id)] * EV_TO_KCAL for complex_id in LABELS
+]
 
 
 @pytest.fixture
@@ -96,8 +106,7 @@ def ionization_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for complex_id in LABELS:
@@ -107,17 +116,10 @@ def ionization_energies() -> dict[str, list]:
                 continue
 
             atoms = read(struct_path)
-            model_ion_energy = atoms.info["model_ionization_energy"]
-            ref_ion_energy = atoms.info["ref_ionization_energy"]
-            results[model_name].append(model_ion_energy * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(ref_ion_energy * EV_TO_KCAL)
+            results[model_name].append(
+                atoms.info["model_ionization_energy"] * EV_TO_KCAL
+            )
 
-        if not ref_stored:
-            if len(results["ref"]) == len(LABELS):
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 
