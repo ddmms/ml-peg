@@ -15,7 +15,7 @@ def pytest_addoption(parser):
         Pytest command-line option parser.
     """
     parser.addoption("--block-size", action="store", default=100, type=int)
-    parser.addoption("--skip-time-ps", action="store", default=0.0, type=float)
+    parser.addoption("--equil-time-ps", action="store", default=None, type=float)
     parser.addoption("--detailed-results", action="store_true", default=False)
 
 
@@ -52,7 +52,7 @@ def equil_time_ps(request) -> float:
     float
         The skipped time in ps.
     """
-    return request.config.getoption("--skip-time-ps")
+    return request.config.getoption("--equil-time-ps")
 
 
 @pytest.fixture

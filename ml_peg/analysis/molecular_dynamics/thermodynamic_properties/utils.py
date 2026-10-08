@@ -215,7 +215,6 @@ def analyse_liquid(
         log_file_gas,
         "Epot",
     )
-
     if equil_time_ps is None:
         teq_ps = detect_equilibration_time(
             pot_energy_series, density_series, time_series, block_size=100
@@ -665,7 +664,7 @@ def thermodynamic_properties_factory(models, info, calc_path, out_path):
     @pytest.fixture
     def thermodynamic_properties(
         block_size: int,
-        equil_time_ps: float,
+        equil_time_ps: float | None,
     ) -> dict[str, dict]:
         """
         Analyse thermodynamic properties for all systems and models.
