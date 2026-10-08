@@ -11,7 +11,9 @@ from ml_peg.app.molecular_dynamics.thermodynamic_properties.utils import (
 
 BENCHMARK_NAME = "Precomputed Thermodynamic Properties"
 
-DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "thermodynamic_properties"
+DATA_PATH = (
+    APP_ROOT / "data" / "molecular_dynamics" / "thermodynamic_properties_precomputed"
+)
 
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
