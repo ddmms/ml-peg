@@ -32,7 +32,7 @@ PHONONDB_COMMIT = "8cabbe0aee3dde48a19f1235864b0d3ab5cb9330"
 
 SCRAPE = False
 
-FAST_ONLY = True
+FAST_ONLY = False
 
 SKIP_EXISTING = True
 
