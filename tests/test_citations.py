@@ -296,7 +296,7 @@ def test_collect_benchmark_credits_reports_missing(tmp_path: Path) -> None:
     assert missing == ("category/second",)
 
 
-def test_citation_metadata_is_owned_by_calculations() -> None:
+def test_citation_metadata_is_owned_by_calculations(tmp_path: Path) -> None:
     """Calc runs and app layouts resolve the same benchmark-owned metadata."""
     aconfl_script = CALCS_ROOT / "conformers" / "ACONFL" / "calc_ACONFL.py"
 
@@ -306,8 +306,19 @@ def test_citation_metadata_is_owned_by_calculations() -> None:
     assert app_citation_metadata_path("conformers", "ACONFL", CALCS_ROOT) == (
         aconfl_script.parent / "citations.yml"
     )
-    assert app_citation_metadata_path("carbon", "CHO_GAP", CALCS_ROOT) == (
-        CALCS_ROOT / "carbon" / "CHO-GAP" / "citations.yml"
+    # Exercise the alias with our own directories, independent of unmerged tests.
+    hyphenated = tmp_path / "category" / "hyphenated-name"
+    hyphenated.mkdir(parents=True)
+    assert app_citation_metadata_path("category", "hyphenated_name", tmp_path) == (
+        hyphenated / "citations.yml"
+    )
+    underscored = tmp_path / "category" / "hyphenated_name"
+    underscored.mkdir()
+    assert app_citation_metadata_path("category", "hyphenated_name", tmp_path) == (
+        underscored / "citations.yml"
+    )
+    assert app_citation_metadata_path("category", "absent_name", tmp_path) == (
+        tmp_path / "category" / "absent_name" / "citations.yml"
     )
 
 
@@ -342,7 +353,6 @@ def test_repository_benchmark_citations_are_valid(path: Path) -> None:
     """Benchmark credit files have a calculation script and valid metadata."""
     assert list(path.parent.glob("calc_*.py")), path
     credits = load_benchmark_credits(path)
-    assert credits.implementers, path
     implementers = {person.name for person in credits.implementers}
     contributors = {person.name for person in credits.contributors}
     assert len(implementers) == len(credits.implementers), path

@@ -419,9 +419,8 @@ def app_citation_metadata_path(
     """
     Return calc-owned citation metadata for an app benchmark.
 
-    The app and calc trees normally use identical directory names. The fallback
-    handles the existing ``CHO_GAP`` app directory whose calc directory is
-    ``CHO-GAP``.
+    The app and calc trees normally use identical directory names. If necessary,
+    fall back to an existing calc directory with underscores replaced by hyphens.
 
     Parameters
     ----------
