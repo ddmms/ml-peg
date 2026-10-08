@@ -1,12 +1,17 @@
 """Test analysis utility functions."""
 
 from __future__ import annotations
-import pytest
-import numpy as np
 
-from ml_peg.analysis.utils.utils import build_dispersion_name_map
+import numpy as np
+import pytest
+
+from ml_peg.analysis.utils.utils import (
+    block_estimate,
+    build_dispersion_name_map,
+    correlator,
+    maze,
+)
 from ml_peg.models.get_models import get_model_names
-from ml_peg.analysis.utils.utils import block_estimate, correlator, maze
 
 
 def test_dispersion_name_map_all_models():
