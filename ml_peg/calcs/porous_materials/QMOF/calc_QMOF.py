@@ -10,6 +10,7 @@ from copy import copy
 from math import nan
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.io import read, write
 from janus_core.calculations.single_point import SinglePoint
@@ -61,7 +62,12 @@ def test_qmof_energy(mlip: tuple[str, Any]) -> None:
             sp = SinglePoint(struct=mof)
             sp.run()
             mofs_results.append(sp.struct)
-        except Exception:
+        except Exception as exc:
+            warn(
+                f"Error calculating energy for {mof.info.get('qmof_id', '<unknown>')}:"
+                f" {exc}",
+                stacklevel=2,
+            )
             mof.info["energy"] = nan
             mofs_results.append(mof)
     # Write output structures
