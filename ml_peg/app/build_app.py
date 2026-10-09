@@ -557,7 +557,7 @@ def build_category(
 
 def build_category_page_layout(
     category_view: dict[str, object],
-    expand_all: bool = False,
+    expand_pref: str | None = None,
 ) -> Div:
     """
     Build a category page layout.
@@ -566,9 +566,9 @@ def build_category_page_layout(
     ----------
     category_view
         Category metadata including summary table, controls, and benchmark layouts.
-    expand_all
-        Whether every benchmark card starts expanded (the persisted preference);
-        by default only the first card opens.
+    expand_pref
+        Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
+        closes every card, and ``None`` opens only the first card.
 
     Returns
     -------
@@ -585,7 +585,8 @@ def build_category_page_layout(
             build_benchmark_card(
                 test["name"],
                 test["layout"],
-                open_default=expand_all or index == 0,
+                open_default=expand_pref == "expanded"
+                or (expand_pref is None and index == 0),
             )
             for index, test in enumerate(tests)
         ],
@@ -1068,10 +1069,10 @@ def build_nav(
         Output({"type": "bench-toggle", "index": MATCH}, "className"),
         Output({"type": "bench-toggle", "index": MATCH}, "aria-expanded"),
         Input({"type": "bench-toggle", "index": MATCH}, "n_clicks"),
-        State({"type": "bench-body", "index": MATCH}, "children"),
+        State({"type": "bench-toggle", "index": MATCH}, "aria-expanded"),
         prevent_initial_call=True,
     )
-    def toggle_benchmark(n_clicks: int, current: object) -> tuple[object, str, str]:
+    def toggle_benchmark(n_clicks: int, expanded: str) -> tuple[object, str, str]:
         """
         Mount a benchmark card's body on expand and unmount it on collapse.
 
@@ -1079,8 +1080,8 @@ def build_nav(
         ----------
         n_clicks
             Click count on the card header (unused; presence triggers the toggle).
-        current
-            The card body's current children (truthy when already mounted).
+        expanded
+            The header's current ``aria-expanded`` value.
 
         Returns
         -------
@@ -1089,7 +1090,7 @@ def build_nav(
             matching ``aria-expanded`` value.
         """
         key = ctx.triggered_id["index"]
-        if current:
+        if expanded == "true":
             return None, "mlpeg-bench-header", "false"
         return (
             benchmark_layouts.get(key),
@@ -1148,8 +1149,9 @@ def build_nav(
     # Cache built category/framework page layouts. The router previously rebuilt
     # the whole page (summary table + every benchmark card) on every navigation;
     # the views are fixed after build, so a layout only depends on (kind, name,
-    # expand_all) — at most two entries per page. Makes repeat navigation instant.
-    page_layout_cache: dict[tuple[str, str, bool], Div] = {}
+    # expansion preference) — at most three entries per page. Makes repeat
+    # navigation instant without merging the default and collapsed states.
+    page_layout_cache: dict[tuple[str, str, str | None], Div] = {}
 
     @callback(
         Output("page-content", "children"),
@@ -1177,7 +1179,8 @@ def build_nav(
         Div
             Summary or category contents to be displayed.
         """
-        expand_all = expand_pref == "expanded"
+        if expand_pref not in ("expanded", "collapsed"):
+            expand_pref = None
         sidebar_children = build_sidebar(
             pathname, category_paths, framework_paths, framework_labels
         )
@@ -1257,20 +1260,20 @@ def build_nav(
 
         selected_framework = path_to_framework.get(pathname)
         if selected_framework is not None:
-            key = ("framework", selected_framework, expand_all)
+            key = ("framework", selected_framework, expand_pref)
             if key not in page_layout_cache:
                 page_layout_cache[key] = build_framework_page_layout(
-                    framework_views[selected_framework], expand_all
+                    framework_views[selected_framework], expand_pref
                 )
             return Div([page_layout_cache[key]]), sidebar_children
 
         selected_category = path_to_category.get(pathname)
         if selected_category is None:
             return Div([H3("Page not found")]), sidebar_children
-        key = ("category", selected_category, expand_all)
+        key = ("category", selected_category, expand_pref)
         if key not in page_layout_cache:
             page_layout_cache[key] = build_category_page_layout(
-                category_views[selected_category], expand_all
+                category_views[selected_category], expand_pref
             )
         return Div([page_layout_cache[key]]), sidebar_children
 
