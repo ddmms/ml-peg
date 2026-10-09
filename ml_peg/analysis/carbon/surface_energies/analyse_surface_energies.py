@@ -184,6 +184,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("gap-20")
 def test_surface_energies(metrics: dict[str, dict]) -> None:
     """
     Run surface energies test.

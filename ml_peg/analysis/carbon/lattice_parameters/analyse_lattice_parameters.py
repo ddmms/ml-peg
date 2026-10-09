@@ -348,6 +348,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("gap-20")
 def test_lattice_parameters(metrics: dict[str, dict]) -> None:
     """
     Run lattice parameters test.

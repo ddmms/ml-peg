@@ -170,6 +170,7 @@ def metrics(strain_energy: dict[str, list]) -> dict[str, dict]:
     }
 
 
+@pytest.mark.framework("gap-20")
 def test_nanotube_formation_energies(metrics: dict[str, dict]) -> None:
     """
     Run nanotube formation energies test.

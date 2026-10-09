@@ -167,6 +167,7 @@ def relax_system(
     return energy_per_atom
 
 
+@pytest.mark.framework("gap-20")
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_parameters(mlip: tuple[str, Any]) -> None:

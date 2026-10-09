@@ -103,6 +103,7 @@ def tube_diameter_angstrom(atoms: Atoms) -> float:
     return float(2 * radii.mean())
 
 
+@pytest.mark.framework("gap-20")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_nanotube_formation_energies(mlip: tuple[str, Any]) -> None:
     """
