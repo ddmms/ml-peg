@@ -199,7 +199,7 @@ def evaluate_amorphous(
     -------
     tuple[Atoms, float]
         A representative slab structure, and the ensemble-mean as-cut surface energy
-        (J/m^2, `np.nan` if every evaluation failed).
+        (J/m^2, `np.nan` if any evaluation failed).
     """
     representative = None
     energies = []
@@ -219,9 +219,7 @@ def evaluate_amorphous(
             if representative is None:
                 representative = slab_reference.copy()
             e_slab = energy_at(slab_reference, calc, "amorphous slab")
-            energy = 0.5 * (e_slab - e_bulk) / area * EV_ANGSTROM2_TO_J_M2
-            if not np.isnan(energy):
-                energies.append(energy)
+            energies.append(0.5 * (e_slab - e_bulk) / area * EV_ANGSTROM2_TO_J_M2)
 
     if representative is None:
         representative = Atoms(
