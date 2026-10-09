@@ -2,7 +2,7 @@
 
 These pin the settings popover contents, the persisted dark-mode toggle (with its
 no-flash reload path), the font choice and the table-zoom preference added in the
-theming/settings work. The expand-all and card tests live with the cards chunk.
+theming/settings work. Card controls and expansion preferences are also covered here.
 """
 
 from __future__ import annotations
@@ -94,14 +94,15 @@ def test_settings_popover_closes_on_outside_click(ready_page: Page) -> None:
     expect(ready_page.locator(".mlpeg-settings-panel")).to_be_hidden(timeout=TIMEOUT)
 
 
-def test_expand_and_collapse_all(ready_page: Page) -> None:
-    """Collapse all unmounts every card body; expand all remounts them."""
+def test_collapse_all_and_reopen_individual_card(ready_page: Page) -> None:
+    """Collapsed card bodies can be remounted through their own headers."""
     _goto_category(ready_page)
+    expect(ready_page.locator("#expand-all-benchmarks")).to_have_count(0)
 
     ready_page.locator("#collapse-all-benchmarks").click()
     expect(ready_page.locator("#IONPI19-table")).to_have_count(0, timeout=TIMEOUT)
 
-    ready_page.locator("#expand-all-benchmarks").click()
+    ready_page.get_by_role("button", name="IONPI19", exact=True).click()
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
 
