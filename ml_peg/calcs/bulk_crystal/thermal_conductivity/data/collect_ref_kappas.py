@@ -24,7 +24,7 @@ PBE_DATA_PATH = DATA_PATH / "PBE"
 
 def collect_reference_kappas(filename_no_ext: str, output_name_no_ext: str) -> None:
     """
-    Rebuild a reference aggregate from per-material results when data exists.
+    Rebuild a reference aggregate only when all material directories have results.
 
     Parameters
     ----------
@@ -37,6 +37,18 @@ def collect_reference_kappas(filename_no_ext: str, output_name_no_ext: str) -> N
     dicts = tc.load_hdf5_subdir_dicts(PBE_DATA_PATH, f"{filename_no_ext}.hdf5")
     if not dicts:
         print(f"No {filename_no_ext} data found. Skipping collection.")
+        return
+
+    missing = sorted(
+        directory.name
+        for directory in PBE_DATA_PATH.iterdir()
+        if directory.is_dir() and directory.name not in dicts
+    )
+    if missing:
+        print(
+            f"Incomplete {filename_no_ext} data: missing results for "
+            f"{', '.join(missing)}. Keeping existing aggregates."
+        )
         return
 
     df = pd.DataFrame(dicts).T
