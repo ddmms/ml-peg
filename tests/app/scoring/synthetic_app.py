@@ -98,7 +98,9 @@ def serve(root: Path):
     build_app.get_all_tests = lambda **kwargs: (apps, layouts, tables, frameworks)
     build_app.build_full_app(app)
     server = make_server("127.0.0.1", 0, app.server, threaded=True)
-    (root / "url").write_text(f"http://127.0.0.1:{server.server_port}")
+    url_tmp = root / "url.tmp"
+    url_tmp.write_text(f"http://127.0.0.1:{server.server_port}")
+    url_tmp.replace(root / "url")
     server.serve_forever()
 
 
