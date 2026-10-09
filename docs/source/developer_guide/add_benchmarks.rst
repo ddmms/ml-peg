@@ -123,6 +123,11 @@ additional contributors have been recorded.
 - ``reference_method``: the method used to calculate the reference values.
 - ``upstream_framework``: the framework the benchmark was adapted from.
 
+Registered source frameworks (``type: framework``) are added automatically to a
+benchmark's references using its framework tags. An existing reference with the
+same key, title, or DOI/URL is kept instead of adding a duplicate. Paper tags are
+not added automatically. Record their references explicitly in ``citations.yml``.
+
 ``year``, ``doi``, and ``url`` may be ``null``. A DOI takes precedence over a URL
 when both are supplied.
 

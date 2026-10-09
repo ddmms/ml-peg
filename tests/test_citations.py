@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 from dash.dash_table import DataTable
@@ -25,6 +27,7 @@ from ml_peg.utils.citations import (
     Citation,
     CitationMetadataError,
     Contributor,
+    add_framework_citations,
     app_citation_metadata_path,
     build_run_citations,
     citation_metadata_path,
@@ -398,13 +401,168 @@ def test_framework_citations_cover_only_source_frameworks() -> None:
 
 
 def test_repository_framework_citations_are_valid() -> None:
-    """Every source framework citation in the repository parses."""
-    citations = load_framework_citations(safe_load(FRAMEWORKS_FILE.read_text()))
+    """Every registered source framework has a complete, included citation."""
+    registry = safe_load(FRAMEWORKS_FILE.read_text())
+    source_ids = {
+        name
+        for name, entry in registry.items()
+        if name != "ml_peg" and entry.get("type") != "paper"
+    }
+    for name in source_ids:
+        assert registry[name].get("type") == "framework", name
+    citations = load_framework_citations(source_ids)
 
+    assert set(citations) == {registry[name]["label"] for name in source_ids}
     for label, citation in citations.items():
-        if citation is not None:
-            assert citation.authors, label
-            assert citation.title, label
+        assert citation is not None, label
+
+
+def test_repository_benchmarks_have_citation_metadata() -> None:
+    """Every tracked benchmark calculation has a citations.yml beside it."""
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "--", "*/*/calc_*.py"], cwd=CALCS_ROOT, text=True
+    ).splitlines()
+    scripts = [CALCS_ROOT / path for path in tracked if len(Path(path).parts) == 3]
+
+    assert scripts, "No tracked benchmark calculations found"
+    missing = [
+        str(script)
+        for script in scripts
+        if not citation_metadata_path(script).is_file()
+    ]
+    assert not missing, f"Benchmarks missing citations.yml: {missing}"
+
+
+def test_framework_references_are_added_to_benchmark_credits() -> None:
+    """Framework references supplement benchmark papers and preserve people."""
+    original = _credits(TEST_CITATION)
+    framework = load_framework_citations(["matbench-discovery"])["Matbench Discovery"]
+
+    credits = add_framework_citations(original, ["matbench-discovery"])
+
+    assert credits is not None
+    assert credits.citations == (TEST_CITATION, framework)
+    assert credits.implementers == original.implementers
+    assert credits.contributors == original.contributors
+    assert original.citations == (TEST_CITATION,)
+
+
+@pytest.mark.parametrize("matching_field", ["key", "title", "url", "doi"])
+def test_framework_references_preserve_existing_citations(matching_field: str) -> None:
+    """Matching publication identifiers retain the existing record and role."""
+    framework = load_framework_citations(["matbench-discovery"])["Matbench Discovery"]
+    assert framework is not None
+    existing = replace(
+        framework,
+        key="benchmark-source",
+        title="A different display title",
+        role="reference_data",
+        url=None,
+    )
+    if matching_field == "key":
+        existing = replace(existing, key=framework.key)
+    elif matching_field == "title":
+        existing = replace(existing, title=f"  {framework.title.upper()}.  ")
+    elif matching_field == "url":
+        existing = replace(existing, url=f"{framework.url}/")
+    else:
+        existing = replace(existing, doi="10.1038/S42256-025-01055-1")
+
+    credits = add_framework_citations(
+        _credits(existing), ["matbench-discovery", "matbench-discovery"]
+    )
+
+    assert credits is not None
+    assert credits.citations == (existing,)
+
+
+def test_paper_tags_are_not_added_as_framework_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Even paper tags with complete citation metadata are not added implicitly."""
+    registry = tmp_path / "frameworks.yml"
+    registry.write_text(
+        "paper:\n  label: Paper\n  type: paper\n"
+        "  citation:\n    title: Source paper\n    authors: [An Author]\n"
+    )
+    monkeypatch.setattr(citations_module, "FRAMEWORKS_FILE", registry)
+    original = _credits(TEST_CITATION)
+
+    assert add_framework_citations(original, ["paper", "ml_peg"]) == original
+    assert add_framework_citations(None, ["paper", "ml_peg"]) is None
+
+
+def test_missing_benchmark_credits_can_show_framework_references() -> None:
+    """A known framework can be cited before benchmark-specific metadata is added."""
+    credits = add_framework_citations(None, ["matbench-discovery"])
+
+    assert credits is not None
+    assert credits.implementers == ()
+    assert credits.contributors == ()
+    assert [citation.key for citation in credits.citations] == ["matbench-discovery"]
+
+
+def test_run_citations_add_frameworks_to_their_own_benchmarks(tmp_path: Path) -> None:
+    """Per-script markers associate framework references with the correct benchmark."""
+    first = tmp_path / "category" / "first" / "calc_first.py"
+    second = tmp_path / "category" / "second" / "calc_second.py"
+    _write_credits(first.parent / "citations.yml")
+    _write_credits(second.parent / "citations.yml")
+    framework = load_framework_citations(["matbench-discovery"])["Matbench Discovery"]
+    assert framework is not None
+
+    summary = build_run_citations(
+        [first, second],
+        framework_ids_by_script={
+            first: ["matbench-discovery"],
+            second: ["mace-polar-1"],
+            tmp_path / "not-run.py": ["mlip_audit"],
+        },
+    )
+    summary = " ".join(summary.split())
+
+    assert summary.count(framework.title) == 1
+    assert summary.index("category/first") < summary.index(framework.title)
+    assert summary.index(framework.title) < summary.index("category/second")
+    assert "(source framework)" in summary
+    assert "SOURCE FRAMEWORKS" not in summary
+    assert "MLIPAudit" not in summary
+
+
+@pytest.mark.parametrize("already_cited", [False, True])
+def test_app_references_include_frameworks_once(already_cited: bool) -> None:
+    """Framework badges add one source reference to the app's benchmark references."""
+    framework = load_framework_citations(["matbench-discovery"])["Matbench Discovery"]
+    assert framework is not None
+    table = DataTable(
+        id="framework-credit-table",
+        columns=[{"id": "MLIP", "name": "MLIP"}],
+        data=[],
+        tooltip_header={},
+    )
+    table.weights = {}
+    credits = (
+        _credits(TEST_CITATION, framework) if already_cited else _credits(TEST_CITATION)
+    )
+
+    layout = build_test_layout(
+        name="Framework credits",
+        description="Framework reference test",
+        framework_ids=["matbench-discovery", "mace-polar-1", "ml_peg"],
+        table=table,
+        thresholds={},
+        credits=credits,
+    )
+    title_links = [
+        component
+        for component in _walk_components(layout)
+        if type(component).__name__ == "A"
+        and isinstance(component.children, Component)
+        and component.children.children == framework.title
+    ]
+
+    assert len(title_links) == 1
+    assert title_links[0].href == framework.link
 
 
 @pytest.mark.parametrize("path", sorted(CALCS_ROOT.glob("*/*/citations.yml")))
@@ -948,6 +1106,33 @@ def test_citation_reporter_records_framework_markers(tmp_path: Path) -> None:
     assert reporter.framework_ids == {
         CALCS_ROOT / "conformers" / "ported" / "calc_ported.py": {"mlip_audit"}
     }
+
+
+def test_citation_reporter_includes_framework_in_benchmark_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The reporter passes per-benchmark markers into the printed references."""
+    monkeypatch.setattr("ml_peg.conftest.CALCS_ROOT", tmp_path)
+    script = tmp_path / "category" / "benchmark" / "calc_benchmark.py"
+    _write_credits(script.parent / "citations.yml")
+    reporter = CitationReporter(_Config(tmp_path))
+    reporter.rootpath = tmp_path
+    reporter.pytest_collection_modifyitems([_Item(script, "matbench-discovery")])
+    reporter.pytest_runtest_logreport(
+        _Report("call", False, "category/benchmark/calc_benchmark.py")
+    )
+    lines = []
+
+    reporter.pytest_terminal_summary(SimpleNamespace(write_line=lines.append))
+
+    summary = " ".join(lines[-1].split())
+    assert "category/benchmark" in summary
+    assert (
+        "A framework to evaluate machine learning crystal stability predictions"
+        in summary
+    )
+    assert "(source framework)" in summary
+    assert "SOURCE FRAMEWORKS" not in summary
 
 
 def test_citation_reporter_ignores_non_benchmark_tests(tmp_path: Path) -> None:

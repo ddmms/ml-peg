@@ -148,12 +148,10 @@ class CitationReporter:
         # Imported here so collection does not pay for loading the citation module
         from ml_peg.utils.citations import build_run_citations
 
-        framework_ids = {
-            framework_id
-            for path in self.script_paths
-            for framework_id in self.framework_ids.get(path, ())
-        }
-        summary = build_run_citations(self.script_paths, framework_ids=framework_ids)
+        summary = build_run_citations(
+            self.script_paths,
+            framework_ids_by_script=self.framework_ids,
+        )
         terminalreporter.write_line("")
         terminalreporter.write_line(summary)
 

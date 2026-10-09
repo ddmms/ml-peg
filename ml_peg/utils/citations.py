@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import re
 import textwrap
@@ -498,6 +498,80 @@ def load_framework_citations(
     return citations
 
 
+def _same_citation(first: Citation, second: Citation) -> bool:
+    """
+    Compare publication keys, titles and links independently of citation role.
+
+    Parameters
+    ----------
+    first
+        Source-framework citation.
+    second
+        Existing benchmark reference.
+
+    Returns
+    -------
+    bool
+        Whether either identifier, the title or the preferred link matches.
+    """
+    if first.key == second.key:
+        return True
+    titles = [
+        " ".join(citation.title.split()).rstrip(".").casefold()
+        for citation in (first, second)
+    ]
+    if titles[0] == titles[1]:
+        return True
+    links = [
+        (citation.link or "")
+        .strip()
+        .casefold()
+        .removeprefix("https://")
+        .removeprefix("http://")
+        .removeprefix("dx.")
+        .rstrip("/")
+        for citation in (first, second)
+    ]
+    return bool(links[0]) and links[0] == links[1]
+
+
+def add_framework_citations(
+    credits: BenchmarkCredits | None, framework_ids: Iterable[str]
+) -> BenchmarkCredits | None:
+    """
+    Add source-framework references without duplicating benchmark citations.
+
+    Paper entries and ML-PEG itself are excluded by the framework loader. Existing
+    records and their roles are preserved when a key, title or link matches.
+
+    Parameters
+    ----------
+    credits
+        Existing benchmark credits, or None when metadata is missing.
+    framework_ids
+        Framework identifiers attached to this benchmark.
+
+    Returns
+    -------
+    BenchmarkCredits | None
+        Credits including available framework references. Missing metadata remains
+        None when no framework reference is available.
+    """
+    citations = list(credits.citations if credits else ())
+    for citation in load_framework_citations(framework_ids).values():
+        if citation is not None and not any(
+            _same_citation(citation, existing) for existing in citations
+        ):
+            citations.append(citation)
+    if credits is None:
+        return (
+            BenchmarkCredits(contributors=(), citations=tuple(citations))
+            if citations
+            else None
+        )
+    return replace(credits, citations=tuple(citations))
+
+
 def _wrap(text: str, indent: str, continuation: str | None = None) -> list[str]:
     """
     Wrap one entry to the summary width.
@@ -566,12 +640,8 @@ def _citation_lines(citation: Citation, indent: str, number: str = "") -> list[s
         stay selectable in the terminal.
     """
     text = citation.reference
-    # Benchmark papers are the default kind of reference, and framework citations sit
-    # under their own heading, so only other roles are tagged
-    if citation.role_label and citation.role not in (
-        "benchmark_method",
-        "upstream_framework",
-    ):
+    # Benchmark papers are the default kind of reference. Other roles are tagged.
+    if citation.role_label and citation.role != "benchmark_method":
         # Non-breaking spaces keep a tag such as "(inspired by)" on one line
         tag = citation.role_label.replace(" ", NBSP)
         text = f"{text[:-1]} ({tag})."
@@ -713,6 +783,7 @@ def format_citation_summary(
 def build_run_citations(
     script_paths: Iterable[str | Path],
     framework_ids: Iterable[str] = (),
+    framework_ids_by_script: Mapping[Path, Iterable[str]] | None = None,
 ) -> str:
     """
     Build citation guidance for the benchmarks of a run.
@@ -723,22 +794,46 @@ def build_run_citations(
         Benchmark scripts to report citations for.
     framework_ids
         Framework identifiers attached to the benchmarks of the run. Default is none.
+    framework_ids_by_script
+        Framework identifiers belonging to each calculation script. These references
+        are added to the corresponding benchmark, excluding duplicate citations.
 
     Returns
     -------
     str
         Citation guidance for printing to the terminal.
     """
-    benchmarks, missing = collect_benchmark_credits(sorted(script_paths))
+    scripts = sorted(Path(path) for path in script_paths)
+    frameworks_by_script = {
+        Path(path): tuple(ids)
+        for path, ids in (framework_ids_by_script or {}).items()
+        if Path(path) in scripts
+    }
+    benchmarks, missing = collect_benchmark_credits(scripts, frameworks_by_script)
+    all_ids = set(framework_ids)
+    for ids in frameworks_by_script.values():
+        all_ids.update(ids)
+    # Complete references already listed under a benchmark need no extra section.
+    frameworks = {
+        label: citation
+        for label, citation in load_framework_citations(all_ids).items()
+        if citation is None
+        or not any(
+            _same_citation(citation, existing)
+            for credits in benchmarks.values()
+            for existing in credits.citations
+        )
+    }
     return format_citation_summary(
         benchmarks,
         missing,
-        load_framework_citations(framework_ids),
+        frameworks,
     )
 
 
 def collect_benchmark_credits(
     script_paths: Sequence[str | Path],
+    framework_ids_by_script: Mapping[Path, Iterable[str]] | None = None,
 ) -> tuple[dict[str, BenchmarkCredits], tuple[str, ...]]:
     """
     Collect available credits and missing identifiers for benchmark scripts.
@@ -747,6 +842,8 @@ def collect_benchmark_credits(
     ----------
     script_paths
         Benchmark scripts to collect credits for.
+    framework_ids_by_script
+        Framework identifiers belonging to each calculation script. Default is none.
 
     Returns
     -------
@@ -763,6 +860,9 @@ def collect_benchmark_credits(
         credits = load_optional_benchmark_credits(metadata_path)
         if credits is None:
             missing.add(benchmark)
-        else:
+        credits = add_framework_citations(
+            credits, (framework_ids_by_script or {}).get(script_path, ())
+        )
+        if credits is not None:
             benchmarks[benchmark] = credits
     return benchmarks, tuple(sorted(missing))
