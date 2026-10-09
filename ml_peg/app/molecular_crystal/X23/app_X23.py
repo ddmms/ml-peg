@@ -75,5 +75,5 @@ def get_app() -> X23App:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
-        framework_ids=["mace-multihead", "mace-polar-1"],
+        framework_ids=["mace-multihead", "mace-polar-1", "mace-mp"],
     )
