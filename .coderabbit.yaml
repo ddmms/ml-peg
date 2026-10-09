@@ -29,8 +29,8 @@ reviews:
           and aggregate errors belong in analysis, not calculation.
         - Download substantial zipped inputs through the standard helper inside the test/run
           function. External GitHub inputs should be pinned to an immutable revision.
-        - Add D3 only when consistent with the reference protocol and avoid double-counting it
-          for models already containing the relevant dispersion treatment.
+        - Add D3/D4 dispersion corrections only when consistent with the reference protocol
+          , and use the provided helper to add it consistently.
         - Check fast/medium/slow/very_slow markers, finite step limits.
         - Implement progress reporting for non-trivial loops.
         - Ensure it is possible to restart long simulations, and if calculations may take a day or
