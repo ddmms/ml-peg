@@ -13,9 +13,6 @@ reviews:
         Review benchmark calculations for these ML-PEG invariants:
         - Static calculations, relaxations, NEBs, and phonons normally use precision="high";
           long MD normally uses precision="low" unless the benchmark documents another choice.
-          Construct the calculator once per model as a separate `calc = model.get_calculator(...)`
-          variable, then attach `calc` to structures;
-          do not construct it inline through `atoms.calc = model.get_calculator(...)`.
         - Before evaluation, every Atoms object must have physically correct charge and spin
           multiplicity in atoms.info as Python int values. For a known neutral singlet, simple
           assignments such as `atoms.info["charge"] = 0` and `atoms.info["spin"] = 1` are
