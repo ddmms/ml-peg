@@ -519,6 +519,7 @@ def calc_table_scores(
 # Memoize computed styles: the same (data, cmap, weights, …) recurs constantly as
 # callbacks re-render tables (colormap toggles, weight/threshold edits, model
 # filters), and the per-cell colormap + contrast maths dominate. Bounded LRU.
+# OrderedDict lets hits move to the end and eviction remove the oldest entry.
 _TABLE_STYLE_CACHE: OrderedDict[str, list[TableRow]] = OrderedDict()
 _TABLE_STYLE_CACHE_MAX = 128
 # Dash serves callbacks on a threaded WSGI server, so concurrent renders can hit
