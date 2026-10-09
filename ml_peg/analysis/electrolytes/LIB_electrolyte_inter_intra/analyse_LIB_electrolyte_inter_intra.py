@@ -40,6 +40,7 @@ SYSTEM_INFO = get_struct_info(
 property_metadata = {
     "Intra-Forces": ["arrays", "forces_intram"],
     "Inter-Forces": ["arrays", "forces_interm"],
+    "Intra-Energy": ["info", "energy_intram"],
     "Inter-Energy": ["info", "energy_interm"],
     "Intra-Virial": ["info", "virial_intram"],
     "Inter-Virial": ["info", "virial_interm"],
@@ -77,6 +78,13 @@ def get_property_results(prop_key: str) -> dict[str, float]:
         structs_dir = OUT_PATH / model
         structs_dir.mkdir(parents=True, exist_ok=True)
         write(structs_dir / f"{model}-intra_inter.extxyz", configs)
+
+        n_atoms_per_frame = []
+        for i, fr in enumerate(configs):
+            n_atoms_per_frame.append(len(fr))
+            write(structs_dir / f"{model}-intra_inter_{i}.extxyz", fr)
+
+        np.savetxt(structs_dir / "atom_counts.txt", n_atoms_per_frame, fmt="%d")
 
         for frame in configs:
             frame_data = getattr(frame, stored)
