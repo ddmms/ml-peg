@@ -120,6 +120,7 @@ def calc_kappa_metrics_from_dfs(
     df_pred[tc.TCKeys.sre] = df_pred[tc.TCKeys.srd].abs()
 
     df_pred[tc.TCKeys.srme] = calc_kappa_srme_dataframes(df_pred, df_true)
+    df_pred[tc.TCKeys.srme] = df_pred[tc.TCKeys.srme].fillna(2.0)
 
     df_pred[tc.TCKeys.true_kappa_tot_avg] = df_true[tc.TCKeys.kappa_tot_avg]
 
@@ -306,8 +307,7 @@ def _add_missing_error_rows(
             f"for {model_name}; using default error rows.",
             stacklevel=2,
         )
-        return df.reindex(ref_df.index)
-    return df
+    return df.reindex(ref_df.index)
 
 
 @pytest.fixture
@@ -882,7 +882,7 @@ def status_parity(kappa_stats: dict[str, pd.DataFrame]) -> None:
 
         fig = go.Figure()
         for label, colour, mask in groups:
-            sel = mask & pred.gt(0) & ref.gt(0)
+            sel = mask & np.isfinite(pred) & np.isfinite(ref) & pred.gt(0) & ref.gt(0)
             fig.add_trace(
                 go.Scatter(
                     x=[float(v) for v in pred[sel]],
@@ -899,7 +899,7 @@ def status_parity(kappa_stats: dict[str, pd.DataFrame]) -> None:
                 )
             )
 
-        positive = [v for v in list(ref) + list(pred) if v > 0]
+        positive = [v for v in list(ref) + list(pred) if np.isfinite(v) and v > 0]
         lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
         fig.add_trace(go.Scatter(x=lims, y=lims, mode="lines", showlegend=False))
 
