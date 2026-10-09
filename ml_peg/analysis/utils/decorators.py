@@ -843,7 +843,9 @@ def plot_density_scatter(
                 )
 
             if not results:
-                raise ValueError("No results provided for density plot.")
+                # Every model failed, or has not been calculated
+                warnings.warn("No results provided for density plot.", stacklevel=2)
+                return results
 
             global_min = np.inf
             global_max = -np.inf
