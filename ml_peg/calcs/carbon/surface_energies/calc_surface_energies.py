@@ -231,6 +231,7 @@ def evaluate_amorphous(
     return representative, as_cut_j_m2
 
 
+@pytest.mark.framework("gap-20")
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_surface_energies(mlip: tuple[str, Any]) -> None:
