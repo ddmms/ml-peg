@@ -172,9 +172,13 @@ def plot_parity(
                     )
 
             if log:
-                # Log axes: span the y=x line over the positive data range only.
-                all_vals = list(ref) + [
-                    v for mlip in results if mlip != "ref" for v in results[mlip]
+                # Include preserved models when spanning the positive data range.
+                all_vals = [
+                    value
+                    for trace in fig.data
+                    for coords in (trace.x, trace.y)
+                    if coords is not None
+                    for value in coords
                 ]
                 positive = [
                     v

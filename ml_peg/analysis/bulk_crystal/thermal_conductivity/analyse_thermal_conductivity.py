@@ -14,7 +14,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    merge_saved_models,
+    plot_parity,
+)
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.plot_helpers import build_violin_distribution
@@ -791,7 +795,9 @@ def _write_srme_violin(
         )
         violin_data[model_name] = fig.to_dict()
 
-    with (OUT_PATH / filename).open("w") as f:
+    plot_path = OUT_PATH / filename
+    violin_data = merge_saved_models(violin_data, plot_path)
+    with plot_path.open("w") as f:
         json.dump(violin_data, f)
 
 
@@ -920,7 +926,9 @@ def status_parity(kappa_stats: dict[str, pd.DataFrame]) -> None:
             )
         status_data[model_name] = fig.to_dict()
 
-    with (OUT_PATH / "figure_status_parity.json").open("w") as f:
+    plot_path = OUT_PATH / "figure_status_parity.json"
+    status_data = merge_saved_models(status_data, plot_path)
+    with plot_path.open("w") as f:
         json.dump(status_data, f)
 
 
