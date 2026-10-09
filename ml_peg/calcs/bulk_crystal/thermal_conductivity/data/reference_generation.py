@@ -301,7 +301,7 @@ for i in pbar:
     info_dict = {
         "name": name,
         "primitive_matrix": ph3.primitive_matrix,
-        "fc2_supercell": ph3.supercell_matrix,
+        "fc2_supercell": ph3.phonon_supercell_matrix,
         "fc3_supercell": ph3.supercell_matrix,
         "symm.no": ph3.symmetry.dataset.number,
         tc.TCKeys.mat_id: mat_id,
