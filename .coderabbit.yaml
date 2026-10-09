@@ -1,0 +1,81 @@
+reviews:
+  path_instructions:
+    - path: "ml_peg/**"
+      instructions: |
+        For a new benchmark, check the complete calculation -> analysis -> app pipeline,
+        including metrics.yml, citations.yml, category registration, user documentation,
+        and any framework attribution. Focus on correctness and ML-PEG conventions rather
+        than formatting already enforced by the pre-commit. Do not invent scientific
+        thresholds or protocols; ask for justification when they are missing.
+
+    - path: "ml_peg/calcs/*/*/calc_*.py"
+      instructions: |
+        Review benchmark calculations for these ML-PEG invariants:
+        - Static calculations, relaxations, NEBs, and phonons normally use precision="high";
+          long MD normally uses precision="low" unless the benchmark documents another choice.
+        - Before evaluation, every Atoms object must have physically correct charge and spin
+          multiplicity in atoms.info as Python int values. For a known neutral singlet, simple
+          assignments such as `atoms.info["charge"] = 0` and `atoms.info["spin"] = 1` are
+          sufficient. Preserve supplied non-default values for other systems.
+        - Catch failures at the smallest useful unit, warn with model/system context, record NaN
+          or failure metadata, and continue. Bound iterative calculations and determine
+          convergence from the actual optimiser/dynamics state.
+        - Save raw model outputs and useful structures/trajectories under outputs/<model>/ in a
+          standard ASE format with deterministic ordering. Retain component energies, forces,
+          stresses, identifiers, and metadata needed to reproduce derived observables. Metrics
+          and aggregate errors belong in analysis, not calculation.
+        - Download substantial zipped inputs through the standard helper inside the test/run
+          function. External GitHub inputs should be pinned to an immutable revision.
+        - Add D3/D4 dispersion corrections only when consistent with the reference protocol
+          , and use the provided helper to add it consistently.
+        - Check fast/medium/slow/very_slow markers, finite step limits.
+        - Implement progress reporting for non-trivial loops.
+        - Ensure it is possible to restart long simulations, and if calculations may take a day or
+          more, a mechanism to run parts of the calculation should be implemented through the CLI.
+
+    - path: "ml_peg/analysis/*/*/analyse_*.py"
+      instructions: |
+        Review benchmark analysis for these ML-PEG invariants:
+        - Missing model directories, files, failed systems, and truncated trajectories must be
+          handled without aborting analysis. A failed required datum must propagate to the
+          aggregate as NaN unless an explicit coverage penalty is documented. Never replace a
+          failure with zero or silently drop failed cases and score only survivors. Ensure
+          incomplete model data does not impact the extraction of reference data.
+        - Derive physical observables and metrics here from raw calculation outputs. Load
+          reference data once and independently of which model happens to have output first.
+        - Use shared metric, plotting, table, dispersion-name, structure-info, and trajectory
+          helpers instead of local copies.
+        - Write every table, plot, structure/trajectory asset, and info.json needed by the app to
+          APP_ROOT/data. Keep model names, values, hover labels, filenames, and structures in a
+          deterministic one-to-one order.
+        - Use ordinary parity/scatter plots for small datasets and density plots for large ones.
+          Verify units and per-atom, per-molecule, per-area, per-interface, or per-reaction
+          normalisation.
+        - Prefer to generate info.json from mock output files using the helpers provided. Ensure
+          elements are stored per structure where relevent.
+
+    - path: "ml_peg/analysis/*/*/metrics.yml"
+      instructions: |
+        Every table metric must define good, bad, unit, tooltip, canonical level_of_theory, and
+        optionally a weight. Check that metric names exactly match the analysis table and app plot mappings.
+        Thresholds need scientific meaning: good should represent genuinely good performance or
+        reference uncertainty, while bad should represent performance that is no longer useful.
+        Do not choose thresholds merely to spread current model scores. Confirm the direction of
+        each metric and the consistency of its units and level of theory.
+
+    - path: "ml_peg/app/*/*/app_*.py"
+      instructions: |
+        Benchmark apps should consume only assets produced by analysis, set info_path for element
+        filtering, and reuse existing plot_from_* and struct_from_* callback helpers where they
+        fit. Check that each weighted metric opens the intended plot and that a clicked model
+        trace/point selects the matching model-specific structure or trajectory. Prefer to use outputs from mock data
+        when structures are the same for all models, but use model-specifc data when geometries differ.
+        App imports must not run calculations or scientific analysis, and should not generate new figures.
+
+    - path: "docs/source/user_guide/benchmarks/*.rst"
+      instructions: |
+        New benchmark documentation should state the scientific purpose and protocol, distinguish
+        calculation inputs from DFT/experimental reference data, give provenance and the exact
+        level of theory, define the reported metrics and threshold rationale, and provide a rough
+        runtime using a representative model and named hardware. Check that terminology, paths,
+        anchors, and citations agree with the implementation.
