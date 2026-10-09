@@ -43,15 +43,15 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
         / "elemental_tm_vacancies"
     )
 
-    with open(elemental_tm_vacancies_dir / "list") as f:
-        systems = f.read().splitlines()
+    # Structures are stored as a bulk/vacancy pair for each system, with the
+    # reference vacancy formation energy saved to the info of both
+    structures = read(
+        elemental_tm_vacancies_dir / "elemental_tm_vacancies.extxyz", index=":"
+    )
 
-    for system in systems:
-        bulk_path = elemental_tm_vacancies_dir / system / "CONTCAR_bulk"
-        vacancy_path = elemental_tm_vacancies_dir / system / "CONTCAR_vacancy"
-        ref_path = elemental_tm_vacancies_dir / system / "vacancy_formation_energy_PBE"
+    for bulk, vacancy in zip(structures[::2], structures[1::2], strict=True):
+        system = bulk.info["system"]
 
-        bulk = read(bulk_path, index=0, format="vasp")
         # Set default charge and spin
         bulk.info.setdefault("charge", 0)
         bulk.info.setdefault("spin", 1)
@@ -62,7 +62,6 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
             warn(f"Error calculating energy: {exc}", stacklevel=2)
             bulk.info["energy"] = np.nan
 
-        vacancy = read(vacancy_path, index=0, format="vasp")
         # Set default charge and spin
         vacancy.info.setdefault("charge", 0)
         vacancy.info.setdefault("spin", 1)
@@ -72,13 +71,6 @@ def test_vacancy_formation_energy(mlip: tuple[str, Any]) -> None:
         except Exception as exc:
             warn(f"Error calculating energy: {exc}", stacklevel=2)
             vacancy.info["energy"] = np.nan
-
-        ref = np.loadtxt(ref_path)
-
-        bulk.info["ref"] = ref
-        bulk.info["system"] = system
-        vacancy.info["ref"] = ref
-        vacancy.info["system"] = system
 
         # Write output structures
         write_dir = OUT_PATH / model_name
