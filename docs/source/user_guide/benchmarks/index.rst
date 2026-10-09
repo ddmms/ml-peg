@@ -7,6 +7,7 @@ Benchmarks
 
     biomolecules
     bulk_crystal
+    carbon
     conformers
     defects
     electrolytes
