@@ -66,7 +66,7 @@ or quantifying the stability of a simulation.
 .. _benchmark-credits:
 
 Recording citations and contributor credit
------------------------------------------
+------------------------------------------
 
 Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
 
