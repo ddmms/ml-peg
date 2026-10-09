@@ -192,18 +192,21 @@ def get_mae(conformer_energies) -> dict[str, float]:
         Per-molecule MAE averaged over all molecules, for each model.
     """
     label_mols = [lbl.rsplit("_conf", 1)[0] for lbl in labels()]
+    ref_energies = conformer_energies["ref"]
     results = {}
     for model_name in MODELS:
         groups: dict[str, tuple[list, list]] = {}
+        predictions = conformer_energies[model_name]
 
-        if not conformer_energies[model_name]:
+        # Reference energies come from the models, so are missing if none ran
+        if len(ref_energies) != len(label_mols) or len(predictions) != len(label_mols):
             results[model_name] = None
             continue
 
         for mol, ref, pred in zip(
             label_mols,
-            conformer_energies["ref"],
-            conformer_energies[model_name],
+            ref_energies,
+            predictions,
             strict=True,
         ):
             groups.setdefault(mol, ([], []))

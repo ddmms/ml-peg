@@ -128,11 +128,18 @@ def isomer_complex_errors(isomer_relative_energies) -> dict[str, float | None]:
         Dictionary of predicted relative energy errors for all models.
     """
     results: dict[str, float | None] = {}
+    refs = isomer_relative_energies["ref"]
     for model_name in MODELS:
         preds = isomer_relative_energies.get(model_name, [])
+
+        # Reference energies come from the models, so are missing if none ran
+        if len(refs) != len(preds):
+            results[model_name] = None
+            continue
+
         pairs = [
             (ref, pred)
-            for ref, pred in zip(isomer_relative_energies["ref"], preds, strict=True)
+            for ref, pred in zip(refs, preds, strict=True)
             if pred is not None
         ]
         if not pairs:
