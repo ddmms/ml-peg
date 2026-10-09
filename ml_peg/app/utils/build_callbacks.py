@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import math
+from numbers import Real
 from typing import Literal
 
 import dash
@@ -179,7 +181,7 @@ def plot_from_table_cell(
         Nested dictionary of model names, column names, and plot to show.
     table_data
         Optional table data to check for None/missing values. If provided,
-        cells with None values will show "No data available" message.
+        cells with None or NaN values will show "No data available" message.
     """
     register_plot_download_callbacks()
     register_plot_settings_callbacks()
@@ -212,11 +214,18 @@ def plot_from_table_cell(
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
 
-        # Check if cell value is None (no data for this model)
+        # Missing metrics can be None, numeric NaN or the table's "NaN" string.
         if current_table_data and row_index is not None:
             try:
                 cell_value = current_table_data[row_index].get(column_id)
-                if cell_value is None:
+                if (
+                    cell_value is None
+                    or (isinstance(cell_value, Real) and math.isnan(cell_value))
+                    or (
+                        isinstance(cell_value, str)
+                        and cell_value.strip().lower() == "nan"
+                    )
+                ):
                     return Div("No data available for this model."), None
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
@@ -412,12 +421,24 @@ def plot_from_scatter(
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
-    structs: str | list[str] | dict[str, str],
+    structs: str | list[str] | dict[str, str] | None = None,
     mode: Literal["struct", "traj"] = "struct",
     follow_frames: bool | None = None,
+    struct_template: str | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
+
+    Three matching modes:
+
+    - index-based (default): the clicked point number indexes ``structs``. Requires
+      ``structs`` to be in the same order as the scatter points.
+    - label-based (``structs`` is a mapping): the last element of the clicked
+      point's ``customdata`` selects a structure filename from the mapping.
+    - id-based (``struct_template`` given): the clicked point's identifier (last
+      element of its ``customdata``) fills ``struct_template``. Use this when the
+      points are filtered, reordered, or split across traces (e.g. violins, or
+      scatters with multiple category traces), where index-based matching fails.
 
     Parameters
     ----------
@@ -428,6 +449,7 @@ def struct_from_scatter(
     structs
         Structure trajectory, list of filenames in scatter-point order, or mapping
         from labels stored in point ``customdata`` to structure filenames.
+        Ignored when ``struct_template`` is given.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
@@ -437,6 +459,9 @@ def struct_from_scatter(
         only for a single shared trajectory file. This is for e.g. a NEB, whereas a list
         of per-point files, including density-cell structure collections, keeps
         the highlight on the clicked point. Set explicitly to override.
+    struct_template
+        Asset path template containing ``{id}``, filled from the clicked point's
+        ``customdata`` (id-based matching). Default is None.
     """
     if follow_frames is None:
         follow_frames = mode == "traj" and isinstance(structs, str)
@@ -464,20 +489,28 @@ def struct_from_scatter(
         if not click_data:
             return Div()
         point = click_data["points"][0]
-        idx = point["pointNumber"]
 
-        if isinstance(structs, str):
+        if struct_template is not None:
+            customdata = point.get("customdata")
+            if not customdata:
+                return Div()
+            identifier = (
+                customdata[-1] if isinstance(customdata, (list, tuple)) else customdata
+            )
+            struct = struct_template.format(id=identifier)
+            index = 0
+        elif isinstance(structs, str):
             struct = structs
-            index = idx
+            index = point["pointNumber"]
         elif isinstance(structs, dict):
             customdata = point.get("customdata")
             label = customdata[-1] if isinstance(customdata, list) else customdata
             struct = structs.get(label)
             if struct is None:
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
-            index = idx if mode == "traj" else 0
+            index = point["pointNumber"] if mode == "traj" else 0
         else:
-            struct = structs[idx]
+            struct = structs[point["pointNumber"]]
             index = 0
 
         return Div(
