@@ -45,15 +45,13 @@ def check_dataset() -> None:
 
     The calculation copies and unzips the downloaded dataset into its
     outputs, so the analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is missing from the calculation outputs.
     """
     dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
     if not dataset_path.exists():
-        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+        pytest.skip(
+            f"{dataset_path} does not exist. Please run the calculation.",
+            allow_module_level=True,
+        )
 
 
 @pytest.fixture
