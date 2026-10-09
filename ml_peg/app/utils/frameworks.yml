@@ -62,6 +62,7 @@ mlip_audit:
 
 matbench-discovery:
   label: Matbench Discovery
+  type: framework
   color: "#061e25"
   text_color: "#ffffff"
   url: "https://matbench-discovery.materialsproject.org"
@@ -71,6 +72,20 @@ matbench-discovery:
   project_url: "https://matbench-discovery.materialsproject.org"
   paper_url: "https://doi.org/10.1038/s42256-025-01055-1"
   github: "https://github.com/janosh/matbench-discovery"
+  citation:
+    title: "A framework to evaluate machine learning crystal stability predictions"
+    authors:
+      - Janosh Riebesell
+      - Rhys E. A. Goodall
+      - Philipp Benner
+      - Yuan Chiang
+      - Bowen Deng
+      - Gerbrand Ceder
+      - Mark Asta
+      - Alpha A. Lee
+      - Anubhav Jain
+      - Kristin A. Persson
+    year: 2025
 
 mace-multihead:
   label: Multihead Cross Learning
