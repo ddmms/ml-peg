@@ -174,7 +174,7 @@ def build_framework_summary_tables(
 
 def build_framework_page_layout(
     framework_view: FrameworkView,
-    expand_all: bool = False,
+    expand_pref: str | None = None,
 ) -> Div:
     """
     Build a framework-focused page with its summary table and benchmark sections.
@@ -183,9 +183,9 @@ def build_framework_page_layout(
     ----------
     framework_view
         Framework page metadata with grouped benchmark layouts by category.
-    expand_all
-        Whether every benchmark card starts expanded (the persisted preference);
-        by default only the first card on the page opens.
+    expand_pref
+        Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
+        closes every card, and ``None`` opens only the first card on the page.
 
     Returns
     -------
@@ -271,7 +271,7 @@ def build_framework_page_layout(
     # Wrap each benchmark in a lazy-mounted collapsible card so heavy framework
     # pages (e.g. MACE-POLAR-1 with many benchmarks) hydrate instantly instead of
     # rendering every benchmark up front. Only the first card on the page opens by
-    # default, unless the user's "expand all" preference is set.
+    # default, unless the user has saved an expanded or collapsed preference.
     sections = []
     card_index = 0
     for category_name, tests in benchmarks_by_category.items():
@@ -300,7 +300,10 @@ def build_framework_page_layout(
         for name, layout in tests:
             cards.append(
                 build_benchmark_card(
-                    name, layout, open_default=expand_all or card_index == 0
+                    name,
+                    layout,
+                    open_default=expand_pref == "expanded"
+                    or (expand_pref is None and card_index == 0),
                 )
             )
             card_index += 1
