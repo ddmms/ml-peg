@@ -116,9 +116,9 @@ def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
     )
 
 
-def build_expand_controls() -> Div:
+def build_collapse_controls() -> Div:
     """
-    Build the "Expand all" / "Collapse all" buttons shown above benchmark cards.
+    Build the "Collapse all" button shown above benchmark cards.
 
     Shared by category and framework pages (only one page is mounted at a time via
     the router, so the fixed button ids never collide).
@@ -126,16 +126,10 @@ def build_expand_controls() -> Div:
     Returns
     -------
     Div
-        Right-aligned row of expansion controls.
+        Right-aligned row containing the collapse control.
     """
     return Div(
         [
-            Button(
-                "Expand all",
-                id="expand-all-benchmarks",
-                n_clicks=0,
-                className="mlpeg-expand-btn",
-            ),
             Button(
                 "Collapse all",
                 id="collapse-all-benchmarks",

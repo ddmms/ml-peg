@@ -30,8 +30,8 @@ from ml_peg.app.filters import (
 )
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
+    build_collapse_controls,
     build_download_controls,
-    build_expand_controls,
     build_faqs,
     build_footer,
     build_loading_summary_table,
@@ -623,7 +623,7 @@ def build_category_page_layout(
                 ],
                 style={"margin": "32px 0 24px"},
             ),
-            build_expand_controls(),
+            build_collapse_controls(),
             benchmark_section,
         ]
     )
@@ -1108,20 +1108,16 @@ def build_nav(
             allow_duplicate=True,
         ),
         Output("bench-expand-store", "data"),
-        Input("expand-all-benchmarks", "n_clicks"),
         Input("collapse-all-benchmarks", "n_clicks"),
-        State({"type": "bench-body", "index": ALL}, "children"),
         State({"type": "bench-body", "index": ALL}, "id"),
         prevent_initial_call=True,
     )
-    def set_all_benchmarks(
-        expand_clicks: int,
+    def collapse_all_benchmarks(
         collapse_clicks: int,
-        bodies: list[object],
         body_ids: list[dict[str, str]],
     ) -> tuple[list[object], list[str], list[str], str]:
         """
-        Expand or collapse every benchmark card on the current page.
+        Collapse every benchmark card on the current page.
 
         Also records the choice in ``bench-expand-store`` so it applies as the
         on-load preference for other pages. Per-card toggles deliberately do
@@ -1129,12 +1125,8 @@ def build_nav(
 
         Parameters
         ----------
-        expand_clicks
-            Click count on the "Expand all" button.
         collapse_clicks
             Click count on the "Collapse all" button.
-        bodies
-            Current children of every mounted card body (truthy when mounted).
         body_ids
             Pattern-matching ids of every card body on the page.
 
@@ -1144,19 +1136,7 @@ def build_nav(
             New body children, header classNames, the matching ``aria-expanded``
             values, and the persisted preference.
         """
-        open_class = "mlpeg-bench-header mlpeg-bench-header--open"
-        if ctx.triggered_id == "expand-all-benchmarks" and expand_clicks:
-            children = [
-                no_update if current else benchmark_layouts.get(body_id["index"])
-                for current, body_id in zip(bodies, body_ids, strict=True)
-            ]
-            return (
-                children,
-                [open_class] * len(body_ids),
-                ["true"] * len(body_ids),
-                "expanded",
-            )
-        if ctx.triggered_id == "collapse-all-benchmarks" and collapse_clicks:
+        if collapse_clicks:
             return (
                 [None] * len(body_ids),
                 ["mlpeg-bench-header"] * len(body_ids),

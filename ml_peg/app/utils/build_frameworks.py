@@ -9,8 +9,8 @@ from dash.html import H1, H2, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
+    build_collapse_controls,
     build_download_controls,
-    build_expand_controls,
     build_loading_summary_table,
     build_speed_panel,
     build_summary_table,
@@ -353,7 +353,7 @@ def build_framework_page_layout(
             ),
             *summary_block,
             build_speed_panel(framework_view["speeds"]),
-            build_expand_controls(),
+            build_collapse_controls(),
             *sections,
         ]
     )
