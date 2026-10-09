@@ -14,6 +14,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from ml_peg import analysis, models
+from ml_peg.analysis.utils.decorators import merge_saved_models
+from ml_peg.app.utils.plot_helpers import build_violin_distribution
+
 ROOT = Path(__file__).parents[1]
 CALC_PATH = ROOT / "ml_peg/calcs/bulk_crystal/thermal_conductivity"
 ANALYSIS_PATH = (
@@ -50,6 +54,8 @@ def conductivity_functions(tmp_path):
         "MODELS": ["model"],
         "OUT_PATH": tmp_path,
         "PBE_DATA_PATH": tmp_path,
+        "merge_saved_models": merge_saved_models,
+        "build_violin_distribution": build_violin_distribution,
     }
     _load_functions(
         CALC_PATH / "thermal_conductivity.py",
@@ -98,6 +104,7 @@ def conductivity_functions(tmp_path):
             "_add_missing_error_rows",
             "_first_value",
             "status_parity",
+            "_write_srme_violin",
             "calc_kappa_metrics_from_dfs",
             "calc_kappa_srme_dataframes",
             "calc_kappa_srme",
@@ -230,3 +237,49 @@ def test_nan_mode_scores_receive_existing_failure_penalty(
     assert scored["srme"].tolist() == [0.0, 2.0]
     assert scored["srme"].mean() == 1.0
     assert scored["sre"].tolist() == [0.0, 0.0]
+
+
+@pytest.mark.parametrize("update", [False, True])
+@pytest.mark.parametrize("plot", ["srme", "fast_srme", "status"])
+def test_conductivity_plot_bundles_respect_update_mode(
+    tmp_path, monkeypatch, fake_models, conductivity_functions, update, plot
+) -> None:
+    """Updates preserve other models' figures; ordinary runs replace the bundle."""
+    funcs = conductivity_functions
+    funcs["MODELS"] = ["model_1", "model_2"]
+    index = ["mp-1", "mp-2"]
+    stats = {"ref": pd.DataFrame({"kappa_tot_avg": [1.0, 2.0]}, index=index)}
+    for model, values in (("model_1", [0.2, 0.4]), ("model_2", [0.6, 0.8])):
+        stats[model] = pd.DataFrame(
+            {
+                "kappa_tot_avg": [3.0, 4.0],
+                "has_imag_ph_modes": False,
+                "srme": values,
+                "fast_srme": values,
+            },
+            index=index,
+        )
+
+    filename = "figure_status_parity.json" if plot == "status" else f"{plot}.json"
+
+    def write_plots():
+        if plot == "status":
+            funcs["status_parity"](stats)
+        else:
+            funcs["_write_srme_violin"](stats, plot, filename, plot)
+
+    write_plots()
+    original = json.loads((tmp_path / filename).read_text())
+    funcs["MODELS"] = ["model_2"]
+    monkeypatch.setattr(models, "current_models", "model_2")
+    monkeypatch.setattr(analysis, "update_results", update)
+    stats["model_2"]["kappa_tot_avg"] = [10.0, 20.0]
+    stats["model_2"]["srme"] = [0.1, 0.2]
+    stats["model_2"]["fast_srme"] = [0.1, 0.2]
+    write_plots()
+    saved = json.loads((tmp_path / filename).read_text())
+
+    assert list(saved) == (["model_1", "model_2"] if update else ["model_2"])
+    assert saved["model_2"] != original["model_2"]
+    if update:
+        assert saved["model_1"] == original["model_1"]
