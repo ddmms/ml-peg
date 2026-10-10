@@ -64,7 +64,10 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
             if subset_name not in results[model_name]:
                 results[model_name][subset_name] = []
 
-            e_config = atoms.get_potential_energy()
+            # Energy is only saved if the calculation succeeded
+            e_config = (
+                float("nan") if atoms.calc is None else atoms.get_potential_energy()
+            )
             ref_energy = atoms.info.get("ref", None)
 
             if ref_energy is None:
@@ -205,6 +208,14 @@ def ranking_metrics(
             pred_values = np.array([d["pred"] for d in entries])
 
             if len(ref_values) < 2:  # Need at least 2 for ranking
+                continue
+
+            # Ranking a subset requires an energy for all of its structures
+            if np.isnan(pred_values).any():
+                subset_results[subset_name][model_name] = {
+                    "GlobalMin": float("nan"),
+                    "Top5_Spearman": float("nan"),
+                }
                 continue
 
             # --- Metric 1: Global Min Match (per subset) ---
