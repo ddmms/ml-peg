@@ -74,6 +74,7 @@ def get_app() -> LatticeConstantsApp:
     """
     return LatticeConstantsApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Performance when predicting lattice constants for 23 solids, including "
             "pure elements, binary compounds and semiconductors."

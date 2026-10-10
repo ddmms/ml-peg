@@ -111,7 +111,7 @@ def get_app() -> DiatomicsApp:
 
     return DiatomicsApp(
         name=BENCHMARK_NAME,
-        framework_ids="mace-multihead",
+        framework_ids=["mace-multihead", "mace-mp"],
         description=(
             "Diatomics explorer with periodic-table views. Metrics are averaged "
             "across all diatomic pairs (both homonuclear and heteronuclear)."
