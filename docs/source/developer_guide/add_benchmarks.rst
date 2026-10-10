@@ -5,10 +5,11 @@ Adding benchmarks
 This guide will break down the process of adding a new benchmark into several steps:
 
 1. :ref:`metrics`
-2. :ref:`benchmark-credits`
-3. :ref:`calculations`
-4. :ref:`analysis`
-5. :ref:`dash`
+2. :ref:`calculations`
+3. :ref:`analysis`
+4. :ref:`dash`
+5. :ref:`benchmark-credits`
+
 
 Please ensure you use the appropriate issue and pull request templates when
 contributing a new benchmark. Full examples can be found by filtering by the
