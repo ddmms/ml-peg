@@ -517,6 +517,7 @@ def struct_from_multi_scatters(
     structs
         List of list of structure filenames, with outer list in same order as curves to
         be visualised, and inner list in same order as scatter data to be visualised.
+        An empty inner list clears the viewer when a reference curve is clicked.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
@@ -562,11 +563,15 @@ def struct_from_multi_scatters(
         curve_number = click_data["points"][0]["curveNumber"]
         idx = click_data["points"][0]["pointNumber"]
 
-        if isinstance(structs[curve_number], str):
-            struct = structs[curve_number]
+        curve_structs = structs[curve_number]
+        if not curve_structs:
+            return Div()
+
+        if isinstance(curve_structs, str):
+            struct = curve_structs
             index = idx
         else:
-            struct = structs[curve_number][idx]
+            struct = curve_structs[idx]
             index = 0
 
         return Div(
