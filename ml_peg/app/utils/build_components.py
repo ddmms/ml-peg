@@ -16,6 +16,7 @@ from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
+from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_download_callbacks,
@@ -41,6 +42,7 @@ from ml_peg.app.utils.utils import (
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
+from ml_peg.utils.citations import BenchmarkCredits, add_framework_citations
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
@@ -1448,6 +1450,7 @@ def build_test_layout(
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
     speed: str | None = None,
+    credits: BenchmarkCredits | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1469,13 +1472,16 @@ def build_test_layout(
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
-        URL to online documentation. Default is None.
+        URL to online documentation, linked below the benchmark credits. Default is
+        None, which omits the link.
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
     speed
         Benchmark speed level used to render a cost badge. Default is None, which
         renders no badge.
+    credits
+        Benchmark citations and benchmark contributors. Default is None.
 
     Returns
     -------
@@ -1504,33 +1510,37 @@ def build_test_layout(
     if speed_badge is not None:
         layout_contents.append(Div(speed_badge, style={"margin": "8px 0 0"}))
 
-    layout_contents.append(H3(description))
-
     layout_contents.extend(
         [
-            Details(
-                [
-                    Summary(
-                        "Click for more information",
-                        style={
-                            "cursor": "pointer",
-                            "fontWeight": "bold",
-                            "padding": "5px",
-                        },
-                    ),
-                    Label(
-                        [html.A("Online documentation", href=docs_url, target="_blank")]
-                    ),
-                ],
-                style={
-                    # "border": "1px solid #ddd",
-                    "padding": "10px",
-                    # "borderRadius": "5px",
-                },
+            H3(description),
+            build_benchmark_credit_components(
+                add_framework_citations(credits, framework_ids)
             ),
-            Div(style={"height": "4px"}),
         ]
     )
+
+    if docs_url:
+        layout_contents.append(
+            html.A(
+                "View documentation \u2192",
+                href=docs_url,
+                target="_blank",
+                style={
+                    "alignItems": "center",
+                    "backgroundColor": "var(--mlpeg-surface-2)",
+                    "border": "1px solid var(--mlpeg-border)",
+                    "borderRadius": "6px",
+                    "color": "var(--mlpeg-accent)",
+                    "display": "inline-flex",
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "margin": "0 0 12px",
+                    "padding": "6px 12px",
+                    "textDecoration": "none",
+                    "width": "fit-content",
+                },
+            )
+        )
 
     reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [

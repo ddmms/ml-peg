@@ -18,6 +18,24 @@ mlip_arena:
   project_url: "https://huggingface.co/spaces/atomind/mlip-arena"
   paper_url: "https://proceedings.neurips.cc/paper_files/paper/2025/hash/bfa45223cc236855dbaa5c468c809896-Abstract-Datasets_and_Benchmarks_Track.html"
   github: "https://github.com/atomind-ai/mlip-arena"
+  citation:
+    title: "MLIP Arena: Advancing Fairness and Transparency in Machine Learning Interatomic Potentials via an Open, Accessible Benchmark Platform"
+    authors:
+      - Yuan Chiang
+      - Tobias Kreiman
+      - Christine Zhang
+      - Matthew C. Kuner
+      - Elizabeth Weaver
+      - Ishan Amin
+      - Hyunsoo Park
+      - Yunsung Lim
+      - Jihan Kim
+      - Daryl Chrzan
+      - Aron Walsh
+      - Samuel M. Blau
+      - Mark Asta
+      - Aditi S. Krishnapriyan
+    year: 2025
 
 mlip_audit:
   label: MLIP Audit
@@ -30,9 +48,21 @@ mlip_audit:
   project_url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
+  citation:
+    title: "MLIPAudit: A benchmarking tool for Machine Learned Interatomic Potentials"
+    authors:
+      - Leon Wehrhan
+      - Lucien Walewski
+      - Marie Bluntzer
+      - Heloise Chomet
+      - Jules Tilly
+      - Christoph Brunken
+      - Silvia Acosta-Gutiérrez
+    year: 2025
 
 matbench-discovery:
   label: Matbench Discovery
+  type: framework
   color: "#061e25"
   text_color: "#ffffff"
   url: "https://matbench-discovery.materialsproject.org"
@@ -42,6 +72,20 @@ matbench-discovery:
   project_url: "https://matbench-discovery.materialsproject.org"
   paper_url: "https://doi.org/10.1038/s42256-025-01055-1"
   github: "https://github.com/janosh/matbench-discovery"
+  citation:
+    title: "A framework to evaluate machine learning crystal stability predictions"
+    authors:
+      - Janosh Riebesell
+      - Rhys E. A. Goodall
+      - Philipp Benner
+      - Yuan Chiang
+      - Bowen Deng
+      - Gerbrand Ceder
+      - Mark Asta
+      - Alpha A. Lee
+      - Anubhav Jain
+      - Kristin A. Persson
+    year: 2025
 
 mace-multihead:
   label: Multihead Cross Learning

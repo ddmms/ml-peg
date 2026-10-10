@@ -1,0 +1,25 @@
+implementers:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "brew-2025-wiggle150"
+    role: benchmark_method
+    title: "Wiggle150: Benchmarking Density Functionals and Neural Network Potentials on Highly Strained Conformers"
+    authors:
+      - "Rebecca R. Brew"
+      - "Ian A. Nelson"
+      - "Meruyert Binayeva"
+      - "Amlan S. Nayak"
+      - "Wyatt J. Simmons"
+      - "Joseph J. Gair"
+      - "Corin C. Wagen"
+    year: 2025
+    doi: "10.1021/acs.jctc.5c00015"
+    url: null

@@ -234,6 +234,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_tautomers(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run tautomers analysis.

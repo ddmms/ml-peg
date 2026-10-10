@@ -1,0 +1,26 @@
+implementers:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+contributors:
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+  - name: "Lucien Walewski"
+    github: "lwalew"
+
+citations:
+  - key: "folmsbee-2020-conformers"
+    role: benchmark_method
+    title: "Assessing conformer energies using electronic structure and machine learning methods"
+    authors:
+      - "Dakota Folmsbee"
+      - "Geoffrey Hutchison"
+    year: 2021
+    doi: "10.1002/qua.26381"
+    url: null

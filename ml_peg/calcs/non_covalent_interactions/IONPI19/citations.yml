@@ -1,0 +1,24 @@
+implementers:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "spicher-2021-ionpi19"
+    role: benchmark_method
+    title: "Benchmarking London dispersion corrected density functional theory for noncovalent ion-pi interactions"
+    authors:
+      - "S. Spicher"
+      - "E. Caldeweyher"
+      - "A. Hansen"
+      - "S. Grimme"
+    year: 2021
+    doi: null
+    url: null

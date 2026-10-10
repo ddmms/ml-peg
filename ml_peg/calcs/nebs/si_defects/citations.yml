@@ -1,0 +1,11 @@
+implementers:
+  - name: "Namu Kroupa"
+    github: "zwei-beiner"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+# TODO: no paper is named in this benchmark's docs. Add its references here.
+citations: []

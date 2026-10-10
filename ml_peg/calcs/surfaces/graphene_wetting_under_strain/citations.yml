@@ -1,0 +1,20 @@
+implementers:
+  - name: "Darren Lim"
+    github: "dwl38"
+
+contributors: []
+
+citations:
+  - key: "lim-2026-graphene-wetting"
+    role: benchmark_method
+    title: "Strain-Dependent Wetting of Graphene"
+    authors:
+      - "Darren Wayne Lim"
+      - "Xavier R. Advincula"
+      - "William C. Witt"
+      - "Angelos Michaelides"
+      - "Fabian L. Thiemann"
+      - "Christoph Schran"
+    year: 2026
+    doi: null
+    url: "https://arxiv.org/abs/2601.20134"
