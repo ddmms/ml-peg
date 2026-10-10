@@ -3,7 +3,7 @@
   "use strict";
   if (window.mlpegBugReport) return;
 
-  const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new";
+  const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new?template=3_bug_report.yml";
   let dialog, context, screenshot, rectangles = [], startPoint, generation = 0;
 
   function field(id) { return dialog.querySelector("#bug-report-" + id); }
