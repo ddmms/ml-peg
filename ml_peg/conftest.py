@@ -146,12 +146,20 @@ class CitationReporter:
             return
 
         # Imported here so collection does not pay for loading the citation module
-        from ml_peg.utils.citations import build_run_citations
+        from ml_peg.utils.citations import CitationMetadataError, build_run_citations
 
-        summary = build_run_citations(
-            self.script_paths,
-            framework_ids_by_script=self.framework_ids,
-        )
+        # Invalid metadata is reported rather than ending the run in a traceback
+        try:
+            summary = build_run_citations(
+                self.script_paths,
+                framework_ids_by_script=self.framework_ids,
+            )
+        except CitationMetadataError as err:
+            terminalreporter.write_line("")
+            terminalreporter.write_line(
+                f"Could not build citation summary: {err}", yellow=True
+            )
+            return
         terminalreporter.write_line("")
         terminalreporter.write_line(summary)
 
