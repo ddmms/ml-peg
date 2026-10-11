@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -32,11 +32,18 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Extract system metadata from mock calculation
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
-    info_keys=["system"],
+    include_filenames=True,
+    per_file_info={
+        "system": lambda structs: structs[0].info["system"],
+        "ref": lambda structs: structs[0].info["ref"],
+    },
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_BARRIERS = SYSTEM_INFO["ref"]
 
 
 @pytest.fixture
@@ -58,39 +65,23 @@ def surface_barriers() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted surface barriers.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_BARRIERS)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
-        if not model_dir.exists():
-            continue
+        for filename in SYSTEM_INFO["filenames"]:
+            xyz_file = model_dir / f"{filename}.xyz"
+            if not xyz_file.exists():
+                results[model_name].append(float("nan"))
+                continue
 
-        xyz_files = sorted(model_dir.glob("*.xyz"))
-        if not xyz_files:
-            continue
-
-        for xyz_file in xyz_files:
             structs = read(xyz_file, index=":")
 
             gp_energy = structs[0].get_potential_energy()
-            system = structs[0].info["system"]
             ts_energy = structs[1].get_potential_energy()
 
-            barrier = ts_energy - gp_energy
-            results[model_name].append(barrier)
-
-            # Copy individual structure files to app data directory
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system}.xyz", structs)
-
-            # Store reference energies (only once)
-            if not ref_stored:
-                results["ref"].append(structs[0].info["ref"])
-
-        ref_stored = True
+            results[model_name].append(ts_energy - gp_energy)
 
     return results
 
@@ -112,12 +103,7 @@ def sbh17_errors(surface_barriers) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if surface_barriers[model_name]:
-            results[model_name] = mae(
-                surface_barriers["ref"], surface_barriers[model_name]
-            )
-        else:
-            results[model_name] = None
+        results[model_name] = mae(surface_barriers["ref"], surface_barriers[model_name])
     return results
 
 

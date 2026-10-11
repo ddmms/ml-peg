@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -32,9 +32,10 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
-    index="0",
+    index="1",
     include_filenames=True,
     out_path=OUT_PATH,
+    write_structs=True,
 )
 
 
@@ -84,7 +85,12 @@ def adsorption_energies() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*.xyz")):
+        for label in SYSTEM_INFO["filenames"]:
+            system_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not system_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
             structs = read(system_path, index=":")
 
             surface, mol_surface, molecule = structs
@@ -108,12 +114,11 @@ def adsorption_energies() -> dict[str, list]:
                 )
                 results["ref"].append(ref_ads_energy)
 
-            # Only write the first struct (slab+oxygen)
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system_path.stem}.xyz", structs[1])
-
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(SYSTEM_INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

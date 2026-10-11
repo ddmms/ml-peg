@@ -13,6 +13,7 @@ from ase.io import read, write
 from matplotlib import colormaps
 from matplotlib.colors import Colormap
 import numpy as np
+import pytest
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from yaml import safe_load
 
@@ -162,9 +163,9 @@ def mae(ref: list, prediction: list) -> float:
     Returns
     -------
     float
-        Mean absolute error.
+        Mean absolute error. NaN if any data is missing.
     """
-    if np.isnan(np.sum(prediction)):
+    if len(ref) != len(prediction) or not len(ref) or np.isnan(np.sum(prediction)):
         return np.nan
     return mean_absolute_error(ref, prediction)
 
@@ -183,11 +184,28 @@ def rmse(ref: list, prediction: list) -> float:
     Returns
     -------
     float
-        Root mean squared error.
+        Root mean squared error. NaN if any data is missing.
     """
-    if np.isnan(np.sum(prediction)):
+    if len(ref) != len(prediction) or not len(ref) or np.isnan(np.sum(prediction)):
         return np.nan
     return np.sqrt(mean_squared_error(ref, prediction))
+
+
+def count_valid(values: Iterable[float | None]) -> int:
+    """
+    Count values from successful calculations, ignoring `None` and NaN.
+
+    Parameters
+    ----------
+    values
+        Values to count, typically predictions for a single model.
+
+    Returns
+    -------
+    int
+        Number of valid values.
+    """
+    return sum(1 for value in values if value is not None and np.isfinite(value))
 
 
 DENSITY_GRID_SIZE = 80
@@ -236,6 +254,15 @@ def sample_density_grid(
     if ref_arr.size == 0 or pred_arr.size == 0:
         return [], [], []
 
+    # Drop missing data, so a single NaN cannot make all bins NaN
+    valid = np.isfinite(ref_arr) & np.isfinite(pred_arr)
+    orig_indices = np.flatnonzero(valid)
+    ref_arr = ref_arr[valid]
+    pred_arr = pred_arr[valid]
+
+    if ref_arr.size == 0:
+        return [], [], []
+
     delta_x = ref_arr.max() - ref_arr.min()
     delta_y = pred_arr.max() - pred_arr.min()
     eps = 1e-9
@@ -247,7 +274,7 @@ def sample_density_grid(
 
     cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
     for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
-        cell_points[(int(cx), int(cy))].append(idx)
+        cell_points[(int(cx), int(cy))].append(int(orig_indices[idx]))
 
     rng = np.random.default_rng(seed)
     sampled_indices: list[int] = []
@@ -370,8 +397,13 @@ def write_density_trajectories(
         for source_idx in source_indices:
             label = labels_list[source_idx]
             struct_path = struct_dir / struct_filename_builder(label)
+            if not struct_path.exists():
+                continue
             frames.append(read(struct_path))
-        write(traj_dir / f"{point_idx}.extxyz", frames)
+
+        # Skipped points keep their index, so remaining files match plotted points
+        if frames:
+            write(traj_dir / f"{point_idx}.extxyz", frames)
 
 
 def calc_metric_scores(
@@ -923,12 +955,16 @@ def get_struct_info(
 
     model_dir = calc_path / model_name
     if not model_dir.exists():
-        raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{model_dir} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
 
     files = sorted(model_dir.glob(glob_pattern), key=sort_key)
     if not files:
-        raise ValueError(
-            f"No file matches in {model_dir}. Please run mock calculation."
+        pytest.skip(
+            f"No file matches in {model_dir}. Please run mock calculation.",
+            allow_module_level=True,
         )
 
     for file in files:
@@ -965,6 +1001,26 @@ def get_struct_info(
     return info
 
 
+def write_element_info(elements: list[list[str]], out_path: Path) -> None:
+    """
+    Write out element info for benchmarks with a known, fixed set of elements.
+
+    Allows elemental info to be saved for filtering without reading mock
+    calculation outputs, which may be expensive to generate for little benefit,
+    such as for molecular dynamics benchmarks.
+
+    Parameters
+    ----------
+    elements
+        Elements in each system of the benchmark.
+    out_path
+        Path to write out info.
+    """
+    out_path.mkdir(parents=True, exist_ok=True)
+    with (out_path / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": elements}, f, indent=1)
+
+
 def write_struct_info(
     data_path: Path | list[Path], out_path: Path, index: str = ":"
 ) -> None:
@@ -990,7 +1046,10 @@ def write_struct_info(
 
     for path in data_path:
         if not path.exists():
-            raise ValueError(f"{path} does not exist. Please run mock calculation.")
+            pytest.skip(
+                f"{path} does not exist. Please run mock calculation.",
+                allow_module_level=True,
+            )
 
         structs = read(path, index=index)
         if isinstance(structs, Atoms):

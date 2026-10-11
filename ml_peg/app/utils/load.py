@@ -59,8 +59,10 @@ def rebuild_table(
 
     data = table_json["data"]
     columns = table_json["columns"]
-    # Remove values greater than int64 limits
-    clean_table_data(data)
+    weights = clean_weights(table_json.get("weights"))
+    # Remove values greater than int64 limits, and NaN any score they invalidate.
+    # Weights are needed to know which metrics contribute to the score.
+    clean_table_data(data, weights)
     # Replace None scores with NaN
     none_to_nan(data)
     # Hide models with no result in any metric column for this benchmark
@@ -191,7 +193,6 @@ def rebuild_table(
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))
-    weights = clean_weights(table_json.get("weights"))
     if not thresholds or not weights:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
 

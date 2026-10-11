@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -29,7 +29,7 @@ EV_TO_KCAL = units.mol / units.kcal
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     include_filenames=True,
     out_path=OUT_PATH,
 )
@@ -87,9 +87,6 @@ def isomer_relative_energies() -> dict[str, list]:
             results[model_name] = [None] * total
             continue
 
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-
         for system in LABELS:
             pred_energies = []
             ref_energies = []
@@ -99,9 +96,6 @@ def isomer_relative_energies() -> dict[str, list]:
 
                 pred_energies.append(atoms.info.get("model_energy") * EV_TO_KCAL)
                 ref_energies.append(atoms.info.get("ref_energy") * EV_TO_KCAL)
-
-                # Copy structure to app directory
-                write(structs_dir / f"{system}_{isomer}.xyz", atoms)
 
             # Compute relative energies
             min_pred_energy = min(pred_energies)
@@ -134,11 +128,18 @@ def isomer_complex_errors(isomer_relative_energies) -> dict[str, float | None]:
         Dictionary of predicted relative energy errors for all models.
     """
     results: dict[str, float | None] = {}
+    refs = isomer_relative_energies["ref"]
     for model_name in MODELS:
         preds = isomer_relative_energies.get(model_name, [])
+
+        # Reference energies come from the models, so are missing if none ran
+        if len(refs) != len(preds):
+            results[model_name] = None
+            continue
+
         pairs = [
             (ref, pred)
-            for ref, pred in zip(isomer_relative_energies["ref"], preds, strict=True)
+            for ref, pred in zip(refs, preds, strict=True)
             if pred is not None
         ]
         if not pairs:

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 from ase import units
 from ase.io import read, write
 import numpy as np
-from numpy.typing import NDArray
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -31,15 +31,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/*.xyz",
-    index=0,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
-
 # Unit conversion
 EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 
@@ -47,55 +38,40 @@ EV_TO_KCAL_PER_MOL = units.mol / units.kcal
 ALLOWED_CHARGES = (0,)
 ALLOWED_MULTIPLICITY = (1,)
 
+INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*/*.xyz",
+    index=0,
+    info_keys=["category", "system_name", "weight"],
+    include_filenames=True,
+    include_dirs=True,
+    per_file_info={
+        "excluded": lambda structs: any(
+            struct.info["excluded"]
+            or struct.info["charge"] not in ALLOWED_CHARGES
+            or struct.info["spin"] not in ALLOWED_MULTIPLICITY
+            for struct in structs
+        ),
+        # Reference value is shared by all structures in a system
+        "ref_value": lambda structs: structs[0].info["ref_value"],
+    },
+    write_info=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
 
-def structure_info() -> dict[str, dict[str, float] | list | NDArray]:
-    """
-    Get info from all stored structures.
+# Convert to numpy arrays for filtering
+INFO["categories"] = np.array(INFO["category"])
+INFO["subsets"] = np.array(INFO["dirs"])
+INFO["excluded"] = np.array(INFO["excluded"])
+INFO["systems"] = INFO["system_name"]
 
-    Returns
-    -------
-    dict[str, dict[str, float] | NDArray]
-        Dictionary with weights, subset name and category for all systems.
-    """
-    info = {
-        "categories": [],
-        "subsets": [],
-        "systems": [],
-        "excluded": [],
-        "weights": {},
-        "counts": {},
-    }
-    for model_name in MODELS:
-        for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
-            count = 0
-            for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
-                count += 1
-                structs = read(system_path, index=":")
-                info["subsets"].append(subset)
+# Weight is shared by all systems in a subset
+INFO["weights"] = dict(zip(INFO["dirs"], INFO["weight"], strict=True))
+INFO["counts"] = Counter(INFO["dirs"])
 
-                info["categories"].append(structs[0].info["category"])
-                info["systems"].append(structs[0].info["system_name"])
-                info["excluded"].append(
-                    any(
-                        struct.info["excluded"]
-                        or struct.info["charge"] not in ALLOWED_CHARGES
-                        or struct.info["spin"] not in ALLOWED_MULTIPLICITY
-                        for struct in structs
-                    )
-                )
-            info["weights"][subset] = structs[0].info["weight"]
-            info["counts"][subset] = count
-
-        # Convert to numpy arrays for filtering
-        info["categories"] = np.array(info["categories"])
-        info["subsets"] = np.array(info["subsets"])
-        info["excluded"] = np.array(info["excluded"])
-        # Only need to access info from one model
-        return info
-    return info
-
-
-INFO = structure_info()
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = INFO["ref_value"]
 
 _CATEGORY_LABELS = {
     "Basic properties and reaction energies for small systems": "Small systems",
@@ -130,35 +106,25 @@ def rel_energies() -> dict[str, list[float]]:
     dict[str, list[float]]
         Dictionary of all reference and predicted relative energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
+    systems = list(zip(INFO["dirs"], INFO["filenames"], strict=True))
+
     for model_name in MODELS:
-        count = 0
-        for subset in [dir.name for dir in sorted((CALC_PATH / model_name).glob("*"))]:
-            for system_path in sorted((CALC_PATH / model_name / subset).glob("*.xyz")):
-                structs = read(system_path, index=":")
-                pred_rel_energy = 0
+        for subset, label in systems:
+            system_path = CALC_PATH / model_name / subset / f"{label}.xyz"
+            if not system_path.exists():
+                results[model_name].append(float("nan"))
+                continue
 
-                for struct in structs:
-                    # Count is defined to give the correct relative energy
-                    pred_rel_energy += (
-                        struct.get_potential_energy() * struct.info["count"]
-                    )
+            structs = read(system_path, index=":")
+            pred_rel_energy = 0
 
-                results[model_name].append(pred_rel_energy * EV_TO_KCAL_PER_MOL)
+            for struct in structs:
+                # Count is defined to give the correct relative energy
+                pred_rel_energy += struct.get_potential_energy() * struct.info["count"]
 
-                # Only store reference results from first model
-                # Shared by all structures in a system, so can use last structure
-                if not ref_stored:
-                    results["ref"].append(struct.info["ref_value"])
+            results[model_name].append(pred_rel_energy * EV_TO_KCAL_PER_MOL)
 
-                # Write out all structs in system for app
-                structs_dir = OUT_PATH / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{count}.xyz", structs)
-                count += 1
-
-        ref_stored = True
     return results
 
 
@@ -362,4 +328,11 @@ def test_gmtkn55(metrics):
     metrics
         All GMTKN55 metrics.
     """
-    return
+    # Write out structures from the mock calculation for the app
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for count, (subset, label) in enumerate(
+        zip(INFO["dirs"], INFO["filenames"], strict=True)
+    ):
+        structs = read(CALC_PATH / "mock" / subset / f"{label}.xyz", index=":")
+        write(structs_dir / f"{count}.xyz", structs)

@@ -9,10 +9,6 @@ from dash.html import Div
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
-
-MODELS = get_model_names(current_models)
 
 
 class GSCDB138BenchmarkApp(BaseApp):
@@ -87,16 +83,15 @@ class GSCDB138BenchmarkApp(BaseApp):
         list[str]
             List of absolute paths for systems in the dataset.
         """
-        for model_name in MODELS:
-            model_dir = self.data_path / model_name
-            if model_dir.exists():
-                system_paths = sorted(model_dir.glob(f"{dataset}_*.xyz"))
-                if system_paths:
-                    # Get absolute paths for systems in assets directory
-                    return [
-                        f"/assets/{system_path.relative_to(self.data_path.parent.parent).as_posix()}"
-                        for system_path in system_paths
-                    ]
+        model_dir = self.data_path / "mock"
+        if model_dir.exists():
+            system_paths = sorted(model_dir.glob(f"{dataset}_*.xyz"))
+            if system_paths:
+                # Get absolute paths for systems in assets directory
+                return [
+                    f"/assets/{system_path.relative_to(self.data_path.parent.parent).as_posix()}"
+                    for system_path in system_paths
+                ]
         return []
 
     def register_callbacks(self) -> None:

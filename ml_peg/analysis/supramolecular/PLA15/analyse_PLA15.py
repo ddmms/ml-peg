@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -39,6 +40,7 @@ INFO = get_struct_info(
     glob_pattern="*.xyz",
     index=0,
     info_keys=["identifier", "interaction_type"],
+    include_filenames=True,
     per_file_info={
         "complex_atoms": lambda structs: len(structs[0]),
         "complex_charges": lambda structs: structs[0].info["charge"],
@@ -46,11 +48,15 @@ INFO = get_struct_info(
         "ligand_charges": lambda structs: structs[1].info["charge"],
         "protein_atoms": lambda structs: len(structs[2]),
         "protein_charges": lambda structs: structs[2].info["charge"],
+        "ref_int_energy": lambda structs: structs[0].info["ref_int_energy"],
     },
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_int_energy"]]
 
 
 @pytest.fixture
@@ -79,29 +85,18 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted interaction energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            results[model_name] = []
-            continue
+        for label in INFO["filenames"]:
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
 
-        for struct_path in sorted(model_dir.glob("*.xyz")):
             atoms = read(struct_path, index=0)
-
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
-
             results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{struct_path.stem}.xyz", atoms)
-
-        ref_stored = True
     return results
 
 
@@ -124,13 +119,12 @@ def pla15_r2(interaction_energies) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        if interaction_energies[model_name]:
-            r, _ = pearsonr(
-                interaction_energies["ref"], interaction_energies[model_name]
-            )
-            results[model_name] = r**2
-        else:
+        predictions = interaction_energies[model_name]
+        if np.isnan(np.sum(predictions)):
             results[model_name] = None
+            continue
+        r, _ = pearsonr(interaction_energies["ref"], predictions)
+        results[model_name] = r**2
     return results
 
 
@@ -151,12 +145,9 @@ def pla15_mae(interaction_energies) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        if interaction_energies[model_name]:
-            results[model_name] = mae(
-                interaction_energies["ref"], interaction_energies[model_name]
-            )
-        else:
-            results[model_name] = None
+        results[model_name] = mae(
+            interaction_energies["ref"], interaction_energies[model_name]
+        )
     return results
 
 
@@ -182,14 +173,9 @@ def pla15_ion_ion_mae(interaction_energies) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        if interaction_energies[model_name] and ion_ion_indices:
-            ref_ion_ion = [interaction_energies["ref"][i] for i in ion_ion_indices]
-            pred_ion_ion = [
-                interaction_energies[model_name][i] for i in ion_ion_indices
-            ]
-            results[model_name] = mae(ref_ion_ion, pred_ion_ion)
-        else:
-            results[model_name] = None
+        ref_ion_ion = [interaction_energies["ref"][i] for i in ion_ion_indices]
+        pred_ion_ion = [interaction_energies[model_name][i] for i in ion_ion_indices]
+        results[model_name] = mae(ref_ion_ion, pred_ion_ion)
     return results
 
 
@@ -215,16 +201,11 @@ def pla15_ion_neutral_mae(interaction_energies) -> dict[str, float]:
 
     results = {}
     for model_name in MODELS:
-        if interaction_energies[model_name] and ion_neutral_indices:
-            ref_ion_neutral = [
-                interaction_energies["ref"][i] for i in ion_neutral_indices
-            ]
-            pred_ion_neutral = [
-                interaction_energies[model_name][i] for i in ion_neutral_indices
-            ]
-            results[model_name] = mae(ref_ion_neutral, pred_ion_neutral)
-        else:
-            results[model_name] = None
+        ref_ion_neutral = [interaction_energies["ref"][i] for i in ion_neutral_indices]
+        pred_ion_neutral = [
+            interaction_energies[model_name][i] for i in ion_neutral_indices
+        ]
+        results[model_name] = mae(ref_ion_neutral, pred_ion_neutral)
     return results
 
 

@@ -8,10 +8,7 @@ from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Lanthanide Isomer Complexes"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/f_block.html#isomer-complexes"
@@ -36,20 +33,18 @@ class IsomerComplexesApp(BaseApp):
             column_to_plot={"MAE": scatter},
         )
 
-        # Use first model's structures for visualization
-        if MODELS:
-            structs_dir = DATA_PATH / MODELS[0]
-            structs = [
-                f"/assets/f_block/isomer_complexes/{MODELS[0]}/{struct_file.stem}.xyz"
-                for struct_file in sorted(structs_dir.glob("*.xyz"))
-            ]
+        structs_dir = DATA_PATH / "mock"
+        structs = [
+            f"/assets/f_block/isomer_complexes/mock/{struct_file.name}"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
+        ]
 
-            struct_from_scatter(
-                scatter_id=f"{BENCHMARK_NAME}-figure",
-                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                structs=structs,
-                mode="struct",
-            )
+        struct_from_scatter(
+            scatter_id=f"{BENCHMARK_NAME}-figure",
+            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+            structs=structs,
+            mode="struct",
+        )
 
 
 def get_app() -> IsomerComplexesApp:

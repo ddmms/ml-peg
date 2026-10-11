@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -40,7 +40,7 @@ INFO = get_struct_info(
     calc_path=CALC_PATH,
     include_filenames=True,
     write_info=True,
-    write_structs=False,
+    write_structs=True,
     out_path=OUT_PATH,
 )
 
@@ -68,9 +68,18 @@ def barrier_heights() -> dict[str, list]:
     ref_stored = False
 
     for model_name in MODELS:
-        for label in INFO["filenames"]:
-            structs = read(CALC_PATH / model_name / f"{label}.xyz", index=":")
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            results[model_name] = [float("nan")] * len(INFO["filenames"])
+            continue
 
+        for label in INFO["filenames"]:
+            struct_path = model_dir / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            structs = read(struct_path, index=":")
             results[model_name].append(
                 (structs[1].info["model_energy"] - structs[0].info["model_energy"])
                 * EV_TO_KCAL
@@ -81,11 +90,11 @@ def barrier_heights() -> dict[str, list]:
                     * EV_TO_KCAL
                 )
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}_rct.xyz", structs)
-        ref_stored = True
+        if not ref_stored:
+            if len(results["ref"]) == len(INFO["filenames"]):
+                ref_stored = True
+            else:
+                results["ref"] = []
     return results
 
 

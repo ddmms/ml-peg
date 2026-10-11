@@ -30,17 +30,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Extract per-structure elemental information from the mock calculation. Keeping one
-# element list per surface allows the benchmark to support partial filtering later.
-SYSTEM_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    sort_key=lambda path: int(path.stem),
-    index=0,
-    include_filenames=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
 
 EV_TO_MEV = 1000.0
 
@@ -271,4 +260,14 @@ def test_cleavage_energy(
     cleavage_density
         Density-scatter inputs for all models (drives saved plots).
     """
-    return
+    # Extract per-structure elemental information from the mock calculation. Keeping one
+    # element list per surface allows the benchmark to support partial filtering later.
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        sort_key=lambda path: int(path.stem),
+        index=0,
+        include_filenames=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )

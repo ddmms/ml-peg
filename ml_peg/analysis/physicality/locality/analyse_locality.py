@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -24,14 +24,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
-
 
 @pytest.fixture
 def ghost_force() -> dict[str, float]:
@@ -46,7 +38,11 @@ def ghost_force() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        solute, combined = read(CALC_PATH / model_name / "system_ghost.xyz", index=":")
+        struct_path = CALC_PATH / model_name / "system_ghost.xyz"
+        if not struct_path.exists():
+            results[model_name] = None
+            continue
+        solute, combined = read(struct_path, index=":")
 
         solute_force = solute.get_forces()
         combined_force = combined.get_forces()
@@ -55,11 +51,6 @@ def ghost_force() -> dict[str, float]:
         delta_f = np.linalg.norm(solute_force - combined_force[: len(solute)], axis=1)
         # Convert to meV/Å
         results[model_name] = np.max(delta_f * 1000)
-
-        # Write structures in order as glob is unsorted
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-        write(structs_dir / "system_ghost.xyz", [solute, combined])
 
     return results
 
@@ -77,9 +68,13 @@ def hydrogen_force() -> dict[str, float]:
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     results = {}
     for model_name in MODELS:
-        structs = read(CALC_PATH / model_name / "system_random_H.xyz", index=":")
+        struct_path = CALC_PATH / model_name / "system_random_H.xyz"
+        if not struct_path.exists():
+            results[model_name] = None, None
+            continue
+        structs = read(struct_path, index=":")
 
-        # First structuer is pure solute
+        # First structure is pure solute
         solute_force = structs[0].get_forces()
 
         delta_forces = []
@@ -93,11 +88,6 @@ def hydrogen_force() -> dict[str, float]:
             delta_forces.append(np.mean(delta_f) * 1000)
 
         results[model_name] = np.mean(delta_forces), np.std(delta_forces)
-
-        # Write structures in order as glob is unsorted
-        structs_dir = OUT_PATH / model_name
-        structs_dir.mkdir(parents=True, exist_ok=True)
-        write(structs_dir / "system_random_H.xyz", structs)
 
     return results
 
@@ -149,4 +139,10 @@ def test_locality(metrics: dict[str, dict]) -> None:
     metrics
         All locality metrics.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

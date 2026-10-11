@@ -44,10 +44,16 @@ EV_TO_KCAL = units.mol / units.kcal
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     include_filenames=True,
+    per_file_info={
+        "ref_int_energy": lambda structs: float(structs[0].info["ref_int_energy"]),
+    },
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_int_energy"]]
 EQUILIBRIUM_LABELS = [f for f in INFO["filenames"] if "_" not in f]
 DISSOCIATION_LABELS = [f for f in INFO["filenames"] if "_" in f]
 
@@ -69,25 +75,24 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted interaction energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
+        structs_dir = OUT_PATH / model_name
+        structs_dir.mkdir(parents=True, exist_ok=True)
+
         for label in INFO["filenames"]:
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz", index=0)
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
 
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"][()] * EV_TO_KCAL)
-
+            atoms = read(struct_path, index=0)
             results[model_name].append(atoms.info["model_int_energy"][()] * EV_TO_KCAL)
 
             # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}.xyz", atoms)
 
-        ref_stored = True
     return results
 
 

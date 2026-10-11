@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "ACONFL"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#aconfl"
 DATA_PATH = APP_ROOT / "data" / "conformers" / "ACONFL"
@@ -31,11 +28,11 @@ class ACONFLApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
+        model_dir = DATA_PATH / "mock"
         if model_dir.exists():
             labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
             structs = [
-                f"/assets/conformers/ACONFL/{MODELS[0]}/{label}.xyz" for label in labels
+                f"/assets/conformers/ACONFL/mock/{label}.xyz" for label in labels
             ]
         else:
             structs = []
