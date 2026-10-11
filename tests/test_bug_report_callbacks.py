@@ -1,4 +1,4 @@
-"""Tests for the data included by the browser bug reporter."""
+"""Tests for the data included by the browser bug-report callback."""
 
 from __future__ import annotations
 
