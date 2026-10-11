@@ -7,28 +7,34 @@ objects, guarding against silently shipping empty plots.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from dash.dcc import Graph
 
-from ml_peg.app import APP_ROOT
 from ml_peg.app.defects.split_vacancy.app_split_vacancy import _trace_models
 from ml_peg.app.utils.load import _responsive_mode, read_plot
 
 
-def test_read_plot_returns_dict_figure_with_data() -> None:
+def test_read_plot_returns_dict_figure_with_data(tmp_path: Path) -> None:
     """``read_plot`` returns a Graph whose figure is a dict containing traces."""
-    candidates = sorted((APP_ROOT / "data").rglob("figure_*.json"))
-    assert candidates, "no saved figure_*.json found under app data"
+    figure = {
+        "data": [{"type": "scatter", "x": [0, 1], "y": [1, 2], "name": "Test model"}],
+        "layout": {"title": {"text": "Test figure"}},
+    }
+    plot_path = tmp_path / "figure_test.json"
+    plot_path.write_text(json.dumps(figure))
 
-    graph = read_plot(candidates[0], id="unit-test-figure")
+    graph = read_plot(plot_path, id="unit-test-figure")
 
     assert isinstance(graph, Graph)
     assert isinstance(graph.figure, dict), "figure should pass through as a plain dict"
-    assert graph.figure.get("data"), "figure should contain trace data"
+    assert graph.figure == figure, "trace data and layout should survive loading"
 
 
-def test_read_plot_missing_file_returns_empty_graph() -> None:
+def test_read_plot_missing_file_returns_empty_graph(tmp_path: Path) -> None:
     """``read_plot`` returns a Graph with no figure when the file is absent."""
-    graph = read_plot(APP_ROOT / "data" / "does-not-exist.json", id="missing-figure")
+    graph = read_plot(tmp_path / "does-not-exist.json", id="missing-figure")
 
     assert isinstance(graph, Graph)
     assert graph.figure is None
