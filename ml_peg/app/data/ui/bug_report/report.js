@@ -3,8 +3,9 @@
   "use strict";
   if (window.mlpegBugReport) return;
 
-  const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new?template=3_bug_report.yml";
-  let dialog, context, screenshot, rectangles = [], startPoint, generation = 0;
+  // Standard editor parameters also work before changes to issue templates merge.
+  const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new";
+  let dialog, context, screenshot, rectangles = [], startPoint, generation = 0, captures = 0;
 
   function field(id) { return dialog.querySelector("#bug-report-" + id); }
   function status(message) { field("status").textContent = message; }
@@ -47,7 +48,7 @@
 
   function draft() {
     const url = new URL(ISSUE_URL);
-    url.searchParams.set("title", "Website bug: " + field("title").value.trim());
+    url.searchParams.set("title", "Website bug: " + (field("title").value.trim() || context.page));
     url.searchParams.set("body", reportBody());
     if (url.href.length > 7500) {
       // Keep user text and changed settings intact, omitting the full settings grid.
@@ -87,18 +88,20 @@
   }
 
   async function useScreenshot(source, token) {
+    if (token !== generation || !dialog.open) return;
     const image = new Image();
     image.src = source;
     await image.decode();
     if (token !== generation || !dialog.open) return;
     screenshot = image;
     rectangles = [];
+    startPoint = null;
     const scale = Math.min(1, 1920 / image.width, 1080 / image.height);
     field("canvas").width = Math.round(image.width * scale);
     field("canvas").height = Math.round(image.height * scale);
     field("image").hidden = false;
     draw();
-    status("Drag on the screenshot to mark the problem. Opening the GitHub draft downloads the image; you must attach it on GitHub.");
+    status("Drag on the screenshot to mark the problem. Opening the GitHub issue downloads the image for you to attach on GitHub.");
   }
 
   function imageLibrary() {
@@ -117,12 +120,18 @@
   }
 
   async function capture() {
-    const token = generation;
+    const token = ++generation;
+    let capturing = false;
     field("capture").disabled = true;
     status("Capturing the current page…");
     try {
       const library = await imageLibrary();
+      if (token !== generation || !dialog.open) return;
       const width = window.innerWidth, height = window.innerHeight;
+      // SVG foreignObject rendering can add scrollbars absent from the live page.
+      captures++;
+      capturing = true;
+      document.body.classList.add("mlpeg-page-capturing");
       const data = await library.toPng(document.body, {
         width, height,
         pixelRatio: Math.min(1, 1920 / width, 1080 / height),
@@ -142,12 +151,15 @@
       });
       await useScreenshot(data, token);
       if (token === generation && document.querySelector("#page-content iframe")) {
-        status("Screenshot ready. Check the preview: 3D viewers may be missing. You can use your own screenshot instead.");
+        status("Screenshot ready. Check the preview: 3D viewers may be missing. You can attach your own screenshot directly on GitHub.");
       }
     } catch (error) {
-      window._mlpegHtmlToImagePromise = null;
-      if (token === generation) status("Could not capture this page. Choose your own screenshot, or report without one.");
+      if (token === generation) {
+        window._mlpegHtmlToImagePromise = null;
+        status("Could not capture this page. You can attach your own screenshot directly on GitHub, or report without one.");
+      }
     } finally {
+      if (capturing && --captures === 0) document.body.classList.remove("mlpeg-page-capturing");
       if (token === generation) field("capture").disabled = false;
     }
   }
@@ -160,27 +172,29 @@
     // Static markup only. Report data is assigned using value/textContent.
     dialog.innerHTML = `
       <form id="bug-report-form">
-        <h2 id="bug-report-heading">Report a bug</h2>
-        <p>Describe the problem, then review a draft on GitHub. A GitHub account is needed to submit it.
+        <div class="bug-report-header">
+          <h2 id="bug-report-heading">Report a bug</h2>
+          <button id="bug-report-close" type="button" aria-label="Close bug report">×</button>
+        </div>
+        <div id="bug-report-body" class="bug-report-body">
+        <p>All fields are optional. Review and complete your report on GitHub before submitting with your GitHub account.
         Optional screenshots download to your device for you to attach. Nothing is submitted automatically.</p>
         <label for="bug-report-title">Short title</label>
-        <input id="bug-report-title" type="text" maxlength="120" required>
+        <input id="bug-report-title" type="text" maxlength="120">
         <label for="bug-report-description">What happened?</label>
-        <textarea id="bug-report-description" maxlength="4000" required></textarea>
+        <textarea id="bug-report-description" maxlength="4000"></textarea>
         <label for="bug-report-expected">What did you expect?</label>
         <textarea id="bug-report-expected" maxlength="2000"></textarea>
         <label for="bug-report-steps">Steps to reproduce</label>
         <textarea id="bug-report-steps" maxlength="4000"></textarea>
         <details><summary>Included page details</summary><pre id="bug-report-context"></pre></details>
         <div class="bug-report-actions"><button id="bug-report-capture" type="button">Capture this page</button></div>
-        <label for="bug-report-upload">Or choose a screenshot (PNG or JPEG, up to 10 MB)</label>
-        <input id="bug-report-upload" type="file" accept="image/png,image/jpeg">
         <div id="bug-report-image" hidden>
           <p>Drag to mark an area. Check the preview before attaching it:
           automatic captures can differ in scrolled areas or 3D viewers.</p>
           <canvas id="bug-report-canvas" aria-label="Screenshot: drag to highlight a problem area"></canvas>
           <p id="bug-report-attachment-note">The screenshot is not uploaded automatically.
-          Open the GitHub draft, then drag the downloaded <strong>mlpeg-bug-screenshot.png</strong>
+          Open the GitHub issue, then drag the downloaded <strong>mlpeg-bug-screenshot.png</strong>
           into the issue description before submitting.</p>
           <div class="bug-report-actions">
             <button id="bug-report-download" type="button">Download screenshot</button>
@@ -191,7 +205,8 @@
         <p id="bug-report-status" class="bug-report-status" role="status" aria-live="polite"></p>
         <div class="bug-report-actions">
           <button id="bug-report-cancel" type="button">Cancel</button>
-          <button type="submit">Open GitHub draft</button>
+          <button type="submit">Open GitHub issue</button>
+        </div>
         </div>
       </form>`;
     document.body.appendChild(dialog);
@@ -202,6 +217,21 @@
       status("Screenshot downloaded. Drag mlpeg-bug-screenshot.png into the GitHub issue description to attach it.");
     });
     field("cancel").addEventListener("click", () => dialog.close());
+    field("close").addEventListener("click", () => dialog.close());
+    let backdropPointer = false;
+    function outsideDialog(event) {
+      const box = dialog.getBoundingClientRect();
+      return event.clientX < box.left || event.clientX > box.right
+        || event.clientY < box.top || event.clientY > box.bottom;
+    }
+    dialog.addEventListener("pointerdown", event => {
+      backdropPointer = event.target === dialog && outsideDialog(event);
+    });
+    dialog.addEventListener("pointercancel", () => { backdropPointer = false; });
+    dialog.addEventListener("click", event => {
+      if (backdropPointer && event.target === dialog && outsideDialog(event)) dialog.close();
+      backdropPointer = false;
+    });
     dialog.addEventListener("close", () => {
       generation++;
       screenshot = null;
@@ -212,26 +242,11 @@
     field("remove").addEventListener("click", () => {
       generation++;
       screenshot = null;
-      field("upload").value = "";
+      startPoint = null;
+      rectangles = [];
       field("image").hidden = true;
       field("capture").disabled = false;
       status("");
-    });
-    field("upload").addEventListener("change", async event => {
-      const file = event.target.files[0];
-      if (!file) return;
-      if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 10 * 1024 * 1024) {
-        status("Choose a PNG or JPEG screenshot smaller than 10 MB.");
-        return;
-      }
-      const token = ++generation;
-      const source = URL.createObjectURL(file);
-      field("capture").disabled = false;
-      try { await useScreenshot(source, token); }
-      catch (error) {
-        if (token === generation) status("Could not read that screenshot. Try another image.");
-      }
-      finally { URL.revokeObjectURL(source); }
     });
     const canvas = field("canvas");
     canvas.addEventListener("pointerdown", event => {
@@ -262,8 +277,8 @@
       link.rel = "noopener noreferrer";
       link.click();
       status(screenshot
-        ? "GitHub draft opened. Drag mlpeg-bug-screenshot.png from your downloads into the issue description to attach it before submitting."
-        : "GitHub draft opened. Review your report, then submit it on GitHub.");
+        ? "GitHub issue opened. Drag mlpeg-bug-screenshot.png from your downloads into the issue description to attach it before submitting."
+        : "GitHub issue opened. Review your report, then submit it on GitHub.");
     });
   }
 
