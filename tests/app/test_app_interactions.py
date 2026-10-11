@@ -7,38 +7,11 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from playwright.sync_api import Locator, Page, expect
 
 TIMEOUT = 60_000
-
-
-def _settle(locator: Locator, timeout: int = TIMEOUT) -> None:
-    """Wait until a locator's bounding box stops moving.
-
-    The benchmark page keeps reflowing for a moment after load while its Plotly
-    figures autosize and re-theme; on a slow CI runner that shift can outlast
-    Playwright's own actionability wait, so hovers/clicks time out with "element
-    is not stable". Poll the box until it is unchanged across two ~120ms samples
-    before interacting.
-
-    Parameters
-    ----------
-    locator
-        Element to wait on.
-    timeout
-        Maximum time to wait, in milliseconds.
-    """
-    page = locator.page
-    locator.wait_for(state="visible", timeout=timeout)
-    deadline = timeout
-    prev = locator.bounding_box()
-    while deadline > 0:
-        page.wait_for_timeout(120)
-        deadline -= 120
-        curr = locator.bounding_box()
-        if prev is not None and curr == prev:
-            return
-        prev = curr
 
 
 def _goto_ionpi19(page: Page) -> None:
@@ -86,12 +59,12 @@ def test_threshold_edit_updates_score(ready_page: Page) -> None:
     expect(score).not_to_have_text(before, timeout=TIMEOUT)
 
 
-def test_csv_download(ready_page: Page) -> None:
+def test_csv_download(ready_page: Page, settle: Callable[[Locator], None]) -> None:
     """The CSV export control downloads a .csv file for the benchmark table."""
     _goto_ionpi19(ready_page)
     ready_page.locator("#IONPI19-table-download-format").click()
     csv_option = ready_page.locator('[role="option"]', has_text="CSV").first
-    _settle(csv_option)
+    settle(csv_option)
     # force past the sticky topbar (z-index 1600), which can overlap the option
     # once Playwright scrolls it up under the header.
     csv_option.click(force=True)
@@ -441,7 +414,9 @@ def test_hover_tooltip_adds_no_vertical_scroll(ready_page: Page) -> None:
     assert overflow <= 0, f"table wrapper scrolls vertically by {overflow}px"
 
 
-def test_click_pins_info_card(ready_page: Page) -> None:
+def test_click_pins_info_card(
+    ready_page: Page, settle: Callable[[Locator], None]
+) -> None:
     """Clicking a body cell pins its info card so it persists and stays interactive.
 
     A transient hover card vanishes on mouse-out; a pinned one must stay open (so
@@ -455,7 +430,7 @@ def test_click_pins_info_card(ready_page: Page) -> None:
     # Every model row carries a level-of-theory tooltip on its MLIP cell.
     cell = ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]').first
     expect(cell).to_be_visible(timeout=TIMEOUT)
-    _settle(cell)  # wait out the post-load reflow so the cell stops moving
+    settle(cell)  # wait out the post-load reflow so the cell stops moving
 
     # Pin, retrying the hover/click pair rather than sleeping between them.
     #
@@ -500,7 +475,9 @@ def test_click_pins_info_card(ready_page: Page) -> None:
     )
 
 
-def test_card_toggle_updates_aria_expanded(ready_page: Page) -> None:
+def test_card_toggle_updates_aria_expanded(
+    ready_page: Page, settle: Callable[[Locator], None]
+) -> None:
     """Collapsing and expanding a card must keep ``aria-expanded`` truthful.
 
     The attribute is baked in when the card is built, so a toggle that only
@@ -508,7 +485,7 @@ def test_card_toggle_updates_aria_expanded(ready_page: Page) -> None:
     """
     _goto_ionpi19(ready_page)
     header = ready_page.locator(".mlpeg-bench-header").first
-    _settle(header)
+    settle(header)
     expect(header).to_have_attribute("aria-expanded", "true", timeout=TIMEOUT)
 
     header.click()  # collapse

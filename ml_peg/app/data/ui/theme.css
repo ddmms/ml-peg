@@ -59,6 +59,9 @@ html[data-font="system"] {
   --mlpeg-bad-soft: #f5c2c7;
   --mlpeg-bad-border: #dc3545;
   --mlpeg-bad-fg: #842029;
+  /* Warning (amber) for inline status text; the Explorer's COVERAGE_COLORSCALE
+     mirrors the bad and warn hues, keep them in sync. */
+  --mlpeg-warn: #d97706;
 
   /* Spacing scale (8px base) — a little more generous for an airier feel. */
   --sp-1: 4px;
@@ -83,6 +86,7 @@ html[data-font="system"] {
   /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
+  --fs-xs: 11px;
   --fs-sm: 12px;
   --fs-base: 15px;
   --fs-md: 17px;
@@ -196,6 +200,7 @@ html[data-theme="dark"] {
   --mlpeg-bad-soft: #3a2226;
   --mlpeg-bad-border: #7a3b3f;
   --mlpeg-bad-fg: #f0b4b8;
+  --mlpeg-warn: #f5a524;
   --mlpeg-link-cell-bg: #161a21;
   --mlpeg-overlay: rgba(15, 17, 21, 0.78);
   --mlpeg-overlay-soft: rgba(15, 17, 21, 0.65);
@@ -764,6 +769,218 @@ a:hover {
   padding-left: var(--sp-4) !important;
 }
 
+/* ---- Explorer page (panels reuse .mlpeg-summary-card) ------------------ */
+/* ---- Model report card ------------------------------------------------- */
+/* Report card headline chips: in-domain vs extrapolated accuracy, physicality */
+.mlpeg-report-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.mlpeg-report-chip {
+  border: 1px solid var(--mlpeg-border);
+  border-radius: var(--radius-sm);
+  background: var(--mlpeg-surface-2);
+  padding: var(--sp-3) var(--sp-4);
+}
+.mlpeg-report-chip-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--mlpeg-ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mlpeg-report-chip-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.mlpeg-report-chip-value--lot {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mlpeg-ink);
+}
+.mlpeg-report-chip-sub {
+  font-size: var(--fs-xs);
+  color: var(--mlpeg-ink-3);
+}
+/* Scroll a long per-benchmark table rather than stretch the card */
+.mlpeg-report-table-wrap {
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.mlpeg-control-label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--mlpeg-ink-2);
+  margin-bottom: 4px;
+}
+/* Report card and selected-structure tables, styled to match the panel */
+.mlpeg-explorer-struct-table {
+  /* Scroll a wide table inside its panel, not the page */
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.mlpeg-explorer-struct-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--mlpeg-ink-2);
+  border-bottom: 1px solid var(--mlpeg-border-strong);
+  padding: 6px 10px;
+}
+.mlpeg-explorer-struct-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--mlpeg-border);
+  color: var(--mlpeg-ink);
+}
+.mlpeg-explorer-struct-table td:not(:first-child),
+.mlpeg-explorer-struct-table th:not(:first-child) {
+  text-align: right;
+}
+.mlpeg-explorer-struct-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.mlpeg-explorer-struct-table tbody tr:hover td {
+  background: var(--mlpeg-surface-2);
+}
+/* A panel's row of labelled controls; stacked on phones (see the media query) */
+.mlpeg-explorer-controls {
+  display: flex;
+  gap: var(--sp-4) var(--sp-6);
+  flex-wrap: wrap;
+  /* Top-align so every label sits on one line, whatever the control's height */
+  align-items: flex-start;
+  margin-bottom: var(--sp-4);
+}
+/* Radio rows centred to dropdown height so they line up beside one */
+.mlpeg-explorer-radio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  min-height: 36px;
+}
+.mlpeg-explorer-radio label {
+  display: inline-flex;
+  align-items: center;
+}
+/* Section jump nav, pinned below the topbar and above Plotly's modebar */
+.mlpeg-explorer-nav {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 1002;
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: var(--sp-2) 0;
+  margin: var(--sp-3) 0 var(--sp-2);
+  background: var(--mlpeg-surface-2);
+}
+.mlpeg-explorer-jump {
+  font-size: var(--fs-sm);
+  color: var(--mlpeg-accent);
+  text-decoration: none;
+  padding: 3px 10px;
+  border: 1px solid var(--mlpeg-border-strong);
+  border-radius: 999px;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.mlpeg-explorer-jump:hover {
+  background: var(--mlpeg-accent-soft);
+  color: var(--mlpeg-accent-strong);
+}
+.mlpeg-explorer-jump:focus-visible {
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 2px;
+}
+/* Per-panel "how this works" disclosure */
+.mlpeg-explorer-help {
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+.mlpeg-explorer-help > summary {
+  font-size: var(--fs-sm);
+  color: var(--mlpeg-ink-3);
+  cursor: pointer;
+}
+.mlpeg-explorer-help > p {
+  font-size: 13px;
+  color: var(--mlpeg-ink-2);
+  max-width: 76ch;
+  margin: var(--sp-2) 0 0;
+}
+/* Colour key under a colour-coded chart (report profile, finder bars). */
+.mlpeg-explorer-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--mlpeg-ink-2);
+  margin: var(--sp-2) 0 var(--sp-4);
+}
+.mlpeg-explorer-legend-caption {
+  font-weight: 600;
+}
+.mlpeg-explorer-legend-item {
+  white-space: nowrap;
+}
+/* Finder pick cards are buttons: reset the button chrome, lift on hover/focus */
+.mlpeg-explorer-picks {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.mlpeg-explorer-pick {
+  /* Let a long model id shrink the card instead of widening it */
+  flex: 1 1 260px;
+  max-width: 360px;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.mlpeg-explorer-pick:hover,
+.mlpeg-explorer-pick:focus-visible {
+  box-shadow: var(--shadow-md);
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 2px;
+}
+/* Keyboard route into the 3D panel: the ranked structures as link buttons */
+.mlpeg-explorer-list {
+  margin: var(--sp-2) 0 0;
+  padding-left: 22px;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+.mlpeg-explorer-list-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--mlpeg-accent);
+  cursor: pointer;
+  text-align: left;
+}
+.mlpeg-explorer-list-btn:hover {
+  text-decoration: underline;
+}
+.mlpeg-explorer-list-btn:focus-visible {
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 2px;
+}
+
 /* ---- Scoring grids: column separators + ghost reset ------------------- */
 /* The Good/Bad/Weight grids butt columns together with a 0 gap; a right border
    on each cell gives the "lines" that make the grid readable and line the
@@ -1327,6 +1544,27 @@ input[type="number"] {
     left: auto;
     z-index: auto;
     box-shadow: none;
+  }
+  /* ---- Explorer: tighten the long 7-panel page for phones ------------- */
+  .mlpeg-explorer .mlpeg-summary-card {
+    padding: var(--sp-4);
+  }
+  .mlpeg-explorer h3 {
+    font-size: var(--fs-md);
+  }
+  /* The topbar height varies on phones, so the jump nav scrolls with the page */
+  .mlpeg-explorer-nav {
+    position: static;
+  }
+  /* Stack the labelled controls full-width instead of cramming a flex row. */
+  .mlpeg-explorer-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+  }
+  /* A stacked control fills the column; its inner dropdown follows suit. */
+  .mlpeg-explorer-controls > div {
+    width: 100%;
   }
 }
 

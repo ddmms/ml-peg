@@ -769,6 +769,39 @@ def _categorize_benchmark_level(level: str | None) -> str | None:
     return DEFAULT_WARNING_CATEGORY
 
 
+def classify_level_of_theory(
+    model_level: str | None, reference_level: str | None
+) -> str:
+    """
+    Classify a (model training level, benchmark reference level) pair.
+
+    Uses the same rule as the benchmark tables' level-of-theory warnings (an exact
+    match of the two strings, then :func:`_categorize_benchmark_level` for the kind of
+    mismatch), so the Explorer's report card and the tables agree: a match is an
+    in-domain test, a mismatch is an extrapolation whose kind is named by the
+    reference level.
+
+    Parameters
+    ----------
+    model_level
+        The model's training level of theory (e.g. ``"PBE"``).
+    reference_level
+        The benchmark metric's reference level of theory (e.g. ``"DLPNO-CCSD(T)/CBS"``).
+
+    Returns
+    -------
+    str
+        ``"in_domain"`` when the levels match (or no reference is recorded); else the
+        reference's mismatch category -- ``"dft"`` (XC-functional mismatch),
+        ``"high_level"`` (DFT vs post-HF/QMC), or ``"experimental"``.
+    """
+    if not reference_level:
+        return "in_domain"
+    if model_level is not None and model_level == reference_level:
+        return "in_domain"
+    return _categorize_benchmark_level(reference_level)
+
+
 def build_level_of_theory_warnings(
     rows: list[dict[str, Any]] | None,
     model_theory_levels: dict[str, str | None] | None,
@@ -1296,6 +1329,34 @@ def load_model_registry_configs() -> dict[str, Any]:
     except FileNotFoundError:
         pass
     return {}
+
+
+def category_to_path(category_name: str) -> str:
+    """
+    Convert a category name to a stable URL path.
+
+    Parameters
+    ----------
+    category_name
+        Name of category to convert.
+
+    Returns
+    -------
+    str
+        URL path corresponding to category.
+
+    Raises
+    ------
+    ValueError
+        If no alphanumeric characters remain to form a slug.
+    """
+    slug = "".join(
+        character.lower() if character.isalnum() else "-" for character in category_name
+    )
+    slug = "-".join(part for part in slug.split("-") if part)
+    if not slug:
+        raise ValueError(f"Unable to construct path for {category_name}")
+    return f"/category/{slug}"
 
 
 def normalize_framework_id(framework_id: str) -> str:

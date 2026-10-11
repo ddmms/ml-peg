@@ -31,3 +31,7 @@ This file also sets the category's default ``weight`` in the overall score, and 
 default ``benchmark_weights`` of the benchmarks within it. Note that benchmarks marked
 slow or slower must be weighted 0 here. See
 :doc:`Benchmark scoring </developer_guide/scoring_and_normalisation>`.
+
+New app categories should also be added to ``CATEGORY_DOMAIN`` in
+``ml_peg/app/utils/explorer_data.py``, which groups them for the Model Explorer.
+A test fails if a category is missing.

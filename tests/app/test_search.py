@@ -22,6 +22,15 @@ def test_search_lists_matching_benchmark(ready_page: Page) -> None:
     expect(result).to_contain_text("Non-covalent interactions")
 
 
+def test_search_lists_explorer_page(ready_page: Page) -> None:
+    """The Explorer is found by name and by what it does."""
+    for query in ("explorer", "head-to-head"):
+        ready_page.locator("#sidebar-search").fill(query)
+        result = ready_page.locator('.mlpeg-search-result[href="/explorer"]')
+        expect(result).to_be_visible(timeout=TIMEOUT)
+        expect(result).to_contain_text("Explorer")
+
+
 def test_search_shows_no_matches(ready_page: Page) -> None:
     """A query matching nothing says so instead of showing an empty list."""
     ready_page.locator("#sidebar-search").fill("zzzz-no-such-benchmark")

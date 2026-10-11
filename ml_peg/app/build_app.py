@@ -48,6 +48,9 @@ from ml_peg.app.utils.build_frameworks import (
     build_framework_summary_tables,
     build_framework_views,
 )
+from ml_peg.app.utils.explorer_data import warm_explorer_data
+from ml_peg.app.utils.explorer_ids import EXPLORER_PATH, EXPLORER_SEARCH_ENTRY
+from ml_peg.app.utils.explorer_layout import build_explorer_layout
 from ml_peg.app.utils.global_weights import build_global_weights
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
@@ -58,6 +61,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.register_explorer_callbacks import register_explorer_callbacks
 from ml_peg.app.utils.search import (
     build_search_box,
     build_search_entries,
@@ -71,6 +75,7 @@ from ml_peg.app.utils.storage import (
 )
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    category_to_path,
     default_weight_store_data,
     framework_sort_key,
     get_framework_config,
@@ -116,29 +121,6 @@ def _nav_link_style(is_active: bool) -> dict[str, str]:
         "fontWeight": "600" if is_active else "500",
         "backgroundColor": "var(--mlpeg-nav-active-bg)" if is_active else "transparent",
     }
-
-
-def _category_to_path(category_name: str) -> str:
-    """
-    Convert a category name to a stable URL path.
-
-    Parameters
-    ----------
-    category_name
-        Name of category to convert.
-
-    Returns
-    -------
-    str
-        URL path corresponding to category.
-    """
-    slug = "".join(
-        character.lower() if character.isalnum() else "-" for character in category_name
-    )
-    slug = "-".join(part for part in slug.split("-") if part)
-    if not slug:
-        raise ValueError(f"Unable to construct path for {category_name}")
-    return f"/category/{slug}"
 
 
 def _framework_to_path(framework_id: str) -> str:
@@ -253,6 +235,12 @@ def build_sidebar(
                             "Summary",
                             href="/",
                             style=_nav_link_style(summary_active),
+                            className="sidebar-link",
+                        ),
+                        Link(
+                            "Explorer",
+                            href=EXPLORER_PATH,
+                            style=_nav_link_style(current_path == EXPLORER_PATH),
                             className="sidebar-link",
                         ),
                     ]
@@ -686,7 +674,7 @@ def build_nav(
         Weight controls for the combined framework summary table, or None.
     """
     category_paths = {
-        category_name: _category_to_path(category_name)
+        category_name: category_to_path(category_name)
         for category_name in sorted(category_views)
     }
     # Frameworks first, then papers, alphabetical by label within each
@@ -912,6 +900,7 @@ def build_nav(
                                         ),
                                         get_element_filter(),
                                     ],
+                                    id="controls-toolbar",
                                     className="mlpeg-controls-toolbar",
                                 ),
                                 Store(
@@ -989,9 +978,12 @@ def build_nav(
     register_settings_callbacks()
     register_bug_report_callbacks(global_state_stores)
     register_search_callbacks(
-        build_search_entries(
-            category_paths, framework_paths, framework_labels, category_views
-        )
+        [
+            *build_search_entries(
+                category_paths, framework_paths, framework_labels, category_views
+            ),
+            EXPLORER_SEARCH_ENTRY,
+        ]
     )
 
     @callback(
@@ -1364,6 +1356,13 @@ def build_nav(
                 ]
             ), sidebar_children
 
+        if pathname == EXPLORER_PATH:
+            # The Explorer has no expand-all state, so one cache entry serves it.
+            key = ("explorer", "", False)
+            if key not in page_layout_cache:
+                page_layout_cache[key] = build_explorer_layout()
+            return Div([page_layout_cache[key]]), sidebar_children
+
         selected_framework = path_to_framework.get(pathname)
         if selected_framework is not None:
             key = ("framework", selected_framework, expand_pref)
@@ -1469,3 +1468,6 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         framework_weight_components,
     )
     register_onboarding_callbacks()
+    register_explorer_callbacks()
+    # Build the Explorer data before serving, so the page never computes on demand
+    warm_explorer_data()

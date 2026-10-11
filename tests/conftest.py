@@ -156,3 +156,28 @@ def update_missing_model_1(monkeypatch, update_model_2):
     monkeypatch.setattr(
         decorators, "get_model_names", lambda models=None, filepath=None: ["model_2"]
     )
+
+
+def clear_explorer_caches() -> None:
+    """Drop every cached Explorer loader so the next call reads the current root."""
+    from ml_peg.analysis.explorer import build_explorer_data
+    from ml_peg.app.utils import explorer_data, explorer_scoring
+
+    explorer_data._data = None
+    for module in (build_explorer_data, explorer_data, explorer_scoring):
+        for value in vars(module).values():
+            if callable(getattr(value, "cache_clear", None)):
+                value.cache_clear()
+
+
+@pytest.fixture(name="clear_explorer_caches", scope="session")
+def clear_explorer_caches_fixture():
+    """
+    Provide :func:`clear_explorer_caches` to the Explorer fixtures.
+
+    Returns
+    -------
+    Callable[[], None]
+        Clears the Explorer's per-process caches.
+    """
+    return clear_explorer_caches

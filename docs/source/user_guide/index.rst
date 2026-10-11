@@ -7,5 +7,6 @@ User guide
 
     get_started
     about
+    explorer
     models
     benchmarks/index
