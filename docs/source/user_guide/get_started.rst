@@ -92,8 +92,9 @@ Reporting a website bug
 -----------------------
 
 Use **Report a bug** in the app header to prepare a GitHub issue with page and
-settings details. Optionally capture or upload a screenshot and mark the problem
+settings details. Optionally capture the page and mark the problem
 area.
 
-Review and submit the draft using your GitHub account. Screenshots download
-separately. Drag the file into the issue description to attach it.
+Select **Open GitHub issue**, then review and submit using your GitHub account.
+Captured screenshots download separately. Drag the file into the issue description
+to attach it, or attach your own screenshot directly on GitHub.
