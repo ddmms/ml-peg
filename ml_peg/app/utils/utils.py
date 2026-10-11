@@ -409,25 +409,41 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
     return weights
 
 
-def clean_table_data(rows: list[dict]):
+def clean_table_data(rows: list[dict], weights: dict[str, float] | None = None):
     """
-    Ensure data does not exceed int limits.
+    Ensure data does not exceed int limits, and invalidate affected scores.
+
+    A metric that is missing or out of range makes the row's overall score
+    meaningless, so it is set to NaN. Zero-weight metrics make no contribution to
+    the score, so they leave it alone, matching `calc_table_scores`.
 
     Parameters
     ----------
     rows
         List of table rows to clean.
+    weights
+        Weight for each metric. Default is 1.0 for each metric.
     """
+    weights = weights or {}
+
     for row in rows:
-        for key, value in row.items():
-            if isinstance(value, int | float) and (
-                value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
+        invalid_metric = False
+        # Copy the keys: ``row["Score"]`` is assigned after the loop, which would
+        # otherwise risk mutating the dict while iterating it.
+        for key in list(row):
+            if key in RESERVED_TABLE_COLUMNS:
+                continue
+            value = row[key]
+            if value is None or (
+                isinstance(value, int | float)
+                and (value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min)
             ):
                 row[key] = "NaN"
-                row["Score"] = "NaN"
-            if value is None:
-                row[key] = "NaN"
-                row["Score"] = "NaN"
+                if weights.get(key, 1.0) != 0:
+                    invalid_metric = True
+
+        if invalid_metric:
+            row["Score"] = "NaN"
 
 
 def none_to_nan(rows: list[dict]) -> None:
