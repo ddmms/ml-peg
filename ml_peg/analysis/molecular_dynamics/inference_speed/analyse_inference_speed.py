@@ -20,7 +20,6 @@ from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
-    build_dispersion_name_map,
     load_metrics_config,
     write_struct_info,
 )
