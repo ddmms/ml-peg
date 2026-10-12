@@ -19,7 +19,7 @@ metrics:
     good: 0.0
     bad: 10.0
     unit: "%"
-    tooltip: "Share of structures for which a calculation failed (including unsupported elements), the Birch-Murnaghan fit has no minimum, or the minimum lies outside the sampled volumes"
+    tooltip: "Share of structures for which a calculation failed (including unsupported elements) or the Birch-Murnaghan fit has no minimum"
     level_of_theory: PBE
   ε (no +U or magnetic):
     good: 0.20

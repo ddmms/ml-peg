@@ -543,8 +543,9 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
 
 3. Unphysical E(V)
 
-   Percentage of structures for which a calculation failed, the fitted curve has no
-   minimum, or the minimum lies outside the sampled volumes.
+   Percentage of structures for which a calculation failed, including elements the
+   model does not support, or the fitted curve has no minimum. A minimum outside the
+   sampled volumes is not counted, as ν already penalises the error in :math:`V_0`.
 
 4. ε (no +U or magnetic)
 

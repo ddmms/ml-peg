@@ -17,6 +17,7 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.acwf_utils import (
 from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_state_acwf import (  # noqa: E501
     compare_curve,
     is_flagged,
+    unphysical_share,
 )
 from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.calc_equation_of_state_acwf import (  # noqa: E501
     scaled_structures,
@@ -149,3 +150,12 @@ def test_flagged_structures():
     assert is_flagged("V", "XO2")
     assert not is_flagged("V", "BCC")
     assert not is_flagged("Si", "Diamond")
+
+
+def test_unphysical_share():
+    """Only failed calculations and curves without a minimum are unphysical."""
+    statuses = ["ok", "v0_outside", "no_minimum", "failed"]
+    comparison = {i: {"status": status} for i, status in enumerate(statuses)}
+
+    assert unphysical_share(comparison) == 50.0
+    assert unphysical_share(None) is None

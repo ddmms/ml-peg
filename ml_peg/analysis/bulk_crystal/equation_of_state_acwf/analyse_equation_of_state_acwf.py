@@ -325,6 +325,9 @@ def unphysical_share(comparison: dict[str, dict] | None) -> float | None:
     """
     Get the percentage of structures without a usable E(V) curve.
 
+    A minimum outside the sampled volumes is not counted, as ν already penalises the
+    error in V0.
+
     Parameters
     ----------
     comparison
@@ -333,13 +336,17 @@ def unphysical_share(comparison: dict[str, dict] | None) -> float | None:
     Returns
     -------
     float | None
-        Percentage of structures whose status is not ``"ok"``, or ``None`` if the
-        model was not run.
+        Percentage of structures for which a calculation failed or the fit has no
+        minimum, or ``None`` if the model was not run.
     """
     if comparison is None:
         return None
     statuses = [result["status"] for result in comparison.values()]
-    return 100 * sum(status != "ok" for status in statuses) / len(statuses)
+    return (
+        100
+        * sum(status in {"failed", "no_minimum"} for status in statuses)
+        / len(statuses)
+    )
 
 
 @pytest.fixture
