@@ -135,6 +135,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``r2SCAN``
 - ``ωB97M-V``
 - ``ωB97M-V/def2-TZVPD``
+- ``ωB97M-V/def2-TZVPPD``
 
 **Benchmarks** (``ml_peg/analysis/<category>/<benchmark>/metrics.yml``)
 

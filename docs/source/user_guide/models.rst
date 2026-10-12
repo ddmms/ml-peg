@@ -526,3 +526,24 @@ sevennet-omni-mpa
     kwargs:
       model: "7net-omni"
       modal: "mpa"
+
+
+AceFF
+=====
+
+aceff-2.0
+---------
+
+.. code-block:: yaml
+
+  aceff-2.0:
+    module: torchmdnet.calculators
+    class_name: TMDNETCalculator
+    datasets: null
+    additional_supported_elements: ["H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"]
+    device: "auto"
+    trained_on_dispersion: true
+    level_of_theory: ωB97M-V/def2-TZVPPD
+    kwargs:
+      repo_id: "Acellera/AceFF-2.0"
+      filename: "aceff_v2.0.ckpt"

@@ -144,6 +144,7 @@ def load_models(
         MockCalc,
         OrbCalc,
         SevenNetCalc,
+        TorchMDNetCalc,
         UPETCalc,
         VivaceCalc,
     )
@@ -246,6 +247,13 @@ def load_models(
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                     default_dtype=cfg.get("overwrite_dtype", None),
+                )
+            case "TMDNETCalculator":
+                loaded_models[name] = TorchMDNetCalc(
+                    device=cfg.get("device", "auto"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case _:
                 loaded_models[name] = GenericASECalc(

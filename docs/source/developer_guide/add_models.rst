@@ -267,6 +267,23 @@ constituents are also listed individually so their known domains and element
 coverage remain visible. Its coverage entry is the verified union of its
 constituent datasets, not the checkpoint's broader executable type map.
 
+AceFF entries use TorchMD-Net's ``TMDNETCalculator`` and download checkpoints from
+Hugging Face:
+
+.. code-block:: yaml
+
+   aceff-2.0:
+     module: torchmdnet.calculators
+     class_name: TMDNETCalculator
+     datasets: null
+     additional_supported_elements: ["H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"]
+     device: auto
+     trained_on_dispersion: true
+     level_of_theory: ωB97M-V/def2-TZVPPD
+     kwargs:
+       repo_id: Acellera/AceFF-2.0
+       filename: aceff_v2.0.ckpt
+
 GRACE, SevenNet, MatterSim and Vivace entries similarly select their wrappers
 through ``class_name`` (``grace_fm``, ``SevenNetCalculator``,
 ``MatterSimCalculator`` and ``MLFFCalculator`` respectively).
@@ -328,7 +345,7 @@ argument, constructing a predictor before the calculator), add a wrapper in
   ``class_name(**kwargs)``, and you only need to adjust how precision is passed
   or run setup first (as ``UPETCalc`` and ``GraceCalc`` do).
 * Subclass ``SumCalc`` directly if construction is bespoke (as ``OrbCalc``,
-  ``FairChemCalc``, ``SevenNetCalc`` and ``VivaceCalc`` do). ``SumCalc``
+  ``FairChemCalc``, ``SevenNetCalc``, ``VivaceCalc`` and ``TorchMDNetCalc`` do). ``SumCalc``
   provides ``add_d3_calculator`` and the ``trained_on_dispersion`` /
   ``dispersion_kwargs`` fields that every model needs.
 
