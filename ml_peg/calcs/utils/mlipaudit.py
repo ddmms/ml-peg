@@ -8,12 +8,11 @@ from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     FoldingStabilityBenchmark,
+    InferenceSpeedBenchmark,
     ReactivityBenchmark,
     RingPlanarityBenchmark,
-    TautomersBenchmark,
-    ConformerSelectionBenchmark,
-    InferenceSpeedBenchmark,
     StabilityBenchmark,
+    TautomersBenchmark,
 )
 
 

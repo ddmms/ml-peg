@@ -158,7 +158,6 @@ Reference data:
 * Experimental
 
 
-<<<<<<< HEAD
 Bond length distribution
 ========================
 
