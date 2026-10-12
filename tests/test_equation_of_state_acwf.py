@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
 from ase.build import bulk
 from ase.io import read, write
 import numpy as np
 import pytest
 
+from ml_peg.analysis.bulk_crystal.equation_of_state_acwf import (
+    analyse_equation_of_state_acwf as eos_analysis,
+)
 from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.acwf_utils import (
     birch_murnaghan,
     delta,
@@ -17,6 +22,10 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.acwf_utils import (
 from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_state_acwf import (  # noqa: E501
     compare_curve,
     is_flagged,
+    load_curves,
+    load_reference,
+    median_measure,
+    model_measure,
     unphysical_share,
 )
 from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.calc_equation_of_state_acwf import (  # noqa: E501
@@ -159,3 +168,113 @@ def test_unphysical_share():
 
     assert unphysical_share(comparison) == 50.0
     assert unphysical_share(None) is None
+
+
+def test_median_measure():
+    """Curves without a usable minimum (None) count as infinitely bad."""
+    assert median_measure([1.0, None, 2.0]) == 2.0
+    assert median_measure([1.0, None, None]) == np.inf
+    assert np.isnan(median_measure([]))
+
+
+def test_model_measure():
+    """The median can exclude flagged structures, and is None if mostly unusable."""
+    comparison = {
+        "Fe-BCC": {"ε": 5.0},  # Flagged: magnetic element.
+        "Si-Diamond": {"ε": 0.1},
+        "Cu-FCC": {"ε": 0.3},
+    }
+
+    assert model_measure(comparison, "ε") == 0.3
+    assert model_measure(comparison, "ε", flagged=False) == pytest.approx(0.2)
+    assert model_measure({"Si-Diamond": {"ε": None}}, "ε") is None
+    assert model_measure(None, "ε") is None
+
+
+def test_load_reference(tmp_path, monkeypatch):
+    """
+    Reference volumes are per atom, and labels drop the ``-X/`` of unaries.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory.
+    monkeypatch
+        Pytest fixture to replace the S3 download.
+    """
+    reference_dir = tmp_path / "equation_of_state_acwf" / "reference"
+    reference_dir.mkdir(parents=True)
+    data = {
+        "unaries": {"Cu-X/FCC": (11.95, 1)},
+        # The pure-oxygen oxides use a cell twice as large as the other oxides.
+        "oxides": {"O-XO": (40.0, 4)},
+    }
+    for dataset, structures in data.items():
+        content = {
+            "BM_fit_data": {
+                key: {
+                    "min_volume": volume,
+                    "bulk_modulus_ev_ang3": 0.5,
+                    "bulk_deriv": 4.5,
+                }
+                for key, (volume, _) in structures.items()
+            },
+            "num_atoms_in_sim_cell": {
+                key: num_atoms for key, (_, num_atoms) in structures.items()
+            },
+        }
+        filename = f"results-{dataset}-verification-PBE-v1-AE-average.json"
+        (reference_dir / filename).write_text(json.dumps(content))
+    monkeypatch.setattr(eos_analysis, "download_s3_data", lambda **_: tmp_path)
+
+    reference = load_reference()
+
+    assert reference == {
+        "Cu-FCC": {"V0": 11.95, "B0": 0.5, "B1": 4.5},
+        "O-XO": {"V0": 10.0, "B0": 0.5, "B1": 4.5},
+    }
+
+
+def test_load_curves(tmp_path, monkeypatch):
+    """
+    Model volumes and energies are per atom.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory.
+    monkeypatch
+        Pytest fixture to replace the calculation output directory.
+    """
+    monkeypatch.setattr(eos_analysis, "CALC_PATH", tmp_path)
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+
+    # Primitive diamond cell: 2 atoms in a³/4 = 40 Å³, so 20 Å³/atom.
+    atoms = bulk("Si", "diamond", a=160 ** (1 / 3))
+    structures = scaled_structures(atoms, "Si-Diamond")
+    for struct in structures:
+        struct.info["mlip_energy"] = -10.0
+    write(model_dir / "unaries.extxyz", structures)
+
+    # A model without results for every dataset was not run.
+    assert load_curves("model") is None
+
+    # Primitive rock-salt cell: 2 atoms in a³/4 = 20 Å³, so 10 Å³/atom.
+    atoms = bulk("MgO", "rocksalt", a=80 ** (1 / 3))
+    structures = scaled_structures(atoms, "Mg-XO")
+    for struct in structures:
+        struct.info["mlip_energy"] = -12.0
+    write(model_dir / "oxides.extxyz", structures)
+
+    curves = load_curves("model")
+
+    assert sorted(curves) == ["Mg-XO", "Si-Diamond"]
+    assert curves["Si-Diamond"]["volumes"] == pytest.approx(
+        20 * np.array([0.94, 0.96, 0.98, 1.0, 1.02, 1.04, 1.06])
+    )
+    assert curves["Si-Diamond"]["energies"] == pytest.approx(np.full(7, -5.0))
+    assert curves["Mg-XO"]["volumes"] == pytest.approx(
+        10 * np.array([0.94, 0.96, 0.98, 1.0, 1.02, 1.04, 1.06])
+    )
+    assert curves["Mg-XO"]["energies"] == pytest.approx(np.full(7, -6.0))
