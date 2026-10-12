@@ -48,6 +48,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+aimnet = [
+    "aimnet[ase]; python_version >= '3.11'",
+]
 asemolec = [
     "asemolec"
 ]
@@ -236,6 +239,14 @@ conflicts = [
         { extra = "uma" },
     ],
     [
+        { extra = "aimnet" },
+        { extra = "upet" },
+    ],
+    [
+        { extra = "aimnet" },
+        { extra = "uma" },
+    ],
+    [
         { extra = "dpa" },
         { extra = "mace" },
     ],
@@ -274,5 +285,8 @@ constraint-dependencies = [
 module-root = ""
 
 [tool.uv.sources]
+# Pinned to main for the neighbour-list truncation fix (https://github.com/isayevlab/aimnetcentral/pull/127),
+# which is not in the 0.2.0 release. Revert to PyPI once it is released.
+aimnet = { git = "https://github.com/isayevlab/aimnetcentral.git", rev = "ffcd6366d822b565a0fd65d53048750c0abad6bc" }
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 simpoly = { git = "https://github.com/microsoft/simpoly.git", rev = "da100ad32d971214cf9343d9d853e8ce61604dc0" }

@@ -502,6 +502,58 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         return self.load_calculator(**kwargs)
 
 
+# https://github.com/isayevlab/aimnetcentral
+@dataclasses.dataclass(kw_only=True)
+class AIMNetCalc(SumCalc):
+    """Dataclass for AIMNet2 calculators."""
+
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the AIMNet2 ASE calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. AIMNet2 always uses float32, so this
+            argument is ignored.
+        **kwargs
+            Keyword arguments that override the default ``AIMNet2Calculator``
+            options.
+
+        Returns
+        -------
+        Calculator
+            Loaded AIMNet2 ASE calculator.
+        """
+        from aimnet.calculators import AIMNet2ASE, AIMNet2Calculator
+
+        check_precision(precision)
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        device_str = device.value if isinstance(device, Device) else device
+        base_calc = AIMNet2Calculator(device=device_str, **{**self.kwargs, **kwargs})
+        return AIMNet2ASE(base_calc)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the AIMNet2 calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            from aimnet.calculators import AIMNet2ASE  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+
 @dataclasses.dataclass(kw_only=True)
 class DpaCalc(SumCalc):
     """Dataclass for DPA calculators provided by DeePMD-kit."""
