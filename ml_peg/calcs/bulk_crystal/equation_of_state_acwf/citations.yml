@@ -59,20 +59,12 @@ citations:
     url: null
   - key: "acwf-verification-scripts"
     role: reference_data
-    title: "ACWF verification scripts (input structures and EOS analysis)"
+    title: "ACWF verification scripts (input structures, all-electron reference data and EOS analysis)"
     authors:
       - "AiiDA team"
     year: null
     doi: null
     url: "https://github.com/aiidateam/acwf-verification-scripts"
-  - key: "eos-plot-widget"
-    role: reference_data
-    title: "ACWF EOS widget (extended all-electron reference data, Z = 1-103)"
-    authors:
-      - "T. Reents"
-    year: null
-    doi: null
-    url: "https://github.com/t-reents/eos-plot-widget"
   - key: "lejaeghere-2016-delta"
     role: inspired_by
     title: "Reproducibility in density functional theory calculations of solids"

@@ -483,10 +483,10 @@ Equation of state (ACWF)
 Summary
 -------
 
-Energy-volume curves of the 1030 crystals of the ACWF verification set: four unaries
+Energy-volume curves of the 960 crystals of the ACWF verification set: four unaries
 (BCC, FCC, SC and diamond) and six oxides (XO, XO2, XO3, X2O, X2O3 and X2O5) for each
-element from H to Lr (Z = 1-103). The curves are compared with all-electron PBE
-reference data using the measures of the ACWF verification study.
+element from H to Cm (Z = 1-96). The curves are compared with the all-electron PBE
+reference data published with the ACWF verification study, using its measures.
 
 For each structure, the model energy is computed at seven volumes, 0.94, 0.96, ...,
 1.06 times the central volume, scaling the cell isotropically. A third-order
@@ -498,9 +498,9 @@ Metrics
 -------
 
 Following Bosoni *et al.*, the ε, ν and Δ measures are computed with the
-equations of the published ACWF implementation. All measures are averaged over the
-structures for which the fitted curve has a minimum. Structures without a minimum
-count towards the unphysical E(V) metric.
+equations of the published ACWF implementation. Each metric is the median over all
+structures. Structures for which a calculation failed or the fitted curve has no
+minimum count as infinitely bad, and also towards the unphysical E(V) metric.
 
 1. ε
 
@@ -556,16 +556,16 @@ count towards the unphysical E(V) metric.
 
 6. V0, B0 and B1 errors
 
-   Mean absolute relative differences in :math:`V_0`, :math:`B_0` and :math:`B_1`.
+   Median absolute relative differences in :math:`V_0`, :math:`B_0` and :math:`B_1`.
    Not included in the score.
 
-Each metric can also be shown on a periodic table, averaged over the ten structures of
-each element. Clicking an element shows its ten E(V) curves.
+Each metric can also be shown on a periodic table, as the median over the ten
+structures of each element. Clicking an element shows its ten E(V) curves.
 
 Computational cost
 ------------------
 
-Fast: 7210 single-point calculations on cells of 1 to 14 atoms. With ``mace-mp-0a``,
+Fast: 6720 single-point calculations on cells of 1 to 14 atoms. With ``mace-mp-0a``,
 the calculations take a few minutes on a laptop CPU (Apple M-series).
 
 Data availability
@@ -573,15 +573,15 @@ Data availability
 
 Input structures:
 
-* PBE input structures of the ACWF verification set (``xsfs-*-verification-PBE-v1``
-  and ``xsfs-*-verification-PBE-missing-actinides-v1``), from
-  https://github.com/aiidateam/acwf-verification-scripts.
+* PBE input structures of the ACWF verification set (``xsfs-*-verification-PBE-v1``),
+  from https://github.com/aiidateam/acwf-verification-scripts.
 
 Reference data (PBE):
 
-* All-electron Birch-Murnaghan parameters averaged over WIEN2k, FLEUR and SIRIUS/CP2K
-  (Z = 1-103; WIEN2k and FLEUR only for Lr), from
-  https://github.com/t-reents/eos-plot-widget.
+* All-electron Birch-Murnaghan parameters averaged over WIEN2k and FLEUR, as published
+  with Bosoni *et al.*
+  (``acwf_paper_plots/code-data/results-*-verification-PBE-v1-AE-average.json``), from
+  https://github.com/aiidateam/acwf-verification-scripts.
 * E. Bosoni *et al.*, How to verify the precision of density-functional-theory
   implementations via reproducible and universal workflows, Nat. Rev. Phys. 6, 45
   (2024). https://doi.org/10.1038/s42254-023-00655-3

@@ -109,7 +109,10 @@ def load_reference() -> dict[str, dict[str, float]]:
     )
     reference = {}
     for dataset in DATASETS:
-        with open(data_path / f"WiFlCP_avg_{dataset}_pbe.json", encoding="utf8") as f:
+        with open(
+            data_path / f"results-{dataset}-verification-PBE-v1-AE-average.json",
+            encoding="utf8",
+        ) as f:
             data = json.load(f)
         for key, fit in data["BM_fit_data"].items():
             label = key.replace("-X/", "-")

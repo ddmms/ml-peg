@@ -4,10 +4,9 @@ Build the input archive for the ACWF equation-of-state benchmark.
 The archive collects, from pinned upstream commits:
 
 * the PBE input structures (XSF files at the central volume) of the ACWF
-  verification set, for the unaries and the oxides, including the actinides
-  Z = 97-103 that are distributed separately (``PBE-missing-actinides``);
-* the PBE all-electron reference Birch-Murnaghan parameters, averaged over
-  WIEN2k, FLEUR and SIRIUS/CP2K (``WiFlCP``), covering Z = 1-103.
+  verification set, for the unaries and the oxides (Z = 1-96);
+* the PBE all-electron reference Birch-Murnaghan parameters published with
+  Bosoni et al. (2024), averaged over WIEN2k and FLEUR.
 
 The resulting ``equation_of_state_acwf.zip`` is written to the ML-PEG cache, so the
 calculation and analysis can run before it is uploaded to the ML-PEG S3 bucket as
@@ -33,24 +32,14 @@ ARCHIVE_NAME = "equation_of_state_acwf"
 ACWF_REPO = "aiidateam/acwf-verification-scripts"
 ACWF_COMMIT = "8eb1e9a35b512780c4462ceb8f3db815096c25cf"
 STRUCTURE_DIRS = {
-    "unaries": [
-        "0-preliminary-do-not-run/unaries/xsfs-unaries-verification-PBE-v1",
-        "0-preliminary-do-not-run/unaries/"
-        "xsfs-unaries-verification-PBE-missing-actinides-v1",
-    ],
-    "oxides": [
-        "0-preliminary-do-not-run/oxides/xsfs-oxides-verification-PBE-v1",
-        "0-preliminary-do-not-run/oxides/"
-        "xsfs-oxides-verification-PBE-missing-actinides-v1",
-    ],
+    "unaries": "0-preliminary-do-not-run/unaries/xsfs-unaries-verification-PBE-v1",
+    "oxides": "0-preliminary-do-not-run/oxides/xsfs-oxides-verification-PBE-v1",
 }
 
-REFERENCE_REPO = "t-reents/eos-plot-widget"
-REFERENCE_COMMIT = "a335042e0f22a748a5a88885d77e208a7a8a3565"
-REFERENCE_DIR = "src/acwf_eos_widget/reference-data"
+REFERENCE_DIR = "acwf_paper_plots/code-data"
 REFERENCE_FILES = {
-    "unaries": "WiFlCP_avg_unaries_pbe.json",
-    "oxides": "WiFlCP_avg_oxides_pbe.json",
+    "unaries": "results-unaries-verification-PBE-v1-AE-average.json",
+    "oxides": "results-oxides-verification-PBE-v1-AE-average.json",
 }
 
 README = f"""\
@@ -59,12 +48,11 @@ ACWF equation-of-state benchmark inputs for ML-PEG.
 structures/{{unaries,oxides}}/*.xsf
     PBE input structures at the central volume, from
     https://github.com/{ACWF_REPO} (commit {ACWF_COMMIT}, MIT licence):
-    {", ".join(path for paths in STRUCTURE_DIRS.values() for path in paths)}
+    {", ".join(STRUCTURE_DIRS.values())}
 
 reference/*.json
-    PBE all-electron reference Birch-Murnaghan parameters (average of WIEN2k, FLEUR
-    and SIRIUS/CP2K), from https://github.com/{REFERENCE_REPO}
-    (commit {REFERENCE_COMMIT}), {REFERENCE_DIR}.
+    PBE all-electron reference Birch-Murnaghan parameters (average of WIEN2k and
+    FLEUR), from the same repository and commit, {REFERENCE_DIR}.
 
 Protocol and metrics: E. Bosoni et al., Nat. Rev. Phys. 6, 45 (2024),
 https://doi.org/10.1038/s42254-023-00655-3
@@ -142,9 +130,7 @@ def build_archive(out_dir: Path = BENCHMARK_DATA_DIR) -> Path:
             zip_file.writestr(f"{ARCHIVE_NAME}/README.txt", README)
 
             for dataset, filename in REFERENCE_FILES.items():
-                url = _raw_url(
-                    REFERENCE_REPO, REFERENCE_COMMIT, f"{REFERENCE_DIR}/{filename}"
-                )
+                url = _raw_url(ACWF_REPO, ACWF_COMMIT, f"{REFERENCE_DIR}/{filename}")
                 print(f"[{dataset}] {url}")
                 response = requests.get(url, timeout=60)
                 response.raise_for_status()
@@ -152,19 +138,18 @@ def build_archive(out_dir: Path = BENCHMARK_DATA_DIR) -> Path:
                     f"{ARCHIVE_NAME}/reference/{filename}", response.content
                 )
 
-            for dataset, directories in STRUCTURE_DIRS.items():
-                for directory in directories:
-                    paths = _list_files(ACWF_REPO, ACWF_COMMIT, directory)
-                    print(f"[{dataset}] {len(paths)} structures from {directory}")
-                    for path in paths:
-                        response = requests.get(
-                            _raw_url(ACWF_REPO, ACWF_COMMIT, path), timeout=60
-                        )
-                        response.raise_for_status()
-                        zip_file.writestr(
-                            f"{ARCHIVE_NAME}/structures/{dataset}/{Path(path).name}",
-                            response.content,
-                        )
+            for dataset, directory in STRUCTURE_DIRS.items():
+                paths = _list_files(ACWF_REPO, ACWF_COMMIT, directory)
+                print(f"[{dataset}] {len(paths)} structures from {directory}")
+                for path in paths:
+                    response = requests.get(
+                        _raw_url(ACWF_REPO, ACWF_COMMIT, path), timeout=60
+                    )
+                    response.raise_for_status()
+                    zip_file.writestr(
+                        f"{ARCHIVE_NAME}/structures/{dataset}/{Path(path).name}",
+                        response.content,
+                    )
 
         tmp_archive.replace(archive)
 
