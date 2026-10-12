@@ -526,3 +526,50 @@ sevennet-omni-mpa
     kwargs:
       model: "7net-omni"
       modal: "mpa"
+
+AIMNet2
+=======
+
+Install these models (MIT licence) with ``uv sync --extra aimnet``.
+Both models run in float32 only, include their own DFT-D3 correction, and
+cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and I. They are closed-shell
+models: ``atoms.info["charge"]`` is used, but spin multiplicity is ignored.
+Periodic systems use DSF long-range Coulomb. See the AIMNet2
+`model documentation <https://isayevlab.github.io/aimnetcentral/models/aimnet2/>`_.
+
+``aimnet2`` is described in Anstine, Zubatyuk and Isayev, *Chem. Sci.*, 2025, **16**,
+10228–10244, `doi:10.1039/d4sc08572h <https://doi.org/10.1039/d4sc08572h>`_.
+``aimnet2-2025`` is described in Nayal, Cho and Isayev, *Mach. Learn.: Sci. Technol.*,
+2026, **7**, 055033, `doi:10.1088/2632-2153/aea39f <https://doi.org/10.1088/2632-2153/aea39f>`_.
+
+aimnet2
+-------
+
+.. code-block:: yaml
+
+   aimnet2:
+     module: aimnet.calculators
+     class_name: AIMNet2ASE
+     datasets: null
+     additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+     device: "auto"
+     trained_on_dispersion: true
+     level_of_theory: ωB97M+D3/def2-TZVPP
+     kwargs:
+       model: "aimnet2"
+
+aimnet2-2025
+------------
+
+.. code-block:: yaml
+
+   aimnet2-2025:
+     module: aimnet.calculators
+     class_name: AIMNet2ASE
+     datasets: null
+     additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+     device: "auto"
+     trained_on_dispersion: true
+     level_of_theory: B97-3c
+     kwargs:
+       model: "aimnet2-2025"
