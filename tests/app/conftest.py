@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import hashlib
+from importlib import import_module
 import logging
 from pathlib import Path
 import shutil
@@ -38,12 +39,6 @@ FIXTURE_VERSION = "v1"
 FIXTURE_KEY = f"tests/ui-fixture-{FIXTURE_VERSION}.zip"
 FIXTURE_SHA256 = "b0fab46961813f329702b6d464171efc02edf73503c7c4c5069db7f91935564f"
 FIXTURE_ARCHIVE = BENCHMARK_DATA_DIR / f"ui-fixture-{FIXTURE_VERSION}.zip"
-# The archive's single top-level directory, which the benchmark tree sits under.
-FIXTURE_ROOT = BENCHMARK_DATA_DIR / f"ui-fixture-{FIXTURE_VERSION}"
-
-# Dropped into each directory this fixture copies, so a run interrupted before
-# teardown can tell its own leftovers from a developer's real data.
-FIXTURE_MARKER = ".ml-peg-test-fixture"
 
 # Benchmarks the fixture supplies, chosen for coverage per KB rather than size:
 #   IONPI19          one metric, a parity plot and a structure viewer; the
@@ -120,7 +115,7 @@ def _sha256(path: Path) -> str:
 
 
 @pytest.fixture(scope="session")
-def fixture_data() -> Path:
+def fixture_data(tmp_path_factory) -> Path:
     """
     Fetch, verify and unpack the published test fixture, returning its root.
 
@@ -156,74 +151,63 @@ def fixture_data() -> Path:
             "a new version rather than an overwrite."
         )
 
-    # Unpack afresh so a stale extract from an earlier version can't mix in.
-    shutil.rmtree(FIXTURE_ROOT, ignore_errors=True)
-    prefix = f"{FIXTURE_ROOT.name}/"
+    extract_root = tmp_path_factory.mktemp("ui-fixture")
+    prefix = f"ui-fixture-{FIXTURE_VERSION}/"
     try:
         with zipfile.ZipFile(FIXTURE_ARCHIVE) as archive:
             members = [name for name in archive.namelist() if name.startswith(prefix)]
-            archive.extractall(BENCHMARK_DATA_DIR, members=members)
+            archive.extractall(extract_root, members=members)
     except zipfile.BadZipFile as err:
         raise RuntimeError(f"Test fixture {FIXTURE_ARCHIVE} is not a zip file") from err
-    return FIXTURE_ROOT
+    return extract_root / prefix
 
 
-@pytest.fixture(scope="session", autouse=True)
-def benchmark_data(fixture_data: Path) -> Iterator[None]:
+@pytest.fixture(scope="session")
+def benchmark_data(fixture_data: Path, tmp_path_factory) -> Iterator[Path]:
     """
     Make the fixture benchmarks' data available under the app's assets folder.
 
-    The app resolves data through ``APP_ROOT / "data"`` and serves the same tree
-    as Dash assets, so the fixture has to be visible there rather than read from
-    the cache. A developer who already has the real data keeps it: this only
-    fills in the gaps, and only removes the directories it created.
+    Redirect benchmark module paths and Dash assets to an isolated temporary
+    tree. Local analysis outputs cannot change the dataset or be overwritten.
 
     Parameters
     ----------
     fixture_data
         Root of the unpacked fixture.
+    tmp_path_factory
+        Session temporary-directory factory.
 
     Yields
     ------
-    None
-        Control returns to the test session once the data is in place.
+    Path
+        Isolated assets directory.
     """
-    created: list[Path] = []
+    data_root = tmp_path_factory.mktemp("ui-assets")
+    shutil.copytree(APP_ROOT / "data" / "ui", data_root / "ui")
+    patches = pytest.MonkeyPatch()
     for category, benchmark in FIXTURE_BENCHMARKS:
-        target = APP_ROOT / "data" / category / benchmark
-        # A previous run killed mid-session leaves its copy behind. The marker
-        # says the directory is ours, so re-adopt it rather than mistaking it for
-        # real data and never cleaning it up again.
-        if target.exists() and not (target / FIXTURE_MARKER).exists():
-            continue
-        if target.exists():
-            shutil.rmtree(target)
+        target = data_root / category / benchmark
         shutil.copytree(fixture_data / category / benchmark, target)
-        (target / FIXTURE_MARKER).touch()
-        created.append(target)
-
+        module = import_module(f"ml_peg.app.{category}.{benchmark}.app_{benchmark}")
+        # Redirect all module-level data paths, including derived info paths.
+        for name, value in vars(module).copy().items():
+            if isinstance(value, Path) and value.is_relative_to(APP_ROOT / "data"):
+                patches.setattr(
+                    module, name, data_root / value.relative_to(APP_ROOT / "data")
+                )
     try:
-        yield
+        yield data_root
     finally:
-        for target in created:
-            shutil.rmtree(target, ignore_errors=True)
-            # Leave no empty category directory behind on a clean checkout.
-            parent = target.parent
-            if parent.is_dir() and not any(parent.iterdir()):
-                parent.rmdir()
+        patches.undo()
 
 
 @pytest.fixture(scope="session")
-def app_url(benchmark_data: None) -> Iterator[str]:
+def app_url(benchmark_data: Path) -> Iterator[str]:
     """
     Build the ML-PEG app for the fixture benchmarks and serve it for the session.
 
-    ``get_all_tests`` globs the *code* tree and skips any benchmark whose data is
-    missing (warning rather than raising), so building with ``"*"`` builds
-    exactly what the fixture supplies. That keeps the fixture directory as the
-    single place coverage is declared, but it also means a fixture that failed to
-    load would silently shrink coverage instead of failing, hence the check on
-    the skip warnings below.
+    Discover only the explicitly selected benchmarks and fail if any are
+    missing. Unrelated local benchmarks must not affect browser tests.
 
     Parameters
     ----------
@@ -235,12 +219,41 @@ def app_url(benchmark_data: None) -> Iterator[str]:
     str
         Base URL of the running app.
     """
-    from ml_peg.app import run_app as run_app_module
-    from ml_peg.app.build_app import build_full_app
+    from dash import Dash
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        build_full_app(run_app_module.app, category="*", test="*")
+    from ml_peg.app import build_app
+    from ml_peg.app.utils.head_scripts import inject_head_scripts
+
+    app = Dash(
+        __name__,
+        assets_folder=str(benchmark_data),
+        title="ML-PEG",
+        update_title=None,
+        suppress_callback_exceptions=True,
+        meta_tags=[
+            {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+        ],
+    )
+    inject_head_scripts(app)
+
+    discover = build_app.get_all_tests
+
+    def fixture_tests(**kwargs):
+        result = ({}, {}, {}, {})
+        for category, benchmark in FIXTURE_BENCHMARKS:
+            selected = discover(category=category, test=benchmark)
+            result[0].update(selected[0])
+            for output, incoming in zip(result[1:], selected[1:], strict=True):
+                for key, value in incoming.items():
+                    output.setdefault(key, {}).update(value)
+        assert set(result[0]) == {name for _, name in FIXTURE_BENCHMARKS}
+        return result
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(build_app, "get_all_tests", fixture_tests)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            build_app.build_full_app(app, category="*", test="*")
 
     expected = {benchmark for _, benchmark in FIXTURE_BENCHMARKS}
     messages = [str(warning.message) for warning in caught]
@@ -254,7 +267,7 @@ def app_url(benchmark_data: None) -> Iterator[str]:
         f"{FIXTURE_KEY} is incomplete for them."
     )
 
-    server = make_server("127.0.0.1", 0, run_app_module.app.server, threaded=True)
+    server = make_server("127.0.0.1", 0, app.server, threaded=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:

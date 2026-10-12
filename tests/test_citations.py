@@ -781,7 +781,15 @@ def test_contributor_shown_and_references_collapsed() -> None:
         for component in _walk_components(details)
     ]
     collapsed_text = " ".join(str(component) for component in collapsed)
-    details = [c for c in _walk_components(layout) if isinstance(c, Details)]
+    reference_details = [
+        component
+        for component in _walk_components(layout)
+        if isinstance(component, Details)
+        and any(
+            isinstance(child, Summary) and "Benchmark references" in str(child)
+            for child in component.children
+        )
+    ]
     assert "First Author, Second Author" in collapsed_text
     assert "Contributors: " in str(layout)
     assert "Implemented by: " in str(layout)
@@ -790,7 +798,9 @@ def test_contributor_shown_and_references_collapsed() -> None:
     assert "Test Contributor" in str(layout)
     assert "Test Contributor" not in collapsed_text
     # Closed by default, as a benchmark can cite many sources
-    assert details and not any(getattr(d, "open", False) for d in details)
+    assert reference_details and not any(
+        getattr(details, "open", False) for details in reference_details
+    )
 
 
 def test_documentation_is_a_direct_link() -> None:
