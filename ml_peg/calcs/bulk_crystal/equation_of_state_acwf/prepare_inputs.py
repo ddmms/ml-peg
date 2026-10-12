@@ -8,9 +8,10 @@ The archive collects, from pinned upstream commits:
 * the PBE all-electron reference Birch-Murnaghan parameters published with
   Bosoni et al. (2024), averaged over WIEN2k and FLEUR.
 
-The resulting ``equation_of_state_acwf.zip`` is written to the ML-PEG cache, so the
-calculation and analysis can run before it is uploaded to the ML-PEG S3 bucket as
-``inputs/bulk_crystal/equation_of_state_acwf/equation_of_state_acwf.zip``.
+The archive is hosted on the ML-PEG S3 bucket as
+``inputs/bulk_crystal/equation_of_state_acwf/equation_of_state_acwf.zip``. This
+script documents its provenance and can regenerate it in the ML-PEG cache, for
+example to update the pinned commits.
 
 Run with::
 
