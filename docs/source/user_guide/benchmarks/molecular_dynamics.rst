@@ -333,7 +333,7 @@ Metrics
 For each structure, the mean wall-clock time of a single model forward pass
 (energy + forces) is measured, excluding warm-up passes, and divided by the number of
 atoms. The reported metric is the mean of this per-atom forward time across
-structures, in microseconds per atom. Lower is faster.
+structures, omitting the slowest 20% of passes, in microseconds per atom. Lower is faster.
 
 The accompanying scaling plot shows the model throughput (number of atoms divided by the
 forward-pass time, in atoms per second) against the number of atoms on log-log axes,
