@@ -1,0 +1,56 @@
+# good: ACWF "excellent agreement" thresholds between all-electron codes.
+# bad: ACWF outlier thresholds (Bosoni et al., Nat. Rev. Phys. 6, 45, 2024).
+metrics:
+  ε:
+    good: 0.06
+    bad: 1.0
+    unit: null
+    tooltip: "Median ε over all structures (no minimum counts as infinite): RMS energy difference between the model and reference E(V) curves, relative to the energy spread of the curves"
+    level_of_theory: PBE
+  ν:
+    good: 0.10
+    bad: 1.65
+    unit: null
+    tooltip: "Median ν over all structures (no minimum counts as infinite): weighted relative differences in V0, B0 and B1 (weights 1, 1/20, 1/400), times 100"
+    level_of_theory: PBE
+  Unphysical E(V):
+    good: 0.0
+    bad: 10.0
+    unit: "%"
+    tooltip: "Share of structures for which a calculation failed (including unsupported elements), the Birch-Murnaghan fit has no minimum, or the minimum lies outside the sampled volumes"
+    level_of_theory: PBE
+  ε (no +U or magnetic):
+    good: 0.06
+    bad: 1.0
+    unit: null
+    tooltip: "Median ε excluding the structures for which MLIP training data are typically spin-polarised or use PBE+U, unlike the non-magnetic PBE reference"
+    level_of_theory: PBE
+    weight: 0
+  Δ:
+    good: 1.0
+    bad: 10.0
+    unit: meV/atom
+    tooltip: "Median Δ over all structures: RMS energy difference between E(V) curves over 0.94-1.06 V0, as in ACWF (not comparable with the metals benchmark)"
+    level_of_theory: PBE
+    weight: 0
+  V0 error:
+    good: 0.1
+    bad: 2.0
+    unit: "%"
+    tooltip: "Median absolute relative difference in the equilibrium volume V0"
+    level_of_theory: PBE
+    weight: 0
+  B0 error:
+    good: 2.0
+    bad: 30.0
+    unit: "%"
+    tooltip: "Median absolute relative difference in the bulk modulus B0"
+    level_of_theory: PBE
+    weight: 0
+  B1 error:
+    good: 10.0
+    bad: 100.0
+    unit: "%"
+    tooltip: "Median absolute relative difference in the bulk modulus derivative B1"
+    level_of_theory: PBE
+    weight: 0

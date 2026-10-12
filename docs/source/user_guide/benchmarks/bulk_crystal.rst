@@ -477,6 +477,118 @@ Reference data (PBE):
 * ferromagnetic Fe: `Dézerald, L., Marinica, M. C., Ventelon, L., Rodney, D., & Willaime, F. (2014). Stability of self-interstitial clusters with C15 Laves phase structure in iron. Journal of Nuclear Materials, 449(1–3), 219–224. <https://doi.org/10.1016/j.jnucmat.2014.02.012>`_ and `Wang, K., Shang, S. L., Wang, Y., Liu, Z. K., & Liu, F. (2018). Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study. Acta Materialia, 147, 261–276. <https://doi.org/10.1016/j.actamat.2018.01.013>`_
 
 
+Equation of state (ACWF)
+========================
+
+Summary
+-------
+
+Energy-volume curves of the 1030 crystals of the ACWF verification set: four unaries
+(BCC, FCC, SC and diamond) and six oxides (XO, XO2, XO3, X2O, X2O3 and X2O5) for each
+element from H to Lr (Z = 1-103). The curves are compared with all-electron PBE
+reference data using the measures of the ACWF verification study.
+
+For each structure, the model energy is computed at seven volumes, 0.94, 0.96, ...,
+1.06 times the central volume, scaling the cell isotropically. A third-order
+Birch-Murnaghan equation of state is fitted to these points as in the reference data,
+giving the equilibrium volume :math:`V_0`, the bulk modulus :math:`B_0` and its pressure
+derivative :math:`B_1`.
+
+Metrics
+-------
+
+Following Bosoni *et al.*, the ε, ν and Δ measures are computed with the
+equations of the published ACWF implementation. All measures are averaged over the
+structures for which the fitted curve has a minimum. Structures without a minimum
+count towards the unphysical E(V) metric.
+
+1. ε
+
+   Root-mean-square difference between the model and reference curves, both aligned
+   at their minimum, divided by the geometric mean of the standard deviations of the
+   two curves. All three are taken over 0.94-1.06 times the average :math:`V_0` of
+   the two curves:
+
+   .. math::
+
+      \varepsilon = \sqrt{\frac{\langle (E_\text{model} - E_\text{ref})^2 \rangle}
+      {\sqrt{\langle (E_\text{model} - \langle E_\text{model} \rangle)^2 \rangle
+      \langle (E_\text{ref} - \langle E_\text{ref} \rangle)^2 \rangle}}}
+
+   ε does not depend on the scale of the bulk modulus, so it can be compared across
+   all elements. The thresholds are those of the ACWF study: 0.06 (excellent agreement
+   between all-electron codes) and 1 (outlier). As in the published implementation,
+   the mean of the model curve is used for both variances.
+
+2. ν
+
+   Weighted relative differences in the Birch-Murnaghan parameters:
+
+   .. math::
+
+      \nu = 100 \sqrt{\left(\frac{V_0^\text{model} - V_0^\text{ref}}{\bar{V}_0}\right)^2
+      + \left(\frac{1}{20} \frac{B_0^\text{model} - B_0^\text{ref}}{\bar{B}_0}\right)^2
+      + \left(\frac{1}{400} \frac{B_1^\text{model} - B_1^\text{ref}}{\bar{B}_1}\right)^2}
+
+   where :math:`\bar{X}` is the average of the model and reference values. The
+   thresholds are those of the ACWF study: 0.1 (excellent) and 1.65 (outlier).
+
+3. Unphysical E(V)
+
+   Percentage of structures for which a calculation failed, the fitted curve has no
+   minimum, or the minimum lies outside the sampled volumes.
+
+4. ε (no +U or magnetic)
+
+   ε excluding structures for which the reference and typical MLIP training data
+   differ: elements that are magnetic in spin-polarised PBE (Cr, Mn, Fe, Co, Ni,
+   lanthanides and actinides), and oxides of the elements for which Materials Project
+   applies +U (Co, Cr, Fe, Mn, Mo, Ni, V and W). The reference is non-spin-polarised
+   PBE without +U. Not included in the score.
+
+5. Δ
+
+   Root-mean-square energy difference between the curves, aligned at their minimum,
+   over 0.94-1.06 times their average :math:`V_0`, in meV/atom (Lejaeghere *et al.*).
+   This is the ACWF definition. The values cannot be compared with the Δ metric of the
+   *Energy-volume curves for metals* benchmark, which uses a wider volume range. Not
+   included in the score.
+
+6. V0, B0 and B1 errors
+
+   Mean absolute relative differences in :math:`V_0`, :math:`B_0` and :math:`B_1`.
+   Not included in the score.
+
+Each metric can also be shown on a periodic table, averaged over the ten structures of
+each element. Clicking an element shows its ten E(V) curves.
+
+Computational cost
+------------------
+
+Fast: 7210 single-point calculations on cells of 1 to 14 atoms. With ``mace-mp-0a``,
+the calculations take a few minutes on a laptop CPU (Apple M-series).
+
+Data availability
+-----------------
+
+Input structures:
+
+* PBE input structures of the ACWF verification set (``xsfs-*-verification-PBE-v1``
+  and ``xsfs-*-verification-PBE-missing-actinides-v1``), from
+  https://github.com/aiidateam/acwf-verification-scripts.
+
+Reference data (PBE):
+
+* All-electron Birch-Murnaghan parameters averaged over WIEN2k, FLEUR and SIRIUS/CP2K
+  (Z = 1-103; WIEN2k and FLEUR only for Lr), from
+  https://github.com/t-reents/eos-plot-widget.
+* E. Bosoni *et al.*, How to verify the precision of density-functional-theory
+  implementations via reproducible and universal workflows, Nat. Rev. Phys. 6, 45
+  (2024). https://doi.org/10.1038/s42254-023-00655-3
+* K. Lejaeghere *et al.*, Reproducibility in density functional theory calculations
+  of solids, Science 351, aad3000 (2016). https://doi.org/10.1126/science.aad3000
+
+
 High-Pressure Relaxation
 ========================
 
