@@ -31,7 +31,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 EXAMPLE_INPUT_FILENAME = "71_1jrs_leupeptin.xyz"
 
@@ -268,7 +267,6 @@ def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     throughput_plot: None,
