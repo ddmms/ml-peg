@@ -1642,7 +1642,7 @@ def build_no_results_notice() -> Div:
                 },
             ),
             Div(
-                "Data is still being collected for this benchmark this benchmark, so "
+                "Data is still being collected for this benchmark, so "
                 "its table is hidden, and it is weighted 0.",
                 style={"color": "var(--mlpeg-muted)", "fontSize": "13px"},
             ),
