@@ -21,6 +21,7 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.acwf_utils import (
 )
 from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_state_acwf import (  # noqa: E501
     compare_curve,
+    compare_model,
     is_flagged,
     load_curves,
     load_reference,
@@ -278,3 +279,24 @@ def test_load_curves(tmp_path, monkeypatch):
         10 * np.array([0.94, 0.96, 0.98, 1.0, 1.02, 1.04, 1.06])
     )
     assert curves["Mg-XO"]["energies"] == pytest.approx(np.full(7, -6.0))
+
+
+def test_compare_model_missing_structure():
+    """A structure missing from the model outputs counts as failed."""
+    reference = {
+        "Cu-FCC": dict(zip(("V0", "B0", "B1"), REFERENCE, strict=True)),
+        "Si-Diamond": dict(zip(("V0", "B0", "B1"), REFERENCE, strict=True)),
+    }
+    volumes = REFERENCE[0] * np.linspace(0.94, 1.06, 7)
+    model_curves = {
+        "Cu-FCC": {
+            "volumes": volumes,
+            "energies": birch_murnaghan(volumes, 0.0, *REFERENCE),
+        }
+    }
+
+    comparison = compare_model(model_curves, reference)
+
+    assert comparison["Cu-FCC"]["status"] == "ok"
+    assert comparison["Si-Diamond"]["status"] == "failed"
+    assert unphysical_share(comparison) == 50.0

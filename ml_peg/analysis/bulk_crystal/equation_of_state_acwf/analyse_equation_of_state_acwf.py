@@ -206,6 +206,33 @@ def compare_curve(
     }
 
 
+def compare_model(
+    model_curves: dict[str, dict[str, np.ndarray]],
+    reference: dict[str, dict[str, float]],
+) -> dict[str, dict]:
+    """
+    Compare the curves of one model with the reference, for every structure.
+
+    Parameters
+    ----------
+    model_curves
+        Curves of the model for each structure.
+    reference
+        Reference parameters for each structure.
+
+    Returns
+    -------
+    dict[str, dict]
+        Comparison for each reference structure. A structure missing from the model
+        outputs, for example after an interrupted run, is counted as failed.
+    """
+    missing = {"volumes": np.full(7, np.nan), "energies": np.full(7, np.nan)}
+    return {
+        label: compare_curve(**model_curves.get(label, missing), reference=ref)
+        for label, ref in reference.items()
+    }
+
+
 @pytest.fixture(scope="module")
 def reference() -> dict[str, dict[str, float]]:
     """
@@ -253,16 +280,12 @@ def comparisons(
         Comparison for each structure and model, or ``None`` for models that were not
         run.
     """
-    results = {}
-    for model_name, model_curves in curves.items():
-        if model_curves is None:
-            results[model_name] = None
-            continue
-        results[model_name] = {
-            label: compare_curve(**model_curves[label], reference=ref)
-            for label, ref in reference.items()
-        }
-    return results
+    return {
+        model_name: None
+        if model_curves is None
+        else compare_model(model_curves, reference)
+        for model_name, model_curves in curves.items()
+    }
 
 
 def median_measure(results: list[dict]) -> float:
@@ -531,6 +554,7 @@ def eos_figures(
                     **position,
                 )
                 if label not in model_curves:
+                    fig.layout.annotations[index].text = f"{configuration}: failed"
                     continue
                 volumes = model_curves[label]["volumes"]
                 energies = model_curves[label]["energies"]
