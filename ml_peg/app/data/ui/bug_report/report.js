@@ -5,6 +5,9 @@
 
   // Standard editor parameters also work before changes to issue templates merge.
   const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new";
+  // Bound the encoded link, including the title, report text and attachment note.
+  const MAX_ISSUE_URL_LENGTH = 7500;
+  const MAX_DETAIL_ENTRIES = 20;
   let dialog, context, screenshot, rectangles = [], startPoint, generation = 0, captures = 0;
 
   function field(id) { return dialog.querySelector("#bug-report-" + id); }
@@ -28,11 +31,14 @@
 
   function reportBody(details = context, compact = false) {
     const instructions = attachmentInstructions();
+    const notice = details.omitted_details
+      ? "Page details shortened to fit the issue link. Omitted entry counts are listed below.\n"
+      : compact ? "Only changed weights and thresholds are included.\n" : "";
     const sections = [
       "## What happened\n" + field("description").value.trim(),
       "## What I expected\n" + field("expected").value.trim(),
       "## Steps to reproduce\n" + field("steps").value.trim(),
-      "## Page details\n" + (compact ? "Only changed weights and thresholds are included.\n" : "")
+      "## Page details\n" + notice
         + "```json\n" + JSON.stringify(details, null, compact ? undefined : 2) + "\n```",
     ];
     if (instructions) sections.unshift(instructions);
@@ -49,14 +55,58 @@
   function draft() {
     const url = new URL(ISSUE_URL);
     url.searchParams.set("title", "Website bug: " + (field("title").value.trim() || context.page));
-    url.searchParams.set("body", reportBody());
-    if (url.href.length > 7500) {
-      // Keep user text and changed settings intact, omitting the full settings grid.
-      const concise = {...context};
-      delete concise.page_settings;
-      url.searchParams.set("body", reportBody(concise, true));
+    const fits = (details, compact = false) => {
+      url.searchParams.set("body", reportBody(details, compact));
+      return url.href.length <= MAX_ISSUE_URL_LENGTH;
+    };
+    if (fits(context)) return url.href;
+    const concise = {...context};
+    delete concise.page_settings;
+    if (fits(concise, true)) return url.href;
+
+    // Keep report text intact and admit only page details that fit the remaining budget.
+    const details = {omitted_details: {}};
+    const groups = ["selected_models", "changed_settings", "excluded_elements", "appearance", "page_selections"];
+    const scalars = ["url", "page", "version", "reported_at", "browser", "viewport"];
+    for (const key of groups) details.omitted_details[key] = Object.keys(context[key]).length;
+    details.omitted_details.page_settings = Object.keys(context.page_settings).length;
+    // Omission counts reserve room before adding entries, including unusually long values.
+    for (const key of scalars) details.omitted_details[key] = 1;
+    if (!fits(details, true)) return null;
+    for (const key of scalars) {
+      details[key] = context[key];
+      details.omitted_details[key] = 0;
+      if (!fits(details, true)) {
+        delete details[key];
+        details.omitted_details[key] = 1;
+      }
     }
-    return url.href.length <= 7500 ? url.href : null;
+    for (const key of groups) {
+      const isArray = Array.isArray(context[key]);
+      details[key] = isArray ? [] : {};
+      let entries = Object.entries(context[key]);
+      if (key === "changed_settings") {
+        // Changes on the current page are more useful than those on other pages.
+        const onPage = id => Object.prototype.hasOwnProperty.call(context.page_settings, id);
+        entries = entries.filter(([id]) => onPage(id)).concat(entries.filter(([id]) => !onPage(id)));
+      }
+      for (const [id, value] of entries.slice(0, MAX_DETAIL_ENTRIES)) {
+        if (isArray) details[key].push(value);
+        else details[key][id] = value;
+        details.omitted_details[key]--;
+        if (!fits(details, true)) {
+          if (isArray) details[key].pop();
+          else delete details[key][id];
+          details.omitted_details[key]++;
+        }
+      }
+      if (Object.keys(details[key]).length === 0) delete details[key];
+    }
+    for (const key of Object.keys(details.omitted_details)) {
+      if (details.omitted_details[key] === 0) delete details.omitted_details[key];
+    }
+    // The last attempted entry may have been rejected, so rebuild the final URL.
+    return fits(details, true) ? url.href : null;
   }
 
   function draw(extra) {

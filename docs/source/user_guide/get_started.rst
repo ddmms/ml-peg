@@ -96,5 +96,6 @@ settings details. Optionally capture the page and mark the problem
 area.
 
 Select **Open GitHub issue**, then review and submit using your GitHub account.
+Large page details are shortened automatically, with counts of omitted entries.
 Captured screenshots download separately. Drag the file into the issue description
 to attach it, or attach your own screenshot directly on GitHub.

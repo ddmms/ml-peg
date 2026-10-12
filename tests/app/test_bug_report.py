@@ -269,6 +269,78 @@ def test_large_settings_use_compact_draft_without_report_file(
     ).to_have_count(0)
 
 
+@pytest.mark.parametrize(
+    "case", ["models", "changes", "both", "large_value", "unicode"]
+)
+@pytest.mark.parametrize("with_screenshot", [False, True])
+def test_large_page_details_are_shortened_without_blocking_issue(
+    ready_page: Page, case: str, with_screenshot: bool
+) -> None:
+    """Bound encoded links and account for omissions without losing report text."""
+    _intercept_github(ready_page)
+    ready_page.evaluate(
+        """scenario => {
+            const models = ['models', 'both', 'unicode'].includes(scenario)
+                ? Array.from({length: 2000}, (_, i) =>
+                    scenario === 'unicode' ? '模型🌍-' + i : 'test-model-' + i)
+                : ['mace-mp-0a'];
+            const changes = {};
+            if (['changes', 'both', 'large_value'].includes(scenario)) {
+                for (let i = 0; i < 1500; i++) {
+                    changes['benchmark-' + i + '-table-weight-store'] = {MAE: 0.5};
+                }
+            }
+            changes['summary-table-weight-store'] = scenario === 'large_value'
+                ? Object.fromEntries(Array.from({length: 2000}, (_, i) =>
+                    ['metric-' + i, 0.5]))
+                : {MAE: 0.25};
+            const ids = Object.keys(changes);
+            window.mlpegBugReport.open({
+                version: 'test',
+                store_ids: ids,
+                defaults: Object.fromEntries(ids.map(id => [id, {MAE: 1}])),
+            }, models, ['O'], Object.values(changes));
+        }""",
+        case,
+    )
+    _fill_report(ready_page)
+    full_details = ready_page.locator("#bug-report-context").text_content()
+    original = json.loads(full_details)
+    downloads = []
+    ready_page.on(
+        "download", lambda download: downloads.append(download.suggested_filename)
+    )
+    if with_screenshot:
+        _capture_screenshot(ready_page)
+    with ready_page.expect_popup() as popup:
+        ready_page.get_by_role("button", name="Open GitHub issue").click()
+    popup.value.wait_for_load_state()
+    assert len(popup.value.url) <= 7500
+    body = _draft_report(popup.value.url)
+    assert "The plot is empty after selecting C & O." in body
+    assert "A curve should appear." in body
+    assert "1. Select a model\n2. Click its MAE cell" in body
+    assert "Page details shortened" in body
+    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    assert details["url"] == ready_page.url
+    assert details["version"] == "test"
+    assert details["page"] == original["page"]
+    for key in ("selected_models", "changed_settings"):
+        assert len(details.get(key, [])) + details["omitted_details"].get(
+            key, 0
+        ) == len(original[key])
+    if case == "large_value":
+        assert "summary-table-weight-store" not in details["changed_settings"]
+        assert details["changed_settings"], "smaller later changes should still fit"
+    else:
+        assert details["changed_settings"]["summary-table-weight-store"] == {
+            "MAE": 0.25
+        }
+    assert ("- [ ] **Attach the screenshot:**" in body) == with_screenshot
+    assert downloads == (["mlpeg-bug-screenshot.png"] if with_screenshot else [])
+    expect(ready_page.locator("#bug-report-context")).to_have_text(full_details)
+
+
 def test_overlong_text_is_preserved_for_editing(ready_page: Page) -> None:
     """Let the user shorten an oversized draft without losing text or opening it."""
     _intercept_github(ready_page)
