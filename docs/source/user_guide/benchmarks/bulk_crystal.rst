@@ -516,9 +516,13 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
       \langle (E_\text{ref} - \langle E_\text{ref} \rangle)^2 \rangle}}}
 
    ε does not depend on the scale of the bulk modulus, so it can be compared across
-   all elements. The thresholds are those of the ACWF study: 0.06 (excellent agreement
-   between all-electron codes) and 1 (outlier). As in the published implementation,
-   the mean of the model curve is used for both variances.
+   all elements. As in the published implementation, the mean of the model curve is
+   used for both variances.
+
+   The colour scale runs from 0.2, the ACWF threshold for good agreement between DFT
+   codes, to 1.7, which corresponds to a 5% error in :math:`V_0`. The ACWF study uses
+   0.06 for excellent agreement and 1 for outliers. ε saturates near 2 for large
+   errors, so it ranks inaccurate models poorly and is not included in the score.
 
 2. ν
 
@@ -530,8 +534,12 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
       + \left(\frac{1}{20} \frac{B_0^\text{model} - B_0^\text{ref}}{\bar{B}_0}\right)^2
       + \left(\frac{1}{400} \frac{B_1^\text{model} - B_1^\text{ref}}{\bar{B}_1}\right)^2}
 
-   where :math:`\bar{X}` is the average of the model and reference values. The
-   thresholds are those of the ACWF study: 0.1 (excellent) and 1.65 (outlier).
+   where :math:`\bar{X}` is the average of the model and reference values. ν is close
+   to the percentage error in :math:`V_0`, as the errors in :math:`B_0` and
+   :math:`B_1` are weighted down. The good threshold, 0.33, is the ACWF threshold for
+   good agreement between DFT codes; the bad threshold, 5, corresponds to a 5% error in
+   :math:`V_0`. The ACWF study uses 0.1 for excellent agreement and 1.65 for
+   outliers.
 
 3. Unphysical E(V)
 
