@@ -105,9 +105,9 @@ The common fields are:
    Optional list of element symbols the model supports *beyond* its ``datasets``
    coverage. A model's total coverage is the union of its datasets' elements and
    this list. To determine coverage empirically, run
-   ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
+   ``dev/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
    since model backends conflict), then
-   ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
+   ``dev/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
    and which elements to record here as extras.
 
 ``kwargs``
