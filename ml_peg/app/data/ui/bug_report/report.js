@@ -22,11 +22,19 @@
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
-  function downloadScreenshot() {
+  let screenshotFilename = "";
+
+  function nextScreenshotFilename() {
+    screenshotFilename = `mlpeg-bug-screenshot-${crypto.randomUUID()}.png`;
+    field("attachment-filename").textContent = screenshotFilename;
+    return screenshotFilename;
+  }
+
+  function downloadScreenshot(filename = nextScreenshotFilename()) {
     // Synchronous preparation preserves the user's gesture for the new tab.
     const data = field("canvas").toDataURL("image/png").split(",")[1];
     const bytes = Uint8Array.from(atob(data), char => char.charCodeAt(0));
-    download(new Blob([bytes], {type: "image/png"}), "mlpeg-bug-screenshot.png");
+    download(new Blob([bytes], {type: "image/png"}), filename);
   }
 
   function reportBody(details = context, compact = false) {
@@ -49,7 +57,7 @@
     if (!screenshot) return "";
     return "> [!IMPORTANT]\n> **Complete these manual steps before submitting.**\n"
       + "> Attachments are not uploaded automatically.\n\n"
-      + "- [ ] **Attach the screenshot:** drag `mlpeg-bug-screenshot.png` from your browser's downloads into this description. If it is missing, return to the ML-PEG reporter and click **Download screenshot**.";
+      + "- [ ] **Attach the screenshot:** drag `" + screenshotFilename + "` from your browser's downloads into this description. If it is missing, return to the ML-PEG reporter and click **Download screenshot**.";
   }
 
   function draft() {
@@ -144,6 +152,7 @@
     await image.decode();
     if (token !== generation || !dialog.open) return;
     screenshot = image;
+    nextScreenshotFilename();
     rectangles = [];
     startPoint = null;
     const scale = Math.min(1, 1920 / image.width, 1080 / image.height);
@@ -158,13 +167,18 @@
     if (window.htmlToImage) return Promise.resolve(window.htmlToImage);
     // Reuse the same library and cached load as the table-export feature.
     if (!window._mlpegHtmlToImagePromise) {
-      window._mlpegHtmlToImagePromise = new Promise((resolve, reject) => {
+      const pending = new Promise((resolve, reject) => {
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js";
         script.onload = () => resolve(window.htmlToImage);
         script.onerror = () => reject(new Error("Screenshot tools could not load."));
         document.head.appendChild(script);
+      }).catch(error => {
+        // Loading is shared with table export and outlives the dialog.
+        if (window._mlpegHtmlToImagePromise === pending) window._mlpegHtmlToImagePromise = null;
+        throw error;
       });
+      window._mlpegHtmlToImagePromise = pending;
     }
     return window._mlpegHtmlToImagePromise;
   }
@@ -205,7 +219,6 @@
       }
     } catch (error) {
       if (token === generation) {
-        window._mlpegHtmlToImagePromise = null;
         status("Could not capture this page. You can attach your own screenshot directly on GitHub, or report without one.");
       }
     } finally {
@@ -244,7 +257,7 @@
           automatic captures can differ in scrolled areas or 3D viewers.</p>
           <canvas id="bug-report-canvas" aria-label="Screenshot: drag to highlight a problem area"></canvas>
           <p id="bug-report-attachment-note">The screenshot is not uploaded automatically.
-          Open the GitHub issue, then drag the downloaded <strong>mlpeg-bug-screenshot.png</strong>
+          Open the GitHub issue, then drag the downloaded <strong id="bug-report-attachment-filename">screenshot</strong>
           into the issue description before submitting.</p>
           <div class="bug-report-actions">
             <button id="bug-report-download" type="button">Download screenshot</button>
@@ -264,7 +277,7 @@
     field("download").addEventListener("click", () => {
       if (!screenshot) return;
       downloadScreenshot();
-      status("Screenshot downloaded. Drag mlpeg-bug-screenshot.png into the GitHub issue description to attach it.");
+      status("Screenshot downloaded. Drag " + screenshotFilename + " into the GitHub issue description to attach it.");
     });
     field("cancel").addEventListener("click", () => dialog.close());
     field("close").addEventListener("click", () => dialog.close());
@@ -315,19 +328,20 @@
     canvas.addEventListener("pointercancel", () => { startPoint = null; if (screenshot) draw(); });
     field("form").addEventListener("submit", event => {
       event.preventDefault();
+      const filename = screenshot ? nextScreenshotFilename() : null;
       const url = draft();
       if (!url) {
         status("This report is too long to open as a GitHub draft. Please shorten the description, expected result or steps. Your text is still here.");
         return;
       }
-      if (screenshot) downloadScreenshot();
+      if (screenshot) downloadScreenshot(filename);
       const link = document.createElement("a");
       link.href = url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.click();
       status(screenshot
-        ? "GitHub issue opened. Drag mlpeg-bug-screenshot.png from your downloads into the issue description to attach it before submitting."
+        ? "GitHub issue opened. Drag " + screenshotFilename + " from your downloads into the issue description to attach it before submitting."
         : "GitHub issue opened. Review your report, then submit it on GitHub.");
     });
   }

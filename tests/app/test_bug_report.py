@@ -203,15 +203,21 @@ def test_screenshot_can_be_marked_and_downloaded(ready_page: Page) -> None:
     )
     with ready_page.expect_download() as manual_download:
         ready_page.get_by_role("button", name="Download screenshot").click()
-    assert manual_download.value.suggested_filename == "mlpeg-bug-screenshot.png"
+    assert manual_download.value.suggested_filename.startswith("mlpeg-bug-screenshot-")
     assert Path(manual_download.value.path()).read_bytes().startswith(b"\x89PNG")
+    ready_page.get_by_role("button", name="Clear marks").click()
     with ready_page.expect_download() as download, ready_page.expect_popup() as popup:
         ready_page.get_by_role("button", name="Open GitHub issue").click()
-    assert download.value.suggested_filename == "mlpeg-bug-screenshot.png"
+    assert download.value.suggested_filename != manual_download.value.suggested_filename
     assert Path(download.value.path()).read_bytes().startswith(b"\x89PNG")
+    assert (
+        Path(download.value.path()).read_bytes()
+        != Path(manual_download.value.path()).read_bytes()
+    )
     popup.value.wait_for_load_state()
     body = _draft_report(popup.value.url)
-    assert "mlpeg-bug-screenshot.png" in body
+    assert download.value.suggested_filename in body
+    assert manual_download.value.suggested_filename not in body
     assert body.startswith("> [!IMPORTANT]")
     assert "- [ ] **Attach the screenshot:**" in body
     assert body.index("Attach the screenshot") < body.index("## What happened")
@@ -263,7 +269,10 @@ def test_large_settings_use_compact_draft_without_report_file(
     assert "page_settings" not in details
     assert ("- [ ] **Attach the screenshot:**" in body) == with_screenshot
     assert "Attach the complete report" not in body
-    assert downloads == (["mlpeg-bug-screenshot.png"] if with_screenshot else [])
+    assert len(downloads) == int(with_screenshot)
+    if with_screenshot:
+        assert downloads[0].startswith("mlpeg-bug-screenshot-")
+        assert downloads[0] in body
     expect(
         ready_page.get_by_role("button", name="Download report", exact=True)
     ).to_have_count(0)
@@ -337,7 +346,10 @@ def test_large_page_details_are_shortened_without_blocking_issue(
             "MAE": 0.25
         }
     assert ("- [ ] **Attach the screenshot:**" in body) == with_screenshot
-    assert downloads == (["mlpeg-bug-screenshot.png"] if with_screenshot else [])
+    assert len(downloads) == int(with_screenshot)
+    if with_screenshot:
+        assert downloads[0].startswith("mlpeg-bug-screenshot-")
+        assert downloads[0] in body
     expect(ready_page.locator("#bug-report-context")).to_have_text(full_details)
 
 
@@ -564,3 +576,76 @@ def test_capture_hides_speed_panel_scrollbars_and_restores_styles(
         == before
     )
     expect(ready_page.locator('#bug-report-dialog input[type="file"]')).to_have_count(0)
+
+
+@pytest.mark.parametrize("source", ["report", "table"])
+def test_failed_library_load_can_retry_in_table_export(ready_page: Page, source: str):
+    """A closed reporter or failed table export must not poison the shared loader."""
+    _open_report(ready_page)
+    ready_page.evaluate(
+        """source => {
+            delete window.htmlToImage;
+            window._mlpegHtmlToImagePromise = null;
+            const append = document.head.appendChild.bind(document.head);
+            window.libraryAttempts = 0;
+            document.head.appendChild = node => {
+                if (!node.src?.includes('html-to-image')) return append(node);
+                window.libraryAttempts++;
+                if (window.libraryAttempts === 1) {
+                    window.rejectLibrary = () => node.onerror();
+                } else {
+                    window.htmlToImage = {toPng: async () => source};
+                    queueMicrotask(() => node.onload());
+                }
+                return node;
+            };
+        }""",
+        "data:image/png;base64," + base64.b64encode(_image(ready_page)).decode(),
+    )
+    if source == "report":
+        ready_page.get_by_role("button", name="Capture this page").click()
+        ready_page.get_by_role("button", name="Close bug report").click()
+        expect(ready_page.locator("#bug-report-dialog")).to_be_hidden()
+    else:
+        ready_page.evaluate("""() => {
+            window.firstExport = window.dash_clientside.table_download.captureTable({
+                element_id: 'summary-table', format: 'png'
+            });
+        }""")
+    ready_page.wait_for_function("typeof window.rejectLibrary === 'function'")
+    ready_page.evaluate("() => window.rejectLibrary()")
+    ready_page.wait_for_function("window._mlpegHtmlToImagePromise === null")
+    result = ready_page.evaluate("""() =>
+        window.dash_clientside.table_download.captureTable({
+            element_id: 'summary-table', format: 'png', filename: 'retry.png'
+        })""")
+    assert result["filename"] == "retry.png"
+    assert ready_page.evaluate("window.libraryAttempts") == 2
+
+
+def test_many_customised_tables_allow_empty_text_report(ready_page: Page):
+    """Settings alone cannot exhaust the issue URL budget and block a draft."""
+    _intercept_github(ready_page)
+    ready_page.evaluate("""() => {
+        const ids = Array.from({length: 30}, (_, i) =>
+            'benchmark-' + i + '-table-thresholds-store');
+        const values = ids.map(() => Object.fromEntries(
+            Array.from({length: 10}, (_, i) => ['metric-' + i, {good: 0, bad: 10}])
+        ));
+        window.mlpegBugReport.open({version: 'test', store_ids: ids,
+            defaults: Object.fromEntries(ids.map(id => [id, {}]))}, [], [], values);
+    }""")
+    for field in ("title", "description", "expected", "steps"):
+        ready_page.locator(f"#bug-report-{field}").fill("")
+    with ready_page.expect_popup() as popup:
+        ready_page.get_by_role("button", name="Open GitHub issue").click()
+    popup.value.wait_for_load_state()
+    assert len(popup.value.url) <= 7500
+    body = _draft_report(popup.value.url)
+    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    assert details["omitted_details"]["changed_settings"] > 0
+    assert (
+        len(details.get("changed_settings", {}))
+        + details["omitted_details"]["changed_settings"]
+        == 30
+    )
