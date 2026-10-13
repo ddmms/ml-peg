@@ -530,7 +530,13 @@ sevennet-omni-mpa
 AIMNet2
 =======
 
-Install these models (MIT licence) with ``uv sync --extra aimnet``.
+.. TODO: switch to ``--extra aimnet`` once an aimnet release after 0.2.0 includes
+   aimnetcentral PR #127 (see the aimnet entry in pyproject.toml [dependency-groups]).
+
+Install these models (MIT licence) with ``uv sync --group aimnet``. Installing
+with pip is not currently supported: the AIMNet2 calculator fix for reused
+calculators silently dropping neighbours is not yet in a PyPI release of
+``aimnet``, so ML-PEG pins it to a git commit that only uv applies.
 Both models evaluate their network in float32, with energies accumulated in
 float64 (full float64 evaluation is not supported). They include their own
 DFT-D3 correction, and cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and
