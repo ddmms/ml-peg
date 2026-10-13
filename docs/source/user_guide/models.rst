@@ -530,6 +530,8 @@ sevennet-omni-mpa
 TACE
 ====
 
+`upstream model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
+
 tace-omat24-7m
 --------------
 
@@ -538,6 +540,7 @@ tace-omat24-7m
   tace-omat24-7m:
     module: tace.interface.ase
     class_name: TACEAseCalc
+    datasets: [OMAT]
     device: "cpu"
     trained_on_dispersion: false
     level_of_theory: PBE
@@ -552,6 +555,7 @@ tace-oam-7m
   tace-oam-7m:
     module: tace.interface.ase
     class_name: TACEAseCalc
+    datasets: [MPtrj, sAlex, OMAT]
     device: "cpu"
     trained_on_dispersion: false
     level_of_theory: PBE
