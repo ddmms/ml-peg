@@ -140,3 +140,69 @@ def test_registered_group_callback_preserves_all_models(monkeypatch):
             (1, "Score"): 0.45,
         }
     assert rows == before
+
+
+@pytest.mark.parametrize(
+    ("table_id", "use_thresholds", "store_id", "suffix", "score_key"),
+    [
+        ("B1-table", True, "summary-table-scores-store", "-summary-table", None),
+        ("B1-table", False, "summary-table-scores-store", "-summary-table", None),
+        (
+            "Alpha-summary-table",
+            False,
+            "summary-table-scores-store",
+            "-summary-table",
+            "Alpha Score",
+        ),
+        (
+            "mace-mp-framework-summary-table",
+            False,
+            "framework-summary-table-scores-store",
+            "-framework-summary-table",
+            "mace-mp Score",
+        ),
+    ],
+)
+def test_only_summary_tables_register_global_score_writers(
+    monkeypatch, table_id, use_thresholds, store_id, suffix, score_key
+):
+    """Avoid no-op benchmark writers while retaining table and summary updates."""
+    from dash import Output
+
+    handlers = {}
+    writers = []
+
+    def capture(*args, **kwargs):
+        def decorate(function):
+            handlers[function.__name__] = function
+            if any(
+                isinstance(arg, Output) and arg.component_id == store_id for arg in args
+            ):
+                writers.append(function)
+            return function
+
+        return decorate
+
+    monkeypatch.setattr(register_callbacks, "callback", capture)
+    register_callbacks.register_category_table_callbacks(
+        table_id,
+        use_thresholds=use_thresholds,
+        scores_store_id=store_id,
+        summary_suffix=suffix,
+    )
+    assert "update_table_from_store" in handlers
+    assert (
+        "update_benchmark_table_scores" if use_thresholds else "update_table_scores"
+    ) in handlers
+    if score_key is None:
+        assert not writers
+    else:
+        assert len(writers) == 1
+        patch = writers[0]([{"MLIP": "A", "Score": 0.65}], {})
+        assert patch.to_plotly_json()["operations"] == [
+            {
+                "operation": "Assign",
+                "location": [score_key],
+                "params": {"value": {"A": 0.65}},
+            }
+        ]

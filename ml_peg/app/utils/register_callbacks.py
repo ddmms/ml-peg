@@ -712,6 +712,11 @@ def register_category_table_callbacks(
             )
             return filtered_rows, style, tooltip_data
 
+    # Reject benchmark tables before registration so Dash does not schedule
+    # callbacks that can never contribute to the overall summary.
+    if not table_id.endswith(summary_suffix):
+        return
+
     @callback(
         Output(scores_store_id, "data", allow_duplicate=True),
         Input(f"{table_id}-computed-store", "data"),
@@ -737,10 +742,6 @@ def register_category_table_callbacks(
         dict[str, dict[str, float]]
             Updated summary-score mapping.
         """
-        # Only summary tables should write to the global store
-        if not table_id.endswith(summary_suffix):
-            raise PreventUpdate
-
         if not computed_rows:
             raise PreventUpdate
 
