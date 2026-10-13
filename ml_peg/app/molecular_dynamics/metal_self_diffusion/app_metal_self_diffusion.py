@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
-
-from dash import Dash
-from dash.dcc import Tab, Tabs
+from dash.dcc import Graph, Tab, Tabs
 from dash.html import H3, Div
+import numpy as np
+from plotly.colors import qualitative
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -14,7 +13,7 @@ from ml_peg.app.utils.build_callbacks import (
     plot_with_download_controls,
     register_plot_settings_callbacks,
 )
-from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.load import read_json, read_plot
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 
 BENCHMARK_NAME = "MetalSelfDiffusion"
@@ -31,25 +30,109 @@ class MetalSelfDiffusionApp(BaseApp):
         register_plot_download_callbacks()
 
 
+def load_vacf_plot(element: str) -> Graph | None:
+    """Load VACFs and select among the temperatures present in the saved plot."""
+    path = DATA_PATH / f"{element}_vacfs.json"
+    if not path.is_file():
+        return None
+    graph = read_plot(path, id=f"{BENCHMARK_NAME}-{element}-vacfs")
+    graph.mathjax = True
+    traces = graph.figure["data"]
+    if not traces:
+        return graph
+    temperatures = sorted(
+        {float(trace["name"].rsplit(", ", 1)[1].removesuffix(" K")) for trace in traces}
+    )
+    steps = []
+    for temperature in temperatures:
+        visible = [trace["name"].endswith(f", {temperature:g} K") for trace in traces]
+        steps.append(
+            {
+                "label": f"{temperature:g} K",
+                "method": "restyle",
+                "args": [{"visible": visible}],
+            }
+        )
+    if temperatures:
+        for trace, visible in zip(traces, steps[0]["args"][0]["visible"], strict=True):
+            trace["visible"] = visible
+    graph.figure["layout"]["sliders"] = [
+        {
+            "steps": steps,
+            "active": 0,
+            "currentvalue": {"prefix": "Temperature: "},
+            "pad": {"t": 45},
+        }
+    ]
+    margin = graph.figure["layout"].setdefault("margin", {})
+    margin["b"] = max(margin.get("b", 0), 100)
+    return graph
+
+
+def load_diffusion_plot(element: str) -> Graph | None:
+    """Load diffusion points and add standard errors and linear fits."""
+    path = DATA_PATH / f"{element}_diffusion.json"
+    if not path.is_file():
+        return None
+    graph = read_plot(path, id=f"{BENCHMARK_NAME}-{element}-diffusion")
+    graph.mathjax = True
+    traces = graph.figure["data"]
+    errors_path = DATA_PATH / f"{element}_diffusion_errors.json"
+    errors = read_json(errors_path) if errors_path.is_file() else {}
+    fits = []
+    for i, trace in enumerate(traces):
+        trace["mode"] = "markers"
+        if trace["name"] in errors:
+            trace["error_y"] = {
+                "type": "data",
+                "array": [
+                    error * 1e9 if error is not None else None
+                    for error in errors[trace["name"]]
+                ],
+                "visible": True,
+            }
+        color = qualitative.Plotly[i % len(qualitative.Plotly)]
+        trace.setdefault("marker", {})["color"] = color
+        trace["legendgroup"] = trace["name"]
+        x = np.asarray(trace["x"], dtype=float)
+        y = np.asarray(trace["y"], dtype=float)
+        valid = np.isfinite(x) & np.isfinite(y)
+        if len(np.unique(x[valid])) < 2:
+            continue
+        slope, intercept = np.polyfit(x[valid], y[valid], 1)
+        endpoints = np.array([x[valid].min(), x[valid].max()])
+        fits.append(
+            {
+                "type": "scatter",
+                "mode": "lines",
+                "x": endpoints.tolist(),
+                "y": (slope * endpoints + intercept).tolist(),
+                "line": {"color": color, "dash": "dash"},
+                "name": f"{trace['name']} linear fit",
+                "legendgroup": trace["name"],
+                "showlegend": False,
+                "hovertemplate": trace.get("hovertemplate"),
+            }
+        )
+    traces.extend(fits)
+    return graph
+
+
 def get_app() -> MetalSelfDiffusionApp:
     """Build the metrics table and element tabs for VACF and diffusion plots."""
-    info = json.loads((DATA_PATH / "info.json").read_text())
+    info = read_json(DATA_PATH / "info.json")
     tabs = []
     for element in info["filenames"]:
         plots = []
-        for suffix, title in (
-            ("vacfs", "Velocity autocorrelation functions"),
-            ("diffusion", "Diffusion constant versus temperature"),
+        for title, graph in (
+            ("Velocity autocorrelation functions", load_vacf_plot(element)),
+            ("Diffusion constant versus temperature", load_diffusion_plot(element)),
         ):
-            path = DATA_PATH / f"{element}_{suffix}.json"
-            if path.is_file():
-                graph = read_plot(path, id=f"{BENCHMARK_NAME}-{element}-{suffix}")
-                graph.mathjax = True
             plots.extend(
                 [
                     H3(title),
                     plot_with_download_controls(graph)
-                    if path.is_file()
+                    if graph is not None
                     else Div("No data available for this element."),
                 ]
             )

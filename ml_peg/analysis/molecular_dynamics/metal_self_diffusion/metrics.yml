@@ -1,6 +1,6 @@
 metrics:
   AMRE:
-    good: 3.0
+    good: 10.0
     bad: 50.0
     unit: "%"
     tooltip: >-

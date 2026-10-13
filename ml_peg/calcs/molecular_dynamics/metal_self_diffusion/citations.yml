@@ -1,14 +1,24 @@
 implementers:
-  - name: Paul Fuchs
-    github: pl-fuchs
-    email: paul.fuchs@tum.de
-
+- name: Paul Fuchs
+  github: pl-fuchs
+  email: paul.fuchs@tum.de
 citations:
-  - key: meyerSelfdiffusionLiquidCopper2010
-    role: reference_data
-    title: Self-Diffusion in Liquid Copper as Seen by Quasielastic Neutron Scattering
-    authors:
-      - A. Meyer
-    year: 2010
-    doi: 10.1103/PhysRevB.81.012102
-    url: https://link.aps.org/doi/10.1103/PhysRevB.81.012102
+- key: horbachImprovementSimulationMetallicMelts2009
+  role: inspired_by
+  title: 'Improvement of computer simulation models for metallic melts via quasielastic neutron scattering: A case study of liquid titanium'
+  authors:
+  - J. Horbach
+  - R. E. Rozas
+  - T. Unruh
+  - A. Meyer
+  year: 2009
+  doi: 10.1103/PhysRevB.80.212203
+  url: https://doi.org/10.1103/PhysRevB.80.212203
+- key: meyerSelfdiffusionLiquidCopper2010
+  role: reference_data
+  title: Self-Diffusion in Liquid Copper as Seen by Quasielastic Neutron Scattering
+  authors:
+  - A. Meyer
+  year: 2010
+  doi: 10.1103/PhysRevB.81.012102
+  url: https://link.aps.org/doi/10.1103/PhysRevB.81.012102

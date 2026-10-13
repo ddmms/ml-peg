@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -140,16 +141,21 @@ def diffusion_constants(vacfs: dict) -> dict:
             if not vacfs[model_name].get(label):
                 continue
             diffusion = np.full(len(temperatures), np.nan)
+            diffusion_error = np.full(len(temperatures), np.nan)
             for t, temperature in enumerate(temperatures):
                 values = vacfs[model_name][label].get(temperature)
                 if values is None or not np.isfinite(values).all():
                     continue
-                diffusion[t] = (
-                    np.mean(np.trapezoid(values, vacfs["times"], axis=-1))
-                    / 3 * 1e-5  # Conversion: 1 A^2/fs = 1e-5 m^2/s
+                samples = (
+                    np.trapezoid(values, vacfs["times"], axis=-1)
+                    / 3
+                    * 1e-5  # Conversion: 1 A^2/fs = 1e-5 m^2/s
                 )
+                diffusion[t] = samples.mean()
+                diffusion_error[t] = 2 * samples.std(ddof=1) / np.sqrt(len(samples))
             results[model_name][label] = {
                 "diffusion": diffusion,
+                "diffusion_error": diffusion_error,
                 "slope": (
                     float(np.polyfit(temperatures, diffusion, 1)[0])
                     if np.isfinite(diffusion).all() else None
@@ -165,7 +171,7 @@ def diffusion_constants(vacfs: dict) -> dict:
             title=f"{element} self-diffusion",
             x_label="Temperature / K",
             y_label=r"Diffusion constant / $10^{-9}\,\text{m}^{2}/\text{s}$",
-            show_line=True,
+            show_line=False,
             hovertemplate=(
                 "<b>Temperature: </b>%{x:.0f} K<br>"
                 "<b>Diffusion constant: </b>%{y:.3f} × 10⁻⁹ m²/s"
@@ -184,6 +190,16 @@ def diffusion_constants(vacfs: dict) -> dict:
             }
 
         curves()
+        errors = {}
+        for model_name in MODELS:
+            if element not in results[model_name]:
+                continue
+            errors[model_name] = [
+                float(error) if np.isfinite(error) else None
+                for error in results[model_name][element]["diffusion_error"]
+            ]
+        filename = OUT_PATH / f"{element}_diffusion_errors.json"
+        filename.write_text(json.dumps(errors, allow_nan=False))
     return results
 
 
