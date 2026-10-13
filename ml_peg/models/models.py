@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+import importlib
 import inspect
 from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
@@ -20,6 +21,28 @@ if TYPE_CHECKING:
     from ase.calculators.mixing import SumCalculator
 
 Precision = Literal["low", "high"]
+
+
+def import_calculator(module: str, class_name: str) -> Callable:
+    """
+    Import the calculator named by a model's registry entry.
+
+    Using the registry's `module` and `class_name` keeps the import in step with the
+    configuration, rather than the two drifting apart.
+
+    Parameters
+    ----------
+    module
+        Module containing the calculator, as set by the registry's `module` key.
+    class_name
+        Calculator class or factory function, as set by the registry's `class_name` key.
+
+    Returns
+    -------
+    Callable
+        Calculator class or factory function.
+    """
+    return getattr(importlib.import_module(module), class_name)
 
 
 def split_kwargs(
@@ -227,6 +250,8 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 class DpaCalc(SumCalc):
     """Dataclass for DPA calculators provided by DeePMD-kit."""
 
+    module: str = "deepmd.calculator"
+    class_name: str = "DP"
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -248,10 +273,10 @@ class DpaCalc(SumCalc):
         """
         check_precision(precision)
 
-        from deepmd.calculator import DP
+        dp = import_calculator(self.module, self.class_name)
 
         calculator_kwargs = {**self.kwargs, **kwargs}
-        return DP(**calculator_kwargs)
+        return dp(**calculator_kwargs)
 
     @property
     def available(self) -> bool:
@@ -264,10 +289,10 @@ class DpaCalc(SumCalc):
             Whether the calculator can be imported.
         """
         try:
-            from deepmd.calculator import DP  # noqa: F401
+            import_calculator(self.module, self.class_name)
 
             return True
-        except ImportError:
+        except (ImportError, AttributeError):
             return False
 
 
@@ -344,6 +369,8 @@ class MatterSimCalc(GenericASECalc):
 class VivaceCalc(SumCalc):
     """Dataclass for Vivace calculator."""
 
+    module: str = "simpoly.vivace.calculator"
+    class_name: str = "MLFFCalculator"
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -363,12 +390,12 @@ class VivaceCalc(SumCalc):
         Calculator
             Loaded ASE calculator.
         """
-        from simpoly.vivace.calculator import MLFFCalculator
+        mlff_calculator = import_calculator(self.module, self.class_name)
 
         check_precision(precision)
 
         kwargs.update(self.kwargs)
-        calc = MLFFCalculator(**kwargs)
+        calc = mlff_calculator(**kwargs)
 
         # Vivace sets dtype from checkpoint metadata inside MLFFCalculator.
         # Leave precision/overwrite_dtype untouched unless SimPoly exposes it.
@@ -451,10 +478,11 @@ class OrbCalc(SumCalc):
             Whether the calculator can be loaded.
         """
         try:
+            # Same imports as `get_calculator`, so the check cannot drift from it.
             from orb_models.forcefield import pretrained
-            from orb_models.forcefield.calculator import ORBCalculator
+            from orb_models.forcefield.inference.calculator import ORBCalculator
 
-            return True
+            return hasattr(pretrained, self.name)
         except ImportError:
             return False
 
@@ -465,6 +493,8 @@ class FairChemCalc(SumCalc):
 
     model_name: str
     task_name: str
+    module: str = "fairchem.core"
+    class_name: str = "FAIRChemCalculator"
     device: Device | str = "cpu"
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
@@ -486,10 +516,13 @@ class FairChemCalc(SumCalc):
         Calculator
             Loaded ASE fairchem Calculator.
         """
-        from fairchem.core import FAIRChemCalculator, pretrained_mlip
         from fairchem.core.units.mlip_unit.api.inference import (
             inference_settings_default,
         )
+
+        fairchem_calculator = import_calculator(self.module, self.class_name)
+        # Checkpoints are loaded from the same module as the calculator.
+        pretrained_mlip = import_calculator(self.module, "pretrained_mlip")
 
         # fairchem defaults to float32; map the requested precision to the base
         # dtype so precision="high" runs in float64. A configured default_dtype
@@ -503,7 +536,7 @@ class FairChemCalc(SumCalc):
 
         predictor_kwargs, calc_kwargs = split_kwargs(
             self.kwargs,
-            (pretrained_mlip.get_predict_unit, FAIRChemCalculator),
+            (pretrained_mlip.get_predict_unit, fairchem_calculator),
             reserved=(
                 "model_name",
                 "device",
@@ -520,7 +553,7 @@ class FairChemCalc(SumCalc):
             inference_settings=inference_settings,
             **predictor_kwargs,
         )
-        return FAIRChemCalculator(predictor, task_name=self.task_name, **calc_kwargs)
+        return fairchem_calculator(predictor, task_name=self.task_name, **calc_kwargs)
 
     @property
     def available(self) -> bool:
@@ -533,7 +566,7 @@ class FairChemCalc(SumCalc):
             Whether the calculator can be loaded.
         """
         try:
-            from fairchem.core import pretrained_mlip
+            pretrained_mlip = import_calculator(self.module, "pretrained_mlip")
 
             return self.model_name in pretrained_mlip._MODEL_CKPTS.checkpoints
         except Exception:
@@ -601,6 +634,8 @@ class UPETCalc(GenericASECalc):
 class SevenNetCalc(SumCalc):
     """Dataclass for SevenNet calculator."""
 
+    module: str = "sevenn.calculator"
+    class_name: str = "SevenNetCalculator"
     device: Device | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -621,12 +656,15 @@ class SevenNetCalc(SumCalc):
         Calculator
             Loaded SevenNet ASE calculator.
         """
-        from sevenn.sevennet_calculator import SevenNetCalculator
+        sevennet_calculator = import_calculator(self.module, self.class_name)
 
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
-        device_str = device.value if isinstance(device, Device) else (device or "cpu")
-        return SevenNetCalculator(device=device_str, **self.kwargs)
+
+        if device is None:
+            return sevennet_calculator(**self.kwargs)
+
+        return sevennet_calculator(device=device, **self.kwargs)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -662,12 +700,14 @@ class GraceCalc(GenericASECalc):
             suffix = self.default_dtype
 
         model_name = f"{self.kwargs['model']}{suffix}"
-        if model_name in MODELS_NAME_LIST:
-            self.kwargs["model"] = model_name
-        else:
+        if model_name not in MODELS_NAME_LIST:
             warn(
                 "Unable to find model with requested precision, using default",
                 stacklevel=2,
             )
+            model_name = self.kwargs["model"]
 
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        # Set the model on a copy, as `self.kwargs` is shared with the model registry.
+        model = dataclasses.replace(self, kwargs={**self.kwargs, "model": model_name})
+
+        return MlipxGenericASECalc.get_calculator(model, **kwargs)
