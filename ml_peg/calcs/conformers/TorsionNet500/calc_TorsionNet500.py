@@ -42,10 +42,10 @@ def test_torsionnet500ccsdt(mlip: tuple[str, Any]) -> None:
 
     data_path = (
         download_s3_data(
-            filename="TorsionNet500CCSDT.zip",
-            key="inputs/conformers/TorsionNet500CCSDT/TorsionNet500CCSDT.zip",
+            filename="TorsionNet500.zip",
+            key="inputs/conformers/TorsionNet500/TorsionNet500.zip",
         )
-        / "TorsionNet500CCSDT"
+        / "TorsionNet500"
     )
 
     xyz_files = sorted(data_path.glob("*.xyz"))
