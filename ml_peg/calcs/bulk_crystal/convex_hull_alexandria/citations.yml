@@ -1,0 +1,53 @@
+implementers:
+  - name: "Gian-Marco Rignanese"
+    github: "gmrigna"
+
+contributors: []
+
+citations:
+  - key: "cavignac-2026-alexandria"
+    role: reference_data
+    title: "AI-Driven expansion and application of the Alexandria database"
+    authors:
+      - "T. Cavignac"
+      - "J. Schmidt"
+      - "P.-P. De Breuck"
+      - "A. Loew"
+      - "T. F. T. Cerqueira"
+      - "H.-C. Wang"
+      - "A. Bochkarev"
+      - "Y. Lysogorskiy"
+      - "A. H. Romero"
+      - "R. Drautz"
+      - "S. Botti"
+      - "M. A. L. Marques"
+    year: 2026
+    doi: "10.1088/2515-7639/ae6620"
+    url: "https://alexandria.icams.rub.de"
+  - key: "schmidt-2023-alexandria"
+    role: reference_data
+    title: "Machine-Learning-Assisted Determination of the Global Zero-Temperature Phase Diagram of Materials"
+    authors:
+      - "J. Schmidt"
+      - "N. Hoffmann"
+      - "H.-C. Wang"
+      - "P. Borlido"
+      - "P. J. M. A. Carriço"
+      - "T. F. T. Cerqueira"
+      - "S. Botti"
+      - "M. A. L. Marques"
+    year: 2023
+    doi: "10.1002/adma.202210788"
+    url: null
+  - key: "yu-2024-a156"
+    role: inspired_by
+    title: "Systematic assessment of various universal machine-learning interatomic potentials"
+    authors:
+      - "H. Yu"
+      - "M. Giantomassi"
+      - "G. Materzanini"
+      - "J. Wang"
+      - "G.-M. Rignanese"
+    year: 2024
+    doi: "10.1002/mgea.58"
+    url: null

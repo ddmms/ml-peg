@@ -907,3 +907,92 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Convex hull (Alexandria)
+========================
+
+Summary
+-------
+
+Energy above the convex hull and formation energy of 24,726 binary crystals from the
+Alexandria PBE database, using single-point energies on the PBE structures. For each
+binary chemical system, the hull is built from the model energies of its binaries and
+of the ground states of its two elements, and compared with the hull built from the
+PBE energies.
+
+The hull uses raw PBE energies, without the MP2020-style energy corrections stored in
+Alexandria, for both the reference and the models. Chemical systems containing a
+PBE+U calculation (oxides and fluorides of Co, Cr, Fe, Mn, Mo, Ni, V and W) are
+excluded, so that all reference energies are plain PBE. As MLIPs are trained on raw
+energies, no corrections are applied to any model.
+
+The structures are all 7,419 binaries on the PBE hull of the 3,482 remaining systems,
+the ground states of the 89 elements, and up to five unstable binaries per system,
+drawn with a fixed seed so that each falls in a different range of energy above the
+hull (0-25, 25-50, 50-100, 100-200 and above 200 meV/atom) where possible. As every
+binary on the reference hull is included, the reference energies above the hull are
+the same as for the full database.
+
+Metrics
+-------
+
+Systems in which any calculation failed are excluded from metrics 1, 2 and 4-6, and
+counted in metric 3.
+
+1. Energy above hull MAE
+
+   Mean absolute error in the energy above the hull of each binary, in meV/atom.
+
+2. Stability F1
+
+   F1 score for classifying binaries as stable, that is, on the hull (within
+   10\ :sup:`-6` eV/atom).
+
+3. Failed systems
+
+   Percentage of binary systems in which a calculation failed, including systems with
+   elements the model does not support.
+
+4. Formation energy MAE
+
+   Mean absolute error in the formation energy of each binary, relative to the
+   ground states of its elements, in meV/atom. Not included in the score.
+
+5. Formation energy RMSE
+
+   Root-mean-square error in the formation energy, in meV/atom. Not included in the
+   score.
+
+6. Formation energy R²
+
+   Coefficient of determination of the formation energies. Not included in the score.
+
+Clicking the MAE of a model shows the parity plot, violin plots of the signed errors of
+all models (as in Figure 5 of Yu *et al.*, Mater. Genome Eng. Adv. 2, e58 (2024)), and a
+periodic table of the MAE over the binaries containing each element (as in Figure 4
+of Yu *et al.*, on a 0-100 meV/atom colour scale). Below the table,
+the PBE and model hulls of any system can be compared side by side; the systems of each
+model are listed from the largest to the smallest energy above hull MAE.
+
+Benchmark speed
+---------------
+
+Slow: 24,815 single-point calculations on cells of 1 to 168 atoms (262,203 atoms in
+total).
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria PBE database, release 2025.07.02 (https://alexandria.icams.rub.de,
+  CC BY 4.0). J. Schmidt *et al.*, Machine-Learning-Assisted Determination of the
+  Global Zero-Temperature Phase Diagram of Materials, Adv. Mater. 35, 2210788 (2023);
+  T. Cavignac *et al.*, AI-Driven expansion and application of the Alexandria
+  database, J. Phys. Mater. 9, 025014 (2026).
+
+Reference data:
+
+* Same as input data, raw PBE energies
+* PBE
