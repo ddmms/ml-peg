@@ -5,6 +5,7 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    amorphous_materials
     biomolecules
     bulk_crystal
     conformers

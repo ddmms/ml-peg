@@ -1,0 +1,22 @@
+metrics:
+  MAE vs DFT:
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: Mean absolute error in sp3 fraction compared to DFT reference, over stable runs only
+    level_of_theory: LDA
+    weight: 1
+  MAE vs Expt:
+    good: 0.0
+    bad: 20.0
+    unit: "%"
+    tooltip: Mean absolute error in sp3 fraction compared to experimental reference, over stable runs only
+    level_of_theory: Experimental
+    weight: 0
+  Stable runs:
+    good: 100.0
+    bad: 60.0
+    unit: "%"
+    tooltip: Percentage of densities whose melt-quench completed without crashing or producing non-finite values
+    level_of_theory: null
+    weight: 1
