@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from warnings import warn
 
 from ase.io import read, write
 from ase.units import J, m
@@ -30,6 +31,11 @@ S3_FILENAME = "brittle_crack.zip"
 CASES = ct.load_cases()
 TERMS = {"K": "E_K", "E": "E_E", "D": "E_D"}
 FAILED_KEYS = ("E_K", "E_E", "E_D", "coverage", "coverage_D")
+
+
+class TopologyMismatchError(ValueError):
+    """Frames are not on the case topology (outputs from another cases.yml)."""
+
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -169,7 +175,7 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
     for what, frames in (("model", model_frames), ("reference", ref_frames)):
         bad = [f for f in frames if list(f.numbers) != list(ref_cl.numbers)]
         if bad:
-            raise ValueError(
+            raise TopologyMismatchError(
                 f"{what} frames are not on the {case['label']} topology "
                 f"({len(bad[0])} atoms vs {len(ref_cl)}); "
                 "outputs from another cases.yml?"
@@ -195,13 +201,17 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
     return out
 
 
-def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
+def model_errors(
+    consts: dict, frames: dict, refs: dict, model: str = ""
+) -> dict[str, dict]:
     """
     Compute a model's errors on every case; a failed calculation gives NaN errors.
 
     A trace that runs but stops short of the window is scored by its coverage; a
     calculation that failed (constants, cleavage energy or tracer error) is not scored,
-    so the benchmark score is NaN rather than rewarding the failure.
+    so the benchmark score is NaN rather than rewarding the failure. An error while
+    scoring one case warns and gives NaN for that case; frames on the wrong topology
+    (stale outputs) still raise.
 
     Parameters
     ----------
@@ -212,6 +222,8 @@ def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
         Traced frames by case name.
     refs
         DFT reference frames by case name.
+    model
+        Model name, for warnings.
 
     Returns
     -------
@@ -226,13 +238,19 @@ def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
         if not ok or status.startswith("failed"):
             out[name] = dict.fromkeys(FAILED_KEYS, np.nan)
             continue
-        out[name] = case_errors(
-            frames.get(name, []),
-            refs[name],
-            case,
-            {**consts, "gamma": gamma},
-            ct.topology_constants(case),
-        )
+        try:
+            out[name] = case_errors(
+                frames.get(name, []),
+                refs[name],
+                case,
+                {**consts, "gamma": gamma},
+                ct.topology_constants(case),
+            )
+        except TopologyMismatchError:
+            raise
+        except Exception as exc:
+            warn(f"{model} {name}: {exc}", stacklevel=2)
+            out[name] = dict.fromkeys(FAILED_KEYS, np.nan)
     return out
 
 
@@ -426,7 +444,7 @@ def case_results() -> dict[str, dict[str, dict]]:
             frames[name] = (
                 read(path, ":") if path.exists() and path.stat().st_size else []
             )
-        results[model] = model_errors(consts, frames, refs)
+        results[model] = model_errors(consts, frames, refs, model=model)
         for name in CASES:
             _write_plot(model, name, refs[name], frames[name])
             if frames[name]:

@@ -123,6 +123,11 @@ def cleavage_energy(calc, a0: float, surface, front, symbol: str = "Si") -> floa
     -------
     float
         Surface energy (eV/A^2).
+
+    Raises
+    ------
+    RuntimeError
+        If the slab relaxation does not converge.
     """
     from ase.optimize import LBFGS
     from matscipy.fracture_mechanics.clusters import diamond
@@ -142,7 +147,8 @@ def cleavage_energy(calc, a0: float, surface, front, symbol: str = "Si") -> floa
     cell = slab.cell.copy()
     cell[1, 1] += 15.0
     slab.set_cell(cell)
-    LBFGS(slab, logfile=None).run(fmax=1e-5, steps=2000)
+    if not LBFGS(slab, logfile=None).run(fmax=1e-5, steps=2000):
+        raise RuntimeError("cleavage slab relaxation did not converge in 2000 steps")
     area = np.linalg.norm(np.cross(slab.cell[0], slab.cell[2]))
     return float((slab.get_potential_energy() - e_bulk) / (2 * area))
 

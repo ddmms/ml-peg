@@ -51,13 +51,26 @@ model).
 
 A model that does not cover the whole window (its trace stops early or folds back) is
 penalised: the uncovered fraction counts at the "bad" threshold, so its score is the
-coverage times the score of its error on the covered part. The thresholds are the
-calibrated tolerance (good) and three times it (bad); Stillinger-Weber, the clearly poor
-reference model, has a median error of three tolerances. Thresholds changed in the app
-do not change this coverage padding, which uses the defaults. A calculation that fails
-(an error in the constants, the cleavage energy or the tracer) is not scored: its
-metrics and benchmark score are NaN. The benchmark score (the mean of the nine metric
-scores with default weights) is the combined value.
+coverage times the score of its error on the covered part. Thresholds changed in the
+app do not change this coverage padding, which uses the defaults. A calculation that
+fails (an error in the constants, the cleavage energy, the tracer or the scoring of a
+case) is not scored: its metrics and benchmark score are NaN. The benchmark score (the
+mean of the nine metric scores with default weights) is the combined value.
+
+Thresholds
+----------
+
+The thresholds are anchored on the Stillinger-Weber (SW) potential (F. H. Stillinger and
+T. A. Weber, Phys. Rev. B 31, 5262 (1985)), a long-established empirical model of
+silicon with a physically understood failure for fracture: it reproduces the elastic
+constants but not the bond-breaking at the crack tip, and is known to give qualitatively
+wrong crack behaviour. Unlike recent MLIPs, it is a fixed baseline that does not change
+between model releases. For each error term, a tolerance tau is chosen so that the
+median SW error against DFT over the three crack systems is 3 tau, and the thresholds
+are good = tau and bad = 3 tau. A model as poor as SW therefore scores about 0, and a
+model whose errors are within a third of SW's scores 1. The values are tau = 0.0803
+(K, in K/K_G), 0.0952 (E, in 2 gamma L b_bulk) and 0.144 (D). They are not derived from
+an estimate of the DFT uncertainty.
 
 Benchmark speed
 ---------------

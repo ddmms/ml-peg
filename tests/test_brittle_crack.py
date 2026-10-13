@@ -378,6 +378,63 @@ def test_frames_on_another_topology_are_rejected_clearly():
         an.case_errors([wrong], [wrong], case, t, t)
 
 
+def test_an_error_in_one_case_gives_nan_for_that_case_only(monkeypatch):
+    """An unexpected per-case error warns and gives NaN; other cases are scored."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    names = list(an.CASES)
+
+    def fake_case_errors(model_frames, ref_frames, case, consts, ref_consts):
+        """
+        Fail on the first case, return zero errors on the others.
+
+        Parameters
+        ----------
+        model_frames, ref_frames, case, consts, ref_consts
+            As ``case_errors``.
+
+        Returns
+        -------
+        dict
+            Zero errors with full coverage.
+        """
+        if case is an.CASES[names[0]]:
+            raise RuntimeError("non-finite positions")
+        return dict.fromkeys(an.FAILED_KEYS, 0.0) | {"coverage": 1.0}
+
+    monkeypatch.setattr(an, "case_errors", fake_case_errors)
+    consts = {"a0": 5.4, "C11": 0.9, "C12": 0.4, "C44": 0.4}
+    consts["gamma"] = dict.fromkeys(names, 0.1)
+    with pytest.warns(UserWarning, match=f"mymodel {names[0]}: non-finite"):
+        errs = an.model_errors(consts, {}, dict.fromkeys(names), model="mymodel")
+    assert np.isnan(errs[names[0]]["coverage"])
+    assert all(errs[n]["coverage"] == 1.0 for n in names[1:])
+
+
+def test_a_topology_mismatch_still_stops_the_analysis():
+    """Frames on another topology (stale outputs) raise through model_errors."""
+    from ase import Atoms
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    wrong = Atoms("Si4", positions=np.zeros((4, 3)), cell=[10, 10, 3.8])
+    wrong.info.update(K_over_KG=1.0, REF_energy=0.0)
+    consts = {"a0": 5.4, "C11": 0.9, "C12": 0.4, "C44": 0.4}
+    consts["gamma"] = dict.fromkeys(an.CASES, 0.1)
+    frames = dict.fromkeys(an.CASES, [wrong])
+    with pytest.raises(ValueError, match="topology"):
+        an.model_errors(consts, frames, frames, model="mymodel")
+
+
+def test_an_unconverged_cleavage_slab_raises(monkeypatch):
+    """A slab relaxation that hits the step limit raises instead of giving gamma."""
+    from ase.optimize import LBFGS
+
+    monkeypatch.setattr(LBFGS, "run", lambda self, **kwargs: False)
+    with pytest.raises(RuntimeError, match="did not converge"):
+        ct.cleavage_energy(_sw(), 5.43095, [1, -1, 0], [1, 1, 0])
+
+
 def test_s_curve_figure_lets_only_model_points_open_structures():
     """The DFT curve has no customdata; model points carry the model label."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
