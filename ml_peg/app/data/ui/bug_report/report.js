@@ -325,7 +325,7 @@
       const filename = screenshot ? nextScreenshotFilename() : null;
       const url = draft();
       if (!url) {
-        status("This report is too long to open as a GitHub draft. Please shorten the description, expected result or steps. Your text is still here.");
+        status("This report is too long to open as a GitHub issue. Please shorten the description, expected result or steps. Your text is still here.");
         return;
       }
       if (screenshot) downloadScreenshot(filename);
