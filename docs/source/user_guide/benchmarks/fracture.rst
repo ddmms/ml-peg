@@ -13,13 +13,15 @@ stress intensity factor K along the full crack path (stable, metastable and unst
 states), the bond-breaking energy and the displacement field near the tip, compared
 with spin-polarised DFT (PBE) on the same clamped crack clusters.
 
-Each model traces its own S-curve by force-only pseudo-arclength continuation
-(``matscipy.fracture_mechanics.continuation.trace_s_curve``) on clamped K-field
-clusters with the topology of the DFT reference (``clusters.cluster_like``): every model
-sees the same atoms, H caps and tip bond, with its own lattice constant, cubic elastic
-constants and surface energy (computed in the benchmark), so K is measured in units of
-the model's own Griffith value K_G. Three crack systems are included:
-(110)[1-10], (110)[001] and (111)[1-10].
+Each model traces its own S-curve by pseudo-arclength continuation in (u, K)
+(``matscipy.fracture_mechanics.continuation.trace_s_curve``), using only the model's
+forces: no model Hessian is needed, as the Newton corrector uses a Stillinger-Weber
+Hessian with Broyden updates, falling back to Newton-Krylov. The continuation runs on
+clamped K-field clusters with the topology of the DFT reference
+(``clusters.cluster_like``): every model sees the same atoms, H caps and tip bond, with
+its own lattice constant, cubic elastic constants and surface energy (computed in the
+benchmark), so K is measured in units of the model's own Griffith value K_G. Three crack
+systems are included: (110)[1-10], (110)[001] and (111)[1-10].
 
 Metrics
 -------
