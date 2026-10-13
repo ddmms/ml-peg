@@ -186,6 +186,7 @@ uma-m-1p1-omat:
 grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
+  datasets: [OMAT]
   level_of_theory: PBE
   device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
@@ -195,6 +196,7 @@ grace-2l-omat:
 grace-2l-smax-omat-medium:
   module: tensorpotential.calculator
   class_name: grace_fm
+  datasets: [OMAT, SMAX]
   level_of_theory: PBE
   device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
