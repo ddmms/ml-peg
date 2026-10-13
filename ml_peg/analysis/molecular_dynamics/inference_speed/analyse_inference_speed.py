@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from warnings import warn
 from zipfile import ZipFile
 
 from ase.calculators.calculator import Calculator
@@ -110,8 +111,17 @@ def analyze_results() -> dict:
             data_input_dir=CALC_PATH,
             run_mode="standard",
         )
-        benchmark.model_output = _load_inference_speed_output(CALC_PATH / model_name)
-        results[model_name] = benchmark.analyze()
+        try:
+            benchmark.model_output = _load_inference_speed_output(
+                CALC_PATH / model_name
+            )
+            results[model_name] = benchmark.analyze()
+        except Exception as exc:
+            warn(
+                f"Failed to analyse inference speed for {model_name}: {exc}; "
+                "metric set to NaN.",
+                stacklevel=2,
+            )
     return results
 
 
@@ -244,18 +254,23 @@ def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
     -------
     dict[str, float]
         Mean over structures of ``average_forward_time / num_atoms``, in
-        microseconds per atom. Structures without a successful forward pass are
-        skipped.
+        microseconds per atom. NaN if the model has no results or any structure
+        lacks a successful forward pass.
     """
     per_atom_times = {}
-    for model_name, result in analyze_results.items():
+    for model_name in MODELS:
+        result = analyze_results.get(model_name)
+        if (
+            result is None
+            or not result.structures
+            or any(s.average_forward_time is None for s in result.structures)
+        ):
+            per_atom_times[model_name] = np.nan
+            continue
         values = [
             structure.average_forward_time / structure.num_atoms
             for structure in result.structures
-            if structure.average_forward_time is not None
         ]
-        if not values:
-            continue
         per_atom_times[model_name] = sum(values) / len(values) * SECONDS_TO_MICROSECONDS
     return per_atom_times
 
