@@ -664,9 +664,14 @@ class TorchMDNetCalc(SumCalc):
         calculator_kwargs = {**self.kwargs, **kwargs}
         repo_id = calculator_kwargs.pop("repo_id", None)
         filename = calculator_kwargs.pop("filename", None)
-        model_file = calculator_kwargs.pop("model_file", None) or hf_hub_download(
-            repo_id=repo_id, filename=filename
-        )
+        model_file = calculator_kwargs.pop("model_file", None)
+        if model_file is None:
+            if repo_id is None or filename is None:
+                raise ValueError(
+                    "TorchMDNetCalc requires `model_file`, or both `repo_id`"
+                    " and `filename`."
+                )
+            model_file = hf_hub_download(repo_id=repo_id, filename=filename)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         return DefaultChargeTMDNETCalculator(
             model_file=model_file, device=device, **calculator_kwargs
