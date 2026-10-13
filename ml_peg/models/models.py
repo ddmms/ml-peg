@@ -169,7 +169,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 class AIMNetCalc(SumCalc):
     """Dataclass for AIMNet2 calculators."""
 
-    device: Device | None = None
+    device: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -179,8 +179,9 @@ class AIMNetCalc(SumCalc):
         Parameters
         ----------
         precision
-            Requested ML-PEG precision. AIMNet2 always uses float32, so this
-            argument is ignored.
+            Requested ML-PEG precision. AIMNet2 evaluates its network in float32
+            (accumulating energies in float64) and does not support full float64,
+            so this argument is ignored.
         **kwargs
             Keyword arguments that override the default ``AIMNet2Calculator``
             options.
@@ -194,8 +195,7 @@ class AIMNetCalc(SumCalc):
 
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
-        device_str = device.value if isinstance(device, Device) else device
-        base_calc = AIMNet2Calculator(device=device_str, **{**self.kwargs, **kwargs})
+        base_calc = AIMNet2Calculator(device=device, **{**self.kwargs, **kwargs})
         return AIMNet2ASE(base_calc)
 
     @property
