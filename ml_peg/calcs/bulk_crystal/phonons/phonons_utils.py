@@ -38,9 +38,7 @@ def _ase_atoms_to_phonopy_atoms(atoms: Atoms) -> PhonopyAtoms:
     PhonopyAtoms
         Equivalent phonopy atom container.
     """
-    return PhonopyAtoms(
-        atoms.symbols, cell=atoms.cell, positions=atoms.positions, pbc=True
-    )
+    return PhonopyAtoms(atoms.symbols, cell=atoms.cell, positions=atoms.positions)
 
 
 def _ase_atoms_to_phonopy(
