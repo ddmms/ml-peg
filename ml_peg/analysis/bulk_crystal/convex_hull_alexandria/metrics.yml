@@ -1,6 +1,9 @@
-# Energy above hull MAE: good is within typical DFT noise on hull energies; bad is the
-# level of early universal MLIPs, at which many metastable phases are misplaced.
-# Stability F1: below bad, the classification is not usable for screening.
+# Energy above hull MAE: good is below the DFT median energy above the hull of known
+# inorganic crystals (15 meV/atom); bad approaches its 90th percentile (67 meV/atom)
+# (Sun et al., Sci. Adv. 2, e1600225, 2016). Stability F1: 30% of the binaries are
+# stable, so classifying all as stable gives 0.46; bad is set clearly above it.
+# Failed systems: a model failing on one system in ten cannot screen across the
+# periodic table.
 metrics:
   Energy above hull MAE:
     good: 10.0

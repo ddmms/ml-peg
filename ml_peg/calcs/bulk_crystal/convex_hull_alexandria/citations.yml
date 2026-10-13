@@ -51,3 +51,19 @@ citations:
     year: 2024
     doi: "10.1002/mgea.58"
     url: null
+  - key: "sun-2016-metastability"
+    role: benchmark_method
+    title: "The thermodynamic scale of inorganic crystalline metastability"
+    authors:
+      - "W. Sun"
+      - "S. T. Dacek"
+      - "S. P. Ong"
+      - "G. Hautier"
+      - "A. Jain"
+      - "W. D. Richards"
+      - "A. C. Gamst"
+      - "K. A. Persson"
+      - "G. Ceder"
+    year: 2016
+    doi: "10.1126/sciadv.1600225"
+    url: null

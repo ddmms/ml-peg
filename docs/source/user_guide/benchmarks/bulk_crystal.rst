@@ -975,11 +975,26 @@ of Yu *et al.*, on a 0-100 meV/atom colour scale). Below the table,
 the PBE and model hulls of any system can be compared side by side; the systems of each
 model are listed from the largest to the smallest energy above hull MAE.
 
+**Score thresholds**
+
+The thresholds in ``metrics.yml`` are set against the energy scale of metastability:
+the DFT median energy above the hull of known inorganic crystals is 15 meV/atom, and
+the 90th percentile 67 meV/atom (Sun *et al.*). The good energy above hull MAE,
+10 meV/atom, is below this median, so that typical metastable phases are placed
+correctly. The bad threshold, 50 meV/atom, approaches the 90th percentile, beyond which
+known metastable phases cannot be told apart from unstable ones. For the stability F1
+score, 30% of the binaries are stable, so classifying every binary as stable already
+gives 0.46; the bad threshold, 0.6, is set clearly above this trivial classifier. The
+bad threshold for failed systems, 10%, reflects that a model that fails on one system
+in ten cannot be used to screen across the periodic table. The formation-energy metrics are not scored; their
+thresholds only set the colours.
+
 Benchmark speed
 ---------------
 
 Slow: 24,815 single-point calculations on cells of 1 to 168 atoms (262,203 atoms in
-total).
+total). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about 30 minutes and
+``uma-s-1p1-omat`` about 2.5 hours.
 
 Data availability
 -----------------
@@ -996,3 +1011,8 @@ Reference data:
 
 * Same as input data, raw PBE energies
 * PBE
+
+Score thresholds:
+
+* W. Sun *et al.*, The thermodynamic scale of inorganic crystalline metastability,
+  Sci. Adv. 2, e1600225 (2016). https://doi.org/10.1126/sciadv.1600225
