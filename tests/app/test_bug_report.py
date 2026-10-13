@@ -37,15 +37,24 @@ def _intercept_github(page: Page) -> None:
     )
 
 
-def _draft_report(url: str) -> str:
-    """Check the standard issue editor URL and return its prefilled body."""
+def _draft_report(url: str) -> dict[str, str]:
+    """Check the issue form URL and return its prefilled fields."""
     parsed = urlparse(url)
     assert parsed.scheme == "https"
     assert parsed.netloc == "github.com"
     assert parsed.path == "/ddmms/ml-peg/issues/new"
     query = parse_qs(parsed.query)
-    assert set(query) == {"title", "body"}
-    return query["body"][0]
+    assert query["template"] == ["6_website_bug.yml"]
+    assert set(query) <= {
+        "template",
+        "title",
+        "description",
+        "expected",
+        "steps",
+        "screenshots",
+        "details",
+    }
+    return {key: values[0] for key, values in query.items()}
 
 
 def _image(page: Page) -> bytes:
@@ -132,15 +141,15 @@ def test_report_opens_prefilled_draft_without_submitting(ready_page: Page) -> No
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     draft = popup.value
     draft.wait_for_load_state()
-    query = parse_qs(urlparse(draft.url).query)
-    body = _draft_report(draft.url)
-    assert "[!IMPORTANT]" not in body
-    assert query["title"] == ["Website bug: Plot & table disagree"]
-    assert "selecting C & O" in body
-    assert "A curve should appear." in body
-    assert "2. Click its MAE cell" in body
-    assert '"selected_models"' in body
-    assert '"summary-table-weight-store"' in body
+    fields = _draft_report(draft.url)
+    assert "screenshots" not in fields
+    assert fields["title"] == "Plot & table disagree"
+    assert fields["description"] == "The plot is empty after selecting C & O."
+    assert fields["expected"] == "A curve should appear."
+    assert fields["steps"] == "1. Select a model\n2. Click its MAE cell"
+    details = json.loads(fields["details"])
+    assert "selected_models" in details
+    assert "summary-table-weight-store" in details["page_settings"]
 
 
 def test_empty_report_can_open_github_with_page_details(ready_page: Page) -> None:
@@ -154,11 +163,10 @@ def test_empty_report_can_open_github_with_page_details(ready_page: Page) -> Non
     with ready_page.expect_popup() as popup:
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     popup.value.wait_for_load_state()
-    query = parse_qs(urlparse(popup.value.url).query)
-    assert query["title"] == ["Website bug: " + context["page"]]
-    body = _draft_report(popup.value.url)
-    assert "## What happened\n" in body
-    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    fields = _draft_report(popup.value.url)
+    assert fields["title"] == context["page"]
+    assert not {"description", "expected", "steps"} & set(fields)
+    details = json.loads(fields["details"])
     assert details["url"] == ready_page.url
     assert details["page"] == context["page"]
 
@@ -215,14 +223,13 @@ def test_screenshot_can_be_marked_and_downloaded(ready_page: Page) -> None:
         != Path(manual_download.value.path()).read_bytes()
     )
     popup.value.wait_for_load_state()
-    body = _draft_report(popup.value.url)
-    assert download.value.suggested_filename in body
-    assert manual_download.value.suggested_filename not in body
-    assert body.startswith("> [!IMPORTANT]")
-    assert "- [ ] **Attach the screenshot:**" in body
-    assert body.index("Attach the screenshot") < body.index("## What happened")
+    screenshots = _draft_report(popup.value.url)["screenshots"]
+    assert download.value.suggested_filename in screenshots
+    assert manual_download.value.suggested_filename not in screenshots
+    assert screenshots.startswith("> [!IMPORTANT]")
+    assert "- [ ] **Attach the screenshot:**" in screenshots
     expect(ready_page.locator("#bug-report-status")).to_contain_text(
-        "into the issue description"
+        "into the Screenshots field"
     )
 
 
@@ -258,21 +265,21 @@ def test_large_settings_use_compact_draft_without_report_file(
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     popup.value.wait_for_load_state()
     assert len(popup.value.url) <= 7500
-    body = _draft_report(popup.value.url)
-    assert "The plot is empty after selecting C & O." in body
-    assert "A curve should appear." in body
-    assert "2. Click its MAE cell" in body
-    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    fields = _draft_report(popup.value.url)
+    assert fields["description"] == "The plot is empty after selecting C & O."
+    assert fields["expected"] == "A curve should appear."
+    assert fields["steps"] == "1. Select a model\n2. Click its MAE cell"
+    details = json.loads(fields["details"])
+    assert details["note"] == "Only changed weights and thresholds are included."
     assert details["selected_models"] == ["mace-mp-0a"]
     assert details["excluded_elements"] == ["O"]
     assert details["changed_settings"]["IONPI19-table-weight-store"] == {"MAE": 0.5}
     assert "page_settings" not in details
-    assert ("- [ ] **Attach the screenshot:**" in body) == with_screenshot
-    assert "Attach the complete report" not in body
+    assert ("screenshots" in fields) == with_screenshot
     assert len(downloads) == int(with_screenshot)
     if with_screenshot:
         assert downloads[0].startswith("mlpeg-bug-screenshot-")
-        assert downloads[0] in body
+        assert downloads[0] in fields["screenshots"]
     expect(
         ready_page.get_by_role("button", name="Download report", exact=True)
     ).to_have_count(0)
@@ -325,12 +332,12 @@ def test_large_page_details_are_shortened_without_blocking_issue(
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     popup.value.wait_for_load_state()
     assert len(popup.value.url) <= 7500
-    body = _draft_report(popup.value.url)
-    assert "The plot is empty after selecting C & O." in body
-    assert "A curve should appear." in body
-    assert "1. Select a model\n2. Click its MAE cell" in body
-    assert "Page details shortened" in body
-    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    fields = _draft_report(popup.value.url)
+    assert fields["description"] == "The plot is empty after selecting C & O."
+    assert fields["expected"] == "A curve should appear."
+    assert fields["steps"] == "1. Select a model\n2. Click its MAE cell"
+    details = json.loads(fields["details"])
+    assert details["note"].startswith("Page details shortened")
     assert details["url"] == ready_page.url
     assert details["version"] == "test"
     assert details["page"] == original["page"]
@@ -345,11 +352,11 @@ def test_large_page_details_are_shortened_without_blocking_issue(
         assert details["changed_settings"]["summary-table-weight-store"] == {
             "MAE": 0.25
         }
-    assert ("- [ ] **Attach the screenshot:**" in body) == with_screenshot
+    assert ("screenshots" in fields) == with_screenshot
     assert len(downloads) == int(with_screenshot)
     if with_screenshot:
         assert downloads[0].startswith("mlpeg-bug-screenshot-")
-        assert downloads[0] in body
+        assert downloads[0] in fields["screenshots"]
     expect(ready_page.locator("#bug-report-context")).to_have_text(full_details)
 
 
@@ -376,7 +383,7 @@ def test_overlong_text_is_preserved_for_editing(ready_page: Page) -> None:
     with ready_page.expect_popup() as popup:
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     popup.value.wait_for_load_state()
-    assert "The plot is empty." in _draft_report(popup.value.url)
+    assert _draft_report(popup.value.url)["description"] == "The plot is empty."
     assert downloads == []
 
 
@@ -641,8 +648,7 @@ def test_many_customised_tables_allow_empty_text_report(ready_page: Page):
         ready_page.get_by_role("button", name="Open GitHub issue").click()
     popup.value.wait_for_load_state()
     assert len(popup.value.url) <= 7500
-    body = _draft_report(popup.value.url)
-    details = json.loads(body.split("```json\n")[1].split("\n```")[0])
+    details = json.loads(_draft_report(popup.value.url)["details"])
     assert details["omitted_details"]["changed_settings"] > 0
     assert (
         len(details.get("changed_settings", {}))

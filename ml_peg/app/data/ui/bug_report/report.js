@@ -3,8 +3,9 @@
   "use strict";
   if (window.mlpegBugReport) return;
 
-  // Standard editor parameters also work before changes to issue templates merge.
   const ISSUE_URL = "https://github.com/ddmms/ml-peg/issues/new";
+  // Issue form fields are prefilled by their ids in .github/ISSUE_TEMPLATE/6_website_bug.yml.
+  const ISSUE_TEMPLATE = "6_website_bug.yml";
   // Bound the encoded link, including the title, report text and attachment note.
   const MAX_ISSUE_URL_LENGTH = 7500;
   const MAX_DETAIL_ENTRIES = 20;
@@ -37,43 +38,36 @@
     download(new Blob([bytes], {type: "image/png"}), filename);
   }
 
-  function reportBody(details = context, compact = false) {
-    const instructions = attachmentInstructions();
-    const notice = details.omitted_details
-      ? "Page details shortened to fit the issue link. Omitted entry counts are listed below.\n"
-      : compact ? "Only changed weights and thresholds are included.\n" : "";
-    const sections = [
-      "## What happened\n" + field("description").value.trim(),
-      "## What I expected\n" + field("expected").value.trim(),
-      "## Steps to reproduce\n" + field("steps").value.trim(),
-      "## Page details\n" + notice
-        + "```json\n" + JSON.stringify(details, null, compact ? undefined : 2) + "\n```",
-    ];
-    if (instructions) sections.unshift(instructions);
-    return sections.join("\n\n");
-  }
-
   function attachmentInstructions() {
     if (!screenshot) return "";
     return "> [!IMPORTANT]\n> **Complete these manual steps before submitting.**\n"
       + "> Attachments are not uploaded automatically.\n\n"
-      + "- [ ] **Attach the screenshot:** drag `" + screenshotFilename + "` from your browser's downloads into this description. If it is missing, return to the ML-PEG reporter and click **Download screenshot**.";
+      + "- [ ] **Attach the screenshot:** drag `" + screenshotFilename + "` from your browser's downloads into this field. If it is missing, return to the ML-PEG reporter and click **Download screenshot**.";
   }
 
   function draft() {
     const url = new URL(ISSUE_URL);
-    url.searchParams.set("title", "Website bug: " + (field("title").value.trim() || context.page));
+    url.searchParams.set("template", ISSUE_TEMPLATE);
+    url.searchParams.set("title", field("title").value.trim() || context.page);
+    for (const id of ["description", "expected", "steps"]) {
+      const value = field(id).value.trim();
+      if (value) url.searchParams.set(id, value);
+    }
+    if (screenshot) url.searchParams.set("screenshots", attachmentInstructions());
     const fits = (details, compact = false) => {
-      url.searchParams.set("body", reportBody(details, compact));
+      url.searchParams.set("details", JSON.stringify(details, null, compact ? undefined : 2));
       return url.href.length <= MAX_ISSUE_URL_LENGTH;
     };
     if (fits(context)) return url.href;
-    const concise = {...context};
+    const concise = {note: "Only changed weights and thresholds are included.", ...context};
     delete concise.page_settings;
     if (fits(concise, true)) return url.href;
 
     // Keep report text intact and admit only page details that fit the remaining budget.
-    const details = {omitted_details: {}};
+    const details = {
+      note: "Page details shortened to fit the issue link. Omitted entry counts are listed in omitted_details.",
+      omitted_details: {},
+    };
     const groups = ["selected_models", "changed_settings", "excluded_elements", "appearance", "page_selections"];
     const scalars = ["url", "page", "version", "reported_at", "browser", "viewport"];
     for (const key of groups) details.omitted_details[key] = Object.keys(context[key]).length;
@@ -258,7 +252,7 @@
           <canvas id="bug-report-canvas" aria-label="Screenshot: drag to highlight a problem area"></canvas>
           <p id="bug-report-attachment-note">The screenshot is not uploaded automatically.
           Open the GitHub issue, then drag the downloaded <strong id="bug-report-attachment-filename">screenshot</strong>
-          into the issue description before submitting.</p>
+          into the Screenshots field before submitting.</p>
           <div class="bug-report-actions">
             <button id="bug-report-download" type="button">Download screenshot</button>
             <button id="bug-report-clear" type="button">Clear marks</button>
@@ -277,7 +271,7 @@
     field("download").addEventListener("click", () => {
       if (!screenshot) return;
       downloadScreenshot();
-      status("Screenshot downloaded. Drag " + screenshotFilename + " into the GitHub issue description to attach it.");
+      status("Screenshot downloaded. Drag " + screenshotFilename + " into the Screenshots field of the GitHub issue to attach it.");
     });
     field("cancel").addEventListener("click", () => dialog.close());
     field("close").addEventListener("click", () => dialog.close());
@@ -341,7 +335,7 @@
       link.rel = "noopener noreferrer";
       link.click();
       status(screenshot
-        ? "GitHub issue opened. Drag " + screenshotFilename + " from your downloads into the issue description to attach it before submitting."
+        ? "GitHub issue opened. Drag " + screenshotFilename + " from your downloads into the Screenshots field to attach it before submitting."
         : "GitHub issue opened. Review your report, then submit it on GitHub.");
     });
   }
