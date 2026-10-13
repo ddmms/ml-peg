@@ -47,10 +47,8 @@ mace-matpes-r2scan:
   level_of_theory: r2SCAN
   kwargs:
     model: "mace-matpes-r2scan-0"
-    head: "matpes_pbe"
   dispersion_kwargs:
     xc: r2scan
-    label: D4
 
 mace-mh-1-omat:
   module: mace.calculators
