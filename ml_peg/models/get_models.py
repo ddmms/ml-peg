@@ -170,6 +170,8 @@ def load_models(
         match cfg["class_name"]:
             case "DP":
                 loaded_models[name] = DpaCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -180,6 +182,8 @@ def load_models(
                 task_name = kwargs.pop("task_name", "omat")
                 overrides = kwargs.pop("overrides", {})
                 loaded_models[name] = FairChemCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     model_name=model_name,
                     task_name=task_name,
                     device=cfg.get("device", "cpu"),
@@ -232,6 +236,8 @@ def load_models(
                 )
             case "SevenNetCalculator":
                 loaded_models[name] = SevenNetCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -247,6 +253,8 @@ def load_models(
                 )
             case "MLFFCalculator":
                 loaded_models[name] = VivaceCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
