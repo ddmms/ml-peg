@@ -554,6 +554,15 @@ To benchmark a different member, set ``kwargs.model`` to its full name, e.g.
 ``aimnet2-2025`` is described in Nayal, Cho and Isayev, *Mach. Learn.: Sci. Technol.*,
 2026, **7**, 055033, `doi:10.1088/2632-2153/aea39f <https://doi.org/10.1088/2632-2153/aea39f>`_.
 
+Both training sets are public (MIT licence). ``AIMNet2`` is the original set of
+about 20M molecular structures, released in two versions (ωB97M/def2-TZVPP for
+``aimnet2`` and B97-3c), `doi:10.1184/R1/27629937.v2
+<https://doi.org/10.1184/R1/27629937.v2>`_. ``AIMNet2-2025`` is a continually
+pretrained version of the AIMNet2(2023) model (trained on the B97-3c version of
+the ``AIMNet2`` dataset), trained with an additional 3.8M structures at B97-3c
+focused on non-covalent interactions,
+`doi:10.1184/R1/31141138.v1 <https://doi.org/10.1184/R1/31141138.v1>`_.
+
 aimnet2
 -------
 
@@ -562,8 +571,7 @@ aimnet2
    aimnet2:
      module: aimnet.calculators
      class_name: AIMNet2ASE
-     datasets: null
-     additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+     datasets: [AIMNet2]
      device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M+D3/def2-TZVPP
@@ -578,8 +586,7 @@ aimnet2-2025
    aimnet2-2025:
      module: aimnet.calculators
      class_name: AIMNet2ASE
-     datasets: null
-     additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+     datasets: [AIMNet2, AIMNet2-2025]
      device: "auto"
      trained_on_dispersion: true
      level_of_theory: B97-3c
