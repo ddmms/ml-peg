@@ -121,7 +121,7 @@ def test_registered_aimnet_model_evaluates(model_name):
 
     # Now test on neutral molecule again and check that the charge is reset to 0
     water.calc = calculator
-    assert np.isfinite(water.get_potential_energy())
+    assert water.get_potential_energy() == pytest.approx(neutral_energy, abs=1e-5)
     assert water.calc.charge == 0
 
 

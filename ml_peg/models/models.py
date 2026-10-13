@@ -176,6 +176,10 @@ class AIMNetCalc(SumCalc):
         """
         Prepare and load the AIMNet2 ASE calculator.
 
+        Each structure's charge (and multiplicity, for NSE models) is read from
+        ``atoms.info``, defaulting to a neutral singlet rather than reusing the
+        previous structure's values.
+
         Parameters
         ----------
         precision
@@ -193,10 +197,38 @@ class AIMNetCalc(SumCalc):
         """
         from aimnet.calculators import AIMNet2ASE, AIMNet2Calculator
 
+        class _StatelessChargeAIMNet2ASE(AIMNet2ASE):
+            """AIMNet2ASE that does not carry charge/mult between structures."""
+
+            def _update_charge_spin_from_info(self, atoms=None):
+                """
+                Update the calculator's charge and multiplicity from the ASE Atoms info.
+
+                Parameters
+                ----------
+                atoms : ase.Atoms, optional
+                    The ASE Atoms object to read charge and multiplicity from.
+                    If not provided, it will attempt to use the `atoms`
+                    attribute of the calculator itself.
+                """
+                atoms = getattr(self, "atoms", None) if atoms is None else atoms
+                if atoms is None:
+                    return
+                info = atoms.info
+                charge = info.get("charge", 0)
+                if charge != self.charge:
+                    self.charge = charge
+                    self._t_charge = None
+                if self.base_calc.is_nse:
+                    mult = info.get("mult", info.get("spin", 1))
+                    if mult != self.mult:
+                        self.mult = mult
+                        self._t_mult = None
+
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         base_calc = AIMNet2Calculator(device=device, **{**self.kwargs, **kwargs})
-        return AIMNet2ASE(base_calc)
+        return _StatelessChargeAIMNet2ASE(base_calc)
 
     @property
     def available(self) -> bool:
