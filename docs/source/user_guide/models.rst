@@ -115,7 +115,7 @@ MACE-OFF23(L)
      device: "auto"
      trained_on_dispersion: true
      kwargs:
-       name: large
+       model: large
 
 
 MACE-OFF24(M)
