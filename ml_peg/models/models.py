@@ -497,6 +497,10 @@ class OrbCalc(SumCalc):
     """Dataclass for Orb calculator."""
 
     name: str
+    module: str = "orb_models.forcefield.inference.calculator"
+    class_name: str = "ORBCalculator"
+    #: Module providing the pretrained checkpoint loaders selected by `name`.
+    pretrained_module: str = "orb_models.forcefield.pretrained"
     device: Device | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
@@ -517,8 +521,6 @@ class OrbCalc(SumCalc):
         Calculator
             Loaded ASE Orb Calculator.
         """
-        from orb_models.forcefield import pretrained
-        from orb_models.forcefield.inference.calculator import ORBCalculator
         import torch._dynamo
 
         torch._dynamo.config.suppress_errors = True
@@ -528,7 +530,8 @@ class OrbCalc(SumCalc):
         check_precision(precision)
         os.environ["TORCH_DISABLE_MODULE_HIERARCHY_TRACKING"] = "1"
 
-        method = getattr(pretrained, self.name)
+        orb_calculator = import_calculator(self.module, self.class_name)
+        method = import_calculator(self.pretrained_module, self.name)
 
         precision_map = {"low": "float32-high", "high": "float64"}
         dtype = precision_map[precision]
@@ -537,17 +540,17 @@ class OrbCalc(SumCalc):
             dtype = self.default_dtype
 
         model_kwargs, calc_kwargs = split_kwargs(
-            self.kwargs, (method, ORBCalculator), reserved=("device", "precision")
+            self.kwargs, (method, orb_calculator), reserved=("device", "precision")
         )
 
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
 
         if device is None:
             orbff, atoms_adapter = method(precision=dtype, **model_kwargs)
-            return ORBCalculator(orbff, atoms_adapter=atoms_adapter, **calc_kwargs)
+            return orb_calculator(orbff, atoms_adapter=atoms_adapter, **calc_kwargs)
 
         orbff, atoms_adapter = method(device=device, precision=dtype, **model_kwargs)
-        return ORBCalculator(
+        return orb_calculator(
             orbff, atoms_adapter=atoms_adapter, device=device, **calc_kwargs
         )
 
@@ -563,11 +566,11 @@ class OrbCalc(SumCalc):
         """
         try:
             # Same imports as `get_calculator`, so the check cannot drift from it.
-            from orb_models.forcefield import pretrained
-            from orb_models.forcefield.inference.calculator import ORBCalculator
+            import_calculator(self.module, self.class_name)
+            import_calculator(self.pretrained_module, self.name)
 
-            return hasattr(pretrained, self.name)
-        except ImportError:
+            return True
+        except (ImportError, AttributeError):
             return False
 
 

@@ -204,13 +204,14 @@ MACE-Polar foundation model:
      kwargs:
        model: polar-1-m
 
-ORB entries use the dedicated ``OrbCalc`` wrapper:
+ORB entries are routed to the dedicated ``OrbCalc`` wrapper by
+``class_name: ORBCalculator``:
 
 .. code-block:: yaml
 
    orb-v3-consv-inf-omat:
-     module: orb_models.inference.calculator
-     class_name: OrbCalc
+     module: orb_models.forcefield.inference.calculator
+     class_name: ORBCalculator
      device: cuda
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -403,3 +404,14 @@ See :doc:`Running tests </developer_guide/running>` for details.
 If loading fails, check that the optional dependency is installed, the
 ``module``/``class_name`` pair can be imported, local checkpoint paths are valid,
 and the model's ``kwargs`` match the calculator API.
+
+Configurations are validated as they are loaded, so mistakes are reported rather
+than ignored:
+
+* ``load_models`` rejects unrecognised top-level keys and ``dispersion_kwargs``,
+  and requires ``module`` and ``class_name``.
+* Each wrapper checks its ``kwargs`` against the calculator's signature. Most
+  calculators end in ``**kwargs``, which ASE stores without complaint, so a
+  misnamed option would otherwise be ignored and the default used instead.
+  Options a calculator reads out of ``**kwargs`` by design, such as ``head`` for
+  MACE, are listed in ``PASSTHROUGH_KWARGS`` in ``ml_peg/models/models.py``.

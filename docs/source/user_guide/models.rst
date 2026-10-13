@@ -278,8 +278,8 @@ orb-v3-consv-inf-omat
 .. code-block:: yaml
 
    orb-v3-consv-inf-omat:
-     module: orb_models.inference.calculator
-     class_name: OrbCalc
+     module: orb_models.forcefield.inference.calculator
+     class_name: ORBCalculator
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -292,8 +292,8 @@ orb-v3-direct-inf-omat
 .. code-block:: yaml
 
    orb-v3-direct-inf-omat:
-     module: orb_models.inference.calculator
-     class_name: OrbCalc
+     module: orb_models.forcefield.inference.calculator
+     class_name: ORBCalculator
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -307,7 +307,7 @@ orb-v3-consv-omol
 
    orb-v3-consv-omol:
      module: orb_models.forcefield.inference.calculator
-     class_name: OrbCalc
+     class_name: ORBCalculator
      device: "cpu"
      trained_on_dispersion: true
      level_of_theory: PBE
