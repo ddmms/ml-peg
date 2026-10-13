@@ -55,6 +55,12 @@ reference model, has a median error of three tolerances. Thresholds changed in t
 do not change this coverage padding, which uses the defaults. The benchmark score (the
 mean of the nine metric scores with default weights) is the combined value.
 
+Benchmark speed
+---------------
+
+Slow: about 7 minutes for ``mace-mh-1-omat`` on an RTX A4500 GPU (constants in seconds,
+then 2-3 minutes per crack system, 150-200 continuation points at 3-4 force calls each).
+
 Data availability
 -----------------
 
