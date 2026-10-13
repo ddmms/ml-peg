@@ -92,6 +92,9 @@ vivace = [
     "cuequivariance ==0.8.1; sys_platform != 'linux'",
     "cuequivariance-torch ==0.8.1; sys_platform != 'linux'",
 ]
+nep = [
+    "calorine >= 4.0",
+]
 
 [project.scripts]
 ml_peg = "ml_peg.cli.cli:app"
