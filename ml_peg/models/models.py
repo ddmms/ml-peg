@@ -603,3 +603,92 @@ class GraceCalc(GenericASECalc):
             )
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class NEPCalc(SumCalc):
+    """Dataclass for NEP calculators provided by calorine."""
+
+    model_filename: str
+    device: Device | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. NEP uses a custom C++/CUDA backend,
+            and the calculators here are only configured for double precision,
+            so both ``low`` and ``high`` map to fp64.
+        **kwargs
+            Additional keyword arguments for `calorine.calculators.CPUNEP`.
+            Supported keywords can be found here: https://calorine.materialsmodeling.org/reference/calculators.html.
+
+        Returns
+        -------
+        Calculator
+            Loaded CPUNEP or GPUNEP ASE calculators.
+        """
+        from calorine.calculators import CPUNEP, GPUNEP
+
+        check_precision(precision)
+        # NEP only supports high precision
+        precision_map = {"low": None, "high": "double"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
+        if dtype != "double":
+            warn(
+                (
+                    "NEP only supports double precision;"
+                    "will continue with double precision."
+                ),
+                stacklevel=2,
+            )
+
+        # TODO handle GPU and CPU
+        calculator_kwargs = {**self.kwargs, **kwargs}
+        return CPUNEP(self.model_filename, **calculator_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the DeePMD ASE calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            from calorine.calculators import CPUNEP, GPUNEP  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+    def resolve_model_filename(self):
+        """
+        Resolve the `model_filename` property for the `calorine` calculators.
+
+        Three cases are covered:
+        1. `model_filename` is a str | Path: passed directly to `calorine`.
+        2. `model_filename` is a URL: model is fetched to `~/.cache/ml_peg/models`.
+        3. `model_filename` is a shorthand (e.g., `NEP89`): Validated and fetched.
+
+        Returns
+        -------
+        str
+            Path to the NEP model.
+        """
+        # cache_dir = f"{os.path.expanduser('~')}/.cache/ml_peg/models/nep"
+
+        # Handle the three cases
+        if self.model_filename == "NEP89":
+            # Fetch file from https://github.com/brucefan1983/GPUMD/blob/v4.0/potentials/nep/nep89_20250409/nep89_20250409.txt.
+            pass

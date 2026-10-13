@@ -142,6 +142,7 @@ def load_models(
         GraceCalc,
         MatterSimCalc,
         MockCalc,
+        NEPCalc,
         OrbCalc,
         SevenNetCalc,
         UPETCalc,
@@ -242,6 +243,13 @@ def load_models(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                )
+            case "NEP":
+                loaded_models[name] = NEPCalc(
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
