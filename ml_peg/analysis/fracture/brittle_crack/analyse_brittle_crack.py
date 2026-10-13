@@ -282,6 +282,33 @@ def _write_plot(model: str, name: str, ref_frames, model_frames, consts: dict) -
     plot()
 
 
+def reference_structures() -> list[Path]:
+    """
+    Write the reference clusters of all cases, for the structure (element) info.
+
+    Model traces may be empty (a failed trace), so element info is taken from the
+    reference topology, which every model shares.
+
+    Returns
+    -------
+    list[Path]
+        Paths of the written clusters.
+    """
+    out = OUT_PATH / "structs"
+    out.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for name, case in CASES.items():
+        path = out / f"{name}.extxyz"
+        atoms = ct.reference_cluster(case)
+        for key in list(atoms.arrays):
+            if key not in ("numbers", "positions"):
+                del atoms.arrays[key]
+        atoms.info.clear()
+        write(path, atoms, format="extxyz")
+        paths.append(path)
+    return paths
+
+
 @pytest.fixture
 def case_results() -> dict[str, dict[str, dict]]:
     """
@@ -370,8 +397,4 @@ def test_brittle_crack(metrics: dict[str, dict]) -> None:
     metrics
         Benchmark metrics table.
     """
-    write_struct_info(
-        data_path=list(CALC_PATH.glob("mock/*.extxyz")),
-        out_path=OUT_PATH,
-        index=0,
-    )
+    write_struct_info(data_path=reference_structures(), out_path=OUT_PATH, index=0)

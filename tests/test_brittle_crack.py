@@ -275,3 +275,15 @@ def test_missing_reference_names_the_s3_key(monkeypatch):
     monkeypatch.setattr(an, "LOCAL_DATA", Path("/nonexistent"))
     with pytest.raises(FileNotFoundError, match="inputs/fracture/brittle_crack"):
         an.reference_frames("Si_111_110")
+
+
+def test_structure_info_comes_from_the_reference_clusters(tmp_path, monkeypatch):
+    """Element info uses the reference clusters: model traces may be empty files."""
+    from ase.io import read
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    monkeypatch.setattr(an, "OUT_PATH", tmp_path)
+    paths = an.reference_structures()
+    assert len(paths) == 3
+    assert {a.get_chemical_formula() for a in (read(p) for p in paths)} >= {"H30Si72"}
