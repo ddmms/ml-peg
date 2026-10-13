@@ -186,6 +186,7 @@ uma-m-1p1-omat:
 grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
+  level_of_theory: PBE
   device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
   kwargs:
@@ -194,25 +195,28 @@ grace-2l-omat:
 grace-2l-smax-omat-medium:
   module: tensorpotential.calculator
   class_name: grace_fm
+  level_of_theory: PBE
   device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-SMAX-OMAT-medium
 
-MACE-OFF23(L):
+mace-off-23-L:
   module: mace.calculators
   class_name: mace_off
   datasets: [SPICE]
   device: "auto"
   trained_on_dispersion: true
+  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
   kwargs:
     model: large
 
-MACE-OFF24(M):
+mace-off-24-M:
   module: mace.calculators
   class_name: mace_off
   datasets: [SPICE2]
   device: "auto"
+  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
   trained_on_dispersion: true
   kwargs:
     model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
