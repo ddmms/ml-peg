@@ -963,11 +963,16 @@ def register_weight_callbacks(
         if trigger_id == f"{input_id}-input":
             if input_weight is None:
                 raise PreventUpdate
+            if stored_weights.get(column) == input_weight:
+                raise PreventUpdate
             stored_weights[column] = input_weight
         elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
-            stored_weights.update(
-                (key, default_weights.get(key, 1.0)) for key in stored_weights
-            )
+            reset_weights = {
+                key: default_weights.get(key, 1.0) for key in stored_weights
+            }
+            if reset_weights == stored_weights:
+                raise PreventUpdate
+            stored_weights = reset_weights
         else:
             raise PreventUpdate
 
@@ -1043,8 +1048,10 @@ def register_normalization_callbacks(
                 if not n_clicks:
                     raise PreventUpdate
                 if cleaned_defaults:
+                    if cleaned_defaults == cleaned_store:
+                        raise PreventUpdate
                     return deepcopy(cleaned_defaults)
-                return cleaned_store
+                raise PreventUpdate
 
             # Ensure key exists
             if metric not in cleaned_store:
@@ -1099,6 +1106,13 @@ def register_normalization_callbacks(
             else:
                 raise PreventUpdate
 
+            # Still publish corrections when rounding changed the input value.
+            if (
+                cleaned_store == clean_thresholds(stored_thresholds)
+                and good_val == entry["good"]
+                and bad_val == entry["bad"]
+            ):
+                raise PreventUpdate
             return cleaned_store
 
     if metrics:
