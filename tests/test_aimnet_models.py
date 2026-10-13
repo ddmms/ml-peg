@@ -104,7 +104,7 @@ def test_registered_aimnet_model_evaluates(model_name):
     """Run a real checkpoint on a neutral molecule and a charged ion."""
     pytest.importorskip("aimnet")
     model = load_models((model_name,))[model_name]
-    calculator = model.get_calculator(precision="high")
+    calculator = model.get_calculator(precision="low")
 
     water = molecule("H2O")
     water.calc = calculator
@@ -116,6 +116,7 @@ def test_registered_aimnet_model_evaluates(model_name):
     hydroxide.info["charge"] = -1
     hydroxide.calc = calculator
     assert np.isfinite(hydroxide.get_potential_energy())
+    assert np.isfinite(hydroxide.get_forces()).all()
     assert hydroxide.calc.charge == -1
 
 
@@ -123,7 +124,7 @@ def test_aimnet_reused_calculator_is_history_independent():
     """A sparse evaluation must not truncate neighbours for a later dense one."""
     pytest.importorskip("aimnet")
     model = load_models(("aimnet2",))["aimnet2"]
-    calculator = model.get_calculator(precision="high")
+    calculator = model.get_calculator(precision="low")
 
     dense = molecule("CH4", cell=[3.5, 3.5, 3.5], pbc=True)
     sparse = molecule("CH4", vacuum=10.0, pbc=True)
