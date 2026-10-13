@@ -618,15 +618,18 @@ class NEPCalc(SumCalc):
     """Dataclass for NEP calculators provided by calorine."""
 
     model_filename: str
-    device: Literal["cpu", "gpu"] = "cpu"
+    device: Literal["auto", "cpu", "gpu"] | None = "cpu"
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Validate the device."""
+        """Resolve and validate the device."""
+        # Default to CPUNEP when the device is unset or `auto`
+        if self.device in (None, Device.AUTO):
+            self.device = "cpu"
         if self.device not in ("cpu", "gpu"):
             raise ValueError(
-                f"Invalid NEP device '{self.device}'. Must be 'cpu' or 'gpu'."
+                f"Invalid NEP device '{self.device}'. Must be 'auto', 'cpu' or 'gpu'."
             )
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
