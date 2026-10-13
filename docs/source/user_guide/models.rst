@@ -536,8 +536,10 @@ float64 (full float64 evaluation is not supported). They include their own
 DFT-D3 correction, and cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and
 I. They are closed-shell models: ``atoms.info["charge"]`` is used, but spin
 multiplicity is ignored. Periodic systems automatically use DSF long-range
-Coulomb by default. See the AIMNet2
-`model documentation <https://isayevlab.github.io/aimnetcentral/models/aimnet2/>`_.
+Coulomb by default, though note that "All models were trained on isolated
+molecules and molecular clusters. They are not parameterized for bulk materials,
+extended surfaces, or metallic systems." See the AIMNet2
+`model documentation <https://isayevlab.github.io/aimnetcentral/models/guide/>`_.
 
 Each AIMNet2 model is released as an ensemble of four independently trained
 members. ML-PEG benchmarks **only member 0 by default**, not the ensemble average.
