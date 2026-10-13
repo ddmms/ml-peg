@@ -31,6 +31,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinxcontrib.contentui",
+    "sphinxcontrib.details.directive",
     "sphinx_copybutton",
     "sphinx_autodoc_typehints",
 ]

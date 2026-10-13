@@ -7,15 +7,33 @@ below, with the configuration defined in ``ml_peg/models/models.yml``. Models
 marked *(not currently enabled)* are commented out in ``models.yml`` and are not
 run in the current benchmarks; they are listed here for completeness.
 
-.. note::
-
-   Citations and longer descriptions are still to be added for each model.
-
 MACE
 ====
 
 mace-mp-0a
 ----------
+
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mp %
+      :end-before: % end mace-mp %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -31,6 +49,28 @@ mace-mp-0a
 mace-mp-0b3
 -----------
 
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mp %
+      :end-before: % end mace-mp %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-mp-0b3:
@@ -44,6 +84,28 @@ mace-mp-0b3
 
 mace-mpa-0
 ----------
+
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mp %
+      :end-before: % end mace-mp %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -59,6 +121,28 @@ mace-mpa-0
 mace-omat-0
 -----------
 
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mp %
+      :end-before: % end mace-mp %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-omat-0:
@@ -72,6 +156,27 @@ mace-omat-0
 
 mace-matpes-r2scan
 ------------------
+
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mp %
+      :end-before: % end mace-mp %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -91,6 +196,20 @@ mace-matpes-r2scan
 mace-mh-1-omat
 --------------
 
+- `Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mh %
+      :end-before: % end mace-mh %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-mh-1-omat:
@@ -107,6 +226,28 @@ mace-mh-1-omat
 MACE-OFF23(L)
 -------------
 
+- `Docs <https://github.com/ACEsuit/mace-off>`__
+- `Repo <https://github.com/ACEsuit/mace-off>`__
+- **Citation:** Kovács et al. (2025).
+  `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-off %
+      :end-before: % end mace-off %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    MACE-OFF23(L):
@@ -120,6 +261,28 @@ MACE-OFF23(L)
 
 MACE-OFF24(M)
 -------------
+
+- `Docs <https://github.com/ACEsuit/mace-off>`__
+- `Repo <https://github.com/ACEsuit/mace-off>`__
+- **Citation:** Kovács et al. (2025).
+  `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
+
+- **Citation (architecture):** Batatia et al. (2022).
+  `MACE: Higher Order Equivariant Message Passing Neural Networks for Fast and Accurate Force Fields <https://openreview.net/forum?id=YPpSngE-ZU>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-off %
+      :end-before: % end mace-off %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace %
+      :end-before: % end mace %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -135,6 +298,26 @@ MACE-OFF24(M)
 mace-omol
 ---------
 
+- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
+- **Citation (dataset):** Levine et al. (2025).
+  `The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models <https://arxiv.org/abs/2505.08762>`__.
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mh %
+      :end-before: % end mace-mh %
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin omol25 %
+      :end-before: % end omol25 %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-omol:
@@ -148,6 +331,20 @@ mace-omol
 
 mace-mh-1-omol
 --------------
+
+- `Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2025).
+  `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-mh %
+      :end-before: % end mace-mh %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -164,6 +361,20 @@ mace-mh-1-omol
 mace-polar-1-s
 --------------
 
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2026).
+  `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-polar %
+      :end-before: % end mace-polar %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-polar-1-s:
@@ -178,6 +389,20 @@ mace-polar-1-s
 mace-polar-1-m
 --------------
 
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2026).
+  `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-polar %
+      :end-before: % end mace-polar %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mace-polar-1-m:
@@ -191,6 +416,20 @@ mace-polar-1-m
 
 mace-polar-1-l
 --------------
+
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+- `Repo <https://github.com/ACEsuit/mace-foundations>`__
+- **Citation:** Batatia et al. (2026).
+  `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mace-polar %
+      :end-before: % end mace-polar %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -215,6 +454,20 @@ non-commercial use.
 dpa-3p3-1M-omat
 ----------------
 
+- `Docs <https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M>`__
+- `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+- **Citation:** Zhang et al. (2026).
+  `A graph neural network for the era of large atomistic models <https://doi.org/10.1038/s41524-026-02146-2>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin dpa3 %
+      :end-before: % end dpa3 %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    dpa-3p3-1M-omat:
@@ -230,6 +483,20 @@ dpa-3p3-1M-omat
 dpa-4-nano-omat
 ---------------
 
+- `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+- `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+- **Citation:** Li et al. (2026).
+  `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin dpa4 %
+      :end-before: % end dpa4 %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    dpa-4-nano-omat:
@@ -244,6 +511,20 @@ dpa-4-nano-omat
 dpa-4-neo-omat
 --------------
 
+- `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+- `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+- **Citation:** Li et al. (2026).
+  `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin dpa4 %
+      :end-before: % end dpa4 %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    dpa-4-neo-omat:
@@ -257,6 +538,20 @@ dpa-4-neo-omat
 
 dpa-4-plus-omat
 ---------------
+
+- `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+- `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+- **Citation:** Li et al. (2026).
+  `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin dpa4 %
+      :end-before: % end dpa4 %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -275,6 +570,20 @@ Orb
 orb-v3-consv-inf-omat
 ---------------------
 
+- `Docs <https://github.com/orbital-materials/orb-models>`__
+- `Repo <https://github.com/orbital-materials/orb-models>`__
+- **Citation:** Rhodes et al. (2025).
+  `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin orb %
+      :end-before: % end orb %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    orb-v3-consv-inf-omat:
@@ -289,6 +598,20 @@ orb-v3-consv-inf-omat
 orb-v3-direct-inf-omat
 ----------------------
 
+- `Docs <https://github.com/orbital-materials/orb-models>`__
+- `Repo <https://github.com/orbital-materials/orb-models>`__
+- **Citation:** Rhodes et al. (2025).
+  `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin orb %
+      :end-before: % end orb %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    orb-v3-direct-inf-omat:
@@ -302,6 +625,20 @@ orb-v3-direct-inf-omat
 
 orb-v3-consv-omol
 -----------------
+
+- `Docs <https://github.com/orbital-materials/orb-models>`__
+- `Repo <https://github.com/orbital-materials/orb-models>`__
+- **Citation (architecture):** Rhodes et al. (2025).
+  `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin orb %
+      :end-before: % end orb %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -321,6 +658,20 @@ PET
 pet-mad
 -------
 
+- `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+- `Repo <https://github.com/lab-cosmo/upet>`__
+- **Citation:** Mazitov et al. (2025).
+  `PET-MAD as a lightweight universal interatomic potential for advanced materials modeling <https://doi.org/10.1038/s41467-025-65662-7>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin pet-mad %
+      :end-before: % end pet-mad %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
   pet-mad:
@@ -338,6 +689,20 @@ pet-mad
 pet-mad-s-1p5
 -------------
 
+- `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+- `Repo <https://github.com/lab-cosmo/upet>`__
+- **Citation:** Malosso et al. (2026).
+  `High-quality, high-information datasets for universal atomistic machine learning <https://arxiv.org/abs/2603.02089>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin pet-mad-1p5 %
+      :end-before: % end pet-mad-1p5 %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
   pet-mad-s-1p5:
@@ -354,6 +719,20 @@ pet-mad-s-1p5
 
 pet-oam-xl
 ----------
+
+- `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+- `Repo <https://github.com/lab-cosmo/upet>`__
+- **Citation:** Bigi et al. (2026).
+  `Pushing the limits of unconstrained machine-learned interatomic potentials <https://doi.org/10.1088/2632-2153/ae6417>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin pet-oam %
+      :end-before: % end pet-oam %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -374,6 +753,20 @@ UMA (FairChem)
 uma-s-1p1-omat
 --------------
 
+- `Docs <https://huggingface.co/facebook/UMA>`__
+- `Repo <https://github.com/facebookresearch/fairchem>`__
+- **Citation:** Wood et al. (2025).
+  `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin uma %
+      :end-before: % end uma %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    uma-s-1p1-omat:
@@ -388,6 +781,20 @@ uma-s-1p1-omat
 
 uma-m-1p1-omat
 --------------
+
+- `Docs <https://huggingface.co/facebook/UMA>`__
+- `Repo <https://github.com/facebookresearch/fairchem>`__
+- **Citation:** Wood et al. (2025).
+  `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin uma %
+      :end-before: % end uma %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -404,6 +811,20 @@ uma-m-1p1-omat
 uma-s-1p1-omol
 --------------
 
+- `Docs <https://huggingface.co/facebook/UMA>`__
+- `Repo <https://github.com/facebookresearch/fairchem>`__
+- **Citation:** Wood et al. (2025).
+  `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin uma %
+      :end-before: % end uma %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    uma-s-1p1-omol:
@@ -419,6 +840,20 @@ uma-s-1p1-omol
 uma-s-1p2-omol
 --------------
 
+- `Docs <https://huggingface.co/facebook/UMA>`__
+- `Repo <https://github.com/facebookresearch/fairchem>`__
+- **Citation:** Wood et al. (2025).
+  `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin uma %
+      :end-before: % end uma %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    uma-s-1p2-omol:
@@ -433,6 +868,20 @@ uma-s-1p2-omol
 
 uma-m-1p1-omol
 --------------
+
+- `Docs <https://huggingface.co/facebook/UMA>`__
+- `Repo <https://github.com/facebookresearch/fairchem>`__
+- **Citation:** Wood et al. (2025).
+  `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin uma %
+      :end-before: % end uma %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -453,6 +902,20 @@ MatterSim
 mattersim-5M
 ------------
 
+- `Docs <https://microsoft.github.io/mattersim/>`__
+- `Repo <https://github.com/microsoft/mattersim>`__
+- **Citation:** Yang et al. (2024).
+  `MatterSim: A Deep Learning Atomistic Model Across Elements, Temperatures and Pressures <https://arxiv.org/abs/2405.04967>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mattersim %
+      :end-before: % end mattersim %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
    mattersim-5M:
@@ -466,6 +929,20 @@ mattersim-5M
 
 mattersim-1M
 ------------
+
+- `Docs <https://microsoft.github.io/mattersim/>`__
+- `Repo <https://github.com/microsoft/mattersim>`__
+- **Citation:** Yang et al. (2024).
+  `MatterSim: A Deep Learning Atomistic Model Across Elements, Temperatures and Pressures <https://arxiv.org/abs/2405.04967>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin mattersim %
+      :end-before: % end mattersim %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
@@ -485,6 +962,20 @@ GRACE
 GRACE-2L-OMAT
 -------------
 
+- `Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
+- `Repo <https://github.com/ICAMS/grace-tensorpotential>`__
+- **Citation:** Lysogorskiy et al. (2026).
+  `Graph atomic cluster expansion for foundational machine learning interatomic potentials <https://doi.org/10.1038/s41524-026-01979-1>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin grace %
+      :end-before: % end grace %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
   grace-2l-omat:
@@ -498,6 +989,21 @@ GRACE-2L-OMAT
 
 GRACE-2L-SMAX-OMAT-medium
 -------------------------
+
+- `Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
+- `Repo <https://github.com/ICAMS/grace-tensorpotential>`__
+- **Citation:** Bochkarev et al. (2026).
+  `Exploring the extremes: atomic basis for multi-elemental materials science under complex thermodynamic conditions <https://arxiv.org/abs/2602.23489>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin grace-smax %
+      :end-before: % end grace-smax %
+
+**ML-PEG configuration:**
+
 .. code-block:: yaml
 
   grace-2l-smax-omat-medium:
@@ -514,6 +1020,20 @@ SevenNet
 
 sevennet-omni-mpa
 -----------------
+
+- `Docs <https://sevennet.readthedocs.io/en/latest/user_guide/pretrained.html#sevennet-omni>`__
+- `Repo <https://github.com/MDIL-SNU/SevenNet>`__
+- **Citation:** Kim et al. (2026).
+  `Optimizing cross-domain transfer for universal machine learning interatomic potentials <https://doi.org/10.1038/s41467-026-70195-8>`__.
+
+.. details:: BibTeX
+
+   .. literalinclude:: model_references.bib
+      :language: bibtex
+      :start-after: % begin sevennet %
+      :end-before: % end sevennet %
+
+**ML-PEG configuration:**
 
 .. code-block:: yaml
 
