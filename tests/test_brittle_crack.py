@@ -81,3 +81,113 @@ def test_the_port_reproduces_crackcell():
     e = sc.errors(_curve(scale_k=1.03, scale_e=1.1), _curve())
     assert e["E_K"] == pytest.approx(EXPECTED_EK, rel=1e-9)
     assert e["E_E"] == pytest.approx(EXPECTED_EE, rel=1e-9)
+
+
+from ase.calculators.calculator import Calculator, all_changes  # noqa: E402
+
+from ml_peg.calcs.fracture.brittle_crack import crack_tools as ct  # noqa: E402
+
+
+def _sw():
+    """
+    Build the Stillinger-Weber Si calculator.
+
+    Returns
+    -------
+    Calculator
+        A matscipy Manybody SW calculator.
+    """
+    from matscipy.calculators.manybody import Manybody
+    from matscipy.calculators.manybody.explicit_forms.stillinger_weber import (
+        Stillinger_Weber_PRB_31_5262_Si,
+        StillingerWeber,
+    )
+
+    return Manybody(**StillingerWeber(Stillinger_Weber_PRB_31_5262_Si))
+
+
+class _SiOnly(Calculator):
+    """SW on the Si atoms only; H caps get zero force (SW has no H parameters)."""
+
+    implemented_properties = ["energy", "free_energy", "forces"]
+
+    def calculate(
+        self, atoms=None, properties=("energy",), system_changes=all_changes
+    ) -> None:
+        """
+        Evaluate SW on the Si subsystem.
+
+        Parameters
+        ----------
+        atoms
+            Structure.
+        properties
+            Requested properties.
+        system_changes
+            Changes since the last call.
+        """
+        super().calculate(atoms, properties, system_changes)
+        si = atoms.numbers == 14
+        sub = atoms[si]
+        sub.calc = _sw()
+        forces = np.zeros((len(atoms), 3))
+        forces[si] = sub.get_forces()
+        e = sub.get_potential_energy()
+        self.results = {"energy": e, "free_energy": e, "forces": forces}
+
+
+def test_reference_clusters_have_the_dft_atom_counts():
+    """The DFT topology clusters have the DFT atom counts."""
+    cases = ct.load_cases()
+    counts = {"Si_110_110": 135, "Si_110_001": 100, "Si_111_110": 102}
+    for name, n in counts.items():
+        assert len(ct.reference_cluster(cases[name])) == n
+
+
+def test_sw_constants_match_the_known_values():
+    """SW a0, C11 and gamma(110) match the values used in the crackcell runs."""
+    from ase.units import GPa, J, m
+
+    c = ct.material_constants(_sw())
+    assert c["a0"] == pytest.approx(5.43095, abs=1e-4)
+    assert c["C11"] / GPa == pytest.approx(151.42, abs=0.1)
+    g = ct.cleavage_energy(_sw(), c["a0"], [1, -1, 0], [1, 1, 0])
+    assert g / (J / m**2) == pytest.approx(1.6657, abs=1e-3)
+
+
+def test_trace_case_runs_on_the_reference_topology():
+    """A short trace on (111) runs and keeps the reference atom order."""
+    case = ct.load_cases()["Si_111_110"]
+    consts = ct.material_constants(_sw())
+    consts["gamma"] = ct.cleavage_energy(
+        _sw(), consts["a0"], case["crack_surface"], case["crack_front"]
+    )
+    frames, status = ct.trace_case(case, _SiOnly(), consts, max_points=4)
+    assert status == "complete" and len(frames) == 4
+    ref = ct.reference_cluster(case)
+    assert frames[0].get_chemical_symbols() == ref.get_chemical_symbols()
+    assert frames[0].info["K_over_KG"] == pytest.approx(case["start_k"])
+
+
+def test_trace_case_reports_failure_instead_of_raising(monkeypatch):
+    """A tracer RuntimeError becomes a failed status with no frames."""
+    import matscipy.fracture_mechanics.continuation as cont
+
+    def boom(*args, **kwargs):
+        """
+        Raise like a start relaxation that misses ftol.
+
+        Parameters
+        ----------
+        *args
+            Ignored.
+        **kwargs
+            Ignored.
+        """
+        raise RuntimeError("start relaxation did not reach ftol at fixed k")
+
+    monkeypatch.setattr(cont, "trace_s_curve", boom)
+    case = ct.load_cases()["Si_111_110"]
+    consts = {"a0": 5.43095, "C11": 0.945, "C12": 0.477, "C44": 0.352, "gamma": 0.104}
+    frames, status = ct.trace_case(case, _SiOnly(), consts)
+    assert frames == [] and status.startswith("failed:")
