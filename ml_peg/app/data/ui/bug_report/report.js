@@ -340,6 +340,23 @@
     });
   }
 
+  // Python registers this as bug_report.open. Keeping the callback a named asset
+  // function rather than an inline source string keeps its Dash identity stable:
+  // inline clientside callbacks are named by hashing their source, so embedding
+  // the defaults there renamed the function whenever benchmark data changed.
+  window.dash_clientside = Object.assign({}, window.dash_clientside, {
+    bug_report: {
+      open: function (nClicks, config, models, excluded, ...values) {
+        // The dialog module and this wrapper ship together, but a failed asset
+        // load would otherwise throw on every click with nothing shown.
+        if (nClicks && config && window.mlpegBugReport) {
+          window.mlpegBugReport.open(config, models, excluded, values);
+        }
+        return "";
+      },
+    },
+  });
+
   window.mlpegBugReport = {
     open(config, models, excluded, values) {
       if (!dialog) createDialog();

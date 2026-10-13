@@ -2,24 +2,61 @@
 
 from __future__ import annotations
 
-import json
-
-from dash import Input, Output, State, clientside_callback
+from dash import ClientsideFunction, Input, Output, State, clientside_callback
 from dash.dcc import Store
 from dash.html import Button, Div
 
 from ml_peg import __version__
 
 
-def build_bug_report_button() -> Div:
+def _report_stores(stores: list[Store]) -> list[Store]:
     """
-    Build the global bug-report button and callback output.
+    Select the stores whose values are worth including in a report.
+
+    Parameters
+    ----------
+    stores
+        Globally mounted app stores.
+
+    Returns
+    -------
+    list[Store]
+        Weight, threshold and appearance stores. Computed results and unrelated
+        storage are omitted.
+    """
+    preferences = {"theme-store", "zoom-store", "font-store", "cmap-store"}
+    return [
+        store
+        for store in stores
+        if isinstance(store.id, str)
+        and (
+            store.id.endswith(("-weight-store", "-thresholds-store"))
+            or store.id in preferences
+        )
+    ]
+
+
+def build_bug_report_button(stores: list[Store]) -> Div:
+    """
+    Build the global bug-report button, its config store and callback output.
+
+    The defaults travel to the browser as store *data* rather than as part of the
+    clientside callback's source. Dash names an inline clientside callback by
+    hashing its source, so baking the defaults in renamed the function whenever
+    benchmark data changed, breaking any page still holding the previous name.
+
+    Parameters
+    ----------
+    stores
+        Globally mounted app stores, used to record the defaults a report is
+        compared against.
 
     Returns
     -------
     Div
         Header control for opening the browser's report dialog.
     """
+    report_stores = _report_stores(stores)
     return Div(
         [
             Button(
@@ -29,6 +66,17 @@ def build_bug_report_button() -> Div:
                 n_clicks=0,
                 title="Report a bug",
                 **{"aria-haspopup": "dialog", "aria-label": "Report a bug"},
+            ),
+            Store(
+                id="bug-report-config",
+                data={
+                    "version": __version__,
+                    "store_ids": [store.id for store in report_stores],
+                    "defaults": {
+                        store.id: getattr(store, "data", None)
+                        for store in report_stores
+                    },
+                },
             ),
             Div(id="bug-report-dummy", style={"display": "none"}),
         ]
@@ -45,36 +93,13 @@ def register_bug_report_callbacks(stores: list[Store]) -> None:
         Globally mounted app stores. Only weights, thresholds and appearance
         preferences are included; computed results and unrelated storage are omitted.
     """
-    preferences = {"theme-store", "zoom-store", "font-store", "cmap-store"}
-    report_stores = [
-        store
-        for store in stores
-        if isinstance(store.id, str)
-        and (
-            store.id.endswith(("-weight-store", "-thresholds-store"))
-            or store.id in preferences
-        )
-    ]
-    config = {
-        "version": __version__,
-        "store_ids": [store.id for store in report_stores],
-        "defaults": {store.id: getattr(store, "data", None) for store in report_stores},
-    }
     clientside_callback(
-        f"""
-        function(n_clicks, models, excluded, ...values) {{
-            if (n_clicks) {{
-                window.mlpegBugReport.open(
-                    {json.dumps(config)}, models, excluded, values
-                );
-            }}
-            return "";
-        }}
-        """,
+        ClientsideFunction(namespace="bug_report", function_name="open"),
         Output("bug-report-dummy", "children"),
         Input("bug-report-button", "n_clicks"),
+        State("bug-report-config", "data"),
         State("selected-models-store", "data"),
         State("element-filter", "data"),
-        *[State(store.id, "data") for store in report_stores],
+        *[State(store.id, "data") for store in _report_stores(stores)],
         prevent_initial_call=True,
     )

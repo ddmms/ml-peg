@@ -848,7 +848,7 @@ def build_nav(
                             ],
                             className="mlpeg-header",
                         ),
-                        build_header_controls(),
+                        build_header_controls(global_state_stores),
                     ],
                     className="mlpeg-topbar",
                 ),
