@@ -7,16 +7,18 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from ase.io import write
+from ase.io import read, write
 import pytest
 
 from ml_peg.calcs.fracture.brittle_crack import crack_tools as ct
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 CASES = ct.load_cases()
+ORDERINGS = ct.load_orderings()
 
 
 def _plane_key(case: dict) -> str:
@@ -57,13 +59,22 @@ def test_brittle_crack(mlip: tuple[str, Any]) -> None:
     if len(symbols) != 1:
         raise NotImplementedError("one material per benchmark run")
     gammas, status, by_plane = {}, {}, {}
+    data = download_s3_data(key=ct.S3_KEY, filename=ct.S3_FILENAME) / "brittle_crack"
+    for name in ORDERINGS:
+        try:
+            frames = ct.ordering_energies(read(data / f"{name}.extxyz", ":"), calc)
+            status[name] = "complete"
+        except Exception as exc:
+            warn(f"{model_name} {name}: {exc}", stacklevel=2)
+            frames, status[name] = [], f"failed: {exc}"
+        write(out / f"{name}.extxyz", frames, format="extxyz")
     try:
         consts = ct.material_constants(calc, symbols.pop())
     except Exception as exc:
         warn(f"{model_name} constants: {exc}", stacklevel=2)
         for name in CASES:
             write(out / f"{name}.extxyz", [], format="extxyz")
-        status = dict.fromkeys(CASES, f"failed: constants: {exc}")
+        status.update(dict.fromkeys(CASES, f"failed: constants: {exc}"))
         (out / "constants.json").write_text(
             json.dumps({"gamma": {}, "status": status}, indent=1)
         )

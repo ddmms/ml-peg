@@ -26,9 +26,10 @@ MODELS = get_model_names(current_models)
 BENCHMARK_DIR = "brittle_crack"
 CALC_PATH = CALCS_ROOT / "fracture" / BENCHMARK_DIR / "outputs"
 OUT_PATH = APP_ROOT / "data" / "fracture" / BENCHMARK_DIR
-S3_KEY = "inputs/fracture/brittle_crack/brittle_crack.zip"
-S3_FILENAME = "brittle_crack.zip"
+S3_KEY = ct.S3_KEY
+S3_FILENAME = ct.S3_FILENAME
 CASES = ct.load_cases()
+ORDERINGS = ct.load_orderings()
 TERMS = {"K": "E_K", "E": "E_E", "D": "E_D"}
 FAILED_KEYS = ("E_K", "E_E", "E_D", "coverage", "coverage_D")
 
@@ -285,6 +286,62 @@ def raw_metrics(errs: dict) -> dict[str, float]:
     return out
 
 
+def ordering_error(model_frames: list, ref_frames: list) -> float:
+    """
+    Error of a model's energy difference between two DFT-relaxed states.
+
+    Parameters
+    ----------
+    model_frames
+        The states with the model energy (info ``model_energy``), in the reference
+        order.
+    ref_frames
+        The DFT states (info ``state``, ``REF_energy``).
+
+    Returns
+    -------
+    float
+        |dE_model - dE_DFT| per unit length of crack front (meV/A), with
+        dE = E(first state) - E(second state).
+    """
+    if [f.info["state"] for f in model_frames] != [f.info["state"] for f in ref_frames]:
+        raise ValueError("model ordering states do not match the reference")
+    d_model = (
+        model_frames[0].info["model_energy"] - model_frames[1].info["model_energy"]
+    )
+    d_ref = ref_frames[0].info["REF_energy"] - ref_frames[1].info["REF_energy"]
+    return 1000 * abs(d_model - d_ref) / float(ref_frames[0].cell[2, 2])
+
+
+def ordering_metrics(frames: dict, status: dict, refs: dict) -> dict[str, float]:
+    """
+    Return the branch-ordering metric values of a model.
+
+    Parameters
+    ----------
+    frames
+        Model ordering frames by ordering name (empty if the calculation failed).
+    status
+        Calculation status by name; ``"failed: ..."`` is not scored.
+    refs
+        DFT ordering frames by name.
+
+    Returns
+    -------
+    dict[str, float]
+        Value by metric name; NaN for a failed or missing calculation.
+    """
+    out = {}
+    for name, ordering in ORDERINGS.items():
+        metric = f"{ordering['label']} ordering error"
+        model = frames.get(name, [])
+        failed = str(status.get(name, "")).startswith("failed")
+        out[metric] = (
+            np.nan if failed or not model else ordering_error(model, refs[name])
+        )
+    return out
+
+
 def _model_constants(model: str) -> dict | None:
     """
     Load a model's constants written by the calculation.
@@ -455,7 +512,35 @@ def case_results() -> dict[str, dict[str, dict]]:
 
 
 @pytest.fixture
-def metrics_dict(case_results: dict) -> dict[str, dict[str, float]]:
+def ordering_results() -> dict[str, dict[str, float]]:
+    """
+    Compute the branch-ordering metrics of every model that has run.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Metric values by model and metric name.
+    """
+    refs = {name: reference_frames(name) for name in ORDERINGS}
+    results = {}
+    for model in MODELS:
+        consts = _model_constants(model)
+        if consts is None:
+            continue
+        frames = {}
+        for name in ORDERINGS:
+            path = CALC_PATH / model / f"{name}.extxyz"
+            frames[name] = (
+                read(path, ":") if path.exists() and path.stat().st_size else []
+            )
+        results[model] = ordering_metrics(frames, consts.get("status") or {}, refs)
+    return results
+
+
+@pytest.fixture
+def metrics_dict(
+    case_results: dict, ordering_results: dict
+) -> dict[str, dict[str, float]]:
     """
     Build the raw metric values for the benchmark table.
 
@@ -463,6 +548,8 @@ def metrics_dict(case_results: dict) -> dict[str, dict[str, float]]:
     ----------
     case_results
         Errors by model and case name.
+    ordering_results
+        Branch-ordering metric values by model.
 
     Returns
     -------
@@ -472,6 +559,9 @@ def metrics_dict(case_results: dict) -> dict[str, dict[str, float]]:
     metrics: dict[str, dict[str, float]] = {k: {} for k in DEFAULT_THRESHOLDS}
     for model, errs in case_results.items():
         for metric, value in raw_metrics(errs).items():
+            metrics[metric][model] = value
+    for model, values in ordering_results.items():
+        for metric, value in values.items():
             metrics[metric][model] = value
     return metrics
 

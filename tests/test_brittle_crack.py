@@ -466,3 +466,96 @@ def test_calc_is_marked_fast():
 
     marks = {m.name for m in calc.test_brittle_crack.pytestmark}
     assert "fast" in marks and "slow" not in marks
+
+
+def _ordering_frames(e57: float, esharp: float, key: str) -> list:
+    """
+    Two-state ordering frames with energies under ``key``, front length 4 A.
+
+    Parameters
+    ----------
+    e57
+        Energy of the 5-7 state (eV).
+    esharp
+        Energy of the sharp state (eV).
+    key
+        Info key of the energy (``REF_energy`` or ``model_energy``).
+
+    Returns
+    -------
+    list
+        The two frames.
+    """
+    from ase import Atoms
+
+    out = []
+    for state, e in (("5-7", e57), ("sharp", esharp)):
+        a = Atoms("Si2", positions=[[0, 0, 0], [1.2, 1.2, 1.2]], cell=[10, 10, 4])
+        a.info.update(state=state, K_over_KG=1.5, **{key: e})
+        out.append(a)
+    return out
+
+
+def test_ordering_error_is_the_per_length_energy_difference_error():
+    """|dE_model - dE_DFT| per unit crack-front length, in meV/A."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    model = _ordering_frames(0.5, 0.0, "model_energy")
+    assert an.ordering_error(model, ref) == pytest.approx(375.0)
+
+
+def test_failed_or_missing_ordering_gives_nan():
+    """A failed or absent ordering calculation is not scored."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    model = _ordering_frames(0.5, 0.0, "model_energy")
+    name = next(iter(an.ORDERINGS))
+    refs = {name: ref}
+    ok = an.ordering_metrics({name: model}, {}, refs)
+    assert list(ok.values()) == [pytest.approx(375.0)]
+    for frames, status in (({name: []}, {}), ({name: model}, {name: "failed: x"})):
+        assert all(
+            np.isnan(v) for v in an.ordering_metrics(frames, status, refs).values()
+        )
+
+
+def test_ordering_metric_thresholds():
+    """Thresholds: bad = |dE_DFT| per front length (37.6 meV/A), good = bad / 3."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    th = an.DEFAULT_THRESHOLDS["Si (111)[1-10] 5-7 ordering error"]
+    assert th["good"] == pytest.approx(12.5) and th["bad"] == pytest.approx(37.6)
+
+
+def test_ordering_energies_are_neutral_singlet_model_energies():
+    """The calc helper returns copies with the model energy; DFT info is kept."""
+    rec = _InfoRecorder()
+    frames = ct.ordering_energies(_ordering_frames(-1.0, 0.0, "REF_energy"), rec)
+    assert rec.seen == {(0, 1)}
+    assert [f.info["state"] for f in frames] == ["5-7", "sharp"]
+    assert [f.info["REF_energy"] for f in frames] == [-1.0, 0.0]
+    assert all(np.isfinite(f.info["model_energy"]) for f in frames)
+
+
+@pytest.mark.skipif(not HAVE_DATA, reason="reference data not in the ml_peg cache")
+def test_packaged_dft_ordering_is_5_7_below_sharp():
+    """The DFT 5-7 state is 145.4 meV (37.6 meV/A of front) below the sharp state."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = an.reference_frames("Si_111_110_431_order")
+    e = {f.info["state"]: f.info["REF_energy"] for f in ref}
+    assert 1000 * (e["5-7"] - e["sharp"]) == pytest.approx(-145.36, abs=0.01)
+    assert len(ref[0]) == 216
+
+
+def test_ordering_energies_survive_the_output_file(tmp_path):
+    """Model ordering energies written by the calc are read back by the analysis."""
+    from ase.io import read, write
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    write(tmp_path / "o.extxyz", ct.ordering_energies(ref, _SiOnly()), format="extxyz")
+    assert np.isfinite(an.ordering_error(read(tmp_path / "o.extxyz", ":"), ref))

@@ -45,3 +45,10 @@ cases:
     precon: stillinger_weber
     start_k: 0.6
     topology: {a0: 5.4686, C11: 153.2, C12: 56.8, C44: 74.8, surface_energy: 1.479, k: 1.0}
+# Branch-ordering checks: DFT-relaxed states of one cluster at the same K (S3 data
+# <name>.extxyz, info "state"); the model's energy difference between the first state and
+# the second is compared with DFT's, per unit length of crack front.
+orderings:
+  Si_111_110_431_order:
+    label: "Si (111)[1-10] 5-7"
+    states: ["5-7", "sharp"]

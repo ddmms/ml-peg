@@ -10,6 +10,8 @@ import numpy as np
 import yaml
 
 CASES_PATH = Path(__file__).with_name("cases.yml")
+S3_KEY = "inputs/fracture/brittle_crack/brittle_crack.zip"
+S3_FILENAME = "brittle_crack.zip"
 TRACE = {
     "ftol": 2e-3,
     "dr_cap": 0.05,
@@ -37,6 +39,50 @@ def load_cases(path: Path = CASES_PATH) -> dict[str, dict]:
         Case settings by case name.
     """
     return yaml.safe_load(Path(path).read_text())["cases"]
+
+
+def load_orderings(path: Path = CASES_PATH) -> dict[str, dict]:
+    """
+    Load the branch-ordering checks.
+
+    Parameters
+    ----------
+    path
+        Path to cases.yml.
+
+    Returns
+    -------
+    dict[str, dict]
+        Ordering settings (``label``, ``states``) by name.
+    """
+    return yaml.safe_load(Path(path).read_text()).get("orderings", {})
+
+
+def ordering_energies(frames: list[Atoms], calc) -> list[Atoms]:
+    """
+    Evaluate a model's energies on the DFT-relaxed states of a branch-ordering check.
+
+    Parameters
+    ----------
+    frames
+        DFT states (info ``state``, ``K_over_KG``, ``REF_energy``).
+    calc
+        ASE calculator of the model.
+
+    Returns
+    -------
+    list[Atoms]
+        Copies of the states with the model energy in info ``model_energy`` (not
+        ``energy``, which the extxyz reader moves to a calculator).
+    """
+    out = []
+    for frame in frames:
+        atoms = neutral_singlet(frame.copy())
+        atoms.calc = calc
+        atoms.info["model_energy"] = float(atoms.get_potential_energy())
+        atoms.calc = None
+        out.append(atoms)
+    return out
 
 
 def neutral_singlet(atoms: Atoms) -> Atoms:

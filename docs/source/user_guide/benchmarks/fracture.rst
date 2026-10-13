@@ -49,28 +49,40 @@ model).
    displacements relative to each model's own K-field, on second-neighbour bonds within
    8 Å of the tip and not behind it, matched at equal coordinate.
 
+A tenth metric checks which crack-tip state the model prefers:
+
+4. 5-7 ordering error
+
+   On a larger (111)[1-10] cluster, (4,3,1) unit cells and 216 atoms, DFT has two
+   states at the same load, K/K_G = 1.50: a sharp crack tip and a reconstructed tip
+   with 5- and 7-membered rings. DFT puts the 5-7 state 145 meV (37.6 meV/Å of crack
+   front) below the sharp one. The metric is the error of the model's energy
+   difference between the two DFT-relaxed structures, per unit length of crack front
+   (meV/Å). Its thresholds are physical rather than SW-anchored: bad is the DFT gap
+   itself (an error that large can reverse the order) and good is a third of it.
+
 A model that does not cover the whole window (its trace stops early or folds back) is
 penalised: the uncovered fraction counts at the "bad" threshold, so its score is the
 coverage times the score of its error on the covered part. Thresholds changed in the
 app do not change this coverage padding, which uses the defaults. A calculation that
 fails (an error in the constants, the cleavage energy, the tracer or the scoring of a
 case) is not scored: its metrics and benchmark score are NaN. The benchmark score (the
-mean of the nine metric scores with default weights) is the combined value.
+mean of the ten metric scores with default weights) is the combined value.
 
 Thresholds
 ----------
 
-The thresholds are anchored on the Stillinger-Weber (SW) potential (F. H. Stillinger and
-T. A. Weber, Phys. Rev. B 31, 5262 (1985)), a long-established empirical model of
-silicon with a physically understood failure for fracture: it reproduces the elastic
-constants but not the bond-breaking at the crack tip, and is known to give qualitatively
-wrong crack behaviour. Unlike recent MLIPs, it is a fixed baseline that does not change
-between model releases. For each error term, a tolerance tau is chosen so that the
-median SW error against DFT over the three crack systems is 3 tau, and the thresholds
-are good = tau and bad = 3 tau. A model as poor as SW therefore scores about 0, and a
-model whose errors are within a third of SW's scores 1. The values are tau = 0.0803
-(K, in K/K_G), 0.0952 (E, in 2 gamma L b_bulk) and 0.144 (D). They are not derived from
-an estimate of the DFT uncertainty.
+The thresholds of the nine S-curve metrics are anchored on the Stillinger-Weber (SW)
+potential (F. H. Stillinger and T. A. Weber, Phys. Rev. B 31, 5262 (1985)), a
+long-established empirical model of silicon with a physically understood failure for
+fracture: it reproduces the elastic constants but not the bond-breaking at the crack
+tip, and is known to give qualitatively wrong crack behaviour. Unlike recent MLIPs, it
+is a fixed baseline that does not change between model releases. For each error term,
+a tolerance tau is chosen so that the median SW error against DFT over the three crack
+systems is 3 tau, and the thresholds are good = tau and bad = 3 tau. A model as poor
+as SW therefore scores about 0, and a model whose errors are within a third of SW's
+scores 1. The values are tau = 0.0803 (K, in K/K_G), 0.0952 (E, in 2 gamma L b_bulk)
+and 0.144 (D). They are not derived from an estimate of the DFT uncertainty.
 
 Benchmark speed
 ---------------
