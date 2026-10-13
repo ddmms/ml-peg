@@ -88,10 +88,7 @@ def vacfs() -> dict:
             filename=OUT_PATH / f"{element}_vacfs.json",
             title=f"{element} VACFs",
             x_label="Time / ps",
-            y_label=(
-                "Velocity autocorrelation / "
-                r"$\mathrm{\mathring{A}}^2\,\mathrm{fs}^{-2}$"
-            ),
+            y_label=r"Velocity autocorrelation / $\text{Å}^{2}/\text{fs}^{2}$",
             show_line=True,
             show_markers=False,
             hovertemplate=(
@@ -167,7 +164,7 @@ def diffusion_constants(vacfs: dict) -> dict:
             filename=OUT_PATH / f"{element}_diffusion.json",
             title=f"{element} self-diffusion",
             x_label="Temperature / K",
-            y_label=r"Diffusion constant / $10^{-9}\,\mathrm{m}^{2}\,\mathrm{s}^{-1}$",
+            y_label=r"Diffusion constant / $10^{-9}\,\text{m}^{2}/\text{s}$",
             show_line=True,
             hovertemplate=(
                 "<b>Temperature: </b>%{x:.0f} K<br>"
