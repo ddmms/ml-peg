@@ -1,0 +1,30 @@
+implementers:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "weber-2025-longrange"
+    role: benchmark_method
+    title: "Efficient Long-Range Machine Learning Force Fields for Liquid and Materials Properties"
+    authors:
+      - "John L. Weber"
+      - "Rishabh D. Guha"
+      - "Garvit Agarwal"
+      - "Yujing Wei"
+      - "Aidan A. Fike"
+      - "Xiaowei Xie"
+      - "James Stevenson"
+      - "Biswajit Santra"
+      - "Richard A. Friesner"
+      - "Karl Leswing"
+      - "Mathew D. Halls"
+      - "Robert Abel"
+      - "Leif D. Jacobson"
+    year: 2025
+    doi: null
+    url: "https://arxiv.org/abs/2505.06462"

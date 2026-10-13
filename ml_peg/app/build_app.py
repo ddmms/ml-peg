@@ -6,18 +6,20 @@ from importlib import import_module
 import warnings
 
 from dash import (
+    ALL,
+    MATCH,
     Dash,
     Input,
     Output,
+    State,
     callback,
-    clientside_callback,
     ctx,
     no_update,
 )
 from dash.dash_table import DataTable
-from dash.dcc import Dropdown, Interval, Link, Loading, Location, Store
+from dash.dcc import Interval, Link, Loading, Location, Store
 from dash.exceptions import PreventUpdate
-from dash.html import H1, H3, A, Br, Details, Div, Img, Span, Summary
+from dash.html import H1, H3, A, Br, Button, Details, Div, Img, Span, Summary
 from yaml import safe_load
 
 from ml_peg.app import APP_ROOT
@@ -27,13 +29,17 @@ from ml_peg.app.filters import (
     register_element_filter_callbacks,
 )
 from ml_peg.app.utils.build_components import (
+    build_benchmark_card,
+    build_collapse_controls,
     build_download_controls,
     build_faqs,
     build_footer,
     build_loading_summary_table,
     build_page_loading_spinner,
+    build_speed_panel,
     build_summary_table,
     build_weight_components,
+    table_wrapper_style,
 )
 from ml_peg.app.utils.build_frameworks import (
     build_framework_page_layout,
@@ -49,13 +55,17 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.settings import register_settings_callbacks
+from ml_peg.app.utils.shell import STARTUP_MASK_POLL_MS, register_shell_callbacks
 from ml_peg.app.utils.storage import (
     build_header_controls,
     register_storage_callbacks,
 )
 from ml_peg.app.utils.utils import (
+    DEFAULT_COLORMAP,
     framework_sort_key,
     get_framework_config,
+    get_mlip_column_width,
 )
 from ml_peg.app.utils.weight_presets import (
     build_weight_preset_selector,
@@ -82,15 +92,19 @@ def _nav_link_style(is_active: bool) -> dict[str, str]:
     dict[str, str]
         Style dictionary for the link.
     """
+    # Airbnb-style pill: the active item is a fully-rounded soft-blue pill;
+    # inactive items are transparent and round on hover (see theme.css
+    # .mlpeg-nav-link:hover). No left rule — the pill carries the state.
     return {
         "display": "block",
-        "padding": "6px 10px",
-        "borderRadius": "4px",
+        "padding": "9px 14px",
+        "marginBottom": "2px",
+        "borderRadius": "999px",
+        "fontSize": "13.5px",
         "textDecoration": "none",
-        "color": "#119DFF" if is_active else "#495057",
-        "fontWeight": "600" if is_active else "normal",
-        "backgroundColor": "#e8f4ff" if is_active else "transparent",
-        "borderLeft": ("3px solid #119DFF" if is_active else "3px solid transparent"),
+        "color": "var(--mlpeg-nav-active-fg)" if is_active else "var(--mlpeg-nav-fg)",
+        "fontWeight": "600" if is_active else "500",
+        "backgroundColor": "var(--mlpeg-nav-active-bg)" if is_active else "transparent",
     }
 
 
@@ -253,7 +267,7 @@ def build_sidebar(
                         "fontSize": "11px",
                         "textTransform": "uppercase",
                         "letterSpacing": "0.07em",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "cursor": "pointer",
                     },
                 ),
@@ -264,7 +278,7 @@ def build_sidebar(
                             href="/",
                             style=_nav_link_style(summary_active),
                             className="sidebar-link",
-                        )
+                        ),
                     ]
                 ),
             ],
@@ -279,7 +293,7 @@ def build_sidebar(
                         "fontSize": "11px",
                         "textTransform": "uppercase",
                         "letterSpacing": "0.07em",
-                        "color": "#6c757d",
+                        "color": "var(--mlpeg-muted)",
                         "cursor": "pointer",
                     },
                 ),
@@ -310,7 +324,7 @@ def build_sidebar(
                             "fontSize": "11px",
                             "textTransform": "uppercase",
                             "letterSpacing": "0.07em",
-                            "color": "#6c757d",
+                            "color": "var(--mlpeg-muted)",
                             "cursor": "pointer",
                         },
                     ),
@@ -412,6 +426,29 @@ def get_all_tests(
     return apps, layouts, tables, frameworks
 
 
+def _collect_benchmark_speeds(
+    all_tables: dict[str, dict[str, DataTable]],
+) -> dict[str, str | None]:
+    """
+    Collect speeds by unique benchmark name.
+
+    Parameters
+    ----------
+    all_tables
+        Tables grouped by category and benchmark.
+
+    Returns
+    -------
+    dict[str, str | None]
+        Speed level for each benchmark name.
+    """
+    return {
+        test_name: getattr(table, "speed", None)
+        for tests in all_tables.values()
+        for test_name, table in tests.items()
+    }
+
+
 def build_category(
     all_layouts: dict[str, dict[str, list[Div]]],
     all_tables: dict[str, dict[str, DataTable]],
@@ -490,11 +527,14 @@ def build_category(
         for test_name in sorted(all_layouts[category]):
             test_framework_ids = all_frameworks[category][test_name]
             framework_ids.update(test_framework_ids)
+            table = all_tables[category][test_name]
             test_entries.append(
                 {
                     "name": test_name,
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
+                    "key": test_name,
+                    "speed": getattr(table, "speed", None),
                 }
             )
 
@@ -517,6 +557,7 @@ def build_category(
 
 def build_category_page_layout(
     category_view: dict[str, object],
+    expand_pref: str | None = None,
 ) -> Div:
     """
     Build a category page layout.
@@ -525,6 +566,9 @@ def build_category_page_layout(
     ----------
     category_view
         Category metadata including summary table, controls, and benchmark layouts.
+    expand_pref
+        Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
+        closes every card, and ``None`` opens only the first card.
 
     Returns
     -------
@@ -537,8 +581,16 @@ def build_category_page_layout(
     weight_components = category_view["weight_components"]
     tests = category_view["tests"]
     benchmark_section = Div(
-        [test["layout"] for test in tests],
-        style={"display": "grid", "gap": "24px"},
+        [
+            build_benchmark_card(
+                test["name"],
+                test["layout"],
+                open_default=expand_pref == "expanded"
+                or (expand_pref is None and index == 0),
+            )
+            for index, test in enumerate(tests)
+        ],
+        className="mlpeg-benchmark-grid",
     )
 
     return Div(
@@ -546,13 +598,19 @@ def build_category_page_layout(
             H1(category_title),
             H3(category_description),
             Div(
-                [
-                    build_download_controls(summary_table.id, row=True),
-                    build_loading_summary_table(summary_table),
-                    Br(),
-                    weight_components,
-                ],
-                style={"width": "fit-content"},
+                Div(
+                    Div(
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            build_loading_summary_table(summary_table),
+                            Br(),
+                            Div(weight_components, className="mlpeg-controls-panel"),
+                        ],
+                        style=table_wrapper_style(summary_table),
+                    ),
+                    className="mlpeg-table-scroll",
+                ),
+                className="mlpeg-summary-card",
             ),
             Div(
                 [
@@ -560,12 +618,13 @@ def build_category_page_layout(
                         style={
                             "width": "100%",
                             "height": "1px",
-                            "backgroundColor": "#a7adb3",
+                            "backgroundColor": "var(--mlpeg-divider)",
                         }
                     ),
                 ],
                 style={"margin": "32px 0 24px"},
             ),
+            build_collapse_controls(),
             benchmark_section,
         ]
     )
@@ -578,6 +637,7 @@ def build_nav(
     summary_table: DataTable,
     weight_components: Div,
     all_apps: dict[str, Dash],
+    benchmark_speeds: dict[str, str | None],
     combined_framework_table: DataTable | None = None,
     framework_weight_components: Div | None = None,
 ) -> None:
@@ -598,6 +658,8 @@ def build_nav(
         Weight sliders, text boxes and reset button.
     all_apps
         Dictionary of all test apps.
+    benchmark_speeds
+        Speed level of each benchmark, used for the summary cost panel.
     combined_framework_table
         Frameworks summary table shown on the home page, or None when there are
         no external frameworks.
@@ -625,49 +687,18 @@ def build_nav(
         "fontSize": "11px",
         "textTransform": "uppercase",
         "letterSpacing": "0.07em",
-        "color": "#6c757d",
+        "color": "var(--mlpeg-muted)",
         "padding": "5px",
     }
-    cmap_selector = Details(
-        [
-            Summary("Colour scheme", style=_summary_label_style),
-            Div(
-                Dropdown(
-                    id="cmap-dropdown",
-                    options=[
-                        {"label": "Viridis (colourblind safe)", "value": "viridis_r"},
-                        {"label": "Blue-Red (colourblind safe)", "value": "coolwarm"},
-                        {
-                            "label": "Green-Red",
-                            "value": "RdYlGn_r",
-                        },
-                    ],
-                    value="viridis_r",
-                    clearable=False,
-                    persistence=True,
-                    persistence_type="local",
-                    persisted_props=["value"],
-                    style={"fontSize": "13px"},
-                ),
-                style={"padding": "8px 12px"},
-            ),
-        ],
-        style={"marginBottom": "8px", "fontSize": "13px"},
-    )
-
+    # The colour-scheme dropdown lives in the header settings panel now (see
+    # ml_peg.app.utils.settings); its sync callback below is unchanged.
     weight_preset_selector = build_weight_preset_selector(_summary_label_style)
 
     sidebar = Div(
         id="sidebar-nav",
+        className="mlpeg-sidebar",
         children=build_sidebar("/", category_paths, framework_paths, framework_labels),
-        style={
-            "width": "220px",
-            "overflowY": "auto",
-            "borderRight": "1px solid #dee2e6",
-            "padding": "12px",
-            "flexShrink": "0",
-            "backgroundColor": "#f8f9fa",
-        },
+        **{"role": "navigation", "aria-label": "Benchmark navigation"},
     )
 
     path_to_category = {path: category for category, path in category_paths.items()}
@@ -723,7 +754,17 @@ def build_nav(
             storage_type="session",
             data=_default_weight_store_data(summary_table),
         ),
-        Store(id="cmap-store", storage_type="local", data="viridis_r"),
+        Store(id="cmap-store", storage_type="local", data=DEFAULT_COLORMAP),
+        # NOTE: the no-flash script in run_app.py reads this store's value
+        # straight from localStorage under the key "theme-store" (dcc.Store
+        # persists local stores under their component id).
+        Store(id="theme-store", storage_type="local"),
+        # Zoom level as a percent (100 = default); like theme-store the no-flash
+        # script in run_app.py reads it from localStorage before first paint.
+        Store(id="zoom-store", storage_type="local"),
+        # Font choice (Inter/System); the no-flash script reads it before paint.
+        Store(id="font-store", storage_type="local"),
+        Store(id="bench-expand-store", storage_type="local"),
         *category_state_stores,
         *framework_state_stores,
         *test_state_stores,
@@ -744,60 +785,32 @@ def build_nav(
         Div(
             [
                 Div(
-                    style={
-                        "width": "52px",
-                        "height": "52px",
-                        "border": "5px solid #d0ebff",
-                        "borderTopColor": "#119DFF",
-                        "borderRadius": "50%",
-                        "animation": "ml-peg-spin 0.8s linear infinite",
-                        "boxSizing": "border-box",
-                    },
+                    [
+                        Div(className="mlpeg-progress-arc"),
+                        Span(className="mlpeg-progress-num"),
+                    ],
+                    className="mlpeg-progress-ring",
                 ),
-                Div(
-                    "Loading ML-PEG…",
-                    style={
-                        "fontSize": "16px",
-                        "fontWeight": "600",
-                        "color": "#212529",
-                    },
-                ),
-                # Time-based progress bar: fills continuously over ~10s, easing
-                # toward ~95% (keyframe in loading.css; same single-element bar
-                # as the pre-hydration loader in dash_loading.css). It vanishes
-                # with the mask when ready, so it never reaches a fake 100%.
-                Div(
-                    style={
-                        "width": "200px",
-                        "height": "6px",
-                        "borderRadius": "3px",
-                        "background": (
-                            "linear-gradient(#119DFF, #119DFF) left center "
-                            "/ 5% 100% no-repeat, #d0ebff"
-                        ),
-                        "animation": "ml-peg-bar-fill 10s ease-out forwards",
-                    },
-                ),
+                Span("ML-PEG", className="mlpeg-loader-word"),
+                Div("Loading benchmarks…", className="mlpeg-loader-text"),
             ],
             id="startup-mask",
-            style={
-                "position": "fixed",
-                "top": "0",
-                "right": "0",
-                "bottom": "0",
-                "left": "0",
-                "display": "flex",
-                "flexDirection": "column",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "gap": "14px",
-                "backgroundColor": "#ffffff",
-                "zIndex": "2100",  # Above the onboarding modal (2000).
-            },
+            className="mlpeg-loader",
         ),
-        Interval(id="startup-mask-poll", interval=250, n_intervals=0),
+        Interval(id="startup-mask-poll", interval=STARTUP_MASK_POLL_MS, n_intervals=0),
         build_onboarding_modal(),
-        build_header_controls(),
+        # Mobile navigation: a fixed hamburger toggles the off-canvas sidebar
+        # (styling + breakpoints in theme.css; toggle is the clientside callback
+        # below). Hidden on desktop via CSS.
+        Button(
+            "☰",
+            id="mobile-nav-toggle",
+            className="mlpeg-hamburger",
+            n_clicks=0,
+            **{"aria-label": "Toggle navigation menu"},
+        ),
+        Div(id="sidebar-scrim", n_clicks=0),
+        Store(id="mobile-nav-state", storage_type="memory"),
         Location(id="app-location", refresh=False),
         Store(
             id="summary-table-scores-store",
@@ -811,60 +824,67 @@ def build_nav(
         Div(global_state_stores, style={"display": "none"}),
         Div(
             [
-                H1(
+                Div(
                     [
-                        Span(
-                            "ML-PEG",
-                            style={
-                                "display": "block",
-                                "fontSize": "1.0em",
-                                "fontWeight": "700",
-                                "letterSpacing": "-0.03em",
-                            },
+                        H1(
+                            [
+                                Span(
+                                    "ML-PEG",
+                                    style={
+                                        "display": "block",
+                                        "fontSize": "1.0em",
+                                        "fontWeight": "700",
+                                        "letterSpacing": "-0.03em",
+                                    },
+                                ),
+                                Span(
+                                    "Machine Learning Performance and "
+                                    "Extrapolation Guide",
+                                    className="mlpeg-subtitle",
+                                    style={
+                                        "display": "block",
+                                        "marginTop": "6px",
+                                        "fontSize": "0.54em",
+                                        "fontWeight": "500",
+                                        "letterSpacing": "0.01em",
+                                        "color": "var(--mlpeg-muted)",
+                                    },
+                                ),
+                                A(
+                                    "Read the documentation →",
+                                    href="https://ddmms.github.io/ml-peg/",
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    className="mlpeg-doclink",
+                                    style={
+                                        "display": "block",
+                                        "marginTop": "10px",
+                                        "fontSize": "0.5em",
+                                        "fontWeight": "600",
+                                        "color": "var(--mlpeg-accent)",
+                                        "textDecoration": "none",
+                                    },
+                                ),
+                            ],
+                            className="mlpeg-header",
                         ),
-                        Span(
-                            "Machine Learning Performance and Extrapolation Guide",
-                            style={
-                                "display": "block",
-                                "marginTop": "4px",
-                                "fontSize": "0.54em",
-                                "fontWeight": "500",
-                                "letterSpacing": "0.01em",
-                                "color": "#6c757d",
-                            },
-                        ),
-                        A(
-                            "📖 Read the documentation →",
-                            href="https://ddmms.github.io/ml-peg/",
-                            target="_blank",
-                            rel="noopener noreferrer",
-                            style={
-                                "display": "block",
-                                "marginTop": "6px",
-                                "fontSize": "0.5em",
-                                "fontWeight": "600",
-                                "color": "#119DFF",
-                                "textDecoration": "none",
-                            },
-                        ),
+                        build_header_controls(),
                     ],
-                    style={
-                        "padding": "12px 16px 16px",
-                        "margin": "0",
-                        "borderBottom": "1px solid #dee2e6",
-                        "color": "#212529",
-                        "lineHeight": "1.05",
-                    },
+                    className="mlpeg-topbar",
                 ),
                 Div(
                     [
                         sidebar,
                         Div(
                             [
-                                get_model_filter(MODELS),
-                                cmap_selector,
-                                weight_preset_selector,
-                                get_element_filter(),
+                                Div(
+                                    [
+                                        get_model_filter(MODELS),
+                                        weight_preset_selector,
+                                        get_element_filter(),
+                                    ],
+                                    className="mlpeg-controls-toolbar",
+                                ),
                                 Store(
                                     id="selected-models-store",
                                     storage_type="session",
@@ -896,6 +916,7 @@ def build_nav(
                                     custom_spinner=build_page_loading_spinner(),
                                     target_components={"page-content": "children"},
                                     show_initially=False,
+                                    delay_show=150,
                                     delay_hide=300,
                                     overlay_style={
                                         "visibility": "visible",
@@ -907,10 +928,11 @@ def build_nav(
                                     },
                                 ),
                             ],
-                            style={"flex": "1", "padding": "16px 16px"},
+                            className="mlpeg-content",
+                            **{"role": "main"},
                         ),
                     ],
-                    style={"display": "flex", "minHeight": "0", "flex": "1"},
+                    className="mlpeg-body",
                 ),
             ],
             style={
@@ -925,29 +947,17 @@ def build_nav(
 
     full_app.layout = Div(
         full_layout,
-        style={"display": "flex", "flexDirection": "column", "minHeight": "100vh"},
+        className="mlpeg-shell",
+        # Shared MLIP column width (same for every table) → drives the sticky
+        # "link" column's left offset in theme.css. Set here so CSS inherits it.
+        style={"--mlip-col-w": f"{get_mlip_column_width()}px"},
     )
 
-    # Hide the start-up mask once the page has rendered, or after a timeout as
-    # a safety net, then stop polling. Clientside, so it adds no server load.
-    # (The progress bar fills via a CSS animation, not this callback.)
-    clientside_callback(
-        """
-        function(n) {
-            var nu = window.dash_clientside.no_update;
-            var ready = document.querySelector('#page-content table tbody tr');
-            if (ready || n > 40) {
-                return [{'display': 'none'}, true];
-            }
-            return [nu, nu];
-        }
-        """,
-        Output("startup-mask", "style"),
-        Output("startup-mask-poll", "disabled"),
-        Input("startup-mask-poll", "n_intervals"),
-    )
-
+    # Shell clientside callbacks (start-up mask + mobile nav) live in shell.py to
+    # keep this module short; see register_shell_callbacks for details.
+    register_shell_callbacks()
     register_storage_callbacks()
+    register_settings_callbacks()
 
     @callback(
         Output("model-filter-checklist", "value"),
@@ -1015,10 +1025,10 @@ def build_nav(
         trigger_id = ctx.triggered_id
 
         if trigger_id in (None, "cmap-store"):
-            selected = stored_cmap or "viridis_r"
+            selected = stored_cmap or DEFAULT_COLORMAP
             return selected, no_update
         if trigger_id == "cmap-dropdown":
-            selected = cmap_name or "viridis_r"
+            selected = cmap_name or DEFAULT_COLORMAP
             return selected, selected
         raise PreventUpdate
 
@@ -1047,13 +1057,111 @@ def build_nav(
         """
         return pathname in (None, "", "/", "/summary")
 
+    # Global lookup of every benchmark's precomputed layout, keyed by display
+    # name, so the lazy-mount callback can inject a card's body on demand.
+    benchmark_layouts: dict[str, object] = {}
+    for category_view in category_views.values():
+        for test in category_view["tests"]:
+            benchmark_layouts[test["name"]] = test["layout"]
+
+    @callback(
+        Output({"type": "bench-body", "index": MATCH}, "children"),
+        Output({"type": "bench-toggle", "index": MATCH}, "className"),
+        Output({"type": "bench-toggle", "index": MATCH}, "aria-expanded"),
+        Input({"type": "bench-toggle", "index": MATCH}, "n_clicks"),
+        State({"type": "bench-toggle", "index": MATCH}, "aria-expanded"),
+        prevent_initial_call=True,
+    )
+    def toggle_benchmark(n_clicks: int, expanded: str) -> tuple[object, str, str]:
+        """
+        Mount a benchmark card's body on expand and unmount it on collapse.
+
+        Parameters
+        ----------
+        n_clicks
+            Click count on the card header (unused; presence triggers the toggle).
+        expanded
+            The header's current ``aria-expanded`` value.
+
+        Returns
+        -------
+        tuple[object, str, str]
+            New body children, the header className reflecting the state, and the
+            matching ``aria-expanded`` value.
+        """
+        key = ctx.triggered_id["index"]
+        if expanded == "true":
+            return None, "mlpeg-bench-header", "false"
+        return (
+            benchmark_layouts.get(key),
+            "mlpeg-bench-header mlpeg-bench-header--open",
+            "true",
+        )
+
+    @callback(
+        Output({"type": "bench-body", "index": ALL}, "children", allow_duplicate=True),
+        Output(
+            {"type": "bench-toggle", "index": ALL}, "className", allow_duplicate=True
+        ),
+        Output(
+            {"type": "bench-toggle", "index": ALL},
+            "aria-expanded",
+            allow_duplicate=True,
+        ),
+        Output("bench-expand-store", "data"),
+        Input("collapse-all-benchmarks", "n_clicks"),
+        State({"type": "bench-body", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def collapse_all_benchmarks(
+        collapse_clicks: int,
+        body_ids: list[dict[str, str]],
+    ) -> tuple[list[object], list[str], list[str], str]:
+        """
+        Collapse every benchmark card on the current page.
+
+        Also records the choice in ``bench-expand-store`` so it applies as the
+        on-load preference for other pages. Per-card toggles deliberately do
+        not write the store — it is a preference, not a mirror of every card.
+
+        Parameters
+        ----------
+        collapse_clicks
+            Click count on the "Collapse all" button.
+        body_ids
+            Pattern-matching ids of every card body on the page.
+
+        Returns
+        -------
+        tuple[list[object], list[str], list[str], str]
+            New body children, header classNames, the matching ``aria-expanded``
+            values, and the persisted preference.
+        """
+        if collapse_clicks:
+            return (
+                [None] * len(body_ids),
+                ["mlpeg-bench-header"] * len(body_ids),
+                ["false"] * len(body_ids),
+                "collapsed",
+            )
+        raise PreventUpdate
+
+    # Cache built category/framework page layouts. The router previously rebuilt
+    # the whole page (summary table + every benchmark card) on every navigation;
+    # the views are fixed after build, so a layout only depends on (kind, name,
+    # expansion preference) — at most three entries per page. Makes repeat
+    # navigation instant without merging the default and collapsed states.
+    page_layout_cache: dict[tuple[str, str, str | None], Div] = {}
+
     @callback(
         Output("page-content", "children"),
         Output("sidebar-nav", "children"),
         Input("app-location", "pathname"),
+        State("bench-expand-store", "data"),
     )
     def select_page(
         pathname: str | None,
+        expand_pref: str | None,
     ) -> tuple[Div, list[Details]]:
         """
         Select page contents to be displayed.
@@ -1062,12 +1170,17 @@ def build_nav(
         ----------
         pathname
             Current URL pathname.
+        expand_pref
+            Persisted benchmark expansion preference ("expanded", "collapsed"
+            or ``None``).
 
         Returns
         -------
         Div
             Summary or category contents to be displayed.
         """
+        if expand_pref not in ("expanded", "collapsed"):
+            expand_pref = None
         sidebar_children = build_sidebar(
             pathname, category_paths, framework_paths, framework_labels
         )
@@ -1082,40 +1195,29 @@ def build_nav(
                     H1("Categories Summary"),
                     Div(
                         summary_counts,
-                        style={
-                            "fontSize": "14px",
-                            "fontWeight": "600",
-                            "color": "#212529",
-                            "backgroundColor": "#f1f3f5",
-                            "border": "1px solid #dee2e6",
-                            "borderRadius": "6px",
-                            "padding": "8px 14px",
-                            "marginBottom": "12px",
-                            "width": "fit-content",
-                        },
+                        className="mlpeg-chip",
                     ),
                     Div(
                         "Scores range from 0 (worst) to 1 (best).",
-                        style={
-                            "fontSize": "14px",
-                            "fontWeight": "600",
-                            "color": "#212529",
-                            "backgroundColor": "#e8f4fd",
-                            "border": "1px solid #bee3f8",
-                            "borderRadius": "6px",
-                            "padding": "8px 14px",
-                            "marginBottom": "16px",
-                            "width": "fit-content",
-                        },
+                        className="mlpeg-chip",
                     ),
                     Div(
-                        [
-                            build_download_controls(summary_table.id, row=True),
-                            build_loading_summary_table(summary_table),
-                            Br(),
-                            weight_components,
-                        ],
-                        style={"width": "fit-content"},
+                        Div(
+                            Div(
+                                [
+                                    build_download_controls(summary_table.id, row=True),
+                                    build_loading_summary_table(summary_table),
+                                    Br(),
+                                    Div(
+                                        weight_components,
+                                        className="mlpeg-controls-panel",
+                                    ),
+                                ],
+                                style=table_wrapper_style(summary_table),
+                            ),
+                            className="mlpeg-table-scroll",
+                        ),
+                        className="mlpeg-summary-card",
                     ),
                     *(
                         [
@@ -1124,40 +1226,56 @@ def build_nav(
                                 style={"marginTop": "32px"},
                             ),
                             Div(
-                                [
-                                    build_download_controls(
-                                        combined_framework_table.id, row=True
+                                Div(
+                                    Div(
+                                        [
+                                            build_download_controls(
+                                                combined_framework_table.id, row=True
+                                            ),
+                                            build_loading_summary_table(
+                                                combined_framework_table
+                                            ),
+                                            Br(),
+                                            Div(
+                                                framework_weight_components,
+                                                className="mlpeg-controls-panel",
+                                            ),
+                                        ],
+                                        style=table_wrapper_style(
+                                            combined_framework_table
+                                        ),
                                     ),
-                                    build_loading_summary_table(
-                                        combined_framework_table
-                                    ),
-                                    Br(),
-                                    framework_weight_components,
-                                ],
-                                style={"width": "fit-content"},
+                                    className="mlpeg-table-scroll",
+                                ),
+                                className="mlpeg-summary-card",
                             ),
                         ]
                         if combined_framework_table is not None
                         else []
                     ),
+                    build_speed_panel(benchmark_speeds, title_font_size="32px"),
                     build_faqs(),
                 ]
             ), sidebar_children
 
         selected_framework = path_to_framework.get(pathname)
         if selected_framework is not None:
-            return (
-                Div([build_framework_page_layout(framework_views[selected_framework])]),
-                sidebar_children,
-            )
+            key = ("framework", selected_framework, expand_pref)
+            if key not in page_layout_cache:
+                page_layout_cache[key] = build_framework_page_layout(
+                    framework_views[selected_framework], expand_pref
+                )
+            return Div([page_layout_cache[key]]), sidebar_children
 
         selected_category = path_to_category.get(pathname)
         if selected_category is None:
             return Div([H3("Page not found")]), sidebar_children
-        return (
-            Div([build_category_page_layout(category_views[selected_category])]),
-            sidebar_children,
-        )
+        key = ("category", selected_category, expand_pref)
+        if key not in page_layout_cache:
+            page_layout_cache[key] = build_category_page_layout(
+                category_views[selected_category], expand_pref
+            )
+        return Div([page_layout_cache[key]]), sidebar_children
 
 
 def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None:
@@ -1231,6 +1349,8 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         column_widths=summary_table.column_widths,
     )
     # Build summary and category pages and navigation
+    benchmark_speeds = _collect_benchmark_speeds(all_tables)
+
     build_nav(
         full_app,
         cat_views,
@@ -1238,6 +1358,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         summary_table,
         weight_components,
         all_apps,
+        benchmark_speeds,
         combined_framework_table,
         framework_weight_components,
     )

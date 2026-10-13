@@ -1,0 +1,18 @@
+implementers:
+  - name: "Jonathan Schmidt"
+    github: "JonathanSchmidt1"
+
+contributors: []
+
+citations:
+  - key: "loew-2026-pressure"
+    role: reference_data
+    title: "Universal machine learning potentials under pressure"
+    authors:
+      - "Antoine Loew"
+      - "Jonathan Schmidt"
+      - "Silvana Botti"
+      - "Miguel A L Marques"
+    year: 2026
+    doi: "10.1088/2515-7639/ae2ba8"
+    url: null

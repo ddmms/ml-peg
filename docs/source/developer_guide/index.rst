@@ -10,6 +10,7 @@ Developer guide
     vibecoding
     cli
     add_benchmarks
+    add_interactivity
     add_category
     running
     data

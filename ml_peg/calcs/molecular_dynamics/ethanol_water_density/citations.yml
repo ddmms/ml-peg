@@ -1,0 +1,16 @@
+implementers:
+  - name: "Arn De Moor"
+    github: "arnon-1"
+
+contributors: []
+
+citations:
+  - key: "southard-2018-perrys"
+    role: reference_data
+    title: "Perry's Chemical Engineers' Handbook, 9th Edition"
+    authors:
+      - "D. W. Green"
+      - "M. Z. Southard"
+    year: 2018
+    doi: null
+    url: null

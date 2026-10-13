@@ -61,10 +61,10 @@ Weighted mean absolute deviation (MAD) of all subsets.
 Same as (1), for all subsets.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 
 Data availability
@@ -105,10 +105,10 @@ DLPNO-CCSD(T)/CBS geometry optimised structure to the energies of its 50 straine
 mean absolute error is reported over all 150 conformers.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -154,7 +154,7 @@ at distances below 2.5 Å, this indicates bond formation and the model fails the
 * 1 = bonds formed (unphysical, model failure)
 
 
-Computational cost
+Benchmark speed
 ------------------
 
 Medium: tests require running 10,000 steps of Langevin MD for a system of 10 ion

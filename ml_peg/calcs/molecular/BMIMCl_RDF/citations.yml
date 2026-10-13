@@ -1,0 +1,26 @@
+implementers:
+  - name: "Fabian Zills"
+    github: "PythonFZ"
+
+contributors: []
+
+citations:
+  - key: "zills-2025-molify"
+    role: benchmark_method
+    title: "molify: Molecular Structure Interface"
+    authors:
+      - "F. Zills"
+    year: 2025
+    doi: "10.21105/joss.08829"
+    url: null
+  - key: "yang-2017-volumetric"
+    role: reference_data
+    title: "Volumetric Properties of 1-Butyl-3-methylimidazolium Chloride with Organic Solvents"
+    authors:
+      - "F. Yang"
+      - "D. Wang"
+      - "X. Wang"
+      - "Z. Liu"
+    year: 2017
+    doi: "10.1021/acs.jced.7b00654"
+    url: null

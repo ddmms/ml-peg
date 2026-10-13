@@ -9,20 +9,49 @@ from warnings import warn
 
 from dash.dash_table import DataTable
 from dash.dcc import Graph
-from plotly.io import read_json
+import orjson
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
+from ml_peg.app.utils.speed import speed_for_table_path
 from ml_peg.app.utils.utils import (
+    apply_column_decimals,
     build_level_of_theory_warnings,
     calculate_column_widths,
     clean_table_data,
     clean_thresholds,
     clean_weights,
+    drop_empty_model_rows,
     is_numeric_column,
     none_to_nan,
-    sig_fig_format,
 )
-from ml_peg.models.get_models import get_model_names, load_model_configs
+from ml_peg.models.get_models import load_model_configs
+
+
+def read_json(path: str | Path) -> object:
+    """
+    Read a JSON file quickly via orjson, falling back to the stdlib parser.
+
+    orjson is faster but rejects the bare ``NaN``/``Infinity`` tokens the analysis
+    stage sometimes writes; the stdlib ``json`` parser accepts them, so retry with
+    it when orjson raises.
+
+    Parameters
+    ----------
+    path
+        Path to the JSON file.
+
+    Returns
+    -------
+    object
+        Parsed JSON content.
+    """
+    with open(path, "rb") as file:
+        data = file.read()
+    try:
+        return orjson.loads(data)
+    except orjson.JSONDecodeError:
+        return json.loads(data)
 
 
 def rebuild_table(
@@ -51,25 +80,22 @@ def rebuild_table(
         If the table JSON omits required ``thresholds`` metadata.
     """
     # Load JSON file
-    with open(filename) as f:
-        table_json = json.load(f)
+    table_json = read_json(filename)
 
     data = table_json["data"]
+    columns = table_json["columns"]
     # Remove values greater than int64 limits
     clean_table_data(data)
     # Replace None scores with NaN
     none_to_nan(data)
+    # Hide models with no result in any metric column for this benchmark
+    # An empty row cannot currenrly gain data
+    data = drop_empty_model_rows(data)
 
-    columns = table_json["columns"]
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))
     if not thresholds:
         raise ValueError(f"No thresholds defined in table JSON: {filename}")
-
-    # Pad table with all models from registry (models without data will be
-    # grayed/hashed out)
-    all_registry_models = get_model_names()
-    existing_display_names = {row.get("MLIP") for row in data}
 
     # Model names come in two forms:
     # - Original model name: Base name from models.yml (e.g., "mace-mp-0a")
@@ -78,29 +104,6 @@ def rebuild_table(
     # model_name_map stores: display_name -> original model name
     # We need the inverse for lookups: original name -> display name
     original_to_display = {v: k for k, v in model_name_map.items()}
-
-    # Determine which metrics exist (excluding MLIP, Score, id)
-    metric_columns = [
-        col["id"] for col in columns if col.get("id") not in {"MLIP", "Score", "id"}
-    ]
-
-    # Add missing models with NaN for all metrics
-    for original_model in all_registry_models:
-        # Convert original model name (from registry) to display name (for table)
-        display_name = original_to_display.get(original_model, original_model)
-        if display_name not in existing_display_names:
-            # Create row with NaN for all metrics (will appear hashed out) while
-            # storing the original model name in ``id`` so callbacks have a stable key
-            new_row = {"MLIP": display_name, "id": original_model}
-            for metric in metric_columns:
-                new_row[metric] = "NaN"
-            # Score will be NaN (calculated later by calc_table_scores)
-            new_row["Score"] = "NaN"
-            data.append(new_row)
-
-            # Update model_name_map if this is a new model not in original JSON
-            if original_model not in model_name_map.values():
-                model_name_map[display_name] = original_model
 
     width_labels: list[str] = []
 
@@ -118,7 +121,6 @@ def rebuild_table(
             continue
         if column.get("type") == "numeric" or is_numeric_column(data, column_id):
             column["type"] = "numeric"
-            column.setdefault("format", sig_fig_format())
         if column_name is not None and not isinstance(column_name, str):
             raise TypeError(
                 "Column display names must be strings. "
@@ -141,8 +143,7 @@ def rebuild_table(
     metric_levels = table_json.get("metric_levels_of_theory") or {}
     model_configs = table_json.get("model_configs") or {}
 
-    # Add model configs and levels for newly added models
-    # (models that were padded but not in original JSON)
+    # Add model configs and levels missing from older table metadata
     all_display_names = {row.get("MLIP") for row in data}
     missing_models = []
     for display_name in all_display_names:
@@ -167,25 +168,31 @@ def rebuild_table(
     )
     style_with_warnings = style + warning_styles
 
+    # Proportional widths (percent of total) with a pixel minWidth floor, matching
+    # the summary tables: the table fills its container up to the wrapper's cap and
+    # scrolls below the floor. The weight/threshold grids use matching minmax(px,fr)
+    # tracks so they stay aligned with the columns.
+    # ``or 1`` guards the ``width / total_column_width`` division below against a
+    # degenerate table whose column widths are all falsy (None/0).
+    total_column_width = sum(w for w in column_widths.values() if w) or 1
     style_cell_conditional: list[dict[str, object]] = []
     for column_id, width in column_widths.items():
         if width is None:
             continue
-        col_width = f"{width}px"
-        alignment = "left" if column_id == "MLIP" else "center"
+        alignment = "left" if column_id == "MLIP" else "right"
         style_cell_conditional.append(
             {
                 "if": {"column_id": column_id},
-                "width": col_width,
-                "minWidth": col_width,
-                "maxWidth": col_width,
+                "width": f"{width / total_column_width * 100:.4f}%",
+                "minWidth": f"{width}px",
                 "textAlign": alignment,
             }
         )
 
     table = DataTable(
         data=data,
-        columns=columns,
+        # One fixed decimal count per column (e.g. 11.000 next to 0.355).
+        columns=apply_column_decimals(columns, data),
         tooltip_header=tooltip_header,
         tooltip_delay=100,
         tooltip_duration=None,
@@ -198,7 +205,7 @@ def rebuild_table(
             "height": "auto",
             "minHeight": "70px",
             "textAlign": "center",
-            "verticalAlign": "middle",
+            "verticalAlign": "bottom",
             "lineHeight": "1.4",
             "padding": "8px",
         },
@@ -209,7 +216,8 @@ def rebuild_table(
             }
         ],
         sort_action="native",
-        fill_width=False,
+        sort_as_null=["NaN"],
+        fill_width=True,
     )
 
     thresholds = clean_thresholds(table_json.get("thresholds"))
@@ -226,8 +234,18 @@ def rebuild_table(
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
     table.column_widths = column_widths
+    table.speed = speed_for_table_path(filename)
+    table.total_column_width = total_column_width
 
     return table
+
+
+# A responsive dcc.Graph sizes itself to height:100% of its container on re-render
+# (e.g. adding the click-highlight ring). Our containers have no height, so
+# without this the graph box collapses to 0 and the figure overflows onto
+# whatever sits below it (the WEAS viewer). 450px is Plotly's default height,
+# which these figures (no authored layout.height) render at anyway.
+RESPONSIVE_GRAPH_STYLE = {"height": "450px"}
 
 
 def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
@@ -246,8 +264,45 @@ def read_plot(filename: str | Path, id: str = "figure-1") -> Graph:
     Graph
         Loaded plotly Graph.
     """
-    figure = read_json(filename) if Path(filename).exists() else None
-    return Graph(id=id, figure=figure)
+    # Pass the saved figure through to dcc.Graph as a plain dict rather than
+    # rebuilding a validated plotly ``Figure``. Plotly re-validates every property
+    # when reconstructing a ``Figure``, which dominates app start-up; the browser's
+    # plotly.js renders the dict identically, so the Figure round-trip is redundant.
+    if Path(filename).exists():
+        figure = read_json(filename)
+    else:
+        figure = None
+    responsive = _responsive_mode(figure)
+    return Graph(
+        id=id,
+        figure=figure,
+        responsive=responsive,
+        style=RESPONSIVE_GRAPH_STYLE if responsive is True else None,
+        config={"displaylogo": False},
+    )
+
+
+def _responsive_mode(figure: dict | None) -> bool | str:
+    """
+    Choose the ``dcc.Graph`` responsive mode for a saved figure.
+
+    ``responsive=True`` makes a figure fill its container, but Dash implements
+    that by unsetting ``layout.height``/``layout.width`` -- which would discard
+    the authored size of the few figures that set one (e.g. the 1500x1500
+    graphene-wetting panels). Those keep Dash's default ``"auto"``.
+
+    Parameters
+    ----------
+    figure
+        Saved figure dict, or None when the file is missing.
+
+    Returns
+    -------
+    bool or str
+        ``True`` to stretch to the container, ``"auto"`` to respect the figure.
+    """
+    layout = (figure or {}).get("layout") or {}
+    return "auto" if layout.get("height") or layout.get("width") else True
 
 
 def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
@@ -277,9 +332,9 @@ def _filter_density_figure_for_model(fig_dict: dict, model: str) -> dict:
     fig_data = []
     for trace in data:
         name = trace.get("name")
-        if name is None or name == model:
-            # ``name`` is ``None`` for the y=x reference line; keep that and the
-            # requested model trace visible while hiding their legend entries.
+        if name in {None, PARITY_LINE_NAME, model}:
+            # Older figures left the y=x guide unnamed. Keep both forms plus the
+            # requested model trace while hiding their legend entries.
             trace_copy = deepcopy(trace)
             trace_copy["visible"] = True
             trace_copy["showlegend"] = False
@@ -328,8 +383,7 @@ def read_density_plot_for_model(
         Dash Graph displaying only the requested model (plus reference line).
         Returns None if the model has no data in the plot.
     """
-    with open(filename) as f:
-        fig_dict = json.load(f)
+    fig_dict = read_json(filename)
 
     filtered_fig = _filter_density_figure_for_model(fig_dict, model)
 
@@ -339,7 +393,14 @@ def read_density_plot_for_model(
         warn(f"No model data found for {model}", stacklevel=2)
         return None
 
-    return Graph(id=id, figure=filtered_fig)
+    responsive = _responsive_mode(filtered_fig)
+    return Graph(
+        id=id,
+        figure=filtered_fig,
+        responsive=responsive,
+        style=RESPONSIVE_GRAPH_STYLE if responsive is True else None,
+        config={"displaylogo": False},
+    )
 
 
 def collect_traj_assets(

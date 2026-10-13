@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping, Sequence
 import functools
 import json
 from json import dump
 from pathlib import Path
 from typing import Any
+import warnings
 
 from dash import dash_table
 import numpy as np
 import pandas as pd
 import plotly.colors as pc
 import plotly.graph_objects as go
+import plotly.io as pio
 
+from ml_peg import analysis, models
 from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_COLS,
     PERIODIC_TABLE_POSITIONS,
@@ -27,8 +30,12 @@ from ml_peg.analysis.utils.utils import (
     calc_table_scores,
     sample_density_grid,
 )
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
+
+# Figure metadata key recording what each subplot panel is plotted against
+PANEL_KEYS_META = "panel_keys"
 
 
 def plot_parity(
@@ -139,6 +146,10 @@ def plot_parity(
                     )
                 )
 
+            # Preserve traces for models not being analysed, before axis limits are
+            # calculated from all traces
+            fig = merge_saved_traces(fig, filename)
+
             if symbol_by:
                 for group in groups:
                     label = (symbol_labels or {}).get(group, group)
@@ -169,7 +180,9 @@ def plot_parity(
                     x=lims,
                     y=lims,
                     mode="lines",
+                    name=PARITY_LINE_NAME,
                     showlegend=False,
+                    hoverinfo="skip",
                 )
             )
 
@@ -207,6 +220,7 @@ def cell_to_scatter(
     filename: str | Path,
     x_label: str | None = None,
     y_label: str | None = None,
+    metric_axis_labels: Mapping[str, tuple[str | None, str | None]] | None = None,
     title_template: str = "{model} - {metric}",
 ) -> Callable:
     """
@@ -228,6 +242,9 @@ def cell_to_scatter(
         Label for x-axis (typically "Predicted"). Default is None.
     y_label
         Label for y-axis (typically "Reference"). Default is None.
+    metric_axis_labels
+        Optional mapping from metric key to ``(x_label, y_label)``. This overrides
+        the default labels for metrics with different quantities or units.
     title_template
         Template for plot titles with {model} and {metric} placeholders.
         Default is "{model} - {metric}".
@@ -324,21 +341,33 @@ def cell_to_scatter(
                             x=lims,
                             y=lims,
                             mode="lines",
+                            name=PARITY_LINE_NAME,
                             showlegend=False,
+                            hoverinfo="skip",
                         )
                     )
 
                     # Update layout
                     metric_label = metric_labels.get(metric_key, metric_key)
                     title = title_template.format(model=model_name, metric=metric_label)
+                    metric_x_label, metric_y_label = (
+                        metric_axis_labels.get(metric_key, (x_label, y_label))
+                        if metric_axis_labels
+                        else (x_label, y_label)
+                    )
                     fig.update_layout(
                         title={"text": title},
-                        xaxis={"title": {"text": x_label}},
-                        yaxis={"title": {"text": y_label}},
+                        xaxis={"title": {"text": metric_x_label}},
+                        yaxis={"title": {"text": metric_y_label}},
                     )
 
                     # Store figure as JSON-serializable dict
                     model_data["figures"][metric_key] = json.loads(fig.to_json())
+
+            # Preserve figures for models not being analysed
+            data_bundle["models"] = merge_saved_models(
+                models_data, filename, key="models"
+            )
 
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -463,6 +492,9 @@ def plot_hist(
                     )
                 )
 
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
+
             fig.update_layout(
                 barmode="overlay",
                 title=title,
@@ -491,6 +523,7 @@ def plot_scatter(
     show_markers: bool = True,
     hoverdata: dict | None = None,
     horizontal_lines: list[float | dict[str, Any]] | None = None,
+    hovertemplate: str | None = None,
     filename: str = "scatter.json",
     highlight_range: dict = None,
 ) -> Callable:
@@ -515,6 +548,9 @@ def plot_scatter(
         Optional horizontal reference lines. Each entry can be either a float ``y``
         value or a dict with keys ``y`` (required), ``name``, ``color``, ``dash``,
         and ``width``. Default is ``None``.
+    hovertemplate
+        Base hovertemplate string. Overrides the default reference/prediction
+        template. Any ``hoverdata`` keys are appended to it. Default is `None`.
     filename
         Filename to save plot as JSON. Default is "scatter.json".
     highlight_range
@@ -565,11 +601,15 @@ def plot_scatter(
                 if isinstance(dynamic, list):
                     dynamic_horizontal_lines = dynamic
 
-            hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            template = (
+                hovertemplate
+                if hovertemplate is not None
+                else "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
+            )
             customdata = []
             if hoverdata:
                 for i, key in enumerate(hoverdata):
-                    hovertemplate += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
+                    template += f"<b>{key}: </b>%{{customdata[{i}]}}<br>"
                 customdata = list(zip(*hoverdata.values(), strict=True))
 
             modes = []
@@ -590,7 +630,7 @@ def plot_scatter(
                         name=name,
                         mode=mode,
                         customdata=customdata,
-                        hovertemplate=hovertemplate,
+                        hovertemplate=template,
                     )
                 )
 
@@ -607,6 +647,9 @@ def plot_scatter(
                             opacity=0.25,
                             line_width=0,
                         )
+
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
 
             fig.update_layout(
                 title={"text": title},
@@ -667,13 +710,12 @@ def plot_scatter(
                         return None
                     return out if np.isfinite(out) else None
 
+                # Use plotted traces, rather than results, to include any traces
+                # preserved for models not being analysed
                 y_values = [
                     y_float
-                    for value in results.values()
-                    if isinstance(value, tuple | list)
-                    and len(value) >= 2
-                    and isinstance(value[1], list | tuple | np.ndarray)
-                    for y in value[1]
+                    for trace in fig.data
+                    for y in (trace.y if trace.y is not None else ())
                     for y_float in [_as_finite_float(y)]
                     if y_float is not None
                 ]
@@ -806,7 +848,7 @@ def plot_density_scatter(
             global_min = np.inf
             global_max = -np.inf
             processed = {}
-            annotations = []
+            annotations = {}
             annotation_fields = annotation_metadata or {}
             hover_fields = hover_metadata or {}
 
@@ -855,34 +897,22 @@ def plot_density_scatter(
                             annotation_values, annotation_fields.values(), strict=True
                         )
                     )
-                annotations.append(
-                    {
-                        "text": f"{model}"
-                        + (f" | {summary_text}" if summary_text else ""),
-                        "xref": "paper",
-                        "yref": "paper",
-                        "x": 0.02,
-                        "y": 0.98,
-                        "showarrow": False,
-                        "bgcolor": "rgba(255,255,255,0.8)",
-                        "bordercolor": "rgba(0,0,0,0.3)",
-                        "borderpad": 4,
-                    }
-                )
+                annotations[model] = {
+                    "text": f"{model}" + (f" | {summary_text}" if summary_text else ""),
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.02,
+                    "y": 0.98,
+                    "showarrow": False,
+                    "bgcolor": "rgba(255,255,255,0.8)",
+                    "bordercolor": "rgba(0,0,0,0.3)",
+                    "borderpad": 4,
+                }
                 processed[model] = {
                     "samples": sampled,
                     "counts": len(ref_vals),
                     "meta": hover_values if hover_fields else None,
                 }
-
-            if not np.isfinite(global_min) or not np.isfinite(global_max):
-                global_min, global_max = 0.0, 1.0
-
-            padding = 0.05 * (
-                global_max - global_min if global_max != global_min else 1.0
-            )
-            line_start = global_min - padding
-            line_end = global_max + padding
 
             fig = go.Figure()
             hover_lines = [
@@ -895,7 +925,7 @@ def plot_density_scatter(
                     hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
             hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
-            for idx, model in enumerate(results):
+            for model in results:
                 sample_x, sample_y, density = processed[model]["samples"]
                 fig.add_trace(
                     go.Scattergl(
@@ -903,7 +933,6 @@ def plot_density_scatter(
                         y=sample_y,
                         mode="markers",
                         name=model,
-                        visible=idx == 0,
                         marker={
                             "size": 6,
                             "color": density,
@@ -919,12 +948,58 @@ def plot_density_scatter(
                     )
                 )
 
+            # Preserve traces, and their annotations, for models not being analysed
+            if analysis.update_results:
+                saved_fig = load_saved_figure(filename)
+                saved_traces = get_saved_traces(saved_fig, filename)
+                if saved_traces:
+                    # Saved annotations are stored in the same order as saved models
+                    saved_meta = saved_fig.layout.meta or {}
+                    saved_annotations = dict(
+                        zip(
+                            saved_meta.get("models", []),
+                            saved_meta.get("annotations", []),
+                            strict=False,
+                        )
+                    )
+                    annotations = saved_annotations | annotations
+                    fig = go.Figure(
+                        data=order_traces(list(fig.data) + saved_traces),
+                        layout=fig.layout,
+                    )
+                    for trace in saved_traces:
+                        for values in (trace.x, trace.y):
+                            if values is None:
+                                continue
+                            # Non-finite values are saved as null, and read back as None
+                            coords = np.asarray(values, dtype=float)
+                            coords = coords[np.isfinite(coords)]
+                            if coords.size == 0:
+                                continue
+                            global_min = min(global_min, coords.min())
+                            global_max = max(global_max, coords.max())
+
+            # Only show the first model, with the remainder toggled via the legend
+            for idx, trace in enumerate(fig.data):
+                trace.visible = idx == 0
+
+            if not np.isfinite(global_min) or not np.isfinite(global_max):
+                global_min, global_max = 0.0, 1.0
+
+            padding = 0.05 * (
+                global_max - global_min if global_max != global_min else 1.0
+            )
+            line_start = global_min - padding
+            line_end = global_max + padding
+
             fig.add_trace(
                 go.Scatter(
                     x=[line_start, line_end],
                     y=[line_start, line_end],
                     mode="lines",
+                    name=PARITY_LINE_NAME,
                     showlegend=False,
+                    hoverinfo="skip",
                     line={"color": "black", "dash": "dash"},
                     visible=True,
                 )
@@ -932,16 +1007,21 @@ def plot_density_scatter(
 
             # Store all annotations and model order in layout meta so consumers
             # can swap annotation text when filtering per-model on the frontend.
+            # Models without an annotation are excluded, to keep both lists aligned.
+            plotted_models = [
+                trace.name for trace in fig.data if trace.name in annotations
+            ]
+            ordered_annotations = [annotations[model] for model in plotted_models]
             layout_meta = {
-                "annotations": annotations,
-                "models": list(results),
+                "annotations": ordered_annotations,
+                "models": plotted_models,
             }
 
             fig.update_layout(
                 title={"text": title} if title else None,
                 xaxis={"title": {"text": x_label}},
                 yaxis={"title": {"text": y_label}},
-                annotations=[annotations[0]] if annotations else [],
+                annotations=[ordered_annotations[0]] if ordered_annotations else [],
                 meta=layout_meta,
                 showlegend=True,
                 legend_title_text="Model",
@@ -954,6 +1034,145 @@ def plot_density_scatter(
         return plot_density_wrapper
 
     return plot_density_decorator
+
+
+def plot_violin(
+    *,
+    title: str | None = None,
+    y_label: str | None = None,
+    hoverdata: dict[str, list] | None = None,
+    filename: str = "violin.json",
+    threshold: float | None = None,
+    threshold_label: str | None = None,
+) -> Callable:
+    """
+    Plot overlapping violin distributions of per-model value lists.
+
+    The decorated function must return a mapping of model name to a list of
+    numeric values (NaNs are silently ignored).
+
+    Parameters
+    ----------
+    title
+        Graph title. Default is None.
+    y_label
+        Label for y-axis. Default is None.
+    hoverdata
+        Hover data dictionary mapping field names to lists of values, aligned
+        with the per-structure value lists. NaN entries are filtered in sync
+        with the value lists. Default is None.
+    filename
+        Filename to save plot as JSON. Default is "violin.json".
+    threshold
+        Value at which to draw a dashed line across the distributions, for metrics
+        with a pass/fail criterion. Default is None, drawing no line.
+    threshold_label
+        Label annotating the threshold line. Default is None, labelling it with
+        `threshold`.
+
+    Returns
+    -------
+    Callable
+        Decorator to wrap function.
+    """
+
+    def plot_violin_decorator(func: Callable) -> Callable:
+        """
+        Decorate function to plot violin.
+
+        Parameters
+        ----------
+        func
+            Function being wrapped.
+
+        Returns
+        -------
+        Callable
+            Wrapped function.
+        """
+
+        @functools.wraps(func)
+        def plot_violin_wrapper(*args, **kwargs) -> dict[str, Any]:
+            """
+            Wrap function to plot violin.
+
+            Parameters
+            ----------
+            *args
+                Arguments to pass to the function being wrapped.
+            **kwargs
+                Key word arguments to pass to the function being wrapped.
+
+            Returns
+            -------
+            dict
+                Results dictionary.
+            """
+            results = func(*args, **kwargs)
+
+            hovertemplate = None
+            if hoverdata:
+                hovertemplate = f"<b>{y_label or 'Value'}:</b> %{{y:.4f}}<br>"
+                for i, key in enumerate(hoverdata):
+                    hovertemplate += f"<b>{key}:</b> %{{customdata[{i}]}}<br>"
+                hovertemplate += "<extra></extra>"
+
+            fig = go.Figure()
+            for model_name, values in results.items():
+                mask = [v is not None and not np.isnan(v) for v in values]
+                filtered = [v for v, m in zip(values, mask, strict=True) if m]
+
+                customdata = None
+                if hoverdata:
+                    filtered_cols = [
+                        [v for v, m in zip(col, mask, strict=True) if m]
+                        for col in hoverdata.values()
+                    ]
+                    customdata = (
+                        list(zip(*filtered_cols, strict=True))
+                        if filtered_cols
+                        else None
+                    )
+
+                fig.add_trace(
+                    go.Violin(
+                        y=filtered,
+                        name=model_name,
+                        points="all",
+                        jitter=0.05,
+                        box_visible=True,
+                        meanline_visible=True,
+                        opacity=0.6,
+                        customdata=customdata,
+                        hovertemplate=hovertemplate,
+                    )
+                )
+
+            # Preserve traces for models not being analysed
+            fig = merge_saved_traces(fig, filename)
+
+            fig.update_layout(
+                title={"text": title},
+                yaxis={"title": {"text": y_label}},
+            )
+
+            if threshold is not None:
+                fig.add_hline(
+                    y=threshold,
+                    line_dash="dash",
+                    line_color="#d62728",
+                    annotation_text=threshold_label or f"threshold = {threshold}",
+                    annotation_position="top right",
+                )
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            fig.write_json(filename)
+
+            return results
+
+        return plot_violin_wrapper
+
+    return plot_violin_decorator
 
 
 def plot_periodic_table(
@@ -1599,6 +1818,480 @@ def periodic_curve_gallery(
     return periodic_curve_gallery_decorator
 
 
+def get_updated_models() -> set[str]:
+    """
+    Get models being analysed by the current run.
+
+    Returns
+    -------
+    set[str]
+        Names of models selected for the current run. Saved results for all other
+        models are preserved when updating.
+    """
+    return set(get_model_names(models.current_models))
+
+
+def get_preserved_models() -> set[str]:
+    """
+    Get models whose saved results are preserved by the current run.
+
+    Returns
+    -------
+    set[str]
+        Names of all models that are not being analysed. Models that are no longer
+        defined in models.yml are excluded, as they cannot be displayed by the app.
+    """
+    return set(get_model_names()) - get_updated_models()
+
+
+def warn_dropped_models(dropped_models: Iterable[str], filename: str | Path) -> None:
+    """
+    Warn that saved results will be removed when rewriting a file.
+
+    Results can only be preserved for models defined in the models file used by the
+    current run, so results saved for any other model are lost when the file is
+    rewritten.
+
+    Parameters
+    ----------
+    dropped_models
+        Names of models with saved results that cannot be preserved.
+    filename
+        Filename of the file being rewritten.
+    """
+    dropped = sorted(set(dropped_models))
+    if not dropped:
+        return
+
+    warnings.warn(
+        f"Saved results for {', '.join(dropped)} will be removed from {filename}. "
+        "Only models defined in the models file used by the current run can be "
+        "preserved, so add these models to it to keep their results.",
+        stacklevel=3,
+    )
+
+
+def order_models(model_data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Order models to match the model registry, keeping unrecognised models last.
+
+    Parameters
+    ----------
+    model_data
+        Mapping of model name to its data.
+
+    Returns
+    -------
+    dict[str, Any]
+        `model_data`, in the order models are defined in models.yml, followed by any
+        remaining models in their original order.
+    """
+    model_order = get_model_names()
+    ordered = [model for model in model_order if model in model_data]
+    ordered += [model for model in model_data if model not in set(model_order)]
+
+    return {model: model_data[model] for model in ordered}
+
+
+def get_model_colour(model: str, colours: Sequence[str]) -> str:
+    """
+    Get the colour of a model, based on its position in the model registry.
+
+    Colours must not be assigned by the order models are plotted, as this depends on
+    the models being analysed, so would be reused by preserved traces when updating.
+
+    Parameters
+    ----------
+    model
+        Model to get the colour of.
+    colours
+        Colours to choose from, in order.
+
+    Returns
+    -------
+    str
+        Colour of `model`. Models not defined in models.yml share the colour
+        following those of all defined models.
+    """
+    model_order = get_model_names()
+    index = model_order.index(model) if model in model_order else len(model_order)
+
+    return colours[index % len(colours)]
+
+
+def load_saved_models(filename: str | Path, key: str | None = None) -> dict[str, Any]:
+    """
+    Load per-model data of a previously saved data bundle.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved data bundle.
+    key
+        Key of the saved data bundle holding per-model data. Default is `None`,
+        corresponding to the data bundle itself being keyed by model.
+
+    Returns
+    -------
+    dict[str, Any]
+        Mapping of model name to its saved data. Empty if the data bundle has not
+        been saved previously.
+    """
+    bundle_path = Path(filename)
+    if not bundle_path.exists():
+        print(f"No existing data found at {bundle_path}. Building new data.")
+        return {}
+
+    with bundle_path.open() as fp:
+        saved_bundle = json.load(fp)
+
+    return saved_bundle if key is None else saved_bundle.get(key, {})
+
+
+def merge_saved_models(
+    model_data: dict[str, Any], filename: str | Path, key: str | None = None
+) -> dict[str, Any]:
+    """
+    Add data for models that are not being analysed from a saved data bundle.
+
+    Parameters
+    ----------
+    model_data
+        Mapping of model name to data built from the current analysis run.
+    filename
+        Filename of the saved data bundle.
+    key
+        Key of the saved data bundle holding per-model data. Default is `None`,
+        corresponding to the data bundle itself being keyed by model.
+
+    Returns
+    -------
+    dict[str, Any]
+        `model_data`, including data preserved from the saved data bundle.
+        `model_data` is returned unchanged if tables and plots are not being updated.
+    """
+    if not analysis.update_results:
+        return model_data
+
+    saved_models = load_saved_models(filename, key)
+    preserved_models = get_preserved_models()
+    preserved = {
+        model: data for model, data in saved_models.items() if model in preserved_models
+    }
+
+    # Saved data keyed by an analysed model is preserved by the current run, so only
+    # warn if no saved data can be matched to any model at all
+    model_names = set(get_model_names())
+    unmatched = saved_models.keys().isdisjoint(model_names)
+
+    warn_dropped_models(saved_models.keys() - model_names, filename)
+
+    if saved_models and preserved_models and not preserved and unmatched:
+        warnings.warn(
+            f"No data to preserve found in {filename}. Data is matched to models by "
+            "name, so results for models not being analysed will be lost if the data "
+            "is keyed differently.",
+            stacklevel=2,
+        )
+
+    return order_models(preserved | model_data)
+
+
+def load_saved_figure(filename: str | Path) -> go.Figure | None:
+    """
+    Load a previously saved figure.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    go.Figure | None
+        Saved figure, or `None` if the figure has not been saved previously.
+    """
+    plot_path = Path(filename)
+    if not plot_path.exists():
+        print(f"No existing plot found at {plot_path}. Building new plot.")
+        return None
+
+    return pio.read_json(plot_path)
+
+
+def get_saved_traces(
+    saved_fig: go.Figure | None, filename: str | Path
+) -> list[go.Trace]:
+    """
+    Get traces of models that are not being analysed by the current run.
+
+    Traces without a model name, such as parity lines, are excluded, as these are
+    rebuilt for every run.
+
+    Parameters
+    ----------
+    saved_fig
+        Previously saved figure, or `None` if the figure has not been saved
+        previously.
+    filename
+        Filename `saved_fig` was loaded from, used to report traces that cannot be
+        preserved.
+
+    Returns
+    -------
+    list[go.Trace]
+        Traces to be preserved from `saved_fig`.
+    """
+    if saved_fig is None:
+        return []
+
+    preserved_models = get_preserved_models()
+    saved_traces = [trace for trace in saved_fig.data if trace.name in preserved_models]
+
+    # Traces named after an analysed model are rebuilt by the current run, so only
+    # warn if no saved trace can be matched to any model at all
+    model_names = set(get_model_names())
+    unmatched = not any(trace.name in model_names for trace in saved_fig.data)
+
+    if preserved_models and not saved_traces and unmatched:
+        warnings.warn(
+            f"No traces to preserve found in {filename}. Traces are matched to models "
+            "by name, so results for models not being analysed will be lost if the "
+            "plot names its traces differently.",
+            stacklevel=2,
+        )
+
+    return saved_traces
+
+
+def get_panel_keys(fig: go.Figure) -> list[str]:
+    """
+    Get the keys identifying each subplot panel of a figure.
+
+    Parameters
+    ----------
+    fig
+        Figure to get panel keys of.
+
+    Returns
+    -------
+    list[str]
+        Keys of each panel, in subplot order. Empty if `fig` has no panel keys,
+        including all figures saved before panel keys were recorded.
+    """
+    meta = fig.layout.meta
+    if not isinstance(meta, dict):
+        return []
+
+    return list(meta.get(PANEL_KEYS_META, []))
+
+
+def set_panel_keys(fig: go.Figure, panel_keys: Sequence[str]) -> None:
+    """
+    Record the keys identifying each subplot panel of a figure.
+
+    Panel keys allow preserved traces to be matched to the panel they belong to, even
+    if the panels of the figure change between runs.
+
+    Parameters
+    ----------
+    fig
+        Figure to record panel keys for.
+    panel_keys
+        Keys of each panel, in the order the panels were added to `fig`.
+    """
+    meta = fig.layout.meta if isinstance(fig.layout.meta, dict) else {}
+    fig.layout.meta = meta | {PANEL_KEYS_META: list(panel_keys)}
+
+
+def get_axis_index(axis: str | None) -> int:
+    """
+    Get the subplot index an axis name refers to.
+
+    Parameters
+    ----------
+    axis
+        Axis name, such as "x" or "y3". `None` corresponds to the first axis.
+
+    Returns
+    -------
+    int
+        One-based index of the axis.
+    """
+    if not axis:
+        return 1
+
+    return int(axis[1:]) if axis[1:] else 1
+
+
+def remap_saved_panels(
+    saved_traces: list[go.Trace],
+    saved_fig: go.Figure,
+    fig: go.Figure,
+    filename: str | Path,
+) -> list[go.Trace]:
+    """
+    Move preserved traces to the subplot panel matching their panel key.
+
+    Axes are assigned by panel position, so preserved traces would otherwise be drawn
+    in the wrong panel if the panels of the figure change between runs.
+
+    Parameters
+    ----------
+    saved_traces
+        Traces to be preserved from `saved_fig`.
+    saved_fig
+        Previously saved figure.
+    fig
+        Figure built from the current analysis run.
+    filename
+        Filename `saved_fig` was loaded from.
+
+    Returns
+    -------
+    list[go.Trace]
+        `saved_traces`, reassigned to the panels of `fig`. Traces are dropped if their
+        panel is no longer plotted. `saved_traces` is returned unchanged if `fig` is
+        not a figure with panel keys.
+    """
+    current_keys = get_panel_keys(fig)
+    if not current_keys:
+        return saved_traces
+
+    saved_keys = get_panel_keys(saved_fig)
+    if not saved_keys:
+        # Saved before panel keys were recorded, so panels can only be matched by
+        # position, and traces in panels beyond the current grid cannot be drawn
+        saved_keys = current_keys
+
+    positions = {key: index for index, key in enumerate(current_keys, start=1)}
+
+    remapped = []
+    dropped = set()
+    for trace in saved_traces:
+        index = get_axis_index(trace.xaxis)
+        key = saved_keys[index - 1] if index <= len(saved_keys) else None
+        if key not in positions:
+            dropped.add(trace.name)
+            continue
+        position = positions[key]
+        suffix = "" if position == 1 else position
+        trace.update(xaxis=f"x{suffix}", yaxis=f"y{suffix}")
+        remapped.append(trace)
+
+    if dropped:
+        warnings.warn(
+            f"Saved traces for {', '.join(sorted(dropped))} will be removed from "
+            f"{filename}, as the panels they were plotted in are no longer plotted.",
+            stacklevel=3,
+        )
+
+    return remapped
+
+
+def order_traces(traces: list[go.Trace]) -> list[go.Trace]:
+    """
+    Order model traces to match the model registry, leaving other traces in place.
+
+    Parameters
+    ----------
+    traces
+        Traces to be ordered.
+
+    Returns
+    -------
+    list[go.Trace]
+        Model traces, in the order models are defined in models.yml. Traces without a
+        model name, such as reference curves, keep their original position.
+    """
+    model_order = get_model_names()
+    model_names = set(model_order)
+
+    # Sorting is stable, so models with multiple traces keep their relative order
+    model_traces = iter(
+        sorted(
+            (trace for trace in traces if trace.name in model_names),
+            key=lambda trace: model_order.index(trace.name),
+        )
+    )
+
+    return [
+        next(model_traces) if trace.name in model_names else trace for trace in traces
+    ]
+
+
+def merge_saved_traces(
+    fig: go.Figure, filename: str | Path, panel_keys: Sequence[str] | None = None
+) -> go.Figure:
+    """
+    Add traces for models that are not being analysed from a saved figure.
+
+    Parameters
+    ----------
+    fig
+        Figure built from the current analysis run.
+    filename
+        Filename of the saved figure.
+    panel_keys
+        Keys identifying what each subplot panel of `fig` is plotted against, in the
+        order the panels were added. Default is `None`, corresponding to a figure
+        whose panels, if any, are the same for every run. Preserved traces are
+        matched to panels by key, so this must be set if the panels depend on the
+        models being analysed.
+
+    Returns
+    -------
+    go.Figure
+        Figure including traces preserved from the saved figure. `fig` is returned
+        unchanged if tables and plots are not being updated, or if there are no
+        traces to preserve.
+    """
+    if panel_keys is not None:
+        set_panel_keys(fig, panel_keys)
+
+    if not analysis.update_results:
+        return fig
+
+    saved_fig = load_saved_figure(filename)
+    saved_traces = get_saved_traces(saved_fig, filename)
+    if not saved_traces:
+        return fig
+
+    saved_traces = remap_saved_panels(saved_traces, saved_fig, fig, filename)
+    if not saved_traces:
+        return fig
+
+    return go.Figure(
+        data=order_traces(list(fig.data) + saved_traces), layout=fig.layout
+    )
+
+
+def load_saved_rows(filename: str | Path) -> dict[str, dict[str, Any]]:
+    """
+    Load rows of a previously saved table, keyed by model identifier.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved table.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping of model identifier to its saved row. Empty if the table has not
+        been saved previously.
+    """
+    table_path = Path(filename)
+    if not table_path.exists():
+        print(f"No existing table found at {table_path}. Building new table.")
+        return {}
+
+    with table_path.open() as fp:
+        saved_table = json.load(fp)
+
+    return {row["id"]: row for row in saved_table.get("data", []) if "id" in row}
+
+
 def build_table(
     *,
     thresholds: Thresholds,
@@ -1719,13 +2412,27 @@ def build_table(
                     "'mlip_name_map'."
                 )
 
+            # When updating, preserve saved values for models outside this analysis run
+            saved_rows = {}
+            updated_mlips = set(mlips)
+            if analysis.update_results:
+                saved_rows = load_saved_rows(filename)
+                updated_mlips = get_updated_models()
+                warn_dropped_models(saved_rows.keys() - set(mlips), filename)
+
             metrics_data = []
             for mlip in mlips:
                 display_name = display_names[mlip]
                 # For models without results, set metric values to None
                 row_data = {"MLIP": display_name}
+                saved_row = (
+                    saved_rows.get(mlip, {}) if mlip not in updated_mlips else {}
+                )
                 for key, value in results.items():
-                    row_data[key] = value.get(mlip, None)
+                    if saved_row:
+                        row_data[key] = saved_row.get(key, None)
+                    else:
+                        row_data[key] = value.get(mlip, None)
                 # Store the original model name in the row ID for callbacks, instead of
                 # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
                 row_data["id"] = mlip

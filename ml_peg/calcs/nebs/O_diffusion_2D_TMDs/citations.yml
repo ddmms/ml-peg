@@ -1,0 +1,17 @@
+implementers:
+  - name: "Jad Jaafar"
+    github: "Jad-J3far"
+
+contributors: []
+
+citations:
+  - key: "liu-2015-o-diffusion-tmd"
+    role: reference_data
+    title: "Atomistic insight into the oxidation of monolayer transition metal dichalcogenides: from structures to electronic properties"
+    authors:
+      - "Hongsheng Liu"
+      - "Nannan Han"
+      - "Jijun Zhao"
+    year: 2015
+    doi: "10.1039/C4RA17320A"
+    url: null

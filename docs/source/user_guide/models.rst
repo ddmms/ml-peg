@@ -117,6 +117,21 @@ MACE-OFF23(L)
      kwargs:
        name: large
 
+
+MACE-OFF24(M)
+-------------
+
+.. code-block:: yaml
+
+   MACE-OFF24(M):
+     module: mace.calculators
+     class_name: mace_off
+     device: "auto"
+     trained_on_dispersion: true
+     kwargs:
+       model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
+
+
 mace-omol
 ---------
 
@@ -188,6 +203,71 @@ mace-polar-1-l
      kwargs:
        model: "polar-1-l"
 
+
+DPA
+===
+
+Install these fixed-float32 DeePMD checkpoints with ``uv sync --extra dpa``.
+DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use OMat24.
+DPA-3.3-1M is CC-BY-4.0, while DPA4 is CC-BY-NC-4.0 and restricted to
+non-commercial use.
+
+dpa-3p3-1M-omat
+----------------
+
+.. code-block:: yaml
+
+   dpa-3p3-1M-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA-3.3-1M
+       head: Omat24
+
+dpa-4-nano-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-nano-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Nano-OMat24-v20260805
+
+dpa-4-neo-omat
+--------------
+
+.. code-block:: yaml
+
+   dpa-4-neo-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Neo-OMat24-v20260805
+
+dpa-4-plus-omat
+---------------
+
+.. code-block:: yaml
+
+   dpa-4-plus-omat:
+     module: deepmd.calculator
+     class_name: DP
+     datasets: [OMAT]
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: DPA4-Plus-OMat24-v20260805
 
 Orb
 ===
@@ -402,18 +482,31 @@ mattersim-1M
 GRACE
 =====
 
-GRACE-2L-OAM
-------------
+GRACE-2L-OMAT
+-------------
 
 .. code-block:: yaml
 
-   GRACE-2L-OAM:
-     module: tensorpotential.calculator
-     class_name: TPCalculator
-     device: "cpu"
-     trained_on_dispersion: false
-     kwargs:
-       model: "<local path to the GRACE-2L-OAM model>"
+  grace-2l-omat:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-OMAT
+
+
+GRACE-2L-SMAX-OMAT-medium
+-------------------------
+.. code-block:: yaml
+
+  grace-2l-smax-omat-medium:
+    module: tensorpotential.calculator
+    class_name: grace_fm
+    device: "cpu"
+    trained_on_dispersion: false
+    kwargs:
+      model: GRACE-2L-SMAX-OMAT-medium
 
 
 SevenNet
