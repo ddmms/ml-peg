@@ -20,10 +20,10 @@ For each complex, the the relative energy is calculated by taking the difference
 between the given conformer and the reference (zero-energy) conformer. This is
 compared to the reference conformer energy, calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 Data availability
 -----------------
@@ -73,10 +73,11 @@ through a soft threshold (MAE at 0.5 kcal/mol, RMSE at 1.5 kcal/mol) to give a
 value between 0 and 1, and these are averaged across all molecules. Molecules
 for which the model fails to produce an energy profile score 0.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: Minutes on GPU. Minutes to tens of minutes on CPU.
+Fast: minutes on GPU, and minutes to tens of minutes on CPU. The benchmark is
+marked ``fast``.
 
 Data availability
 -----------------

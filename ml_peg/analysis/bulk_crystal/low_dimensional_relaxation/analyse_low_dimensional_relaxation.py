@@ -12,7 +12,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    merge_saved_models,
+    plot_density_scatter,
+)
 from ml_peg.analysis.utils.utils import (
     build_density_inputs,
     get_struct_info,
@@ -521,6 +525,9 @@ def _build_force_violin(dimensionality: str) -> None:
             showlegend=False,
         )
         figures_per_model[model_name] = fig.to_plotly_json()
+
+    # Preserve figures for models not being analysed
+    figures_per_model = merge_saved_models(figures_per_model, out_filename)
 
     out_filename.parent.mkdir(parents=True, exist_ok=True)
     with open(out_filename, "w") as f:

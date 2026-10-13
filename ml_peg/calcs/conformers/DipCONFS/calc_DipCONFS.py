@@ -54,6 +54,7 @@ def get_atoms(atoms_path):
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_dipconfs(mlip: tuple[str, Any]) -> None:
     """

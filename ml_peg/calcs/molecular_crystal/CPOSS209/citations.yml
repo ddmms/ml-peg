@@ -1,0 +1,21 @@
+implementers:
+  - name: "Mikołaj Gawkowski"
+    github: "mikolgawk"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "price-2025-cposs209"
+    role: benchmark_method
+    title: "One Size Fits All? Development of the CPOSS209 Data Set of Experimental and Hypothetical Polymorphs for Testing Computational Modeling Methods"
+    authors:
+      - "Louise S. Price"
+      - "Matteo Paloni"
+      - "Matteo Salvalaglio"
+      - "Sarah L. Price"
+    year: 2025
+    doi: "10.1021/acs.cgd.5c00255"
+    url: null

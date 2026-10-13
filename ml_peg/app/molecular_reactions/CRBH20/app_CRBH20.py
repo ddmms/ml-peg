@@ -108,6 +108,7 @@ def get_app() -> CRBH20App:
     """
     return CRBH20App(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description="Reaction Barrier Heights for 20 organic reactions (kcal/mol).",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "crbh20_metrics_table.json",

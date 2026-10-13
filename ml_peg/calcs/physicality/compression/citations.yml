@@ -1,0 +1,11 @@
+implementers:
+  - name: "James P. Darby"
+    github: "JPDarby"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+# TODO: add benchmark references once verified. No source paper is cited in the docs.
+citations: []

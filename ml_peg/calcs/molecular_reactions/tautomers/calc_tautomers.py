@@ -31,7 +31,9 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_tautomers(mlip: tuple[str, Any]) -> None:
     """
     Benchmark the Tautobase dataset.

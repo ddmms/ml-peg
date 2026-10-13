@@ -116,6 +116,7 @@ def get_app() -> EquationOfStateApp:
     """
     return EquationOfStateApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Energy-volume curves and phase stability for BCC metals "
             "(W, Nb, Mo, Ta, Ti, Zr, Cr, Fe),"

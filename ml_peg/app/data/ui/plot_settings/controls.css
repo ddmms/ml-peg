@@ -1,0 +1,174 @@
+/* Layout and responsive styling for the shared Plotly settings menu. */
+
+.plot-settings {
+  width: fit-content;
+  max-width: 100%;
+  margin: 6px 0 8px;
+  border: 1px solid #d7e3f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #243746;
+  font-size: 12px;
+}
+
+.plot-settings-summary {
+  padding: 7px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.plot-settings-body {
+  min-width: 560px;
+  max-width: 100%;
+  padding: 4px 10px 10px;
+  box-sizing: border-box;
+}
+
+.plot-settings-section {
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.plot-settings-section-label {
+  font-weight: 600;
+}
+
+.plot-settings-size-row {
+  display: grid;
+  grid-template-columns: 80px 180px 110px 110px;
+  align-items: center;
+  gap: 7px;
+}
+
+.plot-settings-axis-row {
+  display: grid;
+  grid-template-columns: 48px 105px 95px 95px 95px;
+  align-items: center;
+  gap: 7px;
+}
+
+.plot-settings-axis-label {
+  font-weight: 600;
+}
+
+.plot-settings-row-label {
+  color: #526577;
+  font-weight: 600;
+}
+
+.plot-settings-scale,
+.plot-settings-size-preset,
+.plot-settings-tick-format,
+.plot-settings-number {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.plot-settings-tick-row {
+  display: grid;
+  grid-template-columns: 70px 180px 110px 110px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.plot-settings-option-row {
+  display: grid;
+  grid-template-columns: 70px 180px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.plot-settings-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.plot-settings-number {
+  height: 30px;
+  padding: 4px 7px;
+  border: 1px solid #8aa1b4;
+  border-radius: 5px;
+}
+
+.plot-settings-help {
+  margin-top: 8px;
+  color: #5f6f7e;
+  font-size: 11px;
+}
+
+.plot-settings-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.plot-settings-apply,
+.plot-settings-reset,
+.plot-settings-secondary-button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid #0b5cad;
+  border-radius: 5px;
+  background: #0b73d9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plot-settings-reset,
+.plot-settings-secondary-button {
+  border-color: #8aa1b4;
+  background: #fff;
+  color: #243746;
+}
+
+.plot-settings-secondary-button {
+  min-height: 30px;
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+.plot-settings-message {
+  min-height: 16px;
+  margin-top: 5px;
+  color: #b42318;
+}
+
+@media (max-width: 520px) {
+  .plot-settings-body {
+    min-width: 0;
+  }
+
+  .plot-settings-axis-row {
+    grid-template-columns: 42px 1fr 1fr;
+  }
+
+  .plot-settings-scale {
+    grid-column: 2 / 4;
+  }
+
+  .plot-settings-axis-row .plot-settings-secondary-button {
+    grid-column: 2 / 4;
+  }
+
+  .plot-settings-size-row,
+  .plot-settings-option-row,
+  .plot-settings-tick-row {
+    grid-template-columns: 1fr 1fr;
+    margin-left: 0;
+  }
+
+  .plot-settings-size-row .plot-settings-section-label,
+  .plot-settings-size-preset,
+  .plot-settings-option-row .plot-settings-checklist,
+  .plot-settings-tick-row .plot-settings-tick-format {
+    grid-column: 1 / 3;
+  }
+
+}

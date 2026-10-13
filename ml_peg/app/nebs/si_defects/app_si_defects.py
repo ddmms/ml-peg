@@ -102,6 +102,7 @@ def get_app() -> SiDefectNebSinglepointsApp:
     """
     return SiDefectNebSinglepointsApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Energy/force MAE of MLIPs on fixed Si interstitial migration NEB images, "
             "referenced to DFT singlepoints."

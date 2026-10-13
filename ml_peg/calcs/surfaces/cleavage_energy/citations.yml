@@ -1,0 +1,22 @@
+implementers:
+  - name: "Eszter Varga-Umbrich"
+    github: "vue1999"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "mehdizadeh-2025-cleavage"
+    role: benchmark_method
+    title: "Surface stability modeling with universal machine learning interatomic potentials: a comprehensive cleavage energy benchmarking study"
+    authors:
+      - "A. Mehdizadeh"
+      - "P. Schindler"
+    year: 2025
+    doi: null
+    url: "https://iopscience.iop.org/article/10.1088/3050-287X/ae1408"

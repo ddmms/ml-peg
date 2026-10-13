@@ -1,0 +1,545 @@
+"""Test updating saved plots."""
+
+from __future__ import annotations
+
+import json
+import warnings
+
+import numpy as np
+import plotly.graph_objects as go
+import plotly.io as pio
+from plotly.subplots import make_subplots
+import pytest
+
+from ml_peg import models
+from ml_peg.analysis.utils.decorators import (
+    cell_to_scatter,
+    get_model_colour,
+    merge_saved_models,
+    merge_saved_traces,
+    plot_density_scatter,
+    plot_hist,
+    plot_parity,
+    plot_scatter,
+    plot_violin,
+)
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
+
+pytestmark = pytest.mark.usefixtures("fake_models")
+
+
+def get_traces(filename):
+    """
+    Get all model traces in a saved figure, keyed by name.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    dict[str, dict]
+        Saved traces, excluding traces such as parity lines.
+    """
+    return {
+        trace.name: trace.to_plotly_json()
+        for trace in pio.read_json(filename).data
+        if trace.name and trace.name != PARITY_LINE_NAME
+    }
+
+
+def get_trace_names(filename):
+    """
+    Get names of all named traces in a saved figure.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved figure.
+
+    Returns
+    -------
+    list[str]
+        Names of the saved traces, excluding traces such as parity lines.
+    """
+    return list(get_traces(filename))
+
+
+def parity(filename, results):
+    """
+    Save a parity plot for pre-computed results.
+
+    Parameters
+    ----------
+    filename
+        Filename to save plot.
+    results
+        Reference and predicted values for each model.
+    """
+    plot_parity(filename=str(filename))(lambda: results)()
+
+
+PLOTS = {
+    "parity": (
+        parity,
+        {"ref": [1.0, 2.0], "model_1": [1.1, 2.1], "model_2": [1.2, 2.2]},
+        {"ref": [1.0, 2.0], "model_2": [1.5, 2.5]},
+    ),
+    "hist": (
+        lambda filename, results: plot_hist(bins=2, filename=filename)(
+            lambda: results
+        )(),
+        {"model_1": [1.0, 2.0], "model_2": [2.0, 3.0]},
+        {"model_2": [3.0, 4.0]},
+    ),
+    "scatter": (
+        lambda filename, results: plot_scatter(filename=str(filename))(
+            lambda: results
+        )(),
+        {"model_1": ([1.0, 2.0], [1.0, 2.0]), "model_2": ([1.0, 2.0], [2.0, 3.0])},
+        {"model_2": ([1.0, 2.0], [3.0, 4.0])},
+    ),
+    "violin": (
+        lambda filename, results: plot_violin(filename=str(filename))(
+            lambda: results
+        )(),
+        {"model_1": [1.0, 2.0, 3.0], "model_2": [2.0, 3.0, 4.0]},
+        {"model_2": [3.0, 4.0, 5.0]},
+    ),
+    "density": (
+        lambda filename, results: plot_density_scatter(filename=str(filename))(
+            lambda: results
+        )(),
+        {
+            "model_1": {"ref": [1.0, 2.0], "pred": [1.1, 2.1]},
+            "model_2": {"ref": [1.0, 2.0], "pred": [1.2, 2.2]},
+        },
+        {"model_2": {"ref": [1.0, 2.0], "pred": [1.5, 2.5]}},
+    ),
+}
+
+
+@pytest.mark.parametrize("plot", PLOTS)
+def test_update_plot(tmp_path, update_model_2, plot):
+    """
+    Test updating a plot preserves traces for models not being analysed.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    plot
+        Key of the plot being tested.
+    """
+    save_plot, all_results, model_2_results = PLOTS[plot]
+    filename = tmp_path / f"{plot}.json"
+
+    save_plot(filename, all_results)
+    original_traces = get_traces(filename)
+    assert list(original_traces) == ["model_1", "model_2"]
+
+    save_plot(filename, model_2_results)
+    updated_traces = get_traces(filename)
+    assert list(updated_traces) == ["model_1", "model_2"]
+
+    # model_1 must be preserved unchanged, and model_2 rebuilt from its new results
+    assert updated_traces["model_1"] == original_traces["model_1"]
+    assert updated_traces["model_2"] != original_traces["model_2"]
+
+
+@pytest.mark.parametrize("plot", PLOTS)
+def test_overwrite_plot(tmp_path, monkeypatch, plot):
+    """
+    Test rerunning a subset of models without `--update` clears other models.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    monkeypatch
+        Pytest monkeypatch fixture.
+    plot
+        Key of the plot being tested.
+    """
+    save_plot, all_results, model_2_results = PLOTS[plot]
+    filename = tmp_path / f"{plot}.json"
+
+    save_plot(filename, all_results)
+
+    monkeypatch.setattr(models, "current_models", "model_2")
+    save_plot(filename, model_2_results)
+
+    assert get_trace_names(filename) == ["model_2"]
+
+
+def test_update_density_annotations(tmp_path, update_model_2):
+    """
+    Test annotations are preserved alongside density scatter traces.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    save_plot, all_results, model_2_results = PLOTS["density"]
+    filename = tmp_path / "density.json"
+
+    save_plot(filename, all_results)
+    save_plot(filename, model_2_results)
+
+    meta = pio.read_json(filename).layout.meta
+    assert meta["models"] == ["model_1", "model_2"]
+    assert [annotation["text"] for annotation in meta["annotations"]] == [
+        "model_1",
+        "model_2",
+    ]
+
+
+def test_update_density_non_finite(tmp_path, update_model_2):
+    """
+    Test non-finite values in preserved density traces are ignored for axis limits.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    save_plot, _, model_2_results = PLOTS["density"]
+    filename = tmp_path / "density.json"
+
+    # Non-finite values are saved as null, and read back as None
+    save_plot(
+        filename,
+        {
+            "model_1": {"ref": [1.0, float("nan")], "pred": [1.1, 2.1]},
+            "model_2": {"ref": [1.0, 2.0], "pred": [1.2, 2.2]},
+        },
+    )
+    save_plot(filename, model_2_results)
+
+    assert get_trace_names(filename) == ["model_1", "model_2"]
+
+    # Axis limits, and so the parity line, must be set by the finite values
+    parity_line = next(
+        trace
+        for trace in pio.read_json(filename).data
+        if trace.name == PARITY_LINE_NAME
+    )
+    assert np.isfinite(parity_line.x).all()
+
+
+def cell_scatter_bundle(models_data):
+    """
+    Build a data bundle for `cell_to_scatter`.
+
+    Parameters
+    ----------
+    models_data
+        Predicted value for each model.
+
+    Returns
+    -------
+    dict
+        Data bundle in the format expected by `cell_to_scatter`.
+    """
+    return {
+        "metrics": {"mae": "MAE"},
+        "models": {
+            model: {"metrics": {"mae": {"points": [{"ref": 1.0, "pred": pred}]}}}
+            for model, pred in models_data.items()
+        },
+    }
+
+
+def test_update_cell_to_scatter(tmp_path, update_model_2):
+    """
+    Test updating cell scatter data preserves models not being analysed.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved data.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "cell_scatter.json"
+
+    def save_data(models_data):
+        """
+        Save cell scatter data for pre-computed results.
+
+        Parameters
+        ----------
+        models_data
+            Predicted value for each model.
+        """
+        bundle = cell_scatter_bundle(models_data)
+        cell_to_scatter(filename=filename)(lambda: bundle)()
+
+    save_data({"model_1": 1.1, "model_2": 1.2})
+    save_data({"model_2": 1.5})
+
+    with open(filename) as fp:
+        saved = json.load(fp)
+
+    assert list(saved["models"]) == ["model_1", "model_2"]
+    assert saved["models"]["model_1"]["metrics"]["mae"]["points"][0]["pred"] == 1.1
+    assert saved["models"]["model_2"]["metrics"]["mae"]["points"][0]["pred"] == 1.5
+
+
+def test_update_model_data(tmp_path, update_model_2):
+    """
+    Test updating data keyed by model preserves models not being analysed.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved data.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "figures.json"
+    with open(filename, "w") as fp:
+        json.dump({"model_1": {"value": 1.1}, "model_2": {"value": 1.2}}, fp)
+
+    merged = merge_saved_models({"model_2": {"value": 1.5}}, filename)
+
+    assert list(merged) == ["model_1", "model_2"]
+    assert merged["model_1"] == {"value": 1.1}
+    assert merged["model_2"] == {"value": 1.5}
+
+
+def test_update_subplot_traces(tmp_path, update_model_2):
+    """
+    Test preserved traces remain assigned to their original subplot axes.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "subplots.json"
+    saved_fig = make_subplots(rows=1, cols=2)
+    for col in (1, 2):
+        saved_fig.add_trace(
+            go.Scatter(x=[1.0], y=[1.0], name="model_1"), row=1, col=col
+        )
+    saved_fig.write_json(filename)
+
+    fig = make_subplots(rows=1, cols=2)
+    for col in (1, 2):
+        fig.add_trace(go.Scatter(x=[1.0], y=[2.0], name="model_2"), row=1, col=col)
+    fig = merge_saved_traces(fig, filename)
+
+    assert [trace.name for trace in fig.data] == [
+        "model_1",
+        "model_1",
+        "model_2",
+        "model_2",
+    ]
+    assert [trace.xaxis for trace in fig.data] == ["x", "x2", "x", "x2"]
+
+
+def subplot_figure(panel_keys, model, y_value):
+    """
+    Build a single-row subplot figure with one trace per panel.
+
+    Parameters
+    ----------
+    panel_keys
+        Keys identifying each panel, in subplot order.
+    model
+        Name of the model the traces are plotted for.
+    y_value
+        Value plotted in every panel.
+
+    Returns
+    -------
+    go.Figure
+        Figure with one panel per key.
+    """
+    fig = make_subplots(rows=1, cols=len(panel_keys), subplot_titles=panel_keys)
+    for col in range(1, len(panel_keys) + 1):
+        fig.add_trace(go.Scatter(x=[1.0], y=[y_value], name=model), row=1, col=col)
+
+    return fig
+
+
+def test_update_subplot_panels_reordered(tmp_path, update_model_2):
+    """
+    Test preserved traces follow their panel when the subplot grid changes.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "subplots.json"
+    saved_fig = subplot_figure(["a", "b"], "model_1", 1.0)
+    merge_saved_traces(saved_fig, filename, ["a", "b"]).write_json(filename)
+
+    # A new structure is now plotted first, moving panel "a" to the second position
+    fig = merge_saved_traces(
+        subplot_figure(["c", "a", "b"], "model_2", 2.0), filename, ["c", "a", "b"]
+    )
+
+    preserved = {trace.xaxis: trace for trace in fig.data if trace.name == "model_1"}
+    assert sorted(preserved) == ["x2", "x3"]
+    assert all(trace.yaxis == trace.xaxis.replace("x", "y") for trace in fig.data)
+
+
+def test_update_subplot_panel_removed(tmp_path, update_model_2):
+    """
+    Test preserved traces are dropped when their panel is no longer plotted.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "subplots.json"
+    saved_fig = subplot_figure(["a", "b"], "model_1", 1.0)
+    merge_saved_traces(saved_fig, filename, ["a", "b"]).write_json(filename)
+
+    with pytest.warns(UserWarning, match="panels they were plotted in"):
+        fig = merge_saved_traces(subplot_figure(["a"], "model_2", 2.0), filename, ["a"])
+
+    assert [(trace.name, trace.xaxis) for trace in fig.data] == [
+        ("model_1", "x"),
+        ("model_2", "x"),
+    ]
+
+
+def test_reference_trace_order(tmp_path, update_model_2):
+    """
+    Test traces without a model name keep their position when traces are preserved.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "plot.json"
+    go.Figure(
+        [
+            go.Scatter(x=[1.0], y=[1.0], name="model_1"),
+            go.Scatter(x=[1.0], y=[1.0], name="Reference"),
+        ]
+    ).write_json(filename)
+
+    fig = go.Figure(
+        [
+            go.Scatter(x=[1.0], y=[2.0], name="model_2"),
+            go.Scatter(x=[1.0], y=[1.0], name="Reference"),
+        ]
+    )
+    fig = merge_saved_traces(fig, filename)
+
+    assert [trace.name for trace in fig.data] == ["model_1", "Reference", "model_2"]
+
+
+def test_unmatched_traces_warn(tmp_path, update_model_2):
+    """
+    Test a warning is raised when a saved plot has no traces to preserve.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "plot.json"
+    go.Figure(go.Scatter(x=[1.0], y=[1.0], name="Reference")).write_json(filename)
+
+    with pytest.warns(UserWarning, match="No traces to preserve"):
+        merge_saved_traces(go.Figure(), filename)
+
+
+def test_unmatched_data_warns(tmp_path, update_model_2):
+    """
+    Test a warning is raised when saved data has no models to preserve.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved data.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "figures.json"
+    with open(filename, "w") as fp:
+        json.dump({"reference": {"value": 1.1}}, fp)
+
+    with pytest.warns(UserWarning, match="No data to preserve"):
+        merge_saved_models({}, filename)
+
+
+def test_dropped_data_warns(tmp_path, update_missing_model_1):
+    """
+    Test a warning is raised for saved data of models outside the models file.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved data.
+    update_missing_model_1
+        Fixture setting up an update run with a models file without `model_1`.
+    """
+    filename = tmp_path / "figures.json"
+    with open(filename, "w") as fp:
+        json.dump({"model_1": {"value": 1.1}, "model_2": {"value": 1.2}}, fp)
+
+    with pytest.warns(UserWarning, match="Saved results for model_1 will be removed"):
+        merged = merge_saved_models({"model_2": {"value": 1.5}}, filename)
+
+    assert merged == {"model_2": {"value": 1.5}}
+
+
+def test_analysed_only_no_warning(tmp_path, update_model_2):
+    """
+    Test no warning is raised when saved results are all for the analysed model.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot and data.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    plot_filename = tmp_path / "plot.json"
+    go.Figure(go.Scatter(x=[1.0], y=[1.0], name="model_2")).write_json(plot_filename)
+
+    data_filename = tmp_path / "figures.json"
+    with open(data_filename, "w") as fp:
+        json.dump({"model_2": {"value": 1.2}}, fp)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        merge_saved_traces(go.Figure(), plot_filename)
+        merge_saved_models({"model_2": {"value": 1.5}}, data_filename)
+
+
+def test_model_colours():
+    """Test colours are assigned by model registry order, not plotted order."""
+    colours = ["red", "green", "blue"]
+
+    assert get_model_colour("model_1", colours) == "red"
+    assert get_model_colour("model_2", colours) == "green"
+    # Models that are not defined follow all defined models
+    assert get_model_colour("model_3", colours) == "blue"

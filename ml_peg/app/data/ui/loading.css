@@ -1,0 +1,122 @@
+/* ML-PEG start-up loader (shown by #startup-mask until the app is interactive):
+   a modern circular spinner + branded wordmark, centered. The same spinner style
+   is reused for the in-app navigation spinner and the pre-hydration placeholder
+   (utils/dash_loading.css). */
+
+@keyframes ml-peg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ml-peg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.mlpeg-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--mlpeg-surface, #ffffff);
+  z-index: 2100; /* above the onboarding modal (2000) */
+}
+
+/* Determinate progress ring: --mlpeg-pct drives both the conic fill and the
+   centre number.
+
+   The percentage is advanced from JS (loading_progress.js), NOT by a CSS
+   animation. It used to be `@property --mlpeg-pct` animated 0->92 over 6s, but
+   a registered custom property feeding a conic-gradient and a counter needs a
+   style recalc + repaint every frame, so it runs on the main thread — which is
+   blocked solid while Dash hydrates. No intermediate frame ever painted, so the
+   ring showed 0% and then the finished 92% (review: "the loading wheel stays on
+   0% for most of the time and then jumps to 92%"). It also snapped 0->92 in
+   browsers that don't register @property, and sat at a static 92% under
+   prefers-reduced-motion, which forces animation-duration to ~0 globally.
+
+   The rAF driver only advances on frames that actually run, and caps how much
+   any single frame may contribute, so the number tracks what the user sees.
+   A gentle opacity pulse (compositor-driven, never blocked by the main thread)
+   keeps it visibly alive meanwhile. The clientside poll in shell.py hides the
+   mask once the first table row exists. */
+.mlpeg-progress-ring {
+  --mlpeg-pct: 0;
+  position: relative;
+  width: 66px;
+  height: 66px;
+  animation: ml-peg-pulse 1.6s ease-in-out infinite;
+}
+.mlpeg-progress-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--mlpeg-accent, #119dff) calc(var(--mlpeg-pct) * 1%),
+    var(--mlpeg-surface-3, #eef2f6) 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 5px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 5px)
+  );
+}
+.mlpeg-progress-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mlpeg-ink, #1b2430);
+  font-variant-numeric: tabular-nums;
+}
+.mlpeg-progress-num::after {
+  counter-reset: mlpeg-pct var(--mlpeg-pct);
+  content: counter(mlpeg-pct) "%";
+}
+/* Compact variant for in-table / in-panel loading overlays. */
+.mlpeg-progress-ring--sm {
+  width: 44px;
+  height: 44px;
+}
+.mlpeg-progress-ring--sm .mlpeg-progress-num {
+  font-size: 11px;
+}
+
+.mlpeg-loader-word {
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--mlpeg-ink, #1b2430);
+}
+
+.mlpeg-loader-text {
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: 13px;
+  color: var(--mlpeg-ink-3, #8a94a3);
+  animation: ml-peg-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mlpeg-loader-text {
+    animation: none;
+  }
+}

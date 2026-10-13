@@ -31,10 +31,10 @@ of structures. Models receive a score of 0, 0.5, or 1, based on whether the pred
 lowest and highest energy pairs match the reference predictions, and this is averaged
 for all 157 combinations.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 Data availability
 -----------------
@@ -73,10 +73,10 @@ energy is calculated by taking the difference between the energy of the surface 
 molecule and the sum of individual surface and molecule energies. This is compared to
 the reference adsorption energy, calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -119,10 +119,10 @@ MAE of adsorption energies
 For each adsorbate-surface reaction, the adsorption energy is calculated as the difference between the energy of the surface + molecule and the sum of individual surface and molecule energies. This is compared to the PBE reference
 adsorption energy from the CMR database.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 Data availability
 -----------------
@@ -160,10 +160,10 @@ an oxygen placed on-top of the site furthest along the slab's normal
 direction. The distance between the oxygen and the site is that which
 minimizes the energy according to MACE-MatPES-r2SCAN.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -205,10 +205,10 @@ One is of the clean surface with the adsorbate in the gas phase far from the sur
 the second is of the transition state structure with the adsorbate at the surface
 (minimum barrier geometry to dissociation and chemisorption).
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -250,10 +250,10 @@ effective binding energy and binding length (i.e. minimum of adsorption energy c
 each strain condition. This is compared to the reference binding energy & length,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -297,7 +297,7 @@ The mean absolute error is computed over all 36,718 surfaces.
 
 Root mean squared error of cleavage energy predictions across all surfaces.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs. Takes roughly 5-20 minutes on GPU or a few hours on CPUs.
@@ -343,10 +343,10 @@ For each slab, a geometry optimization (F_max = 0.05 eV/Å) is performed, where 
 
 * Energetic ranking (using the surface energy)
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take half an hour.
+Medium: tests are likely to take half an hour.
 
 Data availability
 -----------------

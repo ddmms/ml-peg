@@ -5,9 +5,10 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    biomolecules
     bulk_crystal
     conformers
-    defect
+    defects
     electrolytes
     f_block
     molecular
@@ -17,6 +18,7 @@ Benchmarks
     nebs
     non_covalent_interactions
     physicality
+    porous_materials
     supramolecular
     surfaces
     tm_complexes

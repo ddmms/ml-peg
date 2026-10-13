@@ -1,0 +1,35 @@
+implementers:
+  - name: "Fraser Birks"
+    github: "Fraser-Birks"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "dejong-2015-elasticity"
+    role: benchmark_method
+    title: "Charting the complete elastic properties of inorganic crystalline compounds"
+    authors:
+      - "Maarten de Jong"
+      - "Wei Chen"
+      - "Thomas Angsten"
+      - "Anubhav Jain"
+      - "Randy Notestine"
+      - "Anthony Gamst"
+      - "Marcel Sluiter"
+      - "Chaitanya Krishna Ande"
+      - "Sybrand van der Zwaag"
+      - "Jose J Plata"
+      - "Cormac Toher"
+      - "Stefano Curtarolo"
+      - "Gerbrand Ceder"
+      - "Kristin A. Persson"
+      - "Mark Asta"
+    year: 2015
+    doi: "10.1038/sdata.2015.9"
+    url: null

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from collections.abc import Callable, Iterable
 import json
 from pathlib import Path
+import threading
 from typing import Any
 
 from ase import Atoms
@@ -17,22 +18,30 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from yaml import safe_load
 
 from ml_peg.app.utils.utils import (
+    DEFAULT_COLORMAP,
     ThresholdEntry,
     Thresholds,
     clean_thresholds,
     clean_weights,
 )
-from ml_peg.models.get_models import load_model_configs
+from ml_peg.models.get_models import get_model_names, load_model_configs
 
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
 
-# Opacity applied to a column whose weight is zero (excluded from the score)
+# Opacity applied to a column whose weight is zero (excluded from the score).
+# Matches the original faded look so it clearly reads as "off".
 ZERO_WEIGHT_OPACITY = 0.4
+
+# Alpha used to composite table-cell colormap colours over white: keeps the
+# dark cell text legible while leaving the hue punchy (a lower alpha washes the
+# colour steps out to pastel). Deliberately theme-independent — the cell
+# palette is calibrated data-ink shared by light and dark mode.
+TABLE_CELL_ALPHA = 0.85
 
 
 def build_dispersion_name_map(
-    models: Iterable[str],
+    models: Iterable[str] | None = None,
     suffix: str = "-D3",
 ) -> dict[str, str]:
     """
@@ -41,7 +50,8 @@ def build_dispersion_name_map(
     Parameters
     ----------
     models
-        Iterable of model identifiers to inspect.
+        Iterable of model identifiers to inspect. Default is all defined models, so
+        display names are also correct for models outside the current analysis run.
     suffix
         String appended to model names that need the dispersion correction indicator.
         Defaults to "-D3" for D3 dispersion corrections.
@@ -51,7 +61,9 @@ def build_dispersion_name_map(
     dict[str, str]
         Mapping of model -> display name for models not trained with dispersion.
     """
-    configs, _ = load_model_configs(tuple(models))
+    models = tuple(get_model_names() if models is None else models)
+
+    configs, _ = load_model_configs(models)
     name_map: dict[str, str] = {}
 
     for model in models:
@@ -507,6 +519,18 @@ def calc_table_scores(
     return metrics_data
 
 
+# Memoize computed styles: the same (data, cmap, weights, …) recurs constantly as
+# callbacks re-render tables (colormap toggles, weight/threshold edits, model
+# filters), and the per-cell colormap + contrast maths dominate. Bounded LRU.
+# OrderedDict lets hits move to the end and eviction remove the oldest entry.
+_TABLE_STYLE_CACHE: OrderedDict[str, list[TableRow]] = OrderedDict()
+_TABLE_STYLE_CACHE_MAX = 128
+# Dash serves callbacks on a threaded WSGI server, so concurrent renders can hit
+# the shared cache at once. Guard the read/insert/evict sequence so a race can't
+# corrupt the LRU ordering or pop from a mid-mutation dict.
+_TABLE_STYLE_CACHE_LOCK = threading.Lock()
+
+
 def get_table_style(
     data: list[TableRow],
     *,
@@ -514,7 +538,96 @@ def get_table_style(
     normalized: bool = True,
     all_cols: bool = True,
     col_names: list[str] | str | None = None,
-    cmap_name: str = "viridis_r",
+    cmap_name: str = DEFAULT_COLORMAP,
+    weights: dict[str, float] | None = None,
+) -> list[TableRow]:
+    """
+    Memoized wrapper around :func:`_compute_table_style`.
+
+    Caches on a JSON key of all inputs; the style is a pure function of them, so a
+    repeat call (very common as tables re-render) returns instantly. Falls back to
+    a direct compute if the inputs aren't serialisable.
+
+    Parameters
+    ----------
+    data
+        Data from Dash table to be coloured.
+    scored_data
+        Data with metric values replaced with scores.
+    normalized
+        Whether metric/score columns have been normalized to between 0 and 1. Default is
+        `True`.
+    all_cols
+        Whether to colour all numerical columns.
+    col_names
+        Column name or list of names to be coloured.
+    cmap_name
+        Matplotlib colormap name. Default is ``"viridis_r"``.
+    weights
+        Current weight per column id. Columns with a weight of ``0`` are excluded
+        from the score, so their cells are dimmed to signal they are switched off.
+        Default is None.
+
+    Returns
+    -------
+    list[TableRow]
+        Conditional style data to apply to table. A fresh list of fresh entry dicts,
+        so callers can freely ``+``/append without poisoning the cache.
+    """
+    try:
+        key = json.dumps(
+            [data, scored_data, normalized, all_cols, col_names, cmap_name, weights],
+            sort_keys=True,
+            default=str,
+        )
+    except (TypeError, ValueError):
+        return _compute_table_style(
+            data,
+            scored_data=scored_data,
+            normalized=normalized,
+            all_cols=all_cols,
+            col_names=col_names,
+            cmap_name=cmap_name,
+            weights=weights,
+        )
+
+    with _TABLE_STYLE_CACHE_LOCK:
+        cached = _TABLE_STYLE_CACHE.get(key)
+        if cached is not None:
+            _TABLE_STYLE_CACHE.move_to_end(key)
+
+    if cached is None:
+        # Compute outside the lock so an expensive miss doesn't serialise other
+        # threads; a rare duplicate compute on a concurrent miss is harmless.
+        cached = _compute_table_style(
+            data,
+            scored_data=scored_data,
+            normalized=normalized,
+            all_cols=all_cols,
+            col_names=col_names,
+            cmap_name=cmap_name,
+            weights=weights,
+        )
+        with _TABLE_STYLE_CACHE_LOCK:
+            _TABLE_STYLE_CACHE[key] = cached
+            if len(_TABLE_STYLE_CACHE) > _TABLE_STYLE_CACHE_MAX:
+                _TABLE_STYLE_CACHE.popitem(last=False)
+    # Copy the nested "if" filter too: a one-level copy would hand every caller
+    # the same rule object that lives in the process-wide cache.
+    return [
+        {**entry, "if": dict(entry["if"])} if "if" in entry else dict(entry)
+        for entry in cached
+    ]
+
+
+def _compute_table_style(
+    data: list[TableRow],
+    *,
+    scored_data: list[dict] | None = None,
+    normalized: bool = True,
+    all_cols: bool = True,
+    col_names: list[str] | str | None = None,
+    cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
 ) -> list[TableRow]:
     """
@@ -571,7 +684,12 @@ def get_table_style(
         """
         norm = (val - vmin) / (vmax - vmin) if vmax != vmin else 0
         rgba = cmap(norm)
-        return tuple(int(255 * x) for x in rgba[:3])
+        # Composite over white (see TABLE_CELL_ALPHA) so the numbers drawn on
+        # top stay legible with a crisp good/bad signal.
+        return tuple(
+            int(255 * (TABLE_CELL_ALPHA * channel + (1 - TABLE_CELL_ALPHA)))
+            for channel in rgba[:3]
+        )
 
     def text_colour_for_background(rgb: tuple[int, int, int]) -> str:
         """
@@ -600,6 +718,9 @@ def get_table_style(
         contrast_with_black = (luminance + 0.05) / 0.05
         contrast_with_white = 1.05 / (luminance + 0.05)
         return "black" if contrast_with_black >= contrast_with_white else "white"
+
+    if not data:
+        return []
 
     style_data_conditional: list[TableRow] = []
 
@@ -659,14 +780,14 @@ def get_table_style(
                         "filter_query": f"{{MLIP}} = '{mlip_name}'",
                         "column_id": col,
                     },
-                    "backgroundColor": "#e0e0e0",
+                    "backgroundColor": "var(--mlpeg-table-missing-bg, #e0e0e0)",
                     "backgroundImage": (
                         "repeating-linear-gradient("
                         "45deg, "
                         "transparent, "
                         "transparent 5px, "
-                        "#d0d0d0 5px, "
-                        "#d0d0d0 10px"
+                        "var(--mlpeg-table-missing-stripe, #d0d0d0) 5px, "
+                        "var(--mlpeg-table-missing-stripe, #d0d0d0) 10px"
                         ")"
                     ),
                     "color": "transparent",
@@ -683,14 +804,14 @@ def get_table_style(
                         "filter_query": f"{{MLIP}} = '{mlip_name}'",
                         "column_id": col,
                     },
-                    "backgroundColor": "#f4e3e3",
+                    "backgroundColor": "var(--mlpeg-table-nan-bg, #f4e3e3)",
                     "backgroundImage": (
                         "repeating-linear-gradient("
                         "45deg, "
                         "transparent, "
                         "transparent 5px, "
-                        "#e6bcbc 5px, "
-                        "#e6bcbc 10px"
+                        "var(--mlpeg-table-nan-stripe, #e6bcbc) 5px, "
+                        "var(--mlpeg-table-nan-stripe, #e6bcbc) 10px"
                         ")"
                     ),
                     "color": "transparent",
