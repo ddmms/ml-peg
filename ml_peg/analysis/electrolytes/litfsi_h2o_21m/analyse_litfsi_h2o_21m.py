@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,9 +12,14 @@ import pytest
 from scipy.interpolate import interp1d
 
 from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -21,9 +27,12 @@ from ml_peg.models.get_models import load_models
 
 CALC_PATH = CALCS_ROOT / "electrolytes" / "litfsi_h2o_21m" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "electrolytes" / "litfsi_h2o_21m"
-EXP_SAXS_PATH = Path(__file__).resolve().parents[1] / "data" / "saxs_maginn.txt"
+OUT_PATH.mkdir(parents=True, exist_ok=True)
 
 MODELS = load_models(current_models)
+# Table and figures label the models run with a runtime D3 correction "-D3".
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+LABELS = {model: DISPERSION_NAME_MAP.get(model, model) for model in MODELS}
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -101,10 +110,15 @@ def build_density_bar_chart(data: dict[str, dict]) -> go.Figure:
             continue
         fig.add_trace(
             go.Bar(
-                x=[model],
+                x=[LABELS[model]],
                 y=[data[model]["rho_mean"]],
                 error_y={"type": "data", "array": [data[model]["rho_std"]]},
-                name=model,
+                name=LABELS[model],
+                # Registry name, which the app maps to the model's final NPT frame.
+                customdata=[model],
+                hovertemplate=(
+                    "%{x}<br>%{y:.3f} g/cm³<extra>click for structure</extra>"
+                ),
             )
         )
 
@@ -146,7 +160,7 @@ def build_density_timeseries(data: dict[str, dict]) -> go.Figure:
                 x=d["time_full"],
                 y=d["density_full"],
                 mode="lines",
-                name=model,
+                name=LABELS[model],
                 opacity=0.8,
             )
         )
@@ -267,9 +281,9 @@ def build_cn_bar_chart(data: dict[str, dict]) -> go.Figure:
     """
     fig = go.Figure()
 
-    x_models = [m for m in MODELS if m in data]
-    cn_water_vals = [data[m]["cn_water"] for m in x_models]
-    cn_tfsi_vals = [data[m]["cn_tfsi"] for m in x_models]
+    x_models = [LABELS[m] for m in MODELS if m in data]
+    cn_water_vals = [data[m]["cn_water"] for m in MODELS if m in data]
+    cn_tfsi_vals = [data[m]["cn_tfsi"] for m in MODELS if m in data]
 
     fig.add_trace(
         go.Bar(
@@ -349,7 +363,7 @@ def build_gr_plot(data: dict[str, dict]) -> go.Figure:
                 x=d["r"],
                 y=d["gr_water"],
                 mode="lines",
-                name=f"{model} O<sub>w</sub>",
+                name=f"{LABELS[model]} O<sub>w</sub>",
                 line={"color": c, "dash": "solid"},
                 legendgroup=model,
             )
@@ -359,7 +373,7 @@ def build_gr_plot(data: dict[str, dict]) -> go.Figure:
                 x=d["r"],
                 y=d["gr_tfsi"],
                 mode="lines",
-                name=f"{model} O<sub>TFSI</sub>",
+                name=f"{LABELS[model]} O<sub>TFSI</sub>",
                 line={"color": c, "dash": "dot"},
                 legendgroup=model,
             )
@@ -387,6 +401,28 @@ def build_gr_plot(data: dict[str, dict]) -> go.Figure:
 # =============================================================================
 
 
+def input_data_dir() -> Path:
+    """
+    Download the benchmark inputs from the ml-peg data bucket.
+
+    The archive holds the two starting cells used by the calculation and the
+    experimental SAXS S(q) used here.
+
+    Returns
+    -------
+    Path
+        Directory containing ``saxs_maginn.txt`` and the ``*_equilibrated.xyz``
+        cells.
+    """
+    return (
+        download_s3_data(
+            filename="litfsi_h2o_21m.zip",
+            key="inputs/electrolytes/litfsi_h2o_21m/litfsi_h2o_21m.zip",
+        )
+        / "litfsi_h2o_21m"
+    )
+
+
 def load_experimental_sq() -> tuple[np.ndarray, np.ndarray]:
     """
     Load experimental SAXS S(q) data.
@@ -398,7 +434,7 @@ def load_experimental_sq() -> tuple[np.ndarray, np.ndarray]:
     sq_exp : np.ndarray
         Experimental structure factor values.
     """
-    data = np.loadtxt(EXP_SAXS_PATH)
+    data = np.loadtxt(input_data_dir() / "saxs_maginn.txt")
     return data[:, 0], data[:, 1]
 
 
@@ -544,7 +580,7 @@ def build_sq_comparison_plot(
                 x=q.tolist(),
                 y=sq.tolist(),
                 mode="lines",
-                name=model,
+                name=LABELS[model],
                 opacity=0.8,
             )
         )
@@ -586,6 +622,13 @@ def density_results() -> dict[str, dict]:
     fig_ts = build_density_timeseries(data)
     with open(OUT_PATH / "figure_density_timeseries.json", "w") as f:
         f.write(fig_ts.to_json())
+
+    # Final NPT frame of each model, served to the app's structure viewer.
+    for model in data:
+        frame = CALC_PATH / model / "npt_final.xyz"
+        if frame.exists():
+            (OUT_PATH / model).mkdir(parents=True, exist_ok=True)
+            shutil.copy(frame, OUT_PATH / model / "npt_final.xyz")
 
     return data
 
@@ -672,6 +715,7 @@ def xray_sf_results() -> dict[str, dict]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
+    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     density_results: dict[str, dict],
@@ -696,7 +740,9 @@ def metrics(
         Metric names mapped to ``{model_name: value}`` dicts. The metric
         order matches ``metrics.yml`` (Density Error, Density Error (%),
         CN Li-O_water Error, CN Li-O_TFSI Error, CN Li-O_total Error,
-        S(q) R-factor, First Peak Position Error).
+        S(q) R-factor). The position of the first S(q) peak is computed by
+        ``xray_sf_results`` but not tabulated: on a 27.5 A cell the q grid is
+        quantised at 2*pi/L = 0.229 A^-1, which makes it noisy.
     """
     return {
         "Density Error": {
@@ -715,9 +761,6 @@ def metrics(
             model: d["err_total"] for model, d in rdf_results.items()
         },
         "S(q) R-factor": {model: r["r_factor"] for model, r in xray_sf_results.items()},
-        "First Peak Position Error": {
-            model: r["peak_position_error"] for model, r in xray_sf_results.items()
-        },
     }
 
 
@@ -731,3 +774,11 @@ def test_litfsi_h2o_21m(metrics: dict[str, dict]) -> None:
         Per-metric values for all models.
     """
     assert metrics, "No models produced data for the WiSE LiTFSI/H2O benchmark"
+
+    # Elements for the app's filter: the same for every model, so they are read
+    # from the shared starting cell rather than from a model's output.
+    write_struct_info(
+        data_path=input_data_dir() / "p16_w42_equilibrated.xyz",
+        out_path=OUT_PATH,
+        index=0,
+    )
