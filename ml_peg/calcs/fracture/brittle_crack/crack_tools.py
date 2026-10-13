@@ -39,6 +39,25 @@ def load_cases(path: Path = CASES_PATH) -> dict[str, dict]:
     return yaml.safe_load(Path(path).read_text())["cases"]
 
 
+def neutral_singlet(atoms: Atoms) -> Atoms:
+    """
+    Mark a structure as neutral and spin singlet for the model.
+
+    Parameters
+    ----------
+    atoms
+        Structure (modified in place).
+
+    Returns
+    -------
+    Atoms
+        The same structure, with info ``charge`` 0 and ``spin`` 1.
+    """
+    atoms.info["charge"] = 0
+    atoms.info["spin"] = 1
+    return atoms
+
+
 def material_constants(calc, symbol: str = "Si") -> dict:
     """
     Compute the lattice constant and relaxed-ion cubic elastic constants of a model.
@@ -61,7 +80,7 @@ def material_constants(calc, symbol: str = "Si") -> dict:
     from matscipy.elasticity import fit_elastic_constants
 
     a0, *_ = get_elastic_constants(calculator=calc, symbol=symbol, verbose=False)
-    cell = bulk(symbol, "diamond", a=a0, cubic=True)
+    cell = neutral_singlet(bulk(symbol, "diamond", a=a0, cubic=True))
     cell.calc = calc
     c, _ = fit_elastic_constants(
         cell,
@@ -108,7 +127,7 @@ def cleavage_energy(calc, a0: float, surface, front, symbol: str = "Si") -> floa
     from ase.optimize import LBFGS
     from matscipy.fracture_mechanics.clusters import diamond
 
-    slab = diamond(symbol, a0, [2, 6, 1], list(surface), list(front))
+    slab = neutral_singlet(diamond(symbol, a0, [2, 6, 1], list(surface), list(front)))
     slab.set_pbc(True)
     slab.wrap()
     slab.calc = calc
@@ -239,7 +258,7 @@ def model_problem(case: dict, calc, consts: dict):
     crk = crack(case, consts)
     k_g = crk.k1g(consts["gamma"])
     k0 = case["start_k"]
-    atoms = cluster_like(ref, crk, k0 * k_g, consts["a0"])
+    atoms = neutral_singlet(cluster_like(ref, crk, k0 * k_g, consts["a0"]))
     cryst = atoms.copy()
     cryst.positions = atoms.arrays["reference"]
     regions_from_groups(cryst)

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
+import importlib
 
 import numpy as np
 import pytest
@@ -89,6 +88,7 @@ def test_the_port_reproduces_crackcell():
 from ase.calculators.calculator import Calculator, all_changes  # noqa: E402
 
 from ml_peg.calcs.fracture.brittle_crack import crack_tools as ct  # noqa: E402
+from ml_peg.calcs.utils.utils import BENCHMARK_DATA_DIR  # noqa: E402
 
 
 def _sw():
@@ -196,7 +196,46 @@ def test_trace_case_reports_failure_instead_of_raising(monkeypatch):
     assert frames == [] and status.startswith("failed:")
 
 
-HAVE_DATA = bool(os.environ.get("BRITTLE_CRACK_DATA"))
+class _InfoRecorder(_SiOnly):
+    """``_SiOnly`` that records ``charge`` and ``spin`` of every evaluated structure."""
+
+    def __init__(self) -> None:
+        """Start with no recorded structures."""
+        super().__init__()
+        self.seen = set()
+
+    def calculate(
+        self, atoms=None, properties=("energy",), system_changes=all_changes
+    ) -> None:
+        """
+        Record the structure's charge and spin, then evaluate.
+
+        Parameters
+        ----------
+        atoms
+            Structure.
+        properties
+            Requested properties.
+        system_changes
+            Changes since the last call.
+        """
+        self.seen.add((atoms.info.get("charge"), atoms.info.get("spin")))
+        super().calculate(atoms, properties, system_changes)
+
+
+def test_evaluated_structures_are_neutral_singlets():
+    """Slab and crack structures carry charge 0 and spin 1 for the model."""
+    case = ct.load_cases()["Si_111_110"]
+    rec = _InfoRecorder()
+    consts = {"a0": 5.43095, "C11": 0.945, "C12": 0.477, "C44": 0.352}
+    consts["gamma"] = ct.cleavage_energy(
+        rec, consts["a0"], case["crack_surface"], case["crack_front"]
+    )
+    ct.trace_case(case, rec, consts, max_points=2)
+    assert rec.seen == {(0, 1)}
+
+
+HAVE_DATA = (BENCHMARK_DATA_DIR / "brittle_crack.zip").exists()
 
 
 def test_raw_metrics_pad_by_coverage_with_the_loaded_thresholds():
@@ -242,7 +281,7 @@ def test_empty_model_trace_has_zero_coverage():
     assert e["coverage"] == 0.0 and e["coverage_D"] == 0.0
 
 
-@pytest.mark.skipif(not HAVE_DATA, reason="set BRITTLE_CRACK_DATA to the packaged data")
+@pytest.mark.skipif(not HAVE_DATA, reason="reference data not in the ml_peg cache")
 def test_reference_against_itself_has_zero_errors():
     """The DFT reference path scored against itself has zero errors."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
@@ -272,9 +311,24 @@ def test_missing_reference_names_the_s3_key(monkeypatch):
         raise OSError("offline")
 
     monkeypatch.setattr(an, "download_s3_data", fail)
-    monkeypatch.setattr(an, "LOCAL_DATA", Path("/nonexistent"))
     with pytest.raises(FileNotFoundError, match="inputs/fracture/brittle_crack"):
         an.reference_frames("Si_111_110")
+
+
+def test_reference_loads_only_through_the_s3_helper(tmp_path, monkeypatch):
+    """Reference data comes from download_s3_data (cache or S3); no env override."""
+    from ase import Atoms
+    from ase.io import write
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    for d, n in (("s3", 1), ("env", 2)):
+        (tmp_path / d / "brittle_crack").mkdir(parents=True)
+        write(tmp_path / d / "brittle_crack" / "Si_111_110.extxyz", [Atoms("H")] * n)
+    monkeypatch.setenv("BRITTLE_CRACK_DATA", str(tmp_path / "env" / "brittle_crack"))
+    an = importlib.reload(an)
+    monkeypatch.setattr(an, "download_s3_data", lambda **kwargs: tmp_path / "s3")
+    assert len(an.reference_frames("Si_111_110")) == 1
 
 
 def test_structure_info_comes_from_the_reference_clusters(tmp_path, monkeypatch):
@@ -289,20 +343,25 @@ def test_structure_info_comes_from_the_reference_clusters(tmp_path, monkeypatch)
     assert {a.get_chemical_formula() for a in (read(p) for p in paths)} >= {"H30Si72"}
 
 
-def test_model_errors_score_a_missing_gamma_or_constants_as_uncovered():
-    """Failed constants or a failed cleavage energy give zero coverage, not KeyError."""
+def test_failed_calculations_give_nan_metrics():
+    """Failed constants, gamma or trace give NaN metrics (a NaN benchmark score)."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
     refs = {name: [object()] for name in an.CASES}
     frames = {name: [] for name in an.CASES}
-    no_consts = {"status": dict.fromkeys(an.CASES, "failed: x")}
+    ok = {"a0": 5.4, "C11": 0.9, "C12": 0.4, "C44": 0.4}
     for consts in (
-        no_consts,
-        {"a0": 5.4, "C11": 0.9, "C12": 0.4, "C44": 0.4, "gamma": {}},
+        {"status": dict.fromkeys(an.CASES, "failed: constants: x")},
+        {**ok, "gamma": {}},
+        {
+            **ok,
+            "gamma": dict.fromkeys(an.CASES, 0.1),
+            "status": dict.fromkeys(an.CASES, "failed: x"),
+        },
     ):
         errs = an.model_errors(consts, frames, refs)
         assert set(errs) == set(an.CASES)
-        assert all(e["coverage"] == 0.0 for e in errs.values())
+        assert all(np.isnan(v) for v in an.raw_metrics(errs).values())
 
 
 def test_frames_on_another_topology_are_rejected_clearly():

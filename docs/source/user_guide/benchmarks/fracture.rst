@@ -52,8 +52,10 @@ penalised: the uncovered fraction counts at the "bad" threshold, so its score is
 coverage times the score of its error on the covered part. The thresholds are the
 calibrated tolerance (good) and three times it (bad); Stillinger-Weber, the clearly poor
 reference model, has a median error of three tolerances. Thresholds changed in the app
-do not change this coverage padding, which uses the defaults. The benchmark score (the
-mean of the nine metric scores with default weights) is the combined value.
+do not change this coverage padding, which uses the defaults. A calculation that fails
+(an error in the constants, the cleavage energy or the tracer) is not scored: its
+metrics and benchmark score are NaN. The benchmark score (the mean of the nine metric
+scores with default weights) is the combined value.
 
 Benchmark speed
 ---------------
@@ -70,3 +72,21 @@ Reference data:
   H-passivated clamped clusters (100-135 atoms), packaged as the reference paths of the
   three cases.
 * Manuscript in preparation.
+
+Method:
+
+* M. Buze and J. R. Kermode, Numerical-continuation-enhanced flexible boundary
+  condition scheme applied to mode-I and mode-III fracture, Phys. Rev. E 103, 033002
+  (2021).
+* J. R. Kermode et al., Low-speed fracture instabilities in a brittle crystal,
+  Nature 455, 1224 (2008).
+* T. D. Swinburne and J. R. Kermode, Computing energy barriers for rare events from
+  hybrid quantum/classical simulations through the virtual work principle,
+  Phys. Rev. B 96, 144102 (2017).
+
+Tool and computational resource disclosure
+------------------------------------------
+
+The benchmark code, tests and this page were drafted with an AI coding assistant
+(Claude, Anthropic) and reviewed by the implementer. The DFT reference calculations
+used the Avon (University of Warwick) and Sulis (HPC Midlands+) clusters.

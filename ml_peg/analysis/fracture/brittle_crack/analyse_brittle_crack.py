@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from ase.io import read, write
@@ -28,9 +27,9 @@ CALC_PATH = CALCS_ROOT / "fracture" / BENCHMARK_DIR / "outputs"
 OUT_PATH = APP_ROOT / "data" / "fracture" / BENCHMARK_DIR
 S3_KEY = "inputs/fracture/brittle_crack/brittle_crack.zip"
 S3_FILENAME = "brittle_crack.zip"
-LOCAL_DATA = Path(os.environ.get("BRITTLE_CRACK_DATA", "/nonexistent"))
 CASES = ct.load_cases()
 TERMS = {"K": "E_K", "E": "E_E", "D": "E_D"}
+FAILED_KEYS = ("E_K", "E_E", "E_D", "coverage", "coverage_D")
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -40,7 +39,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 def reference_frames(name: str) -> list:
     """
-    Load the DFT reference path of a case (local copy or S3 download).
+    Load the DFT reference path of a case from the S3 data (cached after download).
 
     Parameters
     ----------
@@ -52,9 +51,6 @@ def reference_frames(name: str) -> list:
     list
         Reference frames with info ``K_over_KG`` and ``REF_energy``.
     """
-    local = LOCAL_DATA / f"{name}.extxyz"
-    if local.exists():
-        return read(local, ":")
     try:
         path = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / BENCHMARK_DIR
         return read(path / f"{name}.extxyz", ":")
@@ -201,13 +197,17 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
 
 def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
     """
-    Compute a model's errors on every case; failed constants score as uncovered.
+    Compute a model's errors on every case; a failed calculation gives NaN errors.
+
+    A trace that runs but stops short of the window is scored by its coverage; a
+    calculation that failed (constants, cleavage energy or tracer error) is not scored,
+    so the benchmark score is NaN rather than rewarding the failure.
 
     Parameters
     ----------
     consts
-        Model constants from the calculation (``constants.json``); ``gamma`` per case.
-        Missing constants or gamma (a failed calculation) give zero coverage.
+        Model constants from the calculation (``constants.json``); ``gamma`` and
+        ``status`` per case.
     frames
         Traced frames by case name.
     refs
@@ -221,13 +221,16 @@ def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
     out = {}
     for name, case in CASES.items():
         gamma = (consts.get("gamma") or {}).get(name)
+        status = str((consts.get("status") or {}).get(name, ""))
         ok = "a0" in consts and gamma is not None and np.isfinite(gamma)
-        c = {**consts, "gamma": gamma} if ok else {}
+        if not ok or status.startswith("failed"):
+            out[name] = dict.fromkeys(FAILED_KEYS, np.nan)
+            continue
         out[name] = case_errors(
-            frames.get(name, []) if ok else [],
+            frames.get(name, []),
             refs[name],
             case,
-            c,
+            {**consts, "gamma": gamma},
             ct.topology_constants(case),
         )
     return out
@@ -238,7 +241,7 @@ def raw_metrics(errs: dict) -> dict[str, float]:
     Return the coverage-padded raw metric values for the table.
 
     The padding uses the thresholds loaded from metrics.yml (thresholds changed later
-    in the app do not re-pad).
+    in the app do not re-pad). A failed calculation (NaN coverage) stays NaN.
 
     Parameters
     ----------
@@ -257,6 +260,9 @@ def raw_metrics(errs: dict) -> dict[str, float]:
             metric = f"{label} {term} error"
             th = DEFAULT_THRESHOLDS[metric]
             cov = e["coverage_D"] if term == "D" else e["coverage"]
+            if np.isnan(cov):  # failed calculation: not scored
+                out[metric] = np.nan
+                continue
             out[metric] = sc.padded(e[key], cov, th["good"], th["bad"])
     return out
 
