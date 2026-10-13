@@ -18,17 +18,17 @@ relation described by Tuckerman [tuckerman2015]_.
 Metrics
 -------
 
-1. Mean signed relative error
+1. Absolute mean relative error
 
-For each element, the signed relative difference between predicted and experimental
-diffusion coefficients is averaged over the measurement temperatures. Positive
-values indicate overestimation, negative values indicate underestimation.
+For each element, relative differences between predicted and experimental diffusion
+coefficients are averaged over temperatures before taking the absolute value.
 
-2. Temperature-dependence absolute error
+2. Temperature-dependence absolute relative error
 
 For each element, linear fits of diffusion coefficient against temperature are
 computed for predictions and experimental measurements at the same temperatures.
-The metric is the absolute difference between the fitted slopes.
+The metric is the absolute difference between the fitted slopes, divided by the
+absolute experimental slope and expressed as a percentage.
 
 Benchmark speed
 ---------------

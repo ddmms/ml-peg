@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import logging
 from pathlib import Path
+from shutil import copy2
 import time
 from typing import Any
 from warnings import warn
@@ -13,8 +14,9 @@ from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import Trajectory, read
 from ase.md.nose_hoover_chain import IsotropicMTKNPT
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 from ase.md.verlet import VelocityVerlet
+from joblib import Parallel, delayed
 import numpy as np
 import pytest
 
@@ -31,12 +33,19 @@ TIMESTEP = 2.0 * units.fs
 
 MELT_SCALE = 1.5
 
-NPT_MELT = 10000
-NPT_EQ = 25000
-NPT_PROD = 100000
+# NPT_MELT = 5000
+# NPT_EQ = 25000
+# NPT_PROD = 100000
 
-VACF_SAMPLES = 100
-VACF_STEPS = 2500
+# VACF_SAMPLES = 100
+# VACF_STEPS = 2500
+
+NPT_MELT = 1000
+NPT_EQ = 1000
+NPT_PROD = 1000
+
+VACF_SAMPLES = 25
+VACF_STEPS = 1000
 
 THERMOSTAT_STEPS = 10
 BAROSTAT_STEPS = 100
@@ -44,6 +53,8 @@ BAROSTAT_STEPS = 100
 PRESSURE = 0.0 * units.bar
 
 AU_TO_G_CM3 = 1e24 / units.mol
+
+N_JOBS = 5
 
 LOG_INTERVAL = NPT_PROD // VACF_SAMPLES
 
@@ -138,7 +149,9 @@ def run_npt(atoms: Atoms, calc: Calculator, output_fname: str | Path) -> None:
     if Path(output_fname).exists():
         try:
             with Trajectory(output_fname) as traj:
-                atoms = traj[-1]
+                state = traj[-1]
+                state.info = atoms.info.copy()
+                atoms = state
                 nsteps = (len(traj) - 1) * LOG_INTERVAL
         except Exception as e:
             print(e)
@@ -179,29 +192,34 @@ def run_npt(atoms: Atoms, calc: Calculator, output_fname: str | Path) -> None:
             dyn.atoms.info["energy"] = np.nan
             return
         nsteps = dyn.nsteps
+    atoms.calc = None
 
 
-def run_nve(atoms: Atoms, calc: Calculator) -> np.ndarray:
+def run_nve(atoms: Atoms, model: Any, vacf_path: Path) -> None:
     """
-    Run a fresh fixed-cell NVE trajectory with Maxwell-Boltzmann momenta.
+    Run a fresh fixed-cell NVE trajectory and save its VACF and log.
 
     Parameters
     ----------
     atoms
         Sampled structure with target temperature in ``info['exp_temperature']``.
         The input is not modified; inherited momenta are replaced on a copy.
-    calc
-        ASE calculator.
-
-    Returns
-    -------
-    numpy.ndarray
-        Velocities in Angstrom/fs with shape (n_samples, n_atoms, 3).
-        Record ``VACF_STEPS + 1`` samples, including the initial state at t=0.
+    model
+        Model wrapper used to create this worker's ASE calculator.
+    vacf_path
+        Output NumPy file for lag times and VACF; the log uses the same stem.
     """
+    logging.basicConfig(
+        format="%(message)s",
+        level=logging.INFO,
+        filename=vacf_path.with_suffix(".log"),
+        filemode="a",
+        force=True,
+    )
     state = atoms.copy()
-    state.calc = calc
+    state.calc = model.get_calculator(precision="low")
     MaxwellBoltzmannDistribution(state, temperature_K=state.info["exp_temperature"])
+    Stationary(state)
     velocities, record_velocities = init_velocity_recorder(state)
     dyn = VelocityVerlet(state, timestep=TIMESTEP)
 
@@ -213,7 +231,7 @@ def run_nve(atoms: Atoms, calc: Calculator) -> np.ndarray:
     except Exception as exc:
         warn(f"Error running MD: {exc}", stacklevel=2)
 
-    return velocities
+    np.save(vacf_path, compute_vacf(velocities))
 
 
 def compute_vacf(velocities: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -251,32 +269,35 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
     mlip
         Name of model use and model to get calculator.
     system
-        Elements of the file in the metal input archive. Each crystal supplies paired ``temperatures`` and ``diffusion_constants`` metadata.
+        Elements of the file in the metal input archive. Each crystal supplies
+        paired ``temperatures`` and ``diffusion_constants`` metadata.
     """
     model_name, model = mlip
 
-    calc = model.get_calculator(precision="low")
-    
-    data_path = (
-        download_s3_data(
-            filename="metal_self_diffusion.zip",
-            key="inputs/molecular_dynamics/metal_self_diffusion/metal_self_diffusion.zip",
-        )
-        / "metal_self_diffusion"
+    data_path = download_s3_data(
+        filename="metal_self_diffusion.zip",
+        key="inputs/molecular_dynamics/metal_self_diffusion",
     )
+
     input_path = sorted(data_path.glob("*.xyz"))[system]
     crystal = read(input_path)
+    model_dir = OUT_PATH / model_name
+    model_dir.mkdir(exist_ok=True, parents=True)
+    copy2(input_path, model_dir / input_path.name)
 
-
-    for temperature in crystal.info["temperatures"]:
-        
+    for temperature, diffusion in zip(
+        crystal.info["temperatures"], crystal.info["diffusion_constants"], strict=True
+    ):
         atoms = crystal.copy()
-        
+
         atoms.info["exp_temperature"] = temperature
-        
+        atoms.info["exp_diffusion"] = diffusion
+        del atoms.info["temperatures"]
+        del atoms.info["diffusion_constants"]
+
         out_dir = OUT_PATH / model_name / input_path.stem / f"{temperature:g}K"
         out_dir.mkdir(exist_ok=True, parents=True)
-        
+
         logging.basicConfig(
             format="%(message)s",
             level=logging.INFO,
@@ -287,19 +308,15 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
 
         output_fname = out_dir / "npt.traj"
 
+        calc = model.get_calculator(precision="low")
         run_npt(atoms, calc, output_fname)
+        del calc
 
         first_frame = (NPT_MELT + NPT_EQ) // LOG_INTERVAL + 1
 
         with Trajectory(output_fname) as traj:
-            for idx, frame_idx in enumerate(range(first_frame, len(traj))):
-
-                vacf_path = out_dir / f"vacf_{idx}.npy"
-
-                if vacf_path.exists():
-                    continue
-
-                velocities = run_nve(traj[frame_idx], calc)
-                vacf = compute_vacf(velocities)
-
-                np.save(vacf_path, vacf)
+            Parallel(n_jobs=N_JOBS, backend="loky", inner_max_num_threads=1)(
+                delayed(run_nve)(traj[frame_idx], model, out_dir / f"vacf_{idx}.npy")
+                for idx, frame_idx in enumerate(range(first_frame, len(traj)))
+                if not (out_dir / f"vacf_{idx}.npy").exists()
+            )

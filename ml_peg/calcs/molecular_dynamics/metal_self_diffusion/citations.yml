@@ -1,0 +1,14 @@
+implementers:
+  - name: Paul Fuchs
+    github: pl-fuchs
+    email: paul.fuchs@tum.de
+
+citations:
+  - key: meyerSelfdiffusionLiquidCopper2010
+    role: reference_data
+    title: Self-Diffusion in Liquid Copper as Seen by Quasielastic Neutron Scattering
+    authors:
+      - A. Meyer
+    year: 2010
+    doi: 10.1103/PhysRevB.81.012102
+    url: https://link.aps.org/doi/10.1103/PhysRevB.81.012102

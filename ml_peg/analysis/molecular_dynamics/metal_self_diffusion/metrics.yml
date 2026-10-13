@@ -1,0 +1,16 @@
+metrics:
+  AMRE:
+    good: 3.0
+    bad: 50.0
+    unit: "%"
+    tooltip: >-
+      Absolute mean relative error across temperatures per system.
+    level_of_theory: Experimental
+  Slope ARE:
+    good: 10.0
+    bad: 20.0
+    unit: "%"
+    tooltip: >-
+      Absolute difference between predicted and experimental linear D(T) slopes,
+      divided by the absolute experimental slope.
+    level_of_theory: Experimental
