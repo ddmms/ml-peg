@@ -119,6 +119,11 @@ def test_registered_aimnet_model_evaluates(model_name):
     assert np.isfinite(hydroxide.get_forces()).all()
     assert hydroxide.calc.charge == -1
 
+    # Now test on neutral molecule again and check that the charge is reset to 0
+    water.calc = calculator
+    assert np.isfinite(water.get_potential_energy())
+    assert water.calc.charge == 0
+
 
 def test_aimnet_reused_calculator_is_history_independent():
     """A sparse evaluation must not truncate neighbours for a later dense one."""
