@@ -172,3 +172,33 @@
   }
 
 }
+
+[data-theme="dark"] .plot-settings {
+  border-color: var(--mlpeg-border);
+  background: var(--mlpeg-surface-2);
+  color: var(--mlpeg-ink);
+}
+
+[data-theme="dark"] .plot-settings-section {
+  border-bottom-color: var(--mlpeg-border);
+}
+
+[data-theme="dark"] .plot-settings-row-label,
+[data-theme="dark"] .plot-settings-help {
+  color: var(--mlpeg-ink-2);
+}
+
+[data-theme="dark"] .plot-settings-number {
+  border-color: var(--mlpeg-border-strong);
+}
+
+[data-theme="dark"] .plot-settings-reset,
+[data-theme="dark"] .plot-settings-secondary-button {
+  border-color: var(--mlpeg-border-strong);
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+}
+
+[data-theme="dark"] .plot-settings-message {
+  color: var(--mlpeg-bad-fg);
+}
