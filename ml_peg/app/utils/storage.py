@@ -10,9 +10,11 @@ and automatically after a new version is released.
 from __future__ import annotations
 
 from dash import Input, Output, clientside_callback
+from dash.dcc import Store
 from dash.html import Div
 
 from ml_peg import __version__
+from ml_peg.app.utils.bug_report import build_bug_report_button
 from ml_peg.app.utils.onboarding import build_tutorial_button
 from ml_peg.app.utils.settings import build_settings_panel
 
@@ -67,13 +69,19 @@ def build_version_check_script() -> str:
     )
 
 
-def build_header_controls() -> Div:
+def build_header_controls(stores: list[Store]) -> Div:
     """
     Build the controls shown in the top-right corner of the app.
 
     Holds the settings popover (theme, colour scheme, expand preference, clear
     cache) next to the "Tutorial" button. The hidden Divs are not shown, they
     just give the callbacks somewhere to write to.
+
+    Parameters
+    ----------
+    stores
+        Globally mounted app stores, passed to the bug reporter so it can record
+        the defaults a report is compared against.
 
     Returns
     -------
@@ -84,6 +92,7 @@ def build_header_controls() -> Div:
         [
             build_settings_panel(),
             build_tutorial_button(),
+            build_bug_report_button(stores),
             Div(id="clear-storage-dummy", style={"display": "none"}),
             Div(id="theme-apply-dummy", style={"display": "none"}),
             Div(id="zoom-apply-dummy", style={"display": "none"}),
