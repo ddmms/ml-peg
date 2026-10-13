@@ -249,8 +249,11 @@ def load_models(
                     default_dtype=cfg.get("overwrite_dtype", None),
                 )
             case "NEP":
+                kwargs = dict(cfg.get("kwargs", {}))
                 loaded_models[name] = NEPCalc(
-                    kwargs=cfg.get("kwargs", {}),
+                    model_filename=kwargs.pop("model_filename"),
+                    device=cfg.get("device"),
+                    kwargs=kwargs,
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                     default_dtype=cfg.get("overwrite_dtype", None),

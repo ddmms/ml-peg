@@ -365,7 +365,6 @@ mace-polar-1-l:
 nep89:
   module: nep.calculator
   class_name: NEP
-  datasets: []
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: PBE

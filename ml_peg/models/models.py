@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, get_args
+from urllib.parse import urlparse
+from urllib.request import urlretrieve
 from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
@@ -605,12 +608,18 @@ class GraceCalc(GenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+NEP_SHORTHANDS = {
+    "NEP89": "https://raw.githubusercontent.com/brucefan1983/GPUMD/v4.0/potentials/nep/nep89_20250409/nep89_20250409.txt",
+}
+
+
 @dataclasses.dataclass(kw_only=True)
 class NEPCalc(SumCalc):
     """Dataclass for NEP calculators provided by calorine."""
 
     model_filename: str
     device: Device | None = None
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -645,7 +654,7 @@ class NEPCalc(SumCalc):
         if dtype != "double":
             warn(
                 (
-                    "NEP only supports double precision;"
+                    "NEP only supports double precision; "
                     "will continue with double precision."
                 ),
                 stacklevel=2,
@@ -653,7 +662,7 @@ class NEPCalc(SumCalc):
 
         # TODO handle GPU and CPU
         calculator_kwargs = {**self.kwargs, **kwargs}
-        return CPUNEP(self.model_filename, **calculator_kwargs)
+        return CPUNEP(self.resolve_model_filename(), **calculator_kwargs)
 
     @property
     def available(self) -> bool:
@@ -672,7 +681,7 @@ class NEPCalc(SumCalc):
         except ImportError:
             return False
 
-    def resolve_model_filename(self):
+    def resolve_model_filename(self) -> str:
         """
         Resolve the `model_filename` property for the `calorine` calculators.
 
@@ -685,10 +694,31 @@ class NEPCalc(SumCalc):
         -------
         str
             Path to the NEP model.
-        """
-        # cache_dir = f"{os.path.expanduser('~')}/.cache/ml_peg/models/nep"
 
-        # Handle the three cases
-        if self.model_filename == "NEP89":
-            # Fetch file from https://github.com/brucefan1983/GPUMD/blob/v4.0/potentials/nep/nep89_20250409/nep89_20250409.txt.
-            pass
+        Raises
+        ------
+        RuntimeError
+            If the model cannot be downloaded from the URL.
+        FileNotFoundError
+            If `model_filename` is not an existing file, a URL, or a known shorthand.
+        """
+        name = NEP_SHORTHANDS.get(self.model_filename, self.model_filename)
+        if name.startswith(("http://", "https://")):
+            cache_dir = Path.home() / ".cache/ml_peg/models/nep"
+            path = cache_dir / Path(urlparse(name).path).name
+            if not path.is_file():
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    urlretrieve(name, path.with_suffix(".part"))
+                except OSError as err:
+                    raise RuntimeError(
+                        f"Failed to download NEP model from '{name}': {err}"
+                    ) from err
+                path.with_suffix(".part").replace(path)
+            return str(path)
+        if not Path(name).is_file():
+            raise FileNotFoundError(
+                f"NEP model '{name}' is not an existing file, a URL, or a known "
+                f"shorthand ({', '.join(NEP_SHORTHANDS)})."
+            )
+        return name
