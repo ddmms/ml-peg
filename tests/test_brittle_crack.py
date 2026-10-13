@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -191,3 +194,84 @@ def test_trace_case_reports_failure_instead_of_raising(monkeypatch):
     consts = {"a0": 5.43095, "C11": 0.945, "C12": 0.477, "C44": 0.352, "gamma": 0.104}
     frames, status = ct.trace_case(case, _SiOnly(), consts)
     assert frames == [] and status.startswith("failed:")
+
+
+HAVE_DATA = bool(os.environ.get("BRITTLE_CRACK_DATA"))
+
+
+def test_raw_metrics_pad_by_coverage_with_the_loaded_thresholds():
+    """Raw values are padded with the metrics.yml thresholds; zero coverage gives b."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    th = an.DEFAULT_THRESHOLDS
+    errs = {
+        "Si_110_110": {
+            "E_K": 0.0,
+            "E_E": 0.0,
+            "E_D": 0.0,
+            "coverage": 0.5,
+            "coverage_D": 1.0,
+        },
+        "Si_110_001": {
+            "E_K": np.nan,
+            "E_E": np.nan,
+            "E_D": None,
+            "coverage": 0.0,
+            "coverage_D": 0.0,
+        },
+    }
+    raw = an.raw_metrics(errs)
+    k = "Si (110)[1-10] K error"
+    g, b = th[k]["good"], th[k]["bad"]
+    assert raw[k] == pytest.approx(0.5 * g + 0.5 * b)
+    assert raw["Si (110)[1-10] D error"] == pytest.approx(
+        th["Si (110)[1-10] D error"]["good"]
+    )
+    assert raw["Si (110)[001] D error"] == pytest.approx(
+        th["Si (110)[001] D error"]["bad"]
+    )
+
+
+def test_empty_model_trace_has_zero_coverage():
+    """A model with no frames gets NaN errors and zero coverage, not an exception."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    case = ct.load_cases()["Si_111_110"]
+    t = ct.topology_constants(case)
+    e = an.case_errors([], [object()], case, t, t)
+    assert e["coverage"] == 0.0 and e["coverage_D"] == 0.0
+
+
+@pytest.mark.skipif(not HAVE_DATA, reason="set BRITTLE_CRACK_DATA to the packaged data")
+def test_reference_against_itself_has_zero_errors():
+    """The DFT reference path scored against itself has zero errors."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = an.reference_frames("Si_111_110")
+    case = ct.load_cases()["Si_111_110"]
+    t = ct.topology_constants(case)
+    e = an.case_errors(ref, ref, case, t, t)
+    assert e["E_K"] == pytest.approx(0, abs=1e-12) and e["coverage"] == 1.0
+    assert e["E_E"] == pytest.approx(0, abs=1e-12)
+    assert e["E_D"] == pytest.approx(0, abs=1e-12)
+
+
+def test_missing_reference_names_the_s3_key(monkeypatch):
+    """An offline download failure names the S3 key."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    def fail(**kwargs):
+        """
+        Fail like an offline download.
+
+        Parameters
+        ----------
+        **kwargs
+            Ignored.
+        """
+        raise OSError("offline")
+
+    monkeypatch.setattr(an, "download_s3_data", fail)
+    monkeypatch.setattr(an, "LOCAL_DATA", Path("/nonexistent"))
+    with pytest.raises(FileNotFoundError, match="inputs/fracture/brittle_crack"):
+        an.reference_frames("Si_111_110")
