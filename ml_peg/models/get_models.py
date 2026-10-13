@@ -175,21 +175,27 @@ def load_models(
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "FAIRChemCalculator":
-                kwargs = cfg.get("kwargs", {})
+                kwargs = dict(cfg.get("kwargs", {}))
+                model_name = kwargs.pop("model_name")
+                task_name = kwargs.pop("task_name", "omat")
+                overrides = kwargs.pop("overrides", {})
                 loaded_models[name] = FairChemCalc(
-                    model_name=kwargs["model_name"],
-                    task_name=kwargs.get("task_name", "omat"),
+                    model_name=model_name,
+                    task_name=task_name,
                     device=cfg.get("device", "cpu"),
-                    overrides=kwargs.get("overrides", {}),
+                    overrides=overrides,
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "OrbCalc":
-                kwargs = cfg.get("kwargs", {})
+                kwargs = dict(cfg.get("kwargs", {}))
+                orb_name = kwargs.pop("name")
                 loaded_models[name] = OrbCalc(
-                    name=kwargs["name"],
+                    name=orb_name,
                     device=cfg.get("device", "cpu"),
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
