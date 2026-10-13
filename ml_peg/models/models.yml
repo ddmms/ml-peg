@@ -107,7 +107,7 @@ dpa-4-plus-omat:
     model: DPA4-Plus-OMat24-v20260805
 
 orb-v3-consv-inf-omat:
-  module: orb_models.inference.calculator
+  module: orb_models.forcefield.inference.calculator
   class_name: OrbCalc
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
@@ -118,7 +118,7 @@ orb-v3-consv-inf-omat:
     name: "orb_v3_conservative_inf_omat"
 
 orb-v3-direct-inf-omat:
-  module: orb_models.inference.calculator
+  module: orb_models.forcefield.inference.calculator
   class_name: OrbCalc
   device: "cpu"
   trained_on_dispersion: false
@@ -313,7 +313,7 @@ pet-oam-xl:
     version: "1.0.0"
 
 sevennet-omni-mpa:
-  module: sevenn.sevennet_calculator
+  module: sevenn.calculator
   class_name: SevenNetCalculator
   datasets: [MPtrj, sAlex, MAD, MatPES-PBE, OMAT, OMol25, OC20, OC22, ODAC23, SPICE, QCML, MP-ALOE, MatPES-r2SCAN]
   additional_supported_elements: [Fr, Ra, Rf, Db, Sg, Bh, Hs, Mt, Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr]
