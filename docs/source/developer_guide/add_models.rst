@@ -272,7 +272,7 @@ Hugging Face:
 
 .. code-block:: yaml
 
-   aceff-2.0:
+   aceff-2p0:
      module: torchmdnet.calculators
      class_name: TMDNETCalculator
      datasets: null

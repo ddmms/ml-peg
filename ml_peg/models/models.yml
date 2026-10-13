@@ -362,7 +362,7 @@ mace-polar-1-l:
   kwargs:
     model: "polar-1-l"
 
-aceff-2.0:
+aceff-2p0:
   module: torchmdnet.calculators
   class_name: TMDNETCalculator
   datasets: null
