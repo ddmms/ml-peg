@@ -96,8 +96,8 @@ Reference data:
 * :math:`DLPNO-CCSD(T)` level of theory: a local coupled-cluster method.
 
 
-TorsionNet500CCSDT
-===================
+TorsionNet500
+=============
 
 Summary
 -------
