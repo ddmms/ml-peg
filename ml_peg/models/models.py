@@ -22,6 +22,66 @@ if TYPE_CHECKING:
 
 Precision = Literal["low", "high"]
 
+#: Keys read from a model's `dispersion_kwargs`, by `SumCalc.add_d3_calculator` and,
+#: for `label`, by the analysis utilities that name dispersion-corrected models.
+DISPERSION_KWARGS = frozenset(
+    {"device", "damping", "xc", "dtype", "cutoff", "label"},
+)
+
+#: Keyword arguments taken from `**kwargs` by a calculator, so absent from its
+#: signature. Any other key missing from the signature is silently ignored by ASE,
+#: so is rejected instead. Keyed by the registry's `class_name`.
+PASSTHROUGH_KWARGS = {
+    "mace_mp": {"head"},
+    "mace_off": {"head"},
+    "mace_omol": {"head"},
+    "mace_polar": {"head"},
+    "MACECalculator": {"head"},
+    "MatterSimCalculator": {"load_path"},
+    "grace_fm": {"cutoff"},
+}
+
+
+def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> None:
+    """
+    Check that configured keyword arguments are accepted by the calculator.
+
+    Most calculators end in `**kwargs`, which ASE's `Calculator` stores without
+    complaint, so a misnamed key would otherwise be ignored and the calculator built
+    with its defaults.
+
+    Parameters
+    ----------
+    kwargs
+        Keyword arguments set by the model's `kwargs` key.
+    target
+        Calculator class or factory function the keyword arguments are passed to.
+    class_name
+        Registry `class_name`, used to look up documented `**kwargs` passthroughs.
+
+    Raises
+    ------
+    ValueError
+        If a keyword argument is neither a parameter of `target` nor a known
+        passthrough.
+    """
+    parameters = inspect.signature(target).parameters
+    named = {
+        name
+        for name, parameter in parameters.items()
+        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+    }
+    # Nothing to check against, such as a test double taking only `**kwargs`.
+    if not named:
+        return
+
+    unknown = sorted(set(kwargs) - named - PASSTHROUGH_KWARGS.get(class_name, set()))
+    if unknown:
+        raise ValueError(
+            f"{', '.join(unknown)} would be ignored by {class_name}. Valid keyword "
+            f"arguments are: {', '.join(sorted(named))}"
+        )
+
 
 def import_calculator(module: str, class_name: str) -> Callable:
     """
@@ -220,6 +280,28 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
 
     default_dtype: str | None = None
 
+    def load_calculator(self, **kwargs) -> Calculator:
+        """
+        Check the configured kwargs, then load the calculator through mlipx.
+
+        Parameters
+        ----------
+        **kwargs
+            Any keyword arguments to pass to `get_calculator`.
+
+        Returns
+        -------
+        Calculator
+            Loaded ASE Calculator.
+        """
+        check_kwargs(
+            self.kwargs or {},
+            import_calculator(self.module, self.class_name),
+            self.class_name,
+        )
+
+        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
         Prepare and load the calculator.
@@ -243,7 +325,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         if self.default_dtype is not None:
             kwargs["default_dtype"] = self.default_dtype
 
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        return self.load_calculator(**kwargs)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -274,6 +356,7 @@ class DpaCalc(SumCalc):
         check_precision(precision)
 
         dp = import_calculator(self.module, self.class_name)
+        check_kwargs(self.kwargs, dp, self.class_name)
 
         calculator_kwargs = {**self.kwargs, **kwargs}
         return dp(**calculator_kwargs)
@@ -362,7 +445,7 @@ class MatterSimCalc(GenericASECalc):
 
         self._patch_mattersim_setstate()
 
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        return self.load_calculator(**kwargs)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -391,6 +474,7 @@ class VivaceCalc(SumCalc):
             Loaded ASE calculator.
         """
         mlff_calculator = import_calculator(self.module, self.class_name)
+        check_kwargs(self.kwargs, mlff_calculator, self.class_name)
 
         check_precision(precision)
 
@@ -627,7 +711,7 @@ class UPETCalc(GenericASECalc):
             kwargs["dtype"] = self.default_dtype
 
         _patch_metatomic_nvalchemi_max_neighbors()
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        return self.load_calculator(**kwargs)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -657,6 +741,7 @@ class SevenNetCalc(SumCalc):
             Loaded SevenNet ASE calculator.
         """
         sevennet_calculator = import_calculator(self.module, self.class_name)
+        check_kwargs(self.kwargs, sevennet_calculator, self.class_name)
 
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
@@ -768,4 +853,4 @@ class GraceCalc(GenericASECalc):
         # Set the model on a copy, as `self.kwargs` is shared with the model registry.
         model = dataclasses.replace(self, kwargs={**self.kwargs, "model": model_name})
 
-        return MlipxGenericASECalc.get_calculator(model, **kwargs)
+        return model.load_calculator(**kwargs)
