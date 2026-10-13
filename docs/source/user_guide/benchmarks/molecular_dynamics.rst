@@ -343,8 +343,8 @@ This is a wall-clock, hardware-dependent measurement rather than a level of theo
 results are only comparable across models run on the same hardware. The reference
 hardware is an NVIDIA H100 GPU.
 
-Computational cost
-------------------
+Benchmark speed
+---------------
 
 Low: tests are likely to take minutes to run on GPU.
 
