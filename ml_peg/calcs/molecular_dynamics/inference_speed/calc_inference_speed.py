@@ -43,6 +43,7 @@ def test_inference_speed(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
+    # Low (float32) precision is intentional: time the precision used for MD.
     calc = model.get_calculator(precision="low")
     # Do not add D3 term. We measure inference speed of the model alone.
 
