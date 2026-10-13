@@ -264,11 +264,13 @@ def write_density_json(
     out_file: Path,
     *,
     cell: str,
-    rho_exp: float,
     window_ps: tuple[float, float],
 ) -> dict:
     """
     Average the NPT density over a time window and save it.
+
+    Only the density itself is written: the error against experiment is a
+    metric, computed by the analysis.
 
     Parameters
     ----------
@@ -280,8 +282,6 @@ def write_density_json(
         Where to write ``density.json``.
     cell : str
         Name of the NPT cell, recorded in the summary.
-    rho_exp : float
-        Experimental density in g/cm3.
     window_ps : tuple[float, float]
         Start and end of the averaging window in ps.
 
@@ -306,11 +306,8 @@ def write_density_json(
     summary = {
         "model": model_name,
         "cell": cell,
-        "rho_exp": rho_exp,
         "rho_mean": float(window.mean()),
         "rho_std": float(window.std()),
-        "rho_error_pct": float(100 * (window.mean() - rho_exp) / rho_exp),
-        "rho_abs_error": float(abs(window.mean() - rho_exp)),
         "n_samples": int(window.size),
         "time_range_ps": [lo, hi],
         "time_full": time_ps.tolist(),

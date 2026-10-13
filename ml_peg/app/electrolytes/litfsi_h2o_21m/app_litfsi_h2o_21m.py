@@ -51,6 +51,7 @@ class LitfsiH2O21mApp(BaseApp):
                 "Density Error (%)": density_bar,
                 "CN Li-O_water Error": cn_bar,
                 "CN Li-O_TFSI Error": cn_bar,
+                "CN Li-O_total Error": cn_bar,
                 "S(q) R-factor": sq_plot,
                 "Score": gr_plot,
             },

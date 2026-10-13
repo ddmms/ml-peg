@@ -119,6 +119,11 @@ references are theoretical. The ranking is insensitive to the choice: the
 Spearman correlation between the schemes tried, including density alone, is
 above 0.97.
 
+A model gets a score only if all its metrics are available. If the MD fails on
+one cell, the calculation records it in ``failed_<cell>.json`` and still runs
+the other cell; the metrics of the failed cell, and with them the score, are
+NaN. A model is never scored on the metrics that survived.
+
 Benchmark speed
 ---------------
 
