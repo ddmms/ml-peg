@@ -566,6 +566,7 @@ class SevenNetCalc(SumCalc):
 class GraceCalc(GenericASECalc):
     """Dataclass for GRACE calculator."""
 
+    device: DeviceType | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
