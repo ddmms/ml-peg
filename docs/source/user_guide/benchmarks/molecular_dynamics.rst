@@ -322,7 +322,9 @@ Summary
 
 Measure of model inference speed and how it scales with system size. A
 size-stratified dataset of 13 biomolecular structures (71-6713 atoms) is used.
-For each system the model forward pass (energy + forces) is timed.
+For each system the model forward pass (energy + forces) through the model's
+ASE calculator is timed.
+------------
 
 Metrics
 -------
@@ -334,6 +336,13 @@ For each structure, the mean wall-clock time of a single model forward pass
 atoms. The reported metric is the mean of this per-atom forward time across
 structures, omitting the slowest 20% of passes, in microseconds per atom. Lower is faster.
 If the forward pass fails for any structure, the metric is reported as NaN.
+
+Models are timed through their ASE calculators in low (float32) precision, as used for
+the molecular dynamics benchmarks. Each timed pass forces a full ``calculate()`` call,
+so the timing can include the calculator's own neighbour-list construction and per-call
+overhead. By contrast, MLIP Audit times its native force fields on the pure network
+forward pass over a pre-built graph. The two paths measure different work, so these
+timings should not be compared directly with MLIP Audit's own inference-speed results.
 
 The accompanying scaling plot shows the model throughput (number of atoms divided by the
 forward-pass time, in atoms per second) against the number of atoms on log-log axes,
