@@ -135,7 +135,8 @@ Benchmark speed
 ------------------
 
 Fast: minutes on GPU, and minutes to tens of minutes on CPU. The benchmark is
-marked ``fast``.
+marked ``fast``. It took around 13 minutes for ``mace-omol`` on an Apple Silicon
+CPU (2232 single points).
 
 Data availability
 -----------------
