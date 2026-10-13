@@ -25,7 +25,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
 
-@pytest.mark.framework("mace-multihead", "mace-polar-1")
+@pytest.mark.framework("mace-multihead", "mace-polar-1", "mace-mp")
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_energy(mlip: tuple[str, Any]) -> None:

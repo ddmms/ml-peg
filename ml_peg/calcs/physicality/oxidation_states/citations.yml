@@ -1,0 +1,21 @@
+implementers:
+  - name: "Panagiotis Kourtis"
+    github: "PKourtis"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - key: "kocer-2024-redox"
+    role: reference_data
+    title: "Machine learning potentials for redox chemistry in solution"
+    authors:
+      - "Emir Kocer"
+      - "Redouan El Haouari"
+      - "Christoph Dellago"
+      - "Jörg Behler"
+    year: 2024
+    doi: null
+    url: "https://arxiv.org/abs/2410.03299"

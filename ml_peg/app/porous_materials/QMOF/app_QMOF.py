@@ -68,6 +68,7 @@ def get_app() -> QMOFApp:
     """
     return QMOFApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Performance in predicting energies of metal organic frameworks from the "
             "QMOF database, compared against PBE reference data."

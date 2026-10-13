@@ -8,6 +8,8 @@ This guide will break down the process of adding a new benchmark into several st
 2. :ref:`calculations`
 3. :ref:`analysis`
 4. :ref:`dash`
+5. :ref:`benchmark-credits`
+
 
 Please ensure you use the appropriate issue and pull request templates when
 contributing a new benchmark. Full examples can be found by filtering by the
@@ -60,6 +62,78 @@ meet these criteria.
 In some cases, metrics may also encode correct behaviour without a specific reference,
 such as by quantifying features of a known distribution (curvature, minima, etc.),
 or quantifying the stability of a simulation.
+
+
+.. _benchmark-credits:
+
+Recording citations and contributor credit
+------------------------------------------
+
+Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
+
+.. code-block:: yaml
+
+    implementers:          # who wrote the ML-PEG benchmark implementation
+      - name: A. Implementer
+        github: aimplementer
+        email: aimplementer@example.org  # optional
+
+    contributors:          # other substantive contributions to the benchmark
+      - name: A. Contributor
+        github: acontributor
+        email: acontributor@example.org  # optional
+
+    citations:             # what a user of this benchmark must cite
+      - key: author-2025-benchmark
+        role: benchmark_method
+        title: The benchmark paper
+        authors:
+          - A. Author
+          - B. Author
+        year: 2025
+        doi: 10.1234/example
+        url: https://example.org/benchmark
+
+``github`` and ``email`` are optional for both credit groups. Use a GitHub handle
+and a plain email address, such as ``name@example.org``, rather than a profile
+URL or ``mailto:`` URL. Either contact field may be omitted or ``null``. Email
+contacts appear as links in the app and beside names in the terminal citation guidance.
+
+``implementers`` lists the people who wrote the ML-PEG calculation, analysis, or
+app implementation. ``contributors`` lists other substantive contributions,
+such as benchmark design, input-data preparation, scientific validation, or
+review that materially shaped the benchmark. Credit the author of an earlier
+implementation as a contributor when someone else adapted it for ML-PEG.
+List a person once, under ``implementers`` if they also made other contributions.
+Use the original pull requests and their commits to check these roles; the latest
+person to edit a file is not necessarily its original implementer. Routine
+maintenance does not automatically make someone a benchmark contributor.
+
+Published authors belong in each citation's ``authors`` list, in publication
+order. Implementers and contributors may also be authors of the cited work, but
+these credits do not replace its citation. Leave unknown implementers or
+references as empty lists until verified; an empty list does not claim that the
+benchmark was devised for ML-PEG. An empty ``contributors`` list simply means no
+additional contributors have been recorded.
+
+``role`` can be one of:
+
+- ``benchmark_method``: the paper defining the benchmark protocol.
+- ``inspired_by``: work the benchmark builds on rather than is taken from.
+- ``reference_data``: the source of the reference dataset.
+- ``reference_method``: the method used to calculate the reference values.
+- ``upstream_framework``: the framework the benchmark was adapted from.
+
+Registered source frameworks (``type: framework``) are added automatically to a
+benchmark's references using its framework tags. An existing reference with the
+same key, title, or DOI/URL is kept instead of adding a duplicate. Paper tags are
+not added automatically. Record their references explicitly in ``citations.yml``.
+
+``year``, ``doi``, and ``url`` may be ``null``. A DOI takes precedence over a URL
+when both are supplied.
+
+``ml_peg calc`` prints what to cite for the benchmarks that ran, just like in
+your favourite DFT code.
 
 
 .. _calculations:

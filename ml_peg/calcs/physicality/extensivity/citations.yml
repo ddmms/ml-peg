@@ -1,0 +1,12 @@
+implementers:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+# TODO: devised for ML-PEG, so cite the ML-PEG paper here once it is available.
+citations: []

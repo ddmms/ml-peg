@@ -8,17 +8,17 @@ from dash.dash_table import DataTable
 from dash.html import H1, H2, A, Br, Div, Img, Span
 
 from ml_peg.app.utils.build_components import (
+    build_benchmark_card,
+    build_collapse_controls,
     build_download_controls,
     build_loading_summary_table,
     build_speed_panel,
     build_summary_table,
     build_weight_components,
+    table_wrapper_style,
 )
+from ml_peg.app.utils.icons import GITHUB_ICON
 from ml_peg.app.utils.utils import get_framework_config
-
-# GitHub mark from Bootstrap Icons `github.svg` (MIT), fill set to #181717:
-# https://github.com/twbs/icons/blob/main/icons/github.svg
-GITHUB_ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2Ij48cGF0aCBmaWxsPSIjMTgxNzE3IiBkPSJNOCAwQzMuNTggMCAwIDMuNTggMCA4YzAgMy41NCAyLjI5IDYuNTMgNS40NyA3LjU5LjQuMDcuNTUtLjE3LjU1LS4zOCAwLS4xOS0uMDEtLjgyLS4wMS0xLjQ5LTIuMDEuMzctMi41My0uNDktMi42OS0uOTQtLjA5LS4yMy0uNDgtLjk0LS44Mi0xLjEzLS4yOC0uMTUtLjY4LS41Mi0uMDEtLjUzLjYzLS4wMSAxLjA4LjU4IDEuMjMuODIuNzIgMS4yMSAxLjg3Ljg3IDIuMzMuNjYuMDctLjUyLjI4LS44Ny41MS0xLjA3LTEuNzgtLjItMy42NC0uODktMy42NC0zLjk1IDAtLjg3LjMxLTEuNTkuODItMi4xNS0uMDgtLjItLjM2LTEuMDIuMDgtMi4xMiAwIDAgLjY3LS4yMSAyLjIuODIuNjQtLjE4IDEuMzItLjI3IDItLjI3LjY4IDAgMS4zNi4wOSAyIC4yNyAxLjUzLTEuMDQgMi4yLS44MiAyLjItLjgyLjQ0IDEuMS4xNiAxLjkyLjA4IDIuMTIuNTEuNTYuODIgMS4yNy44MiAyLjE1IDAgMy4wNy0xLjg3IDMuNzUtMy42NSAzLjk1LjI5LjI1LjU0LjczLjU0IDEuNDggMCAxLjA3LS4wMSAxLjkzLS4wMSAyLjIgMCAuMjEuMTUuNDYuNTUuMzhBOC4wMTMgOC4wMTMgMCAwIDAgMTYgOGMwLTQuNDItMy41OC04LTgtOHoiLz48L3N2Zz4="  # noqa: E501
 
 
 class CategoryTest(TypedDict):
@@ -46,8 +46,10 @@ class _FrameworkViewRequired(TypedDict):
 
     framework_id: str
     label: str
-    benchmarks_by_category: dict[str, list[Div]]
     speeds: dict[str, str | None]
+    # Each benchmark is kept as a (name, layout) pair so the framework page can
+    # wrap it in a lazy-mounted collapsible card (see build_framework_page_layout).
+    benchmarks_by_category: dict[str, list[tuple[str, Div]]]
 
 
 class FrameworkView(_FrameworkViewRequired, total=False):
@@ -86,7 +88,7 @@ def build_framework_views(
         if framework_id == "ml_peg":
             continue
 
-        benchmarks_by_category: dict[str, list[Div]] = {}
+        benchmarks_by_category: dict[str, list[tuple[str, Div]]] = {}
         speeds: dict[str, str | None] = {}
         for category_name, category_view in category_views.items():
             matching = [
@@ -96,7 +98,7 @@ def build_framework_views(
             ]
             if matching:
                 benchmarks_by_category[category_name] = [
-                    test["layout"] for test in matching
+                    (test["name"], test["layout"]) for test in matching
                 ]
                 speeds.update({test["key"]: test["speed"] for test in matching})
 
@@ -167,7 +169,10 @@ def build_framework_summary_tables(
     return framework_tables, framework_grouping
 
 
-def build_framework_page_layout(framework_view: FrameworkView) -> Div:
+def build_framework_page_layout(
+    framework_view: FrameworkView,
+    expand_pref: str | None = None,
+) -> Div:
     """
     Build a framework-focused page with its summary table and benchmark sections.
 
@@ -175,6 +180,9 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
     ----------
     framework_view
         Framework page metadata with grouped benchmark layouts by category.
+    expand_pref
+        Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
+        closes every card, and ``None`` opens only the first card on the page.
 
     Returns
     -------
@@ -221,7 +229,7 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 style={
                     "fontSize": "15px",
                     "lineHeight": "1.6",
-                    "color": "#475569",
+                    "color": "var(--mlpeg-ink-2)",
                     "maxWidth": "760px",
                 },
             )
@@ -257,7 +265,12 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
             )
         )
 
+    # Wrap each benchmark in a lazy-mounted collapsible card so heavy framework
+    # pages (e.g. MACE-POLAR-1 with many benchmarks) hydrate instantly instead of
+    # rendering every benchmark up front. Only the first card on the page opens by
+    # default, unless the user has saved an expanded or collapsed preference.
     sections = []
+    card_index = 0
     for category_name, tests in benchmarks_by_category.items():
         sections.append(
             Div(
@@ -280,9 +293,22 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 },
             )
         )
-        # Same grid as category pages: an implicit `auto` track sizes to
-        # max-content, which would let a wide benchmark table stretch the page.
-        sections.append(Div(tests, className="mlpeg-benchmark-grid"))
+        cards = []
+        for name, layout in tests:
+            cards.append(
+                build_benchmark_card(
+                    name,
+                    layout,
+                    open_default=expand_pref == "expanded"
+                    or (expand_pref is None and card_index == 0),
+                )
+            )
+            card_index += 1
+        # Same grid class as category pages: an implicit `auto` track sizes to
+        # max-content, so a wide benchmark table would stretch the track and the
+        # .mlpeg-table-scroll wrapper inside it would have nothing to scroll
+        # against — the framework pages kept the inline grid and missed that.
+        sections.append(Div(cards, className="mlpeg-benchmark-grid"))
 
     summary_block = []
     if summary_table is not None:
@@ -292,15 +318,18 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
         summary_block = [
             Div(
                 Div(
-                    [
-                        build_download_controls(summary_table.id, row=True),
-                        build_loading_summary_table(summary_table),
-                        Br(),
-                        weight_components,
-                    ],
-                    style={"width": "fit-content"},
+                    Div(
+                        [
+                            build_download_controls(summary_table.id, row=True),
+                            build_loading_summary_table(summary_table),
+                            Br(),
+                            Div(weight_components, className="mlpeg-controls-panel"),
+                        ],
+                        style=table_wrapper_style(summary_table),
+                    ),
+                    className="mlpeg-table-scroll",
                 ),
-                className="mlpeg-table-scroll",
+                className="mlpeg-summary-card",
             ),
         ]
 
@@ -317,13 +346,14 @@ def build_framework_page_layout(framework_view: FrameworkView) -> Div:
                 style={
                     "fontSize": "13px",
                     "fontStyle": "italic",
-                    "color": "#64748b",
+                    "color": "var(--mlpeg-ink-3)",
                     "marginTop": "8px",
                     "marginBottom": "8px",
                 },
             ),
             *summary_block,
             build_speed_panel(framework_view["speeds"]),
+            build_collapse_controls(),
             *sections,
         ]
     )

@@ -9,6 +9,12 @@
     chemistry and physics
   docs_url: "https://github.com/ddmms/ml-peg"
 
+- question: "What should I cite when using ML-PEG?"
+  answer: >
+    Please cite ML-PEG and the original papers and data sources listed on each
+    benchmark.
+  docs_url: null
+
 - question: "Why are some boxes greyed out?"
   answer: >
     A greyed-out box with a red tint means that the MLIP was not able to perform one

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import copy
 from importlib import metadata
 from pathlib import Path
 import time
@@ -12,10 +13,11 @@ from dash.dash_table import DataTable
 from dash.dcc import Checklist, Download, Dropdown, Loading, Store
 from dash.dcc import Input as DCC_Input
 from dash.development.base_component import Component
-from dash.html import H2, H3, Br, Button, Details, Div, Label, Summary
+from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
+from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_download_callbacks,
@@ -29,6 +31,8 @@ from ml_peg.app.utils.speed import (
     summarise_speeds,
 )
 from ml_peg.app.utils.utils import (
+    SUMMARY_TABLE_ID,
+    apply_column_decimals,
     build_level_of_theory_warnings,
     build_threshold_input_style,
     calculate_column_widths,
@@ -36,22 +40,107 @@ from ml_peg.app.utils.utils import (
     get_mlip_column_width,
     get_threshold_colours,
     load_model_registry_configs,
-    sig_fig_format,
+    row_has_no_results,
     weight_input_style,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
+from ml_peg.utils.citations import BenchmarkCredits, add_framework_citations
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
 LINK_COLUMN_WIDTH = 36
 
 # Max width of the interactive zone below a table (plots, structure viewers, ...).
-# Bounds it so it does not stretch to the largest table width by default.
-INTERACTIVE_ZONE_MAX_WIDTH = "1500px"
+# Bounds it so it does not stretch to the largest table width by default, while
+# still growing with the wider content area on large monitors (kept below full
+# table width so plots/WEAS viewers don't dominate).
+# Coupled: --content-max in theme.css caps the whole content column at
+# clamp(1400px, 92vw, 2560px) — retune the two together.
+INTERACTIVE_ZONE_MAX_WIDTH = "1900px"
 
 # Models to include as summary-table rows
 MODELS = get_model_names(current_models)
+
+
+def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
+    """
+    Build a collapsible benchmark card that lazy-mounts its body.
+
+    The heavy benchmark body (table + plot + scoring controls) is mounted only
+    when the card is expanded (injected by the ``toggle_benchmark`` callback), so
+    category and framework pages hydrate instantly instead of rendering every
+    benchmark up front. Per-benchmark ``dcc.Store``s stay globally mounted, so
+    the summary table and cross-benchmark callbacks keep working regardless.
+
+    Kept here (rather than in ``build_app``) so both category and framework pages
+    can build lazy-mounted cards without a circular import.
+
+    Parameters
+    ----------
+    name
+        Benchmark display name; also the card's pattern-matching index.
+    layout
+        Precomputed benchmark layout, pre-mounted only when ``open_default``.
+    open_default
+        Whether the card starts expanded (used for the first card on a page).
+
+    Returns
+    -------
+    Div
+        Collapsible benchmark card.
+    """
+    header_class = "mlpeg-bench-header"
+    if open_default:
+        header_class += " mlpeg-bench-header--open"
+    return Div(
+        [
+            Button(
+                [
+                    Span(name, className="mlpeg-bench-title"),
+                    Span(
+                        className="mlpeg-bench-chevron",
+                        **{"aria-hidden": "true"},
+                    ),
+                ],
+                id={"type": "bench-toggle", "index": name},
+                n_clicks=0,
+                className=header_class,
+                **{"aria-expanded": "true" if open_default else "false"},
+            ),
+            Div(
+                layout if open_default else None,
+                id={"type": "bench-body", "index": name},
+                className="mlpeg-bench-body",
+            ),
+        ],
+        className="mlpeg-bench-card",
+    )
+
+
+def build_collapse_controls() -> Div:
+    """
+    Build the "Collapse all" button shown above benchmark cards.
+
+    Shared by category and framework pages (only one page is mounted at a time via
+    the router, so the fixed button ids never collide).
+
+    Returns
+    -------
+    Div
+        Right-aligned row containing the collapse control.
+    """
+    return Div(
+        [
+            Button(
+                "Collapse all",
+                id="collapse-all-benchmarks",
+                n_clicks=0,
+                className="mlpeg-expand-btn",
+            ),
+        ],
+        className="mlpeg-expand-controls",
+    )
 
 
 def _format_summary_column_header(column_id: str) -> str:
@@ -92,7 +181,7 @@ def _format_summary_column_header(column_id: str) -> str:
 
 def build_summary_table(
     tables: dict[str, DataTable],
-    table_id: str = "summary-table",
+    table_id: str = SUMMARY_TABLE_ID,
     description: str | None = None,
     weights: dict[str, float] | None = None,
     header_labels: dict[str, str] | None = None,
@@ -110,6 +199,7 @@ def build_summary_table(
         Description of summary table. Default is None.
     weights
         Weights for each column. Default is `None`, which sets all weights to 1.
+        Columns whose table has no rows are forced to 0 regardless.
     header_labels
         Optional mapping of table key to display header text. Column ids are
         unchanged, so only the rendered header differs. Default is None.
@@ -147,6 +237,15 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
+    # Set weight to 0 if benchmark has no results, so it does not NaN every row's score.
+    empty_columns = [
+        f"{name} Score" for name, summarised in tables.items() if not summarised.data
+    ]
+    if empty_columns:
+        weights = dict(weights or {})
+        for empty_column in empty_columns:
+            weights[empty_column] = 0.0
+
     data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
@@ -163,7 +262,7 @@ def build_summary_table(
             key = header.removesuffix(" Score")
             if key in header_labels:
                 header = header_labels[key] + " Score"
-        if table_id != "summary-table":
+        if table_id != SUMMARY_TABLE_ID:
             display_headers[column_id] = _format_summary_column_header(header)
         elif header in {"MLIP", "Score"} or not header.endswith(" Score"):
             display_headers[column_id] = header
@@ -175,15 +274,21 @@ def build_summary_table(
     columns = [
         {"name": display_headers[header], "id": header} for header in columns_headers
     ]
-    tooltip_header = {
-        header + " Score": table.description for header, table in tables.items()
-    }
+    tooltip_header = {}
+    for header, summarised in tables.items():
+        tooltip = summarised.description
+        if not summarised.data:
+            no_results = (
+                "Data is still being collected for this benchmark, so it is weighted 0."
+            )
+            tooltip = f"{tooltip} {no_results}" if tooltip else no_results
+        tooltip_header[header + " Score"] = tooltip
 
     for column in columns:
         column_id = column["id"]
         if column_id != "MLIP":
             column["type"] = "numeric"
-            column["format"] = sig_fig_format()
+    columns = apply_column_decimals(columns, data)
 
     style = get_table_style(data)
     registry_configs = load_model_registry_configs()
@@ -204,8 +309,8 @@ def build_summary_table(
     )
     style_with_warnings = style + warning_styles
 
-    summary_header_padding = 12 if table_id == "summary-table" else 24
-    header_cell_padding = "4px" if table_id == "summary-table" else "8px"
+    summary_header_padding = 12 if table_id == SUMMARY_TABLE_ID else 24
+    header_cell_padding = "4px" if table_id == SUMMARY_TABLE_ID else "8px"
     column_widths = {"MLIP": get_mlip_column_width(), "Score": 100}
     for column_id in columns_headers:
         if column_id in {"MLIP", "Score"}:
@@ -235,9 +340,9 @@ def build_summary_table(
 
     # Per-model docs link, on the overall summary table only, rendered as an
     # icon just after the model name. Its styling lives in
-    # ml_peg/app/data/ui/utils/link_column.css (auto-loaded as a Dash asset);
+    # ml_peg/app/data/utils/link_column.css (auto-loaded as a Dash asset);
     # NaN/level-of-theory greying is kept off for the link column.
-    if table_id == "summary-table":
+    if table_id == SUMMARY_TABLE_ID:
         models_url = "https://ddmms.github.io/ml-peg/user_guide/models.html"
         for row in data:
             anchor = row.get("MLIP")
@@ -267,9 +372,8 @@ def build_summary_table(
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                # Theme-aware token (mirrors the sync_summary_table callback) so
-                # the link cell doesn't flash white against a dark table on
-                # first paint.
+                # Theme-aware token (mirrors the sync_summary_table callback) so the
+                # link cell doesn't flash white against a dark table on first paint.
                 "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
@@ -307,12 +411,68 @@ def build_summary_table(
         fill_width=False,
     )
     table.column_widths = column_widths
+    # Natural total width so table_wrapper_style can cap the shared wrapper to the
+    # (non-stretching) table's own width — otherwise the width:100% weight grid
+    # stretches past the fixed table and the boxes drift out of alignment. The
+    # 36px link track exists only on the global summary-table (see the link column
+    # inserted above and the grid's link spacer in build_weight_components).
+    link_width = LINK_COLUMN_WIDTH if table_id == SUMMARY_TABLE_ID else 0
+    table.total_column_width = sum(w for w in column_widths.values() if w) + link_width
     table.description = description
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = {}
     table.model_configs = model_configs
     table.weights = weights
     return table
+
+
+# How far a table may stretch past its natural column widths before it stops
+# filling and instead centres in the remaining space. Keeps a few-column table
+# from ballooning one column ("last column too long") while still using the width.
+STRETCH_CAP_FACTOR = 1.4
+
+
+def table_wrapper_style(table: object) -> dict[str, str]:
+    """
+    Style for the div wrapping a table (+ its controls) inside .mlpeg-table-scroll.
+
+    Caps the wrapper width, so many-column tables fill the page while few-column
+    tables stay tidy and left-aligned instead of stretching a single column too
+    wide. Stretching tables (``fill_width=True``) may grow to
+    ``STRETCH_CAP_FACTOR`` × natural width; fixed-width tables (``fill_width=False``,
+    e.g. the summary tables) are capped at their natural width so the width:100%
+    weight/threshold grid can't stretch past them. The cap lives on the shared
+    wrapper so the table and its weight/threshold grids stay aligned.
+
+    Parameters
+    ----------
+    table
+        A DataTable carrying ``total_column_width`` (natural sum of column widths).
+
+    Returns
+    -------
+    dict[str, str]
+        Inline style for the wrapper div.
+    """
+    style = {"width": "100%"}
+    total = getattr(table, "total_column_width", None)
+    if total:
+        # fill_width tables stretch to fill the wrapper, so let the cap exceed
+        # their natural width; fixed-width (fill_width=False) tables do not
+        # stretch, so cap the wrapper at their natural width or the width:100%
+        # weight grid stretches past the table and misaligns (few-column
+        # category pages, e.g. Molecular Crystals).
+        stretches = getattr(table, "fill_width", True)
+        factor = STRETCH_CAP_FACTOR if stretches else 1.0
+        width = f"{int(factor * total)}px"
+        style["maxWidth"] = width
+        if not stretches:
+            # A fixed-width summary table must keep its natural width when the
+            # viewport narrows. The outer .mlpeg-table-scroll then scrolls it;
+            # shrinking this wrapper instead makes Dash remeasure and collapse a
+            # horizontally scrolled table during resize.
+            style["width"] = width
+    return style
 
 
 def grid_template_from_widths(
@@ -332,7 +492,10 @@ def grid_template_from_widths(
     Returns
     -------
     str
-        CSS grid template definition using fixed pixel tracks.
+        CSS grid template using ``minmax(px, fr)`` tracks: each column stretches
+        proportionally to fill the container (matching the table's proportional
+        columns) but never shrinks below its pixel floor, so on narrow screens the
+        grid and table scroll together in lockstep.
     """
     tracks: list[tuple[str, int]] = [
         ("MLIP", widths["MLIP"]),
@@ -340,7 +503,10 @@ def grid_template_from_widths(
     ]
     tracks.extend((col, widths[col]) for col in column_order)
 
-    return " ".join(f"{max(width, 40)}px" for _, width in tracks)
+    # No space inside minmax() so callers can still split the template on " ".
+    return " ".join(
+        f"minmax({max(width, 40)}px,{max(width, 40)}fr)" for _, width in tracks
+    )
 
 
 def build_weight_input(
@@ -392,7 +558,7 @@ def build_weight_input(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 38px)",
+                    "right": "calc(50% + 31px)",
                 },
             )
         )
@@ -473,7 +639,7 @@ def build_weight_components(
     link_spacer: list[Div] = []
     if has_link_column:
         tracks = grid_template.split(" ")
-        tracks.insert(1, f"{LINK_COLUMN_WIDTH}px")
+        tracks.insert(1, f"minmax({LINK_COLUMN_WIDTH}px,{LINK_COLUMN_WIDTH}fr)")
         grid_template = " ".join(tracks)
         link_spacer = [Div(style={"border": "1px solid transparent"})]
 
@@ -527,6 +693,8 @@ def build_weight_components(
                             "color": "var(--mlpeg-muted)",
                             "fontStyle": "normal",
                             "marginTop": "2px",
+                            # Wrapped lines come out roughly equal in length.
+                            "textWrap": "balance",
                         },
                     ),
                 ],
@@ -539,9 +707,7 @@ def build_weight_components(
                     "width": "100%",
                     "minWidth": "0",
                     "maxWidth": "100%",
-                    # Transparent, but kept so this cell's box matches the sized
-                    # grid cells beside it (.mlpeg-scoring-grid draws the rules).
-                    "border": "1px solid transparent",
+                    "border": "1px solid transparent",  # #dee2e6 or transparent
                 },
             ),
             *link_spacer,
@@ -585,13 +751,13 @@ def build_weight_components(
     model_configs = getattr(table, "model_configs", None)
 
     # Callbacks to update table scores when table weight dicts change
-    if table.id == "summary-table":
+    if table.id == SUMMARY_TABLE_ID:
         register_summary_table_callbacks(
             initial_rows=table.data,
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
-            prefix="summary-table",
+            prefix=SUMMARY_TABLE_ID,
         )
     elif table.id == "framework-summary-table":
         register_summary_table_callbacks(
@@ -704,6 +870,35 @@ def build_download_controls(table_id: str, *, row: bool = False) -> Div:
     )
 
 
+def _progress_ring(size_class: str = "") -> Div:
+    """
+    Build the determinate progress ring (climbs 0→~92%, shows a live percentage).
+
+    Reuses the startup loader's CSS ring (.mlpeg-progress-ring / -arc / -num in
+    loading.css). The climb is time-based, not real backend progress — combined
+    with the loaders' ``delay_show`` it only appears when an operation actually
+    takes a while, giving a reassuring "percent loading" cue for slow updates.
+
+    Parameters
+    ----------
+    size_class
+        Extra class for sizing (e.g. ``"mlpeg-progress-ring--sm"``); empty = default.
+
+    Returns
+    -------
+    Div
+        The ring element (arc + centre percentage).
+    """
+    classes = "mlpeg-progress-ring" + (f" {size_class}" if size_class else "")
+    return Div(
+        [
+            Div(className="mlpeg-progress-arc"),
+            html.Span(className="mlpeg-progress-num"),
+        ],
+        className=classes,
+    )
+
+
 def build_page_loading_spinner() -> Div:
     """
     Build the initial page-load spinner overlay.
@@ -711,29 +906,12 @@ def build_page_loading_spinner() -> Div:
     Returns
     -------
     Div
-        Page-wide loading overlay with spinner and status text.
+        Page-wide loading overlay with a determinate percentage ring and status text.
     """
     return Div(
         [
-            Div(
-                style={
-                    "width": "52px",
-                    "height": "52px",
-                    "border": "5px solid #d0ebff",
-                    "borderTopColor": "#119DFF",
-                    "borderRadius": "50%",
-                    "animation": "ml-peg-spin 0.8s linear infinite",
-                    "boxSizing": "border-box",
-                },
-            ),
-            Div(
-                "Loading page...",
-                style={
-                    "fontSize": "16px",
-                    "fontWeight": "600",
-                    "color": "var(--mlpeg-heading)",
-                },
-            ),
+            _progress_ring(),
+            Div("Loading…", className="mlpeg-loader-text"),
         ],
         style={
             "position": "absolute",
@@ -763,20 +941,10 @@ def build_table_loading_spinner() -> Div:
     Returns
     -------
     Div
-        Table-sized loading overlay with the same ring style as page loading.
+        Table-sized loading overlay with a determinate percentage ring.
     """
     return Div(
-        Div(
-            style={
-                "width": "34px",
-                "height": "34px",
-                "border": "4px solid #d0ebff",
-                "borderTopColor": "#119DFF",
-                "borderRadius": "50%",
-                "animation": "ml-peg-spin 0.8s linear infinite",
-                "boxSizing": "border-box",
-            },
-        ),
+        _progress_ring("mlpeg-progress-ring--sm"),
         style={
             "position": "absolute",
             "top": "0",
@@ -827,9 +995,14 @@ def build_filter_overlay(table_id: str, child, delay_hide: int = 250) -> Loading
         custom_spinner=build_table_loading_spinner(),
         target_components={table_id: ["data", "style_data_conditional"]},
         show_initially=False,
+        # Hold off ~150ms before showing the spinner: fast re-styles (weights,
+        # colours, model filter — often <150ms) then finish without ever
+        # flashing a spinner, so quick edits feel instant. delay_hide bridges
+        # the several quick updates a table gets as scores propagate.
+        delay_show=150,
         delay_hide=delay_hide,
         overlay_style={"visibility": "visible", "opacity": 1},
-        parent_style={"position": "relative", "width": "fit-content"},
+        parent_style={"position": "relative", "width": "100%"},
     )
 
 
@@ -848,10 +1021,21 @@ def build_loading_summary_table(table: DataTable) -> Loading:
     Loading
         Loading wrapper scoped to applied filter changes and table updates.
     """
+    # Render a copy without models that have no scores. The sync callbacks drop
+    # them too, but only after mount, so painting them first flashed a fully
+    # hatched-out table. ``table.data`` itself stays complete: it seeds the
+    # computed stores, which need every row (scores can flip to/from NaN).
+    keep = [i for i, row in enumerate(table.data or []) if not row_has_no_results(row)]
+    visible = copy(table)
+    visible.data = [table.data[i] for i in keep]
+    tooltips = getattr(table, "tooltip_data", None)
+    if tooltips:
+        # Tooltips are matched to rows by index, so filter them in step.
+        visible.tooltip_data = [tooltips[i] for i in keep if i < len(tooltips)]
     # Longer delay_hide than the default: a summary table gets several quick
     # updates in a row as category scores propagate, so bridge the gaps into one
     # spinner instead of several flashes.
-    return build_filter_overlay(table.id, Div(table), delay_hide=600)
+    return build_filter_overlay(table.id, Div(visible), delay_hide=600)
 
 
 def build_plot_download_controls(graph_id: str) -> Div:
@@ -916,6 +1100,82 @@ def build_plot_download_controls(graph_id: str) -> Div:
     )
 
 
+def build_data_download_controls(
+    control_id: str,
+    *,
+    formats: Sequence[tuple[str, str]] | None = None,
+    button_label: str = "Download data",
+) -> Div:
+    """
+    Build compact data download dropdown controls.
+
+    Parameters
+    ----------
+    control_id
+        Prefix used for the dropdown, button, and ``dcc.Download`` IDs.
+    formats
+        ``(label, value)`` pairs for the format dropdown. Defaults to CSV/JSON.
+    button_label
+        Text shown on the download button.
+
+    Returns
+    -------
+    Div
+        Download controls with IDs ``{control_id}-format``,
+        ``{control_id}-button``, and ``{control_id}-download``.
+    """
+    formats = formats or (("CSV", "csv"), ("JSON", "json"))
+    return Div(
+        [
+            Dropdown(
+                id=f"{control_id}-format",
+                className="download-format data-download-format",
+                options=[{"label": label, "value": value} for label, value in formats],
+                value=formats[0][1],
+                clearable=False,
+                searchable=False,
+                style={
+                    "width": "84px",
+                    "height": "30px",
+                    "fontSize": "12px",
+                },
+            ),
+            Button(
+                button_label,
+                id=f"{control_id}-button",
+                className="download-button data-download-button",
+                n_clicks=0,
+                style={
+                    "width": "120px",
+                },
+            ),
+            Download(id=f"{control_id}-download"),
+            Loading(
+                Div(
+                    id=f"{control_id}-status",
+                    style={"width": "32px", "height": "32px"},
+                ),
+                type="circle",
+                style={
+                    "display": "inline-flex",
+                    "justifyContent": "center",
+                    "minWidth": "32px",
+                    "width": "32px",
+                },
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "alignItems": "flex-end",
+            "gap": "8px",
+            "flexShrink": "0",
+            "marginTop": "4px",
+            "marginBottom": "0px",
+        },
+    )
+
+
 def build_faqs() -> Div:
     """
     Build FAQ section with collapsible dropdowns from YAML file.
@@ -935,7 +1195,7 @@ def build_faqs() -> Div:
         return Div(
             "FAQs file not found",
             style={
-                "color": "#dc3545",
+                "color": "var(--mlpeg-bad)",
                 "padding": "10px",
                 "fontStyle": "italic",
             },
@@ -1362,6 +1622,43 @@ def build_speed_panel(
     )
 
 
+def build_no_results_notice() -> Div:
+    """
+    Build the notice shown in place of a benchmark table holding no results.
+
+    Returns
+    -------
+    Div
+        Notice explaining that the benchmark produced no results.
+    """
+    return Div(
+        [
+            Div(
+                "No results found",
+                style={
+                    "fontWeight": "600",
+                    "color": "var(--mlpeg-heading)",
+                    "marginBottom": "4px",
+                },
+            ),
+            Div(
+                "Data is still being collected for this benchmark, so "
+                "its table is hidden, and it is weighted 0.",
+                style={"color": "var(--mlpeg-muted)", "fontSize": "13px"},
+            ),
+        ],
+        style={
+            "backgroundColor": "var(--mlpeg-surface)",
+            "border": "1px solid var(--mlpeg-border)",
+            "borderRadius": "12px",
+            "padding": "16px 20px",
+            "marginTop": "12px",
+            "maxWidth": "min(820px, 100%)",
+            "boxSizing": "border-box",
+        },
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1372,9 +1669,13 @@ def build_test_layout(
     docs_url: str | None = None,
     column_widths: dict[str, int] | None = None,
     speed: str | None = None,
+    credits: BenchmarkCredits | None = None,
 ) -> Div:
     """
     Build app layout for a test.
+
+    A benchmark with no results keeps its heading, description, credits and docs
+    link, but shows a notice in place of the table, controls and extra components.
 
     Parameters
     ----------
@@ -1393,13 +1694,16 @@ def build_test_layout(
     extra_components
         List of Dash Components to include after the metrics table.
     docs_url
-        URL to online documentation. Default is None.
+        URL to online documentation, linked below the benchmark credits. Default is
+        None, which omits the link.
     column_widths
         Optional column-width mapping inferred from analysis output. Used to align
         threshold controls beneath the table columns when available.
     speed
         Benchmark speed level used to render a cost badge. Default is None, which
         renders no badge.
+    credits
+        Benchmark citations and benchmark contributors. Default is None.
 
     Returns
     -------
@@ -1428,33 +1732,30 @@ def build_test_layout(
     if speed_badge is not None:
         layout_contents.append(Div(speed_badge, style={"margin": "8px 0 0"}))
 
-    layout_contents.append(H3(description))
-
     layout_contents.extend(
         [
-            Details(
-                [
-                    Summary(
-                        "Click for more information",
-                        style={
-                            "cursor": "pointer",
-                            "fontWeight": "bold",
-                            "padding": "5px",
-                        },
-                    ),
-                    Label(
-                        [html.A("Online documentation", href=docs_url, target="_blank")]
-                    ),
-                ],
-                style={
-                    # "border": "1px solid #ddd",
-                    "padding": "10px",
-                    # "borderRadius": "5px",
-                },
+            H3(description),
+            build_benchmark_credit_components(
+                add_framework_citations(credits, framework_ids)
             ),
-            Div(style={"height": "4px"}),
         ]
     )
+
+    if docs_url:
+        layout_contents.append(
+            html.A(
+                "View documentation \u2192",
+                href=docs_url,
+                target="_blank",
+                className="mlpeg-doc-link",
+            )
+        )
+
+    # Every row is dropped by drop_empty_model_rows when no model has results, so
+    # the table, its scoring controls and its plots would all render blank.
+    if not table.data:
+        layout_contents.append(build_no_results_notice())
+        return Div(layout_contents)
 
     reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [
@@ -1489,20 +1790,28 @@ def build_test_layout(
     # Build the controls element before the table wrapper so both can go into the
     # same fit-content div. The controls use width:100% of that wrapper, which
     # equals the table width, keeping the columns aligned.
-    controls_visual = Div(
+    # Open by default (review feedback: weights & thresholds should be visible at a
+    # glance, not hidden behind a click). The cost is bounded because the controls
+    # live inside a benchmark card body, mounted only when that card is expanded.
+    controls_visual = Details(
         [
-            Div(threshold_controls, style={"marginBottom": "0px"}),
-            Div(metric_weights, style={"marginTop": "0"}),
+            Summary(
+                [
+                    Span("Adjust scoring", className="mlpeg-controls-title"),
+                    Span("weights and thresholds", className="mlpeg-controls-hint"),
+                ],
+                className="mlpeg-controls-summary",
+            ),
+            Div(
+                [
+                    Div(threshold_controls, style={"marginBottom": "0px"}),
+                    Div(metric_weights, style={"marginTop": "0"}),
+                ],
+                className="mlpeg-controls-panel",
+            ),
         ],
-        style={
-            "backgroundColor": "var(--mlpeg-surface-2)",
-            "border": "1px solid var(--mlpeg-border)",
-            "borderRadius": "6px",
-            "padding": "0px 0px 0px 0px",  # top right bottom left
-            "marginTop": "-5px",
-            "boxSizing": "border-box",
-            "width": "100%",
-        },
+        open=True,
+        className="mlpeg-controls-details",
     )
 
     table_section = [
@@ -1511,18 +1820,19 @@ def build_test_layout(
         Br(),
         controls_visual,
     ]
-    # .mlpeg-table-scroll keeps a wide table scrolling inside its own card rather
-    # than widening the page (which would leave the sticky top bar behind). The
-    # inner div stays fit-content so the width:100% weight/threshold grid below
-    # inherits the table's exact width and its columns stay aligned.
     layout_contents.append(
         Div(
-            Div(table_section, style={"width": "fit-content"}),
+            Div(table_section, style=table_wrapper_style(table)),
             className="mlpeg-table-scroll",
         )
     )
 
     if extra_components:
+        # Plot + structure-viewer placeholders, stacked (figure above structure) in
+        # the interactive-zone max-width (#720). Rendered raw: wrapping each in its
+        # own loading overlay made the structure viewer REPLACE the plot on a point
+        # click instead of appearing below it (review: struct-replaces-plot). The
+        # buffer-spinner-on-slow-render polish is dropped in favour of correctness.
         layout_contents.append(
             Div(extra_components, style={"maxWidth": INTERACTIVE_ZONE_MAX_WIDTH})
         )
@@ -1670,7 +1980,7 @@ def build_threshold_inputs(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 34px)",
+                    "right": "calc(50% + 31px)",
                 },
             ),
             DCC_Input(
@@ -1687,10 +1997,10 @@ def build_threshold_inputs(
                 html.Span(
                     f"[{unit_label}]",
                     style={
-                        "fontSize": "12px",
+                        "fontSize": "11px",
                         "color": "var(--mlpeg-muted)",
                         "position": "absolute",
-                        "left": "calc(50% + 34px)",
+                        "left": "calc(50% + 28px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",
@@ -1706,7 +2016,7 @@ def build_threshold_inputs(
                     "color": "var(--mlpeg-muted)",
                     "textAlign": "right",
                     "position": "absolute",
-                    "right": "calc(50% + 34px)",
+                    "right": "calc(50% + 31px)",
                     "top": "50%",
                     "transform": "translateY(-50%)",
                     "whiteSpace": "nowrap",
@@ -1726,10 +2036,10 @@ def build_threshold_inputs(
                 html.Span(
                     f"[{unit_label}]",
                     style={
-                        "fontSize": "12px",
+                        "fontSize": "11px",
                         "color": "var(--mlpeg-muted)",
                         "position": "absolute",
-                        "left": "calc(50% + 34px)",
+                        "left": "calc(50% + 28px)",
                         "top": "50%",
                         "transform": "translateY(-50%)",
                         "whiteSpace": "nowrap",

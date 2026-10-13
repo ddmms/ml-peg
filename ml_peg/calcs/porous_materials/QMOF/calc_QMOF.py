@@ -26,6 +26,7 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.framework("mace-mp")
 @pytest.mark.medium
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_qmof_energy(mlip: tuple[str, Any]) -> None:

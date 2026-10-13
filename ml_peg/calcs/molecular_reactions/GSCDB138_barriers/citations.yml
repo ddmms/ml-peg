@@ -1,0 +1,14 @@
+implementers:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+# TODO: no paper is named in this benchmark's docs. Add its references here.
+citations: []

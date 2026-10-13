@@ -259,6 +259,7 @@ def metrics(get_mae: dict[str, float], get_score: dict[str, float]) -> dict[str,
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_folmsbee(metrics: dict[str, dict]) -> None:
     """
     Run Folmsbee analysis.

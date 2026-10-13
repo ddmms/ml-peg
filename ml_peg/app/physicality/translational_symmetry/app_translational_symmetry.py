@@ -77,8 +77,8 @@ class TranslationalSymmetryApp(BaseApp):
                     scatter_id=f"{BENCHMARK_NAME}-{model}-figure-{plot_type}",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
                     structs=[
-                        [f"{ASSETS_DIR}/{name}.xyz" for name in trace.x]
-                        for trace in plot.figure.data
+                        [f"{ASSETS_DIR}/{name}.xyz" for name in trace.get("x") or []]
+                        for trace in plot.figure.get("data") or []
                     ],
                     mode="traj",
                     follow_frames=False,
