@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+import inspect
 from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
 
@@ -13,10 +14,68 @@ from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
 Precision = Literal["low", "high"]
+
+
+def split_kwargs(
+    kwargs: dict[str, Any],
+    targets: Sequence[Callable],
+    reserved: Sequence[str] = (),
+) -> list[dict[str, Any]]:
+    """
+    Split keyword arguments between the callables that accept them.
+
+    Models are loaded in two stages for some calculators, so configured kwargs must be
+    routed to the stage that accepts them. Keys accepted by none of the targets are
+    rejected, rather than being silently swallowed by `**kwargs` further down the stack.
+
+    Parameters
+    ----------
+    kwargs
+        Keyword arguments to be split between `targets`.
+    targets
+        Callables that the keyword arguments will be passed to. Each key is routed to
+        the first target that accepts it.
+    reserved
+        Parameter names set by ML-PEG itself, which must not be overridden.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Keyword arguments for each target, in the same order as `targets`.
+
+    Raises
+    ------
+    ValueError
+        If a keyword argument is reserved, or is accepted by none of the targets.
+    """
+    accepted = [set(inspect.signature(target).parameters) for target in targets]
+    split: list[dict[str, Any]] = [{} for _ in targets]
+
+    for key, value in kwargs.items():
+        if key in reserved:
+            raise ValueError(
+                f"'{key}' is set by ML-PEG, so cannot be set through model kwargs"
+            )
+        match = next(
+            (
+                target_kwargs
+                for names, target_kwargs in zip(accepted, split, strict=True)
+                if key in names
+            ),
+            None,
+        )
+        if match is None:
+            names = ", ".join(target.__name__ for target in targets)
+            raise ValueError(f"'{key}' is not a valid keyword argument for {names}")
+        match[key] = value
+
+    return split
 
 
 def check_precision(precision: str) -> None:
@@ -366,25 +425,20 @@ class OrbCalc(SumCalc):
         if self.default_dtype is not None:
             dtype = self.default_dtype
 
-        if self.device is None:
-            orbff, atoms_adapter = method(precision=dtype, **self.kwargs)
-            calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, **self.kwargs)
-        elif self.device == Device.AUTO:
-            orbff = method(
-                device=Device.resolve_auto(),
-                precision=dtype,
-                **self.kwargs,
-            )
-            calc = ORBCalculator(orbff, device=Device.resolve_auto(), **self.kwargs)
-        else:
-            orbff, atoms_adapter = method(
-                device=self.device, precision=dtype, **self.kwargs
-            )
-            calc = ORBCalculator(
-                orbff, atoms_adapter=atoms_adapter, device=self.device, **self.kwargs
-            )
+        model_kwargs, calc_kwargs = split_kwargs(
+            self.kwargs, (method, ORBCalculator), reserved=("device", "precision")
+        )
 
-        return calc
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+
+        if device is None:
+            orbff, atoms_adapter = method(precision=dtype, **model_kwargs)
+            return ORBCalculator(orbff, atoms_adapter=atoms_adapter, **calc_kwargs)
+
+        orbff, atoms_adapter = method(device=device, precision=dtype, **model_kwargs)
+        return ORBCalculator(
+            orbff, atoms_adapter=atoms_adapter, device=device, **calc_kwargs
+        )
 
     @property
     def available(self) -> bool:
@@ -414,6 +468,7 @@ class FairChemCalc(SumCalc):
     device: Device | str = "cpu"
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
+    kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
@@ -446,13 +501,26 @@ class FairChemCalc(SumCalc):
             inference_settings_default(), base_precision_dtype=dtype
         )
 
+        predictor_kwargs, calc_kwargs = split_kwargs(
+            self.kwargs,
+            (pretrained_mlip.get_predict_unit, FAIRChemCalculator),
+            reserved=(
+                "model_name",
+                "device",
+                "overrides",
+                "inference_settings",
+                "task_name",
+            ),
+        )
+
         predictor = pretrained_mlip.get_predict_unit(
             self.model_name,
             device=self.device,
             overrides=self.overrides,
             inference_settings=inference_settings,
+            **predictor_kwargs,
         )
-        return FAIRChemCalculator(predictor, task_name=self.task_name)
+        return FAIRChemCalculator(predictor, task_name=self.task_name, **calc_kwargs)
 
     @property
     def available(self) -> bool:
