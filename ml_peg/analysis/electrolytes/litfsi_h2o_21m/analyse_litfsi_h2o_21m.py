@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import shutil
+import zipfile
 
 import numpy as np
 import plotly.graph_objects as go
@@ -66,6 +67,47 @@ CN_REF_WATER = 2.4  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
 CN_REF_TFSI = 1.9  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
 CN_REF_TOTAL = 4.3  # theory at 21 m; exp. 4.21 at ~18.5 m (Watanabe 2021)
 
+# The S(q) R-factor is computed on the experimental grid from the first bin of
+# the calculated S(q) (0.51 A^-1, bins of 0.02 A^-1) to the last experimental
+# point (11.9 A^-1).
+SQ_Q_MIN = 0.51  # A^-1
+SQ_DQ = 0.02  # A^-1
+
+# Metrics computed from each cell of the reference MD. If the MD failed on a
+# cell (failed_<cell>.json written by the calc), these metrics are NaN.
+CELL_METRICS = {
+    "p16_w42": ("Density Error", "Density Error (%)"),
+    "p64_w170": (
+        "CN Li-O_water Error",
+        "CN Li-O_TFSI Error",
+        "CN Li-O_total Error",
+        "S(q) R-factor",
+    ),
+}
+
+
+def read_json(path: Path) -> dict | None:
+    """
+    Read a calc output JSON.
+
+    Parameters
+    ----------
+    path
+        Path to the JSON file.
+
+    Returns
+    -------
+    dict or None
+        File contents, or None if the file is missing or unreadable (e.g.
+        truncated), so that the model gets NaN instead of stopping the analysis.
+    """
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
 
 # =============================================================================
 # Density helpers and figures
@@ -83,11 +125,32 @@ def load_density_results() -> dict[str, dict]:
     """
     results = {}
     for model in MODELS:
-        json_path = CALC_PATH / model / "density.json"
-        if json_path.exists():
-            with open(json_path) as f:
-                results[model] = json.load(f)
+        data = read_json(CALC_PATH / model / "density.json")
+        if data is not None and isinstance(data.get("rho_mean"), (int, float)):
+            results[model] = data
     return results
+
+
+def load_failed_cells() -> dict[str, list[str]]:
+    """
+    Find the cells on which the reference MD failed, for each model.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Registry model name mapped to the cells that have a
+        ``failed_<cell>.json`` marker; models with none are left out.
+    """
+    failed = {}
+    for model in MODELS:
+        cells = [
+            cell
+            for cell in CELL_METRICS
+            if (CALC_PATH / model / f"failed_{cell}.json").exists()
+        ]
+        if cells:
+            failed[model] = cells
+    return failed
 
 
 def build_density_bar_chart(data: dict[str, dict]) -> go.Figure:
@@ -232,22 +295,22 @@ def load_rdf_results() -> dict[str, dict]:
     """
     results = {}
     for model in MODELS:
-        json_path = CALC_PATH / model / "rdf.json"
-        npz_path = CALC_PATH / model / "rdf.npz"
-        if not json_path.exists() or not npz_path.exists():
+        meta = read_json(CALC_PATH / model / "rdf.json")
+        if meta is None:
             continue
-
-        with open(json_path) as f:
-            meta = json.load(f)
-
-        data = np.load(npz_path)
-        r = data["r"]
-
-        n_ow = meta["n_O_water"]
-        n_of = meta["n_O_TFSI"]
-
-        cn_w = compute_cn_from_gr(data["gr_LiO_water"], r, n_ow, V_BOX, R_CUT, DR)
-        cn_f = compute_cn_from_gr(data["gr_LiO_TFSI"], r, n_of, V_BOX, R_CUT, DR)
+        # A truncated or incomplete output counts as missing: NaN, not a crash.
+        try:
+            with np.load(CALC_PATH / model / "rdf.npz") as npz:
+                data = {key: npz[key] for key in npz.files}
+            r = data["r"]
+            gr_water = data["gr_LiO_water"]
+            gr_tfsi = data["gr_LiO_TFSI"]
+            gr_total = data["gr_LiO_total"]
+            n_frames = meta["n_frames_used"]
+            cn_w = compute_cn_from_gr(gr_water, r, meta["n_O_water"], V_BOX, R_CUT, DR)
+            cn_f = compute_cn_from_gr(gr_tfsi, r, meta["n_O_TFSI"], V_BOX, R_CUT, DR)
+        except (OSError, EOFError, ValueError, TypeError, KeyError, zipfile.BadZipFile):
+            continue
 
         results[model] = {
             "cn_water": cn_w,
@@ -257,10 +320,10 @@ def load_rdf_results() -> dict[str, dict]:
             "err_tfsi": abs(cn_f - CN_REF_TFSI),
             "err_total": abs(cn_w + cn_f - CN_REF_TOTAL),
             "r": r,
-            "gr_water": data["gr_LiO_water"],
-            "gr_tfsi": data["gr_LiO_TFSI"],
-            "gr_total": data["gr_LiO_total"],
-            "n_frames": meta["n_frames_used"],
+            "gr_water": gr_water,
+            "gr_tfsi": gr_tfsi,
+            "gr_total": gr_total,
+            "n_frames": n_frames,
         }
     return results
 
@@ -451,14 +514,18 @@ def load_computed_sq(model: str) -> tuple[np.ndarray, np.ndarray] | None:
     -------
     tuple of (np.ndarray, np.ndarray) or None
         Scattering vector and structure factor arrays, or None if the
-        output file does not exist.
+        output file is missing or unreadable.
     """
-    json_path = CALC_PATH / model / "xray_sq.json"
-    if not json_path.exists():
+    d = read_json(CALC_PATH / model / "xray_sq.json")
+    if d is None:
         return None
-    with open(json_path) as f:
-        d = json.load(f)
-    return np.array(d["q"]), np.array(d["Sq"])
+    try:
+        q, sq = np.array(d["q"], dtype=float), np.array(d["Sq"], dtype=float)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if q.ndim != 1 or q.shape != sq.shape:
+        return None
+    return q, sq
 
 
 def compute_r_factor(
@@ -484,9 +551,21 @@ def compute_r_factor(
     Returns
     -------
     float
-        R-factor value, or NaN if no overlapping valid data exists.
+        R-factor value, or NaN if the calculated S(q) does not cover the whole
+        q window (from ``SQ_Q_MIN`` to the last experimental point) with finite
+        values.
     """
-    valid_calc = ~np.isnan(sq_calc)
+    valid_calc = np.isfinite(sq_calc)
+    window = (q_calc >= SQ_Q_MIN) & (q_calc <= q_exp.max())
+    # A failed, truncated or gapped S(q) gets NaN, not a score on whatever part
+    # of the q window is left. Tolerance at the edges: one bin of the S(q).
+    if (
+        not valid_calc.any()
+        or not valid_calc[window].all()
+        or q_calc[valid_calc].min() > SQ_Q_MIN + SQ_DQ
+        or q_calc[valid_calc].max() < q_exp.max() - SQ_DQ
+    ):
+        return float("nan")
     q_min_calc = float(q_calc[valid_calc].min())
     q_max_exp = float(q_exp.max())
 
@@ -610,8 +689,10 @@ def density_results() -> dict[str, dict]:
         Per-model density results keyed by registry model name.
     """
     data = load_density_results()
+    # No early skip: a missing category leaves the other metrics in the table,
+    # with NaN for this one.
     if not data:
-        pytest.skip("No density data found")
+        return data
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -645,7 +726,7 @@ def rdf_results() -> dict[str, dict]:
     """
     data = load_rdf_results()
     if not data:
-        pytest.skip("No RDF data found")
+        return data
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -698,7 +779,7 @@ def xray_sf_results() -> dict[str, dict]:
         }
 
     if not results:
-        pytest.skip("No S(q) data found")
+        return results
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -743,13 +824,19 @@ def metrics(
         S(q) R-factor). The position of the first S(q) peak is computed by
         ``xray_sf_results`` but not tabulated: on a 27.5 A cell the q grid is
         quantised at 2*pi/L = 0.229 A^-1, which makes it noisy.
+
+        A model that has run but lacks a metric, because the MD failed on one
+        cell or an output is missing, gets NaN for it and therefore no score.
+        Otherwise the table would average only the metrics that survived.
+        Models without any output have not been run and are left out.
     """
-    return {
+    table = {
         "Density Error": {
-            model: d["rho_abs_error"] for model, d in density_results.items()
+            model: abs(d["rho_mean"] - RHO_EXP) for model, d in density_results.items()
         },
         "Density Error (%)": {
-            model: abs(d["rho_error_pct"]) for model, d in density_results.items()
+            model: 100 * abs(d["rho_mean"] - RHO_EXP) / RHO_EXP
+            for model, d in density_results.items()
         },
         "CN Li-O_water Error": {
             model: d["err_water"] for model, d in rdf_results.items()
@@ -762,6 +849,17 @@ def metrics(
         },
         "S(q) R-factor": {model: r["r_factor"] for model, r in xray_sf_results.items()},
     }
+
+    failed = load_failed_cells()
+    ran = set(density_results) | set(rdf_results) | set(xray_sf_results) | set(failed)
+    for model in ran:
+        lost = {
+            metric for cell in failed.get(model, ()) for metric in CELL_METRICS[cell]
+        }
+        for metric, values in table.items():
+            if model not in values or metric in lost:
+                values[model] = float("nan")
+    return table
 
 
 def test_litfsi_h2o_21m(metrics: dict[str, dict]) -> None:

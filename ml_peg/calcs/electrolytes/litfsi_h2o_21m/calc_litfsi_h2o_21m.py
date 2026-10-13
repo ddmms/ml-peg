@@ -92,10 +92,6 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# --- Density references ------------------------------------------------------
-
-RHO_EXP = 1.7126  # g/cm3 (Gilbert et al., JCED 2017)
-
 # --- Reference MD protocol ---------------------------------------------------
 
 TEMPERATURE_K = 298.15
@@ -178,7 +174,91 @@ def load_initial_structure(cell: str) -> Atoms:
     return struct
 
 
-def run_reference_md(model_name: str, model: Any) -> None:
+def run_cell(
+    cell: str,
+    calc: Any,
+    data_dir: Path,
+    md_kwargs: dict[str, Any],
+) -> None:
+    """
+    Run the reference MD on one cell and write its data products.
+
+    Parameters
+    ----------
+    cell : str
+        ``CELL_P64`` (NVT, for the RDFs and S(q)) or ``CELL_P16`` (NPT, for the
+        density).
+    calc : Any
+        ASE calculator of the model, with D3 already added if it needs it.
+    data_dir : Path
+        ``OUT_PATH/<model_name>``; stage files go to its ``md`` subdirectory.
+    md_kwargs : dict[str, Any]
+        Settings shared by every stage.
+    """
+    # Imported lazily: janus-core pulls in torch, which is not needed by the
+    # extraction tests.
+    from janus_core.calculations.md import NPT_MTK, NVT_NH
+
+    work_dir = data_dir / "md"
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    struct = load_initial_structure(cell)
+    # Assigned, not copied: copying a MatterSim calculator sends it through
+    # __setstate__, which rebuilds the potential from a checkpoint
+    # (defaulting to the 1M weights) instead of reusing the loaded one.
+    struct.calc = calc
+
+    # The equilibration trajectory is written but not analysed.
+    # (traj_every=0 is not a way to disable it: ASE reads a non-positive
+    # interval as "call once at step 0", which would divide by zero in
+    # janus-core's trajectory writer.)
+    struct = run_stage(
+        NVT_NH,
+        struct,
+        steps=NVT_EQUIL_STEPS,
+        file_prefix=work_dir / f"{cell}-nvt_equil",
+        **md_kwargs,
+    )
+
+    if cell == CELL_P64:
+        # Production at the experimental volume: this is what S(q) and the
+        # RDF are computed from.
+        prefix = work_dir / f"{cell}-nvt_prod"
+        run_stage(
+            NVT_NH,
+            struct,
+            steps=NVT_PROD_STEPS,
+            file_prefix=prefix,
+            **md_kwargs,
+        )
+        traj = ase_read(f"{prefix}-traj.extxyz", index=":")
+        ase_write(data_dir / "nvt_trajectory.extxyz", traj, format="extxyz")
+    else:
+        # NPT only on the small cell, for the density.
+        prefix = work_dir / f"{cell}-npt_prod"
+        final = run_stage(
+            NPT_MTK,
+            struct,
+            steps=NPT_PROD_STEPS,
+            file_prefix=prefix,
+            pressure=PRESSURE_GPA,
+            barostat_time=BAROSTAT_TIME_FS,
+            thermostat_chain=NH_CHAIN,
+            barostat_chain=NH_CHAIN,
+            **md_kwargs,
+        )
+        # Last frame at the model's own density, for the structure viewer.
+        ase_write(data_dir / "npt_final.xyz", final, format="extxyz")
+        write_density_json(
+            data_dir.name,
+            Path(f"{prefix}-stats.dat"),
+            data_dir / "density.json",
+            cell=CELL_P16,
+            window_ps=DENSITY_WINDOW_PS,
+        )
+
+
+def run_reference_md(model_name: str, model: Any) -> list[str]:
     """
     Run the reference protocol for one model and write its data products.
 
@@ -186,25 +266,31 @@ def run_reference_md(model_name: str, model: Any) -> None:
     ``npt_final.xyz`` (p16_w42) under ``OUT_PATH/<model_name>/``, which the
     extraction tests and the analysis then read back.
 
+    The two cells are independent: if the MD fails on one, the other still
+    runs. The failure is recorded in ``failed_<cell>.json``, which the
+    analysis reads to give the metrics of that cell NaN, so the model gets no
+    score rather than one computed from the metrics that survived. A later
+    successful run removes the file.
+
     Parameters
     ----------
     model_name : str
         Registry name of the MLIP model.
     model : Any
         Model object from :func:`load_models`.
-    """
-    # Imported lazily: janus-core pulls in torch, which is not needed by the
-    # extraction tests.
-    from janus_core.calculations.md import NPT_MTK, NVT_NH
 
+    Returns
+    -------
+    list[str]
+        The cells on which the MD failed.
+    """
     calc = model.get_calculator(precision="low")
     # Runtime D3(BJ) for the models not trained on dispersion-corrected data,
     # as in the other ml-peg MD benchmarks; the others are returned unchanged.
     calc = model.add_d3_calculator(calc)
 
     data_dir = OUT_PATH / model_name
-    work_dir = data_dir / "md"
-    work_dir.mkdir(parents=True, exist_ok=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     # Settings shared by every stage.
     md_kwargs = {
@@ -216,62 +302,23 @@ def run_reference_md(model_name: str, model: Any) -> None:
         "seed": SEED,
     }
 
+    failed = []
     for cell in (CELL_P64, CELL_P16):
-        struct = load_initial_structure(cell)
-        # Assigned, not copied: copying a MatterSim calculator sends it through
-        # __setstate__, which rebuilds the potential from a checkpoint
-        # (defaulting to the 1M weights) instead of reusing the loaded one.
-        struct.calc = calc
-
-        # The equilibration trajectory is written but not analysed.
-        # (traj_every=0 is not a way to disable it: ASE reads a non-positive
-        # interval as "call once at step 0", which would divide by zero in
-        # janus-core's trajectory writer.)
-        struct = run_stage(
-            NVT_NH,
-            struct,
-            steps=NVT_EQUIL_STEPS,
-            file_prefix=work_dir / f"{cell}-nvt_equil",
-            **md_kwargs,
-        )
-
-        if cell == CELL_P64:
-            # Production at the experimental volume: this is what S(q) and the
-            # RDF are computed from.
-            prefix = work_dir / f"{cell}-nvt_prod"
-            run_stage(
-                NVT_NH,
-                struct,
-                steps=NVT_PROD_STEPS,
-                file_prefix=prefix,
-                **md_kwargs,
+        marker = data_dir / f"failed_{cell}.json"
+        try:
+            run_cell(cell, calc, data_dir, md_kwargs)
+        except Exception as err:
+            warnings.warn(
+                f"Reference MD failed for {model_name} on {cell}: {err!r}",
+                stacklevel=2,
             )
-            traj = ase_read(f"{prefix}-traj.extxyz", index=":")
-            ase_write(data_dir / "nvt_trajectory.extxyz", traj, format="extxyz")
+            marker.write_text(
+                json.dumps({"model": model_name, "cell": cell, "error": repr(err)})
+            )
+            failed.append(cell)
         else:
-            # NPT only on the small cell, for the density.
-            prefix = work_dir / f"{cell}-npt_prod"
-            final = run_stage(
-                NPT_MTK,
-                struct,
-                steps=NPT_PROD_STEPS,
-                file_prefix=prefix,
-                pressure=PRESSURE_GPA,
-                barostat_time=BAROSTAT_TIME_FS,
-                thermostat_chain=NH_CHAIN,
-                barostat_chain=NH_CHAIN,
-                **md_kwargs,
-            )
-            # Last frame at the model's own density, for the structure viewer.
-            ase_write(data_dir / "npt_final.xyz", final, format="extxyz")
-            write_density_json(
-                model_name,
-                Path(f"{prefix}-stats.dat"),
-                data_dir / "density.json",
-                cell=CELL_P16,
-                rho_exp=RHO_EXP,
-                window_ps=DENSITY_WINDOW_PS,
-            )
+            marker.unlink(missing_ok=True)
+    return failed
 
 
 @pytest.mark.multi_day
@@ -292,8 +339,12 @@ def test_reference_md(mlip: tuple[str, Any]) -> None:
         ``(model_name, model)`` pair from the ml-peg registry.
     """
     model_name, model = mlip
-    run_reference_md(model_name, model)
+    failed = run_reference_md(model_name, model)
 
+    assert not failed, (
+        f"Reference MD failed for {model_name} on {', '.join(failed)}: see "
+        f"failed_<cell>.json in {OUT_PATH / model_name}"
+    )
     assert (OUT_PATH / model_name / "nvt_trajectory.extxyz").exists()
     assert (OUT_PATH / model_name / "density.json").exists()
     assert (OUT_PATH / model_name / "npt_final.xyz").exists()
@@ -319,7 +370,7 @@ def test_density(model_name: str) -> None:
     if not density_path.exists():
         pytest.skip(
             f"No density data for {model_name} at {density_path}. Generate it "
-            "with test_reference_md (-m very_slow)."
+            "with test_reference_md (--run-multi-day)."
         )
 
     with open(density_path) as f:
@@ -328,7 +379,7 @@ def test_density(model_name: str) -> None:
     # No bound on the error: a model whose liquid decomposes in NPT yields a
     # valid (badly scored) result, not a failed calculation.
     assert result["n_samples"] > 0, f"No density samples for {model_name}"
-    assert np.isfinite(result["rho_error_pct"]), f"Invalid density for {model_name}"
+    assert np.isfinite(result["rho_mean"]), f"Invalid density for {model_name}"
     assert result["rho_mean"] > 0, f"Negative density for {model_name}"
 
 
@@ -347,7 +398,7 @@ def test_compute_rdf(model_name: str) -> None:
     if not traj_path.exists():
         pytest.skip(
             f"No NVT trajectory for {model_name} at {traj_path}. Generate it "
-            "with test_reference_md (-m very_slow)."
+            "with test_reference_md (--run-multi-day)."
         )
 
     first_frame = ase_read(str(traj_path), index=0, format="extxyz")
@@ -392,7 +443,7 @@ def test_compute_xray_sq(model_name: str) -> None:
     if not traj_path.exists():
         pytest.skip(
             f"No NVT trajectory for {model_name} at {traj_path}. Generate it "
-            "with test_reference_md (-m very_slow)."
+            "with test_reference_md (--run-multi-day)."
         )
 
     result = compute_sq_travis_style(traj_path)
