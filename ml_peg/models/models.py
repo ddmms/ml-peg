@@ -618,9 +618,16 @@ class NEPCalc(SumCalc):
     """Dataclass for NEP calculators provided by calorine."""
 
     model_filename: str
-    device: Device | None = None
+    device: Literal["cpu", "gpu"] = "cpu"
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Validate the device."""
+        if self.device not in ("cpu", "gpu"):
+            raise ValueError(
+                f"Invalid NEP device '{self.device}'. Must be 'cpu' or 'gpu'."
+            )
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
@@ -660,9 +667,12 @@ class NEPCalc(SumCalc):
                 stacklevel=2,
             )
 
-        # TODO handle GPU and CPU
+        nep_calc = GPUNEP if self.device == "gpu" else CPUNEP
+        # TODO: remove once `gpumd` is installed; GPUNEP needs the gpumd executable.
+        nep_calc = CPUNEP
+
         calculator_kwargs = {**self.kwargs, **kwargs}
-        return CPUNEP(self.resolve_model_filename(), **calculator_kwargs)
+        return nep_calc(self.resolve_model_filename(), **calculator_kwargs)
 
     @property
     def available(self) -> bool:
