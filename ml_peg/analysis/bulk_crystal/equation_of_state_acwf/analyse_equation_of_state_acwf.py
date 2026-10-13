@@ -8,6 +8,7 @@ from pathlib import Path
 from ase.data import atomic_numbers
 from ase.io import read
 import numpy as np
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pytest
 
@@ -59,6 +60,12 @@ MAGNETIC_ELEMENTS = {"Cr", "Mn", "Fe", "Co", "Ni"} | {
     if 57 <= number <= 71 or 89 <= number <= 103
 }
 
+# DFT codes shown as baselines in the box plots, and the suffix of their result files
+BASELINE_CODES = {"FLEUR": "fleur", "WIEN2k": "wien2k-dk_0.06", "VASP": "vasp"}
+
+# Box plots of the signed relative differences: parameter and initial axis range (%)
+BOX_PLOT_RANGES = {"V0": 20, "B0": 50, "B1": 100}
+
 # Per-element periodic tables: metric name and file stem.
 PERIODIC_TABLES = {
     "ε": "epsilon_periodic_table",
@@ -89,9 +96,15 @@ def is_flagged(element: str, configuration: str) -> bool:
     return element in MAGNETIC_ELEMENTS or (is_oxide and element in PLUS_U_ELEMENTS)
 
 
-def load_reference() -> dict[str, dict[str, float]]:
+def load_reference(source: str = "AE-average") -> dict[str, dict[str, float]]:
     """
     Load the all-electron PBE reference Birch-Murnaghan parameters.
+
+    Parameters
+    ----------
+    source
+        Suffix of the result files. Default is ``AE-average``, the reference. The
+        values in ``BASELINE_CODES`` load the results of a DFT code instead.
 
     Returns
     -------
@@ -110,7 +123,7 @@ def load_reference() -> dict[str, dict[str, float]]:
     reference = {}
     for dataset in DATASETS:
         with open(
-            data_path / f"results-{dataset}-verification-PBE-v1-AE-average.json",
+            data_path / f"results-{dataset}-verification-PBE-v1-{source}.json",
             encoding="utf8",
         ) as f:
             data = json.load(f)
@@ -503,6 +516,108 @@ def periodic_tables(comparisons: dict[str, dict[str, dict] | None]) -> None:
             )(element_values)(comparison, measure)
 
 
+def signed_differences(
+    parameters: dict[str, dict[str, float] | None],
+    reference: dict[str, dict[str, float]],
+) -> dict[str, list[float]]:
+    """
+    Get the signed relative differences in V0, B0 and B1 from the reference.
+
+    Parameters
+    ----------
+    parameters
+        Birch-Murnaghan parameters for each structure, ``None`` or missing where
+        there are none.
+    reference
+        Reference parameters for each structure.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Relative differences (%), as defined by ACWF, for each parameter, over the
+        structures with parameters.
+    """
+    differences = {name: [] for name in BOX_PLOT_RANGES}
+    for label, ref in reference.items():
+        tested = parameters.get(label)
+        if tested is None or tested.get("V0") is None:
+            continue
+        for name in differences:
+            differences[name].append(100 * relative_difference(tested[name], ref[name]))
+    return differences
+
+
+@pytest.fixture
+def relative_errors_figure(
+    reference: dict[str, dict[str, float]],
+    comparisons: dict[str, dict[str, dict] | None],
+) -> None:
+    """
+    Write box plots of the relative differences in V0, B0 and B1.
+
+    The DFT codes in ``BASELINE_CODES`` are shown above the models, as in Figure 1 of
+    Yu et al., Mater. Genome Eng. Adv. 2, e58 (2024).
+
+    Parameters
+    ----------
+    reference
+        Reference parameters for each structure.
+    comparisons
+        Comparison for each structure and model.
+    """
+    rows = {
+        code: signed_differences(load_reference(suffix), reference)
+        for code, suffix in BASELINE_CODES.items()
+    }
+    rows |= {
+        model_name: signed_differences(comparison, reference)
+        for model_name, comparison in comparisons.items()
+        if comparison is not None
+    }
+
+    fig = make_subplots(
+        rows=1,
+        cols=len(BOX_PLOT_RANGES),
+        shared_yaxes=True,
+        horizontal_spacing=0.03,
+    )
+    for col, (name, limit) in enumerate(BOX_PLOT_RANGES.items(), start=1):
+        for row, differences in rows.items():
+            fig.add_trace(
+                go.Box(
+                    x=differences[name],
+                    name=row,
+                    orientation="h",
+                    boxpoints="outliers",
+                    marker={"size": 3},
+                    line={"width": 1},
+                    marker_color="#1f77b4" if row in BASELINE_CODES else "#2ca02c",
+                    showlegend=False,
+                    hovertemplate=f"{row}: %{{x:.2f}}%<extra></extra>",
+                ),
+                row=1,
+                col=col,
+            )
+        fig.update_xaxes(
+            title_text=f"{name} difference (%)", range=[-limit, limit], row=1, col=col
+        )
+        fig.add_vline(x=0, line={"color": "grey", "width": 1}, row=1, col=col)
+    fig.update_yaxes(autorange="reversed")
+    # Dashed line between the DFT codes and the models
+    fig.add_hline(
+        y=len(BASELINE_CODES) - 0.5, line={"color": "grey", "dash": "dash", "width": 1}
+    )
+    fig.update_layout(
+        title=(
+            "Relative differences from the all-electron reference "
+            "(structures without a fitted minimum are not shown)"
+        ),
+        height=250 + 40 * len(rows),
+    )
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    fig.write_json(OUT_PATH / "relative_errors_box.json")
+
+
 @pytest.fixture
 def eos_figures(
     reference: dict[str, dict[str, float]],
@@ -603,7 +718,10 @@ def eos_figures(
 
 
 def test_equation_of_state_acwf(
-    metrics: dict[str, dict], periodic_tables: None, eos_figures: None
+    metrics: dict[str, dict],
+    periodic_tables: None,
+    eos_figures: None,
+    relative_errors_figure: None,
 ) -> None:
     """
     Run the ACWF equation-of-state analysis.
@@ -616,6 +734,8 @@ def test_equation_of_state_acwf(
         Per-model periodic-table heatmaps (side effect only).
     eos_figures
         Per-model and per-element E(V) figures (side effect only).
+    relative_errors_figure
+        Box plots of the relative differences in V0, B0 and B1 (side effect only).
     """
     get_struct_info(
         calc_path=CALC_PATH,

@@ -30,6 +30,8 @@ METRICS = [
     ("Δ", "delta_periodic_table"),
 ]
 INFO_PATH = DATA_PATH / "info.json"
+BOX_PLOT_PATH = DATA_PATH / "relative_errors_box.json"
+BOX_PLOT_COLUMNS = ("V0 error", "B0 error", "B1 error")
 
 
 class EquationOfStateACWFApp(BaseApp):
@@ -48,6 +50,9 @@ class EquationOfStateACWFApp(BaseApp):
                     id={"type": PT_TYPE, "model": model, "metric": file_stem},
                     figure=read_json(path),
                 )
+            if BOX_PLOT_PATH.exists():
+                for column_id in BOX_PLOT_COLUMNS:
+                    plots[column_id] = Graph(figure=read_json(BOX_PLOT_PATH))
             if plots:
                 cell_to_plot[model] = plots
 
@@ -108,7 +113,8 @@ def get_app() -> EquationOfStateACWFApp:
             "Energy-volume curves of 960 unary and oxide crystals (Z = 1-96), "
             "compared with all-electron PBE reference data using the ε and ν "
             "measures of the ACWF verification study. Click a metric to show a "
-            "periodic table, then an element to show its E(V) curves."
+            "periodic table, then an element to show its E(V) curves. Click a V0, "
+            "B0 or B1 error to compare the models with DFT codes."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "eos_acwf_metrics_table.json",

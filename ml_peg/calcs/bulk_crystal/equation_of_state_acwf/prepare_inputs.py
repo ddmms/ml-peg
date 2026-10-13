@@ -6,7 +6,9 @@ The archive collects, from pinned upstream commits:
 * the PBE input structures (XSF files at the central volume) of the ACWF
   verification set, for the unaries and the oxides (Z = 1-96);
 * the PBE all-electron reference Birch-Murnaghan parameters published with
-  Bosoni et al. (2024), averaged over WIEN2k and FLEUR.
+  Bosoni et al. (2024), averaged over WIEN2k and FLEUR;
+* the Birch-Murnaghan parameters of FLEUR, WIEN2k and VASP from the same study,
+  shown as baselines of the differences between DFT codes.
 
 The archive is hosted on the ML-PEG S3 bucket as
 ``inputs/bulk_crystal/equation_of_state_acwf/equation_of_state_acwf.zip``. This
@@ -42,6 +44,13 @@ REFERENCE_FILES = {
     "unaries": "results-unaries-verification-PBE-v1-AE-average.json",
     "oxides": "results-oxides-verification-PBE-v1-AE-average.json",
 }
+# DFT codes shown as baselines, and the suffix of their result files
+BASELINE_CODES = {"FLEUR": "fleur", "WIEN2k": "wien2k-dk_0.06", "VASP": "vasp"}
+BASELINE_FILES = [
+    f"results-{dataset}-verification-PBE-v1-{suffix}.json"
+    for dataset in REFERENCE_FILES
+    for suffix in BASELINE_CODES.values()
+]
 
 README = f"""\
 ACWF equation-of-state benchmark inputs for ML-PEG.
@@ -51,9 +60,13 @@ structures/{{unaries,oxides}}/*.xsf
     https://github.com/{ACWF_REPO} (commit {ACWF_COMMIT}, MIT licence):
     {", ".join(STRUCTURE_DIRS.values())}
 
-reference/*.json
+reference/*-AE-average.json
     PBE all-electron reference Birch-Murnaghan parameters (average of WIEN2k and
     FLEUR), from the same repository and commit, {REFERENCE_DIR}.
+
+reference/*-{{{",".join(BASELINE_CODES.values())}}}.json
+    Results of {", ".join(BASELINE_CODES)} from the same directory, shown as
+    baselines of the differences between DFT codes.
 
 Protocol and metrics: E. Bosoni et al., Nat. Rev. Phys. 6, 45 (2024),
 https://doi.org/10.1038/s42254-023-00655-3
@@ -130,9 +143,9 @@ def build_archive(out_dir: Path = BENCHMARK_DATA_DIR) -> Path:
         with zipfile.ZipFile(tmp_archive, "w", zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.writestr(f"{ARCHIVE_NAME}/README.txt", README)
 
-            for dataset, filename in REFERENCE_FILES.items():
+            for filename in [*REFERENCE_FILES.values(), *BASELINE_FILES]:
                 url = _raw_url(ACWF_REPO, ACWF_COMMIT, f"{REFERENCE_DIR}/{filename}")
-                print(f"[{dataset}] {url}")
+                print(url)
                 response = requests.get(url, timeout=60)
                 response.raise_for_status()
                 zip_file.writestr(

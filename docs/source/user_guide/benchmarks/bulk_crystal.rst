@@ -571,6 +571,12 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
 Each metric can also be shown on a periodic table, as the median over the ten
 structures of each element. Clicking an element shows its ten E(V) curves.
 
+Clicking a V0, B0 or B1 error shows box plots of the signed relative differences in
+:math:`V_0`, :math:`B_0` and :math:`B_1` for all models, as in Figure 1 of Yu *et al.*
+The results of FLEUR, WIEN2k and VASP from the ACWF study are shown above the models,
+as baselines of the differences between DFT codes. Structures without a fitted minimum
+are not shown.
+
 Computational cost
 ------------------
 
@@ -591,11 +597,17 @@ Reference data (PBE):
   with Bosoni *et al.*
   (``acwf_paper_plots/code-data/results-*-verification-PBE-v1-AE-average.json``), from
   https://github.com/aiidateam/acwf-verification-scripts.
+* Birch-Murnaghan parameters of FLEUR, WIEN2k and VASP, shown as baselines
+  (``results-*-verification-PBE-v1-{fleur,wien2k-dk_0.06,vasp}.json`` in the same
+  directory).
 * E. Bosoni *et al.*, How to verify the precision of density-functional-theory
   implementations via reproducible and universal workflows, Nat. Rev. Phys. 6, 45
   (2024). https://doi.org/10.1038/s42254-023-00655-3
 * K. Lejaeghere *et al.*, Reproducibility in density functional theory calculations
   of solids, Science 351, aad3000 (2016). https://doi.org/10.1126/science.aad3000
+* H. Yu *et al.*, Systematic assessment of various universal machine-learning
+  interatomic potentials, Mater. Genome Eng. Adv. 2, e58 (2024).
+  https://doi.org/10.1002/mgea.58
 
 
 High-Pressure Relaxation

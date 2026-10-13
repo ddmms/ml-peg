@@ -27,6 +27,7 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_sta
     load_reference,
     median_measure,
     model_measure,
+    signed_differences,
     unphysical_share,
 )
 from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.calc_equation_of_state_acwf import (  # noqa: E501
@@ -210,22 +211,24 @@ def test_load_reference(tmp_path, monkeypatch):
         # The pure-oxygen oxides use a cell twice as large as the other oxides.
         "oxides": {"O-XO": (40.0, 4)},
     }
-    for dataset, structures in data.items():
-        content = {
-            "BM_fit_data": {
-                key: {
-                    "min_volume": volume,
-                    "bulk_modulus_ev_ang3": 0.5,
-                    "bulk_deriv": 4.5,
-                }
-                for key, (volume, _) in structures.items()
-            },
-            "num_atoms_in_sim_cell": {
-                key: num_atoms for key, (_, num_atoms) in structures.items()
-            },
-        }
-        filename = f"results-{dataset}-verification-PBE-v1-AE-average.json"
-        (reference_dir / filename).write_text(json.dumps(content))
+    # A DFT code baseline is read from its own files, with volumes 1% larger.
+    for source, scale in (("AE-average", 1.0), ("vasp", 1.01)):
+        for dataset, structures in data.items():
+            content = {
+                "BM_fit_data": {
+                    key: {
+                        "min_volume": scale * volume,
+                        "bulk_modulus_ev_ang3": 0.5,
+                        "bulk_deriv": 4.5,
+                    }
+                    for key, (volume, _) in structures.items()
+                },
+                "num_atoms_in_sim_cell": {
+                    key: num_atoms for key, (_, num_atoms) in structures.items()
+                },
+            }
+            filename = f"results-{dataset}-verification-PBE-v1-{source}.json"
+            (reference_dir / filename).write_text(json.dumps(content))
     monkeypatch.setattr(eos_analysis, "download_s3_data", lambda **_: tmp_path)
 
     reference = load_reference()
@@ -234,6 +237,31 @@ def test_load_reference(tmp_path, monkeypatch):
         "Cu-FCC": {"V0": 11.95, "B0": 0.5, "B1": 4.5},
         "O-XO": {"V0": 10.0, "B0": 0.5, "B1": 4.5},
     }
+    assert load_reference("vasp")["O-XO"]["V0"] == pytest.approx(10.1)
+
+
+def test_signed_differences():
+    """Signed ACWF relative differences, skipping structures without parameters."""
+    reference = {
+        "Cu-FCC": {"V0": 10.0, "B0": 1.0, "B1": 4.0},
+        "Si-Diamond": {"V0": 20.0, "B0": 0.5, "B1": 4.0},
+        "Fe-BCC": {"V0": 12.0, "B0": 1.0, "B1": 5.0},
+        "Al-SC": {"V0": 15.0, "B0": 0.5, "B1": 4.0},
+    }
+    parameters = {
+        # 2 (w - f) / (w + f): 2 / 21, -0.2 / 1.9 and 0
+        "Cu-FCC": {"V0": 11.0, "B0": 0.9, "B1": 4.0},
+        "Si-Diamond": {"V0": 20.0, "B0": 0.5, "B1": 4.0},
+        # No minimum, as in the comparison of a model curve
+        "Fe-BCC": {"status": "no_minimum", "V0": None},
+        # "Al-SC" is missing
+    }
+
+    differences = signed_differences(parameters, reference)
+
+    assert differences["V0"] == pytest.approx([100 * 2 / 21, 0.0])
+    assert differences["B0"] == pytest.approx([-100 * 0.2 / 1.9, 0.0])
+    assert differences["B1"] == pytest.approx([0.0, 0.0])
 
 
 def test_load_curves(tmp_path, monkeypatch):

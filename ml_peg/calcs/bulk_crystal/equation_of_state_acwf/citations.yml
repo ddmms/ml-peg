@@ -59,7 +59,7 @@ citations:
     url: null
   - key: "acwf-verification-scripts"
     role: reference_data
-    title: "ACWF verification scripts (input structures, all-electron reference data and EOS analysis)"
+    title: "ACWF verification scripts (input structures, all-electron reference data, DFT-code results and EOS analysis)"
     authors:
       - "AiiDA team"
     year: null
@@ -140,4 +140,16 @@ citations:
       - "S. Cottenier"
     year: 2016
     doi: "10.1126/science.aad3000"
+    url: null
+  - key: "yu-2024-a156"
+    role: inspired_by
+    title: "Systematic assessment of various universal machine-learning interatomic potentials"
+    authors:
+      - "H. Yu"
+      - "M. Giantomassi"
+      - "G. Materzanini"
+      - "J. Wang"
+      - "G.-M. Rignanese"
+    year: 2024
+    doi: "10.1002/mgea.58"
     url: null
