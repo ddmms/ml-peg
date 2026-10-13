@@ -87,6 +87,7 @@ Method:
 Tool and computational resource disclosure
 ------------------------------------------
 
-The benchmark code, tests and this page were drafted with an AI coding assistant
-(Claude, Anthropic) and reviewed by the implementer. The DFT reference calculations
+The benchmark code, its tests and this page were written with an AI coding assistant
+(Claude, Anthropic). The implementer manually inspected and verified the code and the
+tests and takes responsibility for them. The DFT reference calculations
 used the Avon (University of Warwick) and Sulis (HPC Midlands+) clusters.
