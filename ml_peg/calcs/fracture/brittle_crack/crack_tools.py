@@ -240,8 +240,6 @@ def model_problem(case: dict, calc, consts: dict):
     k_g = crk.k1g(consts["gamma"])
     k0 = case["start_k"]
     atoms = cluster_like(ref, crk, k0 * k_g, consts["a0"])
-    if len(atoms) != len(ref):
-        raise ValueError(f"model cluster has {len(atoms)} atoms, reference {len(ref)}")
     cryst = atoms.copy()
     cryst.positions = atoms.arrays["reference"]
     regions_from_groups(cryst)

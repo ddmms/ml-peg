@@ -38,7 +38,7 @@ def _plane_key(case: dict) -> str:
     )
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_brittle_crack(mlip: tuple[str, Any]) -> None:
     """
@@ -56,8 +56,18 @@ def test_brittle_crack(mlip: tuple[str, Any]) -> None:
     symbols = {case["symbol"] for case in CASES.values()}
     if len(symbols) != 1:
         raise NotImplementedError("one material per benchmark run")
-    consts = ct.material_constants(calc, symbols.pop())
     gammas, status, by_plane = {}, {}, {}
+    try:
+        consts = ct.material_constants(calc, symbols.pop())
+    except Exception as exc:
+        warn(f"{model_name} constants: {exc}", stacklevel=2)
+        for name in CASES:
+            write(out / f"{name}.extxyz", [], format="extxyz")
+        status = dict.fromkeys(CASES, f"failed: constants: {exc}")
+        (out / "constants.json").write_text(
+            json.dumps({"gamma": {}, "status": status}, indent=1)
+        )
+        return
     for name, case in CASES.items():
         try:
             key = _plane_key(case)
@@ -71,6 +81,7 @@ def test_brittle_crack(mlip: tuple[str, Any]) -> None:
             )
         except Exception as exc:
             warn(f"{model_name} {name}: {exc}", stacklevel=2)
+            gammas.setdefault(name, None)
             frames, status[name] = [], f"failed: {exc}"
         write(out / f"{name}.extxyz", frames, format="extxyz")
     (out / "constants.json").write_text(

@@ -22,6 +22,29 @@ INFO_PATH = DATA_PATH / "info.json"
 CASES = ct.load_cases()
 
 
+def trace_structs(model: str, name: str) -> dict[str, str]:
+    """
+    Map a model's label to its traced structures, if the trace file exists.
+
+    Parameters
+    ----------
+    model
+        Model name.
+    name
+        Case name.
+
+    Returns
+    -------
+    dict[str, str]
+        ``{model: asset path}``, or empty when the trace failed (no file).
+    """
+    if not (DATA_PATH / name / model / f"{model}-trace.extxyz").exists():
+        return {}
+    return {
+        model: f"/assets/fracture/brittle_crack/{name}/{model}/{model}-trace.extxyz"
+    }
+
+
 class BrittleCrackApp(BaseApp):
     """Brittle-crack benchmark app layout and callbacks."""
 
@@ -48,12 +71,15 @@ class BrittleCrackApp(BaseApp):
         )
         for model in plots:
             for name in CASES:
+                structs = trace_structs(model, name)
+                if not structs:
+                    continue
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-{name}-figure",
                     struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                    structs=f"/assets/fracture/brittle_crack/{name}/{model}/"
-                    f"{model}-trace.extxyz",
+                    structs=structs,
                     mode="traj",
+                    follow_frames=True,
                 )
 
 

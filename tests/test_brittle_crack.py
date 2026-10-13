@@ -287,3 +287,66 @@ def test_structure_info_comes_from_the_reference_clusters(tmp_path, monkeypatch)
     paths = an.reference_structures()
     assert len(paths) == 3
     assert {a.get_chemical_formula() for a in (read(p) for p in paths)} >= {"H30Si72"}
+
+
+def test_model_errors_score_a_missing_gamma_or_constants_as_uncovered():
+    """Failed constants or a failed cleavage energy give zero coverage, not KeyError."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    refs = {name: [object()] for name in an.CASES}
+    frames = {name: [] for name in an.CASES}
+    no_consts = {"status": dict.fromkeys(an.CASES, "failed: x")}
+    for consts in (
+        no_consts,
+        {"a0": 5.4, "C11": 0.9, "C12": 0.4, "C44": 0.4, "gamma": {}},
+    ):
+        errs = an.model_errors(consts, frames, refs)
+        assert set(errs) == set(an.CASES)
+        assert all(e["coverage"] == 0.0 for e in errs.values())
+
+
+def test_frames_on_another_topology_are_rejected_clearly():
+    """Frames whose atoms differ from the case topology raise a clear ValueError."""
+    from ase import Atoms
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    case = ct.load_cases()["Si_111_110"]
+    t = ct.topology_constants(case)
+    wrong = Atoms("Si4", positions=np.zeros((4, 3)), cell=[10, 10, 3.8])
+    wrong.info.update(K_over_KG=1.0, REF_energy=0.0)
+    with pytest.raises(ValueError, match="topology"):
+        an.case_errors([wrong], [wrong], case, t, t)
+
+
+def test_s_curve_figure_lets_only_model_points_open_structures():
+    """The DFT curve has no customdata; model points carry the model label."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    fig = an.s_curve_figure(
+        "m1", "Si_111_110", [2.5, 3.0], [0.6, 1.0], [2.6, 3.1], [0.6, 1.1], (2.5, 3.0)
+    )
+    dft, model = fig.data
+    assert dft.customdata is None
+    assert [c[-1] for c in model.customdata] == ["m1", "m1"]
+
+
+def test_app_registers_traces_only_for_models_with_a_trace_file(tmp_path, monkeypatch):
+    """Structure lookup maps a model label to its trace file only when it exists."""
+    from ml_peg.app.fracture.brittle_crack import app_brittle_crack as app
+
+    monkeypatch.setattr(app, "DATA_PATH", tmp_path)
+    assert app.trace_structs("m1", "Si_111_110") == {}
+    (tmp_path / "Si_111_110" / "m1").mkdir(parents=True)
+    (tmp_path / "Si_111_110" / "m1" / "m1-trace.extxyz").write_text("x")
+    assert app.trace_structs("m1", "Si_111_110") == {
+        "m1": "/assets/fracture/brittle_crack/Si_111_110/m1/m1-trace.extxyz"
+    }
+
+
+def test_calc_is_marked_fast():
+    """About 7 minutes per model on a GPU is ML-PEG's fast tier."""
+    from ml_peg.calcs.fracture.brittle_crack import calc_brittle_crack as calc
+
+    marks = {m.name for m in calc.test_brittle_crack.pytestmark}
+    assert "fast" in marks and "slow" not in marks

@@ -9,10 +9,11 @@ from pathlib import Path
 from ase.io import read, write
 from ase.units import J, m
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.fracture.brittle_crack import s_curves as sc
-from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -168,6 +169,15 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
         }
     from matscipy.fracture_mechanics.clusters import cluster_like
 
+    ref_cl = ct.reference_cluster(case)
+    for what, frames in (("model", model_frames), ("reference", ref_frames)):
+        bad = [f for f in frames if list(f.numbers) != list(ref_cl.numbers)]
+        if bad:
+            raise ValueError(
+                f"{what} frames are not on the {case['label']} topology "
+                f"({len(bad[0])} atoms vs {len(ref_cl)}); "
+                "outputs from another cases.yml?"
+            )
     pair = tuple(case["coordinate"])
     crk_r, crk_m = ct.crack(case, ref_consts), ct.crack(case, consts)
     kg_r, kg_m = crk_r.k1g(ref_consts["gamma"]), crk_m.k1g(consts["gamma"])
@@ -178,7 +188,6 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
         model_frames, pair, consts["a0"], _gamma_jm2(consts), kg_m
     )
     out = sc.errors(mod, ref)
-    ref_cl = ct.reference_cluster(case)
     mod_cl = cluster_like(ref_cl, crk_m, kg_m, consts["a0"])
     ed = sc.ed_on_grid(
         _track(model_frames, mod_cl, crk_m, consts, kg_m, pair),
@@ -187,6 +196,40 @@ def case_errors(model_frames, ref_frames, case: dict, consts: dict, ref_consts: 
         sc.window(ref),
     )
     out.update(E_D=ed["E_D"], coverage_D=ed["coverage"])
+    return out
+
+
+def model_errors(consts: dict, frames: dict, refs: dict) -> dict[str, dict]:
+    """
+    Compute a model's errors on every case; failed constants score as uncovered.
+
+    Parameters
+    ----------
+    consts
+        Model constants from the calculation (``constants.json``); ``gamma`` per case.
+        Missing constants or gamma (a failed calculation) give zero coverage.
+    frames
+        Traced frames by case name.
+    refs
+        DFT reference frames by case name.
+
+    Returns
+    -------
+    dict[str, dict]
+        Errors by case name.
+    """
+    out = {}
+    for name, case in CASES.items():
+        gamma = (consts.get("gamma") or {}).get(name)
+        ok = "a0" in consts and gamma is not None and np.isfinite(gamma)
+        c = {**consts, "gamma": gamma} if ok else {}
+        out[name] = case_errors(
+            frames.get(name, []) if ok else [],
+            refs[name],
+            case,
+            c,
+            ct.topology_constants(case),
+        )
     return out
 
 
@@ -236,9 +279,69 @@ def _model_constants(model: str) -> dict | None:
     return json.loads(path.read_text()) if path.exists() else None
 
 
-def _write_plot(model: str, name: str, ref_frames, model_frames, consts: dict) -> None:
+def s_curve_figure(
+    model: str, name: str, ref_x, ref_k, mod_x, mod_k, window_x
+) -> go.Figure:
     """
-    Write the S-curve plot of a model on a case, with the DFT path and window.
+    Build the S-curve figure of a model on a case, with the DFT path and the window.
+
+    Only the model's points carry ``customdata`` (the model label), so clicking a
+    model point opens its traced structure and a DFT point does not.
+
+    Parameters
+    ----------
+    model
+        Model name.
+    name
+        Case name.
+    ref_x, ref_k
+        DFT coordinate (A) and K/K_G.
+    mod_x, mod_k
+        Model coordinate (A) and K/K_G.
+    window_x
+        Scored window (A) on the coordinate.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The figure.
+    """
+    case = CASES[name]
+    pair = tuple(case["coordinate"])
+    hover = "<b>bond: </b>%{x:.3f} Å<br><b>K/K_G: </b>%{y:.4f}<br>"
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=ref_x, y=ref_k, name="DFT", mode="lines", hovertemplate=hover)
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=mod_x,
+            y=mod_k,
+            name=model,
+            mode="lines+markers",
+            customdata=[[model] for _ in mod_x],
+            hovertemplate=hover,
+        )
+    )
+    fig.add_vrect(
+        x0=window_x[0],
+        x1=window_x[1],
+        annotation_text="scored window",
+        annotation_position="top",
+        opacity=0.15,
+        line_width=0,
+    )
+    fig.update_layout(
+        title={"text": f"{case['label']}: K/K_G along the crack path"},
+        xaxis={"title": {"text": f"bond {pair} (Å)"}},
+        yaxis={"title": {"text": "K / K_G (own)"}},
+    )
+    return fig
+
+
+def _write_plot(model: str, name: str, ref_frames, model_frames) -> None:
+    """
+    Write the S-curve figure of a model on a case.
 
     Parameters
     ----------
@@ -250,36 +353,21 @@ def _write_plot(model: str, name: str, ref_frames, model_frames, consts: dict) -
         DFT reference frames.
     model_frames
         Model frames.
-    consts
-        Model constants.
     """
-    case = CASES[name]
-    pair = tuple(case["coordinate"])
+    pair = tuple(CASES[name]["coordinate"])
     ref_x = [sc.pair_distance(f, pair) for f in ref_frames]
-    ref_k = [f.info["K_over_KG"] for f in ref_frames]
-    mod_x = [sc.pair_distance(f, pair) for f in model_frames]
-    mod_k = [f.info["K_over_KG"] for f in model_frames]
-
-    @plot_scatter(
-        filename=OUT_PATH / f"figure_{model}_{name}.json",
-        title=f"{case['label']}: K/K_G along the crack path",
-        x_label=f"bond {pair} (Å)",
-        y_label="K / K_G (own)",
-        show_line=True,
-        highlight_range={"scored window": (min(ref_x), max(ref_x))},
+    fig = s_curve_figure(
+        model,
+        name,
+        ref_x,
+        [f.info["K_over_KG"] for f in ref_frames],
+        [sc.pair_distance(f, pair) for f in model_frames],
+        [f.info["K_over_KG"] for f in model_frames],
+        (min(ref_x), max(ref_x)),
     )
-    def plot() -> dict[str, list]:
-        """
-        Return the DFT and model S-curves.
-
-        Returns
-        -------
-        dict[str, list]
-            Curves by name.
-        """
-        return {"DFT": [ref_x, ref_k], model: [mod_x, mod_k]}
-
-    plot()
+    path = OUT_PATH / f"figure_{model}_{name}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_json(path)
 
 
 def reference_structures() -> list[Path]:
@@ -326,19 +414,19 @@ def case_results() -> dict[str, dict[str, dict]]:
         consts = _model_constants(model)
         if consts is None:
             continue
-        results[model] = {}
-        for name, case in CASES.items():
+        frames = {}
+        for name in CASES:
             path = CALC_PATH / model / f"{name}.extxyz"
-            frames = read(path, ":") if path.exists() and path.stat().st_size else []
-            c = {**consts, "gamma": consts["gamma"][name]}
-            results[model][name] = case_errors(
-                frames, refs[name], case, c, ct.topology_constants(case)
+            frames[name] = (
+                read(path, ":") if path.exists() and path.stat().st_size else []
             )
-            _write_plot(model, name, refs[name], frames, c)
-            if frames:
+        results[model] = model_errors(consts, frames, refs)
+        for name in CASES:
+            _write_plot(model, name, refs[name], frames[name])
+            if frames[name]:
                 out = OUT_PATH / name / model
                 out.mkdir(parents=True, exist_ok=True)
-                write(out / f"{model}-trace.extxyz", frames)
+                write(out / f"{model}-trace.extxyz", frames[name])
     return results
 
 
