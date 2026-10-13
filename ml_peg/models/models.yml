@@ -1,8 +1,7 @@
 aimnet2:
   module: aimnet.calculators
   class_name: AIMNet2ASE
-  datasets: null
-  additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+  datasets: [AIMNet2]
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M+D3/def2-TZVPP
@@ -13,8 +12,7 @@ aimnet2:
 aimnet2-2025:
   module: aimnet.calculators
   class_name: AIMNet2ASE
-  datasets: null
-  additional_supported_elements: [H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I]
+  datasets: [AIMNet2, AIMNet2-2025]
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: B97-3c
