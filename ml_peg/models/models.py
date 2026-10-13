@@ -608,6 +608,40 @@ class GraceCalc(GenericASECalc):
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
 
+try:
+    from ase.calculators.calculator import all_changes
+    from calorine.calculators import CPUNEP
+
+    class CPUNEPWithCell(CPUNEP):
+        """CPUNEP that centres structures without a cell in a vacuum box."""
+
+        def calculate(self, atoms=None, properties=None, system_changes=all_changes):
+            """
+            Calculate properties, adding a vacuum box to structures without a cell.
+
+            Parameters
+            ----------
+            atoms
+                Structure to calculate properties for.
+            properties
+                Properties to calculate.
+            system_changes
+                Changes to the system since the last calculation.
+            """
+            if atoms is not None and atoms.cell.rank == 0:
+                original, atoms = atoms, atoms.copy()
+                # NEP is always periodic; box = extent + 20 Å > 2 * cutoff
+                atoms.center(vacuum=10.0)
+                super().calculate(atoms, properties, system_changes)
+                # Keep the cell-less structure so ASE result caching works
+                self.atoms = original.copy()
+                return
+            super().calculate(atoms, properties, system_changes)
+
+except ImportError:
+    pass
+
+
 NEP_SHORTHANDS = {
     "NEP89": "https://raw.githubusercontent.com/brucefan1983/GPUMD/v4.0/potentials/nep/nep89_20250409/nep89_20250409.txt",
 }
@@ -651,7 +685,7 @@ class NEPCalc(SumCalc):
         Calculator
             Loaded CPUNEP or GPUNEP ASE calculators.
         """
-        from calorine.calculators import CPUNEP, GPUNEP
+        from calorine.calculators import GPUNEP
 
         check_precision(precision)
         # NEP only supports high precision
@@ -670,9 +704,9 @@ class NEPCalc(SumCalc):
                 stacklevel=2,
             )
 
-        nep_calc = GPUNEP if self.device == "gpu" else CPUNEP
+        nep_calc = GPUNEP if self.device == "gpu" else CPUNEPWithCell
         # TODO: remove once `gpumd` is installed; GPUNEP needs the gpumd executable.
-        nep_calc = CPUNEP
+        nep_calc = CPUNEPWithCell
 
         calculator_kwargs = {**self.kwargs, **kwargs}
         return nep_calc(self.resolve_model_filename(), **calculator_kwargs)
