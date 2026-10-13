@@ -531,11 +531,23 @@ AIMNet2
 =======
 
 Install these models (MIT licence) with ``uv sync --extra aimnet``.
-Both models run in float32 only, include their own DFT-D3 correction, and
-cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and I. They are closed-shell
-models: ``atoms.info["charge"]`` is used, but spin multiplicity is ignored.
-Periodic systems use DSF long-range Coulomb. See the AIMNet2
+Both models evaluate their network in float32, with energies accumulated in
+float64 (full float64 evaluation is not supported). They include their own
+DFT-D3 correction, and cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and
+I. They are closed-shell models: ``atoms.info["charge"]`` is used, but spin
+multiplicity is ignored. Periodic systems automatically use DSF long-range
+Coulomb by default. See the AIMNet2
 `model documentation <https://isayevlab.github.io/aimnetcentral/models/aimnet2/>`_.
+
+Each AIMNet2 model is released as an ensemble of four independently trained
+members. ML-PEG benchmarks **only member 0 by default**, not the ensemble average.
+This matches the aimnetcentral default: the ``aimnet2`` and ``aimnet2-2025`` aliases
+resolve to ``aimnet2-wb97m-d3_0`` and ``aimnet2-b973c-2025-d3_0`` respectively, and
+the `model selection guide <https://isayevlab.github.io/aimnetcentral/models/guide/>`_
+recommends a single member for production use, (all members have very similar accuracy
+on average). aimnetcentral does not provide an ensemble-averaging calculator.
+To benchmark a different member, set ``kwargs.model`` to its full name, e.g.
+``aimnet2-wb97m-d3_2`` (``_0`` to ``_3`` are valid).
 
 ``aimnet2`` is described in Anstine, Zubatyuk and Isayev, *Chem. Sci.*, 2025, **16**,
 10228–10244, `doi:10.1039/d4sc08572h <https://doi.org/10.1039/d4sc08572h>`_.
