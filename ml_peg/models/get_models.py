@@ -255,10 +255,12 @@ def load_models(
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
-            case "OrbCalc":
+            case "ORBCalculator":
                 kwargs = cfg.get("kwargs", {})
                 orb_name = kwargs.pop("name")
                 loaded_models[name] = OrbCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     name=orb_name,
                     device=cfg.get("device", "cpu"),
                     kwargs=kwargs,

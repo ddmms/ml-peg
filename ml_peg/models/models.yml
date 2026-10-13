@@ -108,7 +108,7 @@ dpa-4-plus-omat:
 
 orb-v3-consv-inf-omat:
   module: orb_models.forcefield.inference.calculator
-  class_name: OrbCalc
+  class_name: ORBCalculator
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
@@ -119,7 +119,8 @@ orb-v3-consv-inf-omat:
 
 orb-v3-direct-inf-omat:
   module: orb_models.forcefield.inference.calculator
-  class_name: OrbCalc
+  class_name: ORBCalculator
+  datasets: [OMAT]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -128,7 +129,7 @@ orb-v3-direct-inf-omat:
 
 orb-v3-consv-omol:
   module: orb_models.forcefield.inference.calculator
-  class_name: OrbCalc
+  class_name: ORBCalculator
   datasets: [OMol25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
@@ -310,7 +311,7 @@ pet-oam-xl:
   module: upet.calculator
   class_name: UPETCalculator
   datasets: [MPtrj, sAlex, OMAT]
-  additional_supported_elements: [Po, At, Rn, Fr, Ra, Am, Cm, Bk, Cf, Es, Fm, Md, No]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"]
   device: "cpu"
   trained_on_dispersion: False
   level_of_theory: PBE
@@ -322,7 +323,7 @@ sevennet-omni-mpa:
   module: sevenn.calculator
   class_name: SevenNetCalculator
   datasets: [MPtrj, sAlex, MAD, MatPES-PBE, OMAT, OMol25, OC20, OC22, ODAC23, SPICE, QCML, MP-ALOE, MatPES-r2SCAN]
-  additional_supported_elements: [Fr, Ra, Rf, Db, Sg, Bh, Hs, Mt, Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr]
+  additional_supported_elements: ["Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
