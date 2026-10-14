@@ -11,20 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: behara2024openff
-    bibtex_key: "behara2024openff"
+  - bibtex_key: behara2024openff
     role: reference_data
-    title: Benchmarking Quantum Mechanical Levels of Theory for Valence Parametrization in Force Fields
-    authors:
-      - Pavan Kumar Behara
-      - Hyesu Jang
-      - Joshua T. Horton
-      - Trevor Gokey
-      - David L. Dotson
-      - Simon Boothroyd
-      - Christopher I. Bayly
-      - Daniel J. Cole
-      - Lee-Ping Wang
-      - David L. Mobley
-    year: 2024
-    doi: "10.1021/acs.jpcb.4c03167"

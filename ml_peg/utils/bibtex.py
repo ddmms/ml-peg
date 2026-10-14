@@ -8,13 +8,11 @@ from functools import lru_cache
 from pathlib import Path
 from warnings import warn
 
-from pybtex.database import BibliographyData, parse_file
+from pybtex.database import BibliographyData
 from yaml import safe_load
 
-from ml_peg.citations import CITATIONS_ROOT
+from ml_peg.citations import bibliography
 from ml_peg.utils.citations import FRAMEWORKS_FILE, BenchmarkCredits
-
-BIBTEX_FILE = CITATIONS_ROOT / "references.bib"
 
 
 @dataclass
@@ -50,7 +48,7 @@ def _library() -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
         Records by key and a DOI/URL lookup for source-framework references.
     """
     try:
-        data = parse_file(str(BIBTEX_FILE))
+        data = bibliography.load_bibliography(bibliography.BIBTEX_FILE)
     except Exception as exc:
         warn(f"BibTeX downloads unavailable: {exc}", stacklevel=2)
         return {}, {}

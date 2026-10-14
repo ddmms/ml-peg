@@ -9,13 +9,5 @@ contributors:
     email: "jh2536@cam.ac.uk"
 
 citations:
-  - key: "sure-2015-s30l"
-    bibtex_key: "Sure2015"
+  - bibtex_key: Sure2015
     role: benchmark_method
-    title: "S30L - Comprehensive Benchmark of Association (Free) Energies of Realistic Host-Guest Complexes"
-    authors:
-      - "R. Sure"
-      - "S. Grimme"
-    year: 2015
-    doi: "10.1021/acs.jctc.5b00296"
-    url: null

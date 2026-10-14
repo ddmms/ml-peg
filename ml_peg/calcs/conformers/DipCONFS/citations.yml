@@ -11,14 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: plett2024toward
-    bibtex_key: "plett2024toward"
+  - bibtex_key: plett2024toward
     role: reference_data
-    title: Toward Reliable Conformational Energies of Amino Acids and Dipeptides - The DipCONFS Benchmark
-      and DipCONL Datasets
-    authors:
-      - Christoph Plett
-      - Stefan Grimme
-      - Andreas Hansen
-    year: 2024
-    doi: "10.1021/acs.jctc.4c00801"

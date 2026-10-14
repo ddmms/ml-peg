@@ -84,16 +84,8 @@ Every benchmark needs a ``citations.yml`` beside its ``calc_*.py``:
         email: acontributor@example.org  # optional
 
     citations:             # what a user of this benchmark must cite
-      - key: author-2025-benchmark
-        bibtex_key: Author2025Benchmark
+      - bibtex_key: Author2025Benchmark
         role: benchmark_method
-        title: The benchmark paper
-        authors:
-          - A. Author
-          - B. Author
-        year: 2025
-        doi: 10.1234/example
-        url: https://example.org/benchmark
 
 ``github`` and ``email`` are optional for both credit groups. Use a GitHub handle
 and a plain email address, such as ``name@example.org``, rather than a profile
@@ -110,8 +102,8 @@ Use the original pull requests and their commits to check these roles; the lates
 person to edit a file is not necessarily its original implementer. Routine
 maintenance does not automatically make someone a benchmark contributor.
 
-Published authors belong in each citation's ``authors`` list, in publication
-order. Implementers and contributors may also be authors of the cited work, but
+Published authors belong in the BibTeX record's ``author`` field, in publication
+order (or the YAML ``authors`` list when no BibTeX is available). Implementers and contributors may also be authors of the cited work, but
 these credits do not replace its citation. Leave unknown implementers or
 references as empty lists until verified; an empty list does not claim that the
 benchmark was devised for ML-PEG. An empty ``contributors`` list simply means no
@@ -131,7 +123,16 @@ same key, title, or DOI/URL is kept instead of adding a duplicate. Paper tags ar
 not added automatically. Record their references explicitly in ``citations.yml``.
 
 Add the supplied BibTeX entry to ``ml_peg/citations/references.bib`` and set
-``bibtex_key`` to its entry key. The app offers a copyable BibTeX preview and
+``bibtex_key`` to its entry key. Title, authors, year, DOI and URL are read from
+that record, so only ``bibtex_key`` and ``role`` are required. Explicit YAML
+fields override the BibTeX values, including ``null`` for optional fields.
+An optional ``key`` overrides the citation's identifier, which otherwise uses
+``bibtex_key``. Unknown BibTeX keys produce a metadata error.
+
+References without BibTeX still require ``key``, ``title``, ``authors`` and
+``role`` in YAML, with optional ``year``, ``doi`` and ``url``.
+
+The app offers a copyable BibTeX preview and
 ``.bib`` download for each benchmark, plus downloads for categories, source
 frameworks, and the whole site. Group downloads ignore model and element filters
 and deduplicate shared references. Missing BibTeX is listed explicitly and is

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from yaml import YAMLError, safe_load
 
 from ml_peg.app import APP_ROOT
+from ml_peg.citations.bibliography import citation_fields
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -302,6 +303,14 @@ def _parse_citation(value: Any, location: str) -> Citation:
         The parsed citation.
     """
     item = _mapping(value, location)
+    bibtex_key = _optional_string(item.get("bibtex_key"), f"{location}.bibtex_key")
+    if bibtex_key:
+        try:
+            defaults = citation_fields(bibtex_key)
+        except ValueError as err:
+            raise CitationMetadataError(f"{location}.bibtex_key: {err}") from err
+        # Explicit YAML values, including null, override bibliography defaults.
+        item = {**defaults, **item}
     role = item.get("role")
     if role not in CITATION_ROLES:
         raise CitationMetadataError(
@@ -310,7 +319,7 @@ def _parse_citation(value: Any, location: str) -> Citation:
 
     return Citation(
         key=_non_empty_string(item.get("key"), f"{location}.key"),
-        bibtex_key=_optional_string(item.get("bibtex_key"), f"{location}.bibtex_key"),
+        bibtex_key=bibtex_key,
         title=_non_empty_string(item.get("title"), f"{location}.title"),
         authors=_authors(item.get("authors"), f"{location}.authors"),
         year=_year(item.get("year"), f"{location}.year"),

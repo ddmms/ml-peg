@@ -11,13 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "kriz-2020-pl-benchmark"
-    bibtex_key: "kriz2020benchmarking"
+  - bibtex_key: kriz2020benchmarking
     role: benchmark_method
-    title: "Benchmarking of Semiempirical Quantum-Mechanical Methods on Systems Relevant to Computer-Aided Drug Design"
-    authors:
-      - "K. Kříž"
-      - "J. Řezáč"
-    year: 2020
-    doi: "10.1021/acs.jcim.9b01171"
-    url: null
