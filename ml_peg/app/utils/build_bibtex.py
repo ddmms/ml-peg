@@ -17,7 +17,7 @@ def build_bibtex_controls(
     *,
     preview: bool = False,
     scope: str = "",
-    heading: str = "References",
+    heading: str | None = None,
 ) -> Div:
     """
     Build a BibTeX download with optional copyable preview and coverage information.
@@ -33,7 +33,7 @@ def build_bibtex_controls(
     scope
         Visible explanation of which benchmarks are included.
     heading
-        Label for grouped citation downloads.
+        Custom heading. Defaults to "BibTeX" for previews and "References" otherwise.
 
     Returns
     -------
@@ -41,6 +41,8 @@ def build_bibtex_controls(
         Controls requiring no server callbacks or model/element filter state.
     """
     children = []
+    if preview and scope:
+        children.append(html.Div(scope, className="mlpeg-bibtex-scope"))
     actions = []
     if export.entries:
         text = export.text
@@ -90,7 +92,7 @@ def build_bibtex_controls(
                 [
                     html.Summary(
                         [
-                            "BibTeX",
+                            heading or "BibTeX",
                             html.Span(count_label, className="mlpeg-bibtex-count"),
                         ]
                     ),
@@ -106,7 +108,9 @@ def build_bibtex_controls(
                 [
                     html.Div(
                         [
-                            html.Span(heading, className="mlpeg-bibtex-label"),
+                            html.Span(
+                                heading or "References", className="mlpeg-bibtex-label"
+                            ),
                             html.Span(count_label, className="mlpeg-bibtex-count"),
                         ]
                     ),

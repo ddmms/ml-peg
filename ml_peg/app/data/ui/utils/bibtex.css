@@ -124,3 +124,15 @@
   cursor: pointer;
   font: inherit;
 }
+
+.mlpeg-category-bibliography {
+  margin: 12px 0 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--mlpeg-border);
+}
+
+.mlpeg-category-bibliography .mlpeg-bibtex-preview {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
