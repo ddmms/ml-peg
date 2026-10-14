@@ -1183,6 +1183,7 @@ def plot_periodic_table(
     colorscale: str = "Viridis",
     zmin: float | None = None,
     zmax: float | None = None,
+    value_format: str | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -1201,6 +1202,9 @@ def plot_periodic_table(
         Plotly colourscale name. Default is ``"Viridis"``.
     zmin, zmax
         Optional colour scale limits. If not provided, they are inferred from the data.
+    value_format
+        Optional format specification, such as ``".0f"``, to print each element's
+        value below its symbol. Default is None, showing values only on hover.
 
     Returns
     -------
@@ -1266,6 +1270,14 @@ def plot_periodic_table(
 
                 hover_grid[row, col] = "<br>".join(hover_parts)
                 text_grid[row, col] = element
+                if (
+                    value_format is not None
+                    and value is not None
+                    and not np.isnan(value)
+                ):
+                    text_grid[row, col] += (
+                        f"<br><span style='font-size:9px'>{value:{value_format}}</span>"
+                    )
 
             fig = go.Figure(
                 data=go.Heatmap(

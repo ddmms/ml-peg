@@ -1,0 +1,46 @@
+# Energy above hull MAE: good is below the DFT median energy above the hull of known
+# inorganic crystals (15 meV/atom); bad approaches its 90th percentile (67 meV/atom)
+# (Sun et al., Sci. Adv. 2, e1600225, 2016). Stability F1: 30% of the binaries are
+# stable, so classifying all as stable gives 0.46; bad is set clearly above it.
+# Failed systems: a model failing on one system in ten cannot screen across the
+# periodic table.
+metrics:
+  Energy above hull MAE:
+    good: 10.0
+    bad: 50.0
+    unit: meV/atom
+    tooltip: "Mean absolute error in the energy above the hull of each binary, with the hull of each system built from the model energies"
+    level_of_theory: PBE
+  Stability F1:
+    good: 1.0
+    bad: 0.6
+    unit: null
+    tooltip: "F1 score for classifying binaries as stable (on the hull)"
+    level_of_theory: PBE
+  Failed systems:
+    good: 0.0
+    bad: 10.0
+    unit: "%"
+    tooltip: "Share of binary systems in which a calculation failed (including unsupported elements). These systems are left out of the other metrics"
+    level_of_theory: PBE
+  Formation energy MAE:
+    good: 10.0
+    bad: 70.0
+    unit: meV/atom
+    tooltip: "Mean absolute error in the formation energy of each binary, relative to the elemental ground states. Not scored"
+    level_of_theory: PBE
+    weight: 0
+  Formation energy RMSE:
+    good: 20.0
+    bad: 120.0
+    unit: meV/atom
+    tooltip: "Root-mean-square error in the formation energy of each binary. Not scored"
+    level_of_theory: PBE
+    weight: 0
+  Formation energy R²:
+    good: 1.0
+    bad: 0.95
+    unit: null
+    tooltip: "Coefficient of determination of the formation energies. Not scored"
+    level_of_theory: PBE
+    weight: 0
