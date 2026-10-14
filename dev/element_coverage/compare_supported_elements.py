@@ -14,7 +14,7 @@ coverage only for models that validate elements (e.g. MACE). Permissive models
 
 Run with::
 
-    python ml_peg/models/element_coverage/compare_supported_elements.py
+    python dev/element_coverage/compare_supported_elements.py
 """
 
 from __future__ import annotations
