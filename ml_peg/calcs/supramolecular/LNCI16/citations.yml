@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "gorges-2023-lnci16"
+    bibtex_key: gorges-2023-lnci16
     role: benchmark_method
     title: "LNCI16 - Efficient Computation of the Interaction Energies of Very Large Non-covalently Bound Complexes"
     authors:

@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "brew-2025-wiggle150"
+    bibtex_key: "Brew2025"
     role: benchmark_method
     title: "Wiggle150: Benchmarking Density Functionals and Neural Network Potentials on Highly Strained Conformers"
     authors:

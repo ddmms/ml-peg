@@ -7,6 +7,7 @@ contributors: []
 
 citations:
   - key: "morgan-2004-olivine"
+    bibtex_key: morgan-2004-olivine
     role: reference_data
     title: "Li Conductivity in LixMPO4 (M = Mn, Fe, Co, Ni) Olivine Materials"
     authors:

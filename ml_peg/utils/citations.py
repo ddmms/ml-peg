@@ -88,6 +88,7 @@ class Citation:
     role: str | None = None
     doi: str | None = None
     url: str | None = None
+    bibtex_key: str | None = None
 
     @property
     def link(self) -> str | None:
@@ -309,6 +310,7 @@ def _parse_citation(value: Any, location: str) -> Citation:
 
     return Citation(
         key=_non_empty_string(item.get("key"), f"{location}.key"),
+        bibtex_key=_optional_string(item.get("bibtex_key"), f"{location}.bibtex_key"),
         title=_non_empty_string(item.get("title"), f"{location}.title"),
         authors=_authors(item.get("authors"), f"{location}.authors"),
         year=_year(item.get("year"), f"{location}.year"),

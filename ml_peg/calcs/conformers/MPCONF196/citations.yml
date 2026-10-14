@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: rezac2018mpconf196
+    bibtex_key: "rezac2018mpconf196"
     role: reference_data
     title: 'Toward Accurate Conformational Energies of Smaller Peptides and Medium-Sized Macrocycles: MPCONF196
       Benchmark Energy Data Set'

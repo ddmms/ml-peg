@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "parker-2026-false-metallization"
+    bibtex_key: "parker2026false"
     role: benchmark_method
     title: "False Metallization in Short-Ranged Machine Learned Interatomic Potentials"
     authors:

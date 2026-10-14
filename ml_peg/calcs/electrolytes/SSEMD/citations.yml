@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "reschutzegger-2026-equivariant"
+    bibtex_key: "reschutzegger2026equivariant"
     role: benchmark_method
     title: "Equivariant Interatomic Potentials without Tensor Products"
     authors:
@@ -20,6 +21,7 @@ citations:
     year: 2026
     url: "https://arxiv.org/abs/2601.15492"
   - key: "lopez-2024-concerted"
+    bibtex_key: "lopez2024concerted"
     role: reference_data
     title: "How concerted are ionic hops in inorganic solid-state electrolytes?"
     authors:
@@ -29,6 +31,7 @@ citations:
     year: 2024
     doi: "10.1021/jacs.3c13279"
   - key: "schran-2021-aqueous"
+    bibtex_key: "schran2021machine"
     role: benchmark_method
     title: "Machine learning potentials for complex aqueous systems made simple"
     authors:

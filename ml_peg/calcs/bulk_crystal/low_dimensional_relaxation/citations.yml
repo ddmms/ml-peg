@@ -9,6 +9,7 @@ contributors:
 
 citations:
   - key: "cavignac-2026-alexandria"
+    bibtex_key: "Cavignac2026Alexandria"
     role: reference_data
     title: "AI-Driven expansion and application of the Alexandria database"
     authors:
@@ -28,6 +29,7 @@ citations:
     doi: "10.1088/2515-7639/ae6620"
     url: "https://doi.org/10.1088/2515-7639/ae6620"
   - key: "wang-2023-2d-materials"
+    bibtex_key: wang-2023-2d-materials
     role: reference_data
     title: "Symmetry-based computational search for novel binary and ternary 2D materials"
     authors:
@@ -39,6 +41,7 @@ citations:
     year: 2023
     doi: "10.1088/2053-1583/accc43"
   - key: "schmidt-2021-crystal-graph"
+    bibtex_key: schmidt-2021-crystal-graph
     role: reference_method
     title: "Crystal graph attention networks for the prediction of stable materials"
     authors:

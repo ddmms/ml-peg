@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "dellapia-2022-dmc-ice13"
+    bibtex_key: "della2022dmc"
     role: benchmark_method
     title: "DMC-ICE13: Ambient and high pressure polymorphs of ice from diffusion Monte Carlo and density functional theory"
     authors:

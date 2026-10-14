@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "sure-2015-s30l"
+    bibtex_key: "Sure2015"
     role: benchmark_method
     title: "S30L - Comprehensive Benchmark of Association (Free) Energies of Realistic Host-Guest Complexes"
     authors:

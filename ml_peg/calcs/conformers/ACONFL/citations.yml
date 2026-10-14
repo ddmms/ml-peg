@@ -9,6 +9,7 @@ contributors:
 
 citations:
   - key: "ehlert-2022-aconfl"
+    bibtex_key: "ehlert2022conformational"
     role: benchmark_method
     title: "Conformational Energy Benchmark for Longer n-Alkane Chains"
     authors:

@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "reilly-2013-x23"
+    bibtex_key: "reilly2013understanding"
     role: benchmark_method
     title: "Understanding the role of vibrations, exact exchange, and many-body van der Waals interactions in the cohesive properties of molecular crystals"
     authors:

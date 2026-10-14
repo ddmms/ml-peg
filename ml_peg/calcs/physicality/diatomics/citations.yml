@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "chiang-2025-mlip-arena"
+    bibtex_key: chiang-2025-mlip-arena
     role: inspired_by
     title: "MLIP Arena: Advancing Fairness and Transparency in Machine Learning Interatomic Potentials via an Open, Accessible Benchmark Platform"
     authors:

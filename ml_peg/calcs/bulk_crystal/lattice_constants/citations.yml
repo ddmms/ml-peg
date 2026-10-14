@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "batatia-2025-mace-mp"
+    bibtex_key: "batatia2025foundation"
     role: reference_data
     title: "A foundation model for atomistic materials chemistry"
     authors:

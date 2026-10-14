@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "smith-2020-criegee"
+    bibtex_key: smith-2020-criegee
     role: reference_data
     title: "Kinetics and thermodynamics of reactions involving Criegee intermediates: An assessment of density functional theory and ab initio methods through comparison with CCSDT(Q)/CBS data"
     authors:

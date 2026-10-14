@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "spiekermann-2022-reactions"
+    bibtex_key: spiekermann-2022-reactions
     role: reference_data
     title: "High accuracy barrier heights, enthalpies, and rate coefficients for chemical reactions"
     authors:

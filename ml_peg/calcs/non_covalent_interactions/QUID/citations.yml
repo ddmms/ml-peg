@@ -9,6 +9,7 @@ contributors:
 
 citations:
   - key: puleva2025quid
+    bibtex_key: "puleva2025quid"
     role: reference_data
     title: Extending quantum-mechanical benchmark accuracy to biological ligand-pocket interactions
     authors:

@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "rezac-2020-ncia-hb2"
+    bibtex_key: "ez2020-2"
     role: benchmark_method
     title: "Non-covalent interactions atlas benchmark data sets 2: Hydrogen bonding in an extended chemical space"
     authors:

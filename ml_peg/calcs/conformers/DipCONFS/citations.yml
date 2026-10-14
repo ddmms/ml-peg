@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: plett2024toward
+    bibtex_key: "plett2024toward"
     role: reference_data
     title: Toward Reliable Conformational Energies of Amino Acids and Dipeptides - The DipCONFS Benchmark
       and DipCONL Datasets

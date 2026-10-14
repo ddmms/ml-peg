@@ -38,6 +38,7 @@ mlip_arena:
     year: 2025
 
 mlip_audit:
+  bibtex_key: wehrhan2025mlipaudit
   label: MLIP Audit
   type: framework
   color: "#1d4ed8"
@@ -61,6 +62,7 @@ mlip_audit:
     year: 2025
 
 matbench-discovery:
+  bibtex_key: matbench-discovery
   label: Matbench Discovery
   type: framework
   color: "#061e25"
@@ -88,6 +90,7 @@ matbench-discovery:
     year: 2025
 
 mace-multihead:
+  bibtex_key: batatia2025crosslearningelectronicstructure
   label: Multihead Cross Learning
   type: paper
   color: "#7c3aed"
@@ -99,6 +102,7 @@ mace-multihead:
   paper_url: "https://arxiv.org/abs/2510.25380"
 
 mace-polar-1:
+  bibtex_key: batatia2026mace
   label: MACE-POLAR-1
   type: paper
   color: "#1d4ed8"
@@ -110,6 +114,7 @@ mace-polar-1:
   paper_url: "https://arxiv.org/abs/2602.19411"
 
 mace-mp:
+  bibtex_key: batatia2025foundation
   label: MACE-MP
   type: paper
   color: "#0e7490"

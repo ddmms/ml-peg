@@ -8,6 +8,7 @@ contributors:
 
 citations:
   - key: "kavanagh-2025-split-vacancy"
+    bibtex_key: kavanagh-2025-split-vacancy
     role: reference_data
     title: "Identifying split vacancy defects with machine-learned foundation models and electrostatics"
     authors:
@@ -16,6 +17,7 @@ citations:
     doi: "10.1088/2515-7655/ade916"
     url: null
   - key: "kumagai-2021-oxygen-vacancies"
+    bibtex_key: kumagai-2021-oxygen-vacancies
     role: benchmark_method
     title: "Insights into Oxygen Vacancies from High-Throughput First-Principles Calculations"
     authors:

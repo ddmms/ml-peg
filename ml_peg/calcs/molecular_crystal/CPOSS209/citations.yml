@@ -9,6 +9,7 @@ contributors:
 
 citations:
   - key: "price-2025-cposs209"
+    bibtex_key: "cposs209"
     role: benchmark_method
     title: "One Size Fits All? Development of the CPOSS209 Data Set of Experimental and Hypothetical Polymorphs for Testing Computational Modeling Methods"
     authors:

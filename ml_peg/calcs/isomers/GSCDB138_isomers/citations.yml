@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: Liang2025
+    bibtex_key: "Liang2025"
     role: reference_data
     title: 'Gold-Standard Chemical Database 137 (GSCDB137): A Diverse Set of Accurate Energy Differences
       for Assessing and Developing Density Functionals'

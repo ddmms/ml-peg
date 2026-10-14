@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "zhang-2023-iron"
+    bibtex_key: zhang2024efficiency
     role: reference_data
     title: "Efficiency, Accuracy, and Transferability of Machine Learning Potentials: Application to Dislocations and Cracks in Iron"
     authors:
@@ -13,6 +14,6 @@ citations:
       - "G. Csányi"
       - "E. van der Giessen"
       - "F. Maresca"
-    year: 2023
-    doi: null
-    url: "https://arxiv.org/abs/2307.10072"
+    year: 2024
+    doi: "10.1016/j.actamat.2024.119788"
+    url: "https://doi.org/10.1016/j.actamat.2024.119788"

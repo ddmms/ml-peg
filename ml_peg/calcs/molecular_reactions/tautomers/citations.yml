@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "wahl-2020-tautobase"
+    bibtex_key: wahl-2020-tautobase
     role: benchmark_method
     title: "Tautobase: an open tautomer database"
     authors:

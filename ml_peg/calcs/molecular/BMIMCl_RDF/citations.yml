@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "zills-2025-molify"
+    bibtex_key: zills-2025-molify
     role: benchmark_method
     title: "molify: Molecular Structure Interface"
     authors:
@@ -14,6 +15,7 @@ citations:
     doi: "10.21105/joss.08829"
     url: null
   - key: "yang-2017-volumetric"
+    bibtex_key: yang-2017-volumetric
     role: reference_data
     title: "Volumetric Properties of 1-Butyl-3-methylimidazolium Chloride with Organic Solvents"
     authors:

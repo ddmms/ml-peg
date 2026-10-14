@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "sharapa-2019-37conf8"
+    bibtex_key: "sharapa2019robust"
     role: reference_data
     title: "A robust and cost-efficient scheme for accurate conformational energies of organic molecules"
     authors:

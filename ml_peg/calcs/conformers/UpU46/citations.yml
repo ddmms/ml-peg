@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: kruse2015quantum
+    bibtex_key: "Kruse_2015"
     role: reference_data
     title: Quantum chemical benchmark study on 46 RNA backbone families using a dinucleotide unit
     authors:
