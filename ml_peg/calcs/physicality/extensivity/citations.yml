@@ -8,5 +8,18 @@ contributors:
     github: "joehart2001"
     email: "jh2536@cam.ac.uk"
 
-# TODO: devised for ML-PEG, so cite the ML-PEG paper here once it is available.
-citations: []
+citations:
+  - key: "batatia-2025-cross-learning"
+    role: benchmark_method
+    title: "Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields"
+    authors:
+      - "Ilyes Batatia"
+      - "Chen Lin"
+      - "Joseph Hart"
+      - "Elliott Kasoar"
+      - "Alin M. Elena"
+      - "Sam Walton Norwood"
+      - "Thomas Wolf"
+      - "Gábor Csányi"
+    year: 2025
+    url: "https://arxiv.org/abs/2510.25380"
