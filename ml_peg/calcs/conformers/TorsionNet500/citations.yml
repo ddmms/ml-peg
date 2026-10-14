@@ -1,0 +1,48 @@
+implementers:
+  - name: "Ella Bolland"
+    github: "ellalbolland"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - key: "torsionnet"
+    role: reference_data
+    title: "TorsionNet: A Deep Neural Network to Rapidly Predict Small-Molecule Torsional Energy Profiles with the Accuracy of Quantum Mechanics"
+    authors:
+      - "B. K. Rai"
+      - "V. Sresht"
+      - "Q. Yang"
+      - "R. Unwalla"
+      - "M. Tu"
+      - "A. M. Mathiowetz"
+      - "G. A. Bakken"
+    year: 2022
+    doi: "10.1021/acs.jcim.1c01346"
+    url: "https://doi.org/10.1021/acs.jcim.1c01346"
+
+  - key: "torsionnetccsdt"
+    role: reference_data
+    title: "Efficient Long-Range Machine Learning Force Fields for Liquid and Materials Properties"
+    authors:
+      - "J. L. Weber"
+      - "R. D. Guha"
+      - "G. Agarwal"
+      - "Y. Wei"
+      - "A. A. Fike"
+      - "X. Xie"
+      - "J. Stevenson"
+      - "B. Santra"
+      - "R. A. Friesner"
+      - "K. Leswing"
+      - "M. D. Halls"
+      - "R. Abel"
+      - "L. D. Jacobson"
+    year: 2025
+    doi: "10.48550/arXiv.2505.06462"
+    url: "https://doi.org/10.48550/arXiv.2505.06462"
