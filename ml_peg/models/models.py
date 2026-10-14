@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, get_args
+from urllib.parse import urlparse
+from urllib.request import urlretrieve
 from warnings import warn
 
 from mlipx import GenericASECalculator as MlipxGenericASECalc
@@ -603,3 +606,166 @@ class GraceCalc(GenericASECalc):
             )
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
+
+
+try:
+    from ase.calculators.calculator import all_changes
+    from calorine.calculators import CPUNEP
+
+    class CPUNEPWithCell(CPUNEP):
+        """CPUNEP that centres structures without a cell in a vacuum box."""
+
+        def calculate(self, atoms=None, properties=None, system_changes=all_changes):
+            """
+            Calculate properties, adding a vacuum box to structures without a cell.
+
+            Parameters
+            ----------
+            atoms
+                Structure to calculate properties for.
+            properties
+                Properties to calculate.
+            system_changes
+                Changes to the system since the last calculation.
+            """
+            if atoms is not None and atoms.cell.rank == 0:
+                original, atoms = atoms, atoms.copy()
+                # NEP is always periodic; box = extent + 20 Å > 2 * cutoff
+                atoms.center(vacuum=10.0)
+                super().calculate(atoms, properties, system_changes)
+                # Keep the cell-less structure so ASE result caching works
+                self.atoms = original.copy()
+                return
+            super().calculate(atoms, properties, system_changes)
+
+except ImportError:
+    pass
+
+
+NEP_SHORTHANDS = {
+    "NEP89": "https://raw.githubusercontent.com/brucefan1983/GPUMD/v4.0/potentials/nep/nep89_20250409/nep89_20250409.txt",
+}
+
+
+@dataclasses.dataclass(kw_only=True)
+class NEPCalc(SumCalc):
+    """Dataclass for NEP calculators provided by calorine."""
+
+    model_filename: str
+    device: Literal["auto", "cpu", "gpu"] | None = "cpu"
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Resolve and validate the device."""
+        # Default to CPUNEP when the device is unset or `auto`
+        if self.device in (None, Device.AUTO):
+            self.device = "cpu"
+        if self.device not in ("cpu", "gpu"):
+            raise ValueError(
+                f"Invalid NEP device '{self.device}'. Must be 'auto', 'cpu' or 'gpu'."
+            )
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. NEP uses a custom C++/CUDA backend,
+            and the calculators here are only configured for double precision,
+            so both ``low`` and ``high`` map to fp64.
+        **kwargs
+            Additional keyword arguments for `calorine.calculators.CPUNEP`.
+            Supported keywords can be found here: https://calorine.materialsmodeling.org/reference/calculators.html.
+
+        Returns
+        -------
+        Calculator
+            Loaded CPUNEP or GPUNEP ASE calculators.
+        """
+        from calorine.calculators import GPUNEP
+
+        check_precision(precision)
+        # NEP only supports high precision
+        precision_map = {"low": None, "high": "double"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
+        if dtype != "double":
+            warn(
+                (
+                    "NEP only supports double precision; "
+                    "will continue with double precision."
+                ),
+                stacklevel=2,
+            )
+
+        nep_calc = GPUNEP if self.device == "gpu" else CPUNEPWithCell
+        # TODO: remove once `gpumd` is installed; GPUNEP needs the gpumd executable.
+        nep_calc = CPUNEPWithCell
+
+        calculator_kwargs = {**self.kwargs, **kwargs}
+        return nep_calc(self.resolve_model_filename(), **calculator_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the DeePMD ASE calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            from calorine.calculators import CPUNEP, GPUNEP  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+    def resolve_model_filename(self) -> str:
+        """
+        Resolve the `model_filename` property for the `calorine` calculators.
+
+        Three cases are covered:
+        1. `model_filename` is a str | Path: passed directly to `calorine`.
+        2. `model_filename` is a URL: model is fetched to `~/.cache/ml_peg/models`.
+        3. `model_filename` is a shorthand (e.g., `NEP89`): Validated and fetched.
+
+        Returns
+        -------
+        str
+            Path to the NEP model.
+
+        Raises
+        ------
+        RuntimeError
+            If the model cannot be downloaded from the URL.
+        FileNotFoundError
+            If `model_filename` is not an existing file, a URL, or a known shorthand.
+        """
+        name = NEP_SHORTHANDS.get(self.model_filename, self.model_filename)
+        if name.startswith(("http://", "https://")):
+            cache_dir = Path.home() / ".cache/ml_peg/models/nep"
+            path = cache_dir / Path(urlparse(name).path).name
+            if not path.is_file():
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    urlretrieve(name, path.with_suffix(".part"))
+                except OSError as err:
+                    raise RuntimeError(
+                        f"Failed to download NEP model from '{name}': {err}"
+                    ) from err
+                path.with_suffix(".part").replace(path)
+            return str(path)
+        if not Path(name).is_file():
+            raise FileNotFoundError(
+                f"NEP model '{name}' is not an existing file, a URL, or a known "
+                f"shorthand ({', '.join(NEP_SHORTHANDS)})."
+            )
+        return name

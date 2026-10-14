@@ -361,3 +361,13 @@ mace-polar-1-l:
   level_of_theory: ωB97M-V
   kwargs:
     model: "polar-1-l"
+
+nep89:
+  module: nep.calculator
+  class_name: NEP
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: PBE
+  datasets: [NEP89] # NEP89 is trained on subsets of several datasets, including OMAT24, MPtrj, ANI-1xnr, CHONPS, and SPICE.
+  kwargs:
+    model_filename: "NEP89"
