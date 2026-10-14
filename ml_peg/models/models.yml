@@ -47,10 +47,8 @@ mace-matpes-r2scan:
   level_of_theory: r2SCAN
   kwargs:
     model: "mace-matpes-r2scan-0"
-    head: "matpes_pbe"
   dispersion_kwargs:
     xc: r2scan
-    label: D4
 
 mace-mh-1-omat:
   module: mace.calculators
@@ -66,6 +64,7 @@ mace-mh-1-omat:
 dpa-3p3-1M-omat:
   module: deepmd.calculator
   class_name: DP
+  device: null  # Unused: DP has no device argument
   datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
@@ -77,6 +76,7 @@ dpa-3p3-1M-omat:
 dpa-4-nano-omat:
   module: deepmd.calculator
   class_name: DP
+  device: null  # Unused: DP has no device argument
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
@@ -87,6 +87,7 @@ dpa-4-nano-omat:
 dpa-4-neo-omat:
   module: deepmd.calculator
   class_name: DP
+  device: null  # Unused: DP has no device argument
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
@@ -97,6 +98,7 @@ dpa-4-neo-omat:
 dpa-4-plus-omat:
   module: deepmd.calculator
   class_name: DP
+  device: null  # Unused: DP has no device argument
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   trained_on_dispersion: false
@@ -105,8 +107,8 @@ dpa-4-plus-omat:
     model: DPA4-Plus-OMat24-v20260805
 
 orb-v3-consv-inf-omat:
-  module: orb_models.inference.calculator
-  class_name: OrbCalc
+  module: orb_models.forcefield.inference.calculator
+  class_name: ORBCalculator
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
@@ -116,8 +118,9 @@ orb-v3-consv-inf-omat:
     name: "orb_v3_conservative_inf_omat"
 
 orb-v3-direct-inf-omat:
-  module: orb_models.inference.calculator
-  class_name: OrbCalc
+  module: orb_models.forcefield.inference.calculator
+  class_name: ORBCalculator
+  datasets: [OMAT]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -126,7 +129,7 @@ orb-v3-direct-inf-omat:
 
 orb-v3-consv-omol:
   module: orb_models.forcefield.inference.calculator
-  class_name: OrbCalc
+  class_name: ORBCalculator
   datasets: [OMol25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
@@ -184,7 +187,9 @@ uma-m-1p1-omat:
 grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
-  device: "cpu"
+  datasets: [OMAT]
+  level_of_theory: PBE
+  device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-OMAT
@@ -192,25 +197,29 @@ grace-2l-omat:
 grace-2l-smax-omat-medium:
   module: tensorpotential.calculator
   class_name: grace_fm
-  device: "cpu"
+  datasets: [OMAT, SMAX]
+  level_of_theory: PBE
+  device: null  # Unused: grace_fm has no device argument
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-SMAX-OMAT-medium
 
-MACE-OFF23(L):
+mace-off-23-L:
   module: mace.calculators
   class_name: mace_off
   datasets: [SPICE]
   device: "auto"
   trained_on_dispersion: true
+  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
   kwargs:
     model: large
 
-MACE-OFF24(M):
+mace-off-24-M:
   module: mace.calculators
   class_name: mace_off
   datasets: [SPICE2]
   device: "auto"
+  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
   trained_on_dispersion: true
   kwargs:
     model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
@@ -302,7 +311,7 @@ pet-oam-xl:
   module: upet.calculator
   class_name: UPETCalculator
   datasets: [MPtrj, sAlex, OMAT]
-  additional_supported_elements: [Po, At, Rn, Fr, Ra, Am, Cm, Bk, Cf, Es, Fm, Md, No]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"]
   device: "cpu"
   trained_on_dispersion: False
   level_of_theory: PBE
@@ -311,10 +320,10 @@ pet-oam-xl:
     version: "1.0.0"
 
 sevennet-omni-mpa:
-  module: sevenn.sevennet_calculator
+  module: sevenn.calculator
   class_name: SevenNetCalculator
   datasets: [MPtrj, sAlex, MAD, MatPES-PBE, OMAT, OMol25, OC20, OC22, ODAC23, SPICE, QCML, MP-ALOE, MatPES-r2SCAN]
-  additional_supported_elements: [Fr, Ra, Rf, Db, Sg, Bh, Hs, Mt, Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr]
+  additional_supported_elements: ["Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
   trained_on_dispersion: false
   level_of_theory: PBE
@@ -336,7 +345,7 @@ mace-polar-1-s:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:
@@ -346,7 +355,7 @@ mace-polar-1-m:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:
@@ -356,7 +365,7 @@ mace-polar-1-l:
   module: mace.calculators
   class_name: mace_polar
   datasets: [OMol25]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V
   kwargs:

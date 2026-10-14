@@ -12,6 +12,65 @@ import yaml
 
 from ml_peg.models import models_file
 
+#: Keys that may be set for a model in models.yml. Anything else would be ignored.
+MODEL_KEYS = frozenset(
+    {
+        "module",
+        "class_name",
+        "device",
+        "datasets",
+        "additional_supported_elements",
+        "level_of_theory",
+        "overwrite_dtype",
+        "trained_on_dispersion",
+        "dispersion_kwargs",
+        "kwargs",
+    }
+)
+
+#: Keys that must be set for a model in models.yml.
+REQUIRED_MODEL_KEYS = frozenset({"module", "class_name"})
+
+
+def validate_config(name: str, cfg: dict[str, Any]) -> None:
+    """
+    Check that a model's configuration only sets keys that are read.
+
+    Keys are read individually when models are loaded, so a misnamed or outdated key
+    would otherwise be ignored, and the model built with the default it was meant to
+    override.
+
+    Parameters
+    ----------
+    name
+        Name of the model being checked.
+    cfg
+        Model configuration, as defined in models.yml.
+
+    Raises
+    ------
+    ValueError
+        If a required key is missing, or an unrecognised key is set.
+    """
+    from ml_peg.models.models import DISPERSION_KWARGS
+
+    if missing := sorted(REQUIRED_MODEL_KEYS - set(cfg)):
+        raise ValueError(f"'{name}' is missing required key(s): {', '.join(missing)}")
+
+    if unknown := sorted(set(cfg) - MODEL_KEYS):
+        raise ValueError(
+            f"'{name}' sets key(s) that would be ignored: {', '.join(unknown)}. "
+            f"Valid keys are: {', '.join(sorted(MODEL_KEYS))}"
+        )
+
+    dispersion_kwargs = cfg.get("dispersion_kwargs") or {}
+    if unknown := sorted(set(dispersion_kwargs) - DISPERSION_KWARGS):
+        raise ValueError(
+            f"'{name}' sets dispersion_kwargs that would be ignored: "
+            f"{', '.join(unknown)}. "
+            f"Valid keys are: {', '.join(sorted(DISPERSION_KWARGS))}"
+        )
+
 
 @lru_cache(maxsize=1)
 def _load_models_yaml(
@@ -166,29 +225,45 @@ def load_models(
     for name, cfg in get_subset(all_models, models).items():
         print(f"Loading model from {filepath}: {name}")
 
+        # Copy, as the parsed registry is cached and shared between loaded models.
+        cfg = deepcopy(cfg)
+        validate_config(name, cfg)
+
         match cfg["class_name"]:
             case "DP":
                 loaded_models[name] = DpaCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "FAIRChemCalculator":
                 kwargs = cfg.get("kwargs", {})
+                model_name = kwargs.pop("model_name")
+                task_name = kwargs.pop("task_name", "omat")
+                overrides = kwargs.pop("overrides", {})
                 loaded_models[name] = FairChemCalc(
-                    model_name=kwargs["model_name"],
-                    task_name=kwargs.get("task_name", "omat"),
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    model_name=model_name,
+                    task_name=task_name,
                     device=cfg.get("device", "cpu"),
-                    overrides=kwargs.get("overrides", {}),
+                    overrides=overrides,
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
-            case "OrbCalc":
+            case "ORBCalculator":
                 kwargs = cfg.get("kwargs", {})
+                orb_name = kwargs.pop("name")
                 loaded_models[name] = OrbCalc(
-                    name=kwargs["name"],
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    name=orb_name,
                     device=cfg.get("device", "cpu"),
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -225,6 +300,8 @@ def load_models(
                 )
             case "SevenNetCalculator":
                 loaded_models[name] = SevenNetCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -232,6 +309,8 @@ def load_models(
                 )
             case "MLFFCalculator":
                 loaded_models[name] = VivaceCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
