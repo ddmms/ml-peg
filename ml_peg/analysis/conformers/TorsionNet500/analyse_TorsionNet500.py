@@ -18,7 +18,7 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 
-CALC_PATH = CALCS_ROOT / "conformers" / "TorsionNet500CCSDT" / "outputs"
+CALC_PATH = CALCS_ROOT / "conformers" / "TorsionNet500" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500CCSDT"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -242,12 +242,15 @@ def plot_torsion_curve_figure(
         Line plot of relative energy against dihedral angle.
     """
     fig = go.Figure()
+    # Label every point so curve clicks map back to the fragment's trajectory.
+    customdata = [label] * len(profile["angle"])
     fig.add_trace(
         go.Scatter(
             x=profile["angle"],
             y=profile["ref_rel_energy"],
             mode="lines+markers",
             name="CCSD(T)",
+            customdata=customdata,
         )
     )
     fig.add_trace(
@@ -256,6 +259,7 @@ def plot_torsion_curve_figure(
             y=profile["model_rel_energy"],
             mode="lines+markers",
             name=model_name,
+            customdata=customdata,
         )
     )
     fig.update_layout(

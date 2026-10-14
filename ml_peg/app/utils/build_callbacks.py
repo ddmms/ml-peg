@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Literal
 
 import dash
@@ -23,6 +24,7 @@ from dash.exceptions import PreventUpdate
 from dash.html import Div, Iframe
 
 from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.load import read_plot
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.plot_settings import build_plot_settings_controls
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
@@ -409,6 +411,102 @@ def plot_from_scatter(
         return Div(POINT_HINT, style=INSTRUCTION_STYLE)
 
 
+def _point_label(point: dict) -> str | None:
+    """
+    Get the label a clicked point carries in its ``customdata``.
+
+    Parameters
+    ----------
+    point
+        Clicked data point from a scatter's ``clickData``.
+
+    Returns
+    -------
+    str | None
+        Label stored in ``customdata``, taking the last of several values, or
+        None if the point carries no label.
+    """
+    customdata = point.get("customdata")
+    return customdata[-1] if isinstance(customdata, list) else customdata
+
+
+def plot_from_scatter_files(
+    scatter_id: str,
+    plot_id: str,
+    plot_dir: Path,
+    clear_plot_ids: Sequence[str] = (),
+) -> str:
+    """
+    Attach callback to show a plot read from disk when a scatter point is clicked.
+
+    Unlike `plot_from_scatter`, plots are read from disk on demand rather than
+    pre-loaded into a `plots_list` up front, which would be needlessly expensive
+    for scatters with many points, where only one plot is shown at a time.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    plot_id
+        ID for Dash plot placeholder Div where new plot will be rendered.
+    plot_dir
+        Directory of saved plots, named ``<label>.json`` for the label each
+        scatter point carries in its ``customdata``.
+    clear_plot_ids
+        IDs of placeholder Divs to empty when a new plot is shown, so content
+        derived from the previous plot does not linger on screen.
+
+    Returns
+    -------
+    str
+        ID of the rendered `Graph`, so further callbacks, such as
+        `struct_from_scatter`, can be attached to clicks on it.
+    """
+    register_plot_download_callbacks()
+    register_plot_settings_callbacks()
+    _register_point_highlight(scatter_id)
+
+    graph_id = f"{scatter_id}-plot"
+
+    @callback(
+        Output(plot_id, "children", allow_duplicate=True),
+        *[
+            Output(clear_id, "children", allow_duplicate=True)
+            for clear_id in clear_plot_ids
+        ],
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_plot(click_data):
+        """
+        Register callback to show plot read from disk when a point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div | tuple[Div, ...]
+            Plot on scatter click, followed by an empty Div per ID in
+            ``clear_plot_ids``.
+        """
+        plot = Div(POINT_HINT, style=INSTRUCTION_STYLE)
+
+        if click_data:
+            label = _point_label(click_data["points"][0])
+            plot_path = plot_dir / f"{label}.json"
+            if label is not None and plot_path.exists():
+                plot = plot_with_download_controls(read_plot(plot_path, id=graph_id))
+
+        if not clear_plot_ids:
+            return plot
+        return (plot, *[Div() for _ in clear_plot_ids])
+
+    return graph_id
+
+
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
@@ -470,9 +568,7 @@ def struct_from_scatter(
             struct = structs
             index = idx
         elif isinstance(structs, dict):
-            customdata = point.get("customdata")
-            label = customdata[-1] if isinstance(customdata, list) else customdata
-            struct = structs.get(label)
+            struct = structs.get(_point_label(point))
             if struct is None:
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = idx if mode == "traj" else 0
