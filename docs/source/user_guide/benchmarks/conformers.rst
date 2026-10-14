@@ -120,7 +120,7 @@ profiles for each scan, then averaged across all 500 fragments.
 Computational cost
 ------------------
 
-Medium: tests are likely to take minutes to run on GPU, or less than an hour on
+Fast: tests are likely to take minutes to run on GPU, or less than an hour on
 CPU for each model, since each fragment requires a single-point energy
 calculation across ~20 conformers in its torsion scan, repeated for all 500
 fragments.

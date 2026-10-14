@@ -24,6 +24,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 HARTREE_TO_EV = units.Hartree
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_torsionnet500(mlip: tuple[str, Any]) -> None:
     """
