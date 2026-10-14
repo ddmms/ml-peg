@@ -1,13 +1,18 @@
-"""Test Al3Ti calculation output and app structure selection."""
+"""Test Al3Ti calculation, analysis, and app failure handling."""
 
 from __future__ import annotations
 
 from importlib import import_module
+from inspect import unwrap
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
+from ml_peg.analysis.alloy_metallurgy.al3ti_polymorphs import (
+    analyse_al3ti_polymorphs as al3ti_analysis,
+)
 from ml_peg.app.alloy_metallurgy.al3ti_polymorphs import (
     app_al3ti_polymorphs as al3ti_app,
 )
@@ -78,3 +83,54 @@ def test_structure_urls_use_clicked_model_and_polymorph(monkeypatch, tmp_path):
         "model-b:D023": "/assets/alloy_metallurgy/al3ti_polymorphs/model-b/D023.xyz",
         "model-a:D022": "/assets/alloy_metallurgy/al3ti_polymorphs/model-a/D022.xyz",
     }
+
+
+@pytest.mark.parametrize("failed_structure", ["Al_fcc", "Ti_hcp", "D023"])
+def test_energy_failure_keeps_other_models_scoreable(
+    monkeypatch, tmp_path, failed_structure
+):
+    """An unreadable energy leaves NaN and does not stop later models."""
+
+    class EnergyAtoms:
+        def __init__(self, energy: float | None = -4.0):
+            self.energy = energy
+
+        def __len__(self):
+            return 4
+
+        def get_potential_energy(self):
+            if self.energy is None:
+                raise RuntimeError("energy unavailable")
+            return self.energy
+
+    monkeypatch.setattr(al3ti_analysis, "MODELS", ["bad", "good"])
+    monkeypatch.setattr(al3ti_analysis, "CALC_PATH", tmp_path)
+    for model in ("bad", "good"):
+        (tmp_path / model).mkdir()
+
+    def load_reference(structure, model_dir):
+        if model_dir.name == "bad" and structure == failed_structure:
+            return EnergyAtoms(None)
+        return EnergyAtoms()
+
+    monkeypatch.setattr(al3ti_analysis, "load_structure", load_reference)
+    relaxed = {
+        model: [EnergyAtoms(-5.0) for _ in al3ti_analysis.POLYMORPHS]
+        for model in ("bad", "good")
+    }
+    if failed_structure == "D023":
+        relaxed["bad"][1] = EnergyAtoms(None)
+    references = {
+        name: {"formation_energy_0k_ev_atom": {"value": -0.25}}
+        for name in al3ti_analysis.POLYMORPHS
+    }
+
+    with pytest.warns(UserWarning, match=f"model bad, structure {failed_structure}"):
+        results = unwrap(al3ti_analysis.formation_energies)(references, relaxed)
+
+    assert np.isnan(results["bad"][1])
+    assert results["good"] == pytest.approx([-0.25] * len(al3ti_analysis.POLYMORPHS))
+    if failed_structure in ("Al_fcc", "Ti_hcp"):
+        assert np.isnan(results["bad"]).all()
+    else:
+        assert np.isfinite([results["bad"][0], results["bad"][2]]).all()

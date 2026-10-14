@@ -111,6 +111,38 @@ def load_structure(structure: str, data_path: Path) -> Atoms | None:
         return None
 
 
+def energy_per_atom(atoms: Atoms, model_name: str, structure: str) -> float:
+    """
+    Get energy per atom, returning NaN if evaluation fails.
+
+    Parameters
+    ----------
+    atoms
+        Structure with a stored calculator result.
+    model_name
+        Model that produced the structure.
+    structure
+        Name of the structure.
+
+    Returns
+    -------
+    float
+        Potential energy per atom, or NaN on failure.
+    """
+    try:
+        energy = atoms.get_potential_energy() / len(atoms)
+        if not np.isfinite(energy):
+            raise ValueError("non-finite energy")
+        return float(energy)
+    except Exception as exc:
+        warn(
+            f"Error getting energy for model {model_name}, "
+            f"structure {structure}: {exc}",
+            stacklevel=2,
+        )
+        return np.nan
+
+
 @pytest.fixture
 def relaxed_polymorphs() -> dict[str, list[Atoms | None]]:
     """
@@ -173,15 +205,19 @@ def formation_energies(
         if al_struct is None or ti_struct is None:
             # Formation energies need both elemental references.
             continue
-        al_energy = al_struct.get_potential_energy() / len(al_struct)
-        ti_energy = ti_struct.get_potential_energy() / len(ti_struct)
+        al_energy = energy_per_atom(al_struct, model_name, AL_REFERENCE)
+        ti_energy = energy_per_atom(ti_struct, model_name, TI_REFERENCE)
+        if not np.isfinite(al_energy) or not np.isfinite(ti_energy):
+            continue
 
         predictions = []
-        for poly_struct in relaxed_polymorphs[model_name]:
+        for name, poly_struct in zip(
+            POLYMORPHS, relaxed_polymorphs[model_name], strict=True
+        ):
             if poly_struct is None:
                 predictions.append(np.nan)
                 continue
-            poly_energy = poly_struct.get_potential_energy() / len(poly_struct)
+            poly_energy = energy_per_atom(poly_struct, model_name, name)
             formation_energy = poly_energy - 0.75 * al_energy - 0.25 * ti_energy
             predictions.append(formation_energy)
         results[model_name] = predictions
