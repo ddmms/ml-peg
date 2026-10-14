@@ -302,8 +302,12 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
         try:
             run_npt(atoms, calc, output_fname)
         except Exception as exc:
-            warn(f"Error running NPT: {exc}", stacklevel=2)
-            return
+            warn(
+                f"Error running NPT for {model_name}/{input_path.stem}/"
+                f"{temperature:g}K: {exc}",
+                stacklevel=2,
+            )
+            continue
 
         first_frame = (NPT_MELT + NPT_EQ) // LOG_INTERVAL + 1
 
