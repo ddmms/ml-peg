@@ -135,12 +135,17 @@ def write_structure(structure: str, atoms: Atoms, output_dir: Path) -> bool:
     bool
         True if the structure has been written successfully. False if writing failed.
     """
+    output_path = output_dir / f"{structure}.xyz"
+    temporary_path = output_dir / f"{structure}.xyz.tmp"
     try:
-        write(output_dir / f"{structure}.xyz", atoms)
+        write(temporary_path, atoms, format="extxyz")
+        temporary_path.replace(output_path)
         return True
     except Exception as exc:
         warn(f"Error writing structure {structure}: {exc}", stacklevel=2)
         return False
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 @pytest.mark.fast
@@ -157,9 +162,12 @@ def test_al3ti_polymorphs(mlip: tuple[str, Any], data_path: Path) -> None:
         Path to the root of the data directory.
     """
     model_name, model = mlip
-    calc = model.get_calculator(precision="high")
     output_dir = OUT_PATH / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
+    for structure in STRUCTURE_NAMES:
+        (output_dir / f"{structure}.xyz").unlink(missing_ok=True)
+
+    calc = model.get_calculator(precision="high")
 
     failures = []
     for structure in STRUCTURE_NAMES:
