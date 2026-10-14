@@ -1789,7 +1789,9 @@ def build_test_layout(
             H3(description),
             *([build_disclaimer(disclaimer)] if disclaimer else []),
             build_benchmark_credit_components(
-                add_framework_citations(credits, framework_ids)
+                add_framework_citations(credits, framework_ids),
+                framework_ids=framework_ids,
+                name=name,
             ),
         ]
     )
