@@ -81,7 +81,7 @@ def load_vacf_plot(element: str) -> Graph | None:
 
 def load_diffusion_plot(element: str) -> Graph | None:
     """
-    Load diffusion points, standard errors, and saved linear fits.
+    Load diffusion points, standard errors, and saved Arrhenius fits.
 
     Parameters
     ----------

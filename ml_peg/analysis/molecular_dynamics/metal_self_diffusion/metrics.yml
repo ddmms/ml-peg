@@ -6,11 +6,11 @@ metrics:
     tooltip: >-
       Absolute mean relative error across temperatures per element.
     level_of_theory: Experimental
-  Temperature slope error:
+  Activation energy error:
     good: 20.0
     bad: 50.0
     unit: "%"
     tooltip: >-
-      Absolute difference between predicted and experimental linear D(T) slopes,
-      divided by the absolute experimental slope.
+      Absolute difference between predicted and experimental Arrhenius activation
+      energies, divided by the absolute experimental activation energy.
     level_of_theory: Experimental

@@ -9,32 +9,48 @@ Summary
 -------
 
 Performance in predicting self-diffusion in liquid metals compared to experimental
-measurements. Ideal crystal structures of about 1000 atoms are melted at 1.5 times
+measurements. Ideal crystal structures of about 1000 atoms are heated to 1.5 times
 the measurement temperature in kelvin. After NPT equilibration at the measurement
-temperature, sampled states start independent short NVE trajectories. The diffusion
+temperature, sampled states start 50 separate short NVE trajectories. The diffusion
 coefficient is computed by integrating the velocity autocorrelation function
-(VACF), with a cosine taper from 0.5 to 1 ps, using the Green–Kubo relation
-described by Tuckerman [tuckerman2015]_.
+(VACF) using the Green–Kubo relation
+described by Tuckerman [tuckerman2015]_. Sensitivity to the cosine-taper onset
+is checked with 11 tapers starting over 0.45–0.60 ps and all ending at 1.0 ps,
+taking the median diffusion coefficient.
+A spread above 5% of the absolute median triggers a warning and leaves the
+model unscored.
 
 Metrics
 -------
 
 1. Diffusion coefficient error
 
-For each element, relative differences between predicted and experimental diffusion
-coefficients are averaged over temperatures before taking the absolute value.
+For each element, signed relative differences between predicted and experimental
+diffusion coefficients are averaged over temperatures before taking the absolute
+value. This absolute mean relative bias is then averaged over elements.
 
-2. Temperature slope error
+The good threshold of 10% is above the reported experimental uncertainties
+(Al, Cu, Fe, Ni, Ti) of a few percent to about 9%. The bad threshold is 50%:
+a uniform 50% underprediction means diffusion takes twice as long.
 
-For each element, linear fits of diffusion coefficient against temperature are
-computed for predictions and experimental measurements at the same temperatures.
-The metric is the absolute difference between the fitted slopes, divided by the
-absolute experimental slope and expressed as a percentage.
+2. Activation energy error
+
+For each element, Arrhenius fits, :math:`D(T) = D_0 \exp[-E_a/(k_B T)]`,
+are computed by fitting the logarithm of diffusion coefficient against inverse
+temperature for predictions and experiment. The metric is the absolute difference
+between the fitted activation energies, divided by the absolute experimental
+activation energy and expressed as a percentage.
+
+The good threshold of 20% is above the typically reported experimental
+uncertainties (Cu, Fe, Ni) of 1–10%. The bad threshold of 50% means the predicted
+ratio :math:`D(T_{\max})/D(T_{\min})` differs by about 9–20%.
 
 Benchmark speed
 ---------------
 
 Multi-day: tests are expected to take several days to run on GPU.
+
+As reference: The ``dpa-4-nano-omat`` takes about 8 hours on an RTX6000 GPU for the full benchmark.
 
 Data availability
 -----------------

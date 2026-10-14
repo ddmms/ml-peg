@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from warnings import warn
 
+from ase.units import kB
 import numpy as np
 from plotly.colors import qualitative
 import pytest
@@ -32,8 +33,9 @@ MODELS = load_models(current_models)
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "metal_self_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "metal_self_diffusion"
 
-VACF_TAPER_START = 500.0
+VACF_TAPER_STARTS = np.linspace(450.0, 600.0, 11)
 VACF_TAPER_END = 1000.0
+TAPER_SENSITIVITY_THRESHOLD = 0.05
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -62,12 +64,12 @@ INFO = get_struct_info(
 @pytest.fixture(scope="session")
 def vacfs() -> dict:
     """
-    Load and cosine-taper the VACFs for analysis and plotting.
+    Load raw VACFs and plot them with the central cosine taper.
 
     Returns
     -------
     dict
-        Shared lag times and tapered VACFs by model, element, and temperature.
+        Shared lag times and raw VACFs by model, element, and temperature.
     """
     results = {"times": None} | {model_name: {} for model_name in MODELS}
 
@@ -89,14 +91,7 @@ def vacfs() -> dict:
                         warn(f"Skipping malformed VACF file: {file}", stacklevel=2)
                         continue
                     times, values = data
-                    phase = np.clip(
-                        (times - VACF_TAPER_START)
-                        / (VACF_TAPER_END - VACF_TAPER_START),
-                        0,
-                        1,
-                    )
-                    window = (1 + np.cos(np.pi * phase)) / 2
-                    vacfs[t, s] = values * window
+                    vacfs[t, s] = values
                     if results["times"] is None:
                         results["times"] = times
 
@@ -105,6 +100,11 @@ def vacfs() -> dict:
                 for t, temp in enumerate(temperatures)
                 if np.isfinite(vacfs[t]).any()
             }
+
+    if results["times"] is not None:
+        start = np.median(VACF_TAPER_STARTS)
+        phase = np.clip((results["times"] - start) / (VACF_TAPER_END - start), 0, 1)
+        plot_window = (1 + np.cos(np.pi * phase)) / 2
 
     for element in INFO["filenames"]:
 
@@ -129,7 +129,7 @@ def vacfs() -> dict:
             return {
                 f"{model_name}, {temperature:g} K": (
                     (results["times"] / 1000).tolist(),
-                    np.nanmean(values, axis=0).tolist(),
+                    (np.nanmean(values, axis=0) * plot_window).tolist(),
                 )
                 for model_name in MODELS
                 for temperature, values in results[model_name].get(element, {}).items()
@@ -148,7 +148,7 @@ def diffusion_constants(vacfs: dict) -> dict:
     Parameters
     ----------
     vacfs
-        Shared lag times and tapered VACFs by model, element, and temperature.
+        Shared lag times and raw VACFs by model, element, and temperature.
 
     Returns
     -------
@@ -156,6 +156,14 @@ def diffusion_constants(vacfs: dict) -> dict:
         Diffusion coefficients in m²/s, uncertainties, and fits by model and element.
     """
     results = {model_name: {} for model_name in ("ref", *MODELS)}
+    if vacfs["times"] is not None:
+        phase = np.clip(
+            (vacfs["times"][None, :] - VACF_TAPER_STARTS[:, None])
+            / (VACF_TAPER_END - VACF_TAPER_STARTS[:, None]),
+            0,
+            1,
+        )
+        windows = (1 + np.cos(np.pi * phase)) / 2
 
     for label, temperatures, references in zip(
         INFO["filenames"],
@@ -164,11 +172,11 @@ def diffusion_constants(vacfs: dict) -> dict:
         strict=True,
     ):
         diffusion = np.asarray(references)
-        fit = np.polyfit(temperatures, diffusion, 1)
+        fit = np.polyfit(1 / np.asarray(temperatures), np.log(diffusion), 1)
         results["ref"][label] = {
             "diffusion": diffusion,
             "fit": fit,
-            "slope": float(fit[0]),
+            "activation_energy": float(-kB * fit[0]),
         }
 
     for model_name in MODELS:
@@ -179,29 +187,54 @@ def diffusion_constants(vacfs: dict) -> dict:
                 continue
             diffusion = np.full(len(temperatures), np.nan)
             diffusion_error = np.full(len(temperatures), np.nan)
+            taper_sensitivity = np.full(len(temperatures), np.nan)
             for t, temperature in enumerate(temperatures):
                 values = vacfs[model_name][label].get(temperature)
                 if values is None or not np.isfinite(values).all():
                     continue
                 samples = (
-                    np.trapezoid(values, vacfs["times"], axis=-1)
+                    np.trapezoid(
+                        values[None, :, :] * windows[:, None, :],
+                        vacfs["times"],
+                        axis=-1,
+                    )
                     / 3
                     * 1e-5  # Conversion: 1 A^2/fs = 1e-5 m^2/s
                 )
-                diffusion[t] = samples.mean()
-                diffusion_error[t] = 2 * samples.std(ddof=1) / np.sqrt(len(samples))
-            valid = np.isfinite(diffusion)
+                means = samples.mean(axis=-1)
+                diffusion[t] = np.median(means)
+                taper_sensitivity[t] = (
+                    np.ptp(means) / abs(diffusion[t]) if diffusion[t] != 0 else np.inf
+                )
+                median_samples = samples[np.argsort(means)[len(means) // 2]]
+                diffusion_error[t] = (
+                    2 * median_samples.std(ddof=1) / np.sqrt(len(median_samples))
+                )
+                if taper_sensitivity[t] > TAPER_SENSITIVITY_THRESHOLD:
+                    warn(
+                        f"Unstable taper estimate for {model_name}/{label}/"
+                        f"{temperature:g}K: {taper_sensitivity[t]:.1%}",
+                        stacklevel=2,
+                    )
+            accepted = np.isfinite(diffusion) & (
+                taper_sensitivity <= TAPER_SENSITIVITY_THRESHOLD
+            )
+            valid = accepted & (diffusion > 0)
             valid_temperatures = np.asarray(temperatures)[valid]
             fit = (
-                np.polyfit(valid_temperatures, diffusion[valid], 1)
+                np.polyfit(1 / valid_temperatures, np.log(diffusion[valid]), 1)
                 if len(np.unique(valid_temperatures)) >= 2
                 else None
             )
             results[model_name][label] = {
                 "diffusion": diffusion,
                 "diffusion_error": diffusion_error,
+                "taper_sensitivity": taper_sensitivity,
+                "accepted": accepted,
                 "fit": fit,
-                "slope": float(fit[0]) if fit is not None and valid.all() else None,
+                "activation_energy": (
+                    float(-kB * fit[0]) if fit is not None and valid.all() else None
+                ),
             }
 
     for element, temperatures in zip(
@@ -251,15 +284,24 @@ def diffusion_constants(vacfs: dict) -> dict:
             if element not in values or values[element]["fit"] is None:
                 continue
             name = "Reference" if model_name == "ref" else model_name
-            valid = np.isfinite(values[element]["diffusion"])
+            valid = np.isfinite(values[element]["diffusion"]) & (
+                values[element]["diffusion"] > 0
+            )
+            if model_name != "ref":
+                valid &= values[element]["accepted"]
             valid_temperatures = np.asarray(temperatures)[valid]
-            endpoints = np.array([valid_temperatures.min(), valid_temperatures.max()])
+            fit_temperatures = np.linspace(
+                valid_temperatures.min(), valid_temperatures.max(), 100
+            )
             figure["data"].append(
                 {
                     "type": "scatter",
                     "mode": "lines",
-                    "x": endpoints.tolist(),
-                    "y": (np.polyval(values[element]["fit"], endpoints) * 1e9).tolist(),
+                    "x": fit_temperatures.tolist(),
+                    "y": (
+                        np.exp(np.polyval(values[element]["fit"], 1 / fit_temperatures))
+                        * 1e9
+                    ).tolist(),
                     "line": {"color": colors[name], "dash": "dash"},
                     "name": name,
                     "legendgroup": name,
@@ -282,6 +324,24 @@ def diffusion_constants(vacfs: dict) -> dict:
             ]
         filename = OUT_PATH / f"{element}_diffusion_errors.json"
         filename.write_text(json.dumps(errors, allow_nan=False))
+        estimates = {
+            model_name: {
+                "temperatures": list(temperatures),
+                "diffusion": [
+                    float(value) if np.isfinite(value) else None
+                    for value in values[element]["diffusion"]
+                ],
+                "taper_sensitivity": [
+                    float(value) if np.isfinite(value) else None
+                    for value in values[element]["taper_sensitivity"]
+                ],
+                "accepted": values[element]["accepted"].tolist(),
+            }
+            for model_name, values in results.items()
+            if model_name != "ref" and element in values
+        }
+        filename = OUT_PATH / f"{element}_diffusion_estimates.json"
+        filename.write_text(json.dumps(estimates, allow_nan=False))
     return results
 
 
@@ -304,9 +364,7 @@ def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
     for model_name in MODELS:
         if any(
             label not in diffusion_constants[model_name]
-            or not np.isfinite(
-                diffusion_constants[model_name][label]["diffusion"]
-            ).all()
+            or not diffusion_constants[model_name][label]["accepted"].all()
             for label in INFO["filenames"]
         ):
             results[model_name] = None
@@ -323,35 +381,41 @@ def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
 
 
 @pytest.fixture(scope="session")
-def get_slope_are(diffusion_constants: dict) -> dict[str, float | None]:
+def get_activation_energy_are(diffusion_constants: dict) -> dict[str, float | None]:
     """
-    Average absolute relative linear slope errors equally over elements.
+    Average absolute relative activation-energy errors equally over elements.
 
     Parameters
     ----------
     diffusion_constants
-        Reference and predicted diffusion slopes by model and element.
+        Reference and predicted activation energies in eV by model and element.
 
     Returns
     -------
     dict
-        Percentage slope errors by model, or None for incomplete results.
+        Percentage activation-energy errors by model, or None for incomplete results.
     """
     results = {}
     for model_name in MODELS:
         if any(
             label not in diffusion_constants[model_name]
-            or diffusion_constants[model_name][label]["slope"] is None
+            or diffusion_constants[model_name][label]["activation_energy"] is None
             for label in INFO["filenames"]
         ):
             results[model_name] = None
             continue
         element_errors = []
         for label in diffusion_constants[model_name]:
-            predicted_slope = diffusion_constants[model_name][label]["slope"]
-            reference_slope = diffusion_constants["ref"][label]["slope"]
+            predicted_activation_energy = diffusion_constants[model_name][label][
+                "activation_energy"
+            ]
+            reference_activation_energy = diffusion_constants["ref"][label][
+                "activation_energy"
+            ]
             element_errors.append(
-                100 * abs(predicted_slope - reference_slope) / abs(reference_slope)
+                100
+                * abs(predicted_activation_energy - reference_activation_energy)
+                / abs(reference_activation_energy)
             )
         results[model_name] = float(np.mean(element_errors)) if element_errors else None
     return results
@@ -365,17 +429,18 @@ def get_slope_are(diffusion_constants: dict) -> dict[str, float | None]:
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    get_amre: dict[str, float | None], get_slope_are: dict[str, float | None]
+    get_amre: dict[str, float | None],
+    get_activation_energy_are: dict[str, float | None],
 ) -> dict:
     """
-    Build the absolute mean relative error and relative slope error table.
+    Build the absolute mean relative error and relative activation-energy error table.
 
     Parameters
     ----------
     get_amre
         Absolute mean relative errors by model.
-    get_slope_are
-        Absolute relative slope errors by model.
+    get_activation_energy_are
+        Absolute relative activation-energy errors by model.
 
     Returns
     -------
@@ -384,7 +449,7 @@ def metrics(
     """
     return {
         "Diffusion coefficient error": get_amre,
-        "Temperature slope error": get_slope_are,
+        "Activation energy error": get_activation_energy_are,
     }
 
 
