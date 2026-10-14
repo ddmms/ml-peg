@@ -10,5 +10,23 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "batatia-2026-mace-polar"
+    role: benchmark_method
+    title: "MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry"
+    authors:
+      - "Ilyes Batatia"
+      - "William J. Baldwin"
+      - "Domantas Kuryla"
+      - "Joseph Hart"
+      - "Elliott Kasoar"
+      - "Alin M. Elena"
+      - "Harry Moore"
+      - "Mikołaj J. Gawkowski"
+      - "Benjamin X. Shi"
+      - "Venkat Kapil"
+      - "Panagiotis Kourtis"
+      - "Ioan-Bogdan Magdău"
+      - "Gábor Csányi"
+    year: 2026
+    url: "https://arxiv.org/abs/2602.19411"
