@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from warnings import warn
 
 from ase import units
 import numpy as np
+from plotly.colors import qualitative
 import pytest
 
 from ml_peg.analysis.utils.decorators import (
@@ -77,7 +79,11 @@ def vacfs() -> dict:
                     )
                     if not file.is_file():
                         continue
-                    times, values = np.load(file)
+                    data = np.load(file)
+                    if data.shape != (2, VACF_STEPS + 1):
+                        warn(f"Skipping malformed VACF file: {file}", stacklevel=2)
+                        continue
+                    times, values = data
                     # Gaussian frequency convolution
                     window = np.exp(
                         -2 * np.pi**2 * VACF_SIGMA_THZ**2 * (times / 1000)**2
@@ -140,9 +146,11 @@ def diffusion_constants(vacfs: dict) -> dict:
         strict=True,
     ):
         diffusion = np.asarray(references)
+        fit = np.polyfit(temperatures, diffusion, 1)
         results["ref"][label] = {
             "diffusion": diffusion,
-            "slope": float(np.polyfit(temperatures, diffusion, 1)[0]),
+            "fit": fit,
+            "slope": float(fit[0]),
         }
 
     for model_name in MODELS:
@@ -164,13 +172,17 @@ def diffusion_constants(vacfs: dict) -> dict:
                 )
                 diffusion[t] = samples.mean()
                 diffusion_error[t] = 2 * samples.std(ddof=1) / np.sqrt(len(samples))
+            valid = np.isfinite(diffusion)
+            valid_temperatures = np.asarray(temperatures)[valid]
+            fit = (
+                np.polyfit(valid_temperatures, diffusion[valid], 1)
+                if len(np.unique(valid_temperatures)) >= 2 else None
+            )
             results[model_name][label] = {
                 "diffusion": diffusion,
                 "diffusion_error": diffusion_error,
-                "slope": (
-                    float(np.polyfit(temperatures, diffusion, 1)[0])
-                    if np.isfinite(diffusion).all() else None
-                ),
+                "fit": fit,
+                "slope": float(fit[0]) if fit is not None and valid.all() else None,
             }
 
     for element, temperatures in zip(
@@ -204,6 +216,41 @@ def diffusion_constants(vacfs: dict) -> dict:
             }
 
         curves()
+        filename = OUT_PATH / f"{element}_diffusion.json"
+        figure = json.loads(filename.read_text())
+        points = [trace for trace in figure["data"] if trace["mode"] == "markers"]
+        colors = {}
+        for i, trace in enumerate(points):
+            color = qualitative.Plotly[i % len(qualitative.Plotly)]
+            colors[trace["name"]] = color
+            trace.setdefault("marker", {})["color"] = color
+            trace["legendgroup"] = trace["name"]
+        for trace in figure["data"]:
+            if trace["mode"] == "lines" and trace["name"] in colors:
+                trace["line"]["color"] = colors[trace["name"]]
+        for model_name, values in results.items():
+            if element not in values or values[element]["fit"] is None:
+                continue
+            name = "Reference" if model_name == "ref" else model_name
+            valid = np.isfinite(values[element]["diffusion"])
+            valid_temperatures = np.asarray(temperatures)[valid]
+            endpoints = np.array([
+                valid_temperatures.min(), valid_temperatures.max()
+            ])
+            figure["data"].append({
+                "type": "scatter",
+                "mode": "lines",
+                "x": endpoints.tolist(),
+                "y": (np.polyval(values[element]["fit"], endpoints) * 1e9).tolist(),
+                "line": {"color": colors[name], "dash": "dash"},
+                "name": name,
+                "legendgroup": name,
+                "showlegend": False,
+                "hovertemplate": next(
+                    trace["hovertemplate"] for trace in points if trace["name"] == name
+                ),
+            })
+        filename.write_text(json.dumps(figure))
         errors = {}
         for model_name in MODELS:
             if element not in results[model_name]:

@@ -135,6 +135,7 @@ def run_npt(atoms: Atoms, calc: Calculator, output_fname: str | Path) -> None:
         ASE Calculator.
     output_fname
         File name to save the trajectory to.
+
     """
     if Path(output_fname).exists():
         try:
@@ -171,21 +172,16 @@ def run_npt(atoms: Atoms, calc: Calculator, output_fname: str | Path) -> None:
             pdamp=BAROSTAT_STEPS * TIMESTEP,
             trajectory=output_fname,
             loginterval=LOG_INTERVAL,
-            append_trajectory=True,
+            append_trajectory=nsteps > 0,
         )
         dyn.nsteps = nsteps
         dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
-        try:
-            dyn.run(steps=end_step - nsteps)
-        except Exception as exc:
-            warn(f"Error running MD: {exc}", stacklevel=2)
-            dyn.atoms.info["energy"] = np.nan
-            return
+        dyn.run(steps=end_step - nsteps)
         nsteps = dyn.nsteps
     atoms.calc = None
 
 
-def run_nve(atoms: Atoms, model: Any, vacf_path: Path) -> None:
+def run_nve(atoms: Atoms, calc: Calculator, vacf_path: Path) -> None:
     """
     Run a fresh fixed-cell NVE trajectory and save its VACF and log.
 
@@ -194,8 +190,8 @@ def run_nve(atoms: Atoms, model: Any, vacf_path: Path) -> None:
     atoms
         Sampled structure with target temperature in ``info['exp_temperature']``.
         The input is not modified; inherited momenta are replaced on a copy.
-    model
-        Model wrapper used to create this worker's ASE calculator.
+    calc
+        Existing ASE calculator reused for the sequential NVE runs.
     vacf_path
         Output NumPy file for lag times and VACF; the log uses the same stem.
     """
@@ -207,7 +203,7 @@ def run_nve(atoms: Atoms, model: Any, vacf_path: Path) -> None:
         force=True,
     )
     state = atoms.copy()
-    state.calc = model.get_calculator(precision="low")
+    state.calc = calc
     MaxwellBoltzmannDistribution(state, temperature_K=state.info["exp_temperature"])
     Stationary(state)
     velocities, record_velocities = init_velocity_recorder(state)
@@ -220,6 +216,7 @@ def run_nve(atoms: Atoms, model: Any, vacf_path: Path) -> None:
         dyn.run(steps=VACF_STEPS)
     except Exception as exc:
         warn(f"Error running MD: {exc}", stacklevel=2)
+        return
 
     np.save(vacf_path, compute_vacf(velocities))
 
@@ -281,6 +278,8 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
     ):
         atoms = crystal.copy()
 
+        atoms.info["charge"] = 0
+        atoms.info["spin"] = 1
         atoms.info["exp_temperature"] = temperature
         atoms.info["exp_diffusion"] = diffusion
         del atoms.info["temperatures"]
@@ -300,8 +299,11 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
         output_fname = out_dir / "npt.traj"
 
         calc = model.get_calculator(precision="low")
-        run_npt(atoms, calc, output_fname)
-        del calc
+        try:
+            run_npt(atoms, calc, output_fname)
+        except Exception as exc:
+            warn(f"Error running NPT: {exc}", stacklevel=2)
+            return
 
         first_frame = (NPT_MELT + NPT_EQ) // LOG_INTERVAL + 1
 
@@ -309,4 +311,4 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
             for idx, frame_idx in enumerate(range(first_frame, len(traj))):
                 vacf_path = out_dir / f"vacf_{idx}.npy"
                 if not vacf_path.exists():
-                    run_nve(traj[frame_idx], model, vacf_path)
+                    run_nve(traj[frame_idx], calc, vacf_path)

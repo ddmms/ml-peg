@@ -34,7 +34,7 @@ absolute experimental slope and expressed as a percentage.
 Benchmark speed
 ---------------
 
-Multi-day: tests are expected to take several days to run on GPU (not yet verified).
+Multi-day: tests are expected to take several days to run on GPU.
 
 Data availability
 -----------------

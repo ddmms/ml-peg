@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dash.dcc import Graph, Tab, Tabs
 from dash.html import H3, Div
-import numpy as np
-from plotly.colors import qualitative
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -70,7 +68,7 @@ def load_vacf_plot(element: str) -> Graph | None:
 
 
 def load_diffusion_plot(element: str) -> Graph | None:
-    """Load diffusion points and add standard errors and linear fits."""
+    """Load diffusion points, standard errors, and saved linear fits."""
     path = DATA_PATH / f"{element}_diffusion.json"
     if not path.is_file():
         return None
@@ -79,9 +77,9 @@ def load_diffusion_plot(element: str) -> Graph | None:
     traces = graph.figure["data"]
     errors_path = DATA_PATH / f"{element}_diffusion_errors.json"
     errors = read_json(errors_path) if errors_path.is_file() else {}
-    fits = []
-    for i, trace in enumerate(traces):
-        trace["mode"] = "markers"
+    for trace in traces:
+        if trace["mode"] != "markers":
+            continue
         if trace["name"] in errors:
             trace["error_y"] = {
                 "type": "data",
@@ -91,30 +89,6 @@ def load_diffusion_plot(element: str) -> Graph | None:
                 ],
                 "visible": True,
             }
-        color = qualitative.Plotly[i % len(qualitative.Plotly)]
-        trace.setdefault("marker", {})["color"] = color
-        trace["legendgroup"] = trace["name"]
-        x = np.asarray(trace["x"], dtype=float)
-        y = np.asarray(trace["y"], dtype=float)
-        valid = np.isfinite(x) & np.isfinite(y)
-        if len(np.unique(x[valid])) < 2:
-            continue
-        slope, intercept = np.polyfit(x[valid], y[valid], 1)
-        endpoints = np.array([x[valid].min(), x[valid].max()])
-        fits.append(
-            {
-                "type": "scatter",
-                "mode": "lines",
-                "x": endpoints.tolist(),
-                "y": (slope * endpoints + intercept).tolist(),
-                "line": {"color": color, "dash": "dash"},
-                "name": f"{trace['name']} linear fit",
-                "legendgroup": trace["name"],
-                "showlegend": False,
-                "hovertemplate": trace.get("hovertemplate"),
-            }
-        )
-    traces.extend(fits)
     return graph
 
 
