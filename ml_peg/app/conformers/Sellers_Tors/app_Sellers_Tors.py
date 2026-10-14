@@ -2,22 +2,54 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
+    clear_from_table_cell,
+    plot_from_scatter_files,
+    plot_from_table_cell,
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
+MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Sellers_Tors"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#sellers-tors"
 )
 DATA_PATH = APP_ROOT / "data" / "conformers" / "Sellers_Tors"
 INFO_PATH = DATA_PATH / "info.json"
+ASSETS_DIR = "/assets/conformers/Sellers_Tors"
+
+# Table column, and the file key of its per-fragment scatter
+METRIC_SCATTERS = {
+    "MAE": "mae",
+    "RMSE": "rmse",
+    "Barrier MAE": "barrier_error",
+}
+
+
+def _trajectory_paths() -> dict[str, str]:
+    """
+    Get the torsion scan trajectory asset path for each fragment.
+
+    Returns
+    -------
+    dict[str, str]
+        Asset path of each fragment's trajectory, keyed by fragment label.
+        Geometries are identical across models, so these are shared.
+    """
+    traj_dir = DATA_PATH / "torsion_trajectories"
+    return {
+        path.stem: f"{ASSETS_DIR}/torsion_trajectories/{path.name}"
+        for path in sorted(traj_dir.glob("*.xyz"))
+    }
 
 
 class SellersTorsApp(BaseApp):
@@ -25,45 +57,72 @@ class SellersTorsApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_sellers_tors.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
-        barrier_scatter = read_plot(
-            DATA_PATH / "figure_sellers_tors_barriers.json",
-            id=f"{BENCHMARK_NAME}-barrier-figure",
-        )
+        # Build an MAE, RMSE and barrier error scatter plot per model (fragment
+        # index vs that fragment's metric value).
+        scatter_cell_to_plot: dict[str, dict[str, Div]] = {}
+        curve_dirs: dict[str, Path] = {}
 
-        # Structure files are named {fragment}_{scan point}, in scatter-point order
-        structs_dir = DATA_PATH / "structs"
-        if structs_dir.exists():
-            labels = sorted(
-                (f.stem for f in structs_dir.glob("*.xyz")),
-                key=lambda label: tuple(int(part) for part in label.split("_")),
-            )
-            structs = [
-                f"/assets/conformers/Sellers_Tors/structs/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
+        for model_name in MODELS:
+            scatter_paths = {
+                column: DATA_PATH / model_name / f"fragment_{key}_scatter.json"
+                for column, key in METRIC_SCATTERS.items()
+            }
+            curve_dir = DATA_PATH / model_name / "torsion_curves"
 
-        plot_from_table_column(
+            if (
+                not all(path.exists() for path in scatter_paths.values())
+                or not curve_dir.exists()
+            ):
+                continue
+
+            scatter_cell_to_plot[model_name] = {
+                column: read_plot(
+                    path,
+                    id=f"{BENCHMARK_NAME}-{model_name}-{METRIC_SCATTERS[column]}-figure",
+                )
+                for column, path in scatter_paths.items()
+            }
+            curve_dirs[model_name] = curve_dir
+
+        curve_placeholder = f"{BENCHMARK_NAME}-curve-placeholder"
+        struct_placeholder = f"{BENCHMARK_NAME}-struct-placeholder"
+
+        # Clicking a model's metric cell shows that model's corresponding
+        # fragment scatter, and clears the previous model's curve and structure.
+        plot_from_table_cell(
             table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "MAE": scatter,
-                "RMSE": scatter,
-                "Barrier MAE": barrier_scatter,
-            },
+            plot_id=f"{BENCHMARK_NAME}-scatter-placeholder",
+            cell_to_plot=scatter_cell_to_plot,
+        )
+        clear_from_table_cell(
+            table_id=self.table_id,
+            plot_ids=[curve_placeholder, struct_placeholder],
         )
 
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
-        )
+        # Clicking a point on any scatter shows that fragment's curve. The curve
+        # doesn't depend on which metric was clicked through, so all scatters for
+        # a model share the same curve_dir.
+        trajectories = _trajectory_paths()
+
+        for model_name, curve_dir in curve_dirs.items():
+            for metric in METRIC_SCATTERS.values():
+                # Showing a new curve clears the previous curve's structure.
+                curve_id = plot_from_scatter_files(
+                    scatter_id=f"{BENCHMARK_NAME}-{model_name}-{metric}-figure",
+                    plot_id=curve_placeholder,
+                    plot_dir=curve_dir,
+                    clear_plot_ids=[struct_placeholder],
+                )
+
+                # Curve points and trajectory frames are both ordered by angle,
+                # so clicking a point shows the structure at that angle.
+                struct_from_scatter(
+                    scatter_id=curve_id,
+                    struct_id=struct_placeholder,
+                    structs=trajectories,
+                    mode="traj",
+                    follow_frames=True,
+                )
 
 
 def get_app() -> SellersTorsApp:
@@ -87,7 +146,8 @@ def get_app() -> SellersTorsApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "sellers_tors_metrics_table.json",
         extra_components=[
-            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-scatter-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-curve-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,

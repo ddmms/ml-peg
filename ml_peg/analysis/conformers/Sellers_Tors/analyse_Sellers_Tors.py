@@ -15,9 +15,10 @@ from pathlib import Path
 from ase import units
 from ase.io import read, write
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     get_struct_info,
@@ -110,15 +111,6 @@ def get_model_rel_energies(model_name: str) -> dict[str, np.ndarray]:
     return rel_energies
 
 
-def write_app_structs() -> None:
-    """Write a single-frame structure file for each scan point for the app."""
-    structs_dir = OUT_PATH / "structs"
-    structs_dir.mkdir(parents=True, exist_ok=True)
-    for label, scan in REF_SCANS.items():
-        for i, atoms in enumerate(scan):
-            write(structs_dir / f"{label}_{i:02d}.xyz", atoms)
-
-
 @pytest.fixture
 def model_rel_energies() -> dict[str, dict[str, np.ndarray]]:
     """
@@ -133,18 +125,72 @@ def model_rel_energies() -> dict[str, dict[str, np.ndarray]]:
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_sellers_tors.json",
-    title="Torsion scan relative energies",
-    x_label="Predicted relative energy / kcal/mol",
-    y_label="Reference relative energy / kcal/mol",
-    hoverdata={
-        "Fragment": INFO["mol_id"],
-        "SMILES": INFO["smiles"],
-        "Dihedral / deg": INFO["dihedral"],
-    },
-    symbol_by=INFO["category"],
-)
+def fragment_metrics(
+    model_rel_energies: dict[str, dict[str, np.ndarray]],
+) -> dict[str, dict[str, list]]:
+    """
+    Get per-fragment errors of the relative torsional energy profile for each model.
+
+    Parameters
+    ----------
+    model_rel_energies
+        Relative energies for each scan, for all models.
+
+    Returns
+    -------
+    dict[str, dict[str, list]]
+        Per model, the MAE, RMSE and absolute barrier error for each torsion scan
+        in `SCAN_LABELS` order, and the angle/energy profile for each scan (for
+        plotting torsion curves). Errors are NaN for scans with any failed
+        point, and scans the model has no output for have no profile.
+    """
+    results = {}
+
+    for model_name in MODELS:
+        mae_scans = []
+        rmse_scans = []
+        barrier_scans = []
+        profiles = []
+
+        for label, scan in REF_SCANS.items():
+            model_rel_energy = model_rel_energies[model_name][label]
+            if np.isnan(model_rel_energy).all():
+                mae_scans.append(float("nan"))
+                rmse_scans.append(float("nan"))
+                barrier_scans.append(float("nan"))
+                profiles.append(None)
+                continue
+
+            angle = np.array([atoms.info["dihedral"] for atoms in scan])
+            ref_rel_energy = np.array([atoms.info["ref_rel_energy"] for atoms in scan])
+
+            mae_scans.append(mae(ref_rel_energy, model_rel_energy))
+            rmse_scans.append(rmse(ref_rel_energy, model_rel_energy))
+            # np.ptp propagates NaN from any failed scan point
+            barrier_scans.append(
+                float(abs(np.ptp(model_rel_energy) - np.ptp(ref_rel_energy)))
+            )
+
+            order = np.argsort(angle)
+            profiles.append(
+                {
+                    "angle": angle[order].tolist(),
+                    "ref_rel_energy": ref_rel_energy[order].tolist(),
+                    "model_rel_energy": model_rel_energy[order].tolist(),
+                }
+            )
+
+        results[model_name] = {
+            "mae": mae_scans,
+            "rmse": rmse_scans,
+            "barrier_error": barrier_scans,
+            "profiles": profiles,
+        }
+
+    return results
+
+
+@pytest.fixture
 def torsion_energies(
     model_rel_energies: dict[str, dict[str, np.ndarray]],
 ) -> dict[str, list]:
@@ -161,8 +207,6 @@ def torsion_energies(
     dict[str, list]
         Dictionary of all reference and predicted relative energies.
     """
-    write_app_structs()
-
     results = {
         "ref": [
             atoms.info["ref_rel_energy"]
@@ -180,16 +224,6 @@ def torsion_energies(
 
 
 @pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_sellers_tors_barriers.json",
-    title="Torsional barriers",
-    x_label="Predicted barrier / kcal/mol",
-    y_label="Reference barrier / kcal/mol",
-    hoverdata={
-        "Fragment": SCAN_LABELS,
-        "SMILES": SCAN_SMILES,
-    },
-)
 def torsion_barriers(
     model_rel_energies: dict[str, dict[str, np.ndarray]],
 ) -> dict[str, list]:
@@ -219,6 +253,177 @@ def torsion_barriers(
             for label in SCAN_LABELS
         ]
     return results
+
+
+def plot_fragment_metric_figure(
+    model_name: str, metric_name: str, labels: list[str], metric_values: list[float]
+) -> go.Figure:
+    """
+    Build a scatter plot of a per-fragment metric for one model.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model the scatter plot is for.
+    metric_name
+        Name of the metric being plotted, e.g. ``"RMSE"`` or ``"MAE"``.
+    labels
+        Fragment labels, in scatter point order.
+    metric_values
+        Per-fragment metric values, in the same order as ``labels``.
+
+    Returns
+    -------
+    go.Figure
+        Scatter plot of the metric against fragment.
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(labels))),
+            y=metric_values,
+            mode="markers",
+            customdata=list(zip(SCAN_SMILES, labels, strict=True)),
+            hovertemplate=(
+                "<b>Fragment: </b>%{customdata[1]}<br>"
+                "<b>SMILES: </b>%{customdata[0]}<br>"
+                f"<b>{metric_name}: </b>" + "%{y:.4f} kcal/mol<br>"
+            ),
+            showlegend=False,
+        )
+    )
+    fig.update_layout(
+        title={"text": f"Per-fragment {metric_name} - {model_name}"},
+        xaxis={"title": {"text": "Fragment"}},
+        yaxis={"title": {"text": f"{metric_name} / kcal/mol"}},
+    )
+    return fig
+
+
+@pytest.fixture
+def fragment_scatter_figures(fragment_metrics: dict[str, dict[str, list]]) -> None:
+    """
+    Save per-model scatter plots of per-fragment errors for the app.
+
+    Parameters
+    ----------
+    fragment_metrics
+        Per-fragment MAE, RMSE and barrier errors for each model.
+    """
+    for model_name in MODELS:
+        model_metrics = fragment_metrics[model_name]
+
+        # Missing scans are plotted as gaps, so points stay in `SCAN_LABELS`
+        # order, but a model with nothing to plot is skipped entirely.
+        if not any(profile for profile in model_metrics["profiles"]):
+            continue
+
+        out_dir = OUT_PATH / model_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        for key, metric_name in (
+            ("mae", "MAE"),
+            ("rmse", "RMSE"),
+            ("barrier_error", "Barrier error"),
+        ):
+            fig = plot_fragment_metric_figure(
+                model_name, metric_name, SCAN_LABELS, model_metrics[key]
+            )
+            fig.write_json(out_dir / f"fragment_{key}_scatter.json")
+
+
+def plot_torsion_curve_figure(
+    model_name: str, label: str, profile: dict[str, list]
+) -> go.Figure:
+    """
+    Build a torsion energy profile plot for one fragment.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model the profile was predicted with.
+    label
+        Fragment label the profile belongs to.
+    profile
+        ``angle``, ``ref_rel_energy``, and ``model_rel_energy`` for the scan.
+
+    Returns
+    -------
+    go.Figure
+        Line plot of relative energy against dihedral angle.
+    """
+    fig = go.Figure()
+    # Label every point so curve clicks map back to the fragment's trajectory.
+    customdata = [label] * len(profile["angle"])
+    fig.add_trace(
+        go.Scatter(
+            x=profile["angle"],
+            y=profile["ref_rel_energy"],
+            mode="lines+markers",
+            name="CCSD(T)",
+            customdata=customdata,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=profile["angle"],
+            y=profile["model_rel_energy"],
+            mode="lines+markers",
+            name=model_name,
+            customdata=customdata,
+        )
+    )
+    fig.update_layout(
+        title={"text": f"{label} - {model_name}"},
+        xaxis={"title": {"text": "Dihedral angle / deg"}},
+        yaxis={"title": {"text": "Relative energy / kcal/mol"}},
+    )
+    return fig
+
+
+@pytest.fixture
+def torsion_curve_figures(fragment_metrics: dict[str, dict[str, list]]) -> None:
+    """
+    Save per-fragment torsion energy profile plots for the app.
+
+    Parameters
+    ----------
+    fragment_metrics
+        Per-fragment errors and profiles for each model.
+    """
+    for model_name in MODELS:
+        profiles = fragment_metrics[model_name]["profiles"]
+
+        if not any(profile for profile in profiles):
+            continue
+
+        out_dir = OUT_PATH / model_name / "torsion_curves"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        for label, profile in zip(SCAN_LABELS, profiles, strict=True):
+            # Scans the model has no output for have no curve to plot. The app
+            # falls back to its click hint when a curve file is missing.
+            if profile is None:
+                continue
+            fig = plot_torsion_curve_figure(model_name, label, profile)
+            fig.write_json(out_dir / f"{label}.json")
+
+
+@pytest.fixture
+def torsion_trajectories() -> None:
+    """
+    Save per-fragment torsion scan trajectories for the app's structure viewer.
+
+    Geometries are identical across all models, since only single-point energies
+    are calculated on the same reference conformers, so this only needs writing
+    once, from the mock calculator's output.
+    """
+    out_dir = OUT_PATH / "torsion_trajectories"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for label, scan in REF_SCANS.items():
+        order = np.argsort([atoms.info["dihedral"] for atoms in scan])
+        write(out_dir / f"{label}.xyz", [scan[i] for i in order])
 
 
 @pytest.fixture
@@ -321,7 +526,12 @@ def metrics(
     }
 
 
-def test_sellers_tors(metrics: dict[str, dict]) -> None:
+def test_sellers_tors(
+    metrics: dict[str, dict],
+    fragment_scatter_figures: None,
+    torsion_curve_figures: None,
+    torsion_trajectories: None,
+) -> None:
     """
     Run Sellers torsion scan test.
 
@@ -329,5 +539,11 @@ def test_sellers_tors(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All new benchmark metric names and dictionary of values for each model.
+    fragment_scatter_figures
+        Per-model fragment MAE/RMSE/barrier error scatter figures (side-effect only).
+    torsion_curve_figures
+        Per-fragment torsion curve figures (side-effect only).
+    torsion_trajectories
+        Per-fragment torsion scan trajectories (side-effect only).
     """
     return
