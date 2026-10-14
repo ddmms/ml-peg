@@ -1,22 +1,170 @@
-Bootstrap: docker
-# PLACEHOLDER: the real definition lives in a separate repository.
-#   repo:   <TBD: URL of the GPUMD container repository>
-#   commit: <TBD: pinned commit>
-# Replace this file with the definition from that repository at the pinned commit.
-From: python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+# ML-PEG inference-timing reference container: GPUMD + NEP89.
+#
+# Build (from this directory, no GPU needed):
+#   apptainer build \
+#     --build-arg RUNNER_COMMIT=$(git rev-parse HEAD) \
+#     mlpeg-gpumd.sif container.def
+#
+# Build args (Apptainer >= 1.2):
+#   CUDA_ARCHS     space-separated SM versions; SASS for each, plus PTX for the last
+#   RUNNER_REPO    URL of the repository holding this runner
+#   RUNNER_COMMIT  commit of that repository
 
-# mlpeg.weights_sha256 is the sha256 of nep89_20250409.txt (GPUMD v4.0), the
-# same file used by the calorine CPUNEP reference.
-%labels
-    mlpeg.model nep89
-    mlpeg.precisions fp32
-    mlpeg.weights_sha256 75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
-    mlpeg.contract_version 1.0
+Bootstrap: docker
+# nvidia/cuda:12.9.2-cudnn-devel-ubuntu24.04 (linux/amd64); Apptainer rejects tag+digest refs
+From: nvidia/cuda@sha256:b4db213759eb86d55a7271909bdad891fab300ec5700fb4f4656463b2f51980f
+Stage: build
+
+%arguments
+    CUDA_ARCHS=70 80 86 89 90 120
 
 %post
-    echo "nep89_gpumd is a placeholder; see contrib/optimized_inference_speed/nep89_gpumd/README.md" >&2
-    exit 1
+    set -eu
+    GPUMD_REPO=https://github.com/brucefan1983/GPUMD
+    GPUMD_TAG=v5.9.1
+    GPUMD_COMMIT=11ba6fbdb4d71b2cdb351b39972fa057521585b3
+    NEP89_COMMIT=ca78f110d7aed5b7f7ee8e87b571eac2ce5fedce
+    NEP89_PATH=potentials/nep/nep89_20250409/nep89_20250409.txt
+    NEP89_SHA256=75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
+
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends git ca-certificates make \
+        python3 python3-dev python3-venv
+
+    # GPUMD at a pinned commit; verify the tag still points at it.
+    git init -q /opt/src/GPUMD
+    cd /opt/src/GPUMD
+    git remote add origin "$GPUMD_REPO"
+    git fetch -q --depth 1 origin "$GPUMD_COMMIT" "refs/tags/$GPUMD_TAG:refs/tags/$GPUMD_TAG"
+    git checkout -q "$GPUMD_COMMIT"
+    test "$(git rev-parse HEAD)" = "$GPUMD_COMMIT"
+    test "$(git rev-parse "$GPUMD_TAG^{commit}")" = "$GPUMD_COMMIT"
+
+    # SASS for every requested arch, PTX for the newest so later GPUs can JIT.
+    ARCH_FLAGS=""
+    LAST=""
+    for sm in {{ CUDA_ARCHS }}; do
+        ARCH_FLAGS="$ARCH_FLAGS -gencode=arch=compute_${sm},code=sm_${sm}"
+        LAST="$sm"
+    done
+    ARCH_FLAGS="$ARCH_FLAGS -gencode=arch=compute_${LAST},code=compute_${LAST}"
+    echo "nvcc arch flags:$ARCH_FLAGS"
+    cd src
+    make -j"$(nproc)" CUDA_ARCH="$ARCH_FLAGS" gpumd
+    mkdir -p /opt/gpumd/bin
+    cp gpumd /opt/gpumd/bin/gpumd
+
+    # NEP89 weights pinned by commit and sha256.
+    cd /opt/src/GPUMD
+    git fetch -q --depth 1 origin "$NEP89_COMMIT"
+    mkdir -p /opt/model
+    git show "$NEP89_COMMIT:$NEP89_PATH" > /opt/model/nep.txt
+    echo "$NEP89_SHA256  /opt/model/nep.txt" | sha256sum -c -
+
+    printf '%s\n' "{{ CUDA_ARCHS }}" > /opt/gpumd/cuda_archs
+
+    # calorine ships only an sdist with a C++ extension; build the wheel here,
+    # where the compilers are, for the same Ubuntu 24.04 / Python 3.12 as the
+    # final stage.
+    python3 -m venv /opt/wheel-venv
+    /opt/wheel-venv/bin/pip install --no-cache-dir --upgrade pip
+    /opt/wheel-venv/bin/pip wheel --no-cache-dir --no-deps -w /opt/wheels calorine==4.0
+    ls /opt/wheels/calorine-4.0-cp312-*.whl
+
+
+Bootstrap: docker
+# nvidia/cuda:12.9.2-cudnn-runtime-ubuntu24.04 (linux/amd64)
+From: nvidia/cuda@sha256:5380b8155c710531212b65503b39fd7fef0715fef8aa4de791f67ba4faad4d7f
+Stage: final
+
+%arguments
+    RUNNER_REPO=https://github.com/elindgren/ml-peg
+    RUNNER_COMMIT=unknown
+
+%files from build
+    /opt/gpumd/bin/gpumd /opt/gpumd/bin/gpumd
+    /opt/gpumd/cuda_archs /opt/gpumd/cuda_archs
+    /opt/model/nep.txt /opt/model/nep.txt
+    /opt/wheels /opt/wheels
+
+%files
+    runner/gpumd_io.py /opt/runner/gpumd_io.py
+    runner/mlpeg_gpumd.py /opt/runner/mlpeg_gpumd.py
+    tests/data/amorphous-silica-structure.xyz /opt/selftest/amorphous-silica-structure.xyz
+
+%post
+    set -eu
+    NEP89_SHA256=75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
+    echo "$NEP89_SHA256  /opt/model/nep.txt" | sha256sum -c -
+
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends python3 python3-venv
+    rm -rf /var/lib/apt/lists/*
+
+    # GPUMD file I/O goes through calorine (wheel built in the build stage).
+    # Pin it and the dependencies it and ase need at import.
+    python3 -m venv /opt/venv
+    /opt/venv/bin/pip install --no-cache-dir \
+        numpy==2.3.5 scipy==1.16.3 matplotlib==3.10.7 ase==3.27.0 \
+        pandas==2.3.3 scikit-learn==1.7.2 \
+        /opt/wheels/calorine-4.0-cp312-*.whl
+    rm -rf /opt/wheels
+    /opt/venv/bin/python3 -c "import ase.io, ase.md.velocitydistribution; from calorine.gpumd import read_runfile, read_thermo, read_xyz, write_runfile, write_xyz; from calorine.nep import read_model; print(read_model('/opt/model/nep.txt').types[-1])"
+
+    # Every shared library gpumd needs, except the driver, must be in the image.
+    if ldd /opt/gpumd/bin/gpumd | grep -q "not found"; then
+        ldd /opt/gpumd/bin/gpumd
+        exit 1
+    fi
+
+    cat > /opt/build-info.json <<EOF
+{
+  "gpumd_version": "5.9.1",
+  "gpumd_commit": "11ba6fbdb4d71b2cdb351b39972fa057521585b3",
+  "gpumd_repo": "https://github.com/brucefan1983/GPUMD",
+  "runner_repo": "{{ RUNNER_REPO }}",
+  "runner_commit": "{{ RUNNER_COMMIT }}",
+  "cuda_archs": "$(cat /opt/gpumd/cuda_archs)"
+}
+EOF
+
+%environment
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONUNBUFFERED=1
 
 %runscript
-    echo "nep89_gpumd is a placeholder container" >&2
-    exit 1
+    exec /opt/venv/bin/python3 /opt/runner/mlpeg_gpumd.py "$@"
+
+%labels
+    mlpeg.contract_version 1.0
+    mlpeg.model nep89
+    mlpeg.precisions mixed
+    mlpeg.weights_sha256 75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
+    gpumd.version 5.9.1
+    gpumd.commit 11ba6fbdb4d71b2cdb351b39972fa057521585b3
+    mlpeg.runner_repo {{ RUNNER_REPO }}
+    mlpeg.runner_commit {{ RUNNER_COMMIT }}
+
+%help
+    ML-PEG inference-timing reference container (contract v1.0).
+
+    Engine:    GPUMD 5.9.1 (commit 11ba6fbdb4d71b2cdb351b39972fa057521585b3),
+               CUDA 12.9.2, SASS for the archs in /opt/gpumd/cuda_archs plus PTX
+               for the newest.
+    Model:     NEP89 (nep89_20250409.txt, GPUMD commit ca78f110), sha256
+               75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1,
+               at /opt/model/nep.txt.
+    I/O:       calorine 4.0 (model.xyz, run.in, thermo.out, dump_xyz, nep.txt).
+    Precision: mixed only. NEP evaluates descriptors, the network and per-atom
+               forces in fp32; positions, velocities and integration are fp64.
+
+    Usage:
+      apptainer run --nv <sif> --spec /mlpeg/in/spec.json \
+          --run-id <material>-n<n_atoms>-r<repeat> --precision mixed --out /mlpeg/out
+      apptainer run --nv <sif> --self-test
+
+    Non-default settings: none. NVE velocity Verlet from file velocities,
+    dump_thermo every 100 steps, GPUMD's default neighbour list (1 A skin).
+    GPUMD always runs the full measured step count (no 600 s cap).

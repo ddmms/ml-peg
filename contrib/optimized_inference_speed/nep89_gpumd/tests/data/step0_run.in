@@ -1,0 +1,5 @@
+potential nep.txt
+time_step 0
+ensemble nve
+dump_xyz 1 step0.xyz precision double force potential
+run 1
