@@ -12,6 +12,7 @@ from ml_peg import __version__
 from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.cli.inference_speed import inference_speed_app
 
 
 def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
@@ -492,6 +493,10 @@ app.add_typer(
         "List available categories, tests, and models for calculations, analysis, and "
         "app."
     ),
+)
+app.add_typer(
+    inference_speed_app,
+    help="Stage, build, run and analyse the optimised inference speed benchmark.",
 )
 
 

@@ -1,0 +1,22 @@
+Bootstrap: docker
+# PLACEHOLDER: the real definition lives in a separate repository.
+#   repo:   <TBD: URL of the GPUMD container repository>
+#   commit: <TBD: pinned commit>
+# Replace this file with the definition from that repository at the pinned commit.
+From: python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+
+# mlpeg.weights_sha256 is the sha256 of nep89_20250409.txt (GPUMD v4.0), the
+# same file used by the calorine CPUNEP reference.
+%labels
+    mlpeg.model nep89
+    mlpeg.precisions fp32
+    mlpeg.weights_sha256 75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
+    mlpeg.contract_version 1.0
+
+%post
+    echo "nep89_gpumd is a placeholder; see contrib/optimized_inference_speed/nep89_gpumd/README.md" >&2
+    exit 1
+
+%runscript
+    echo "nep89_gpumd is a placeholder container" >&2
+    exit 1

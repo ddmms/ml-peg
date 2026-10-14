@@ -1,0 +1,20 @@
+Bootstrap: docker
+# python:3.12-slim, pinned by digest
+From: python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+
+%files
+    runscript.py /opt/mock/runscript.py
+    weights.txt /opt/mock/weights.txt
+
+%labels
+    mlpeg.model mock
+    mlpeg.precisions fp64,fp32,mixed
+    mlpeg.weights_sha256 af343e6adc2806e6b83fcd5ba1c518af067135e82701b9c77884c4d58bed5f6f
+    mlpeg.contract_version 1.0
+
+%runscript
+    exec python3 /opt/mock/runscript.py "$@"
+
+%help
+    Mock container for the ML-PEG optimised inference speed benchmark.
+    Set MLPEG_MOCK_FAIL to plant failures; see /opt/mock/runscript.py.

@@ -1,0 +1,22 @@
+metrics:
+  Time per atom-step:
+    good: 0.1
+    bad: 10.0
+    unit: µs
+    tooltip: "Median MD cost per atom per step at the reference size (~16,000 atoms), for the fastest valid implementation and precision, averaged over materials."
+    level_of_theory: null
+    weight: 0
+  Largest system:
+    good: 1000000
+    bad: 1000
+    unit: atoms
+    tooltip: "Largest system with a valid, successful run."
+    level_of_theory: null
+    weight: 0
+  Valid runs:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "Fraction of launched runs that passed every validation check."
+    level_of_theory: null
+    weight: 0
