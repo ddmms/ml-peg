@@ -1,0 +1,126 @@
+/* Citation downloads share the app's light and dark theme colours. */
+.mlpeg-bibtex-controls {
+  color: var(--mlpeg-ink);
+  font-size: 0.85rem;
+}
+
+.mlpeg-bibtex-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 12px 0 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mlpeg-border);
+}
+
+.mlpeg-bibtex-actions,
+.mlpeg-bibtex-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mlpeg-bibtex-label {
+  color: var(--mlpeg-heading);
+  font-weight: 600;
+}
+
+.mlpeg-bibtex-count {
+  color: var(--mlpeg-muted);
+  font-size: 0.8rem;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+.mlpeg-bibtex-download,
+.mlpeg-bibtex-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--mlpeg-border);
+  border-radius: 6px;
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-heading);
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.mlpeg-bibtex-download:hover,
+.mlpeg-bibtex-copy:hover {
+  color: var(--mlpeg-accent-strong);
+  background: var(--mlpeg-accent-soft);
+  border-color: var(--mlpeg-accent);
+  text-decoration: none;
+}
+
+.mlpeg-bibtex-controls summary {
+  cursor: pointer;
+}
+
+.mlpeg-bibtex-download:focus-visible,
+.mlpeg-bibtex-copy:focus-visible,
+.mlpeg-bibtex-controls summary:focus-visible {
+  outline: 2px solid var(--mlpeg-accent);
+  outline-offset: 3px;
+}
+
+.mlpeg-bibtex-preview {
+  margin-top: 12px;
+  border-top: 1px solid var(--mlpeg-border);
+  padding-top: 8px;
+}
+
+.mlpeg-bibtex-preview > summary {
+  color: var(--mlpeg-heading);
+  font-weight: 600;
+}
+
+.mlpeg-bibtex-body {
+  margin-top: 10px;
+}
+
+.mlpeg-bibtex-code {
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid var(--mlpeg-border);
+  border-radius: 6px;
+  background: var(--mlpeg-surface);
+  color: var(--mlpeg-ink);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.mlpeg-bibtex-missing {
+  color: var(--mlpeg-muted);
+  font-size: 0.8rem;
+}
+
+.mlpeg-bibtex-group > .mlpeg-bibtex-missing {
+  flex-basis: 100%;
+}
+
+.mlpeg-bibtex-missing > div {
+  padding: 6px 0 0 16px;
+}
+
+.mlpeg-bibtex-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mlpeg-bibtex-scope {
+  color: var(--mlpeg-muted);
+  font-size: 0.8rem;
+}
+
+.mlpeg-bibtex-copy {
+  cursor: pointer;
+  font: inherit;
+}
