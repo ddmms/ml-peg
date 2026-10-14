@@ -35,7 +35,7 @@ def set_model_visible(page, model, visible):
     assert (model in before) != visible
     expected = sorted(set(before) | {model} if visible else set(before) - {model})
     page.locator("#model-filter-checklist").click()
-    search = page.get_by_role("searchbox")
+    search = page.locator("input.dash-dropdown-search")
     # Wait for the dropdown's opening autofocus before moving focus ourselves.
     expect(search).to_be_focused()
     search.fill(model)
