@@ -96,6 +96,65 @@ Reference data:
 * :math:`DLPNO-CCSD(T)` level of theory: a local coupled-cluster method.
 
 
+Sellers_Tors
+============
+
+Summary
+-------
+
+Performance in predicting torsional energy profiles of 62 neutral drug-like
+fragments (alkyl, aryl, biaryl and aryl amide torsions). Each fragment is scanned
+over 36 dihedral angles in 10° steps, giving 2232 conformers. Reference data from
+CCSD(T)/CBS single-point calculations on MP2/6-311+G**-optimised constrained geometries.
+
+Metrics
+-------
+
+For each torsion scan, the predicted relative energy of every scan point is taken
+with respect to the scan point that is lowest in energy at the reference level of
+theory, and converted to kcal/mol. The reference relative energies are calculated
+in the same way.
+
+1. MAE
+
+The mean absolute error between predicted and reference relative energies,
+over all scan points.
+
+2. RMSE
+
+The root mean squared error between predicted and reference relative energies,
+over all scan points.
+
+3. Barrier MAE
+
+For each scan, the torsional barrier is the difference between the maximum and
+minimum relative energies. The mean absolute error between predicted and
+reference barriers is averaged over all fragments.
+
+Benchmark speed
+------------------
+
+Fast: minutes on GPU, and minutes to tens of minutes on CPU. The benchmark is
+marked ``fast``. It took around 13 minutes for ``mace-omol`` on an Apple Silicon
+CPU (2232 single points).
+
+Data availability
+-----------------
+
+Input structures:
+
+* A Comparison of Quantum and Molecular Mechanical Methods to Estimate Strain
+  Energy in Druglike Fragments
+  Benjamin D. Sellers, Natalie C. James, Alberto Gobbi
+  Journal of Chemical Information and Modeling 2017 57 (6), 1265-1275
+  DOI: 10.1021/acs.jcim.6b00614
+
+Reference data:
+
+* Same as input data
+* :math:`CCSD(T)/CBS` level of theory, on MP2/6-311+G**-optimised constrained geometries.
+
+
 TorsionNet500
 =============
 
