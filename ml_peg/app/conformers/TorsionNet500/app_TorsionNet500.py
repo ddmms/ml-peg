@@ -10,6 +10,7 @@ from dash.html import Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
+    clear_from_table_cell,
     plot_from_scatter_files,
     plot_from_table_cell,
     struct_from_scatter,
@@ -77,18 +78,24 @@ class TorsionNet500App(BaseApp):
             }
             curve_dirs[model_name] = curve_dir
 
+        curve_placeholder = f"{BENCHMARK_NAME}-curve-placeholder"
+        struct_placeholder = f"{BENCHMARK_NAME}-struct-placeholder"
+
         # Clicking a model's RMSE or MAE cell shows that model's corresponding
-        # fragment scatter.
+        # fragment scatter, and clears the previous model's curve and structure.
         plot_from_table_cell(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-scatter-placeholder",
             cell_to_plot=scatter_cell_to_plot,
         )
+        clear_from_table_cell(
+            table_id=self.table_id,
+            plot_ids=[curve_placeholder, struct_placeholder],
+        )
 
         # Clicking a point on either scatter shows that fragment's curve. The
         # curve doesn't depend on which metric was clicked through, so both
         # scatters for a model share the same curve_dir.
-        struct_placeholder = f"{BENCHMARK_NAME}-struct-placeholder"
         trajectories = _trajectory_paths()
 
         for model_name, curve_dir in curve_dirs.items():
@@ -96,7 +103,7 @@ class TorsionNet500App(BaseApp):
                 # Showing a new curve clears the previous curve's structure.
                 curve_id = plot_from_scatter_files(
                     scatter_id=f"{BENCHMARK_NAME}-{model_name}-{metric}-figure",
-                    plot_id=f"{BENCHMARK_NAME}-curve-placeholder",
+                    plot_id=curve_placeholder,
                     plot_dir=curve_dir,
                     clear_plot_ids=[struct_placeholder],
                 )

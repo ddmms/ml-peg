@@ -228,6 +228,45 @@ def plot_from_table_cell(
         return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
 
 
+def clear_from_table_cell(table_id: str, plot_ids: Sequence[str]) -> None:
+    """
+    Attach callback to clear placeholder Divs when a table cell is clicked.
+
+    Stops plots derived from a previously selected cell, such as a different
+    model's, from lingering after switching.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being clicked.
+    plot_ids
+        IDs of placeholder Divs to empty.
+    """
+
+    @callback(
+        *[Output(plot_id, "children", allow_duplicate=True) for plot_id in plot_ids],
+        Input(table_id, "active_cell"),
+        prevent_initial_call=True,
+    )
+    def clear_plots(active_cell):
+        """
+        Register callback to clear placeholders on table cell selection.
+
+        Parameters
+        ----------
+        active_cell
+            Clicked cell in Dash table.
+
+        Returns
+        -------
+        Div | tuple[Div, ...]
+            An empty Div per ID in ``plot_ids``.
+        """
+        if len(plot_ids) == 1:
+            return Div()
+        return tuple(Div() for _ in plot_ids)
+
+
 # A scatter can be passed to more than one helper, but its highlight callback
 # should only be registered once. Store the first frame-follow setting so later
 # registrations can be skipped or rejected when they disagree.
