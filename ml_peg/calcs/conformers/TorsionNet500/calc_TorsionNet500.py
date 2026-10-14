@@ -69,6 +69,8 @@ def test_torsionnet500(mlip: tuple[str, Any]) -> None:
                 warn(f"Error calculating energy for {o.name}: {exc}", stacklevel=2)
                 a.info["model_energy"] = np.nan
 
+            a.calc = None
+
         write_dir = OUT_PATH / model_name
         write_dir.mkdir(parents=True, exist_ok=True)
         write(write_dir / o.name, atoms)
