@@ -16,7 +16,6 @@ from ase.io import Trajectory, read
 from ase.md.nose_hoover_chain import IsotropicMTKNPT
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 from ase.md.verlet import VelocityVerlet
-from joblib import Parallel, delayed
 import numpy as np
 import pytest
 
@@ -46,8 +45,6 @@ BAROSTAT_STEPS = 1000
 PRESSURE = 0.0 * units.bar
 
 AU_TO_G_CM3 = 1e24 / units.mol
-
-N_JOBS = 5
 
 LOG_INTERVAL = NPT_PROD // VACF_SAMPLES
 
@@ -262,8 +259,9 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
     mlip
         Name of model use and model to get calculator.
     system
-        Elements of the file in the metal input archive. Each crystal supplies
-        paired ``temperatures`` and ``diffusion_constants`` metadata.
+        Zero-based index into the sorted XYZ files in the metal input archive.
+        Each crystal supplies paired ``temperatures`` and ``diffusion_constants``
+        metadata.
     """
     model_name, model = mlip
 
@@ -308,8 +306,7 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
         first_frame = (NPT_MELT + NPT_EQ) // LOG_INTERVAL + 1
 
         with Trajectory(output_fname) as traj:
-            Parallel(n_jobs=N_JOBS, backend="loky", inner_max_num_threads=1)(
-                delayed(run_nve)(traj[frame_idx], model, out_dir / f"vacf_{idx}.npy")
-                for idx, frame_idx in enumerate(range(first_frame, len(traj)))
-                if not (out_dir / f"vacf_{idx}.npy").exists()
-            )
+            for idx, frame_idx in enumerate(range(first_frame, len(traj))):
+                vacf_path = out_dir / f"vacf_{idx}.npy"
+                if not vacf_path.exists():
+                    run_nve(traj[frame_idx], model, vacf_path)

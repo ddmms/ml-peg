@@ -5,7 +5,8 @@ implementers:
 citations:
 - key: horbachImprovementSimulationMetallicMelts2009
   role: inspired_by
-  title: 'Improvement of computer simulation models for metallic melts via quasielastic neutron scattering: A case study of liquid titanium'
+  title: 'Improvement of computer simulation models for metallic melts via quasielastic
+    neutron scattering: A case study of liquid titanium'
   authors:
   - J. Horbach
   - R. E. Rozas
@@ -22,3 +23,50 @@ citations:
   year: 2010
   doi: 10.1103/PhysRevB.81.012102
   url: https://link.aps.org/doi/10.1103/PhysRevB.81.012102
+- key: karglSelfDiffusionLiquid2012
+  role: reference_data
+  title: Self Diffusion in Liquid Aluminium
+  authors:
+  - F Kargl
+  - H Weis
+  - T Unruh
+  - A Meyer
+  year: 2012
+  doi: 10.1088/1742-6596/340/1/012077
+  url: https://doi.org/10.1088/1742-6596/340/1/012077
+- key: horbachImprovementComputerSimulation2009
+  role: reference_data
+  title: 'Improvement of Computer Simulation Models for Metallic Melts via Quasielastic
+    Neutron Scattering: A Case Study of Liquid Titanium'
+  authors:
+  - J. Horbach
+  - R. E. Rozas
+  - T. Unruh
+  - A. Meyer
+  year: 2009
+  doi: 10.1103/PhysRevB.80.212203
+  url: https://link.aps.org/doi/10.1103/PhysRevB.80.212203
+- key: meyerIronSelfDiffusion2019
+  role: reference_data
+  title: Iron Self Diffusion in Liquid Pure Iron and Iron-Carbon Alloys
+  authors:
+  - A Meyer
+  - L Hennig
+  - F Kargl
+  - T Unruh
+  year: 2019
+  doi: 10.1088/1361-648X/ab2855
+  url: https://doi.org/10.1088/1361-648X/ab2855
+- key: meyerDeterminationSelfdiffusionCoefficients2008
+  role: reference_data
+  title: Determination of Self-Diffusion Coefficients by Quasielastic Neutron Scattering
+    Measurements of Levitated Ni Droplets
+  authors:
+  - A. Meyer
+  - S. Stüber
+  - D. Holland-Moritz
+  - O. Heinen
+  - T. Unruh
+  year: 2008
+  doi: 10.1103/PhysRevB.77.092201
+  url: https://link.aps.org/doi/10.1103/PhysRevB.77.092201

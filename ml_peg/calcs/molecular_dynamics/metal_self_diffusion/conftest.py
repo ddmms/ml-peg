@@ -1,4 +1,4 @@
-"""Obtain the system_id input argument."""
+"""Obtain the input structure index from the --system option."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def pytest_addoption(parser):
 @pytest.fixture
 def system(request):
     """
-    Return the selected crystal name.
+    Return the zero-based index into the sorted input structure files.
 
     Parameters
     ----------
@@ -33,6 +33,6 @@ def system(request):
     Returns
     -------
     int
-        Requested crystal name.
+        Requested index into the alphabetically sorted XYZ filenames.
     """
     return request.config.getoption("--system")
