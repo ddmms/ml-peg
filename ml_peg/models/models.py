@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ase.calculators.mixing import SumCalculator
 
 Precision = Literal["low", "high"]
+DeviceType = Literal["auto", "cpu", "cuda"]
 
 
 def check_precision(precision: str) -> None:
@@ -285,7 +286,7 @@ class MatterSimCalc(GenericASECalc):
 class VivaceCalc(SumCalc):
     """Dataclass for Vivace calculator."""
 
-    device: Device | None = None
+    device: DeviceType | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -327,7 +328,7 @@ class OrbCalc(SumCalc):
     """Dataclass for Orb calculator."""
 
     name: str
-    device: Device | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -411,7 +412,7 @@ class FairChemCalc(SumCalc):
 
     model_name: str
     task_name: str
-    device: Device | str = "cpu"
+    device: DeviceType = "cpu"
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
 
@@ -446,9 +447,10 @@ class FairChemCalc(SumCalc):
             inference_settings_default(), base_precision_dtype=dtype
         )
 
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
         predictor = pretrained_mlip.get_predict_unit(
             self.model_name,
-            device=self.device,
+            device=device,
             overrides=self.overrides,
             inference_settings=inference_settings,
         )
@@ -533,7 +535,7 @@ class UPETCalc(GenericASECalc):
 class SevenNetCalc(SumCalc):
     """Dataclass for SevenNet calculator."""
 
-    device: Device | None = None
+    device: DeviceType | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -557,15 +559,14 @@ class SevenNetCalc(SumCalc):
 
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
-        device_str = device.value if isinstance(device, Device) else (device or "cpu")
-        return SevenNetCalculator(device=device_str, **self.kwargs)
+        return SevenNetCalculator(device=device or "cpu", **self.kwargs)
 
 
 @dataclasses.dataclass(kw_only=True)
 class GraceCalc(GenericASECalc):
     """Dataclass for GRACE calculator."""
 
-    device: Device | None = None
+    device: DeviceType | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
