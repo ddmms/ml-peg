@@ -7,6 +7,8 @@ from inspect import unwrap
 from pathlib import Path
 from unittest.mock import patch
 
+from ase import Atoms
+from ase.calculators.singlepoint import SinglePointCalculator
 import numpy as np
 import pytest
 
@@ -134,3 +136,123 @@ def test_energy_failure_keeps_other_models_scoreable(
         assert np.isnan(results["bad"]).all()
     else:
         assert np.isfinite([results["bad"][0], results["bad"][2]]).all()
+
+
+def test_formation_energies_use_al3ti_stoichiometry_and_polymorph_order(
+    monkeypatch, tmp_path
+):
+    """Formation energies use three Al atoms per Ti and retain input order."""
+
+    def atoms_with_energy(symbols, energy):
+        atoms = Atoms(symbols)
+        atoms.calc = SinglePointCalculator(atoms, energy=energy)
+        return atoms
+
+    monkeypatch.setattr(al3ti_analysis, "MODELS", ["model"])
+    monkeypatch.setattr(al3ti_analysis, "CALC_PATH", tmp_path)
+    (tmp_path / "model").mkdir()
+    elemental = {
+        "Al_fcc": atoms_with_energy("Al4", -8.0),
+        "Ti_hcp": atoms_with_energy("Ti4", -16.0),
+    }
+    monkeypatch.setattr(
+        al3ti_analysis, "load_structure", lambda name, _path: elemental[name]
+    )
+    relaxed = {
+        "model": [
+            atoms_with_energy("Al3Ti", energy) for energy in (-12.0, -11.2, -10.4)
+        ]
+    }
+    references = {
+        name: {"formation_energy_0k_ev_atom": {"value": value}}
+        for name, value in zip(
+            al3ti_analysis.POLYMORPHS, (-0.51, -0.31, -0.11), strict=True
+        )
+    }
+
+    results = unwrap(al3ti_analysis.formation_energies)(references, relaxed)
+
+    assert results["model"] == pytest.approx([-0.5, -0.3, -0.1])
+    assert results["ref"] == pytest.approx([-0.51, -0.31, -0.11])
+
+
+@pytest.mark.parametrize(
+    ("prediction", "expected"),
+    [
+        ([1.0, 2.0, 3.0], 100.0),
+        ([2.0, 1.0, 3.0], 200.0 / 3.0),
+        ([1.0, 1.0, 3.0], 200.0 / 3.0),
+        ([3.0, 2.0, 1.0], 0.0),
+        ([1.0, np.nan, 3.0], np.nan),
+        ([1.0, 2.0], np.nan),
+    ],
+)
+def test_pairwise_order_accuracy(prediction, expected):
+    """Ordering counts matching pairs and rejects incomplete predictions."""
+    accuracy = al3ti_analysis.pairwise_order_accuracy([1.0, 2.0, 3.0], prediction)
+
+    if np.isnan(expected):
+        assert np.isnan(accuracy)
+    else:
+        assert accuracy == pytest.approx(expected)
+
+
+def test_geometry_metrics_weight_polymorphs_and_parameters():
+    """Length errors stay visible when opposing changes nearly cancel in volume."""
+    references = {
+        "D022": {
+            "lattice_a_angstrom": {"value": 2.0},
+            "lattice_c_angstrom": {"value": 4.0},
+            "volume_per_atom_angstrom3": {"value": 4.0},
+        },
+        "D023": {
+            "lattice_a_angstrom": {"value": 3.0},
+            "lattice_c_angstrom": {"value": 6.0},
+            "volume_per_atom_angstrom3": {"value": 13.5},
+        },
+        "L12": {
+            "lattice_a_angstrom": {"value": 4.0},
+            "volume_per_atom_angstrom3": {"value": 16.0},
+        },
+    }
+    relaxed = {
+        "model": [
+            Atoms("Al3Ti", cell=(2.2, 1.8, 4.0)),
+            Atoms("Al3Ti", cell=(3.0, 3.0, 6.6)),
+            Atoms("Al3Ti", cell=(4.4, 4.0, 4.0)),
+        ]
+    }
+
+    volumes = unwrap(al3ti_analysis.volumes_per_atom)(references, relaxed)
+    volume_errors = unwrap(al3ti_analysis.volume_errors)(volumes)
+    lattice_errors = unwrap(al3ti_analysis.lattice_parameter_errors)(
+        references, relaxed
+    )
+
+    assert volumes["ref"] == pytest.approx([4.0, 13.5, 16.0])
+    assert volumes["model"] == pytest.approx([3.96, 14.85, 17.6])
+    assert volume_errors["model"] == pytest.approx((0.04 + 1.35 + 1.6) / 3)
+    assert lattice_errors["model"] == pytest.approx((5.0 + 5.0 + 10.0 / 3) / 3)
+
+
+def test_missing_polymorph_makes_geometry_scores_nan():
+    """A missing relaxed structure cannot yield a complete geometry score."""
+    references = {
+        name: {
+            "lattice_a_angstrom": {"value": 2.0},
+            "lattice_c_angstrom": {"value": 4.0},
+            "volume_per_atom_angstrom3": {"value": 4.0},
+        }
+        for name in al3ti_analysis.POLYMORPHS
+    }
+    relaxed = {"model": [Atoms("Al3Ti", cell=(2.0, 2.0, 4.0)), None, None]}
+
+    volumes = unwrap(al3ti_analysis.volumes_per_atom)(references, relaxed)
+    volume_errors = unwrap(al3ti_analysis.volume_errors)(volumes)
+    lattice_errors = unwrap(al3ti_analysis.lattice_parameter_errors)(
+        references, relaxed
+    )
+
+    assert np.isnan(volumes["model"][1:]).all()
+    assert np.isnan(volume_errors["model"])
+    assert np.isnan(lattice_errors["model"])
