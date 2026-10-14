@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "rezac-2022-ncia-dispersion"
+    bibtex_key: "ez2022"
     role: benchmark_method
     title: "Non-Covalent Interactions Atlas benchmark data sets 5: London dispersion in an extended chemical space"
     authors:

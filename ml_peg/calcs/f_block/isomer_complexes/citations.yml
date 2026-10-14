@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "rose-2024-gfn-ff"
+    bibtex_key: "Rose2024"
     role: benchmark_method
     title: "Fast and Robust Modeling of Lanthanide and Actinide Complexes, Biomolecules, and Molecular Crystals with the Extended GFN-FF Model"
     authors:

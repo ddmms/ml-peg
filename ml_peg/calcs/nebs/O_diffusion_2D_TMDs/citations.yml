@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "liu-2015-o-diffusion-tmd"
+    bibtex_key: liu-2015-o-diffusion-tmd
     role: reference_data
     title: "Atomistic insight into the oxidation of monolayer transition metal dichalcogenides: from structures to electronic properties"
     authors:

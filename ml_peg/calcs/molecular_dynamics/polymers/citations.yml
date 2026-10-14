@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "simm-2025-simpoly"
+    bibtex_key: "simm2025simpoly"
     role: benchmark_method
     title: "SimPoly: Simulation of Polymers with Machine Learning Force Fields Derived from First Principles"
     authors:

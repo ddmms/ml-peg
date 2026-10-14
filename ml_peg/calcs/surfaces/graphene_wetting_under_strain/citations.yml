@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "lim-2026-graphene-wetting"
+    bibtex_key: lim2026straindependentwettinggraphene
     role: benchmark_method
     title: "Strain-Dependent Wetting of Graphene"
     authors:

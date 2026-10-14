@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "epstein-2023-hydrolysis"
+    bibtex_key: epstein-2023-hydrolysis
     role: reference_data
     title: "Assessing the Accuracy of Density Functional Approximations for Predicting Hydrolysis Reaction Kinetics"
     authors:

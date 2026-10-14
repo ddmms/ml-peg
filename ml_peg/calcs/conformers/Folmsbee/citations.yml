@@ -16,6 +16,7 @@ contributors:
 
 citations:
   - key: "folmsbee-2020-conformers"
+    bibtex_key: folmsbee-2020-conformers
     role: benchmark_method
     title: "Assessing conformer energies using electronic structure and machine learning methods"
     authors:

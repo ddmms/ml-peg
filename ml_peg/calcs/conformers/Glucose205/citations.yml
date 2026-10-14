@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: marianski2016assessing
+    bibtex_key: "marianski2016assessing"
     role: reference_data
     title: Assessing the accuracy of across-the-scale methods for predicting carbohydrate conformational
       energies for the examples of glucose and α-maltose

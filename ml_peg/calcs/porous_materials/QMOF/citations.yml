@@ -13,6 +13,7 @@ contributors:
 
 citations:
   - key: "rosen-2021-qmof"
+    bibtex_key: rosen-2021-qmof
     role: reference_data
     title: "Machine learning the quantum-chemical properties of metal-organic frameworks for accelerated materials discovery"
     authors:
@@ -29,6 +30,7 @@ citations:
     url: "https://www.sciencedirect.com/science/article/pii/S2590238521000709"
 
   - key: "batatia-2025-mace-mp"
+    bibtex_key: "batatia2025foundation"
     role: reference_data
     title: "A foundation model for atomistic materials chemistry"
     authors:

@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "dejong-2015-elasticity"
+    bibtex_key: "de2015charting"
     role: benchmark_method
     title: "Charting the complete elastic properties of inorganic crystalline compounds"
     authors:

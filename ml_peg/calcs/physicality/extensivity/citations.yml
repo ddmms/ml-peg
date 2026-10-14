@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "batatia-2025-cross-learning"
+    bibtex_key: "batatia2025crosslearningelectronicstructure"
     role: benchmark_method
     title: "Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields"
     authors:

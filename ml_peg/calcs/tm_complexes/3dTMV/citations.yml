@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "neugebauer-2023-3dtmv"
+    bibtex_key: "Neugebauer2023"
     role: benchmark_method
     title: "Toward Benchmark-Quality Ab Initio Predictions for 3d Transition Metal Electrocatalysts: A Comparison of CCSD(T) and ph-AFQMC"
     authors:

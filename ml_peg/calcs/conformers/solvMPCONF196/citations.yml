@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: rezac2018mpconf196
+    bibtex_key: "rezac2018mpconf196"
     role: reference_data
     title: 'Toward Accurate Conformational Energies of Smaller Peptides and Medium-Sized Macrocycles: MPCONF196
       Benchmark Energy Data Set'
@@ -23,6 +24,7 @@ citations:
     year: 2018
     doi: 10.1021/acs.jctc.7b01074
   - key: plett2023mpconf196water
+    bibtex_key: "plett2023mpconf196water"
     role: reference_data
     title: 'Conformational energies of biomolecules in solution: Extending the MPCONF196 benchmark with
       explicit water molecules'

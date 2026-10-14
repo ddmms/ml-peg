@@ -9,6 +9,7 @@ contributors:
 
 citations:
   - key: "togo-2023-mdr-phonons"
+    bibtex_key: togo-2023-mdr-phonons
     role: reference_data
     title: "MDR phonon calculation database"
     authors:
@@ -17,6 +18,7 @@ citations:
     doi: "10.48505/nims.4197"
     url: "https://doi.org/10.48505/nims.4197"
   - key: "loew-2024-phonons"
+    bibtex_key: "Loew2025"
     role: benchmark_method
     title: "Universal Machine Learning Interatomic Potentials are Ready for Phonons"
     authors:
@@ -25,5 +27,6 @@ citations:
       - "Hai-Chen Wang"
       - "Silvana Botti"
       - "Miguel A. L. Marques"
-    year: 2024
-    url: "https://arxiv.org/abs/2412.16551"
+    year: 2025
+    doi: "10.1038/s41524-025-01650-1"
+    url: "https://doi.org/10.1038/s41524-025-01650-1"

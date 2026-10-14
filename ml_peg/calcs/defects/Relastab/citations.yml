@@ -34,6 +34,7 @@ citations:
     doi: null
     url: null
   - key: "soum-sidikov-2025-cawo4"
+    bibtex_key: soum-sidikov-2025-cawo4
     role: benchmark_method
     title: "Calculation of crystal defects induced in CaWO4 cryogenic detector by 100 eV displacement cascades using a data driven force field"
     authors:

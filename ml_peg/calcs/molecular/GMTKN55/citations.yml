@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "goerigk-2017-gmtkn55"
+    bibtex_key: "Goerigk2017"
     role: benchmark_method
     title: "A look at the density functional theory zoo with the advanced GMTKN55 database for general main group thermochemistry, kinetics and noncovalent interactions"
     authors:

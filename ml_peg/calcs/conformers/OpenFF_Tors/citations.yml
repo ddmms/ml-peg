@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: behara2024openff
+    bibtex_key: "behara2024openff"
     role: reference_data
     title: Benchmarking Quantum Mechanical Levels of Theory for Valence Parametrization in Force Fields
     authors:

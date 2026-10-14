@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "kriz-2021-ncia-repulsive"
+    bibtex_key: "K2021"
     role: benchmark_method
     title: "Non-covalent interactions atlas benchmark data sets 3: Repulsive contacts"
     authors:

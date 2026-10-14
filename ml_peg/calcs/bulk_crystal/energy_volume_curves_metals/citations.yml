@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "cak-2014-bop"
+    bibtex_key: cak-2014-bop
     role: reference_data
     title: "Analytic bond-order potentials for the bcc refractory metals Nb, Ta, Mo and W"
     authors:
@@ -18,6 +19,7 @@ citations:
     doi: "10.1088/0953-8984/26/19/195501"
     url: null
   - key: "nitol-2022-ti-zr"
+    bibtex_key: nitol-2022-ti-zr
     role: reference_data
     title: "Machine learning models for predictive materials science from fundamental physics: An application to titanium and zirconium"
     authors:
@@ -28,6 +30,7 @@ citations:
     doi: "10.1016/j.actamat.2021.117347"
     url: null
   - key: "soulairol-2010-fe-cr"
+    bibtex_key: soulairol-2010-fe-cr
     role: reference_data
     title: "Structure and magnetism of bulk Fe and Cr: From plane waves to LCAO methods"
     authors:
@@ -38,6 +41,7 @@ citations:
     doi: "10.1088/0953-8984/22/29/295502"
     url: null
   - key: "he-2005-ni"
+    bibtex_key: he-2005-ni
     role: reference_data
     title: "Calculation of ferromagnetic states in metastable bcc and hcp Ni by projector-augmented wave method"
     authors:
@@ -48,6 +52,7 @@ citations:
     doi: "10.1063/1.1903104"
     url: null
   - key: "dezerald-2014-fe"
+    bibtex_key: dezerald-2014-fe
     role: reference_data
     title: "Stability of self-interstitial clusters with C15 Laves phase structure in iron"
     authors:
@@ -60,6 +65,7 @@ citations:
     doi: "10.1016/j.jnucmat.2014.02.012"
     url: null
   - key: "wang-2018-fe-bain"
+    bibtex_key: wang-2018-fe-bain
     role: reference_data
     title: "Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study"
     authors:

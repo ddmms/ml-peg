@@ -10,6 +10,7 @@ contributors:
 
 citations:
   - key: "alhamdani-2017-bn-water"
+    bibtex_key: alhamdani2017bnwater
     role: benchmark_method
     title: "Properties of the water to boron nitride interaction: From zero to two dimensions with benchmark accuracy"
     authors:
@@ -25,8 +26,8 @@ citations:
       - "A. Tkatchenko"
       - "A. Michaelides"
     year: 2017
-    doi: null
-    url: null
+    doi: "10.1063/1.4985878"
+    url: "https://doi.org/10.1063/1.4985878"
   - key: "brandenburg-2019-water-graphene"
     role: benchmark_method
     title: "Physisorption of water on graphene: Subchemical accuracy from many-body electronic structure methods"
@@ -44,6 +45,7 @@ citations:
     doi: null
     url: null
   - key: "ehlert-2023-co2-graphene"
+    bibtex_key: ehlert2023co2graphene
     role: benchmark_method
     title: "CO2 on graphene: Benchmarking computational approaches to noncovalent interactions"
     authors:
@@ -51,9 +53,10 @@ citations:
       - "A. Piras"
       - "G. Gryn'ova"
     year: 2023
-    doi: null
-    url: null
+    doi: "10.1021/acsomega.3c03251"
+    url: "https://doi.org/10.1021/acsomega.3c03251"
   - key: "tsatsoulis-2018-h-si100"
+    bibtex_key: tsatsoulis2018hydrogensi
     role: benchmark_method
     title: "Reaction energetics of hydrogen on Si(100) surface: A periodic many-electron theory study"
     authors:
@@ -62,8 +65,8 @@ citations:
       - "A. Groß"
       - "A. Grüneis"
     year: 2018
-    doi: null
-    url: null
+    doi: "10.1063/1.5055706"
+    url: "https://doi.org/10.1063/1.5055706"
   - key: "tsatsoulis-2017-water-lih"
     role: benchmark_method
     title: "A comparison between quantum chemistry and quantum Monte Carlo techniques for the adsorption of water on the (001) LiH surface"
@@ -82,15 +85,17 @@ citations:
     doi: null
     url: null
   - key: "ye-2023-surface-chemistry"
+    bibtex_key: ye2024abinitiosurfacechemistry
     role: benchmark_method
     title: "Ab initio surface chemistry with chemical accuracy"
     authors:
       - "H.-Z. Ye"
       - "T. C. Berkelbach"
-    year: 2023
+    year: 2024
     doi: null
     url: "https://arxiv.org/abs/2309.14640"
   - key: "lustemberg-2020-ceria-co"
+    bibtex_key: PhysRevLett.125.256101
     role: benchmark_method
     title: "Vibrational frequencies of cerium-oxide-bound CO: A challenge for conventional DFT methods"
     authors:
@@ -103,9 +108,10 @@ citations:
       - "C. Wöll"
       - "M. V. Ganduglia-Pirovano"
     year: 2020
-    doi: null
-    url: null
+    doi: "10.1103/PhysRevLett.125.256101"
+    url: "https://link.aps.org/doi/10.1103/PhysRevLett.125.256101"
   - key: "shi-2023-many-body-surface"
+    bibtex_key: shi2023manybody
     role: benchmark_method
     title: "Many-body methods for surface chemistry come of age: Achieving consensus with experiments"
     authors:
@@ -116,9 +122,10 @@ citations:
       - "A. Grüneis"
       - "A. Michaelides"
     year: 2023
-    doi: null
-    url: null
+    doi: "10.1021/jacs.3c09616"
+    url: "https://doi.org/10.1021/jacs.3c09616"
   - key: "hanikel-2021-mof-water"
+    bibtex_key: hanikel2021waterstructures
     role: benchmark_method
     title: "Evolution of water structures in metal-organic frameworks for improved atmospheric water harvesting"
     authors:
@@ -131,9 +138,10 @@ citations:
       - "L. Gagliardi"
       - "O. M. Yaghi"
     year: 2021
-    doi: null
-    url: null
+    doi: "10.1126/science.abj0890"
+    url: "https://www.science.org/doi/abs/10.1126/science.abj0890"
   - key: "berger-2023-alkane-zeolite"
+    bibtex_key: berger2023alkaneadsorption
     role: benchmark_method
     title: "Molecular dynamics with chemical accuracy: Alkane adsorption in acidic zeolites"
     authors:
@@ -141,14 +149,15 @@ citations:
       - "M. Rybicki"
       - "J. Sauer"
     year: 2023
-    doi: null
-    url: null
+    doi: "10.1021/acscatal.2c05493"
+    url: "https://doi.org/10.1021/acscatal.2c05493"
   - key: "berger-2021-butene-zeolite"
+    bibtex_key: berger2021dimerization
     role: benchmark_method
     title: "Dimerization of linear butenes and pentenes in an acidic zeolite (H-MFI)"
     authors:
       - "F. Berger"
       - "J. Sauer"
     year: 2021
-    doi: null
-    url: null
+    doi: "10.1002/anie.202013671"
+    url: "https://onlinelibrary.wiley.com/doi/abs/10.1002/anie.202013671"

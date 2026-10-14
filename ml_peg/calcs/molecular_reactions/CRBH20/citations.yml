@@ -6,6 +6,7 @@ contributors: []
 
 citations:
   - key: "batatia-2024-mace-mp"
+    bibtex_key: "batatia2025foundation"
     role: benchmark_method
     title: "A foundation model for atomistic materials chemistry"
     authors:

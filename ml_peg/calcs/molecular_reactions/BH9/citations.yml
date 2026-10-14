@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: Prasad2021
+    bibtex_key: "Prasad2021"
     role: reference_data
     title: 'BH9, a New Comprehensive Benchmark Data Set for Barrier Heights and Reaction Energies: Assessment
       of Density Functional Approximations and Basis Set Incompleteness Potentials'

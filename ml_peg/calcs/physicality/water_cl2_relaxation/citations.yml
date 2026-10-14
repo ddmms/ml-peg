@@ -12,6 +12,7 @@ contributors:
 
 citations:
   - key: "batatia-2026-mace-polar"
+    bibtex_key: batatia2026mace
     role: benchmark_method
     title: "MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry"
     authors:
