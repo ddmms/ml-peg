@@ -28,7 +28,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 # Elemental info for the app's filtering, saved per-fragment (rather than just the
 # combined set) in preparation for future partial filtering.
-get_struct_info(
+INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
     index="0",
@@ -37,6 +37,10 @@ get_struct_info(
     write_structs=False,
     out_path=OUT_PATH,
 )
+
+# Fragment labels from the mock calculation, so all models are compared over the
+# same fragments, whether or not their own calculation produced all of them.
+LABELS = INFO["filenames"]
 
 
 @pytest.fixture
@@ -47,49 +51,49 @@ def fragment_rmse() -> dict[str, dict[str, list]]:
     Returns
     -------
     dict[str, dict[str, list]]
-        Per model, the fragment labels, the corresponding RMSE and MAE for each
-        torsion scan, and the mean-centered angle/energy profile for each scan
-        (for plotting torsion curves).
+        Per model, the RMSE and MAE for each torsion scan in `LABELS` order, and
+        the mean-centered angle/energy profile for each scan (for plotting
+        torsion curves). Scans the model has no output for are NaN, with no
+        profile.
     """
     results = {}
 
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-
-        labels = []
         rmse_scans = []
         mae_scans = []
         profiles = []
 
-        if model_dir.exists():
-            xyz_files = sorted(model_dir.glob("*.xyz"))
+        for label in LABELS:
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                rmse_scans.append(float("nan"))
+                mae_scans.append(float("nan"))
+                profiles.append(None)
+                continue
 
-            for xyz_file in xyz_files:
-                atoms = read(xyz_file, ":")
+            atoms = read(struct_path, ":")
 
-                angle = [a.info["torsion_angle"] for a in atoms]
-                ref_energy = np.array([a.info["ref_energy"] for a in atoms])
-                model_energy = np.array([a.info["model_energy"] for a in atoms])
+            angle = [a.info["torsion_angle"] for a in atoms]
+            ref_energy = np.array([a.info["ref_energy"] for a in atoms])
+            model_energy = np.array([a.info["model_energy"] for a in atoms])
 
-                # Mean-center so only the relative torsional profile is compared.
-                ref_rel_energy = ref_energy - ref_energy.mean()
-                model_rel_energy = model_energy - model_energy.mean()
+            # Mean-center so only the relative torsional profile is compared.
+            ref_rel_energy = ref_energy - ref_energy.mean()
+            model_rel_energy = model_energy - model_energy.mean()
 
-                labels.append(xyz_file.stem)
-                rmse_scans.append(rmse(ref_rel_energy, model_rel_energy))
-                mae_scans.append(mae(ref_rel_energy, model_rel_energy))
+            rmse_scans.append(rmse(ref_rel_energy, model_rel_energy))
+            mae_scans.append(mae(ref_rel_energy, model_rel_energy))
 
-                order = np.argsort(angle)
-                profiles.append(
-                    {
-                        "angle": np.asarray(angle)[order].tolist(),
-                        "ref_rel_energy": ref_rel_energy[order].tolist(),
-                        "model_rel_energy": model_rel_energy[order].tolist(),
-                    }
-                )
+            order = np.argsort(angle)
+            profiles.append(
+                {
+                    "angle": np.asarray(angle)[order].tolist(),
+                    "ref_rel_energy": ref_rel_energy[order].tolist(),
+                    "model_rel_energy": model_rel_energy[order].tolist(),
+                }
+            )
 
         results[model_name] = {
-            "labels": labels,
             "rmse": rmse_scans,
             "mae": mae_scans,
             "profiles": profiles,
@@ -106,7 +110,7 @@ def get_rmse(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | Non
     Parameters
     ----------
     fragment_rmse
-        Per-fragment RMSE and labels for each model.
+        Per-fragment RMSE for each model.
 
     Returns
     -------
@@ -116,8 +120,9 @@ def get_rmse(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | Non
     results = {}
 
     for model_name in MODELS:
-        rmse_scans = fragment_rmse[model_name]["rmse"]
-        results[model_name] = float(np.nanmean(rmse_scans)) if rmse_scans else None
+        scans = fragment_rmse[model_name]["rmse"]
+        valid = [value for value in scans if np.isfinite(value)]
+        results[model_name] = float(np.mean(valid)) if valid else None
 
     return results
 
@@ -130,7 +135,7 @@ def get_mae(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | None
     Parameters
     ----------
     fragment_rmse
-        Per-fragment RMSE, MAE, and labels for each model.
+        Per-fragment RMSE and MAE for each model.
 
     Returns
     -------
@@ -140,8 +145,9 @@ def get_mae(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | None
     results = {}
 
     for model_name in MODELS:
-        mae_scans = fragment_rmse[model_name]["mae"]
-        results[model_name] = float(np.nanmean(mae_scans)) if mae_scans else None
+        scans = fragment_rmse[model_name]["mae"]
+        valid = [value for value in scans if np.isfinite(value)]
+        results[model_name] = float(np.mean(valid)) if valid else None
 
     return results
 
@@ -198,24 +204,24 @@ def fragment_scatter_figures(fragment_rmse: dict[str, dict[str, list]]) -> None:
     Parameters
     ----------
     fragment_rmse
-        Per-fragment RMSE, MAE, and labels for each model.
+        Per-fragment RMSE and MAE for each model.
     """
     for model_name in MODELS:
-        labels = fragment_rmse[model_name]["labels"]
+        rmse_scans = fragment_rmse[model_name]["rmse"]
 
-        if not labels:
+        # Missing scans are plotted as gaps, so points stay in `LABELS` order,
+        # but a model with nothing to plot is skipped entirely.
+        if not any(np.isfinite(value) for value in rmse_scans):
             continue
 
         out_dir = OUT_PATH / model_name
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        rmse_fig = plot_fragment_metric_figure(
-            model_name, "RMSE", labels, fragment_rmse[model_name]["rmse"]
-        )
+        rmse_fig = plot_fragment_metric_figure(model_name, "RMSE", LABELS, rmse_scans)
         rmse_fig.write_json(out_dir / "fragment_rmse_scatter.json")
 
         mae_fig = plot_fragment_metric_figure(
-            model_name, "MAE", labels, fragment_rmse[model_name]["mae"]
+            model_name, "MAE", LABELS, fragment_rmse[model_name]["mae"]
         )
         mae_fig.write_json(out_dir / "fragment_mae_scatter.json")
 
@@ -278,19 +284,22 @@ def torsion_curve_figures(fragment_rmse: dict[str, dict[str, list]]) -> None:
     Parameters
     ----------
     fragment_rmse
-        Per-fragment RMSE, labels, and profiles for each model.
+        Per-fragment RMSE and profiles for each model.
     """
     for model_name in MODELS:
-        labels = fragment_rmse[model_name]["labels"]
         profiles = fragment_rmse[model_name]["profiles"]
 
-        if not labels:
+        if not any(profile for profile in profiles):
             continue
 
         out_dir = OUT_PATH / model_name / "torsion_curves"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        for label, profile in zip(labels, profiles, strict=True):
+        for label, profile in zip(LABELS, profiles, strict=True):
+            # Scans the model has no output for have no curve to plot. The app
+            # falls back to its click hint when a curve file is missing.
+            if profile is None:
+                continue
             fig = plot_torsion_curve_figure(model_name, label, profile)
             fig.write_json(out_dir / f"{label}.json")
 
