@@ -157,6 +157,46 @@ def formation_energies() -> dict[str, list]:
     return results
 
 
+def pairwise_order_accuracy(reference: list[float], prediction: list[float]) -> float:
+    """
+    Return the percentage of polymorph pairs ordered as in the reference.
+
+    Parameters
+    ----------
+    reference
+        Reference formation energies, in the order given by ``POLYMORPHS``.
+    prediction
+        Predicted formation energies, in the same order.
+
+    Returns
+    -------
+    float
+        Percentage of pairwise comparisons with matching energy order.
+    """
+    reference_values = np.asarray(reference, dtype=float)
+    prediction_values = np.asarray(prediction, dtype=float)
+    if (
+        reference_values.ndim != 1
+        or prediction_values.ndim != 1
+        or reference_values.size < 2
+        or reference_values.size != prediction_values.size
+        or not np.isfinite(reference_values).all()
+        or not np.isfinite(prediction_values).all()
+    ):
+        return np.nan
+
+    correct_pairs = 0
+    total_pairs = 0
+    for i in range(reference_values.size):
+        for j in range(i + 1, reference_values.size):
+            reference_order = np.sign(reference_values[i] - reference_values[j])
+            prediction_order = np.sign(prediction_values[i] - prediction_values[j])
+            correct_pairs += int(reference_order == prediction_order)
+            total_pairs += 1
+
+    return float(100.0 * correct_pairs / total_pairs)
+
+
 @pytest.fixture
 def formation_energy_errors(formation_energies) -> dict[str, float]:
     """
@@ -184,13 +224,40 @@ def formation_energy_errors(formation_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def polymorph_order_accuracies(formation_energies) -> dict[str, float]:
+    """
+    Calculate pairwise stability-order accuracy for each model.
+
+    Parameters
+    ----------
+    formation_energies
+        Dictionary of reference and predicted formation energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted order accuracies for all models.
+    """
+    reference = formation_energies["ref"]
+    return {
+        model_name: pairwise_order_accuracy(
+            reference, formation_energies.get(model_name, [])
+        )
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "al3ti_metrics.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(formation_energy_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    formation_energy_errors: dict[str, float],
+    polymorph_order_accuracies: dict[str, float],
+) -> dict[str, dict]:
     """
     Get all Al3Ti metrics.
 
@@ -198,6 +265,8 @@ def metrics(formation_energy_errors: dict[str, float]) -> dict[str, dict]:
     ----------
     formation_energy_errors
         Mean absolute formation energy error averaged across all polymorphs.
+    polymorph_order_accuracies
+        Pairwise accuracy of the predicted polymorph stability ordering.
 
     Returns
     -------
@@ -207,6 +276,7 @@ def metrics(formation_energy_errors: dict[str, float]) -> dict[str, dict]:
     copy_structures_to_app_data()
     return {
         "Formation Energy MAE": formation_energy_errors,
+        "Relative Stability Ordering Accuracy": polymorph_order_accuracies,
     }
 
 

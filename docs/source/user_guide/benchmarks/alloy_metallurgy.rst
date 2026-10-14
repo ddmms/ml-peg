@@ -182,7 +182,7 @@ Summary
 -------
 
 Titanium-trialuminide (Al3Ti) exists in different polymorphs, with varying geometries and formation energies.
-This benchmark assesses whether a model correctly predicts the structures' formation energies.
+This benchmark assesses formation-energy errors and whether a model preserves the DFT stability ordering.
 
 
 Metrics
@@ -199,7 +199,16 @@ energies.
 
 1. Formation Energy MAE (eV/atom)
 
-   Mean absolute error of the DFT formation energy per atom.
+   Mean absolute error between model and DFT formation energies per atom, averaged
+   over the three polymorphs.
+
+2. Relative Stability Ordering Accuracy (%)
+
+   Percentage of the three polymorph pairs whose predicted formation-energy order
+   matches DFT. Lower formation energy indicates greater stability. The DFT order
+   from lowest to highest formation energy is D0_23, D0_22, and L1_2. A score of
+   100% means all three pairwise comparisons agree with DFT; a score of 0% means
+   none agree. A predicted tie counts as incorrect when DFT distinguishes the pair.
 
 
 Benchmark speed

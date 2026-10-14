@@ -57,7 +57,10 @@ class Al3TiPolymorphApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Formation Energy MAE": formation_scatter},
+            column_to_plot={
+                "Formation Energy MAE": formation_scatter,
+                "Relative Stability Ordering Accuracy": formation_scatter,
+            },
         )
 
         struct_from_scatter(
@@ -79,7 +82,9 @@ def get_app() -> Al3TiPolymorphApp:
     """
     return Al3TiPolymorphApp(
         name=BENCHMARK_NAME,
-        description="Formation energies for Al3Ti polymorphs.",
+        description=(
+            "Formation energies and relative stability ordering for Al3Ti polymorphs."
+        ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "al3ti_metrics.json",
         extra_components=[
