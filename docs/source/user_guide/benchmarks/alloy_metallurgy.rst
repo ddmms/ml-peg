@@ -173,3 +173,49 @@ Reference data:
     Rühl, S., and Wolverton, C., "The Open Quantum Materials Database (OQMD):
     assessing the accuracy of DFT formation energies", *npj Computational
     Materials* 1, 15010 (2015). https://doi.org/10.1038/npjcompumats.2015.10
+
+
+Al3Ti Polymorphs
+================
+
+Summary
+-------
+
+Titanium-trialuminide (Al3Ti) exists in different polymorphs, with varying geometries and formation energies.
+This benchmark assesses whether a model correctly predicts the structures' formation energies.
+
+
+Metrics
+-------
+
+Bulk properties
+^^^^^^^^^^^^^^^
+
+Calculated for 3 Al3Ti polymorph structures (L1_2, D0_22, D0_23).
+Each structure is relaxed with the LBFGS optimiser with FrechetCellFilter applied, until the maximum atomic force is
+below 1×10⁻⁶ eV/Å or 1000 steps are reached. Elemental reference energies are
+derived from the relaxed pure-element structures and used to compute formation
+energies.
+
+1. Formation Energy MAE (eV/atom)
+
+   Mean absolute error of the DFT formation energy per atom.
+
+
+Benchmark speed
+------------------
+
+* **Bulk properties** (``test_al3ti_polymorphs``): Fast — 5 bulk cell relaxations;
+  likely less than a minute on GPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Input structures were generated according to the reference lattice parameters.
+
+Reference data:
+
+* `Ghosh et al. <https://doi.org/10.1007/s11669-006-9007-4>`_ report formation energies and relaxed lattice parameters for all three polymorphs using the GGA-PW91 functional.

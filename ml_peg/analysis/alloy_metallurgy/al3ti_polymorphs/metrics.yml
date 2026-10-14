@@ -1,0 +1,7 @@
+metrics:
+  Formation Energy MAE:
+    good: 0.005
+    bad: 0.05
+    unit: eV/atom
+    tooltip: "Mean absolute error of formation energies for all Al3Ti polymorphs compared to DFT"
+    level_of_theory: GGA-PW91
