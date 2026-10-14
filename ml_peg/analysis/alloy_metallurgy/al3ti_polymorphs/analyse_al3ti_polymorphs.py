@@ -10,6 +10,9 @@ from warnings import warn
 from ase import Atoms
 from ase.io import read, write
 import numpy as np
+from plotly.colors import qualitative
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -37,6 +40,7 @@ REQUIRED_ELEMENTS = ("Al", "Ti")
 AL_REFERENCE = "Al_fcc"
 TI_REFERENCE = "Ti_hcp"
 POLYMORPHS = ("D022", "D023", "L12")
+PLOT_EQUAL_LENGTH_TOLERANCE_ANGSTROM = 1e-3
 
 
 def write_benchmark_info() -> None:
@@ -170,6 +174,7 @@ def relaxed_polymorphs() -> dict[str, list[Atoms | None]]:
     title="Al3Ti Formation Energies",
     x_label="Predicted formation energy / eV/atom",
     y_label="Reference formation energy / eV/atom",
+    hoverdata={"Polymorph": POLYMORPHS},
 )
 def formation_energies(
     reference_data: dict[str, Any],
@@ -275,6 +280,99 @@ def pairwise_order_accuracy(reference: list[float], prediction: list[float]) -> 
     return float(100.0 * correct_pairs / total_pairs)
 
 
+def write_formation_energy_ordering_plots(
+    formation_energies: dict[str, list[float]],
+) -> None:
+    """
+    Save DFT and predicted energies in DFT stability order for each model.
+
+    Parameters
+    ----------
+    formation_energies
+        Reference and predicted formation energies in ``POLYMORPHS`` order.
+    """
+    reference = np.asarray(formation_energies["ref"], dtype=float)
+    order = np.argsort(reference) if np.isfinite(reference).all() else np.arange(3)
+    names = [POLYMORPHS[i] for i in order]
+
+    for model_name in MODELS:
+        prediction = np.asarray(
+            formation_energies.get(model_name, [np.nan] * len(POLYMORPHS)),
+            dtype=float,
+        )
+        accuracy = pairwise_order_accuracy(reference.tolist(), prediction.tolist())
+        if np.isfinite(accuracy):
+            agreements = [
+                sum(
+                    np.sign(reference[i] - reference[j])
+                    == np.sign(prediction[i] - prediction[j])
+                    for j in range(len(POLYMORPHS))
+                    if j != i
+                )
+                for i in order
+            ]
+            colors = ["#D55E00", "#E69F00", "#009E73"]
+            symbols = ["x", "diamond", "circle"]
+            marker = {
+                "color": [colors[count] for count in agreements],
+                "symbol": [symbols[count] for count in agreements],
+                "size": 13,
+            }
+            hover = [f"{count}/2 pairs agree" for count in agreements]
+            score = f"{accuracy:.1f}% ({round(accuracy * 3 / 100)}/3 pairs)"
+        else:
+            marker = {"color": "#888888", "symbol": "circle", "size": 13}
+            hover = ["Ordering unavailable"] * len(POLYMORPHS)
+            score = "unavailable"
+
+        figure = go.Figure()
+        figure.add_scatter(
+            x=names,
+            y=reference[order],
+            mode="lines+markers",
+            name="DFT reference",
+            line={"color": "#555555", "dash": "dash"},
+            marker={"color": "#555555", "symbol": "diamond", "size": 11},
+            hovertemplate="%{x}<br>DFT: %{y:.4f} eV/atom<extra></extra>",
+        )
+        figure.add_scatter(
+            x=names,
+            y=prediction[order],
+            mode="lines+markers",
+            name=model_name,
+            line={"color": "#377EB8"},
+            marker=marker,
+            customdata=hover,
+            hovertemplate=(
+                "%{x}<br>Predicted: %{y:.4f} eV/atom<br>%{customdata}<extra></extra>"
+            ),
+        )
+        for count, color, symbol in (
+            (2, "#009E73", "circle"),
+            (1, "#E69F00", "diamond"),
+            (0, "#D55E00", "x"),
+        ):
+            figure.add_scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                name=f"{count}/2 pairs agree",
+                marker={"color": color, "symbol": symbol, "size": 11},
+                hoverinfo="skip",
+            )
+        figure.update_layout(
+            title=(
+                f"{model_name}: Al3Ti formation energies<br>"
+                f"<sup>Ordering accuracy: {score}</sup>"
+            ),
+            xaxis={"title": "Polymorphs in DFT stability order", "type": "category"},
+            yaxis={"title": "Formation energy / eV/atom"},
+        )
+        output_path = OUT_PATH / model_name / "figure_formation_energy_ordering.json"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        figure.write_json(output_path)
+
+
 @pytest.fixture
 def formation_energy_errors(formation_energies) -> dict[str, float]:
     """
@@ -326,6 +424,13 @@ def polymorph_order_accuracies(formation_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+@plot_parity(
+    filename=OUT_PATH / "figure_volumes_per_atom.json",
+    title="Al3Ti Volumes per Atom",
+    x_label="Predicted volume / Å³/atom",
+    y_label="Reference volume / Å³/atom",
+    hoverdata={"Polymorph": POLYMORPHS},
+)
 def volumes_per_atom(
     reference_data: dict[str, Any],
     relaxed_polymorphs: dict[str, list[Atoms | None]],
@@ -361,6 +466,141 @@ def volumes_per_atom(
             values.append(volume if np.isfinite(volume) and volume > 0 else np.nan)
         volumes[model_name] = values
     return volumes
+
+
+def lattice_parameters(
+    reference_data: dict[str, Any],
+    relaxed_polymorphs: dict[str, list[Atoms | None]],
+) -> dict[str, list[float]]:
+    """
+    Collect all three cell lengths for each polymorph for plotting.
+
+    Parameters
+    ----------
+    reference_data
+        DFT lattice parameters for the three polymorphs.
+    relaxed_polymorphs
+        Relaxed structures by model, in polymorph order.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Reference and predicted lengths in polymorph and axis order.
+    """
+    lengths = {"ref": []}
+    for name in POLYMORPHS:
+        a_ref = float(reference_data[name]["lattice_a_angstrom"]["value"])
+        c_ref = (
+            a_ref
+            if name == "L12"
+            else float(reference_data[name]["lattice_c_angstrom"]["value"])
+        )
+        lengths["ref"].extend([a_ref, a_ref, c_ref])
+
+    for model_name, structures in relaxed_polymorphs.items():
+        values = []
+        for atoms in structures:
+            values.extend(
+                [np.nan] * 3
+                if atoms is None or atoms.cell.rank != 3 or atoms.cell.volume <= 0
+                else atoms.cell.lengths().tolist()
+            )
+        lengths[model_name] = values
+    return lengths
+
+
+def write_lattice_parameter_plot(lengths: dict[str, list[float]]) -> None:
+    """
+    Plot signed cell-length errors separately for each polymorph.
+
+    Show symmetry-equivalent axes once when they agree within 0.001 Å.
+
+    Parameters
+    ----------
+    lengths
+        Reference and predicted lengths in polymorph and axis order.
+    """
+    reference = np.asarray(lengths["ref"]).reshape(len(POLYMORPHS), 3)
+    figure = make_subplots(
+        rows=1,
+        cols=3,
+        subplot_titles=("D0₂₂", "D0₂₃", "L1₂"),
+        shared_yaxes=True,
+    )
+    visible_axes = [set() for _ in POLYMORPHS]
+    plotted_models = [
+        name
+        for name, values in lengths.items()
+        if name != "ref" and np.isfinite(values).any()
+    ]
+    for model_index, model_name in enumerate(plotted_models):
+        values = lengths[model_name]
+        prediction = np.asarray(values).reshape(len(POLYMORPHS), 3)
+        first_trace = True
+        with np.errstate(divide="ignore", invalid="ignore"):
+            deviation = 100 * (prediction / reference - 1)
+        for polymorph_index, name in enumerate(POLYMORPHS):
+            if not np.isfinite(prediction[polymorph_index]).any():
+                continue
+            axes = [0]
+            if not np.isclose(
+                prediction[polymorph_index, 1],
+                prediction[polymorph_index, 0],
+                rtol=0,
+                atol=PLOT_EQUAL_LENGTH_TOLERANCE_ANGSTROM,
+            ):
+                axes.append(1)
+            if name != "L12" or not np.isclose(
+                prediction[polymorph_index, 2],
+                prediction[polymorph_index, 0],
+                rtol=0,
+                atol=PLOT_EQUAL_LENGTH_TOLERANCE_ANGSTROM,
+            ):
+                axes.append(2)
+            visible_axes[polymorph_index].update(axes)
+            figure.add_scatter(
+                x=["abc"[axis] for axis in axes],
+                y=deviation[polymorph_index, axes].tolist(),
+                customdata=np.column_stack(
+                    (
+                        prediction[polymorph_index, axes],
+                        reference[polymorph_index, axes],
+                        prediction[polymorph_index, axes]
+                        - reference[polymorph_index, axes],
+                    )
+                ).tolist(),
+                mode="markers",
+                name=model_name,
+                legendgroup=model_name,
+                showlegend=first_trace,
+                marker={
+                    "color": qualitative.Plotly[model_index % len(qualitative.Plotly)],
+                    "size": 9,
+                },
+                hovertemplate=(
+                    f"{model_name} · {name} %{{x}}<br>"
+                    "Deviation: %{y:+.2f}%<br>"
+                    "Difference: %{customdata[2]:+.3f} Å<br>"
+                    "Predicted: %{customdata[0]:.3f} Å<br>"
+                    "DFT: %{customdata[1]:.3f} Å<extra></extra>"
+                ),
+                row=1,
+                col=polymorph_index + 1,
+            )
+            first_trace = False
+    figure.add_hline(y=0, line_color="#555555", line_dash="dash")
+    for index, axes in enumerate(visible_axes, start=1):
+        figure.update_xaxes(
+            title_text="Cell axis",
+            categoryorder="array",
+            categoryarray=["abc"[axis] for axis in sorted(axes)],
+            row=1,
+            col=index,
+        )
+    figure.update_yaxes(title_text="Deviation from DFT / %", row=1, col=1)
+    figure.update_layout(title="Al3Ti lattice parameter deviations", height=460)
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    figure.write_json(OUT_PATH / "figure_lattice_parameters.json")
 
 
 @pytest.fixture
@@ -443,6 +683,9 @@ def metrics(
     polymorph_order_accuracies: dict[str, float],
     volume_errors: dict[str, float],
     lattice_parameter_errors: dict[str, float],
+    formation_energies: dict[str, list[float]],
+    reference_data: dict[str, Any],
+    relaxed_polymorphs: dict[str, list[Atoms | None]],
 ) -> dict[str, dict]:
     """
     Get all Al3Ti metrics.
@@ -457,12 +700,20 @@ def metrics(
         Volume-per-atom mean absolute errors across all polymorphs.
     lattice_parameter_errors
         Equally polymorph-weighted lattice parameter relative errors.
+    formation_energies
+        Reference and predicted formation energies used for ordering plots.
+    reference_data
+        DFT lattice parameters used for the deviation plot.
+    relaxed_polymorphs
+        Relaxed structures used for the deviation plot.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
+    write_lattice_parameter_plot(lattice_parameters(reference_data, relaxed_polymorphs))
+    write_formation_energy_ordering_plots(formation_energies)
     copy_structures_to_app_data()
     return {
         "Formation Energy MAE": formation_energy_errors,
@@ -473,23 +724,25 @@ def metrics(
 
 
 def copy_structures_to_app_data() -> None:
-    """Copy calculated structures into the app data directory."""
+    """Replace app structures with valid outputs, removing stale files on failure."""
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            continue
-
         output_dir = OUT_PATH / model_name
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         for name in POLYMORPHS:
             source = model_dir / f"{name}.xyz"
+            target = output_dir / source.name
+            temporary = output_dir / f"{name}.xyz.tmp"
+            target.unlink(missing_ok=True)
             if not source.exists():
                 continue
+            output_dir.mkdir(parents=True, exist_ok=True)
             try:
-                write(output_dir / source.name, read(source))
+                write(temporary, read(source), format="extxyz")
+                temporary.replace(target)
             except Exception as exc:
                 warn(f"Unable to copy structure {source}: {exc}", stacklevel=2)
+            finally:
+                temporary.unlink(missing_ok=True)
 
 
 def test_al3ti_polymorphs(metrics: dict[str, dict[str, float]]) -> None:

@@ -1,15 +1,18 @@
-"""Test Al3Ti calculation, analysis, and app failure handling."""
+"""Test Al3Ti calculation, analysis, and app behavior."""
 
 from __future__ import annotations
 
 from importlib import import_module
 from inspect import unwrap
+import json
 from pathlib import Path
 from unittest.mock import patch
 
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.io import write
 import numpy as np
+from plotly.io import read_json
 import pytest
 
 from ml_peg.analysis.alloy_metallurgy.al3ti_polymorphs import (
@@ -64,27 +67,49 @@ def test_failed_write_does_not_publish_partial_output(benchmark, monkeypatch, tm
     assert not (tmp_path / "D022.xyz.tmp").exists()
 
 
-def test_structure_urls_use_clicked_model_and_polymorph(monkeypatch, tmp_path):
-    """Plot labels select only structures available for their own model."""
+def test_structure_grid_uses_selected_model_and_handles_missing(monkeypatch, tmp_path):
+    """Each viewer uses the selected model and failed structures stay separate."""
     monkeypatch.setattr(al3ti_app, "DATA_PATH", tmp_path)
-    monkeypatch.setattr(al3ti_app, "MODELS", ["model-a", "model-b"])
     for model, name in (("model-a", "D022"), ("model-b", "D023")):
         model_dir = tmp_path / model
         model_dir.mkdir()
-        (model_dir / f"{name}.xyz").touch()
+        write(model_dir / f"{name}.xyz", Atoms("Al3Ti", cell=(2, 2, 4)))
+    (tmp_path / "model-b" / "L12.xyz").write_text("invalid structure")
 
-    figure = {"data": [{"name": "model-b"}, {"name": "model-a"}]}
-    urls = al3ti_app.structure_urls_by_point(figure)
+    cards = al3ti_app.structure_grid("model-b").children
 
-    assert figure["data"][0]["customdata"] == [
-        "model-b:D022",
-        "model-b:D023",
-        "model-b:L12",
-    ]
-    assert urls == {
-        "model-b:D023": "/assets/alloy_metallurgy/al3ti_polymorphs/model-b/D023.xyz",
-        "model-a:D022": "/assets/alloy_metallurgy/al3ti_polymorphs/model-a/D022.xyz",
+    assert cards[0].children[1].children == "Structure unavailable."
+    assert "/model-b/D023.xyz" in cards[1].children[1].srcDoc
+    assert cards[2].children[1].children == "Structure unavailable."
+
+
+def test_parity_highlight_keeps_guide_and_selected_trace_last(monkeypatch):
+    """The selected model stands out without hiding the parity guide."""
+    monkeypatch.setattr(al3ti_app, "MODELS", ["model-a", "model-b"])
+    figure = {
+        "data": [
+            {"name": "model-b", "marker": {"color": "blue"}},
+            {"name": "model-a"},
+            {"name": "__parity_line__"},
+        ]
     }
+
+    highlighted = al3ti_app.highlight_model(figure, "model-b")
+
+    assert [trace["name"] for trace in highlighted["data"]] == [
+        "model-a",
+        "__parity_line__",
+        "model-b",
+    ]
+    assert highlighted["data"][0]["opacity"] == 0.25
+    assert "opacity" not in highlighted["data"][1]
+    assert highlighted["data"][2]["marker"] == {
+        "color": "blue",
+        "size": 13,
+        "line": {"color": "#222222", "width": 2},
+    }
+    assert "opacity" not in figure["data"][0]
+    assert al3ti_app.highlight_model(figure, "missing") == figure
 
 
 @pytest.mark.parametrize("failed_structure", ["Al_fcc", "Ti_hcp", "D023"])
@@ -197,6 +222,60 @@ def test_pairwise_order_accuracy(prediction, expected):
         assert accuracy == pytest.approx(expected)
 
 
+def test_ordering_plots_show_agreements_and_unavailable_data(monkeypatch, tmp_path):
+    """Ordering plots use DFT order and show missing energies without a score."""
+    monkeypatch.setattr(al3ti_analysis, "MODELS", ["inverted", "missing"])
+    monkeypatch.setattr(al3ti_analysis, "OUT_PATH", tmp_path)
+    energies = {
+        "ref": [2.0, 1.0, 3.0],
+        "inverted": [1.0, 2.0, 3.0],
+        "missing": [2.0, np.nan, 3.0],
+    }
+
+    al3ti_analysis.write_formation_energy_ordering_plots(energies)
+
+    inverted = json.loads(
+        (tmp_path / "inverted" / "figure_formation_energy_ordering.json").read_text()
+    )
+    missing = json.loads(
+        (tmp_path / "missing" / "figure_formation_energy_ordering.json").read_text()
+    )
+    assert inverted["data"][0]["x"] == ["D023", "D022", "L12"]
+    assert inverted["data"][1]["marker"]["symbol"] == [
+        "diamond",
+        "diamond",
+        "circle",
+    ]
+    assert "66.7% (2/3 pairs)" in inverted["layout"]["title"]["text"]
+    assert missing["data"][1]["marker"]["color"] == "#888888"
+    assert "unavailable" in missing["layout"]["title"]["text"]
+
+
+def test_structure_copy_clears_stale_and_unreadable_assets(monkeypatch, tmp_path):
+    """Only current, readable calculation results reach the app."""
+    calc_path = tmp_path / "calcs"
+    app_path = tmp_path / "app"
+    source_dir = calc_path / "model"
+    target_dir = app_path / "model"
+    source_dir.mkdir(parents=True)
+    target_dir.mkdir(parents=True)
+    write(source_dir / "D022.xyz", Atoms("Al3Ti", cell=(2, 2, 4)))
+    (source_dir / "D023.xyz").write_text("invalid structure")
+    for name in al3ti_analysis.POLYMORPHS:
+        (target_dir / f"{name}.xyz").write_text("stale")
+    monkeypatch.setattr(al3ti_analysis, "MODELS", ["model"])
+    monkeypatch.setattr(al3ti_analysis, "CALC_PATH", calc_path)
+    monkeypatch.setattr(al3ti_analysis, "OUT_PATH", app_path)
+
+    with pytest.warns(UserWarning, match="Unable to copy structure .*D023.xyz"):
+        al3ti_analysis.copy_structures_to_app_data()
+
+    assert (target_dir / "D022.xyz").is_file()
+    assert not (target_dir / "D023.xyz").exists()
+    assert not (target_dir / "L12.xyz").exists()
+    assert not list(target_dir.glob("*.tmp"))
+
+
 def test_geometry_metrics_weight_polymorphs_and_parameters():
     """Length errors stay visible when opposing changes nearly cancel in volume."""
     references = {
@@ -228,11 +307,47 @@ def test_geometry_metrics_weight_polymorphs_and_parameters():
     lattice_errors = unwrap(al3ti_analysis.lattice_parameter_errors)(
         references, relaxed
     )
+    lengths = unwrap(al3ti_analysis.lattice_parameters)(references, relaxed)
 
     assert volumes["ref"] == pytest.approx([4.0, 13.5, 16.0])
     assert volumes["model"] == pytest.approx([3.96, 14.85, 17.6])
     assert volume_errors["model"] == pytest.approx((0.04 + 1.35 + 1.6) / 3)
     assert lattice_errors["model"] == pytest.approx((5.0 + 5.0 + 10.0 / 3) / 3)
+    assert lengths["ref"] == pytest.approx([2, 2, 4, 3, 3, 6, 4, 4, 4])
+    assert lengths["model"] == pytest.approx([2.2, 1.8, 4, 3, 3, 6.6, 4.4, 4, 4])
+
+
+def test_lattice_plot_separates_signed_errors(monkeypatch, tmp_path):
+    """Each polymorph displays positive and negative length deviations."""
+    monkeypatch.setattr(al3ti_analysis, "OUT_PATH", tmp_path)
+    al3ti_analysis.write_lattice_parameter_plot(
+        {
+            "ref": [2, 2, 4, 3, 3, 6, 4, 4, 4],
+            "model": [2.2, 1.8, 4, 3, 3, 6.6, 4.4, 4, 4],
+            "symmetric": [2, 2, 4, 3, 3, 6, 4, 4, 4],
+            "partial": [np.nan] * 3 + [3, 3, 6] + [np.nan] * 3,
+            "missing": [np.nan] * 9,
+        }
+    )
+
+    figure = read_json(tmp_path / "figure_lattice_parameters.json")
+    assert [trace.name for trace in figure.data] == (
+        ["model"] * 3 + ["symmetric"] * 3 + ["partial"]
+    )
+    assert [trace.xaxis for trace in figure.data[:3]] == ["x", "x2", "x3"]
+    assert list(figure.data[0].y) == pytest.approx([10, -10, 0])
+    assert list(figure.data[1].x) == ["a", "c"]
+    assert list(figure.data[1].y) == pytest.approx([0, 10])
+    assert list(figure.data[2].x) == ["a", "b", "c"]
+    assert [list(trace.x) for trace in figure.data[3:6]] == [
+        ["a", "c"],
+        ["a", "c"],
+        ["a"],
+    ]
+    assert list(figure.layout.xaxis3.categoryarray) == ["a", "b", "c"]
+    assert figure.data[-1].xaxis == "x2"
+    assert figure.data[-1].showlegend
+    assert figure.data[0].customdata[0][2] == pytest.approx(0.2)
 
 
 def test_missing_polymorph_makes_geometry_scores_nan():

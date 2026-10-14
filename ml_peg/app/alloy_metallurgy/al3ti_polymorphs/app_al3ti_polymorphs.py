@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from dash.html import Div
+from copy import deepcopy
+
+from ase.io import read
+from dash import Input, Output, State, callback
+from dash.html import H4, Div, Iframe
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
-    plot_from_table_column,
-    struct_from_scatter,
+    plot_with_download_controls,
+    register_plot_settings_callbacks,
 )
 from ml_peg.app.utils.load import read_plot
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
+from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
+from ml_peg.app.utils.weas import generate_weas_html
 from ml_peg.models.get_models import get_model_names
 
 # Get all models
@@ -21,64 +28,161 @@ DATA_PATH = APP_ROOT / "data" / "alloy_metallurgy" / "al3ti_polymorphs"
 INFO_PATH = DATA_PATH / "info.json"
 
 POLYMORPHS = ("D022", "D023", "L12")
+POLYMORPH_LABELS = ("D0₂₂", "D0₂₃", "L1₂")
+ASSET_PREFIX = "/assets/alloy_metallurgy/al3ti_polymorphs"
+PLOT_ID = f"{BENCHMARK_NAME}-figure"
+PLOT_PATHS = {
+    "Formation Energy MAE": "figure_formation_energies.json",
+    "Volume MAE": "figure_volumes_per_atom.json",
+    "Lattice Parameter MAPE": "figure_lattice_parameters.json",
+}
 
 
-def structure_urls_by_point(figure: dict | None) -> dict[str, str]:
+def highlight_model(figure: dict, model_name: str) -> dict:
     """
-    Label each model's plot points and map them to available structures.
+    Emphasize one model's markers while retaining plot guides.
 
     Parameters
     ----------
     figure
-        Formation-energy plot with model names on its traces.
+        Saved comparison figure.
+    model_name
+        Raw model name stored in the selected table row ID.
 
     Returns
     -------
-    dict[str, str]
-        Structure URLs keyed by model and polymorph; missing files are omitted.
+    dict
+        Figure with the selected traces drawn last.
     """
-    structures = {}
-    for trace in (figure or {}).get("data", []):
-        model_name = trace.get("name")
-        if model_name not in MODELS:
-            continue
-        trace["customdata"] = [f"{model_name}:{name}" for name in POLYMORPHS]
-        for name, label in zip(POLYMORPHS, trace["customdata"], strict=True):
-            path = DATA_PATH / model_name / f"{name}.xyz"
-            if path.is_file():
-                structures[label] = (
-                    f"/assets/alloy_metallurgy/al3ti_polymorphs/{model_name}/{name}.xyz"
-                )
-    return structures
+    result = deepcopy(figure)
+    if not any(trace.get("name") == model_name for trace in result["data"]):
+        return result
+    selected = []
+    others = []
+    for trace in result["data"]:
+        if trace.get("name") == model_name:
+            trace["opacity"] = 1
+            trace["marker"] = {
+                **trace.get("marker", {}),
+                "size": 13,
+                "line": {"color": "#222222", "width": 2},
+            }
+            selected.append(trace)
+        else:
+            if trace.get("name") in MODELS and trace.get("name") != PARITY_LINE_NAME:
+                trace["opacity"] = 0.25
+            others.append(trace)
+    result["data"] = others + selected
+    return result
+
+
+def structure_grid(model_name: str) -> Div:
+    """
+    Show available relaxed polymorphs for one model.
+
+    Parameters
+    ----------
+    model_name
+        Raw model name stored in the selected table row ID.
+
+    Returns
+    -------
+    Div
+        Responsive row of structure viewers or unavailable messages.
+    """
+    cards = []
+    for name, label in zip(POLYMORPHS, POLYMORPH_LABELS, strict=True):
+        path = DATA_PATH / model_name / f"{name}.xyz"
+        try:
+            if not path.is_file():
+                raise FileNotFoundError(path)
+            read(path)
+        except Exception:
+            content = Div("Structure unavailable.")
+        else:
+            content = Iframe(
+                srcDoc=generate_weas_html(f"{ASSET_PREFIX}/{model_name}/{name}.xyz"),
+                style={"width": "100%", "height": "550px", "border": "0"},
+            )
+        cards.append(
+            Div(
+                [H4(label), content],
+                style={
+                    "minWidth": 0,
+                    "padding": "8px",
+                    "border": "1px solid var(--mlpeg-border)",
+                },
+            )
+        )
+    return Div(
+        cards,
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(auto-fit, minmax(260px, 1fr))",
+            "gap": "12px",
+        },
+    )
 
 
 class Al3TiPolymorphApp(BaseApp):
     """Al3Ti Polymorph benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
-        """Register callbacks to app."""
-        formation_scatter = read_plot(
-            DATA_PATH / "figure_formation_energies.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        """Register the table-driven plot and structure callbacks."""
+        register_plot_download_callbacks()
+        register_plot_settings_callbacks()
 
-        structs = structure_urls_by_point(formation_scatter.figure)
-
-        plot_from_table_column(
-            table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={
-                "Formation Energy MAE": formation_scatter,
-                "Relative Stability Ordering Accuracy": formation_scatter,
-            },
+        @callback(
+            Output(f"{BENCHMARK_NAME}-figure-placeholder", "children"),
+            Output(f"{BENCHMARK_NAME}-struct-placeholder", "children"),
+            Input(self.table_id, "active_cell"),
+            State(self.table_id, "data"),
         )
+        def show_visualizations(active_cell, table_data):
+            """
+            Display the selected model's metric plot and structures.
 
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
-            mode="struct",
-        )
+            Parameters
+            ----------
+            active_cell
+                Selected table cell, or None when no cell is selected.
+            table_data
+                Current table rows used to validate the selected model.
+
+            Returns
+            -------
+            tuple[Div, Div]
+                Plot controls and structure viewers for the selected model.
+            """
+            if not active_cell:
+                graph = read_plot(
+                    DATA_PATH / PLOT_PATHS["Formation Energy MAE"], PLOT_ID
+                )
+                return plot_with_download_controls(graph), Div()
+
+            model_name = active_cell.get("row_id")
+            metric = active_cell.get("column_id")
+            if model_name not in MODELS or not any(
+                row.get("id") == model_name for row in (table_data or [])
+            ):
+                return Div("No data available for this model."), Div()
+
+            if metric == "Relative Stability Ordering Accuracy":
+                plot_path = (
+                    DATA_PATH / model_name / "figure_formation_energy_ordering.json"
+                )
+            else:
+                filename = PLOT_PATHS.get(metric)
+                plot_path = DATA_PATH / filename if filename else None
+
+            if plot_path is None or not plot_path.is_file():
+                plot = Div("Plot unavailable for this model.")
+            else:
+                graph = read_plot(plot_path, PLOT_ID)
+                if metric in PLOT_PATHS:
+                    graph.figure = highlight_model(graph.figure, model_name)
+                plot = plot_with_download_controls(graph)
+            return plot, structure_grid(model_name)
 
 
 def get_app() -> Al3TiPolymorphApp:
