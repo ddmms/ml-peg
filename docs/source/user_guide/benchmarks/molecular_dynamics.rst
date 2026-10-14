@@ -19,12 +19,12 @@ described by Tuckerman [tuckerman2015]_.
 Metrics
 -------
 
-1. Absolute mean relative error
+1. Diffusion coefficient error
 
 For each element, relative differences between predicted and experimental diffusion
 coefficients are averaged over temperatures before taking the absolute value.
 
-2. Temperature-dependence absolute relative error
+2. Temperature slope error
 
 For each element, linear fits of diffusion coefficient against temperature are
 computed for predictions and experimental measurements at the same temperatures.

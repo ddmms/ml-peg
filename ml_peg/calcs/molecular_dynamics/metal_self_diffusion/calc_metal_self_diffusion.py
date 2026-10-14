@@ -135,7 +135,6 @@ def run_npt(atoms: Atoms, calc: Calculator, output_fname: str | Path) -> None:
         ASE Calculator.
     output_fname
         File name to save the trajectory to.
-
     """
     if Path(output_fname).exists():
         try:
@@ -237,7 +236,6 @@ def compute_vacf(velocities: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         Lag times in fs, starting at zero.
     numpy.ndarray
         Mean over atoms of v(0) dot v(t), in Angstrom squared/fs squared.
-
     """
     velocities = np.asarray(velocities, dtype=float)
     times = np.arange(len(velocities)) * TIMESTEP / units.fs

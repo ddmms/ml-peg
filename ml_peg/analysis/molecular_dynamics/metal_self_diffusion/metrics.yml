@@ -1,12 +1,12 @@
 metrics:
-  AMRE:
+  Diffusion coefficient error:
     good: 10.0
     bad: 50.0
     unit: "%"
     tooltip: >-
-      Absolute mean relative error across temperatures per system.
+      Absolute mean relative error across temperatures per element.
     level_of_theory: Experimental
-  Slope ARE:
+  Temperature slope error:
     good: 20.0
     bad: 50.0
     unit: "%"

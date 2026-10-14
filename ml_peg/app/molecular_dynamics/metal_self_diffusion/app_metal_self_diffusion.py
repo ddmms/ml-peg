@@ -29,7 +29,19 @@ class MetalSelfDiffusionApp(BaseApp):
 
 
 def load_vacf_plot(element: str) -> Graph | None:
-    """Load VACFs and select among the temperatures present in the saved plot."""
+    """
+    Load VACFs and select among the temperatures present in the saved plot.
+
+    Parameters
+    ----------
+    element
+        Element symbol identifying the saved plot.
+
+    Returns
+    -------
+    Graph or None
+        VACF graph with temperature selection, or None when the plot is missing.
+    """
     path = DATA_PATH / f"{element}_vacfs.json"
     if not path.is_file():
         return None
@@ -68,7 +80,19 @@ def load_vacf_plot(element: str) -> Graph | None:
 
 
 def load_diffusion_plot(element: str) -> Graph | None:
-    """Load diffusion points, standard errors, and saved linear fits."""
+    """
+    Load diffusion points, standard errors, and saved linear fits.
+
+    Parameters
+    ----------
+    element
+        Element symbol identifying the saved plot.
+
+    Returns
+    -------
+    Graph or None
+        Diffusion graph with error bars, or None when the plot is missing.
+    """
     path = DATA_PATH / f"{element}_diffusion.json"
     if not path.is_file():
         return None
@@ -93,7 +117,14 @@ def load_diffusion_plot(element: str) -> Graph | None:
 
 
 def get_app() -> MetalSelfDiffusionApp:
-    """Build the metrics table and element tabs for VACF and diffusion plots."""
+    """
+    Build the metrics table and element tabs for VACF and diffusion plots.
+
+    Returns
+    -------
+    MetalSelfDiffusionApp
+        Benchmark application with metrics and element tabs.
+    """
     info = read_json(DATA_PATH / "info.json")
     tabs = []
     for element in info["filenames"]:

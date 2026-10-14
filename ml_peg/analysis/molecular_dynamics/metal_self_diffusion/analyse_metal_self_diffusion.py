@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from warnings import warn
 
-from ase import units
 import numpy as np
 from plotly.colors import qualitative
 import pytest
@@ -22,7 +21,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.molecular_dynamics.metal_self_diffusion.calc_metal_self_diffusion import (  # noqa: E501
-    TIMESTEP,
     VACF_SAMPLES,
     VACF_STEPS,
 )
@@ -63,7 +61,14 @@ INFO = get_struct_info(
 
 @pytest.fixture(scope="session")
 def vacfs() -> dict:
-    """Load and cosine-taper the VACFs for analysis and plotting."""
+    """
+    Load and cosine-taper the VACFs for analysis and plotting.
+
+    Returns
+    -------
+    dict
+        Shared lag times and tapered VACFs by model, element, and temperature.
+    """
     results = {"times": None} | {model_name: {} for model_name in MODELS}
 
     for model_name in MODELS:
@@ -75,8 +80,7 @@ def vacfs() -> dict:
             for t, temp in enumerate(temperatures):
                 for s in range(VACF_SAMPLES):
                     file = (
-                        CALC_PATH / model_name / label / f"{temp:g}K"
-                        / f"vacf_{s}.npy"
+                        CALC_PATH / model_name / label / f"{temp:g}K" / f"vacf_{s}.npy"
                     )
                     if not file.is_file():
                         continue
@@ -97,7 +101,8 @@ def vacfs() -> dict:
                         results["times"] = times
 
             results[model_name][label] = {
-                temp: vacfs[t] for t, temp in enumerate(temperatures)
+                temp: vacfs[t]
+                for t, temp in enumerate(temperatures)
                 if np.isfinite(vacfs[t]).any()
             }
 
@@ -137,9 +142,18 @@ def vacfs() -> dict:
 
 @pytest.fixture(scope="session")
 def diffusion_constants(vacfs: dict) -> dict:
-    """Integrate VACFs and plot all models against experiment per element.
+    """
+    Integrate VACFs and plot all models against experiment per element.
 
-    Returned diffusion coefficients are in m²/s.
+    Parameters
+    ----------
+    vacfs
+        Shared lag times and tapered VACFs by model, element, and temperature.
+
+    Returns
+    -------
+    dict
+        Diffusion coefficients in m²/s, uncertainties, and fits by model and element.
     """
     results = {model_name: {} for model_name in ("ref", *MODELS)}
 
@@ -180,7 +194,8 @@ def diffusion_constants(vacfs: dict) -> dict:
             valid_temperatures = np.asarray(temperatures)[valid]
             fit = (
                 np.polyfit(valid_temperatures, diffusion[valid], 1)
-                if len(np.unique(valid_temperatures)) >= 2 else None
+                if len(np.unique(valid_temperatures)) >= 2
+                else None
             )
             results[model_name][label] = {
                 "diffusion": diffusion,
@@ -238,22 +253,24 @@ def diffusion_constants(vacfs: dict) -> dict:
             name = "Reference" if model_name == "ref" else model_name
             valid = np.isfinite(values[element]["diffusion"])
             valid_temperatures = np.asarray(temperatures)[valid]
-            endpoints = np.array([
-                valid_temperatures.min(), valid_temperatures.max()
-            ])
-            figure["data"].append({
-                "type": "scatter",
-                "mode": "lines",
-                "x": endpoints.tolist(),
-                "y": (np.polyval(values[element]["fit"], endpoints) * 1e9).tolist(),
-                "line": {"color": colors[name], "dash": "dash"},
-                "name": name,
-                "legendgroup": name,
-                "showlegend": False,
-                "hovertemplate": next(
-                    trace["hovertemplate"] for trace in points if trace["name"] == name
-                ),
-            })
+            endpoints = np.array([valid_temperatures.min(), valid_temperatures.max()])
+            figure["data"].append(
+                {
+                    "type": "scatter",
+                    "mode": "lines",
+                    "x": endpoints.tolist(),
+                    "y": (np.polyval(values[element]["fit"], endpoints) * 1e9).tolist(),
+                    "line": {"color": colors[name], "dash": "dash"},
+                    "name": name,
+                    "legendgroup": name,
+                    "showlegend": False,
+                    "hovertemplate": next(
+                        trace["hovertemplate"]
+                        for trace in points
+                        if trace["name"] == name
+                    ),
+                }
+            )
         filename.write_text(json.dumps(figure))
         errors = {}
         for model_name in MODELS:
@@ -270,7 +287,19 @@ def diffusion_constants(vacfs: dict) -> dict:
 
 @pytest.fixture(scope="session")
 def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
-    """Average absolute mean relative errors across elements."""
+    """
+    Average absolute mean relative errors across elements.
+
+    Parameters
+    ----------
+    diffusion_constants
+        Reference and predicted diffusion coefficients by model and element.
+
+    Returns
+    -------
+    dict
+        Percentage errors by model, or None for incomplete results.
+    """
     results = {}
     for model_name in MODELS:
         if any(
@@ -295,7 +324,19 @@ def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
 
 @pytest.fixture(scope="session")
 def get_slope_are(diffusion_constants: dict) -> dict[str, float | None]:
-    """Average absolute relative linear slope errors equally over elements."""
+    """
+    Average absolute relative linear slope errors equally over elements.
+
+    Parameters
+    ----------
+    diffusion_constants
+        Reference and predicted diffusion slopes by model and element.
+
+    Returns
+    -------
+    dict
+        Percentage slope errors by model, or None for incomplete results.
+    """
     results = {}
     for model_name in MODELS:
         if any(
@@ -326,9 +367,33 @@ def get_slope_are(diffusion_constants: dict) -> dict[str, float | None]:
 def metrics(
     get_amre: dict[str, float | None], get_slope_are: dict[str, float | None]
 ) -> dict:
-    """Build the absolute mean relative error and relative slope error table."""
-    return {"AMRE": get_amre, "Slope ARE": get_slope_are}
+    """
+    Build the absolute mean relative error and relative slope error table.
+
+    Parameters
+    ----------
+    get_amre
+        Absolute mean relative errors by model.
+    get_slope_are
+        Absolute relative slope errors by model.
+
+    Returns
+    -------
+    dict
+        Metric values by metric name and model.
+    """
+    return {
+        "Diffusion coefficient error": get_amre,
+        "Temperature slope error": get_slope_are,
+    }
 
 
 def test_metal_self_diffusion(metrics: dict) -> None:
-    """Run the VACF, diffusion, error, and metric-table fixture chain."""
+    """
+    Run the VACF, diffusion, error, and metric-table fixture chain.
+
+    Parameters
+    ----------
+    metrics
+        Metrics produced by the complete analysis fixture chain.
+    """
