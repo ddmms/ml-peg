@@ -1,7 +1,11 @@
 metrics:
   Formation Energy MAE:
-    good: 0.01
-    bad: 0.05
+    # Accuracy targets derived from Ghosh et al. reference energies
+    # (doi:10.1007/s11669-006-9007-4):
+    # DFT gaps are 7.887 meV/atom (D023-D022) and 31.850 meV/atom (D023-L12).
+    # These are not DFT uncertainty estimates.
+    good: 0.004
+    bad: 0.03
     unit: eV/atom
     tooltip: "Mean absolute error of formation energies for all Al3Ti polymorphs compared to DFT"
     level_of_theory: GGA-PW91

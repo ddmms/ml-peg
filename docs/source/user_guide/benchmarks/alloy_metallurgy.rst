@@ -200,7 +200,13 @@ energies.
 1. Formation Energy MAE (eV/atom)
 
    Mean absolute error between model and DFT formation energies per atom, averaged
-   over the three polymorphs.
+   over the three polymorphs. The good target (4 meV/atom) is about half the
+   smallest DFT polymorph gap (D0_23–D0_22: 7.887 meV/atom), while the bad
+   threshold (30 meV/atom) is about the full DFT energy span (D0_23–L1_2:
+   31.850 meV/atom). These are accuracy targets derived from the
+   `Ghosh et al. <https://doi.org/10.1007/s11669-006-9007-4>`_ reference
+   energies, not estimates of DFT uncertainty. MAE does not guarantee the correct
+   polymorph order; that is scored separately.
 
 2. Relative Stability Ordering Accuracy (%)
 

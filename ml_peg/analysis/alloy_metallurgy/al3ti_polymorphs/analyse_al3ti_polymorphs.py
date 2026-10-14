@@ -43,6 +43,31 @@ POLYMORPHS = ("D022", "D023", "L12")
 PLOT_EQUAL_LENGTH_TOLERANCE_ANGSTROM = 1e-3
 
 
+def reference_value(reference_data: dict[str, Any], name: str, quantity: str) -> float:
+    """
+    Return a finite DFT value or NaN when its reference entry is unavailable.
+
+    Parameters
+    ----------
+    reference_data
+        DFT reference data keyed by polymorph.
+    name
+        Polymorph name.
+    quantity
+        Reference property to extract.
+
+    Returns
+    -------
+    float
+        Finite reference value, or NaN if missing or invalid.
+    """
+    try:
+        value = float(reference_data[name][quantity]["value"])
+    except (KeyError, TypeError, ValueError):
+        return np.nan
+    return value if np.isfinite(value) else np.nan
+
+
 def write_benchmark_info() -> None:
     """Write benchmark-wide element requirements for application filtering."""
     OUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -67,6 +92,24 @@ def load_references() -> dict[str, Any]:
             references = json.load(file)
         if not isinstance(references, dict):
             raise TypeError("expected a JSON object")
+        missing = []
+        for name in POLYMORPHS:
+            quantities = (
+                "formation_energy_0k_ev_atom",
+                "volume_per_atom_angstrom3",
+                "lattice_a_angstrom",
+            )
+            if name != "L12":
+                quantities += ("lattice_c_angstrom",)
+            missing.extend(
+                f"{name}.{quantity}"
+                for quantity in quantities
+                if not np.isfinite(reference_value(references, name, quantity))
+            )
+        if missing:
+            warn(
+                f"Missing or invalid DFT references: {', '.join(missing)}", stacklevel=2
+            )
         return references
     except Exception as exc:
         warn(
@@ -227,15 +270,10 @@ def formation_energies(
             predictions.append(formation_energy)
         results[model_name] = predictions
 
-    # Store reference energies
-    missing = [name for name in POLYMORPHS if name not in reference_data]
-    if missing:
-        raise ValueError(f"Missing DFT references for: {', '.join(missing)}")
-    ref = [
-        float(reference_data[name]["formation_energy_0k_ev_atom"]["value"])
+    results["ref"] = [
+        reference_value(reference_data, name, "formation_energy_0k_ev_atom")
         for name in POLYMORPHS
     ]
-    results["ref"] = ref
 
     return results
 
@@ -389,8 +427,9 @@ def formation_energy_errors(formation_energies) -> dict[str, float]:
         Dictionary of predicted formation energy errors for all models.
     """
     results = {}
+    valid_reference = np.isfinite(formation_energies["ref"]).all()
     for model_name in MODELS:
-        if formation_energies.get(model_name):
+        if valid_reference and formation_energies.get(model_name):
             results[model_name] = mae(
                 formation_energies["ref"], formation_energies[model_name]
             )
@@ -452,7 +491,7 @@ def volumes_per_atom(
     """
     volumes = {
         "ref": [
-            float(reference_data[name]["volume_per_atom_angstrom3"]["value"])
+            reference_value(reference_data, name, "volume_per_atom_angstrom3")
             for name in POLYMORPHS
         ]
     }
@@ -489,11 +528,11 @@ def lattice_parameters(
     """
     lengths = {"ref": []}
     for name in POLYMORPHS:
-        a_ref = float(reference_data[name]["lattice_a_angstrom"]["value"])
+        a_ref = reference_value(reference_data, name, "lattice_a_angstrom")
         c_ref = (
             a_ref
             if name == "L12"
-            else float(reference_data[name]["lattice_c_angstrom"]["value"])
+            else reference_value(reference_data, name, "lattice_c_angstrom")
         )
         lengths["ref"].extend([a_ref, a_ref, c_ref])
 
@@ -618,8 +657,9 @@ def volume_errors(volumes_per_atom: dict[str, list[float]]) -> dict[str, float]:
     dict[str, float]
         Volume-per-atom MAE in Å³/atom for each model.
     """
+    valid_reference = np.isfinite(volumes_per_atom["ref"]).all()
     return {
-        model_name: mae(volumes_per_atom["ref"], values)
+        model_name: mae(volumes_per_atom["ref"], values) if valid_reference else np.nan
         for model_name, values in volumes_per_atom.items()
         if model_name != "ref"
     }
@@ -648,6 +688,15 @@ def lattice_parameter_errors(
         Mean absolute percentage error for each model.
     """
     errors = {}
+    references = {
+        name: (
+            reference_value(reference_data, name, "lattice_a_angstrom"),
+            reference_value(reference_data, name, "lattice_c_angstrom")
+            if name != "L12"
+            else np.nan,
+        )
+        for name in POLYMORPHS
+    }
     for model_name, structures in relaxed_polymorphs.items():
         polymorph_errors = []
         for name, atoms in zip(POLYMORPHS, structures, strict=True):
@@ -655,11 +704,10 @@ def lattice_parameter_errors(
                 polymorph_errors.append(np.nan)
                 continue
             lengths = atoms.cell.lengths()
-            a_ref = float(reference_data[name]["lattice_a_angstrom"]["value"])
+            a_ref, c_ref = references[name]
             if name == "L12":
                 polymorph_errors.append(np.mean(np.abs(lengths / a_ref - 1)))
             else:
-                c_ref = float(reference_data[name]["lattice_c_angstrom"]["value"])
                 basal_error = np.mean(np.abs(lengths[:2] / a_ref - 1))
                 c_error = abs(lengths[2] / c_ref - 1)
                 polymorph_errors.append((basal_error + c_error) / 2)

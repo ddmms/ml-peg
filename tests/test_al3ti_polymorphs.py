@@ -371,3 +371,78 @@ def test_missing_polymorph_makes_geometry_scores_nan():
     assert np.isnan(volumes["model"][1:]).all()
     assert np.isnan(volume_errors["model"])
     assert np.isnan(lattice_errors["model"])
+
+
+@pytest.mark.parametrize("missing_name", al3ti_analysis.POLYMORPHS)
+def test_missing_dft_polymorph_makes_aggregate_scores_nan(
+    monkeypatch, tmp_path, missing_name
+):
+    """A missing DFT polymorph must invalidate each aggregate without aborting."""
+
+    def atoms_with_energy(symbols, energy):
+        atoms = Atoms(symbols, cell=(2, 2, 4))
+        atoms.calc = SinglePointCalculator(atoms, energy=energy)
+        return atoms
+
+    references = {
+        name: {
+            "formation_energy_0k_ev_atom": {"value": -0.5 + 0.1 * index},
+            "volume_per_atom_angstrom3": {"value": 4.0},
+            "lattice_a_angstrom": {"value": 2.0},
+            "lattice_c_angstrom": {"value": 4.0},
+        }
+        for index, name in enumerate(al3ti_analysis.POLYMORPHS)
+    }
+    references.pop(missing_name)
+    reference_dir = tmp_path / "references"
+    reference_dir.mkdir()
+    (reference_dir / "DFT.json").write_text(json.dumps(references))
+    (tmp_path / "model").mkdir()
+    monkeypatch.setattr(al3ti_analysis, "CALC_PATH", tmp_path)
+    monkeypatch.setattr(al3ti_analysis, "MODELS", ["model"])
+    elemental = {
+        "Al_fcc": atoms_with_energy("Al4", -8.0),
+        "Ti_hcp": atoms_with_energy("Ti4", -16.0),
+    }
+    monkeypatch.setattr(
+        al3ti_analysis, "load_structure", lambda name, _path: elemental[name]
+    )
+    relaxed = {"model": [atoms_with_energy("Al3Ti", -12.0) for _ in range(3)]}
+
+    with pytest.warns(UserWarning, match=missing_name):
+        loaded = al3ti_analysis.load_references()
+    energies = unwrap(al3ti_analysis.formation_energies)(loaded, relaxed)
+    volumes = unwrap(al3ti_analysis.volumes_per_atom)(loaded, relaxed)
+    lengths = al3ti_analysis.lattice_parameters(loaded, relaxed)
+
+    assert np.isfinite(energies["model"]).all()
+    assert np.isnan(energies["ref"][al3ti_analysis.POLYMORPHS.index(missing_name)])
+    assert np.isnan(unwrap(al3ti_analysis.formation_energy_errors)(energies)["model"])
+    assert np.isnan(
+        unwrap(al3ti_analysis.polymorph_order_accuracies)(energies)["model"]
+    )
+    assert np.isnan(unwrap(al3ti_analysis.volume_errors)(volumes)["model"])
+    assert np.isnan(
+        unwrap(al3ti_analysis.lattice_parameter_errors)(loaded, relaxed)["model"]
+    )
+    assert np.isnan(lengths["ref"]).any()
+
+
+def test_missing_dft_field_invalidates_only_its_geometry_score():
+    """A missing lattice reference leaves an independent volume score usable."""
+    references = {
+        name: {
+            "lattice_a_angstrom": {"value": 2.0},
+            "lattice_c_angstrom": {"value": 4.0},
+            "volume_per_atom_angstrom3": {"value": 4.0},
+        }
+        for name in al3ti_analysis.POLYMORPHS
+    }
+    del references["D023"]["lattice_c_angstrom"]
+    relaxed = {"model": [Atoms("Al3Ti", cell=(2, 2, 4)) for _ in range(3)]}
+
+    volumes = unwrap(al3ti_analysis.volumes_per_atom)(references, relaxed)
+    assert unwrap(al3ti_analysis.volume_errors)(volumes)["model"] == pytest.approx(0)
+    assert np.isnan(
+        unwrap(al3ti_analysis.lattice_parameter_errors)(references, relaxed)["model"]
+    )
