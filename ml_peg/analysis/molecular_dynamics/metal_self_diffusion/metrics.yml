@@ -7,8 +7,8 @@ metrics:
       Absolute mean relative error across temperatures per system.
     level_of_theory: Experimental
   Slope ARE:
-    good: 10.0
-    bad: 20.0
+    good: 20.0
+    bad: 50.0
     unit: "%"
     tooltip: >-
       Absolute difference between predicted and experimental linear D(T) slopes,

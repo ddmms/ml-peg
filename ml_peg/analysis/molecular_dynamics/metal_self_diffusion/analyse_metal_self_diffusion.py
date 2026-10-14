@@ -34,7 +34,8 @@ MODELS = load_models(current_models)
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "metal_self_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "metal_self_diffusion"
 
-VACF_SIGMA_THZ = 0.5 # Gaussian smoothing
+VACF_TAPER_START = 500.0
+VACF_TAPER_END = 1000.0
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -62,7 +63,7 @@ INFO = get_struct_info(
 
 @pytest.fixture(scope="session")
 def vacfs() -> dict:
-    """Load and Gaussian-window the VACFs for analysis and plotting."""
+    """Load and cosine-taper the VACFs for analysis and plotting."""
     results = {"times": None} | {model_name: {} for model_name in MODELS}
 
     for model_name in MODELS:
@@ -84,10 +85,13 @@ def vacfs() -> dict:
                         warn(f"Skipping malformed VACF file: {file}", stacklevel=2)
                         continue
                     times, values = data
-                    # Gaussian frequency convolution
-                    window = np.exp(
-                        -2 * np.pi**2 * VACF_SIGMA_THZ**2 * (times / 1000)**2
+                    phase = np.clip(
+                        (times - VACF_TAPER_START)
+                        / (VACF_TAPER_END - VACF_TAPER_START),
+                        0,
+                        1,
                     )
+                    window = (1 + np.cos(np.pi * phase)) / 2
                     vacfs[t, s] = values * window
                     if results["times"] is None:
                         results["times"] = times

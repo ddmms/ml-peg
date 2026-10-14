@@ -12,9 +12,9 @@ Performance in predicting self-diffusion in liquid metals compared to experiment
 measurements. Ideal crystal structures of about 1000 atoms are melted at 1.5 times
 the measurement temperature in kelvin. After NPT equilibration at the measurement
 temperature, sampled states start independent short NVE trajectories. The diffusion
-coefficient is computed from the Gaussian-smoothed spectrum of the velocity
-autocorrelation function (VACF) using the Green–Kubo relation described by
-Tuckerman [tuckerman2015]_.
+coefficient is computed by integrating the velocity autocorrelation function
+(VACF), with a cosine taper from 0.5 to 1 ps, using the Green–Kubo relation
+described by Tuckerman [tuckerman2015]_.
 
 Metrics
 -------
