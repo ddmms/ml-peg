@@ -1,0 +1,28 @@
+# Cohesive energies (eV/atom) from G.-X. Zhang et al., New J. Phys. 20, 063020 (2018),
+# supplementary tables VI and VII: all-electron PBE without zero-point correction,
+# and 0 K experiment. `a` (Å) is only given where ASE has no default lattice constant.
+Li: {structure: bcc, pbe: 1.68, experiment: 1.63}
+Na: {structure: bcc, pbe: 1.10, experiment: 1.11}
+K: {structure: bcc, pbe: 0.88, experiment: 0.93}
+Rb: {structure: bcc, pbe: 0.79, experiment: 0.85}
+Ca: {structure: fcc, pbe: 1.93, experiment: 1.84}
+Sr: {structure: fcc, pbe: 1.64, experiment: 1.72}
+Ba: {structure: bcc, pbe: 1.88, experiment: 1.90}
+Al: {structure: fcc, pbe: 3.47, experiment: 3.39}
+Pb: {structure: fcc, pbe: 3.02, experiment: 2.03}
+V: {structure: bcc, pbe: 5.42, experiment: 5.31}
+Nb: {structure: bcc, pbe: 7.04, experiment: 7.57}
+Ta: {structure: bcc, pbe: 8.19, experiment: 8.09}
+Mo: {structure: bcc, pbe: 6.34, experiment: 6.82}
+W: {structure: bcc, pbe: 8.46, experiment: 8.90}
+Rh: {structure: fcc, pbe: 5.83, experiment: 5.75}
+Ir: {structure: fcc, pbe: 7.45, experiment: 6.94}
+Pd: {structure: fcc, pbe: 3.72, experiment: 3.89}
+Pt: {structure: fcc, pbe: 5.59, experiment: 5.84}
+Cu: {structure: fcc, pbe: 3.52, experiment: 3.49}
+Ag: {structure: fcc, pbe: 2.54, experiment: 2.95}
+Au: {structure: fcc, pbe: 3.09, experiment: 3.81}
+C: {structure: diamond, pbe: 7.73, experiment: 7.37}
+Si: {structure: diamond, pbe: 4.58, experiment: 4.63}
+Ge: {structure: diamond, pbe: 3.76, experiment: 3.87}
+Sn: {structure: diamond, a: 6.482, pbe: 3.21, experiment: 3.14}
