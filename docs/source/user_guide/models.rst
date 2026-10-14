@@ -13,7 +13,7 @@ MACE
 mace-mp-0a
 ----------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#pretrained-mace-mp-models>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
@@ -49,7 +49,7 @@ mace-mp-0a
 mace-mp-0b3
 -----------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://github.com/ACEsuit/mace-foundations#latest-recommended-foundation-models>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
@@ -85,7 +85,7 @@ mace-mp-0b3
 mace-mpa-0
 ----------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
@@ -121,7 +121,7 @@ mace-mpa-0
 mace-omat-0
 -----------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
@@ -157,7 +157,7 @@ mace-omat-0
 mace-matpes-r2scan
 ------------------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
@@ -226,7 +226,7 @@ mace-mh-1-omat
 MACE-OFF23(L)
 -------------
 
-- `Docs <https://github.com/ACEsuit/mace-off>`__
+- `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#mace-off23-transferable-organic-force-fields>`__
 - `Repo <https://github.com/ACEsuit/mace-off>`__
 - **Citation:** Kovács et al. (2025).
   `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
@@ -262,7 +262,6 @@ MACE-OFF23(L)
 MACE-OFF24(M)
 -------------
 
-- `Docs <https://github.com/ACEsuit/mace-off>`__
 - `Repo <https://github.com/ACEsuit/mace-off>`__
 - **Citation:** Kovács et al. (2025).
   `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
@@ -298,12 +297,13 @@ MACE-OFF24(M)
 mace-omol
 ---------
 
-- `Docs <https://github.com/ACEsuit/mace-foundations>`__
+- `Docs <https://github.com/ACEsuit/mace-foundations#latest-recommended-foundation-models>`__
 - `Repo <https://github.com/ACEsuit/mace-foundations>`__
 - **Citation:** Batatia et al. (2025).
   `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
 - **Citation (dataset):** Levine et al. (2025).
   `The Open Molecules 2025 (OMol25) Dataset, Evaluations, and Models <https://arxiv.org/abs/2505.08762>`__.
+
 .. details:: BibTeX
 
    .. literalinclude:: model_references.bib
