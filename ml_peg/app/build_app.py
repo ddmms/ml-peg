@@ -605,11 +605,17 @@ def build_category_page_layout(
         [
             H1(category_title),
             H3(category_description),
-            build_bibtex_controls(
-                combine_bibtex(test.get("bibtex", BibTeXExport()) for test in tests),
-                category_title,
-                heading="Category references",
-                scope=f"Papers cited across all benchmarks in {category_title}.",
+            Div(
+                build_bibtex_controls(
+                    combine_bibtex(
+                        test.get("bibtex", BibTeXExport()) for test in tests
+                    ),
+                    category_title,
+                    preview=True,
+                    heading=f"{category_title} bibliography",
+                    scope=f"Papers cited across all benchmarks in {category_title}.",
+                ),
+                className="mlpeg-category-bibliography",
             ),
             Div(
                 Div(
