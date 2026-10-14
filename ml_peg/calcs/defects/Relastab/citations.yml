@@ -33,17 +33,5 @@ citations:
     year: 2020
     doi: null
     url: null
-  - key: "soum-sidikov-2025-cawo4"
-    bibtex_key: soum-sidikov-2025-cawo4
+  - bibtex_key: soum-sidikov-2025-cawo4
     role: benchmark_method
-    title: "Calculation of crystal defects induced in CaWO4 cryogenic detector by 100 eV displacement cascades using a data driven force field"
-    authors:
-      - "G. Soum-Sidikov"
-      - "J. P. Crocombette"
-      - "M. C. Marinica"
-      - "C. Doutre"
-      - "D. Lhuillier"
-      - "L. Thulliez"
-    year: 2025
-    doi: "10.1103/PhysRevD.111.085021"
-    url: null

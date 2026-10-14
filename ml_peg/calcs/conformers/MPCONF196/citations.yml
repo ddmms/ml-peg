@@ -11,15 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: rezac2018mpconf196
-    bibtex_key: "rezac2018mpconf196"
+  - bibtex_key: rezac2018mpconf196
     role: reference_data
-    title: 'Toward Accurate Conformational Energies of Smaller Peptides and Medium-Sized Macrocycles: MPCONF196
-      Benchmark Energy Data Set'
-    authors:
-      - Jan Řezáč
-      - Daniel Bím
-      - Ondrej Gutten
-      - Lubomír Rulíšek
-    year: 2018
-    doi: 10.1021/acs.jctc.7b01074

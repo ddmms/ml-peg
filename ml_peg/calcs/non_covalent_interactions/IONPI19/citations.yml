@@ -11,15 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "spicher-2021-ionpi19"
-    bibtex_key: spicher2021ionpi19
+  - bibtex_key: spicher2021ionpi19
     role: benchmark_method
-    title: "Benchmarking London dispersion corrected density functional theory for noncovalent ion-pi interactions"
-    authors:
-      - "S. Spicher"
-      - "E. Caldeweyher"
-      - "A. Hansen"
-      - "S. Grimme"
-    year: 2021
-    doi: "10.1039/d1cp01333e"
-    url: "https://doi.org/10.1039/d1cp01333e"

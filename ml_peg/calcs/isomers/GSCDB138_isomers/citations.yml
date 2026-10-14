@@ -11,13 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: Liang2025
-    bibtex_key: "Liang2025"
+  - bibtex_key: Liang2025
     role: reference_data
-    title: 'Gold-Standard Chemical Database 137 (GSCDB137): A Diverse Set of Accurate Energy Differences
-      for Assessing and Developing Density Functionals'
-    authors:
-      - Jiashu Liang
-      - Martin Head-Gordon
-    year: 2025
-    url: http://dx.doi.org/10.1021/acs.jctc.5c01380

@@ -11,26 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "simm-2025-simpoly"
-    bibtex_key: "simm2025simpoly"
+  - bibtex_key: simm2025simpoly
     role: benchmark_method
-    title: "SimPoly: Simulation of Polymers with Machine Learning Force Fields Derived from First Principles"
-    authors:
-      - "Gregor N. C. Simm"
-      - "Jean Hélie"
-      - "Hannes Schulz"
-      - "Yicheng Chen"
-      - "Guillem Simeon"
-      - "Anna Kuzina"
-      - "Ernesto Martinez-Baez"
-      - "Piero Gasparotto"
-      - "Gabriele Tocci"
-      - "Chi Chen"
-      - "Yatao Li"
-      - "Lixue Cheng"
-      - "Zun Wang"
-      - "Bichlien H. Nguyen"
-      - "Jake A. Smith"
-      - "Lixin Sun"
-    year: 2025
-    url: "https://arxiv.org/abs/2510.13696"

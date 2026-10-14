@@ -12,6 +12,7 @@ import pytest
 from ml_peg.app.utils.build_bibtex import build_bibtex_controls
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.build_frameworks import build_framework_views
+from ml_peg.citations import bibliography
 from ml_peg.utils import bibtex
 from ml_peg.utils.bibtex import collect_bibtex, combine_bibtex
 from ml_peg.utils.citations import BenchmarkCredits, Citation, load_benchmark_credits
@@ -33,7 +34,7 @@ def library(tmp_path, monkeypatch):
         "mlip_audit:\n  label: Source\n  type: paper\n"
         "  paper_url: https://example.org/paper\n"
     )
-    monkeypatch.setattr(bibtex, "BIBTEX_FILE", path)
+    monkeypatch.setattr(bibliography, "BIBTEX_FILE", path)
     monkeypatch.setattr(bibtex, "FRAMEWORKS_FILE", registry)
     bibtex._library.cache_clear()
     yield
@@ -188,3 +189,111 @@ def test_source_key_works_without_matching_url(library):
     export = collect_bibtex(source_credits, ["mlip_audit"])
     assert set(export.entries) == {"other"}
     assert not export.missing
+
+
+def test_minimal_metadata_uses_bibtex_and_renders_latex(library, tmp_path):
+    """A key-only citation supplies readable names, title, year and links."""
+    bibliography.BIBTEX_FILE.write_text(
+        r"@article{paper, title={{MACE}: $\alpha$ interactions}, "
+        r"author={Kov{\'a}cs, D{\'a}vid P. and van der Waals, Jr., Jo}, "
+        r"year={2025}, doi={https://doi.org/10.1234/example}, "
+        r"url={https://example.org/paper}}"
+    )
+    path = tmp_path / "citations.yml"
+    path.write_text("citations:\n  - bibtex_key: paper\n    role: reference_data\n")
+    citation = load_benchmark_credits(path).citations[0]
+    assert citation.key == citation.bibtex_key == "paper"
+    assert citation.title == "MACE: α interactions"
+    assert citation.authors == ("Dávid P. Kovács", "Jo van der Waals, Jr.")
+    assert citation.year == 2025
+    assert citation.doi == "10.1234/example"
+    assert citation.url == "https://example.org/paper"
+    assert "MACE: α interactions" in str(
+        build_benchmark_credit_components(load_benchmark_credits(path))
+    )
+    assert collect_bibtex(load_benchmark_credits(path)).entries
+
+
+def test_yaml_overrides_bibtex_including_null(library, tmp_path):
+    """Explicit fields override defaults without altering the downloadable record."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "citations:\n  - bibtex_key: paper\n    key: custom\n"
+        "    role: inspired_by\n    title: Display title\n"
+        "    authors: [Custom Author]\n"
+        "    year: 2024\n    doi: null\n    url: https://example.org/override\n"
+    )
+    credits = load_benchmark_credits(path)
+    citation = credits.citations[0]
+    assert citation.key == "custom"
+    assert citation.title == "Display title"
+    assert citation.authors == ("Custom Author",)
+    assert citation.year == 2024
+    assert citation.doi is None
+    assert citation.link == "https://example.org/override"
+    downloaded = parse_string(collect_bibtex(credits).text, "bibtex")
+    assert next(iter(downloaded.entries.values())).fields["title"] == "Original"
+
+
+@pytest.mark.parametrize(
+    "metadata", ["", "    title: Override\n    authors: [Author]\n"]
+)
+def test_unknown_bibtex_key_reports_location(library, tmp_path, metadata):
+    """A broken link is reported even when YAML supplies display fields."""
+    from ml_peg.utils.citations import CitationMetadataError
+
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "citations:\n  - bibtex_key: absent\n    role: benchmark_method\n" + metadata
+    )
+    with pytest.raises(
+        CitationMetadataError, match=r"citations\[0\].bibtex_key.*absent"
+    ):
+        load_benchmark_credits(path)
+
+
+def test_missing_bibliography_reports_metadata_error(library, tmp_path):
+    """A missing shared file raises the app's existing recoverable metadata error."""
+    from ml_peg.utils.citations import CitationMetadataError
+
+    bibliography.BIBTEX_FILE.unlink()
+    path = tmp_path / "citations.yml"
+    path.write_text("citations:\n  - bibtex_key: paper\n    role: benchmark_method\n")
+    with pytest.raises(CitationMetadataError, match="cannot read bibliography"):
+        load_benchmark_credits(path)
+
+
+def test_minimal_and_legacy_citations_can_coexist(library, tmp_path):
+    """A benchmark can mix bibliography links with references still held in YAML."""
+    path = tmp_path / "citations.yml"
+    path.write_text(
+        "citations:\n  - bibtex_key: paper\n    role: reference_data\n"
+        "  - key: legacy\n    title: Manual reference\n    authors: [An Author]\n"
+        "    role: benchmark_method\n"
+    )
+    credits = load_benchmark_credits(path)
+    assert [c.key for c in credits.citations] == ["paper", "legacy"]
+    assert collect_bibtex(credits).missing == {"Manual reference"}
+
+
+@pytest.mark.parametrize(
+    "record, message",
+    [
+        ("@article{paper, title={Missing authors}, year={2025}}", "authors"),
+        ("@article{paper, author={Smith, Jo}, year={2025}}", "title"),
+        (
+            "@article{paper, title={Bad year}, author={Smith, Jo}, year={unknown}}",
+            "invalid year",
+        ),
+        ("@article{paper, title={Unclosed}", "cannot read bibliography"),
+    ],
+)
+def test_invalid_bibtex_metadata_is_rejected(library, tmp_path, record, message):
+    """Missing required fields and malformed records fail with useful errors."""
+    from ml_peg.utils.citations import CitationMetadataError
+
+    bibliography.BIBTEX_FILE.write_text(record)
+    path = tmp_path / "citations.yml"
+    path.write_text("citations:\n  - bibtex_key: paper\n    role: benchmark_method\n")
+    with pytest.raises(CitationMetadataError, match=message):
+        load_benchmark_credits(path)

@@ -11,13 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "spiekermann-2022-reactions"
-    bibtex_key: spiekermann-2022-reactions
+  - bibtex_key: spiekermann-2022-reactions
     role: reference_data
-    title: "High accuracy barrier heights, enthalpies, and rate coefficients for chemical reactions"
-    authors:
-      - "Kevin Spiekermann"
-      - "Lagnajit Pattanaik"
-      - "William H. Green"
-    year: 2022
-    doi: "10.1038/s41597-022-01529-6"

@@ -11,17 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "neugebauer-2023-3dtmv"
-    bibtex_key: "Neugebauer2023"
+  - bibtex_key: Neugebauer2023
     role: benchmark_method
-    title: "Toward Benchmark-Quality Ab Initio Predictions for 3d Transition Metal Electrocatalysts: A Comparison of CCSD(T) and ph-AFQMC"
-    authors:
-      - "Hagen Neugebauer"
-      - "Hung T. Vuong"
-      - "John L. Weber"
-      - "Richard A. Friesner"
-      - "James Shee"
-      - "Andreas Hansen"
-    year: 2023
-    doi: "10.1021/acs.jctc.3c00617"
-    url: null

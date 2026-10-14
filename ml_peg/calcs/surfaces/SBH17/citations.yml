@@ -8,15 +8,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "tchakoua-2022-sbh17"
-    bibtex_key: tchakoua2023sbh17
+  - bibtex_key: tchakoua2023sbh17
     role: benchmark_method
-    title: "SBH17: Benchmark database of barrier heights for dissociative chemisorption on transition metal surfaces"
-    authors:
-      - "T. Tchakoua"
-      - "N. Gerrits"
-      - "E. W. F. Smeets"
-      - "G. J. Kroes"
-    year: 2023
-    doi: "10.1021/acs.jctc.2c00824"
-    url: "https://doi.org/10.1021/acs.jctc.2c00824"

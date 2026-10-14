@@ -11,16 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: kruse2015quantum
-    bibtex_key: "Kruse_2015"
+  - bibtex_key: Kruse_2015
     role: reference_data
-    title: Quantum chemical benchmark study on 46 RNA backbone families using a dinucleotide unit
-    authors:
-      - Holger Kruse
-      - Arnost Mladek
-      - Konstantinos Gkionis
-      - Andreas Hansen
-      - Stefan Grimme
-      - Jiri Sponer
-    year: 2015
-    doi: 10.1021/acs.jctc.5b00515
