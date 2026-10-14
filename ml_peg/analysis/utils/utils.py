@@ -81,7 +81,9 @@ def build_dispersion_name_map(
     return name_map
 
 
-def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
+def load_metrics_config(
+    config_path: Path,
+) -> tuple[Thresholds, dict[str, str], dict[str, float]]:
     """
     Load metric thresholds and tooltips from a YAML configuration file.
 
@@ -92,7 +94,7 @@ def load_metrics_config(config_path: Path) -> tuple[Thresholds, dict[str, str]]:
 
     Returns
     -------
-    tuple[Thresholds, dict[str, str]]
+    tuple[Thresholds, dict[str, str], dict[str, float]]
         Mapping of metric thresholds, tooltips, and weights.
     """
     if not config_path.exists():

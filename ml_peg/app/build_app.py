@@ -28,6 +28,7 @@ from ml_peg.app.filters import (
     get_model_filter,
     register_element_filter_callbacks,
 )
+from ml_peg.app.utils.bug_report import register_bug_report_callbacks
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
     build_collapse_controls,
@@ -868,7 +869,7 @@ def build_nav(
                             ],
                             className="mlpeg-header",
                         ),
-                        build_header_controls(),
+                        build_header_controls(global_state_stores),
                     ],
                     className="mlpeg-topbar",
                 ),
@@ -958,6 +959,7 @@ def build_nav(
     register_shell_callbacks()
     register_storage_callbacks()
     register_settings_callbacks()
+    register_bug_report_callbacks(global_state_stores)
 
     @callback(
         Output("model-filter-checklist", "value"),

@@ -199,6 +199,7 @@ def build_summary_table(
         Description of summary table. Default is None.
     weights
         Weights for each column. Default is `None`, which sets all weights to 1.
+        Columns whose table has no rows are forced to 0 regardless.
     header_labels
         Optional mapping of table key to display header text. Column ids are
         unchanged, so only the rendered header differs. Default is None.
@@ -236,6 +237,15 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
+    # Set weight to 0 if benchmark has no results, so it does not NaN every row's score.
+    empty_columns = [
+        f"{name} Score" for name, summarised in tables.items() if not summarised.data
+    ]
+    if empty_columns:
+        weights = dict(weights or {})
+        for empty_column in empty_columns:
+            weights[empty_column] = 0.0
+
     data = calc_table_scores(data, weights=weights)
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
@@ -264,9 +274,15 @@ def build_summary_table(
     columns = [
         {"name": display_headers[header], "id": header} for header in columns_headers
     ]
-    tooltip_header = {
-        header + " Score": table.description for header, table in tables.items()
-    }
+    tooltip_header = {}
+    for header, summarised in tables.items():
+        tooltip = summarised.description
+        if not summarised.data:
+            no_results = (
+                "Data is still being collected for this benchmark, so it is weighted 0."
+            )
+            tooltip = f"{tooltip} {no_results}" if tooltip else no_results
+        tooltip_header[header + " Score"] = tooltip
 
     for column in columns:
         column_id = column["id"]
@@ -1606,6 +1622,43 @@ def build_speed_panel(
     )
 
 
+def build_no_results_notice() -> Div:
+    """
+    Build the notice shown in place of a benchmark table holding no results.
+
+    Returns
+    -------
+    Div
+        Notice explaining that the benchmark produced no results.
+    """
+    return Div(
+        [
+            Div(
+                "No results found",
+                style={
+                    "fontWeight": "600",
+                    "color": "var(--mlpeg-heading)",
+                    "marginBottom": "4px",
+                },
+            ),
+            Div(
+                "Data is still being collected for this benchmark, so "
+                "its table is hidden, and it is weighted 0.",
+                style={"color": "var(--mlpeg-muted)", "fontSize": "13px"},
+            ),
+        ],
+        style={
+            "backgroundColor": "var(--mlpeg-surface)",
+            "border": "1px solid var(--mlpeg-border)",
+            "borderRadius": "12px",
+            "padding": "16px 20px",
+            "marginTop": "12px",
+            "maxWidth": "min(820px, 100%)",
+            "boxSizing": "border-box",
+        },
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1620,6 +1673,9 @@ def build_test_layout(
 ) -> Div:
     """
     Build app layout for a test.
+
+    A benchmark with no results keeps its heading, description, credits and docs
+    link, but shows a notice in place of the table, controls and extra components.
 
     Parameters
     ----------
@@ -1694,6 +1750,12 @@ def build_test_layout(
                 className="mlpeg-doc-link",
             )
         )
+
+    # Every row is dropped by drop_empty_model_rows when no model has results, so
+    # the table, its scoring controls and its plots would all render blank.
+    if not table.data:
+        layout_contents.append(build_no_results_notice())
+        return Div(layout_contents)
 
     reserved = {"MLIP", "Score", "id", "link"}
     metric_columns = [
