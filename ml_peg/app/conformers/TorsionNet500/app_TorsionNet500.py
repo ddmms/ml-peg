@@ -1,4 +1,4 @@
-"""Run TorsionNet500CCSDT app."""
+"""Run TorsionNet500 app."""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "TorsionNet500CCSDT"
+BENCHMARK_NAME = "TorsionNet500"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/conformers.html#torsionnet500"
 )
-DATA_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500CCSDT"
+DATA_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500"
 INFO_PATH = DATA_PATH / "info.json"
-ASSETS_DIR = "/assets/conformers/TorsionNet500CCSDT"
+ASSETS_DIR = "/assets/conformers/TorsionNet500"
 
 
 def _trajectory_paths() -> dict[str, str]:
@@ -45,8 +45,8 @@ def _trajectory_paths() -> dict[str, str]:
     }
 
 
-class TorsionNet500CCSDTApp(BaseApp):
-    """TorsionNet500CCSDT benchmark app layout and callbacks."""
+class TorsionNet500App(BaseApp):
+    """TorsionNet500 benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -112,23 +112,23 @@ class TorsionNet500CCSDTApp(BaseApp):
                 )
 
 
-def get_app() -> TorsionNet500CCSDTApp:
+def get_app() -> TorsionNet500App:
     """
-    Get TorsionNet500CCSDT benchmark app layout and callback registration.
+    Get TorsionNet500 benchmark app layout and callback registration.
 
     Returns
     -------
-    TorsionNet500CCSDTApp
+    TorsionNet500App
         Benchmark layout and callback registration.
     """
-    return TorsionNet500CCSDTApp(
+    return TorsionNet500App(
         name=BENCHMARK_NAME,
         description=(
             "Accuracy of predicted torsional energy profiles for 500 molecular "
             "fragments, benchmarked against CCSD(T)/CBS reference scans."
         ),
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "torsionnet500ccsdt_metrics_table.json",
+        table_path=DATA_PATH / "torsionnet500_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-scatter-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-curve-placeholder"),
@@ -143,9 +143,9 @@ if __name__ == "__main__":
     full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
 
     # Construct layout and register callbacks
-    torsionnet500ccsdt_app = get_app()
-    full_app.layout = torsionnet500ccsdt_app.layout
-    torsionnet500ccsdt_app.register_callbacks()
+    torsionnet500_app = get_app()
+    full_app.layout = torsionnet500_app.layout
+    torsionnet500_app.register_callbacks()
 
     # Run app
     full_app.run(port=8072, debug=True)

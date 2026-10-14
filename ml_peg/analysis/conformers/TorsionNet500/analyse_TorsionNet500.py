@@ -1,4 +1,4 @@
-"""Analyse TorsionNet500CCSDT benchmark."""
+"""Analyse TorsionNet500 benchmark."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "conformers" / "TorsionNet500" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500CCSDT"
+OUT_PATH = APP_ROOT / "data" / "conformers" / "TorsionNet500"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -101,7 +101,7 @@ def fragment_rmse() -> dict[str, dict[str, list]]:
 @pytest.fixture
 def get_rmse(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | None]:
     """
-    Get mean RMSE across TorsionNet500CCSDT torsion scans.
+    Get mean RMSE across TorsionNet500 torsion scans.
 
     Parameters
     ----------
@@ -125,7 +125,7 @@ def get_rmse(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | Non
 @pytest.fixture
 def get_mae(fragment_rmse: dict[str, dict[str, list]]) -> dict[str, float | None]:
     """
-    Get mean MAE across TorsionNet500CCSDT torsion scans.
+    Get mean MAE across TorsionNet500 torsion scans.
 
     Parameters
     ----------
@@ -321,7 +321,7 @@ def torsion_trajectories() -> None:
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "torsionnet500ccsdt_metrics_table.json",
+    filename=OUT_PATH / "torsionnet500_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
 )
@@ -329,7 +329,7 @@ def metrics(
     get_rmse: dict[str, float | None], get_mae: dict[str, float | None]
 ) -> dict[str, dict]:
     """
-    Get all TorsionNet500CCSDT metrics.
+    Get all TorsionNet500 metrics.
 
     Parameters
     ----------
@@ -349,19 +349,19 @@ def metrics(
     }
 
 
-def test_torsionnet500ccsdt(
+def test_torsionnet500(
     metrics: dict[str, dict],
     fragment_scatter_figures: None,
     torsion_curve_figures: None,
     torsion_trajectories: None,
 ) -> None:
     """
-    Run TorsionNet500CCSDT analysis.
+    Run TorsionNet500 analysis.
 
     Parameters
     ----------
     metrics
-        All TorsionNet500CCSDT metrics.
+        All TorsionNet500 metrics.
     fragment_scatter_figures
         Per-model fragment-RMSE/MAE scatter figures (side-effect only).
     torsion_curve_figures

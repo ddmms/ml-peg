@@ -1,4 +1,4 @@
-"""Run calculations for the TorsionNet500CCSDT benchmark."""
+"""Run calculations for the TorsionNet500 benchmark."""
 
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ HARTREE_TO_EV = units.Hartree
 
 
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_torsionnet500ccsdt(mlip: tuple[str, Any]) -> None:
+def test_torsionnet500(mlip: tuple[str, Any]) -> None:
     """
-    Run the TorsionNet500CCSDT benchmark.
+    Run the TorsionNet500 benchmark.
 
     Parameters
     ----------
