@@ -13,6 +13,8 @@
 from importlib import metadata
 import time
 
+from docutils import nodes
+
 import ml_peg
 
 # -- General configuration ------------------------------------------------
@@ -31,6 +33,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinxcontrib.contentui",
+    "sphinxcontrib.details.directive",
     "sphinx_copybutton",
     "sphinx_autodoc_typehints",
 ]
@@ -201,3 +204,23 @@ html_search_language = "en"
 # Warnings to ignore when using the -n (nitpicky) option
 # We should ignore any python built-in exception, for instance
 nitpicky = True
+
+
+def open_model_citations_in_new_tab(app, doctree, docname):
+    """Open paper links in model citation bullets in a separate browser tab."""
+    if docname != "user_guide/models":
+        return
+    for paragraph in doctree.findall(nodes.paragraph):
+        if not paragraph.children or not isinstance(paragraph[0], nodes.strong):
+            continue
+        if not paragraph[0].astext().startswith("Citation"):
+            continue
+        for reference in paragraph.findall(nodes.reference):
+            if reference.get("refuri", "").startswith("https://"):
+                reference["target"] = "_blank"
+                reference["rel"] = "noopener noreferrer"
+
+
+def setup(app):
+    """Apply the model citation link behaviour when building documentation."""
+    app.connect("doctree-resolved", open_model_citations_in_new_tab)
