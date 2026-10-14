@@ -75,7 +75,15 @@ The common fields are:
    branches in ``load_models`` for model families that need a dedicated wrapper.
 
 ``device``
-   Device passed to calculators that support it. Options: ``cuda``, ``cpu`` or ``auto``.
+   Device passed to calculators that support it. Options: ``cuda``, ``cpu``,
+   ``auto`` or ``null``.
+
+   Use ``null`` when the calculator has no device argument, with a comment
+   saying so, e.g. ``device: null  # Unused: grace_fm has no device argument``.
+   Such calculators choose their own device, and anything set here would be
+   swallowed by ASE's ``Calculator`` and silently ignored. This currently
+   applies to ``grace_fm``, ``DP`` and plain ASE calculators such as
+   ``LennardJones``.
 
 ``trained_on_dispersion``
    Whether the model's training data already included dispersion corrections.
@@ -104,7 +112,9 @@ The common fields are:
 ``additional_supported_elements``
    Optional list of element symbols the model supports *beyond* its ``datasets``
    coverage. A model's total coverage is the union of its datasets' elements and
-   this list. To determine coverage empirically, run
+   this list. **Quote every symbol**: YAML reads an unquoted ``No`` as boolean
+   ``false``, which drops nobelium and adds a non-element to the model's
+   coverage. To determine coverage empirically, run
    ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
    since model backends conflict), then
    ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
@@ -114,10 +124,31 @@ The common fields are:
    Keyword arguments forwarded to the calculator constructor or factory. Here you can
    input kwargs you would usually use for the calculator.
 
+   These are checked against the calculator's signature when it is built, so a
+   misnamed option raises rather than being quietly dropped — see
+   `Checking a new entry`_.
+
 ``dispersion_kwargs``
    Optional settings used by ``add_d3_calculator`` when a benchmark adds a
-   separate dispersion correction. These are option/value pairs passed through
-   to the dispersion wrapper, so the accepted keys depend on that wrapper.
+   separate dispersion correction, i.e. when ``trained_on_dispersion`` is
+   ``false``. The correction is always a ``TorchDFTD3Calculator``, and the
+   accepted keys are:
+
+   ``xc``
+      Functional whose published D3 damping parameters are used, e.g.
+      ``r2scan``. This selects parameters *within* D3; it does not switch to a
+      different dispersion model such as D4.
+
+   ``damping``
+      Damping function, defaulting to ``bj`` (Becke-Johnson).
+
+   ``cutoff``, ``dtype``, ``device``
+      Passed straight to the dispersion calculator.
+
+   ``label``
+      Display only: the suffix appended to the model name in tables and plots,
+      defaulting to ``D3``. It has no effect on the correction applied, so only
+      set it if the name should differ from the calculation.
 
 ``overwrite_dtype``
    Optional precision override for model wrappers that support it. Most
@@ -131,6 +162,9 @@ The common fields are:
    ``kwargs.model`` (``-fp64``) that selects a different published checkpoint.
    Check the relevant ``get_calculator`` in ``ml_peg/models/models.py`` before
    setting it; wrappers whose backend has no dtype argument ignore the field.
+   Those wrappers ignore the requested ``precision`` too: DPA checkpoints are
+   fixed at float32, SevenNet exposes no precision argument, and Vivace takes
+   its dtype from the checkpoint metadata.
 
 Examples
 --------
@@ -343,8 +377,14 @@ only if the backend has no dtype argument to override, and note that in the
 ``get_calculator`` docstring.
 
 Import the backend inside ``get_calculator`` rather than at module level, so
-``models.py`` stays importable without the extra installed. Optionally define an
-``available`` property that reports whether the backend can be loaded.
+``models.py`` stays importable without the extra installed. Use
+``import_calculator(self.module, self.class_name)`` rather than importing the
+name directly, so the registry entry is what gets loaded and the two cannot
+drift apart, and call ``check_kwargs`` on the configured ``kwargs`` before
+building the calculator. Where a model is loaded in two stages, as for Orb and
+UMA, ``split_kwargs`` routes the configured ``kwargs`` to the stage that accepts
+each one. Optionally define an ``available`` property that reports whether the
+backend can be loaded, using the same imports as ``get_calculator``.
 
 Then route to it from ``load_models`` in ``ml_peg/models/get_models.py`` by
 adding a ``case`` for the ``class_name`` used in the YAML:
@@ -353,6 +393,8 @@ adding a ``case`` for the ``class_name`` used in the YAML:
 
    case "MyNetCalculator":
        loaded_models[name] = MyNetCalc(
+           module=cfg["module"],
+           class_name=cfg["class_name"],
            device=cfg.get("device", "cpu"),
            default_dtype=cfg.get("overwrite_dtype", None),
            kwargs=cfg.get("kwargs", {}),
@@ -362,6 +404,10 @@ adding a ``case`` for the ``class_name`` used in the YAML:
 
 Pass every field the wrapper supports here — a field the wrapper accepts but
 ``load_models`` never forwards is ignored without any error.
+
+A wrapper that needs a new top-level YAML key also needs that key adding to
+``MODEL_KEYS`` in ``get_models.py``, which lists the keys a model may set.
+Unrecognised keys are rejected, so the entry will not load until it is listed.
 
 The YAML entry records the model configuration, while the Python wrapper defines
 how ML-PEG constructs the calculator.
@@ -410,8 +456,16 @@ than ignored:
 
 * ``load_models`` rejects unrecognised top-level keys and ``dispersion_kwargs``,
   and requires ``module`` and ``class_name``.
-* Each wrapper checks its ``kwargs`` against the calculator's signature. Most
+* Each wrapper checks its ``kwargs`` against what the calculator accepts. Most
   calculators end in ``**kwargs``, which ASE stores without complaint, so a
   misnamed option would otherwise be ignored and the default used instead.
-  Options a calculator reads out of ``**kwargs`` by design, such as ``head`` for
-  MACE, are listed in ``PASSTHROUGH_KWARGS`` in ``ml_peg/models/models.py``.
+
+  Any genuinely valid argument can still be passed. As well as the calculator's
+  own signature, the check accepts arguments of calculators it forwards
+  ``**kwargs`` to — listed in ``FORWARDED_KWARGS`` in
+  ``ml_peg/models/models.py``, so ``enable_cueq`` reaches ``MACECalculator``
+  through ``mace_mp`` — along with ASE class defaults such as ``LennardJones``'
+  ``epsilon``, standard ASE arguments such as ``directory``, and options a
+  calculator reads straight out of ``**kwargs``, which are listed in
+  ``PASSTHROUGH_KWARGS`` (``head`` for MACE, ``load_path`` for MatterSim). Add
+  to those lists if a valid argument is rejected.

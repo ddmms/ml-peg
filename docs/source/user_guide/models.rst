@@ -22,6 +22,7 @@ mace-mp-0a
    mace-mp-0a:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [MPtrj]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -36,6 +37,7 @@ mace-mp-0b3
    mace-mp-0b3:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [MPtrj]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -50,6 +52,7 @@ mace-mpa-0
    mace-mpa-0:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [MPtrj, sAlex]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -64,6 +67,7 @@ mace-omat-0
    mace-omat-0:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [OMAT]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -78,15 +82,14 @@ mace-matpes-r2scan
    mace-matpes-r2scan:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [MatPES-r2SCAN]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: r2SCAN
      kwargs:
        model: "mace-matpes-r2scan-0"
-       head: "matpes_pbe"
      dispersion_kwargs:
        xc: r2scan
-       label: D4
 
 mace-mh-1-omat
 --------------
@@ -96,6 +99,7 @@ mace-mh-1-omat
    mace-mh-1-omat:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
      device: "auto"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -103,34 +107,35 @@ mace-mh-1-omat
        model: "mh-1"
        head: omat_pbe
 
-
-MACE-OFF23(L)
+mace-off-23-L
 -------------
 
 .. code-block:: yaml
 
-   MACE-OFF23(L):
+   mace-off-23-L:
      module: mace.calculators
      class_name: mace_off
+     datasets: [SPICE]
      device: "auto"
      trained_on_dispersion: true
+     level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
      kwargs:
        model: large
 
-
-MACE-OFF24(M)
+mace-off-24-M
 -------------
 
 .. code-block:: yaml
 
-   MACE-OFF24(M):
+   mace-off-24-M:
      module: mace.calculators
      class_name: mace_off
+     datasets: [SPICE2]
      device: "auto"
+     level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
      trained_on_dispersion: true
      kwargs:
        model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
-
 
 mace-omol
 ---------
@@ -140,6 +145,7 @@ mace-omol
    mace-omol:
      module: mace.calculators
      class_name: mace_omol
+     datasets: [OMol25]
      device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
@@ -154,6 +160,7 @@ mace-mh-1-omol
    mace-mh-1-omol:
      module: mace.calculators
      class_name: mace_mp
+     datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
      device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
@@ -169,7 +176,8 @@ mace-polar-1-s
    mace-polar-1-s:
      module: mace.calculators
      class_name: mace_polar
-     device: "cpu"
+     datasets: [OMol25]
+     device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V
      kwargs:
@@ -183,7 +191,8 @@ mace-polar-1-m
    mace-polar-1-m:
      module: mace.calculators
      class_name: mace_polar
-     device: "cpu"
+     datasets: [OMol25]
+     device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V
      kwargs:
@@ -197,12 +206,12 @@ mace-polar-1-l
    mace-polar-1-l:
      module: mace.calculators
      class_name: mace_polar
-     device: "cpu"
+     datasets: [OMol25]
+     device: "auto"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V
      kwargs:
        model: "polar-1-l"
-
 
 DPA
 ===
@@ -220,7 +229,9 @@ dpa-3p3-1M-omat
    dpa-3p3-1M-omat:
      module: deepmd.calculator
      class_name: DP
+     device: null  # Unused: DP has no device argument
      datasets: [OpenLAM-v1, OMAT, MPtrj, OC20, OC22, ODAC23, SPICE2]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -235,7 +246,9 @@ dpa-4-nano-omat
    dpa-4-nano-omat:
      module: deepmd.calculator
      class_name: DP
+     device: null  # Unused: DP has no device argument
      datasets: [OMAT]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -249,7 +262,9 @@ dpa-4-neo-omat
    dpa-4-neo-omat:
      module: deepmd.calculator
      class_name: DP
+     device: null  # Unused: DP has no device argument
      datasets: [OMAT]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -263,7 +278,9 @@ dpa-4-plus-omat
    dpa-4-plus-omat:
      module: deepmd.calculator
      class_name: DP
+     device: null  # Unused: DP has no device argument
      datasets: [OMAT]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -280,6 +297,8 @@ orb-v3-consv-inf-omat
    orb-v3-consv-inf-omat:
      module: orb_models.forcefield.inference.calculator
      class_name: ORBCalculator
+     datasets: [OMAT]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -294,6 +313,7 @@ orb-v3-direct-inf-omat
    orb-v3-direct-inf-omat:
      module: orb_models.forcefield.inference.calculator
      class_name: ORBCalculator
+     datasets: [OMAT]
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -308,12 +328,13 @@ orb-v3-consv-omol
    orb-v3-consv-omol:
      module: orb_models.forcefield.inference.calculator
      class_name: ORBCalculator
+     datasets: [OMol25]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
      device: "cpu"
      trained_on_dispersion: true
      level_of_theory: PBE
      kwargs:
        name: "orb_v3_conservative_omol"
-
 
 PET
 ===
@@ -323,50 +344,53 @@ pet-mad
 
 .. code-block:: yaml
 
-  pet-mad:
-    module: upet.calculator
-    class_name: UPETCalculator
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBEsol
-    kwargs:
-      model: "pet-mad-s"
-      version: "1.0.2"
-    dispersion_kwargs:
-      xc: pbesol
+   pet-mad:
+     module: upet.calculator
+     class_name: UPETCalculator
+     datasets: [MAD]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBEsol
+     kwargs:
+       model: "pet-mad-s"
+       version: "1.0.2"
+     dispersion_kwargs:
+       xc: pbesol
 
 pet-mad-s-1p5
 -------------
 
 .. code-block:: yaml
 
-  pet-mad-s-1p5:
-    module: upet.calculator
-    class_name: UPETCalculator
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: r2SCAN
-    kwargs:
-      model: "pet-mad-s"
-      version: "1.5.0"
-    dispersion_kwargs:
-      xc: r2scan
+   pet-mad-s-1p5:
+     module: upet.calculator
+     class_name: UPETCalculator
+     datasets: [OMAT, MAD-1p5]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: r2SCAN
+     kwargs:
+       model: "pet-mad-s"
+       version: "1.5.0"
+     dispersion_kwargs:
+       xc: r2scan
 
 pet-oam-xl
 ----------
 
 .. code-block:: yaml
 
-  pet-oam-xl:
-    module: upet.calculator
-    class_name: UPETCalculator
-    device: "cpu"
-    trained_on_dispersion: False
-    level_of_theory: PBE
-    kwargs:
-      model: "pet-oam-xl"
-      version: "1.0.0"
-
+   pet-oam-xl:
+     module: upet.calculator
+     class_name: UPETCalculator
+     datasets: [MPtrj, sAlex, OMAT]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"]
+     device: "cpu"
+     trained_on_dispersion: False
+     level_of_theory: PBE
+     kwargs:
+       model: "pet-oam-xl"
+       version: "1.0.0"
 
 UMA (FairChem)
 ==============
@@ -379,6 +403,8 @@ uma-s-1p1-omat
    uma-s-1p1-omat:
      module: fairchem.core
      class_name: FAIRChemCalculator
+     datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
      device: "cpu"
      level_of_theory: PBE
      trained_on_dispersion: false
@@ -394,6 +420,8 @@ uma-m-1p1-omat
    uma-m-1p1-omat:
      module: fairchem.core
      class_name: FAIRChemCalculator
+     datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
      device: "cpu"
      level_of_theory: PBE
      trained_on_dispersion: false
@@ -409,6 +437,8 @@ uma-s-1p1-omol
    uma-s-1p1-omol:
      module: fairchem.core
      class_name: FAIRChemCalculator
+     datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
      device: "cpu"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
@@ -424,6 +454,8 @@ uma-s-1p2-omol
    uma-s-1p2-omol:
      module: fairchem.core
      class_name: FAIRChemCalculator
+     datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
      device: "cpu"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
@@ -439,13 +471,14 @@ uma-m-1p1-omol
    uma-m-1p1-omol:
      module: fairchem.core
      class_name: FAIRChemCalculator
+     datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+     additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
      device: "cpu"
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
      kwargs:
        model_name: "uma-m-1p1"
        task_name: "omol"
-
 
 MatterSim
 =========
@@ -458,6 +491,8 @@ mattersim-5M
    mattersim-5M:
      module: mattersim.forcefield
      class_name: MatterSimCalculator
+     datasets: null
+     additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
@@ -472,12 +507,13 @@ mattersim-1M
    mattersim-1M:
      module: mattersim.forcefield
      class_name: MatterSimCalculator
+     datasets: null
+     additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
      device: "cpu"
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
        load_path: "mattersim-v1.0.0-1m"
-
 
 GRACE
 =====
@@ -487,27 +523,29 @@ GRACE-2L-OMAT
 
 .. code-block:: yaml
 
-  grace-2l-omat:
-    module: tensorpotential.calculator
-    class_name: grace_fm
-    device: "cpu"
-    trained_on_dispersion: false
-    kwargs:
-      model: GRACE-2L-OMAT
-
+   grace-2l-omat:
+     module: tensorpotential.calculator
+     class_name: grace_fm
+     datasets: [OMAT]
+     level_of_theory: PBE
+     device: null  # Unused: grace_fm has no device argument
+     trained_on_dispersion: false
+     kwargs:
+       model: GRACE-2L-OMAT
 
 GRACE-2L-SMAX-OMAT-medium
 -------------------------
 .. code-block:: yaml
 
-  grace-2l-smax-omat-medium:
-    module: tensorpotential.calculator
-    class_name: grace_fm
-    device: "cpu"
-    trained_on_dispersion: false
-    kwargs:
-      model: GRACE-2L-SMAX-OMAT-medium
-
+   grace-2l-smax-omat-medium:
+     module: tensorpotential.calculator
+     class_name: grace_fm
+     datasets: [OMAT, SMAX]
+     level_of_theory: PBE
+     device: null  # Unused: grace_fm has no device argument
+     trained_on_dispersion: false
+     kwargs:
+       model: GRACE-2L-SMAX-OMAT-medium
 
 SevenNet
 ========
@@ -517,15 +555,18 @@ sevennet-omni-mpa
 
 .. code-block:: yaml
 
-  sevennet-omni-mpa:
-    module: sevenn.sevennet_calculator
-    class_name: SevenNetCalculator
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBE
-    kwargs:
-      model: "7net-omni"
-      modal: "mpa"
+   sevennet-omni-mpa:
+     module: sevenn.calculator
+     class_name: SevenNetCalculator
+     datasets: [MPtrj, sAlex, MAD, MatPES-PBE, OMAT, OMol25, OC20, OC22, ODAC23, SPICE, QCML, MP-ALOE, MatPES-r2SCAN]
+     additional_supported_elements: ["Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: "7net-omni"
+       modal: "mpa"
+
 
 TACE
 ====
@@ -583,3 +624,22 @@ TACE-OAM-L (L).
     level_of_theory: PBE
     kwargs:
       model: "TACE-OAM-L"
+
+
+Vivace
+======
+
+Vivace
+------
+
+.. code-block:: yaml
+
+   Vivace:
+     module: simpoly.vivace.calculator
+     class_name: MLFFCalculator
+     datasets: [OMol25, PolyCrop, PolyPack, PolyDiss]
+     device: "cuda"
+     trained_on_dispersion: true
+     level_of_theory: r2SCAN+D3
+     kwargs:
+       model_path: null

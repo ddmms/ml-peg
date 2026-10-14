@@ -7,6 +7,7 @@ mace-mp-0a:
   level_of_theory: PBE
   kwargs:
     model: "medium"
+    enable_cueq: false
 
 mace-mp-0b3:
   module: mace.calculators

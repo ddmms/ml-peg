@@ -28,18 +28,93 @@ DISPERSION_KWARGS = frozenset(
     {"device", "damping", "xc", "dtype", "cutoff", "label"},
 )
 
-#: Keyword arguments taken from `**kwargs` by a calculator, so absent from its
-#: signature. Any other key missing from the signature is silently ignored by ASE,
-#: so is rejected instead. Keyed by the registry's `class_name`.
+#: Calculators that factory functions forward their `**kwargs` to, so arguments of
+#: these are valid too. Keyed by the registry's `class_name`.
+FORWARDED_KWARGS = {
+    "mace_mp": (("mace.calculators", "MACECalculator"),),
+    "mace_off": (("mace.calculators", "MACECalculator"),),
+    "mace_omol": (("mace.calculators", "MACECalculator"),),
+    "mace_polar": (("mace.calculators", "MACECalculator"),),
+    "grace_fm": (("tensorpotential.calculator", "TPCalculator"),),
+}
+
+#: Keyword arguments read from `**kwargs` by a calculator, so absent from the
+#: signature of anything it is passed to. Keyed by the registry's `class_name`.
+MACE_KWARGS = {"head", "compute_atomic_stresses"}
 PASSTHROUGH_KWARGS = {
-    "mace_mp": {"head"},
-    "mace_off": {"head"},
-    "mace_omol": {"head"},
-    "mace_polar": {"head"},
-    "MACECalculator": {"head"},
+    "mace_mp": MACE_KWARGS,
+    "mace_off": MACE_KWARGS,
+    "mace_omol": MACE_KWARGS,
+    "mace_polar": MACE_KWARGS,
+    "MACECalculator": MACE_KWARGS,
     "MatterSimCalculator": {"load_path"},
     "grace_fm": {"cutoff"},
 }
+
+
+def _named_parameters(target: Callable) -> set[str]:
+    """
+    Get the keyword arguments a callable accepts by name.
+
+    Parameters
+    ----------
+    target
+        Callable to inspect.
+
+    Returns
+    -------
+    set[str]
+        Parameter names, excluding any `**kwargs`.
+    """
+    return {
+        name
+        for name, parameter in inspect.signature(target).parameters.items()
+        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+    }
+
+
+def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
+    """
+    Get the keyword arguments a calculator accepts.
+
+    As well as its own parameters, this covers arguments it passes on to another
+    calculator, ASE parameters set through a calculator's class defaults, and
+    arguments it reads from `**kwargs` itself.
+
+    Parameters
+    ----------
+    target
+        Calculator class or factory function the keyword arguments are passed to.
+    class_name
+        Registry `class_name`, used to look up what `target` forwards to.
+
+    Returns
+    -------
+    set[str]
+        Names of all accepted keyword arguments.
+    """
+    from ase.calculators.calculator import Calculator
+
+    accepted = _named_parameters(target)
+
+    targets = [target]
+    for module, forwarded in FORWARDED_KWARGS.get(class_name, ()):
+        try:
+            targets.append(import_calculator(module, forwarded))
+        except (ImportError, AttributeError):
+            continue
+
+    for forwarded_target in targets:
+        if forwarded_target is not target:
+            accepted |= _named_parameters(forwarded_target)
+        # ASE calculators also take their class defaults as keyword arguments.
+        accepted |= set(getattr(forwarded_target, "default_parameters", None) or ())
+        if isinstance(forwarded_target, type) and issubclass(
+            forwarded_target, Calculator
+        ):
+            accepted |= _named_parameters(Calculator.__init__)
+
+    return accepted | PASSTHROUGH_KWARGS.get(class_name, set())
 
 
 def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> None:
@@ -57,29 +132,25 @@ def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> N
     target
         Calculator class or factory function the keyword arguments are passed to.
     class_name
-        Registry `class_name`, used to look up documented `**kwargs` passthroughs.
+        Registry `class_name`, used to look up what `target` accepts indirectly.
 
     Raises
     ------
     ValueError
-        If a keyword argument is neither a parameter of `target` nor a known
-        passthrough.
+        If a keyword argument is accepted by neither `target` nor anything it passes
+        its own `**kwargs` on to.
     """
-    parameters = inspect.signature(target).parameters
-    named = {
-        name
-        for name, parameter in parameters.items()
-        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
-    }
     # Nothing to check against, such as a test double taking only `**kwargs`.
-    if not named:
+    if not _named_parameters(target) and not getattr(
+        target, "default_parameters", None
+    ):
         return
 
-    unknown = sorted(set(kwargs) - named - PASSTHROUGH_KWARGS.get(class_name, set()))
-    if unknown:
+    accepted = accepted_kwargs(target, class_name)
+    if unknown := sorted(set(kwargs) - accepted):
         raise ValueError(
             f"{', '.join(unknown)} would be ignored by {class_name}. Valid keyword "
-            f"arguments are: {', '.join(sorted(named))}"
+            f"arguments are: {', '.join(sorted(accepted))}"
         )
 
 
