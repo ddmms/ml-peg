@@ -1,0 +1,79 @@
+"""
+Measure model inference speed and how it scales with system size.
+
+For each structure in a size-stratified protein dataset, the model forward pass
+(energy + forces) is timed. The timings are later aggregated into a scaling curve
+and a per-atom forward-time metric.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+import shutil
+from typing import Any
+from warnings import warn
+
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.inference_speed.inference_speed import (
+    InferenceSpeedModelOutput,
+)
+from mlipaudit.io import write_model_output_to_disk
+
+from ml_peg.calcs.utils.mlipaudit import MlPegInferenceSpeedBenchmark
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+MODELS = load_models(current_models)
+
+OUT_PATH = Path(__file__).parent / "outputs"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_inference_speed(mlip: tuple[str, Any]) -> None:
+    """
+    Benchmark model inference speed.
+
+    Parameters
+    ----------
+    mlip
+        Name of model and model object to get calculator.
+    """
+    model_name, model = mlip
+    # Low (float32) precision is intentional: time the precision used for MD.
+    calc = model.get_calculator(precision="low")
+    # Do not add D3 term. We measure inference speed of the model alone.
+
+    data_input_dir = download_s3_data(
+        key="inputs/molecular_dynamics/inference_speed/inference_speed.zip",
+        filename="inference_speed.zip",
+    )
+
+    benchmark_name = MlPegInferenceSpeedBenchmark.name
+    shutil.copytree(
+        data_input_dir / benchmark_name,
+        OUT_PATH / benchmark_name,
+        dirs_exist_ok=True,
+    )
+
+    benchmark = MlPegInferenceSpeedBenchmark(
+        force_field=calc,
+        data_input_dir=data_input_dir,
+        run_mode="standard",
+    )
+    try:
+        benchmark.run_model()
+    except Exception as exc:
+        warn(
+            f"Error running inference speed benchmark for {model_name}: {exc}",
+            stacklevel=2,
+        )
+        # Empty structure lists are treated as a failed benchmark by analyze().
+        benchmark.model_output = InferenceSpeedModelOutput(structure_names=[])
+
+    write_model_output_to_disk(
+        "inference_speed", benchmark.model_output, OUT_PATH / model_name
+    )
