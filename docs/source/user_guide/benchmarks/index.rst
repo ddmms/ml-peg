@@ -5,6 +5,7 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    alloy_metallurgy
     biomolecules
     bulk_crystal
     conformers
