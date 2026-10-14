@@ -83,7 +83,8 @@ def get_app() -> Al3TiPolymorphApp:
     return Al3TiPolymorphApp(
         name=BENCHMARK_NAME,
         description=(
-            "Formation energies and relative stability ordering for Al3Ti polymorphs."
+            "Formation energies, relaxed cell geometry, and stability ordering "
+            "for Al3Ti polymorphs."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "al3ti_metrics.json",

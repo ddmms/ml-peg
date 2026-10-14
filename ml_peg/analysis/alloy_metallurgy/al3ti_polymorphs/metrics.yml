@@ -1,6 +1,6 @@
 metrics:
   Formation Energy MAE:
-    good: 0.005
+    good: 0.01
     bad: 0.05
     unit: eV/atom
     tooltip: "Mean absolute error of formation energies for all Al3Ti polymorphs compared to DFT"
@@ -10,4 +10,16 @@ metrics:
     bad: 0.0
     unit: '%'
     tooltip: "Percentage of polymorph pairs whose predicted formation-energy ordering matches the DFT reference"
+    level_of_theory: GGA-PW91
+  Volume MAE:
+    good: 0.25
+    bad: 1.0
+    unit: Å³/atom
+    tooltip: "Mean absolute error of relaxed volume per atom across the three Al3Ti polymorphs compared to DFT"
+    level_of_theory: GGA-PW91
+  Lattice Parameter MAPE:
+    good: 0.5
+    bad: 2.0
+    unit: '%'
+    tooltip: "Mean absolute percentage error of relaxed lattice parameters, with equal weight per Al3Ti polymorph, compared to DFT"
     level_of_theory: GGA-PW91

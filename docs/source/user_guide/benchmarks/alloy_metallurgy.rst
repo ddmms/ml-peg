@@ -182,7 +182,7 @@ Summary
 -------
 
 Titanium-trialuminide (Al3Ti) exists in different polymorphs, with varying geometries and formation energies.
-This benchmark assesses formation-energy errors and whether a model preserves the DFT stability ordering.
+This benchmark assesses formation energies, relaxed cell geometry, and whether a model preserves the DFT stability ordering.
 
 
 Metrics
@@ -209,6 +209,19 @@ energies.
    from lowest to highest formation energy is D0_23, D0_22, and L1_2. A score of
    100% means all three pairwise comparisons agree with DFT; a score of 0% means
    none agree. A predicted tie counts as incorrect when DFT distinguishes the pair.
+
+3. Volume MAE (Å³/atom)
+
+   Mean absolute error of the relaxed cell volume divided by its atom count,
+   averaged over the three polymorphs.
+
+4. Lattice Parameter MAPE (%)
+
+   Mean absolute percentage error of relaxed cell lengths, weighted equally across
+   polymorphs. For D0_22 and D0_23, average both basal errors against the DFT
+   :math:`a` before averaging with the :math:`c` error. For L1_2, compare all
+   three lengths with the DFT :math:`a`. Missing structures make both geometry
+   metrics unavailable.
 
 
 Benchmark speed

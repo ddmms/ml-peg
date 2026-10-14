@@ -72,6 +72,19 @@ def load_references() -> dict[str, Any]:
         return {}
 
 
+@pytest.fixture
+def reference_data() -> dict[str, Any]:
+    """
+    Load DFT references once for the analysis fixtures.
+
+    Returns
+    -------
+    dict[str, Any]
+        Reference data keyed by polymorph name.
+    """
+    return load_references()
+
+
 def load_structure(structure: str, data_path: Path) -> Atoms | None:
     """
     Load a structure from a xyz file.
@@ -99,19 +112,50 @@ def load_structure(structure: str, data_path: Path) -> Atoms | None:
 
 
 @pytest.fixture
+def relaxed_polymorphs() -> dict[str, list[Atoms | None]]:
+    """
+    Load each model's relaxed polymorphs in ``POLYMORPHS`` order.
+
+    Returns
+    -------
+    dict[str, list[Atoms | None]]
+        Relaxed structures by model, with missing structures represented by None.
+    """
+    structures = {}
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        structures[model_name] = (
+            [load_structure(name, model_dir) for name in POLYMORPHS]
+            if model_dir.exists()
+            else [None] * len(POLYMORPHS)
+        )
+    return structures
+
+
+@pytest.fixture
 @plot_parity(
     filename=OUT_PATH / "figure_formation_energies.json",
     title="Al3Ti Formation Energies",
     x_label="Predicted formation energy / eV/atom",
     y_label="Reference formation energy / eV/atom",
 )
-def formation_energies() -> dict[str, list]:
+def formation_energies(
+    reference_data: dict[str, Any],
+    relaxed_polymorphs: dict[str, list[Atoms | None]],
+) -> dict[str, list[float]]:
     """
     Get formation energies for all Al3Ti polymorphs.
 
+    Parameters
+    ----------
+    reference_data
+        DFT reference values for the three polymorphs.
+    relaxed_polymorphs
+        Relaxed structures by model, in polymorph order.
+
     Returns
     -------
-    dict[str, list]
+    dict[str, list[float]]
         Dictionary of reference and predicted formation energies.
     """
     results = {"ref": []} | {mlip: [] for mlip in MODELS}
@@ -133,8 +177,7 @@ def formation_energies() -> dict[str, list]:
         ti_energy = ti_struct.get_potential_energy() / len(ti_struct)
 
         predictions = []
-        for name in POLYMORPHS:
-            poly_struct = load_structure(name, model_dir)
+        for poly_struct in relaxed_polymorphs[model_name]:
             if poly_struct is None:
                 predictions.append(np.nan)
                 continue
@@ -144,12 +187,11 @@ def formation_energies() -> dict[str, list]:
         results[model_name] = predictions
 
     # Store reference energies
-    references = load_references()
-    missing = [name for name in POLYMORPHS if name not in references]
+    missing = [name for name in POLYMORPHS if name not in reference_data]
     if missing:
         raise ValueError(f"Missing DFT references for: {', '.join(missing)}")
     ref = [
-        float(references[name]["formation_energy_0k_ev_atom"]["value"])
+        float(reference_data[name]["formation_energy_0k_ev_atom"]["value"])
         for name in POLYMORPHS
     ]
     results["ref"] = ref
@@ -248,6 +290,112 @@ def polymorph_order_accuracies(formation_energies) -> dict[str, float]:
 
 
 @pytest.fixture
+def volumes_per_atom(
+    reference_data: dict[str, Any],
+    relaxed_polymorphs: dict[str, list[Atoms | None]],
+) -> dict[str, list[float]]:
+    """
+    Get DFT and relaxed volumes per atom in ``POLYMORPHS`` order.
+
+    Parameters
+    ----------
+    reference_data
+        DFT reference values for the three polymorphs.
+    relaxed_polymorphs
+        Relaxed structures by model, in polymorph order.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Dictionary of predicted and reference volumes per atom.
+    """
+    volumes = {
+        "ref": [
+            float(reference_data[name]["volume_per_atom_angstrom3"]["value"])
+            for name in POLYMORPHS
+        ]
+    }
+    for model_name, structures in relaxed_polymorphs.items():
+        values = []
+        for atoms in structures:
+            if atoms is None or not len(atoms) or atoms.cell.rank != 3:
+                values.append(np.nan)
+                continue
+            volume = atoms.get_volume() / len(atoms)
+            values.append(volume if np.isfinite(volume) and volume > 0 else np.nan)
+        volumes[model_name] = values
+    return volumes
+
+
+@pytest.fixture
+def volume_errors(volumes_per_atom: dict[str, list[float]]) -> dict[str, float]:
+    """
+    Get the volume-per-atom mean absolute error for each model.
+
+    Parameters
+    ----------
+    volumes_per_atom
+        Reference and model volumes per atom in polymorph order.
+
+    Returns
+    -------
+    dict[str, float]
+        Volume-per-atom MAE in Å³/atom for each model.
+    """
+    return {
+        model_name: mae(volumes_per_atom["ref"], values)
+        for model_name, values in volumes_per_atom.items()
+        if model_name != "ref"
+    }
+
+
+@pytest.fixture
+def lattice_parameter_errors(
+    reference_data: dict[str, Any],
+    relaxed_polymorphs: dict[str, list[Atoms | None]],
+) -> dict[str, float]:
+    """
+    Get equally polymorph-weighted lattice parameter relative errors.
+
+    The two basal lengths share one parameter weight in each tetragonal phase.
+
+    Parameters
+    ----------
+    reference_data
+        DFT lattice parameters for the three polymorphs.
+    relaxed_polymorphs
+        Relaxed structures by model, in polymorph order.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean absolute percentage error for each model.
+    """
+    errors = {}
+    for model_name, structures in relaxed_polymorphs.items():
+        polymorph_errors = []
+        for name, atoms in zip(POLYMORPHS, structures, strict=True):
+            if atoms is None or atoms.cell.rank != 3 or atoms.cell.volume <= 0:
+                polymorph_errors.append(np.nan)
+                continue
+            lengths = atoms.cell.lengths()
+            a_ref = float(reference_data[name]["lattice_a_angstrom"]["value"])
+            if name == "L12":
+                polymorph_errors.append(np.mean(np.abs(lengths / a_ref - 1)))
+            else:
+                c_ref = float(reference_data[name]["lattice_c_angstrom"]["value"])
+                basal_error = np.mean(np.abs(lengths[:2] / a_ref - 1))
+                c_error = abs(lengths[2] / c_ref - 1)
+                polymorph_errors.append((basal_error + c_error) / 2)
+        errors[model_name] = (
+            float(100.0 * np.mean(polymorph_errors))
+            if np.isfinite(polymorph_errors).all()
+            else np.nan
+        )
+    return errors
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "al3ti_metrics.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -257,6 +405,8 @@ def polymorph_order_accuracies(formation_energies) -> dict[str, float]:
 def metrics(
     formation_energy_errors: dict[str, float],
     polymorph_order_accuracies: dict[str, float],
+    volume_errors: dict[str, float],
+    lattice_parameter_errors: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all Al3Ti metrics.
@@ -267,6 +417,10 @@ def metrics(
         Mean absolute formation energy error averaged across all polymorphs.
     polymorph_order_accuracies
         Pairwise accuracy of the predicted polymorph stability ordering.
+    volume_errors
+        Volume-per-atom mean absolute errors across all polymorphs.
+    lattice_parameter_errors
+        Equally polymorph-weighted lattice parameter relative errors.
 
     Returns
     -------
@@ -277,6 +431,8 @@ def metrics(
     return {
         "Formation Energy MAE": formation_energy_errors,
         "Relative Stability Ordering Accuracy": polymorph_order_accuracies,
+        "Volume MAE": volume_errors,
+        "Lattice Parameter MAPE": lattice_parameter_errors,
     }
 
 
