@@ -227,8 +227,8 @@ energies.
 Benchmark speed
 ------------------
 
-* **Bulk properties** (``test_al3ti_polymorphs``): Fast — 5 bulk cell relaxations;
-  likely less than a minute on GPU.
+* **Bulk properties** (``test_al3ti_polymorphs``): Fast — 5 bulk cell relaxations
+  per model; about 15 seconds for ``mace-mp-0a`` on an NVIDIA A100 80 GB GPU.
 
 
 Data availability
