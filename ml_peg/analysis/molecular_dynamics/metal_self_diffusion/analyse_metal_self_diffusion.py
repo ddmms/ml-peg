@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import units
 import numpy as np
 import pytest
 
@@ -19,6 +20,7 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.molecular_dynamics.metal_self_diffusion.calc_metal_self_diffusion import (  # noqa: E501
+    TIMESTEP,
     VACF_SAMPLES,
     VACF_STEPS,
 )
@@ -30,6 +32,7 @@ MODELS = load_models(current_models)
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "metal_self_diffusion" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "metal_self_diffusion"
 
+VACF_SIGMA_THZ = 0.5 # Gaussian smoothing
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -57,7 +60,7 @@ INFO = get_struct_info(
 
 @pytest.fixture(scope="session")
 def vacfs() -> dict:
-    """Load all temperatures per model/element once for analysis and plotting."""
+    """Load and Gaussian-window the VACFs for analysis and plotting."""
     results = {"times": None} | {model_name: {} for model_name in MODELS}
 
     for model_name in MODELS:
@@ -74,7 +77,12 @@ def vacfs() -> dict:
                     )
                     if not file.is_file():
                         continue
-                    times, vacfs[t, s] = np.load(file)
+                    times, values = np.load(file)
+                    # Gaussian frequency convolution
+                    window = np.exp(
+                        -2 * np.pi**2 * VACF_SIGMA_THZ**2 * (times / 1000)**2
+                    )
+                    vacfs[t, s] = values * window
                     if results["times"] is None:
                         results["times"] = times
 
@@ -89,7 +97,10 @@ def vacfs() -> dict:
             filename=OUT_PATH / f"{element}_vacfs.json",
             title=f"{element} VACFs",
             x_label="Time / ps",
-            y_label=r"Velocity autocorrelation / $\text{Å}^{2}/\text{fs}^{2}$",
+            y_label=(
+                r"$\text{Velocity autocorrelation} / "
+                r"\mathrm{\mathring{A}}^{2}\,\mathrm{fs}^{-2}$"
+            ),
             show_line=True,
             show_markers=False,
             hovertemplate=(
@@ -170,7 +181,10 @@ def diffusion_constants(vacfs: dict) -> dict:
             filename=OUT_PATH / f"{element}_diffusion.json",
             title=f"{element} self-diffusion",
             x_label="Temperature / K",
-            y_label=r"Diffusion constant / $10^{-9}\,\text{m}^{2}/\text{s}$",
+            y_label=(
+                r"$\text{Diffusion constant} / "
+                r"10^{-9}\,\mathrm{m}^{2}\,\mathrm{s}^{-1}$"
+            ),
             show_line=False,
             hovertemplate=(
                 "<b>Temperature: </b>%{x:.0f} K<br>"

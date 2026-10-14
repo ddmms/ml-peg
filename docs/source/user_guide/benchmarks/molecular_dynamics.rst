@@ -11,9 +11,10 @@ Summary
 Performance in predicting self-diffusion in liquid metals compared to experimental
 measurements. Ideal crystal structures of about 1000 atoms are melted at 1.5 times
 the measurement temperature in kelvin. After NPT equilibration at the measurement
-temperature, sampled states start independent short NVE trajectories. The diffusion coefficient
-is computed from the velocity autocorrelation function (VACF) using the Green–Kubo
-relation described by Tuckerman [tuckerman2015]_.
+temperature, sampled states start independent short NVE trajectories. The diffusion
+coefficient is computed from the Gaussian-smoothed spectrum of the velocity
+autocorrelation function (VACF) using the Green–Kubo relation described by
+Tuckerman [tuckerman2015]_.
 
 Metrics
 -------
@@ -42,11 +43,19 @@ Input structures:
 
 Prepared with ASE using crystallographic data from the Crystallography Open Database:
 
+* Al: COD 9008460
 * Cu: COD 9008468
+* Fe: COD 2300200
+* Ni: COD 2100652
+* Ti: COD 9008554
 
 Reference data (DOI):
 
+* Al: 10.1088/1742-6596/340/1/012077
 * Cu: 10.1103/PhysRevB.81.012102
+* Fe: 10.1088/1361-648X/ab2855
+* Ni: 10.1103/PhysRevB.77.092201
+* Ti: 10.1103/PhysRevB.80.212203
 
 .. [tuckerman2015] Mark E. Tuckerman, *Statistical Mechanics: Theory and Molecular
    Simulation*. Oxford University Press (2015).
