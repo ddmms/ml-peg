@@ -9,10 +9,31 @@ from pathlib import Path
 from warnings import warn
 
 from pybtex.database import BibliographyData
+from pybtex.database.output.bibtex import Writer
 from yaml import safe_load
 
 from ml_peg.citations import bibliography
 from ml_peg.utils.citations import FRAMEWORKS_FILE, BenchmarkCredits
+
+
+class _ParsedBibTeXWriter(Writer):
+    """Preserve LaTeX already present in parsed BibTeX fields."""
+
+    def _encode(self, text: str) -> str:
+        """
+        Avoid escaping parsed LaTeX a second time during export.
+
+        Parameters
+        ----------
+        text
+            Original BibTeX field or author text.
+
+        Returns
+        -------
+        str
+            Unchanged text, retaining commands such as escaped ampersands.
+        """
+        return text
 
 
 @dataclass
@@ -58,7 +79,7 @@ def _library() -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
     for key, entry in sorted(data.entries.items()):
         doi = entry.fields.get("doi", "").lower().removeprefix("https://doi.org/")
         canonical = doi_keys.setdefault(doi, key) if doi else key
-        text = BibliographyData(entries={key: entry}).to_string("bibtex")
+        text = _ParsedBibTeXWriter().to_string(BibliographyData(entries={key: entry}))
         records[key] = records.get(canonical, (canonical, text))
         if doi:
             links[f"https://doi.org/{doi}"] = key
@@ -99,9 +120,10 @@ def collect_bibtex(
     Parameters
     ----------
     credits
-        Benchmark citation metadata, if available.
+        Raw benchmark metadata before source-framework augmentation, if available.
     framework_ids
-        Associated source frameworks or papers. ML-PEG itself is excluded.
+        Associated tags. Only source frameworks are added automatically.
+        Paper tags and ML-PEG itself are excluded.
     label
         Benchmark label used when reference metadata is missing.
 
@@ -134,6 +156,8 @@ def collect_bibtex(
             result.missing.add(citation.title)
     for framework_id in set(framework_ids) - {"ml_peg"}:
         config = registry.get(framework_id, {})
+        if config.get("type") != "framework":
+            continue
         url = config.get("paper_url", "")
         key = (
             config.get("bibtex_key")
@@ -148,10 +172,10 @@ def collect_bibtex(
                 config.get("citation", {}).get("title")
                 or config.get("label", framework_id)
             )
-    if (
-        not (credits and credits.citations)
-        and not result.entries
-        and not result.missing
+    # A source paper cannot establish completeness when the metadata file failed
+    # to load. An existing empty list may legitimately rely on a framework alone.
+    if credits is None or (
+        not credits.citations and not result.entries and not result.missing
     ):
         result.missing.add(f"{label}: references to be added")
     return result
