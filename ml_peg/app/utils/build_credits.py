@@ -16,6 +16,7 @@ from ml_peg.utils.citations import (
     BenchmarkCredits,
     Citation,
     Contributor,
+    add_framework_citations,
     format_authors,
 )
 
@@ -178,9 +179,11 @@ def build_benchmark_credit_components(
     Component
         Credit box for the benchmark header.
     """
+    framework_ids = tuple(framework_ids)
     bibtex = build_bibtex_controls(
         collect_bibtex(credits, framework_ids, label=name), name, preview=True
     )
+    credits = add_framework_citations(credits, framework_ids)
     if credits is None or not credits.citations:
         citation_line = Details(
             [
