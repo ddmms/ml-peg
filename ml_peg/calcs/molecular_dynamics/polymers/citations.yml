@@ -10,4 +10,6 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-citations: []
+citations:
+  - bibtex_key: simm2025simpoly
+    role: benchmark_method

@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from urllib.parse import quote
 
 from dash import html
 from dash.development.base_component import Component
 from dash.html import Details, Div, Summary
 
+from ml_peg.app.utils.build_bibtex import build_bibtex_controls
 from ml_peg.app.utils.icons import EMAIL_ICON, GITHUB_ICON
+from ml_peg.utils.bibtex import collect_bibtex
 from ml_peg.utils.citations import (
     BenchmarkCredits,
     Citation,
     Contributor,
+    add_framework_citations,
     format_authors,
 )
 
@@ -152,6 +156,8 @@ def _contributor(contributor: Contributor) -> list[Component]:
 
 def build_benchmark_credit_components(
     credits: BenchmarkCredits | None,
+    framework_ids: Iterable[str] = (),
+    name: str = "benchmark",
 ) -> Component:
     """
     Build separate implementation, contributor, and reference credits.
@@ -163,15 +169,30 @@ def build_benchmark_credit_components(
     ----------
     credits
         Validated benchmark credit metadata, or None when no ``citations.yml`` exists.
+    framework_ids
+        Source frameworks or papers whose BibTeX is also included.
+    name
+        Benchmark name used for the download filename.
 
     Returns
     -------
     Component
         Credit box for the benchmark header.
     """
+    framework_ids = tuple(framework_ids)
+    bibtex = build_bibtex_controls(
+        collect_bibtex(credits, framework_ids, label=name), name, preview=True
+    )
+    credits = add_framework_citations(credits, framework_ids)
     if credits is None or not credits.citations:
-        citation_line = _credit_line(
-            "Benchmark references: ", html.Span("To be added"), "0"
+        citation_line = Details(
+            [
+                Summary(
+                    html.Strong("Benchmark references: ", style=CREDIT_LABEL_STYLE)
+                ),
+                html.Div("To be added", style=CREDIT_NOTE_STYLE),
+                bibtex,
+            ]
         )
     else:
         # Each reference's role tag says how it relates to the benchmark
@@ -187,6 +208,7 @@ def build_benchmark_credit_components(
                     style={"cursor": "pointer"},
                 ),
                 *[_citation_reference(citation) for citation in credits.citations],
+                bibtex,
             ]
         )
 

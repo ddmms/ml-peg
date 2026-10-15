@@ -29,6 +29,7 @@ from ml_peg.app.filters import (
     register_element_filter_callbacks,
 )
 from ml_peg.app.utils.bug_report import register_bug_report_callbacks
+from ml_peg.app.utils.build_bibtex import build_bibtex_controls
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
     build_collapse_controls,
@@ -74,6 +75,7 @@ from ml_peg.app.utils.weight_presets import (
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
+from ml_peg.utils.bibtex import BibTeXExport, collect_bibtex, combine_bibtex
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -536,6 +538,11 @@ def build_category(
                     "layout": all_layouts[category][test_name],
                     "key": test_name,
                     "speed": getattr(table, "speed", None),
+                    "bibtex": collect_bibtex(
+                        getattr(table, "citation_credits", None),
+                        test_framework_ids,
+                        label=test_name,
+                    ),
                 }
             )
 
@@ -598,6 +605,18 @@ def build_category_page_layout(
         [
             H1(category_title),
             H3(category_description),
+            Div(
+                build_bibtex_controls(
+                    combine_bibtex(
+                        test.get("bibtex", BibTeXExport()) for test in tests
+                    ),
+                    category_title,
+                    preview=True,
+                    heading=f"{category_title} bibliography",
+                    scope=f"Papers cited across all benchmarks in {category_title}.",
+                ),
+                className="mlpeg-category-bibliography",
+            ),
             Div(
                 Div(
                     Div(
@@ -1195,6 +1214,15 @@ def build_nav(
             return Div(
                 [
                     H1("Categories Summary"),
+                    build_bibtex_controls(
+                        combine_bibtex(
+                            test.get("bibtex", BibTeXExport())
+                            for view in category_views.values()
+                            for test in view["tests"]
+                        ),
+                        "all-benchmarks",
+                        scope="References for all benchmarks, regardless of filters.",
+                    ),
                     Div(
                         summary_counts,
                         className="mlpeg-chip",
