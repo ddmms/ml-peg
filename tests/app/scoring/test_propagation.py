@@ -273,3 +273,68 @@ def test_element_filter_round_trip(ready_page, page_errors):
     page.locator("#element-filter-clear").click()
     page.locator("#element-filter-apply").click()
     chain(page, 0.65, 0.475, 0.6875)
+
+
+def test_global_weights_sync_and_propagate(ready_page, page_errors):
+    """Central edits reach hidden pages, local edits sync back, and resets agree."""
+    page = ready_page
+    score(page, "summary-table", 0.65)
+    page.locator("#global-weights > summary").click()
+    category = page.locator(".mlpeg-global-weight-category").filter(
+        has=page.locator('label[for="global-summary-table-Alpha Score-input"]')
+    )
+    category.locator("summary").click()
+    edit(page, "global-Alpha-summary-table-B1 Score-input", 3)
+    stored_score(page, "Alpha-summary-table", 0.45)
+    score(page, "summary-table", 0.675)
+    edit(page, "global-summary-table-Alpha Score-input", 3)
+    score(page, "summary-table", 0.5625)
+    expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value("3")
+    visit(page, "/category/alpha")
+    expect(page.locator('[id="Alpha-summary-table-B1 Score-input"]')).to_have_value("3")
+    score(page, "Alpha-summary-table", 0.45)
+    edit(page, "Alpha-summary-table-B1 Score-input", 1)
+    stored_score(page, "Alpha-summary-table", 0.4)
+    expect(
+        page.locator('[id="global-Alpha-summary-table-B1 Score-input"]')
+    ).to_have_value("1")
+    stored_score(page, "Alpha-summary-table", 0.4)
+    edit(page, "global-Alpha-summary-table-B1 Score-input", 0)
+    stored_score(page, "Alpha-summary-table", 0.3)
+    page.locator('[id="global-Alpha-summary-table-reset"]').click()
+    expect(page.locator('[id="Alpha-summary-table-B1 Score-input"]')).to_have_value("1")
+    stored_score(page, "Alpha-summary-table", 0.4)
+    page.locator("#global-category-weights-reset").click()
+    visit(page, "/")
+    score(page, "summary-table", 0.65)
+
+
+def test_global_weights_presets_and_reload(ready_page, page_errors):
+    """Presets and persisted weights populate both central and local controls."""
+    page = ready_page
+    score(page, "summary-table", 0.65)
+    page.get_by_text("Weight presets", exact=True).click()
+    page.get_by_role("button", name="Random", exact=True).click()
+    page.locator("#weight-preset-apply").click()
+    page.wait_for_function(
+        """() => JSON.parse(sessionStorage.getItem(
+            'summary-table-weight-store'))['Alpha Score'] !== 1"""
+    )
+    weights = page.evaluate(
+        "JSON.parse(sessionStorage.getItem('summary-table-weight-store'))"
+    )
+    value = str(weights["Alpha Score"])
+    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
+        value
+    )
+    page.reload()
+    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
+        value
+    )
+    expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value(value)
+    page.get_by_text("Weight presets", exact=True).click()
+    page.locator("#weight-preset-reset").click()
+    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
+        "1"
+    )
+    score(page, "summary-table", 0.65)

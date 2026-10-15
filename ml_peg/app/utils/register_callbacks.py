@@ -807,7 +807,7 @@ def register_benchmark_to_group_callback(
         outputs.append(
             Output(f"{group_table_id}-computed-store", "data", allow_duplicate=True)
         )
-        state_inputs.append(State(f"{group_table_id}-weight-store", "data"))
+        state_inputs.append(Input(f"{group_table_id}-weight-store", "data"))
         state_inputs.append(State(f"{group_table_id}-computed-store", "data"))
 
     benchmark_inputs = [Input(f"{bid}-computed-store", "data") for bid in benchmark_ids]
@@ -820,7 +820,7 @@ def register_benchmark_to_group_callback(
         Parameters
         ----------
         *args
-            Per-group (weight-store, computed-store) States followed by the
+            Per-group weight Inputs and computed-store States followed by the
             de-duplicated benchmark computed-store Inputs.
 
         Returns
@@ -872,7 +872,9 @@ def register_benchmark_to_group_callback(
                         target_row[benchmark_column] = new_score
                         benchmark_changed = True
 
-            if not benchmark_changed:
+            weight_id = f"{group_to_id[_group]}{table_id_suffix}-weight-store"
+            weights_changed = f"{weight_id}.data" in ctx.triggered_prop_ids
+            if not benchmark_changed and not weights_changed:
                 patched_outputs.append(no_update)
                 continue
 
@@ -908,7 +910,11 @@ def register_benchmark_to_group_callback(
 
 
 def register_weight_callbacks(
-    input_id: str, table_id: str, column: str, default_weights: dict[str, float]
+    input_id: str,
+    table_id: str,
+    column: str,
+    default_weights: dict[str, float],
+    reset_id: str | None = None,
 ) -> None:
     """
     Register all callbacks for weight inputs.
@@ -924,13 +930,16 @@ def register_weight_callbacks(
     default_weights
         Optional weights for each metric, usually set during analysis. Default is
         `None`, which sets all weights to 1.
+    reset_id
+        Alternative reset button for controls mounted outside the table page.
     """
     default_weights = default_weights if default_weights else {}
+    reset_id = reset_id or f"{table_id}-reset-button"
 
     @callback(
         Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
         Input(f"{input_id}-input", "value"),
-        Input(f"{table_id}-reset-button", "n_clicks"),
+        Input(reset_id, "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
         optional=True,
@@ -960,10 +969,10 @@ def register_weight_callbacks(
         trigger_id = ctx.triggered_id
 
         if trigger_id == f"{input_id}-input":
-            if input_weight is None:
+            if input_weight is None or stored_weights.get(column) == input_weight:
                 raise PreventUpdate
             stored_weights[column] = input_weight
-        elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
+        elif trigger_id == reset_id and n_clicks > 0:
             stored_weights.update(
                 (key, default_weights.get(key, 1.0)) for key in stored_weights
             )
