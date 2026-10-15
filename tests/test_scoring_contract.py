@@ -114,6 +114,15 @@ def test_registered_group_callback_preserves_all_models(monkeypatch):
         return decorate
 
     monkeypatch.setattr(register_callbacks, "callback", capture)
+    monkeypatch.setattr(
+        register_callbacks,
+        "ctx",
+        SimpleNamespace(
+            triggered_prop_ids={
+                "B1-table-computed-store.data": "B1-table-computed-store"
+            }
+        ),
+    )
     table = DataTable(id="B1-table")
     register_callbacks.register_benchmark_to_group_callback(
         {"category": {"B1": table}, "framework": {"B1": table}},
