@@ -85,8 +85,8 @@ def compute_density(fname, density_col=13):
 @plot_parity(
     filename=OUT_PATH / "figure_water_density.json",
     title="Densities",
-    x_label="Predicted density / kcal/mol",
-    y_label="Reference density / kcal/mol",
+    x_label="Predicted density / g/cm³",
+    y_label="Reference density / g/cm³",
     hoverdata={
         "Labels": INFO["filenames"],
     },
