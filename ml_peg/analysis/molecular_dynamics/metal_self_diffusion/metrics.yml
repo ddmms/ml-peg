@@ -1,16 +1,10 @@
 metrics:
-  Diffusion coefficient error:
-    good: 10.0
-    bad: 50.0
-    unit: "%"
+  Diffusion coefficient log error:
+    good: 0.048790164169432
+    bad: 0.223143551314210
+    unit: null
     tooltip: >-
-      Absolute mean relative error across temperatures per element.
-    level_of_theory: Experimental
-  Activation energy error:
-    good: 20.0
-    bad: 50.0
-    unit: "%"
-    tooltip: >-
-      Absolute difference between predicted and experimental Arrhenius activation
-      energies, divided by the absolute experimental activation energy.
+      Mean absolute natural log of model/reference diffusion ratios across
+      temperatures, averaged over elements. Good and bad limits correspond
+      to factors of 1.05 and 1.25, respectively.
     level_of_theory: Experimental

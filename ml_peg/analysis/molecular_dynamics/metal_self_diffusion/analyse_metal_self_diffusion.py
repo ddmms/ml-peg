@@ -10,6 +10,7 @@ from ase.units import kB
 import numpy as np
 from plotly.colors import qualitative
 import pytest
+from scipy.integrate import trapezoid
 
 from ml_peg.analysis.utils.decorators import (
     build_table,
@@ -143,7 +144,7 @@ def vacfs() -> dict:
 @pytest.fixture(scope="session")
 def diffusion_constants(vacfs: dict) -> dict:
     """
-    Integrate VACFs and plot all models against experiment per element.
+    Integrate VACFs and fit Arrhenius parameters for each element.
 
     Parameters
     ----------
@@ -176,7 +177,8 @@ def diffusion_constants(vacfs: dict) -> dict:
         results["ref"][label] = {
             "diffusion": diffusion,
             "fit": fit,
-            "activation_energy": float(-kB * fit[0]),
+            "D0": float(np.exp(fit[1])),
+            "E0": float(-kB * fit[0]),
         }
 
     for model_name in MODELS:
@@ -193,7 +195,7 @@ def diffusion_constants(vacfs: dict) -> dict:
                 if values is None or not np.isfinite(values).all():
                     continue
                 samples = (
-                    np.trapezoid(
+                    trapezoid(
                         values[None, :, :] * windows[:, None, :],
                         vacfs["times"],
                         axis=-1,
@@ -232,10 +234,24 @@ def diffusion_constants(vacfs: dict) -> dict:
                 "taper_sensitivity": taper_sensitivity,
                 "accepted": accepted,
                 "fit": fit,
-                "activation_energy": (
-                    float(-kB * fit[0]) if fit is not None and valid.all() else None
-                ),
+                "D0": float(np.exp(fit[1])) if fit is not None else None,
+                "E0": float(-kB * fit[0]) if fit is not None else None,
             }
+
+    return results
+
+
+@pytest.fixture(scope="session")
+def diffusion_plots(diffusion_constants: dict) -> None:
+    """
+    Plot diffusion coefficients and precomputed Arrhenius fits per element.
+
+    Parameters
+    ----------
+    diffusion_constants
+        Diffusion coefficients, uncertainties, and fitted D0 and E0 values.
+    """
+    results = diffusion_constants
 
     for element, temperatures in zip(
         INFO["filenames"], INFO["temperatures"], strict=True
@@ -293,13 +309,18 @@ def diffusion_constants(vacfs: dict) -> dict:
             fit_temperatures = np.linspace(
                 valid_temperatures.min(), valid_temperatures.max(), 100
             )
+            parameters = (
+                f"D<sub>0</sub> = {values[element]['D0']:.3g} m²/s, "
+                f"E<sub>0</sub> = {values[element]['E0']:.3f} eV"
+            )
             figure["data"].append(
                 {
                     "type": "scatter",
                     "mode": "lines",
                     "x": fit_temperatures.tolist(),
                     "y": (
-                        np.exp(np.polyval(values[element]["fit"], 1 / fit_temperatures))
+                        values[element]["D0"]
+                        * np.exp(-values[element]["E0"] / (kB * fit_temperatures))
                         * 1e9
                     ).tolist(),
                     "line": {"color": colors[name], "dash": "dash"},
@@ -310,7 +331,7 @@ def diffusion_constants(vacfs: dict) -> dict:
                         trace["hovertemplate"]
                         for trace in points
                         if trace["name"] == name
-                    ),
+                    ).replace("<extra>", f"<br>{parameters}<extra>"),
                 }
             )
         filename.write_text(json.dumps(figure))
@@ -342,13 +363,12 @@ def diffusion_constants(vacfs: dict) -> dict:
         }
         filename = OUT_PATH / f"{element}_diffusion_estimates.json"
         filename.write_text(json.dumps(estimates, allow_nan=False))
-    return results
 
 
 @pytest.fixture(scope="session")
-def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
+def get_log_error(diffusion_constants: dict) -> dict[str, dict[str, float | None]]:
     """
-    Average absolute mean relative errors across elements.
+    Calculate mean absolute logarithmic diffusion ratios for each element.
 
     Parameters
     ----------
@@ -358,66 +378,25 @@ def get_amre(diffusion_constants: dict) -> dict[str, float | None]:
     Returns
     -------
     dict
-        Percentage errors by model, or None for incomplete results.
+        Mean absolute log errors by element and model, or None for invalid results.
     """
-    results = {}
+    results = {element: {} for element in INFO["filenames"]}
     for model_name in MODELS:
         if any(
             label not in diffusion_constants[model_name]
             or not diffusion_constants[model_name][label]["accepted"].all()
+            or not (diffusion_constants[model_name][label]["diffusion"] > 0).all()
             for label in INFO["filenames"]
         ):
-            results[model_name] = None
+            for element in INFO["filenames"]:
+                results[element][model_name] = None
             continue
-        element_errors = []
-        for label in diffusion_constants[model_name]:
+        for label in INFO["filenames"]:
             reference = diffusion_constants["ref"][label]["diffusion"]
             predicted = diffusion_constants[model_name][label]["diffusion"]
-            element_errors.append(
-                100 * abs(np.mean((predicted - reference) / reference))
+            results[label][model_name] = float(
+                np.mean(np.abs(np.log(predicted / reference)))
             )
-        results[model_name] = float(np.mean(element_errors)) if element_errors else None
-    return results
-
-
-@pytest.fixture(scope="session")
-def get_activation_energy_are(diffusion_constants: dict) -> dict[str, float | None]:
-    """
-    Average absolute relative activation-energy errors equally over elements.
-
-    Parameters
-    ----------
-    diffusion_constants
-        Reference and predicted activation energies in eV by model and element.
-
-    Returns
-    -------
-    dict
-        Percentage activation-energy errors by model, or None for incomplete results.
-    """
-    results = {}
-    for model_name in MODELS:
-        if any(
-            label not in diffusion_constants[model_name]
-            or diffusion_constants[model_name][label]["activation_energy"] is None
-            for label in INFO["filenames"]
-        ):
-            results[model_name] = None
-            continue
-        element_errors = []
-        for label in diffusion_constants[model_name]:
-            predicted_activation_energy = diffusion_constants[model_name][label][
-                "activation_energy"
-            ]
-            reference_activation_energy = diffusion_constants["ref"][label][
-                "activation_energy"
-            ]
-            element_errors.append(
-                100
-                * abs(predicted_activation_energy - reference_activation_energy)
-                / abs(reference_activation_energy)
-            )
-        results[model_name] = float(np.mean(element_errors)) if element_errors else None
     return results
 
 
@@ -429,31 +408,38 @@ def get_activation_energy_are(diffusion_constants: dict) -> dict[str, float | No
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    get_amre: dict[str, float | None],
-    get_activation_energy_are: dict[str, float | None],
+    get_log_error: dict[str, dict[str, float | None]],
 ) -> dict:
     """
-    Build the absolute mean relative error and relative activation-energy error table.
+    Build the aggregate diffusion error table.
 
     Parameters
     ----------
-    get_amre
-        Absolute mean relative errors by model.
-    get_activation_energy_are
-        Absolute relative activation-energy errors by model.
+    get_log_error
+        Mean absolute logarithmic diffusion ratios by element and model.
 
     Returns
     -------
     dict
         Metric values by metric name and model.
     """
+    errors = {
+        "Diffusion coefficient log error": get_log_error,
+    }
     return {
-        "Diffusion coefficient error": get_amre,
-        "Activation energy error": get_activation_energy_are,
+        metric: {
+            model_name: (
+                float(np.mean([values[model_name] for values in elements.values()]))
+                if all(values[model_name] is not None for values in elements.values())
+                else None
+            )
+            for model_name in MODELS
+        }
+        for metric, elements in errors.items()
     }
 
 
-def test_metal_self_diffusion(metrics: dict) -> None:
+def test_metal_self_diffusion(metrics: dict, diffusion_plots: None) -> None:
     """
     Run the VACF, diffusion, error, and metric-table fixture chain.
 
@@ -461,4 +447,6 @@ def test_metal_self_diffusion(metrics: dict) -> None:
     ----------
     metrics
         Metrics produced by the complete analysis fixture chain.
+    diffusion_plots
+        Generated diffusion plots and saved estimates.
     """

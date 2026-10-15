@@ -23,34 +23,25 @@ model unscored.
 Metrics
 -------
 
-1. Diffusion coefficient error
+1. Diffusion coefficient log error
 
-For each element, signed relative differences between predicted and experimental
-diffusion coefficients are averaged over temperatures before taking the absolute
-value. This absolute mean relative bias is then averaged over elements.
+For each element, the absolute natural logarithm of the model/reference diffusion
+ratio is averaged over temperatures, then equally over elements.
 
-The good threshold of 10% is above the reported experimental uncertainties
-(Al, Cu, Fe, Ni, Ti) of a few percent to about 9%. The bad threshold is 50%:
-a uniform 50% underprediction means diffusion takes twice as long.
+The good target is set to :math:`\ln(1.05)`, corresponding to a 5% multiplicative
+deviation, comparable to typical experimental uncertainties except Al.
+The bad target is set to :math:`\ln(1.25)`, corresponding to a 25% multiplicative
+deviation and a factor-1.25 difference in the diffusion timescale.
 
-2. Activation energy error
-
-For each element, Arrhenius fits, :math:`D(T) = D_0 \exp[-E_a/(k_B T)]`,
-are computed by fitting the logarithm of diffusion coefficient against inverse
-temperature for predictions and experiment. The metric is the absolute difference
-between the fitted activation energies, divided by the absolute experimental
-activation energy and expressed as a percentage.
-
-The good threshold of 20% is above the typically reported experimental
-uncertainties (Cu, Fe, Ni) of 1–10%. The bad threshold of 50% means the predicted
-ratio :math:`D(T_{\max})/D(T_{\min})` differs by about 9–20%.
+Arrhenius fits are shown for reference, with their prefactor :math:`D_0` and
+activation energy :math:`E_0` shown on hover.
 
 Benchmark speed
 ---------------
 
-Multi-day: tests are expected to take several days to run on GPU.
+Very slow: tests are expected to take 10 hours to a day on GPU, depending on the model.
 
-As reference: The ``dpa-4-nano-omat`` takes about 8 hours on an RTX6000 GPU for the full benchmark.
+As reference: The ``dpa-4-nano-omat`` and ``grace-2l-omat`` models take about 8 and 18 hours on an RTX6000 GPU for the full benchmark.
 
 Data availability
 -----------------

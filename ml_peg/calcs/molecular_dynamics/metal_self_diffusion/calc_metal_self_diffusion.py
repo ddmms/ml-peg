@@ -243,7 +243,7 @@ def compute_vacf(velocities: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return np.vstack((times, vacf))
 
 
-@pytest.mark.multi_day
+@pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
     """
