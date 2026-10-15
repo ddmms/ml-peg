@@ -72,20 +72,20 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
             if col["id"] not in {"MLIP", "Score", "id", "link"}
         ]
         categories.append(
-            Div(
+            Details(
                 [
-                    _weight_row(summary_table, column, reset_id),
-                    Details(
+                    Summary(_weight_row(summary_table, column, reset_id)),
+                    Div(
                         [
-                            Summary("Benchmark weights"),
                             *benchmarks,
                             Button(
-                                "Reset benchmark weights",
+                                "Reset benchmarks",
                                 id=benchmark_reset,
                                 n_clicks=0,
                                 className="mlpeg-scoring-reset",
                             ),
                         ],
+                        className="mlpeg-global-weight-benchmarks",
                     ),
                 ],
                 className="mlpeg-global-weight-category",
@@ -97,9 +97,8 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
             Div(
                 [
                     Div(
-                        "Category weights control the overall score. Benchmark "
-                        "weights control their category score. Press Enter or click "
-                        "away to apply."
+                        "Change weights, then press Enter or click away.",
+                        className="mlpeg-global-weights-hint",
                     ),
                     *categories,
                     Button(
