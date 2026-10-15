@@ -31,11 +31,12 @@ def library(tmp_path, monkeypatch):
     )
     registry = tmp_path / "frameworks.yml"
     registry.write_text(
-        "mlip_audit:\n  label: Source\n  type: paper\n"
+        "mlip_audit:\n  label: Source\n  type: framework\n"
         "  paper_url: https://example.org/paper\n"
     )
     monkeypatch.setattr(bibliography, "BIBTEX_FILE", path)
     monkeypatch.setattr(bibtex, "FRAMEWORKS_FILE", registry)
+    monkeypatch.setattr("ml_peg.utils.citations.FRAMEWORKS_FILE", registry)
     bibtex._library.cache_clear()
     yield
     bibtex._library.cache_clear()
@@ -170,7 +171,7 @@ def test_repository_bibtex_links_resolve():
 def test_source_key_works_without_matching_url(library):
     """Explicit source keys include the paper without a false missing warning."""
     bibtex.FRAMEWORKS_FILE.write_text(
-        "mlip_audit:\n  label: Source\n  bibtex_key: other\n"
+        "mlip_audit:\n  label: Source\n  type: framework\n  bibtex_key: other\n"
         "  paper_url: https://example.org/a-different-url\n"
         "  citation:\n    title: Other\n"
     )
@@ -297,3 +298,82 @@ def test_invalid_bibtex_metadata_is_rejected(library, tmp_path, record, message)
     path.write_text("citations:\n  - bibtex_key: paper\n    role: benchmark_method\n")
     with pytest.raises(CitationMetadataError, match=message):
         load_benchmark_credits(path)
+
+
+def test_paper_tags_require_explicit_citations(library):
+    """Tags alone must not add papers that the benchmark does not cite."""
+    with bibtex.FRAMEWORKS_FILE.open("a") as stream:
+        stream.write(
+            "tagged_paper:\n  type: paper\n  bibtex_key: other\n"
+            "  paper_url: https://example.org/other\n"
+        )
+    bibtex._frameworks.cache_clear()
+    tagged = collect_bibtex(credits("paper"), ["tagged_paper"])
+    assert len(tagged.entries) == 1
+    assert "other" not in tagged.entries
+    assert not tagged.missing
+    explicit = collect_bibtex(credits("other", "Other"), ["tagged_paper"])
+    assert set(explicit.entries) == {"other"}
+    assert not explicit.missing
+
+
+@pytest.mark.parametrize("metadata_present", [False, True])
+def test_framework_only_metadata_status_matches_benchmark_and_groups(
+    library, metadata_present
+):
+    """A framework cannot hide a missing file, but can be the only cited source."""
+    from dash.dash_table import DataTable
+
+    from ml_peg.app.utils.build_components import build_test_layout
+
+    bibtex.FRAMEWORKS_FILE.write_text(
+        "mlip_audit:\n  label: Source\n  type: framework\n  bibtex_key: other\n"
+        "  paper_url: https://example.org/other\n"
+        "  citation:\n    title: Other\n    authors: [Jo Smith]\n    year: 2026\n"
+    )
+    bibtex._frameworks.cache_clear()
+    raw = BenchmarkCredits(contributors=(), citations=()) if metadata_present else None
+    export = collect_bibtex(raw, ["mlip_audit"], label="Example")
+    assert set(export.entries) == {"other"}
+    assert bool(export.missing) is not metadata_present
+    grouped = combine_bibtex([export])
+    assert grouped.missing == export.missing
+    ui = build_test_layout(
+        name="Example",
+        description="",
+        framework_ids=["mlip_audit"],
+        table=DataTable(id="example-table", columns=[], data=[]),
+        thresholds={},
+        credits=raw,
+    )
+    assert ("Example: references to be added" in str(ui)) is not metadata_present
+    assert ("Download is incomplete" in str(ui)) is not metadata_present
+    copied = next(n.content for n in walk(ui) if isinstance(n, dcc.Clipboard))
+    assert copied == export.text
+    assert "Other" in str(ui)
+
+
+def test_imported_html_is_removed_from_display_and_exports():
+    """Publisher markup must not leak into rendered titles or downloaded records."""
+    from pylatexenc.latex2text import LatexNodes2Text
+
+    expected = {
+        "wahl-2020-tautobase": "Tautobase: An Open Tautomer Database",
+        "vinogradova-2023-pdau": (
+            "Trends of Pd3Au(111) Alloy Surface Segregation in Oxygen, Carbon, "
+            "and Nitrogen Environments"
+        ),
+    }
+    records, _ = bibtex._library()
+    for key, title in expected.items():
+        assert bibliography.citation_fields(key)["title"] == title
+        exported = records[key][1]
+        assert "<i>" not in exported and "<sub>" not in exported
+        entry = next(iter(parse_string(exported, "bibtex").entries.values()))
+        assert LatexNodes2Text().latex_to_text(entry.fields["title"]) == title
+    exported = records["yang-2017-volumetric"][1]
+    assert "&amp;" not in exported
+    entry = next(iter(parse_string(exported, "bibtex").entries.values()))
+    assert LatexNodes2Text().latex_to_text(entry.fields["journal"]) == (
+        "Journal of Chemical & Engineering Data"
+    )
