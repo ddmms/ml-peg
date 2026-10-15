@@ -49,6 +49,9 @@ V_BOX = L_BOX**3  # Å³
 # Integration cutoff: first minimum of Li-O_total g(r) (r2SCAN AIMD)
 R_CUT = 2.83  # Å
 DR = 0.02  # Å (bin width used in calc_rdf.py)
+# The 50 ps NVT production writes 501 frames (496-501 in the outputs). Fewer
+# than 490 (49 ps) means a truncated trajectory, and the CN is not used.
+MIN_RDF_FRAMES = 490
 
 # Experimental references
 RHO_EXP = 1.7126  # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
@@ -72,6 +75,11 @@ CN_REF_TOTAL = 4.3  # theory at 21 m; exp. 4.21 at ~18.5 m (Watanabe 2021)
 # point (11.9 A^-1).
 SQ_Q_MIN = 0.51  # A^-1
 SQ_DQ = 0.02  # A^-1
+# Below 2.4 A^-1 some bins hold no q-point of the cell and are not written, which
+# leaves gaps of up to 0.1 A^-1 for every model; above, every bin is written. A
+# larger gap means missing data.
+SQ_Q_SPARSE = 2.4  # A^-1
+SQ_MAX_GAP = 0.15  # A^-1
 
 # Metrics computed from each cell of the reference MD. If the MD failed on a
 # cell (failed_<cell>.json written by the calc), these metrics are NaN.
@@ -126,7 +134,21 @@ def load_density_results() -> dict[str, dict]:
     results = {}
     for model in MODELS:
         data = read_json(CALC_PATH / model / "density.json")
-        if data is not None and isinstance(data.get("rho_mean"), (int, float)):
+        # Both density plots need these fields: an incomplete file counts as missing.
+        try:
+            time = np.asarray(data["time_full"], dtype=float)
+            density = np.asarray(data["density_full"], dtype=float)
+            complete = (
+                isinstance(data["rho_mean"], (int, float))
+                and isinstance(data["rho_std"], (int, float))
+                and bool(np.isfinite([data["rho_mean"], data["rho_std"]]).all())
+                and time.ndim == 1
+                and time.size > 0
+                and time.shape == density.shape
+            )
+        except (KeyError, TypeError, ValueError):
+            complete = False
+        if complete:
             results[model] = data
     return results
 
@@ -307,6 +329,14 @@ def load_rdf_results() -> dict[str, dict]:
             gr_tfsi = data["gr_LiO_TFSI"]
             gr_total = data["gr_LiO_total"]
             n_frames = meta["n_frames_used"]
+            if (
+                r.ndim != 1
+                or r.size == 0
+                or r.max() < R_CUT
+                or any(g.shape != r.shape for g in (gr_water, gr_tfsi, gr_total))
+                or n_frames < MIN_RDF_FRAMES
+            ):
+                raise ValueError("incomplete RDF output")
             cn_w = compute_cn_from_gr(gr_water, r, meta["n_O_water"], V_BOX, R_CUT, DR)
             cn_f = compute_cn_from_gr(gr_tfsi, r, meta["n_O_TFSI"], V_BOX, R_CUT, DR)
         except (OSError, EOFError, ValueError, TypeError, KeyError, zipfile.BadZipFile):
@@ -523,7 +553,13 @@ def load_computed_sq(model: str) -> tuple[np.ndarray, np.ndarray] | None:
         q, sq = np.array(d["q"], dtype=float), np.array(d["Sq"], dtype=float)
     except (KeyError, TypeError, ValueError):
         return None
-    if q.ndim != 1 or q.shape != sq.shape:
+    # q must be the increasing grid written by the calc.
+    if (
+        q.ndim != 1
+        or q.shape != sq.shape
+        or not np.isfinite(q).all()
+        or np.any(np.diff(q) <= 0)
+    ):
         return None
     return q, sq
 
@@ -553,10 +589,13 @@ def compute_r_factor(
     float
         R-factor value, or NaN if the calculated S(q) does not cover the whole
         q window (from ``SQ_Q_MIN`` to the last experimental point) with finite
-        values.
+        values, or has a gap in it wider than those of a complete output (see
+        ``SQ_MAX_GAP``).
     """
     valid_calc = np.isfinite(sq_calc)
     window = (q_calc >= SQ_Q_MIN) & (q_calc <= q_exp.max())
+    q_win = q_calc[window]
+    gaps = np.diff(q_win)
     # A failed, truncated or gapped S(q) gets NaN, not a score on whatever part
     # of the q window is left. Tolerance at the edges: one bin of the S(q).
     if (
@@ -564,6 +603,7 @@ def compute_r_factor(
         or not valid_calc[window].all()
         or q_calc[valid_calc].min() > SQ_Q_MIN + SQ_DQ
         or q_calc[valid_calc].max() < q_exp.max() - SQ_DQ
+        or np.any(gaps > np.where(q_win[:-1] < SQ_Q_SPARSE, SQ_MAX_GAP, 1.5 * SQ_DQ))
     ):
         return float("nan")
     q_min_calc = float(q_calc[valid_calc].min())
