@@ -1,0 +1,69 @@
+implementers:
+  - name: "Luca Brugnoli"
+    github: "LucaBrugnoli"
+
+contributors: []
+
+citations:
+  - key: "brugnoli-2026-wise-mlip"
+    role: benchmark_method
+    title: "Overcoming Sampling Limitations Using Machine-Learned Interatomic Potentials: The Case of Water-in-Salt Electrolytes"
+    authors:
+      - "Luca Brugnoli"
+      - "Mathieu Salanne"
+      - "A. Marco Saitta"
+      - "Alessandra Serva"
+      - "Arthur France-Lanord"
+    year: 2026
+    doi: null
+    url: "https://arxiv.org/abs/2603.22099"
+  - key: "gilbert-2017-litfsi-density"
+    role: reference_data
+    title: "Density, Viscosity, and Vapor Pressure Measurements of Water + Lithium Bis(trifluoromethylsulfonyl)imide Solutions"
+    authors:
+      - "William J. R. Gilbert"
+      - "Javid Safarov"
+      - "David L. Minnick"
+      - "M. Alejandra Rocha"
+      - "Egon P. Hassel"
+      - "Mark B. Shiflett"
+    year: 2017
+    doi: "10.1021/acs.jced.7b00135"
+    url: null
+  - key: "watanabe-2021-litfsa-li-structure"
+    role: reference_data
+    title: "Local Structure of Li+ in Superconcentrated Aqueous LiTFSA Solutions"
+    authors:
+      - "Hikari Watanabe"
+      - "Nana Arai"
+      - "Erika Nozaki"
+      - "Jihae Han"
+      - "Kenta Fujii"
+      - "Kazutaka Ikeda"
+      - "Toshiya Otomo"
+      - "Kazuhide Ueno"
+      - "Kaoru Dokko"
+      - "Masayoshi Watanabe"
+      - "Yasuo Kameda"
+      - "Yasuhiro Umebayashi"
+    year: 2021
+    doi: "10.1021/acs.jpcb.1c04693"
+    url: null
+  - key: "zhang-2021-wise-liquid-structure"
+    role: reference_data
+    title: "Water-in-Salt LiTFSI Aqueous Electrolytes. 1. Liquid Structure from Combined Molecular Dynamics Simulation and Experimental Studies"
+    authors:
+      - "Yong Zhang"
+      - "Nicholas H. C. Lewis"
+      - "Julian Mars"
+      - "Gang Wan"
+      - "Nicholas J. Weadock"
+      - "Christopher J. Takacs"
+      - "Maria R. Lukatskaya"
+      - "Hans-Georg Steinrück"
+      - "Michael F. Toney"
+      - "Andrei Tokmakoff"
+      - "Edward J. Maginn"
+    year: 2021
+    doi: "10.1021/acs.jpcb.1c02189"
+    url: null
