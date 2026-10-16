@@ -333,7 +333,8 @@ def ordering_metrics(
     Returns
     -------
     dict[str, float]
-        Value by metric name; NaN for a failed, missing or truncated calculation.
+        Value by metric name; NaN for a failed, missing or truncated calculation
+        (or one without model energies).
     """
     out = {}
     for name, ordering in ORDERINGS.items():
@@ -344,6 +345,12 @@ def ordering_metrics(
             warn(
                 f"{model} {name}: {len(states)} of {len(refs[name])} states; "
                 "not scored",
+                stacklevel=2,
+            )
+            states = []
+        if states and any("model_energy" not in f.info for f in states):
+            warn(
+                f"{model} {name}: no model energy on every state; not scored",
                 stacklevel=2,
             )
             states = []

@@ -593,3 +593,16 @@ def test_an_unreadable_output_file_gives_no_frames_with_a_warning(tmp_path):
     with pytest.warns(UserWarning, match="mymodel Si_111_110.extxyz: unreadable"):
         assert an.read_frames(bad, "mymodel") == []
     assert an.read_frames(tmp_path / "missing.extxyz", "mymodel") == []
+
+
+def test_an_ordering_output_without_model_energies_gives_nan_with_a_warning():
+    """Frames lacking ``model_energy`` (an incomplete calculation) are not scored."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    model = _ordering_frames(0.5, 0.0, "model_energy")
+    del model[1].info["model_energy"]
+    name = next(iter(an.ORDERINGS))
+    with pytest.warns(UserWarning, match="mymodel .*no model energy"):
+        out = an.ordering_metrics({name: model}, {}, {name: ref}, model="mymodel")
+    assert all(np.isnan(v) for v in out.values())
