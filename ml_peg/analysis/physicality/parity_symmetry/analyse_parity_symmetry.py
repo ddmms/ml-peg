@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase.io import read
 import numpy as np
@@ -92,24 +93,37 @@ def get_deltas(model_name: str, struct_name: str) -> tuple[float, float] | None:
     tuple[float, float] | None
         Absolute energy change (meV/atom) and largest absolute force component
         change (meV/Å), or None if outputs are missing. NaN if either
-        evaluation failed.
+        evaluation failed, or if the outputs are unreadable or incomplete.
     """
     xyz_path = CALC_PATH / model_name / f"{struct_name}.xyz"
     if not xyz_path.exists():
         return None
 
-    frames = read(xyz_path, index=":")
-    original = next((f for f in frames if not f.info["inverted"]), None)
-    inverted = next((f for f in frames if f.info["inverted"]), None)
-    if original is None or inverted is None:
-        return None
+    # Unreadable, truncated or incomplete outputs are a failed datum (NaN), so
+    # _mean_max blanks the model rather than the whole analysis aborting
+    try:
+        frames = read(xyz_path, index=":")
+        original = next((f for f in frames if not f.info["inverted"]), None)
+        inverted = next((f for f in frames if f.info["inverted"]), None)
+        if original is None or inverted is None:
+            raise ValueError("original or inverted frame missing")
+        energy_orig = original.get_potential_energy()
+        energy_inv = inverted.get_potential_energy()
+        forces_orig = original.get_forces()
+        forces_inv = inverted.get_forces()
+    except Exception as exc:
+        warn(
+            f"Failed to read parity symmetry outputs for model {model_name}, "
+            f"structure {struct_name}: {exc}",
+            category=RuntimeWarning,
+            stacklevel=2,
+        )
+        return np.nan, np.nan
 
-    delta_energy = abs(
-        inverted.get_potential_energy() - original.get_potential_energy()
-    ) / len(original)
+    delta_energy = abs(energy_inv - energy_orig) / len(original)
     # Inverted forces should be the negated original forces, so their sum
     # vanishes for an exactly parity-equivariant model
-    delta_forces = np.abs(inverted.get_forces() + original.get_forces()).max()
+    delta_forces = np.abs(forces_inv + forces_orig).max()
 
     # NaN from a failed evaluation propagates, so _mean_max later blanks the model
     return float(delta_energy * EV_TO_MEV), float(delta_forces * EV_TO_MEV)
