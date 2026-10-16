@@ -14,7 +14,11 @@ from ml_peg.models.models import TaceCalc, _patch_os_sched_getaffinity
 
 @pytest.mark.parametrize(
     ("model_name", "checkpoint"),
-    [("tace-omat24-7m", "TACE-OMat24-7M"), ("tace-oam-7m", "TACE-OAM-7M")],
+    [
+        ("tace-oam-7m", "TACE-OAM-7M"),
+        ("tece-oam-rra-1.0", "TECE-OAM-RRA-1.0"),
+        ("tace-oam-l", "TACE-OAM-L"),
+    ],
 )
 def test_tace_models_use_tace_wrapper(model_name: str, checkpoint: str) -> None:
     """Load TACE foundation models through the TACE wrapper."""

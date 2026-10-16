@@ -530,25 +530,13 @@ sevennet-omni-mpa
 TACE
 ====
 
-`upstream model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
-
-tace-omat24-7m
---------------
-
-.. code-block:: yaml
-
-  tace-omat24-7m:
-    module: tace.interface.ase
-    class_name: TACEAseCalc
-    datasets: [OMAT]
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBE
-    kwargs:
-      model: "TACE-OMat24-7M"
+`Model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
+ Model weights are licensed under CC BY 4.0.
 
 tace-oam-7m
 -----------
+
+TACE-OAM-7M (M).
 
 .. code-block:: yaml
 
@@ -561,3 +549,37 @@ tace-oam-7m
     level_of_theory: PBE
     kwargs:
       model: "TACE-OAM-7M"
+
+tece-oam-rra-1.0
+----------------
+
+TECE-OAM-RRA-1.0 (XL).
+
+.. code-block:: yaml
+
+  tece-oam-rra-1.0:
+    module: tace.interface.ase
+    class_name: TACEAseCalc
+    datasets: [MPtrj, sAlex, OMAT]
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "TECE-OAM-RRA-1.0"
+
+tace-oam-l
+----------
+
+TACE-OAM-L (L).
+
+.. code-block:: yaml
+
+  tace-oam-l:
+    module: tace.interface.ase
+    class_name: TACEAseCalc
+    datasets: [MPtrj, sAlex, OMAT]
+    device: "cpu"
+    trained_on_dispersion: false
+    level_of_theory: PBE
+    kwargs:
+      model: "TACE-OAM-L"
