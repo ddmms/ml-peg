@@ -313,7 +313,9 @@ def ordering_error(model_frames: list, ref_frames: list) -> float:
     return 1000 * abs(d_model - d_ref) / float(ref_frames[0].cell[2, 2])
 
 
-def ordering_metrics(frames: dict, status: dict, refs: dict) -> dict[str, float]:
+def ordering_metrics(
+    frames: dict, status: dict, refs: dict, model: str = ""
+) -> dict[str, float]:
     """
     Return the branch-ordering metric values of a model.
 
@@ -325,21 +327,55 @@ def ordering_metrics(frames: dict, status: dict, refs: dict) -> dict[str, float]
         Calculation status by name; ``"failed: ..."`` is not scored.
     refs
         DFT ordering frames by name.
+    model
+        Model name, for warnings.
 
     Returns
     -------
     dict[str, float]
-        Value by metric name; NaN for a failed or missing calculation.
+        Value by metric name; NaN for a failed, missing or truncated calculation.
     """
     out = {}
     for name, ordering in ORDERINGS.items():
         metric = f"{ordering['label']} ordering error"
-        model = frames.get(name, [])
+        states = frames.get(name, [])
         failed = str(status.get(name, "")).startswith("failed")
+        if states and len(states) != len(refs[name]):
+            warn(
+                f"{model} {name}: {len(states)} of {len(refs[name])} states; "
+                "not scored",
+                stacklevel=2,
+            )
+            states = []
         out[metric] = (
-            np.nan if failed or not model else ordering_error(model, refs[name])
+            np.nan if failed or not states else ordering_error(states, refs[name])
         )
     return out
+
+
+def read_frames(path, model: str) -> list:
+    """
+    Read a model's output frames, warning instead of failing on a damaged file.
+
+    Parameters
+    ----------
+    path
+        Output extxyz file.
+    model
+        Model name, for the warning.
+
+    Returns
+    -------
+    list
+        The frames; empty if the file is missing, empty or unreadable.
+    """
+    if not path.exists() or not path.stat().st_size:
+        return []
+    try:
+        return read(path, ":")
+    except Exception as err:  # noqa: BLE001 - any parse error: the file is not scored
+        warn(f"{model} {path.name}: unreadable ({err}); not scored", stacklevel=2)
+        return []
 
 
 def _model_constants(model: str) -> dict | None:
@@ -497,10 +533,7 @@ def case_results() -> dict[str, dict[str, dict]]:
             continue
         frames = {}
         for name in CASES:
-            path = CALC_PATH / model / f"{name}.extxyz"
-            frames[name] = (
-                read(path, ":") if path.exists() and path.stat().st_size else []
-            )
+            frames[name] = read_frames(CALC_PATH / model / f"{name}.extxyz", model)
         results[model] = model_errors(consts, frames, refs, model=model)
         for name in CASES:
             _write_plot(model, name, refs[name], frames[name])
@@ -529,11 +562,10 @@ def ordering_results() -> dict[str, dict[str, float]]:
             continue
         frames = {}
         for name in ORDERINGS:
-            path = CALC_PATH / model / f"{name}.extxyz"
-            frames[name] = (
-                read(path, ":") if path.exists() and path.stat().st_size else []
-            )
-        results[model] = ordering_metrics(frames, consts.get("status") or {}, refs)
+            frames[name] = read_frames(CALC_PATH / model / f"{name}.extxyz", model)
+        results[model] = ordering_metrics(
+            frames, consts.get("status") or {}, refs, model=model
+        )
     return results
 
 

@@ -98,6 +98,11 @@ Reference data:
 * Spin-polarised PBE (VASP, PAW, 520 eV cutoff) pseudo-arclength continuation on
   H-passivated clamped clusters (100-135 atoms), packaged as the reference paths of the
   three cases.
+* The 5-7 ordering states (``Si_111_110_431_order.extxyz``): the sharp and 5-7 tips of
+  the 216-atom (4,3,1) H-passivated clamped cluster, each relaxed at fixed
+  K/K_G = 1.5036 to 0.005 eV/Å at the same level of theory as the paths (spin-polarised
+  PBE, VASP, PAW, 520 eV cutoff, 0.02 eV Gaussian smearing, 17 k-points along the
+  crack front).
 * Manuscript in preparation.
 
 Method:

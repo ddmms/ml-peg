@@ -559,3 +559,37 @@ def test_ordering_energies_survive_the_output_file(tmp_path):
     ref = _ordering_frames(-1.0, 0.0, "REF_energy")
     write(tmp_path / "o.extxyz", ct.ordering_energies(ref, _SiOnly()), format="extxyz")
     assert np.isfinite(an.ordering_error(read(tmp_path / "o.extxyz", ":"), ref))
+
+
+def test_a_truncated_ordering_file_gives_nan_with_a_warning():
+    """An ordering output with fewer states than the reference is not scored."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    model = _ordering_frames(0.5, 0.0, "model_energy")[:1]
+    name = next(iter(an.ORDERINGS))
+    with pytest.warns(UserWarning, match="mymodel .*1 of 2 states"):
+        out = an.ordering_metrics({name: model}, {}, {name: ref}, model="mymodel")
+    assert all(np.isnan(v) for v in out.values())
+
+
+def test_ordering_states_that_differ_from_the_reference_still_raise():
+    """Stale outputs on other states raise, as a topology mismatch does."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
+    model = _ordering_frames(0.5, 0.0, "model_energy")[::-1]
+    name = next(iter(an.ORDERINGS))
+    with pytest.raises(ValueError, match="do not match"):
+        an.ordering_metrics({name: model}, {}, {name: ref})
+
+
+def test_an_unreadable_output_file_gives_no_frames_with_a_warning(tmp_path):
+    """A damaged output file warns and reads as no frames (NaN metrics)."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    bad = tmp_path / "Si_111_110.extxyz"
+    bad.write_text("3\nnot an extxyz header\nSi 0 0\n")
+    with pytest.warns(UserWarning, match="mymodel Si_111_110.extxyz: unreadable"):
+        assert an.read_frames(bad, "mymodel") == []
+    assert an.read_frames(tmp_path / "missing.extxyz", "mymodel") == []
