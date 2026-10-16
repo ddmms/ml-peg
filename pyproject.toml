@@ -87,7 +87,7 @@ sevenn = [
     "sevenn==0.12.1",
 ]
 tace = [
-    "tace==0.2.2",
+    "tace==0.2.3",
 ]
 vivace = [
     "simpoly[vivace,cuda13]; sys_platform == 'linux'",
