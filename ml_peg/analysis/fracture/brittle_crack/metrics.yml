@@ -1,0 +1,61 @@
+metrics:
+  Si (110)[1-10] K error:
+    good: 0.0803
+    bad: 0.2409
+    unit: "K/K_G"
+    tooltip: "RMS error of K/K_G (own K_G) along the DFT S-curve, on the case coordinate; the uncovered part of the DFT window counts at the bad threshold."
+    level_of_theory: PBE
+  Si (110)[1-10] E error:
+    good: 0.0952
+    bad: 0.2856
+    unit: "2 gamma L b"
+    tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (110)[1-10] D error:
+    good: 0.144
+    bad: 0.432
+    unit: "-"
+    tooltip: "RMS energy-norm error of the crack-tip displacement field (second-neighbour bond strain within 8 A of the tip), matched at equal b/b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (110)[001] K error:
+    good: 0.0803
+    bad: 0.2409
+    unit: "K/K_G"
+    tooltip: "RMS error of K/K_G (own K_G) along the DFT S-curve, on the case coordinate; the uncovered part of the DFT window counts at the bad threshold."
+    level_of_theory: PBE
+  Si (110)[001] E error:
+    good: 0.0952
+    bad: 0.2856
+    unit: "2 gamma L b"
+    tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (110)[001] D error:
+    good: 0.144
+    bad: 0.432
+    unit: "-"
+    tooltip: "RMS energy-norm error of the crack-tip displacement field (second-neighbour bond strain within 8 A of the tip), matched at equal b/b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (111)[1-10] K error:
+    good: 0.0803
+    bad: 0.2409
+    unit: "K/K_G"
+    tooltip: "RMS error of K/K_G (own K_G) along the DFT S-curve, on the case coordinate; the uncovered part of the DFT window counts at the bad threshold."
+    level_of_theory: PBE
+  Si (111)[1-10] E error:
+    good: 0.0952
+    bad: 0.2856
+    unit: "2 gamma L b"
+    tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (111)[1-10] D error:
+    good: 0.144
+    bad: 0.432
+    unit: "-"
+    tooltip: "RMS energy-norm error of the crack-tip displacement field (second-neighbour bond strain within 8 A of the tip), matched at equal b/b_bulk; coverage-padded."
+    level_of_theory: PBE
+  Si (111)[1-10] 5-7 ordering error:
+    good: 12.5
+    bad: 37.6
+    unit: "meV/A"
+    tooltip: "Error of E(5-7) - E(sharp) on the DFT-relaxed (4,3,1) states at K/K_G 1.50, per unit length of crack front. DFT puts the 5-7 state 37.6 meV/A below the sharp one; bad = that gap (the order can flip), good = bad / 3."
+    level_of_theory: PBE
