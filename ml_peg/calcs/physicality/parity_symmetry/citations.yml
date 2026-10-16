@@ -1,0 +1,19 @@
+implementers:
+  - name: "Abel L Toth"
+    github: "kecsapo"
+
+contributors:
+  - name: "Ella Bolland"
+    github: "ellalbolland"
+
+citations:
+      - key: marianski-2016-ref
+        role: reference_data
+        title: Assessing the Accuracy of Across-the-Scale Methods for Predicting Carbohydrate Conformational Energies for the Examples of Glucose and α-Maltose
+        authors:
+          - Mateusz Marianski
+          - Adriana Supady
+          - Teresa Ingram 
+          - Markus Schneider
+          - Carsten Baldauf
+        year: 2016
